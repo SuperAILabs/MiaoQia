@@ -1,0 +1,36 @@
+# 运营工作台子系统（operations）
+
+> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 平面：平台 · 首期部署单元：`platform`
+
+## 1. 使命
+
+为妙洽内部团队（数据运营、研究分析师、客户成功、领域专家）提供结构化的工作台，使人工工作可调度、可度量、可追溯，并逐步沉淀为自动化能力。
+
+## 2. 职责
+
+- **人工复核队列**：解析异常、低置信度实体解析与项目聚合、质量告警、研究报告复核；
+- **数据运营**：来源健康处理、来源上线与权利审查流程、解析规则维护任务；
+- **托管研究服务**：为签约托管服务的租户执行研究、调优与简报，工作在租户授权范围内进行；
+- **客户成功**：实施进度、配置检查、健康度、续费风险；
+- **工单与工时**：所有人工工作以工单记录，含耗时、操作对象、结果；
+- **自动化候选**：统计高频重复人工操作，生成自动化建议。
+
+## 3. 拥有的数据
+
+`ReviewTask`、`ReviewDecision`、`ServiceTicket`、`ServiceTimeLog`、`CustomerHealth`、`AutomationCandidate`。
+
+## 4. 接口与依赖
+
+本子系统是内部人员的业务工作台，作为内部客户端调用其他子系统的命令接口执行操作（如 `evidence.SubmitManualCorrection`、`entity_graph.MergeEntities`、`domain_intelligence.ConfirmAggregation`），不直接写其他子系统的数据。访问租户数据必须持有 `identity` 颁发的支持访问授权。
+
+## 5. 事件
+
+**消费**：`evidence.quality.flagged.v1`、`acquisition.source.health_changed.v1`、`learning.drift.detected.v1`、各子系统的“需人工复核”事件。
+
+**发布**：`operations.review.completed.v1`、`operations.service_time.logged.v1`。
+
+## 6. 设计要点
+
+- 复核决定回写到对应子系统后，同时成为评估与训练样本；
+- 托管服务的每次操作都关联租户、工单和授权，可向客户展示服务记录；
+- 工时数据进入 `commerce` 用于服务计价与毛利核算。
