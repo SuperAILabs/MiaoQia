@@ -117,6 +117,9 @@ docs/
 |---|---|---|
 | 术语 | `glossary.md` | 直接使用术语 |
 | 业务层级 | `02-business/01-business-architecture.md` 第 1 节 | 一句话概述 + 链接 |
+| 标识前缀 | `contracts/identifiers.yaml` | 引用前缀 |
+| 信息领域的领域 Schema 与领域事件 | `contracts/schemas/domains/<领域>/`、`contracts/events/<命名空间>/` | 业务文档只写概念与含义 |
+| 信息领域生命周期状态机 | `packs/information_domains/<领域>/lifecycle.yaml` | 链接 |
 | 商业目标目录 | `02-business/02-commercial-objectives.md` | 引用目标编号 |
 | 首发范围与分批 | `02-business/application-domains/tendering/05-release-plan.md` | 引用 |
 | 子系统清单、职责、语言、部署单元、数据库 | `03-architecture/subsystems/README.md` 第 1 节 | 链接，不复制表格 |

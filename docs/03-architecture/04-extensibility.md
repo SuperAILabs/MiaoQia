@@ -51,7 +51,7 @@ pack:
 | 解析器 | `evidence` `Extractor` SPI | 代码（可调用模型网关） |
 | 质量规则 | `evidence.quality` | 声明 + 代码 |
 | 增强器与标签体系 | `evidence.enrichment` `Enricher` SPI | 声明（标签体系、规则）+ 代码（分类器、抽取器） |
-| 领域 Schema 与迁移 | `domain-intelligence.fact_store` | JSON Schema + 迁移脚本 |
+| 领域 Schema 与迁移 | `domain-intelligence.fact_store` | JSON Schema（存放于 `contracts/schemas/domains/<领域>/`，供三种语言生成代码）+ 迁移脚本 |
 | 聚合规则 | `domain-intelligence.aggregator` | 声明 + 代码 |
 | 生命周期状态机 | `domain-intelligence.lifecycle_engine` | 声明 |
 | 变化检测与领域事件 | `domain-intelligence.change_detector` | 声明 + 事件 Schema |

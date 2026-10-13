@@ -104,8 +104,8 @@ template:
     - name: 品类区域时限均满足的公开招标
       given:
         fact: { notice_type: tender, method: open_tender, title: 市政给水管网改造工程管材采购,
-                location: "330106", budget: { value: 3200000, currency: CNY },
-                items: [{ category: CAT-PIPE-PE }], requirements: [],
+                location: "330106", budget: { value: "3200000", currency: CNY },
+                items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }], requirements: [],
                 bid_deadline: "2026-11-20T09:30:00+08:00", buyer: { org_id: org_b1 } }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"],
                    qualification_codes: [], brands: [] }
@@ -115,14 +115,14 @@ template:
     - name: 采购意向进入观察
       given:
         fact: { notice_type: intent, title: 2027 年供水管网更新采购意向, location: "330106",
-                items: [{ category: CAT-PIPE-PE }], buyer: { org_id: org_b1 } }
+                items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }], buyer: { org_id: org_b1 } }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { customers: [], blocked: [] }
         now: "2026-11-01T08:00:00+08:00"
       expect: watch_signal
     - name: 服务区域外
       given:
-        fact: { notice_type: tender, location: "440300", items: [{ category: CAT-PIPE-PE }],
+        fact: { notice_type: tender, location: "440300", items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }],
                 bid_deadline: "2026-11-20T09:30:00+08:00", buyer: { org_id: org_b2 } }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { customers: [], blocked: [] }

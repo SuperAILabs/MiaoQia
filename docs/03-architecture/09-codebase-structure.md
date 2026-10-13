@@ -9,7 +9,7 @@
 ```text
 miaoqia/
 ├── contracts/                     契约（唯一事实来源，与语言无关）
-│   ├── schemas/                   领域对象与研究产物 JSON Schema
+│   ├── schemas/                   JSON Schema：common/ 通用类型、domains/<信息领域>/ 领域对象、研究产物
 │   ├── apis/<subsystem>/          子系统接口 OpenAPI
 │   ├── events/<namespace>/        事件 AsyncAPI + Schema
 │   ├── policy/                    策略 DSL Schema 与 CEL 环境声明

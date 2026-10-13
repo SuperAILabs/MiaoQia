@@ -72,16 +72,16 @@ template:
   examples:
     - name: 竞争对手在我方区域与品类中标且采购人是我方客户
       given:
-        fact: { result_type: awarded, location: "330106", items: [{ category: CAT-PIPE-PE }],
-                amount: { value: 6000000, currency: CNY }, buyer: { org_id: org_b1 },
+        fact: { result_type: awarded, location: "330106", items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }],
+                amount: { value: "6000000", currency: CNY }, buyer: { org_id: org_b1 },
                 winner: { org_id: org_c1 }, org_ids: [org_b1, org_c1] }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { competitors: [org_c1], customers: [org_b1] }
       expect: pursue_candidate
     - name: 竞争对手在其他区域、其他品类中标
       given:
-        fact: { result_type: awarded, location: "440300", items: [{ category: CAT-IT-SW }],
-                amount: { value: 800000, currency: CNY }, buyer: { org_id: org_b9 },
+        fact: { result_type: awarded, location: "440300", items: [{ categories: [{ scheme: "industry:it", code: CAT-IT-SW }] }],
+                amount: { value: "800000", currency: CNY }, buyer: { org_id: org_b9 },
                 winner: { org_id: org_c1 }, org_ids: [org_b9, org_c1] }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { competitors: [org_c1], customers: [] }

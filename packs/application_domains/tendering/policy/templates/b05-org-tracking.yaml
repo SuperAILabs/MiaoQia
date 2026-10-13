@@ -75,9 +75,9 @@ template:
   examples:
     - name: 跟踪对象获得重大订单
       given:
-        fact: { result_type: awarded, amount: { value: 30000000, currency: CNY },
+        fact: { result_type: awarded, amount: { value: "30000000", currency: CNY },
                 buyer: { org_id: org_b1 },
-                winner: { org_id: org_t1, trailing_award_total: { value: 120000000, currency: CNY },
+                winner: { org_id: org_t1, trailing_award_total: { value: "120000000", currency: CNY },
                           past_buyer_ids: [org_b1] },
                 org_ids: [org_b1, org_t1] }
         lists: { tracked: [org_t1] }

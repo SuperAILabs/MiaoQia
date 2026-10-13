@@ -77,7 +77,7 @@ template:
       expect: pursue_candidate
     - name: 伙伴的已了结小额处罚
       given:
-        fact: { record_type: penalty, resolved: true, amount: { value: 20000, currency: CNY },
+        fact: { record_type: penalty, resolved: true, amount: { value: "20000", currency: CNY },
                 subject: { org_id: org_p1 }, org_ids: [org_p1] }
         event: { type: credit.record.published.v1 }
         lists: { customers: [], partners: [org_p1], counterparties: [] }
