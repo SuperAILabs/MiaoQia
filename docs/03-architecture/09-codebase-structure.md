@@ -45,7 +45,7 @@ miaoqia/
 │
 ├── packs/                         扩展包
 │   ├── information_domains/
-│   │   ├── procurement/           INF-PROC（由 Tender Intel 迁移）
+│   │   ├── procurement/           INF-PROC
 │   │   ├── investment_projects/   INF-INVP
 │   │   ├── organizations/         INF-ORG
 │   │   └── …

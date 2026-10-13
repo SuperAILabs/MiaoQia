@@ -224,4 +224,4 @@ sequenceDiagram
 | 部署单元、进程角色、单元化 | [07-deployment-topology.md](07-deployment-topology.md) |
 | 技术选型 | [08-technology-stack.md](08-technology-stack.md) |
 | 代码库结构与依赖约束 | [09-codebase-structure.md](09-codebase-structure.md) |
-| Tender Intel 迁移 | [10-migration-from-tender-intel.md](10-migration-from-tender-intel.md) |
+| Tender Intel 参考说明 | [10-tender-intel-reference.md](10-tender-intel-reference.md) |

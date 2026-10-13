@@ -7,7 +7,7 @@
 **逻辑架构按终态设计，部署从两个单元开始，演进通过配置完成。**（[ADR-0002](../04-decisions/0002-composable-deployment.md)）
 
 - 18 个子系统的边界、数据所有权、接口与事件契约从第一天按终态实现；
-- 基础设施（PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、ClickHouse、Redis、Keycloak、可观测性）从第一天按生产级部署，不使用替代方案过渡；
+- 基础设施（PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、Redis、Keycloak、可观测性）从第一天按生产级部署，不使用替代方案过渡；
 - 应用代码打包为两个部署单元：`acquisition` 与 `platform`；
 - 任一子系统可以通过部署配置从 `platform` 中拆出，独立部署，代码与契约不变。
 
@@ -75,12 +75,11 @@ roles:
 
 | 组件 | 部署 | 用途 |
 |---|---|---|
-| PostgreSQL | 托管高可用集群；每个子系统独立逻辑数据库与账号 | 权威数据 |
+| PostgreSQL | 托管高可用集群 + 只读副本；每个子系统独立逻辑数据库与账号 | 权威数据；统计与批量查询走只读副本 |
 | 对象存储 | 托管 | 原始制品、文档、知识资产、导出 |
 | Kafka | 托管 | 事件总线 |
 | Temporal | 自建集群（持久化在 PostgreSQL） | 持久化工作流 |
 | OpenSearch | 托管或自建集群 | 检索 |
-| ClickHouse | 托管或自建集群 | 分析投影、审计、计量 |
 | Redis | 托管 | 缓存、限流 |
 | Keycloak | 自建高可用 | 身份提供者 |
 | 模型推理服务 | GPU 节点池（vLLM 等） | 私有模型 |
@@ -110,7 +109,6 @@ flowchart LR
     K[[Kafka]]
     T[[Temporal]]
     OS[(OpenSearch)]
-    CH[(ClickHouse)]
     R[(Redis)]
     KC[Keycloak]
   end
@@ -120,7 +118,7 @@ flowchart LR
   K --> CON
   K --> DW
   API --> PG & OS & R & KC
-  CON --> PG & OS & CH
+  CON --> PG & OS
   WW <--> T
   S1 <--> T
   OR --> K

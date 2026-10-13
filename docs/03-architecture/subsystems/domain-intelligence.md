@@ -33,7 +33,7 @@
 | `lifecycle_engine` | 通用状态机执行器，状态机定义由领域包提供 |
 | `change_detector` | 比较领域事实版本，生成领域事件 |
 | `coverage` | 覆盖率、时效、缺口检测 |
-| `analytics_projection` | 向分析存储（ClickHouse）投影领域事实，用于统计查询 |
+| `statistics` | 维护按采购人、品类、区域、时间等维度的统计汇总表，随领域事实增量更新 |
 
 ## 4. 拥有的数据（公共域）
 

@@ -18,7 +18,7 @@
 
 ## 3. 拥有的数据
 
-`AuditEvent`（追加式，存分析存储与归档存储）、`DataCategory`、`ClassificationRule`、`RetentionPolicy`、`DeletionRequest` / `DeletionCertificate`、`PersonalInfoInventory`、`ModelRegistration`、`ComplianceRecord`。
+`AuditEvent`（追加式，PostgreSQL 按月分区，过期后归档到对象存储）、`DataCategory`、`ClassificationRule`、`RetentionPolicy`、`DeletionRequest` / `DeletionCertificate`、`PersonalInfoInventory`、`ModelRegistration`、`ComplianceRecord`。
 
 ## 4. 接口
 
@@ -40,7 +40,7 @@
 
 - 审计是“写入不可失败”的路径：审计 SDK 本地持久化后异步投递，投递失败告警；
 - 审计事件不包含敏感内容本身，只包含引用与摘要；
-- 删除采用“各子系统负责本地删除 + 中心编排与证明”的模式，覆盖数据库、对象存储、索引、缓存、分析存储、备份过期与模型调用日志；
+- 删除采用“各子系统负责本地删除 + 中心编排与证明”的模式，覆盖数据库、对象存储、索引、缓存、只读副本、备份过期与模型调用日志；
 - 合规规则（保留期、分级）以配置版本化，可随法规更新。
 
 ## 7. 合规基线

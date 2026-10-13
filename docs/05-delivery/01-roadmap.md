@@ -17,7 +17,7 @@
 
 | 范围 | 交付 |
 |---|---|
-| 基础设施 | 云账号与网络、Kubernetes、PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、ClickHouse、Redis、Keycloak、OpenFGA、可观测性；全部以 Terraform + GitOps 管理 |
+| 基础设施 | 云账号与网络、Kubernetes、PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、Redis、Keycloak、OpenFGA、可观测性；全部以 Terraform + GitOps 管理 |
 | 代码库 | monorepo、uv 工作区、`kernel`、`sdk`、18 个子系统骨架、两个部署单元与进程角色、依赖检查 |
 | 契约体系 | `contracts/` 目录结构、代码生成、兼容性检查、契约测试框架 |
 | 平台横切 | 请求上下文、接口绑定（本地/远程）、发件箱与中继、事件消费框架、审计 SDK、授权 SDK、模型网关骨架 |
@@ -30,7 +30,7 @@
 
 | 范围 | 交付 |
 |---|---|
-| Tender Intel 迁移 | M-1 至 M-4（见 [迁移](../03-architecture/10-migration-from-tender-intel.md)） |
+| `INF-PROC` 信息领域包 | 自主开发来源处理器、解析器、领域 Schema、生命周期与领域事件；建立来源参照集与字段标注集 |
 | acquisition | 来源注册与权利、调度、HTTP 与浏览器抓取、归档、健康 |
 | evidence | 快照、文档处理（HTML/PDF/OCR）、解析修订、字段溯源、质量、重放 |
 | domain-intelligence | `INF-PROC` 领域事实、项目聚合、生命周期、领域事件、覆盖度量 |
@@ -38,7 +38,7 @@
 | search | 公共索引、中文检索、订阅反查 |
 | operations | 解析与实体复核队列、来源健康处理 |
 
-**退出标准**：`INF-PROC` 在目标来源集上达到数据层门槛（覆盖、时效、关键字段准确率）的内测值；并行运行对比 Tender Intel 不劣化。
+**退出标准**：`INF-PROC` 在目标来源集上达到数据层门槛（覆盖、时效、关键字段准确率）的内测值。
 
 ### M2 监测、判断与触达闭环（第 13–24 周）
 

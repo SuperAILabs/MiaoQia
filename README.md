@@ -52,7 +52,7 @@ L0 平台             妙洽：商业机会研究与决策系统
 
 ## Tender Intel
 
-[Tender Intel](https://github.com/lansespirit/tender-intel) 是妙洽的参考实现与公共采购信息领域的资产来源。妙洽继承其已验证的原则（证据不可变、来源版本与解析版本分离、客户隔离、双版本固定、可重放），但不沿用其运行形态与对象模型。迁移方案见 [docs/03-architecture/10-migration-from-tender-intel.md](docs/03-architecture/10-migration-from-tender-intel.md)。
+[Tender Intel](https://github.com/lansespirit/tender-intel) 只是立项前的参考原型。妙洽全部自主开发，不迁移其代码、数据结构或运行形态，只借鉴其实践经验。见 [docs/03-architecture/10-tender-intel-reference.md](docs/03-architecture/10-tender-intel-reference.md)。
 
 ## 品牌
 

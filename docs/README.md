@@ -32,7 +32,7 @@ docs/
 │   ├── 07-deployment-topology.md
 │   ├── 08-technology-stack.md
 │   ├── 09-codebase-structure.md
-│   ├── 10-migration-from-tender-intel.md
+│   ├── 10-tender-intel-reference.md
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
