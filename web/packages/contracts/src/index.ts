@@ -9,7 +9,7 @@ export type UlidId = string;
  */
 export type Decimal = string;
 /**
- * 以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人只进入 persons（个人信息）。
+ * 以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人进入 persons。
  */
 export type CreditRecord = PublicFactMeta & {
   info_domain: "INF-CRED";
@@ -211,7 +211,7 @@ export type OrgAbnormal = PublicFactMeta & {
   [k: string]: unknown;
 };
 /**
- * 登记信息的一条变更记录。涉及自然人的变更（法定代表人、高管、自然人股东）只记录“发生了变更”，变更前后内容进入 personal_detail（个人信息）；组织股东变化以结构化方式记录。
+ * 登记信息的一条变更记录。before / after 保留原文变更前后内容（含法定代表人、高管、自然人股东）；组织股东变化另以结构化方式记录。
  */
 export type OrgChange = PublicFactMeta & {
   info_domain: "INF-ORG";
@@ -227,11 +227,6 @@ export type OrgChange = PublicFactMeta & {
   capital_after?: Money;
   org_shareholders_added?: OrgRef[];
   org_shareholders_removed?: OrgRef[];
-  /**
-   * 涉及自然人的变更条数
-   */
-  natural_person_changes?: number;
-  personal_detail?: Person[];
   [k: string]: unknown;
 };
 export type OrgChangeType =
@@ -266,7 +261,7 @@ export type OrgEnterpriseType =
   | "social_organization"
   | "other";
 /**
- * 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。个体工商户的经营者、法定代表人、自然人股东均为个人信息。
+ * 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。
  */
 export type OrgRegistration = PublicFactMeta & {
   info_domain: "INF-ORG";
@@ -479,7 +474,7 @@ export interface Category {
   confidence?: number;
 }
 /**
- * 公告中的联系人。个人信息：单独加密存储，不进入检索、策略视图与模型输入（安全与租户第 6 节）
+ * 公告中的联系人。按公开数据处理，供客户业务联系使用（ADR-0017）
  */
 export interface Contact {
   role: "buyer" | "agency" | "other";
@@ -540,7 +535,7 @@ export interface DateRange {
   to?: Instant;
 }
 /**
- * 自然人（法定代表人、自然人股东、高管、联系人等）。个人信息：单独加密存储，不进入检索、策略视图与模型输入（docs/03-architecture/06-security-and-tenancy.md 第 6 节）
+ * 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理（ADR-0017）
  */
 export interface Person {
   name: string;
@@ -687,7 +682,7 @@ export interface NormalizedDocument {
   attachments?: Attachment[];
 }
 /**
- * 股东：组织股东以组织引用表达；自然人股东进入 person（个人信息）
+ * 股东：组织股东以组织引用表达，自然人股东以 person 表达
  */
 export interface OrgShareholder {
   kind: "organization" | "natural_person";

@@ -13,17 +13,17 @@ base:
   subject: { name_raw: 某建设集团有限公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.99 } }
   change_type: executive
   changed_on: { value: "2026-10-31T16:00:00Z", precision: day, prov: *p }
-  natural_person_changes: 2
-  personal_detail: [{ name: 王某, role: 经理 }]
+  before: { value: 经理：王某, prov: *p }
+  after: { value: 经理：李某, prov: *p }
 cases:
-  - name: 高管变更写入变更前内容
-    valid: false
-    patch: [{ op: add, path: /before, value: { value: 王某, prov: *p } }]
-  - name: 股权变更写入变更后内容
-    valid: false
+  - name: 股权变更记录变更前后内容
+    valid: true
     patch:
       - { op: replace, path: /change_type, value: equity }
-      - { op: add, path: /after, value: { value: 李某 60%, prov: *p } }
+      - { op: replace, path: /after, value: { value: 李某 60%, prov: *p } }
+  - name: 未知字段
+    valid: false
+    patch: [{ op: add, path: /personal_detail, value: [] }]
   - name: 状态变更缺变更后状态
     valid: false
     patch: [{ op: replace, path: /change_type, value: status }]
@@ -32,9 +32,3 @@ cases:
     patch:
       - { op: replace, path: /change_type, value: status }
       - { op: add, path: /status_after, value: revoked }
-  - name: 地址变更记录前后内容
-    valid: true
-    patch:
-      - { op: replace, path: /change_type, value: address }
-      - { op: add, path: /before, value: { value: 某区某路 1 号, prov: *p } }
-      - { op: add, path: /after, value: { value: 某区某路 9 号, prov: *p } }

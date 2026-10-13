@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from miaoqia.sdk.corpus import check, lint, redact
+from miaoqia.sdk.corpus import check
 
 HTML = """<html><head><title>某项目采购公告</title></head><body>
 <h1>某项目采购公告（合成样本）</h1>
@@ -15,21 +15,11 @@ HTML = """<html><head><title>某项目采购公告</title></head><body>
 </body></html>"""
 
 
-def test_redact_masks_personal_information_but_keeps_amounts():
-    out, n = redact(HTML)
-    assert n >= 4
-    for leaked in ("张三丰", "0571-88886666", "13912345678", "zhang@example.com"):
-        assert leaked not in out
-    assert "320 万元" in out and "2026年11月20日 09:30" in out
-    assert redact(out) == (out, 0)                                  # 幂等：已脱敏文本不再命中
-
-
-def _sample(root: Path, html: str, redacted: bool = True) -> Path:
+def _sample(root: Path, html: str) -> Path:
     s = root / "synthetic-0001"
     s.mkdir(parents=True)
     (s / "raw.html").write_text(html, encoding="utf-8")
-    (s / "meta.yaml").write_text(yaml.safe_dump({"source_url": "https://example.invalid/1", "redacted": redacted,
-                                                 "rights_tag": "synthetic"}), encoding="utf-8")
+    (s / "meta.yaml").write_text(yaml.safe_dump({"source_url": "https://example.invalid/1", "rights_tag": "synthetic"}), encoding="utf-8")
     (s / "expected.yaml").write_text(yaml.safe_dump({"facts": [{"fact_type": "tendering.notice", "fields": {
         "/title/value": "给水管网改造工程管材采购",
         "/buyer/name_raw": "某市水务集团",
@@ -39,16 +29,10 @@ def _sample(root: Path, html: str, redacted: bool = True) -> Path:
     return root
 
 
-def test_lint_blocks_unredacted_samples(tmp_path):
-    assert lint([_sample(tmp_path / "a", HTML)])
-    assert lint([_sample(tmp_path / "b", redact(HTML)[0])]) == []
-    assert lint([_sample(tmp_path / "c", redact(HTML)[0], redacted=False)])
-
-
 def test_check_pipeline_validates_schema_and_scores_fields(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(Path(__file__).resolve().parents[3])          # 仓库根目录，用于加载 contracts/schemas
     sys.path.insert(0, str(Path(__file__).parent))
-    corpus = _sample(tmp_path, redact(HTML)[0])
+    corpus = _sample(tmp_path, HTML)
     code = check(corpus, "demo.extractor:DemoNoticeExtractor", "domains/procurement/notice.schema.json", 1.0)
     out = capsys.readouterr().out
     assert code == 0, out

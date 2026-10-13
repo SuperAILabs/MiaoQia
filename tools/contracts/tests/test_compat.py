@@ -24,6 +24,14 @@ def edit_text(root: Path, rel: str, old: str, new: str) -> None:
     p.write_text(s.replace(old, new, 1), encoding="utf-8")
 
 
+def bump_version(root: Path, rel: str, key: str) -> None:
+    """把文件中 key 下的 version 提升一个次版本（与当前取值无关）。"""
+    p = root / rel
+    cur = yaml.safe_load(p.read_text(encoding="utf-8"))[key]["version"]
+    major, minor, _ = (int(x) for x in cur.split("."))
+    edit_text(root, rel, f"version: {cur}", f"version: {major}.{minor + 1}.0")
+
+
 def run(root: Path):
     return compat(Repo(root), "HEAD", verbose=True)
 
@@ -131,6 +139,6 @@ def test_template_change_requires_versions(sandbox):
     errs = run(sandbox).errors
     assert any("pack.version" in e for e in errs)
     assert any("template.version" in e for e in errs)
-    edit_text(sandbox, tpl, "  version: 0.1.0", "  version: 0.2.0")
-    edit_text(sandbox, "packs/application_domains/tendering/pack.yaml", "version: 0.1.0", "version: 0.2.0")
+    bump_version(sandbox, tpl, "template")
+    bump_version(sandbox, "packs/application_domains/tendering/pack.yaml", "pack")
     assert run(sandbox).errors == []

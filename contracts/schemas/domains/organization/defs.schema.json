@@ -56,7 +56,7 @@
         "kind"
       ],
       "additionalProperties": false,
-      "description": "股东：组织股东以组织引用表达；自然人股东进入 person（个人信息）",
+      "description": "股东：组织股东以组织引用表达，自然人股东以 person 表达",
       "properties": {
         "kind": {
           "enum": [

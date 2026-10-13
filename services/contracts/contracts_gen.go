@@ -171,7 +171,7 @@ type Cell struct {
 	Text string `json:"text"`
 }
 
-// 公告中的联系人。个人信息：单独加密存储，不进入检索、策略视图与模型输入（安全与租户第 6 节）
+// 公告中的联系人。按公开数据处理，供客户业务联系使用（ADR-0017）
 type Contact struct {
 	// Email corresponds to the JSON schema field "email".
 	Email *string `json:"email,omitempty,omitzero"`
@@ -215,8 +215,8 @@ type ContractSection struct {
 	TermStart *Instant `json:"term_start,omitempty,omitzero"`
 }
 
-// 以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人只进入
-// persons（个人信息）。
+// 以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人进入
+// persons。
 type CreditRecord struct {
 	// Amount corresponds to the JSON schema field "amount".
 	Amount *Money `json:"amount,omitempty,omitzero"`
@@ -967,8 +967,7 @@ const OrgAbnormalReasonCodeNonDisclosure OrgAbnormalReasonCode = "non_disclosure
 const OrgAbnormalReasonCodeOther OrgAbnormalReasonCode = "other"
 const OrgAbnormalReasonCodeUnreachableAddress OrgAbnormalReasonCode = "unreachable_address"
 
-// 登记信息的一条变更记录。涉及自然人的变更（法定代表人、高管、自然人股东）只记录“发生了变更”，变更前后内容进入
-// personal_detail（个人信息）；组织股东变化以结构化方式记录。
+// 登记信息的一条变更记录。before / after 保留原文变更前后内容（含法定代表人、高管、自然人股东）；组织股东变化另以结构化方式记录。
 type OrgChange struct {
 	// After corresponds to the JSON schema field "after".
 	After *Text `json:"after,omitempty,omitzero"`
@@ -1000,9 +999,6 @@ type OrgChange struct {
 	// InfoDomain corresponds to the JSON schema field "info_domain".
 	InfoDomain string `json:"info_domain"`
 
-	// 涉及自然人的变更条数
-	NaturalPersonChanges *int `json:"natural_person_changes,omitempty,omitzero"`
-
 	// ObservedAt corresponds to the JSON schema field "observed_at".
 	ObservedAt time.Time `json:"observed_at"`
 
@@ -1013,9 +1009,6 @@ type OrgChange struct {
 	// OrgShareholdersRemoved corresponds to the JSON schema field
 	// "org_shareholders_removed".
 	OrgShareholdersRemoved []OrgRef `json:"org_shareholders_removed,omitempty,omitzero"`
-
-	// PersonalDetail corresponds to the JSON schema field "personal_detail".
-	PersonalDetail []Person `json:"personal_detail,omitempty,omitzero"`
 
 	// PublishedAt corresponds to the JSON schema field "published_at".
 	PublishedAt *Instant `json:"published_at,omitempty,omitzero"`
@@ -1095,7 +1088,7 @@ type OrgRef struct {
 	Uscc *string `json:"uscc,omitempty,omitzero"`
 }
 
-// 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。个体工商户的经营者、法定代表人、自然人股东均为个人信息。
+// 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。
 type OrgRegistration struct {
 	// Address corresponds to the JSON schema field "address".
 	Address *Text `json:"address,omitempty,omitzero"`
@@ -1199,7 +1192,7 @@ type OrgRegistration struct {
 	Version int `json:"version"`
 }
 
-// 股东：组织股东以组织引用表达；自然人股东进入 person（个人信息）
+// 股东：组织股东以组织引用表达，自然人股东以 person 表达
 type OrgShareholder struct {
 	// Kind corresponds to the JSON schema field "kind".
 	Kind OrgShareholderKind `json:"kind"`
@@ -1230,8 +1223,7 @@ const OrgStatusMovedOut OrgStatus = "moved_out"
 const OrgStatusRevoked OrgStatus = "revoked"
 const OrgStatusSuspended OrgStatus = "suspended"
 
-// 自然人（法定代表人、自然人股东、高管、联系人等）。个人信息：单独加密存储，不进入检索、策略视图与模型输入（docs/03-architecture/06-security-and-tenancy.md
-// 第 6 节）
+// 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理（ADR-0017）
 type Person struct {
 	// Name corresponds to the JSON schema field "name".
 	Name string `json:"name"`

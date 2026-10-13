@@ -3,7 +3,7 @@
   "$id": "https://schemas.miaoqia.com/domains/credit/record.schema.json",
   "x-version": "0.1.0",
   "title": "CreditRecord 司法与信用记录",
-  "description": "以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人只进入 persons（个人信息）。",
+  "description": "以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人进入 persons。",
   "type": "object",
   "allOf": [
     {
@@ -235,8 +235,7 @@
       "type": "array",
       "items": {
         "$ref": "../../common/types.schema.json#/$defs/person"
-      },
-      "x-classification": "personal"
+      }
     }
   },
   "unevaluatedProperties": false

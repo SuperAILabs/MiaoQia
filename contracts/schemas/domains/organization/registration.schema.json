@@ -3,7 +3,7 @@
   "$id": "https://schemas.miaoqia.com/domains/organization/registration.schema.json",
   "x-version": "0.1.0",
   "title": "OrgRegistration 企业登记信息",
-  "description": "一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。个体工商户的经营者、法定代表人、自然人股东均为个人信息。",
+  "description": "一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。",
   "type": "object",
   "allOf": [
     {

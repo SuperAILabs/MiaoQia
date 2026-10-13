@@ -3,22 +3,20 @@
 目录结构（位于信息领域包内，例如 packs/information_domains/procurement/corpus/）：
 
   <样本编号>/
-    meta.yaml       source_url、source_id、fetched_at、rights_tag、redacted（必须为 true）
-    raw.html        已脱敏的原始页面
-    expected.yaml   标注：facts: [{fact_type, fields: {JSON Pointer: 期望值}}]
+    meta.yaml       source_url、source_id、fetched_at、rights_tag、说明
+    raw.html        原始页面（公开来源信息按公开数据保留原文，见 ADR-0017）
+    expected.yaml   标注：facts: [{fact_type, fields: {JSON Pointer: 期望值}}]；只标注确定无疑的字段
 
 命令：
-  mq-corpus redact IN -o OUT        脱敏：手机号、带标签的电话与传真、邮箱、身份证号、带标签的联系人姓名
-  mq-corpus lint DIR...             语料中不得残留个人信息，meta.redacted 必须为 true
-  mq-corpus check DIR --extractor 模块:类 --schema 相对 contracts/schemas 的路径 [--min-accuracy 0.95]
-                                    规范化 → 解析 → Schema 校验 → 与标注比对，输出逐字段准确率
+  mq-corpus check DIR --extractor 模块:类 --schema 相对 contracts/schemas 的路径
+                      [--path 额外的导入路径] [--min-accuracy 0.95]
+      规范化 → 解析 → Schema 校验 → 与标注比对，输出逐字段准确率
 """
 from __future__ import annotations
 
 import argparse
 import importlib
 import json
-import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -30,47 +28,6 @@ from referencing import Registry, Resource
 from .document import Document
 from .extraction import ExtractionContext
 from .testing import html_to_document
-
-# ---------------- 脱敏 ----------------
-LABEL_PHONE = re.compile(r"((?:联系)?电话|联系方式|传真|手机|座机)(\s*[：:]\s*)([0-9（）()\-－—转、/\s]{5,40})")
-LABEL_NAME = re.compile(r"((?:项目)?联系人|负责人|经办人|联系人姓名)(\s*[：:]\s*)(?!某某)([一-龥·]{2,4})(?=[\s，,；;。（(]|$|先生|女士|老师|工)")
-MOBILE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-ID_CARD = re.compile(r"(?<![0-9A-Za-z])\d{17}[\dXx](?![0-9A-Za-z])")
-MASK = "＊"
-
-
-def redact(text: str) -> tuple[str, int]:
-    n = 0
-
-    def sub(pattern, repl, s):
-        nonlocal n
-        s2, k = pattern.subn(repl, s)
-        n += k
-        return s2
-
-    text = sub(LABEL_PHONE, lambda m: m.group(1) + m.group(2) + MASK * 4, text)
-    text = sub(LABEL_NAME, lambda m: m.group(1) + m.group(2) + "某某", text)
-    text = sub(MOBILE, MASK * 4, text)
-    text = sub(EMAIL, MASK * 4, text)
-    text = sub(ID_CARD, MASK * 4, text)
-    return text, n
-
-
-def lint(dirs: list[Path]) -> list[str]:
-    problems = []
-    for d in dirs:
-        for sample in sorted(p for p in d.iterdir() if p.is_dir()):
-            meta = yaml.safe_load((sample / "meta.yaml").read_text(encoding="utf-8")) if (sample / "meta.yaml").exists() else {}
-            if meta.get("redacted") is not True:
-                problems.append(f"{sample}: meta.yaml 缺少 redacted: true")
-            for f in sample.glob("raw.*"):
-                text = f.read_text(encoding="utf-8", errors="replace")
-                _, residual = redact(text)
-                if residual:
-                    problems.append(f"{f}: 发现 {residual} 处疑似个人信息，请先运行 mq-corpus redact")
-    return problems
-
 
 # ---------------- 评测 ----------------
 def _repo_root() -> Path:
@@ -164,29 +121,15 @@ def check(corpus: Path, extractor_ref: str, schema_rel: str, min_accuracy: float
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="mq-corpus")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("redact")
-    r.add_argument("input")
-    r.add_argument("-o", "--output", required=True)
-    lt = sub.add_parser("lint")
-    lt.add_argument("dirs", nargs="+")
     c = sub.add_parser("check")
     c.add_argument("corpus")
     c.add_argument("--extractor", required=True)
     c.add_argument("--schema", required=True)
+    c.add_argument("--path", action="append", default=[], help="解析器所在的导入路径（可重复）")
     c.add_argument("--min-accuracy", type=float)
     a = ap.parse_args(argv)
-    if a.cmd == "redact":
-        text, n = redact(Path(a.input).read_text(encoding="utf-8", errors="replace"))
-        Path(a.output).write_text(text, encoding="utf-8")
-        print(f"已脱敏 {n} 处 → {a.output}")
-        return 0
-    if a.cmd == "lint":
-        dirs = [Path(d) for d in a.dirs if Path(d).exists()]
-        problems = lint(dirs)
-        for p in problems:
-            print(f"✗ {p}", file=sys.stderr)
-        print(f"语料脱敏检查：{len(dirs)} 个目录，{len(problems)} 个问题")
-        return 1 if problems else 0
+    for p in a.path:
+        sys.path.insert(0, str(Path(p).resolve()))
     return check(Path(a.corpus), a.extractor, a.schema, a.min_accuracy)
 
 

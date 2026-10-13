@@ -42,7 +42,7 @@
 | 工具 | 作用 | 作用域 | 控制 |
 |---|---|---|---|
 | `search_subjects` | 检索租户可见的领域对象与实体 | `subjects:read` | 服务端从令牌派生租户 |
-| `get_subject` | 领域事实、版本、证据 | `subjects:read` | 个人信息按权限脱敏 |
+| `get_subject` | 领域事实、版本、证据 | `subjects:read` | 服务端从令牌派生租户 |
 | `list_signals` | 信号收件箱 | `signals:read` | — |
 | `start_research` | 发起研究 | `research:write` | 异步、预算、模板白名单 |
 | `get_research` | 研究进展与报告 | `research:read` | 区分事实、推断、未知项 |

@@ -821,10 +821,6 @@ class OrgChange(PublicFactMeta):
     capital_after: Money | None = None
     org_shareholders_added: list[OrgRef] | None = None
     org_shareholders_removed: list[OrgRef] | None = None
-    natural_person_changes: conint(ge=0) | None = Field(
-        None, description="涉及自然人的变更条数"
-    )
-    personal_detail: list[Person] | None = None
 
 
 class OrgRegistration(PublicFactMeta):

@@ -1,4 +1,4 @@
-# Python 数据面：SDK 测试与语料脱敏检查。
+# Python 数据面：SDK 测试与语料评测。
 name: data
 
 on:
@@ -32,11 +32,3 @@ jobs:
       - name: SDK 测试
         working-directory: data
         run: uv run --locked --package miaoqia-sdk --group dev pytest -q sdk/tests
-
-      - name: 语料脱敏检查（未脱敏的样本不得入库）
-        working-directory: data
-        run: |
-          shopt -s nullglob
-          dirs=(../packs/information_domains/*/corpus)
-          if [ ${#dirs[@]} -eq 0 ]; then echo "尚无语料"; exit 0; fi
-          uv run --locked --package miaoqia-sdk mq-corpus lint "${dirs[@]}"

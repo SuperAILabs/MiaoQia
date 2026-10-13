@@ -216,8 +216,7 @@
     },
     "contact": {
       "type": "object",
-      "description": "公告中的联系人。个人信息：单独加密存储，不进入检索、策略视图与模型输入（安全与租户第 6 节）",
-      "x-classification": "personal",
+      "description": "公告中的联系人。按公开数据处理，供客户业务联系使用（ADR-0017）",
       "required": [
         "role"
       ],

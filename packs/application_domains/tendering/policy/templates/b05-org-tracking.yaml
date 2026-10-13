@@ -1,9 +1,8 @@
 # B05 目标企业经营跟踪：对租户登记的跟踪对象（lists.tracked），监测订单、合同、信用与重大企业变更。
 # 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 3.5。
-# 合规：高管变更只使用“发生了变更”这一事实，不进入任何自然人信息。
 template:
   id: TPL-TENDER-B05-ORGTRACK
-  version: 0.1.0
+  version: 0.2.0
   objective: APP-TENDER.B05
   roles: [ROLE-INVESTOR]
   fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change, org.abnormal]

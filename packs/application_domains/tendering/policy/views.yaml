@@ -10,7 +10,6 @@
 #
 # profile_fields：模板引用的客户上下文字段。
 #
-# 个人信息字段（如公告联系人 contacts）一律不进入视图。
 
 fact_types:
   tendering.notice:
