@@ -50,6 +50,32 @@ type AmendmentSectionChangesElem struct {
 	Prov Provenance `json:"prov"`
 }
 
+type Attachment struct {
+	// MediaType corresponds to the JSON schema field "media_type".
+	MediaType *string `json:"media_type,omitempty,omitzero"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name string `json:"name"`
+
+	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
+	SnapshotRef *string `json:"snapshot_ref,omitempty,omitzero"`
+}
+
+// 页面坐标（左上角为原点，单位为点），用于界面高亮
+type Bbox struct {
+	// H corresponds to the JSON schema field "h".
+	H float64 `json:"h"`
+
+	// W corresponds to the JSON schema field "w".
+	W float64 `json:"w"`
+
+	// X corresponds to the JSON schema field "x".
+	X float64 `json:"x"`
+
+	// Y corresponds to the JSON schema field "y".
+	Y float64 `json:"y"`
+}
+
 // 开标记录、候选人或中标结果中的一名投标人
 type BidResult struct {
 	// Bidder corresponds to the JSON schema field "bidder".
@@ -83,6 +109,37 @@ const BidResultStageAward BidResultStage = "award"
 const BidResultStageCandidate BidResultStage = "candidate"
 const BidResultStageOpening BidResultStage = "opening"
 
+// 文档中的一个块；index 在文档内从 0 连续编号，是定位的主坐标
+type Block struct {
+	// Bbox corresponds to the JSON schema field "bbox".
+	Bbox *Bbox `json:"bbox,omitempty,omitzero"`
+
+	// Index corresponds to the JSON schema field "index".
+	Index int `json:"index"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind BlockKind `json:"kind"`
+
+	// 仅 heading
+	Level *int `json:"level,omitempty,omitzero"`
+
+	// 分页文档的页码
+	Page *int `json:"page,omitempty,omitzero"`
+
+	// 仅 table：按行列出单元格
+	Rows [][]Cell `json:"rows,omitempty,omitzero"`
+
+	// heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计
+	Text *string `json:"text,omitempty,omitzero"`
+}
+
+type BlockKind string
+
+const BlockKindHeading BlockKind = "heading"
+const BlockKindListItem BlockKind = "list_item"
+const BlockKindParagraph BlockKind = "paragraph"
+const BlockKindTable BlockKind = "table"
+
 type Category struct {
 	// Code corresponds to the JSON schema field "code".
 	Code string `json:"code"`
@@ -98,6 +155,20 @@ type Category struct {
 
 	// SchemeVersion corresponds to the JSON schema field "scheme_version".
 	SchemeVersion string `json:"scheme_version"`
+}
+
+type Cell struct {
+	// ColSpan corresponds to the JSON schema field "col_span".
+	ColSpan *int `json:"col_span,omitempty,omitzero"`
+
+	// Header corresponds to the JSON schema field "header".
+	Header *bool `json:"header,omitempty,omitzero"`
+
+	// RowSpan corresponds to the JSON schema field "row_span".
+	RowSpan *int `json:"row_span,omitempty,omitzero"`
+
+	// Text corresponds to the JSON schema field "text".
+	Text string `json:"text"`
 }
 
 // 公告中的联系人。个人信息：单独加密存储，不进入检索、策略视图与模型输入（安全与租户第 6 节）
@@ -371,6 +442,25 @@ const EvaluationMethodComprehensiveScoring EvaluationMethod = "comprehensive_sco
 const EvaluationMethodLowestPrice EvaluationMethod = "lowest_price"
 const EvaluationMethodOther EvaluationMethod = "other"
 
+// 可被引用的证据片段：指向某个快照在某个处理管线版本下的规范化文档中的一个位置。由 evidence 分配 ev_
+// 标识；字段溯源（provenance.evidence_ref）与研究报告引用都指向它。
+type EvidenceRef struct {
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// Locator corresponds to the JSON schema field "locator".
+	Locator Locator `json:"locator"`
+
+	// PipelineVersion corresponds to the JSON schema field "pipeline_version".
+	PipelineVersion string `json:"pipeline_version"`
+
+	// 被引用原文片段的哈希，用于校验定位未漂移
+	QuoteHash string `json:"quote_hash"`
+
+	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
+	SnapshotRef string `json:"snapshot_ref"`
+}
+
 type Instant struct {
 	// Precision corresponds to the JSON schema field "precision".
 	Precision InstantPrecision `json:"precision"`
@@ -550,6 +640,24 @@ type Item struct {
 	UnitPrice *Money `json:"unit_price,omitempty,omitzero"`
 }
 
+// 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)
+type Locator struct {
+	// Block corresponds to the JSON schema field "block".
+	Block int `json:"block"`
+
+	// CharEnd corresponds to the JSON schema field "char_end".
+	CharEnd *int `json:"char_end,omitempty,omitzero"`
+
+	// CharStart corresponds to the JSON schema field "char_start".
+	CharStart *int `json:"char_start,omitempty,omitzero"`
+
+	// Col corresponds to the JSON schema field "col".
+	Col *int `json:"col,omitempty,omitzero"`
+
+	// Row corresponds to the JSON schema field "row".
+	Row *int `json:"row,omitempty,omitzero"`
+}
+
 // 本公告中出现的一个标包
 type LotSection struct {
 	// 是否要求原厂授权
@@ -615,6 +723,42 @@ type Money struct {
 	// Value corresponds to the JSON schema field "value".
 	Value Decimal `json:"value"`
 }
+
+// evidence 把原始制品（HTML、PDF、Office、扫描件）转换后的统一文档表示，存放于对象存储（数据分层 L1，按 快照 × 处理管线版本
+// 存放）。它是证据定位的坐标系：解析器只读取规范化文档，字段溯源以块序号与字符区间定位。
+type NormalizedDocument struct {
+	// 附件：各自是独立快照与独立规范化文档
+	Attachments []Attachment `json:"attachments,omitempty,omitzero"`
+
+	// Blocks corresponds to the JSON schema field "blocks".
+	Blocks []Block `json:"blocks"`
+
+	// Language corresponds to the JSON schema field "language".
+	Language string `json:"language,omitempty,omitzero"`
+
+	// MediaType corresponds to the JSON schema field "media_type".
+	MediaType NormalizedDocumentMediaType `json:"media_type"`
+
+	// 文档处理管线标识与版本
+	PipelineVersion string `json:"pipeline_version"`
+
+	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
+	SnapshotRef string `json:"snapshot_ref"`
+
+	// SourceUrl corresponds to the JSON schema field "source_url".
+	SourceUrl *string `json:"source_url,omitempty,omitzero"`
+
+	// 来源页面标题（未经解析器确认）
+	Title *string `json:"title,omitempty,omitzero"`
+}
+
+type NormalizedDocumentMediaType string
+
+const NormalizedDocumentMediaTypeApplicationPdf NormalizedDocumentMediaType = "application_pdf"
+const NormalizedDocumentMediaTypeImageScan NormalizedDocumentMediaType = "image_scan"
+const NormalizedDocumentMediaTypeOfficeDocument NormalizedDocumentMediaType = "office_document"
+const NormalizedDocumentMediaTypePlainText NormalizedDocumentMediaType = "plain_text"
+const NormalizedDocumentMediaTypeTextHtml NormalizedDocumentMediaType = "text_html"
 
 // 一条公告按原文表达的领域事实（随解析修订产生新版本）。跨公告的当前状态见
 // procurement-project.schema.json。未分包的公告视为一个标包（lot_key = "1"）。

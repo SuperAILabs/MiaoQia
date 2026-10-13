@@ -385,6 +385,20 @@ export interface AmendmentSection {
     prov: Provenance;
   }[];
 }
+export interface Attachment {
+  name: string;
+  snapshot_ref?: string;
+  media_type?: string;
+}
+/**
+ * 页面坐标（左上角为原点，单位为点），用于界面高亮
+ */
+export interface Bbox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 /**
  * 开标记录、候选人或中标结果中的一名投标人
  */
@@ -423,6 +437,36 @@ export interface Money {
    */
   tax_included?: boolean;
   prov: Provenance;
+}
+/**
+ * 文档中的一个块；index 在文档内从 0 连续编号，是定位的主坐标
+ */
+export interface Block {
+  index: number;
+  kind: "heading" | "paragraph" | "list_item" | "table";
+  /**
+   * 仅 heading
+   */
+  level?: number;
+  /**
+   * heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计
+   */
+  text?: string;
+  /**
+   * 仅 table：按行列出单元格
+   */
+  rows?: Cell[][];
+  /**
+   * 分页文档的页码
+   */
+  page?: number;
+  bbox?: Bbox;
+}
+export interface Cell {
+  text: string;
+  row_span?: number;
+  col_span?: number;
+  header?: boolean;
 }
 export interface Category {
   /**
@@ -522,6 +566,29 @@ export interface EndingSection {
   lot_keys?: string[];
   reason?: Text;
 }
+/**
+ * 可被引用的证据片段：指向某个快照在某个处理管线版本下的规范化文档中的一个位置。由 evidence 分配 ev_ 标识；字段溯源（provenance.evidence_ref）与研究报告引用都指向它。
+ */
+export interface EvidenceRef {
+  id: string;
+  snapshot_ref: string;
+  pipeline_version: string;
+  locator: Locator;
+  /**
+   * 被引用原文片段的哈希，用于校验定位未漂移
+   */
+  quote_hash: string;
+}
+/**
+ * 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)
+ */
+export interface Locator {
+  block: number;
+  row?: number;
+  col?: number;
+  char_start?: number;
+  char_end?: number;
+}
 export interface Region {
   /**
    * GB/T 2260 行政区划代码
@@ -596,6 +663,28 @@ export interface Requirement {
    */
   code?: string;
   text: Text;
+}
+/**
+ * evidence 把原始制品（HTML、PDF、Office、扫描件）转换后的统一文档表示，存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是证据定位的坐标系：解析器只读取规范化文档，字段溯源以块序号与字符区间定位。
+ */
+export interface NormalizedDocument {
+  snapshot_ref: string;
+  /**
+   * 文档处理管线标识与版本
+   */
+  pipeline_version: string;
+  media_type: "text_html" | "application_pdf" | "office_document" | "image_scan" | "plain_text";
+  source_url?: string;
+  /**
+   * 来源页面标题（未经解析器确认）
+   */
+  title?: string;
+  language?: string;
+  blocks: Block[];
+  /**
+   * 附件：各自是独立快照与独立规范化文档
+   */
+  attachments?: Attachment[];
 }
 /**
  * 股东：组织股东以组织引用表达；自然人股东进入 person（个人信息）

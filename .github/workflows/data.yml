@@ -1,0 +1,42 @@
+# Python 数据面：SDK 测试与语料脱敏检查。
+name: data
+
+on:
+  pull_request:
+    paths:
+      - "data/**"
+      - "packs/information_domains/**"
+      - "contracts/schemas/**"
+      - ".github/workflows/data.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+
+      - name: SDK 测试
+        working-directory: data
+        run: uv run --locked --package miaoqia-sdk --group dev pytest -q sdk/tests
+
+      - name: 语料脱敏检查（未脱敏的样本不得入库）
+        working-directory: data
+        run: |
+          shopt -s nullglob
+          dirs=(../packs/information_domains/*/corpus)
+          if [ ${#dirs[@]} -eq 0 ]; then echo "尚无语料"; exit 0; fi
+          uv run --locked --package miaoqia-sdk mq-corpus lint "${dirs[@]}"

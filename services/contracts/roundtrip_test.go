@@ -24,6 +24,8 @@ func TestRoundTrip(t *testing.T) {
 		"OrgAbnormal":        func() any { return &OrgAbnormal{} },
 		"CreditRecord":       func() any { return &CreditRecord{} },
 		"InvestmentRecord":   func() any { return &InvestmentRecord{} },
+		"NormalizedDocument": func() any { return &NormalizedDocument{} },
+		"EvidenceRef":        func() any { return &EvidenceRef{} },
 	}
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil || len(files) == 0 {

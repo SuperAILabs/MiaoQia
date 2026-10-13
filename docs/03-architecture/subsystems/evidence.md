@@ -44,10 +44,10 @@
 | 实体 | 说明 |
 |---|---|
 | `SourceSnapshot` | 来源对象的不可变版本：来源对象键、序号、规范化哈希、原始制品引用、观察时间 |
-| `NormalizedDocument` | 规范化文档与分块：正文存对象存储（`normalized/…`），数据库只存元数据与对象键 |
+| `NormalizedDocument` | 规范化文档与分块：正文存对象存储（`normalized/…`），数据库只存元数据与对象键；结构见 `contracts/schemas/evidence/normalized-document.schema.json` |
 | `ExtractionRevision` | 一次解析：快照、解析器标识与版本、结果、质量、创建时间 |
 | `FieldEvidence` | 字段 → 证据定位、方法（规则/模型/人工）、置信度 |
-| `EvidenceRef` | 可被引用的证据片段（`ev_` 前缀），包含定位器与快照版本 |
+| `EvidenceRef` | 可被引用的证据片段（`ev_` 前缀），包含定位器与快照版本；结构见 `contracts/schemas/evidence/evidence-ref.schema.json` |
 | `QualityAssessment` | 质量状态与警告 |
 | `Enricher` / `EnricherVersion` | 增强器定义、版本、标签体系版本、评估结果、状态（候选/生效/退役） |
 | `EnrichmentRun` | 增强运行登记：增强器版本、数据范围、进度、成本、结果对象前缀 |

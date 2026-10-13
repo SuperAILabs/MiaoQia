@@ -119,6 +119,7 @@ docs/
 | 业务层级 | `02-business/01-business-architecture.md` 第 1 节 | 一句话概述 + 链接 |
 | Schema 写法规则（方言） | `tools/contracts/src/mqc/lint.py` | 链接 |
 | 代码生成流程与命令、契约版本规则 | `03-architecture/09-codebase-structure.md` 第 5 节 | 链接 |
+| 解析语料格式、脱敏与评测 | `data/sdk/src/miaoqia/sdk/corpus.py` | 链接 |
 | 兼容性判定规则 | `tools/contracts/src/mqc/compat.py` | 链接 |
 | 标识前缀 | `contracts/identifiers.yaml` | 引用前缀 |
 | 信息领域的领域 Schema 与领域事件 | `contracts/schemas/domains/<领域>/`、`contracts/events/<命名空间>/` | 业务文档只写概念与含义 |

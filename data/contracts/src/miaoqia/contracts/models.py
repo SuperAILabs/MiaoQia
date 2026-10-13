@@ -28,10 +28,36 @@ class AmendsNoticeId(RootModel[constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")])
     root: constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
 
 
+class Attachment(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: str
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$") | None = None
+    media_type: str | None = None
+
+
+class Bbox(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    x: float
+    y: float
+    w: confloat(ge=0.0)
+    h: confloat(ge=0.0)
+
+
 class Stage(Enum):
     opening = "opening"
     candidate = "candidate"
     award = "award"
+
+
+class Kind(Enum):
+    heading = "heading"
+    paragraph = "paragraph"
+    list_item = "list_item"
+    table = "table"
 
 
 class Category(BaseModel):
@@ -46,6 +72,16 @@ class Category(BaseModel):
     code: str
     name_raw: str | None = None
     confidence: confloat(ge=0.0, le=1.0) | None = None
+
+
+class Cell(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    text: str
+    row_span: conint(ge=1) | None = None
+    col_span: conint(ge=1) | None = None
+    header: bool | None = None
 
 
 class Role(Enum):
@@ -150,6 +186,25 @@ class RecordType1(Enum):
     completion_filing = "completion_filing"
 
 
+class Locator(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    block: conint(ge=0)
+    row: conint(ge=0) | None = None
+    col: conint(ge=0) | None = None
+    char_start: conint(ge=0) | None = None
+    char_end: conint(ge=0) | None = None
+
+
+class MediaType(Enum):
+    text_html = "text_html"
+    application_pdf = "application_pdf"
+    office_document = "office_document"
+    image_scan = "image_scan"
+    plain_text = "plain_text"
+
+
 class NoticeType(Enum):
     intent = "intent"
     plan = "plan"
@@ -211,7 +266,7 @@ class OrgEnterpriseType(Enum):
     other = "other"
 
 
-class Kind(Enum):
+class Kind1(Enum):
     organization = "organization"
     natural_person = "natural_person"
 
@@ -316,7 +371,7 @@ class Quality(BaseModel):
     warnings: list[Warning] | None = None
 
 
-class Kind1(Enum):
+class Kind2(Enum):
     qualification = "qualification"
     performance = "performance"
     personnel = "personnel"
@@ -336,6 +391,53 @@ class TradingSystem(Enum):
 class UlidId(RootModel[constr(pattern=r"^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$")]):
     root: constr(pattern=r"^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
         ..., description="类型化 ULID，前缀登记在 contracts/identifiers.yaml"
+    )
+
+
+class Block(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    index: conint(ge=0)
+    kind: Kind
+    level: conint(ge=1, le=6) | None = Field(None, description="仅 heading")
+    text: str | None = Field(
+        None,
+        description="heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计",
+    )
+    rows: list[list[Cell]] | None = Field(None, description="仅 table：按行列出单元格")
+    page: conint(ge=1) | None = Field(None, description="分页文档的页码")
+    bbox: Bbox | None = None
+
+
+class EvidenceRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$")
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$")
+    locator: Locator
+    quote_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="被引用原文片段的哈希，用于校验定位未漂移"
+    )
+
+
+class NormalizedDocument(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
+        ..., description="文档处理管线标识与版本"
+    )
+    media_type: MediaType
+    source_url: str | None = None
+    title: str | None = Field(None, description="来源页面标题（未经解析器确认）")
+    language: str | None = "zh"
+    blocks: list[Block]
+    attachments: list[Attachment] | None = Field(
+        None, description="附件：各自是独立快照与独立规范化文档"
     )
 
 
@@ -461,7 +563,7 @@ class OrgShareholder(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    kind: Kind
+    kind: Kind1
     org: OrgRef | None = None
     person: Person | None = None
     share_ratio: Decimal | None = None
@@ -488,7 +590,7 @@ class Requirement(BaseModel):
         extra="forbid",
     )
     id: constr(pattern=r"^req_[0-9A-HJKMNP-TV-Z]{26}$")
-    kind: Kind1
+    kind: Kind2
     code: str | None = Field(
         None, description="归一的资质或要求代码；无法归一时为 null"
     )

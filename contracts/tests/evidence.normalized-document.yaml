@@ -1,0 +1,24 @@
+schema: evidence/normalized-document.schema.json
+base:
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  pipeline_version: "doc.html@0.1.0"
+  media_type: text_html
+  source_url: https://example.invalid/notice/1
+  blocks:
+    - { index: 0, kind: heading, level: 1, text: 某项目采购公告 }
+    - { index: 1, kind: paragraph, text: 项目编号：ABC-2026-001 }
+    - index: 2
+      kind: table
+      rows:
+        - [{ text: 品目, header: true }, { text: 数量, header: true }]
+        - [{ text: PE 给水管 }, { text: "1200 米" }]
+cases:
+  - name: 未知块类型
+    valid: false
+    patch: [{ op: replace, path: /blocks/0/kind, value: image }]
+  - name: 块序号为负
+    valid: false
+    patch: [{ op: replace, path: /blocks/1/index, value: -1 }]
+  - name: 单元格缺文本
+    valid: false
+    patch: [{ op: remove, path: /blocks/2/rows/1/0/text }]
