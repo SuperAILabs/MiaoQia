@@ -1,0 +1,114 @@
+# 视图目录：策略求值前由 detection 组装的只读视图（语义见 docs/03-architecture/11-policy-dsl.md 第 5.1 节）。
+#
+# fact_types：R1 模板引用的事实类型与字段。这是 APP-TENDER 对信息领域包
+# （INF-PROC、INF-INVP、INF-ORG、INF-CRED）领域 Schema 的需求清单 [假设]：
+# 字段名以信息领域包最终发布的 Schema 为准，发布时逐项对齐本文件与模板。
+#
+# view_items：可按名称引用的关联视图项，声明提供方、类型与新鲜度；组装后挂在 fact.<名称> 路径下，
+# 例如 winner.credit_flags 在表达式中为 fact.winner.credit_flags。
+#
+# profile_fields：模板引用的客户上下文字段。
+#
+# 个人信息字段一律不进入视图。
+
+fact_types:
+  tendering.notice:                      # INF-PROC 公告（意向、计划、资格预审、招标、谈判、磋商、询价、单一来源公示等）
+    fields:
+      notice_id: string
+      project_id: string                 # 采购项目聚合标识 pp_
+      notice_type: enum                  # intent | plan | prequalification | tender | negotiation | consultation | inquiry | single_source | framework
+      title: string
+      method: enum                       # open_tender | invited_tender | negotiation | consultation | inquiry | single_source | framework
+      location: region_code
+      budget: money
+      max_price: money
+      items: list<item>                  # item: {category, name, spec, quantity, unit, brand_required}
+      requirements: list<requirement>    # requirement: {kind: qualification|performance|personnel|credit|authorization, code, text}
+      bid_deadline: timestamp
+      consortium_allowed: bool
+      single_source_supplier: org_ref    # 仅单一来源公示
+      buyer: org_ref
+      org_ids: list<string>              # 本事实涉及的全部已解析组织
+  tendering.bid_result:                  # INF-PROC 候选人公示与中标结果
+    fields:
+      project_id: string
+      result_type: enum                  # candidate_published | awarded
+      location: region_code
+      items: list<item>                  # 来自对应标包
+      amount: money                      # 中标金额
+      buyer: org_ref
+      winner: org_ref                    # 中标人或第一候选人
+      candidates: "list<{org: org_ref, rank: int}>"
+      org_ids: list<string>
+  tendering.contract_record:             # INF-PROC 合同公告
+    fields:
+      project_id: string
+      location: region_code
+      items: list<item>
+      amount: money
+      buyer: org_ref
+      winner: org_ref                    # 合同乙方
+      org_ids: list<string>
+  investment.construction_permit:        # INF-INVP 施工许可
+    fields:
+      project_id: string                 # 关联的采购项目聚合（若已关联）
+      location: region_code
+      items: list<item>                  # 经项目链关联到的采购标的（可能为空）
+      winner: org_ref                    # 施工单位
+      org_ids: list<string>
+  org.change:                            # INF-ORG 企业变更
+    fields:
+      subject: org_ref
+      change_type: enum                  # equity | executive | name | address | scope | capital | status
+      status_after: enum                 # 仅 status 变更：active | revoked | cancelled
+      org_ids: list<string>
+  org.abnormal:                          # INF-ORG 经营异常
+    fields:
+      subject: org_ref
+      abnormal_type: string
+      org_ids: list<string>
+  credit.record:                         # INF-CRED 司法与信用记录
+    fields:
+      subject: org_ref
+      record_type: enum                  # dishonest | consumption_limit | enforcement | penalty | judgment
+      role: enum                         # 仅 judgment：plaintiff | defendant | third_party
+      amount: money
+      resolved: bool
+      org_ids: list<string>
+
+view_items:
+  buyer.profile:
+    provider: entity-graph.GetOrganization
+    type: "{org_id: string, type: enum, region: region_code}"
+    freshness: event                     # 随 entity.* 事件更新
+  winner.profile:
+    provider: entity-graph.GetOrganization
+    type: "{org_id: string, type: enum, region: region_code}"
+    freshness: event
+  winner.credit_flags:
+    provider: domain-intelligence.QueryFacts(credit_records_by_org, window=365d)
+    type: "list<{record_type: enum, resolved: bool, amount: money}>"
+    freshness: event
+  winner.history_categories:
+    provider: domain-intelligence.GetDomainStatistics(award_categories_by_org, window=3y)
+    type: list<category_code>
+    freshness: daily
+  winner.supplied_brand_owners:
+    provider: entity-graph.GetRelationships(supplied_brand, window=3y)
+    type: list<string>                   # 中标方项目中出现过的品牌所属组织
+    freshness: daily
+  winner.trailing_award_total:
+    provider: domain-intelligence.GetDomainStatistics(award_total_by_org, window=365d)
+    type: money
+    freshness: daily
+  winner.past_buyer_ids:
+    provider: domain-intelligence.GetDomainStatistics(buyers_by_winner, window=3y)
+    type: list<string>
+    freshness: daily
+
+profile_fields:                          # customer-context.GetContextSnapshot [假设]，以其契约为准
+  org_id: string                         # 本租户在公共实体中的组织标识
+  offering_categories: list<category_code>
+  service_regions: list<region_code>
+  qualification_codes: list<string>
+  brands: list<string>                   # 本租户自有或授权的品牌

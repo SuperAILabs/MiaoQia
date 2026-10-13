@@ -1,0 +1,66 @@
+# 特征函数：CEL 声明，输入为事实视图与客户上下文，求值内缓存，结果写入信号特征快照。
+# 只使用 docs/03-architecture/11-policy-dsl.md 第 5.2 节的平台函数与 CEL 标准库。
+features:
+  deadline_days:
+    type: int
+    say: 距投标截止的天数
+    expr: time.days_between(now, fact.bid_deadline)
+
+  qualification_gap_count:
+    type: int
+    say: 公告资质要求中本租户不具备的项数（解析不确定，只用于减分，不用于排除）
+    expr: >
+      size(fact.requirements.filter(r,
+        r.kind == "qualification" && !(r.code in profile.qualification_codes)))
+
+  brand_locked_to_others:
+    type: bool
+    say: 标的指定了本租户以外的品牌
+    expr: >
+      fact.items.exists(i, has(i.brand_required) && !(i.brand_required in profile.brands))
+
+  winner_credit_risk:
+    type: int
+    say: 中标方近一年未了结信用风险等级（0 无、1 一般、2 较重、3 严重）
+    view: [winner.credit_flags]
+    expr: >
+      fact.winner.credit_flags.exists(c, !c.resolved &&
+        c.record_type in ["dishonest", "consumption_limit"]) ? 3 :
+      fact.winner.credit_flags.exists(c, !c.resolved && c.record_type == "enforcement") ? 2 :
+      fact.winner.credit_flags.exists(c, !c.resolved) ? 1 : 0
+
+  winner_buys_our_categories:
+    type: bool
+    say: 中标方近三年项目中出现过本租户品类
+    view: [winner.history_categories]
+    expr: sets.overlaps(fact.winner.history_categories, profile.offering_categories)
+
+  winner_uses_competitor_brands:
+    type: bool
+    say: 中标方近三年项目中使用过竞争对手品牌
+    view: [winner.supplied_brand_owners]
+    expr: sets.overlaps(fact.winner.supplied_brand_owners, lists.competitors)
+
+  credit_severity:
+    type: int
+    say: 信用记录严重程度（0–3）
+    expr: >
+      fact.record_type in ["dishonest", "consumption_limit"] ? 3 :
+      fact.record_type == "enforcement" ? 2 :
+      fact.record_type == "penalty" && money.cny(fact.amount) >= 1000000 ? 2 :
+      fact.record_type in ["penalty", "judgment"] ? 1 : 0
+
+  order_materiality:
+    type: double
+    say: 本次中标或合同金额占该企业近一年中标总额的比例
+    view: [winner.trailing_award_total]
+    expr: >
+      money.cny(fact.winner.trailing_award_total) > 0.0
+        ? money.cny(fact.amount) / money.cny(fact.winner.trailing_award_total)
+        : 1.0
+
+  first_award_from_buyer:
+    type: bool
+    say: 该企业近三年首次从该采购人中标
+    view: [winner.past_buyer_ids]
+    expr: "!(fact.buyer.org_id in fact.winner.past_buyer_ids)"

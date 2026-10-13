@@ -15,7 +15,7 @@
 - 策略管理：策略 DSL、草案、版本、激活（影子/比例/全量）、回滚；
 - 自然语言调优：把用户的自然语言描述转为结构化策略差异（经 `ai-platform`），只生成草案；
 - 知识资产：客户上传的资料（资质文件、业绩证明、产品手册、历史方案），带分级、有效期与负责人；
-- 租户私有实体：客户自己的客户、伙伴、竞争对手清单（引用公共实体）。
+- 租户私有实体：客户自己维护的组织清单（引用公共实体），种类见第 4 节 `TenantEntityList`。
 
 **非职责**
 
@@ -43,7 +43,7 @@
 | `TenantObjective` | 启用的目标、参数、关联的策略 |
 | `Policy` / `PolicyVersion` / `PolicyRollout` | 策略、版本、发布状态 |
 | `KnowledgeAsset` | 知识资产：分级、可用于哪些工作流与模型 |
-| `TenantEntityList` | 租户私有实体清单 |
+| `TenantEntityList` | 租户私有实体清单，种类：`customers` 客户、`partners` 伙伴、`competitors` 竞争对手、`blocked` 禁合作、`tracked` 跟踪对象、`counterparties` 交易对手；策略中以 `lists.<种类>` 引用 |
 
 ## 5. 策略 DSL
 

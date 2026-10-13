@@ -25,6 +25,7 @@
 | [03-business-processes.md](03-business-processes.md) | 各商业目标的机会路径与业务流程 |
 | [04-domain-model.md](04-domain-model.md) | 领域对象、生命周期状态机、领域事件与租户侧对象 |
 | [05-release-plan.md](05-release-plan.md) | 首发范围、商业目标分批、客户细分方案 |
+| [`packs/application_domains/tendering/`](../../../../packs/application_domains/tendering/pack.yaml) | 应用领域包本身：策略模板、视图目录、特征函数、原因代码（以文件为准，文档不复制其内容） |
 
 ## 3. 依赖的信息领域
 

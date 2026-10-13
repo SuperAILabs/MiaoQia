@@ -1,0 +1,23 @@
+# 应用领域包清单。格式见 docs/03-architecture/04-extensibility.md。
+pack:
+  id: APP-TENDER
+  kind: application_domain
+  version: 0.1.0                 # 草案：R1 策略模板评审中
+  platform_api: ">=1.0 <2.0"
+  requires:
+    - INF-PROC@^1.0
+    - INF-INVP@^1.0
+    - INF-ORG@^1.0
+    - INF-CRED@^1.0
+  owners: [tendering-domain-team]
+  provides:
+    policy:
+      views: policy/views.yaml
+      features: policy/features.yaml
+      reason_codes: policy/reason_codes.yaml
+      templates:
+        - policy/templates/a01-direct-bid.yaml
+        - policy/templates/a02-supply.yaml
+        - policy/templates/b03-competitive-intel.yaml
+        - policy/templates/b05-org-tracking.yaml
+        - policy/templates/c01-counterparty-risk.yaml

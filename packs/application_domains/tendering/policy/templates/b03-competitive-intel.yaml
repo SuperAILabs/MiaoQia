@@ -1,0 +1,88 @@
+# B03 竞争情报：持续监测租户登记的竞争对手的中标、候选人排名、合同、信用与企业变更。
+# 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 3.3。
+# 竞争对手名单是租户私有实体清单 lists.competitors。
+template:
+  id: TPL-TENDER-B03-COMPETE
+  version: 0.1.0
+  objective: APP-TENDER.B03
+  roles: [ROLE-BIDDER, ROLE-MFR, ROLE-PRIME, ROLE-INVESTOR]
+  fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change]
+  rollout_key: 'has(fact.project_id) ? fact.project_id : fact.subject.org_id'
+  view: []
+
+  params:
+    categories:    { type: list<category_code>, default_from: profile.offering_categories }
+    regions:       { type: list<region_code>,   default_from: profile.service_regions }
+    large_amount_cny: { type: int, default: 5000000, min: 0 }
+    minor_change_types: { type: list<enum>, default: [address, name] }
+
+  scope:
+    fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change]
+
+  require:
+    - id: R-COMPETITOR
+      say: 涉及我方登记的竞争对手
+      when: sets.overlaps(fact.org_ids, lists.competitors)
+      missing: reject                    # 主体未解析时无法归属，不产生情报
+
+  exclude:
+    - id: X-MINOR-CHANGE
+      say: 不影响竞争判断的轻微企业变更
+      when: fact.change_type in params.minor_change_types
+      reason: MINOR_CHANGE
+
+  watch: []
+
+  boost:
+    - id: B-WON
+      say: 竞争对手中标或签订合同
+      when: fact.winner.org_id in lists.competitors
+      weight: 10
+    - id: B-OUR-MARKET
+      say: 发生在我方品类
+      when: category.any_match(fact.items, params.categories)
+      weight: 15
+    - id: B-OUR-REGION
+      say: 发生在我方服务区域
+      when: region.within(fact.location, params.regions)
+      weight: 10
+    - id: B-OUR-CUSTOMER
+      say: 采购人是我方已有客户
+      when: fact.buyer.org_id in lists.customers
+      weight: 15
+    - id: B-LARGE
+      say: 金额不低于 {params.large_amount_cny} 元
+      when: money.cny(fact.amount) >= params.large_amount_cny
+      weight: 5
+    - id: B-CREDIT
+      say: 竞争对手出现较重信用事件
+      when: features.credit_severity >= 2
+      weight: 25
+
+  penalize: []
+
+  thresholds: { base_score: 30, pursue_at: 60, drop_below: 0 }   # 每条竞争对手事件至少进入摘要
+
+  route:
+    pursue_candidate:
+      notify: { audience: [objective_owner], mode: immediate }
+    review_candidate:
+      notify: { audience: [objective_members], mode: digest }
+
+  examples:
+    - name: 竞争对手在我方区域与品类中标且采购人是我方客户
+      given:
+        fact: { result_type: awarded, location: "330106", items: [{ category: CAT-PIPE-PE }],
+                amount: { value: 6000000, currency: CNY }, buyer: { org_id: org_b1 },
+                winner: { org_id: org_c1 }, org_ids: [org_b1, org_c1] }
+        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        lists: { competitors: [org_c1], customers: [org_b1] }
+      expect: pursue_candidate
+    - name: 竞争对手在其他区域、其他品类中标
+      given:
+        fact: { result_type: awarded, location: "440300", items: [{ category: CAT-IT-SW }],
+                amount: { value: 800000, currency: CNY }, buyer: { org_id: org_b9 },
+                winner: { org_id: org_c1 }, org_ids: [org_b9, org_c1] }
+        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        lists: { competitors: [org_c1], customers: [] }
+      expect: review_candidate
