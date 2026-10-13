@@ -13,7 +13,7 @@ docs/
 │   ├── 01-vision-and-positioning.md
 │   ├── 02-business-model.md
 │   ├── 03-capability-map.md
-│   └── 04-product-experience-proposal.md  产品体验方案（部分待决策）
+│   └── 04-product-experience-proposal.md  产品体验方案
 │
 ├── 02-business/                  业务层：客户要完成什么、业务如何运转
 │   ├── 01-business-architecture.md
