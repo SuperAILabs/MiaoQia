@@ -44,7 +44,7 @@ L0 平台             妙洽：商业机会研究与决策系统
 | 业务 | [业务架构](docs/02-business/01-business-architecture.md) · [商业目标](docs/02-business/02-commercial-objectives.md) · [信息领域](docs/02-business/03-information-domains.md) · [应用领域](docs/02-business/04-application-domains.md) · [招投标](docs/02-business/application-domains/tendering/README.md) |
 | 架构 | [总体架构](docs/03-architecture/01-architecture-overview.md) · [子系统](docs/03-architecture/subsystems/README.md) · [部署拓扑](docs/03-architecture/07-deployment-topology.md) |
 | 决策 | [ADR](docs/04-decisions/README.md) |
-| 交付 | [路线图](docs/05-delivery/01-roadmap.md) · [质量与验收](docs/05-delivery/02-quality-and-acceptance.md) · [研发规范](docs/05-delivery/03-engineering-standards.md) |
+| 交付 | [立项准入清单](docs/05-delivery/00-initiation-readiness.md) · [路线图](docs/05-delivery/01-roadmap.md) · [质量与验收](docs/05-delivery/02-quality-and-acceptance.md) · [研发规范](docs/05-delivery/03-engineering-standards.md) |
 
 ## 项目状态
 

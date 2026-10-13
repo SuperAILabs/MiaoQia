@@ -38,6 +38,7 @@ docs/
 ├── 04-decisions/                 架构决策记录（ADR）
 │
 ├── 05-delivery/                  交付层：如何分阶段建成并验收
+│   ├── 00-initiation-readiness.md 立项准入清单
 │   ├── 01-roadmap.md
 │   ├── 02-quality-and-acceptance.md
 │   └── 03-engineering-standards.md
