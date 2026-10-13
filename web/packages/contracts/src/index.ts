@@ -135,6 +135,7 @@ export type Notice = PublicFactMeta & {
   related_notice_ids?: string[];
   buyer: OrgRef;
   agency?: OrgRef;
+  project_owner?: OrgRef;
   single_source_supplier?: OrgRef;
   location?: Region;
   funding_source?: Text;
@@ -321,6 +322,7 @@ export type ProcurementProject = PublicFactMeta & {
   investment_project_id?: string;
   buyer: OrgRef;
   agency?: OrgRef;
+  project_owner?: OrgRef;
   location?: Region;
   budget?: Money;
   /**
@@ -448,7 +450,7 @@ export interface Block {
    */
   text?: string;
   /**
-   * 仅 table：按行列出单元格
+   * 仅 table：完整网格，每行列数相同；合并单元格的覆盖位置以 covered_by 指向起始单元格
    */
   rows?: Cell[][];
   /**
@@ -462,6 +464,13 @@ export interface Cell {
   row_span?: number;
   col_span?: number;
   header?: boolean;
+  /**
+   * 被合并单元格覆盖的位置：表格按完整网格存放，覆盖位置的 text 为空并指向起始单元格
+   */
+  covered_by?: {
+    row: number;
+    col: number;
+  };
 }
 export interface Category {
   /**
@@ -575,7 +584,7 @@ export interface EvidenceRef {
   quote_hash: string;
 }
 /**
- * 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)
+ * 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)；跨多个连续块时用 block_end，原文为各块文本直接拼接后的区间（如分两行排版的标题）
  */
 export interface Locator {
   block: number;
@@ -583,6 +592,10 @@ export interface Locator {
   col?: number;
   char_start?: number;
   char_end?: number;
+  /**
+   * 跨块定位的最后一个块；char_end 相对该块
+   */
+  block_end?: number;
 }
 export interface Region {
   /**
@@ -639,6 +652,7 @@ export interface LotSection {
    */
   authorization_required?: boolean;
   bid_bond?: Money;
+  document_fee?: Money;
   /**
    * 是否接受保函
    */
@@ -652,7 +666,16 @@ export interface LotSection {
 export interface Requirement {
   id: string;
   kind:
-    "qualification" | "performance" | "personnel" | "credit" | "authorization" | "consortium" | "technical" | "other";
+    | "qualification"
+    | "performance"
+    | "personnel"
+    | "financial"
+    | "quality"
+    | "credit"
+    | "authorization"
+    | "consortium"
+    | "technical"
+    | "other";
   /**
    * 归一的资质或要求代码；无法归一时为 null
    */

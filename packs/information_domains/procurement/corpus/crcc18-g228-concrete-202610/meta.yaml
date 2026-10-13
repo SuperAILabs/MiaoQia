@@ -1,0 +1,8 @@
+# 第一个真实样本：项目负责人在会话中提供的公告页面正文（HTML 片段）。
+source_id: crcc18-g228-concrete-202610
+source_url: 未提供（公告注明同时发布于中国招标投标公共服务平台 www.cebpubservice.com 与中国铁建云链平台 www.crccep.cn）
+fetched_at: "2026-10-13"
+rights_tag: public-tender
+notes: >
+  逐字保留原文；仅把 5.4 节末尾约 400 个 &nbsp; 的空白填充缩短为 10 个，不影响文本内容。
+  联系人等公开业务信息按 ADR-0017 保留原文。

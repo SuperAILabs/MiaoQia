@@ -24,6 +24,14 @@ def edit_text(root: Path, rel: str, old: str, new: str) -> None:
     p.write_text(s.replace(old, new, 1), encoding="utf-8")
 
 
+def bump_schema(root: Path, rel: str) -> None:
+    """把 Schema 的 x-version 提升一个次版本（与当前取值无关）。"""
+    def f(d):
+        major, minor, _ = (int(x) for x in d["x-version"].split("."))
+        d["x-version"] = f"{major}.{minor + 1}.0"
+    edit_json(root, rel, f)
+
+
 def bump_version(root: Path, rel: str, key: str) -> None:
     """把文件中 key 下的 version 提升一个次版本（与当前取值无关）。"""
     p = root / rel
@@ -93,7 +101,7 @@ def test_removed_field_requires_bump_on_file_and_roots(sandbox):
 def test_bump_satisfies(sandbox):
     edit_json(sandbox, PDEFS, lambda d: d["$defs"]["item"]["properties"].pop("spec"))
     for rel in (PDEFS, NOTICE, "contracts/schemas/domains/procurement/procurement-project.schema.json"):
-        edit_json(sandbox, rel, lambda d: d.update({"x-version": "0.2.0"}))
+        bump_schema(sandbox, rel)
     assert run(sandbox).errors == []
 
 
@@ -101,7 +109,7 @@ def test_additive_requires_minor(sandbox):
     edit_json(sandbox, NOTICE, lambda d: d["properties"].update({"source_url": {"type": "string"}}))
     errs = run(sandbox).errors
     assert any("notice.schema.json" in e and "additive" in e for e in errs)
-    edit_json(sandbox, NOTICE, lambda d: d.update({"x-version": "0.2.0"}))
+    bump_schema(sandbox, NOTICE)
     assert run(sandbox).errors == []
 
 

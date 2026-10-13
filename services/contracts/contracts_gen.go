@@ -126,7 +126,7 @@ type Block struct {
 	// 分页文档的页码
 	Page *int `json:"page,omitempty,omitzero"`
 
-	// 仅 table：按行列出单元格
+	// 仅 table：完整网格，每行列数相同；合并单元格的覆盖位置以 covered_by 指向起始单元格
 	Rows [][]Cell `json:"rows,omitempty,omitzero"`
 
 	// heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计
@@ -161,6 +161,9 @@ type Cell struct {
 	// ColSpan corresponds to the JSON schema field "col_span".
 	ColSpan *int `json:"col_span,omitempty,omitzero"`
 
+	// 被合并单元格覆盖的位置：表格按完整网格存放，覆盖位置的 text 为空并指向起始单元格
+	CoveredBy *CellCoveredBy `json:"covered_by,omitempty,omitzero"`
+
 	// Header corresponds to the JSON schema field "header".
 	Header *bool `json:"header,omitempty,omitzero"`
 
@@ -169,6 +172,15 @@ type Cell struct {
 
 	// Text corresponds to the JSON schema field "text".
 	Text string `json:"text"`
+}
+
+// 被合并单元格覆盖的位置：表格按完整网格存放，覆盖位置的 text 为空并指向起始单元格
+type CellCoveredBy struct {
+	// Col corresponds to the JSON schema field "col".
+	Col int `json:"col"`
+
+	// Row corresponds to the JSON schema field "row".
+	Row int `json:"row"`
 }
 
 // 公告中的联系人。按公开数据处理，供客户业务联系使用（ADR-0017）
@@ -640,10 +652,14 @@ type Item struct {
 	UnitPrice *Money `json:"unit_price,omitempty,omitzero"`
 }
 
-// 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)
+// 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)；跨多个连续块时用
+// block_end，原文为各块文本直接拼接后的区间（如分两行排版的标题）
 type Locator struct {
 	// Block corresponds to the JSON schema field "block".
 	Block int `json:"block"`
+
+	// 跨块定位的最后一个块；char_end 相对该块
+	BlockEnd *int `json:"block_end,omitempty,omitzero"`
 
 	// CharEnd corresponds to the JSON schema field "char_end".
 	CharEnd *int `json:"char_end,omitempty,omitzero"`
@@ -680,6 +696,9 @@ type LotSection struct {
 
 	// Deadlines corresponds to the JSON schema field "deadlines".
 	Deadlines []Deadline `json:"deadlines,omitempty,omitzero"`
+
+	// DocumentFee corresponds to the JSON schema field "document_fee".
+	DocumentFee *Money `json:"document_fee,omitempty,omitzero"`
 
 	// EvaluationMethod corresponds to the JSON schema field "evaluation_method".
 	EvaluationMethod *EvaluationMethod `json:"evaluation_method,omitempty,omitzero"`
@@ -832,6 +851,9 @@ type Notice struct {
 
 	// 当前归并到的采购项目。权威记录是 domain-intelligence 的 AggregationLink，本字段为其当前指针
 	ProjectId *string `json:"project_id,omitempty,omitzero"`
+
+	// ProjectOwner corresponds to the JSON schema field "project_owner".
+	ProjectOwner *OrgRef `json:"project_owner,omitempty,omitzero"`
 
 	// PublishedAt corresponds to the JSON schema field "published_at".
 	PublishedAt *Instant `json:"published_at,omitempty,omitzero"`
@@ -1304,6 +1326,9 @@ type ProcurementProject struct {
 	// ProjectCode corresponds to the JSON schema field "project_code".
 	ProjectCode *Text `json:"project_code,omitempty,omitzero"`
 
+	// ProjectOwner corresponds to the JSON schema field "project_owner".
+	ProjectOwner *OrgRef `json:"project_owner,omitempty,omitzero"`
+
 	// PublishedAt corresponds to the JSON schema field "published_at".
 	PublishedAt *Instant `json:"published_at,omitempty,omitzero"`
 
@@ -1551,10 +1576,12 @@ type RequirementKind string
 const RequirementKindAuthorization RequirementKind = "authorization"
 const RequirementKindConsortium RequirementKind = "consortium"
 const RequirementKindCredit RequirementKind = "credit"
+const RequirementKindFinancial RequirementKind = "financial"
 const RequirementKindOther RequirementKind = "other"
 const RequirementKindPerformance RequirementKind = "performance"
 const RequirementKindPersonnel RequirementKind = "personnel"
 const RequirementKindQualification RequirementKind = "qualification"
+const RequirementKindQuality RequirementKind = "quality"
 const RequirementKindTechnical RequirementKind = "technical"
 
 type Text struct {

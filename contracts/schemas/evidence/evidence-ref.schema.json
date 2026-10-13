@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/evidence/evidence-ref.schema.json",
-  "x-version": "0.1.0",
+  "x-version": "0.2.0",
   "title": "EvidenceRef 证据引用",
   "description": "可被引用的证据片段：指向某个快照在某个处理管线版本下的规范化文档中的一个位置。由 evidence 分配 ev_ 标识；字段溯源（provenance.evidence_ref）与研究报告引用都指向它。",
   "type": "object",

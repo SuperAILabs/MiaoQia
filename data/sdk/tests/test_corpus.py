@@ -37,3 +37,19 @@ def test_check_pipeline_validates_schema_and_scores_fields(tmp_path, monkeypatch
     out = capsys.readouterr().out
     assert code == 0, out
     assert "字段准确率 100.0%（4/4）" in out
+
+
+def test_merged_cells_expand_to_grid_and_resolve_to_origin():
+    from miaoqia.sdk.document import Document
+    from miaoqia.sdk.testing import html_to_document
+    html = """<table><tr><td>序号</td><td>包件号</td><td>数量</td><td>保证金（万元）</td></tr>
+    <tr><td>1</td><td rowspan="2">SH-01</td><td>5</td><td rowspan="2">20</td></tr>
+    <tr><td>2</td><td>834</td></tr>
+    <tr><td colspan="2">合计</td><td>839</td><td></td></tr></table>"""
+    data = html_to_document(html, "snp_" + "0" * 26)
+    rows = data["blocks"][0]["rows"]
+    assert all(len(r) == 4 for r in rows)                                   # 完整网格
+    assert rows[2][1] == {"text": "", "covered_by": {"row": 1, "col": 1}}
+    grid = Document(data).table_grid(0)
+    assert grid[2][1].text == "SH-01" and (grid[2][1].row, grid[2][1].col) == (1, 1)   # 解析到起始单元格
+    assert grid[2][2].text == "834" and grid[3][3] is None

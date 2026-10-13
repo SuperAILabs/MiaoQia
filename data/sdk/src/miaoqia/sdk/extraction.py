@@ -76,8 +76,8 @@ class ExtractionContext:
     def text(self, span: Span, confidence: float = 0.95) -> dict:
         return {"value": span.text, "prov": self.prov(span, confidence)}
 
-    def money(self, span: Span, confidence: float = 0.95) -> dict | None:
-        parsed = zh.parse_money(span.text)
+    def money(self, span: Span, confidence: float = 0.95, default_unit: str | None = None) -> dict | None:
+        parsed = zh.parse_money(span.text, default_unit)
         if parsed is None:
             return None
         value, currency = parsed
@@ -89,6 +89,17 @@ class ExtractionContext:
             return None
         value, precision, tz_raw = parsed
         return {"value": value, "precision": precision, "tz_raw": tz_raw, "prov": self.prov(span, confidence)}
+
+    def quantity(self, span: Span, unit_span: Span | None = None, confidence: float = 0.95) -> dict | None:
+        value = span.text.replace(",", "")
+        try:
+            float(value)
+        except ValueError:
+            return None
+        out = {"value": value, "prov": self.prov(span, confidence)}
+        if unit_span is not None:
+            out["unit_raw"] = unit_span.text
+        return out
 
     def org(self, span: Span, confidence: float = 0.95) -> dict:
         """组织引用只保留原文名称；解析为 org_id 由 entity-graph 完成。"""

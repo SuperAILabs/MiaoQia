@@ -74,6 +74,14 @@ class Category(BaseModel):
     confidence: confloat(ge=0.0, le=1.0) | None = None
 
 
+class CoveredBy(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    row: conint(ge=0)
+    col: conint(ge=0)
+
+
 class Cell(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -82,6 +90,10 @@ class Cell(BaseModel):
     row_span: conint(ge=1) | None = None
     col_span: conint(ge=1) | None = None
     header: bool | None = None
+    covered_by: CoveredBy | None = Field(
+        None,
+        description="被合并单元格覆盖的位置：表格按完整网格存放，覆盖位置的 text 为空并指向起始单元格",
+    )
 
 
 class Role(Enum):
@@ -195,6 +207,9 @@ class Locator(BaseModel):
     col: conint(ge=0) | None = None
     char_start: conint(ge=0) | None = None
     char_end: conint(ge=0) | None = None
+    block_end: conint(ge=0) | None = Field(
+        None, description="跨块定位的最后一个块；char_end 相对该块"
+    )
 
 
 class MediaType(Enum):
@@ -375,6 +390,8 @@ class Kind2(Enum):
     qualification = "qualification"
     performance = "performance"
     personnel = "personnel"
+    financial = "financial"
+    quality = "quality"
     credit = "credit"
     authorization = "authorization"
     consortium = "consortium"
@@ -405,7 +422,10 @@ class Block(BaseModel):
         None,
         description="heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计",
     )
-    rows: list[list[Cell]] | None = Field(None, description="仅 table：按行列出单元格")
+    rows: list[list[Cell]] | None = Field(
+        None,
+        description="仅 table：完整网格，每行列数相同；合并单元格的覆盖位置以 covered_by 指向起始单元格",
+    )
     page: conint(ge=1) | None = Field(None, description="分页文档的页码")
     bbox: Bbox | None = None
 
@@ -756,6 +776,7 @@ class LotSection(BaseModel):
     consortium_allowed: bool | None = None
     authorization_required: bool | None = Field(None, description="是否要求原厂授权")
     bid_bond: Money | None = None
+    document_fee: Money | None = None
     bond_guarantee_accepted: bool | None = Field(None, description="是否接受保函")
     evaluation_method: EvaluationMethod | None = None
     bid_results: list[BidResult] | None = None
@@ -781,6 +802,7 @@ class Notice(PublicFactMeta):
     )
     buyer: OrgRef
     agency: OrgRef | None = None
+    project_owner: OrgRef | None = None
     single_source_supplier: OrgRef | None = None
     location: Region | None = None
     funding_source: Text | None = None
@@ -922,6 +944,7 @@ class ProcurementProject(PublicFactMeta):
     )
     buyer: OrgRef
     agency: OrgRef | None = None
+    project_owner: OrgRef | None = None
     location: Region | None = None
     budget: Money | None = None
     notice_ids: list[NoticeId] = Field(..., description="按发布时间排序", min_length=1)

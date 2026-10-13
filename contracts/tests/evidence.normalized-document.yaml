@@ -22,3 +22,9 @@ cases:
   - name: 单元格缺文本
     valid: false
     patch: [{ op: remove, path: /blocks/2/rows/1/0/text }]
+  - name: 合并单元格覆盖位置
+    valid: true
+    patch:
+      - op: add
+        path: /blocks/2/rows/-
+        value: [{ text: "", covered_by: { row: 1, col: 0 } }, { text: "800 米" }]

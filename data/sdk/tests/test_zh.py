@@ -37,3 +37,9 @@ def test_datetime(text, value, precision):
 
 def test_invalid_date():
     assert parse_datetime("2026年2月30日") is None
+
+
+def test_money_with_default_unit_from_header():
+    assert parse_money("20", default_unit="万元") == ("200000", "CNY")
+    assert parse_money("500", default_unit="元") == ("500", "CNY")
+    assert parse_money("20") is None                       # 没有单位来源时仍不猜测

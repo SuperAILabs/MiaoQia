@@ -42,11 +42,16 @@ def _upper_to_decimal(s: str) -> Decimal | None:
     return Decimal(total) + cents
 
 
-def parse_money(text: str) -> tuple[str, str] | None:
+def parse_money(text: str, default_unit: str | None = None) -> tuple[str, str] | None:
     """返回 (十进制字符串（人民币元）, 币种)。支持“320 万元”“￥3,200,000.00”“3200000 元”与大写金额。
 
-    原文未写单位时不猜测，返回 None。
+    原文未写单位时不猜测，返回 None；除非调用方给出 default_unit（例如表头“投标保证金（万元）”）。
     """
+    if default_unit is not None and re.fullmatch(r"\s*[0-9][0-9,]*(?:\.[0-9]+)?\s*", text):
+        try:
+            return _fmt(Decimal(text.strip().replace(",", "")) * UNITS[default_unit]), "CNY"
+        except InvalidOperation:
+            return None
     t = text.strip().replace("，", ",").replace("（", "(").replace("）", ")")
     m = re.search(r"(?:人民币|￥|¥|RMB)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(亿元|万元|元)", t)
     if not m:

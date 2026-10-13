@@ -15,3 +15,6 @@ cases:
   - name: 哈希格式错误
     valid: false
     patch: [{ op: replace, path: /quote_hash, value: md5:abc }]
+  - name: 跨块定位
+    valid: true
+    patch: [{ op: replace, path: /locator, value: { block: 1, char_start: 0, block_end: 2, char_end: 9 } }]
