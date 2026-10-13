@@ -8,7 +8,7 @@
 
 ## 决策
 
-- 事件总线使用 Kafka（优先使用云托管服务）；
+- 事件总线使用 Kafka 4.x（KRaft 模式），以 Strimzi 自建（ADR-0015）；
 - 每个发布事件的子系统在自己的数据库中维护 `outbox` 表，与业务写入同事务提交，由中继发布；
 - 事件信封采用 CloudEvents 1.0，扩展属性携带域、租户、单元；
 - 事件 Schema 以 AsyncAPI + JSON Schema 管理，CI 检查兼容性；
@@ -18,7 +18,7 @@
 ## 备选
 
 - 只用 PostgreSQL 作队列：规模与重放能力不足，与终态不符；
-- Pulsar / NATS JetStream：功能可行，但国内托管与运维经验不如 Kafka 普及。
+- Pulsar / NATS JetStream：功能可行，但国内运维经验与生态不如 Kafka 普及。
 
 ## 后果
 

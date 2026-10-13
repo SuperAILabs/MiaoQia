@@ -20,7 +20,7 @@ ADR 记录重要且难以逆转的决策：背景、决策、备选方案与后�
 | [0003](0003-subsystem-boundaries.md) | 子系统划分与数据所有权 | 提议 |
 | [0004](0004-event-backbone-kafka-outbox.md) | 事件骨干：Kafka + 事务性发件箱 + CloudEvents | 提议 |
 | [0005](0005-durable-workflow-temporal.md) | 持久化工作流：Temporal | 提议 |
-| [0006](0006-primary-language-python.md) | 主语言：Python；前端：TypeScript | 提议 |
+| [0006](0006-primary-language-python.md) | 主语言：Python；前端：TypeScript | 已替代（ADR-0014） |
 | [0007](0007-storage-portfolio.md) | 存储组合 | 提议 |
 | [0008](0008-tenant-isolation-and-cells.md) | 多租户隔离与租户单元 | 提议 |
 | [0009](0009-extension-packs.md) | 三类扩展包 | 提议 |
@@ -28,14 +28,17 @@ ADR 记录重要且难以逆转的决策：背景、决策、备选方案与后�
 | [0011](0011-immutable-evidence-dual-versioning.md) | 证据不可变与双版本 | 提议 |
 | [0012](0012-identity-keycloak-openfga.md) | 身份与授权：Keycloak + 关系型授权 | 提议 |
 | [0013](0013-tiered-persistence-and-search-enrichment.md) | 公共域分层持久化与检索增强 | 提议 |
+| [0014](0014-polyglot-backend-python-go.md) | 服务端语言：数据抓取与维护用 Python，平台服务用 Go | 提议 |
+| [0015](0015-self-hosted-open-source-infrastructure.md) | 基础设施开源自建优先 | 提议 |
+| [0016](0016-model-inference-via-api.md) | 前期 AI 推理只接 API | 提议 |
 
 ## 待提出的 ADR
 
 | 主题 | 触发 |
 |---|---|
-| 公有云厂商选择 | 基础设施建设启动前 |
+| IaaS 供应商选择（ADR-0015 后只涉及 IaaS） | 商务报价完成后 |
 | 图查询引擎选择 | 图查询基准测试完成后 |
-| 托管模型供应商清单 | 合规确认后 |
+| 模型 API 供应商清单 | 评测完成后 |
 | 授权数据供应商 | 商务评估完成后 |
 
 ## 模板

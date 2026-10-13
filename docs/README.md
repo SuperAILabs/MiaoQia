@@ -34,6 +34,7 @@ docs/
 │   ├── 08-technology-stack.md
 │   ├── 09-codebase-structure.md
 │   ├── 10-tender-intel-reference.md
+│   ├── 11-technology-selection-analysis.md  技术选型分析
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）

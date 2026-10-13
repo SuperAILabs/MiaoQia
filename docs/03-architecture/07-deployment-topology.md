@@ -6,6 +6,8 @@
 
 **逻辑架构按终态设计，部署从两个单元开始，演进通过配置完成。**（[ADR-0002](../04-decisions/0002-composable-deployment.md)）
 
+> 待定：[ADR-0014](../04-decisions/0014-polyglot-backend-python-go.md) 提议按语言把部署单元调整为 `acquisition`（Python）、`data`（Python）、`platform`（Go）三个，批准后更新本文。基础组件按 [ADR-0015](../04-decisions/0015-self-hosted-open-source-infrastructure.md) 自建。
+
 - 18 个子系统的边界、数据所有权、接口与事件契约从第一天按终态实现；
 - 基础设施（PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、Redis、Keycloak、可观测性）从第一天按生产级部署，不使用替代方案过渡；
 - 应用代码打包为两个部署单元：`acquisition` 与 `platform`；
@@ -45,7 +47,7 @@
 | `api` | gateway + 全部子系统的接口实现 | 处理同步请求（REST、BFF、MCP） | 请求速率、延迟 |
 | `consumer` | 各子系统的事件消费者 | 事件处理、读模型更新、匹配 | 消费延迟（lag） |
 | `workflow-worker` | research、learning、customer-context、pursuit、governance 等的 Temporal worker | 研究运行、仿真、回填、删除编排、推进时限 | 工作流任务队列深度 |
-| `document-worker` | evidence 的文档处理与解析 | CPU/GPU 密集文档处理 | 文档队列深度 |
+| `document-worker` | evidence 的文档处理与解析 | CPU 密集文档处理（OCR 与版面经模型 API） | 文档队列深度 |
 | `outbox-relay` | 各子系统发件箱中继 | 发件箱 → Kafka | 发件箱积压 |
 | `scheduler` | 周期性任务（摘要、统计、健康检查） | 定时任务 | 固定副本（主备） |
 
@@ -75,14 +77,13 @@ roles:
 
 | 组件 | 部署 | 用途 |
 |---|---|---|
-| PostgreSQL | 托管高可用集群 + 只读副本；每个子系统独立逻辑数据库与账号 | 权威数据；统计与批量查询走只读副本 |
-| 对象存储 | 托管 | 原始制品、文档、知识资产、导出 |
-| Kafka | 托管 | 事件总线 |
-| Temporal | 自建集群（持久化在 PostgreSQL） | 持久化工作流 |
-| OpenSearch | 托管或自建集群 | 检索 |
-| Redis | 托管 | 缓存、限流 |
+| PostgreSQL | 自建高可用集群（CloudNativePG）+ 只读副本；每个子系统独立逻辑数据库与账号 | 权威数据；统计与批量查询走只读副本 |
+| 对象存储 | S3 标准协议；生产使用 IaaS 供应商对象存储（ADR-0015 价格例外），私有部署与 `staging` 使用 Ceph RGW | 原始制品、文档、知识资产、导出 |
+| Kafka | 自建（Strimzi，KRaft） | 事件总线 |
+| Temporal | 自建集群（持久化在独立 PostgreSQL 集群） | 持久化工作流 |
+| OpenSearch | 自建集群（OpenSearch Operator） | 检索 |
+| Valkey | 自建 | 缓存、限流 |
 | Keycloak | 自建高可用 | 身份提供者 |
-| 模型推理服务 | GPU 节点池（vLLM 等） | 私有模型 |
 | 可观测性 | OpenTelemetry Collector + 指标、日志、追踪存储 | 运维 |
 
 ## 3. 运行时组装

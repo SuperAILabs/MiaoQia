@@ -19,7 +19,7 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 
 | 范围 | 交付 |
 |---|---|
-| 基础设施 | 云账号与网络、Kubernetes、PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、Redis、Keycloak、OpenFGA、可观测性；全部以 Terraform + GitOps 管理 |
+| 基础设施 | 云账号与网络、Kubernetes、PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、Redis、Keycloak、OpenFGA、可观测性；全部开源自建（ADR-0015），以 OpenTofu + GitOps 管理 |
 | 代码库 | monorepo、uv 工作区、`kernel`、`sdk`、18 个子系统骨架、两个部署单元与进程角色、依赖检查 |
 | 契约体系 | `contracts/` 目录结构、代码生成、兼容性检查、契约测试框架 |
 | 平台横切 | 请求上下文、接口绑定（本地/远程）、发件箱与中继、事件消费框架、审计 SDK、授权 SDK、模型网关骨架 |
@@ -62,7 +62,7 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 
 | 范围 | 交付 |
 |---|---|
-| ai-platform | 模型目录、路由、提示注册、护栏、计量、私有模型推理 |
+| ai-platform | 模型目录、路由、提示注册、护栏、计量、供应商适配器 |
 | research | Agent 运行时、工具注册、研究模板执行、引用校验、报告 |
 | 研究模板 | `RT-TENDER-ELIG`、`BUYER`、`COMPETE`、`PROJECT`、`WINNER`、`RISK`、`ORGTRACK`（`PRICE` 随 R2） |
 | assessment | 结合研究的判断框架（`AF-TENDER-BID`、`AF-TENDER-SUPPLY`） |
