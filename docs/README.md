@@ -35,6 +35,7 @@ docs/
 │   ├── 09-codebase-structure.md
 │   ├── 10-tender-intel-reference.md
 │   ├── 11-policy-dsl.md
+│   ├── 12-capacity-plan.md
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
@@ -136,6 +137,7 @@ docs/
 | 策略 DSL（结构、求值语义、CEL 环境、下推） | `03-architecture/11-policy-dsl.md` | 链接 |
 | 策略模板、视图目录、特征函数、原因代码 | `packs/application_domains/<领域>/policy/` | 引用模板编号 |
 | 渠道分批 | `03-architecture/subsystems/channels.md` 第 2 节 | 链接 |
+| 规模假设、数据规模估算与资源规格 | `03-architecture/12-capacity-plan.md` | 链接 |
 | 质量指标与发布门槛 | `05-delivery/02-quality-and-acceptance.md` | 引用指标名 |
 | 团队规模与组织 | `05-delivery/04-data-quality-organization-proposal.md` | 链接 |
 | 立项事项状态与决策时间线 | `05-delivery/00-initiation-readiness.md` | 时间线每条一句话 + 定义处链接 |

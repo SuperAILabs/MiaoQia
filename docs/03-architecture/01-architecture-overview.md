@@ -208,4 +208,5 @@ sequenceDiagram
 | 技术选型 | [08-technology-stack.md](08-technology-stack.md) |
 | 代码库结构与依赖约束 | [09-codebase-structure.md](09-codebase-structure.md) |
 | 策略 DSL | [11-policy-dsl.md](11-policy-dsl.md) |
+| 容量规划 | [12-capacity-plan.md](12-capacity-plan.md) |
 | Tender Intel 参考说明 | [10-tender-intel-reference.md](10-tender-intel-reference.md) |
