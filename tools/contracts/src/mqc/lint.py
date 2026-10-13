@@ -10,6 +10,7 @@
   S6  枚举值为 lower_snake_case
   S7  每个 $ref 都能解析
   S8  $ref 不与 allOf 包装组合使用来追加约束（会让生成器产生重复类型）
+  S9  每个文件有语义化版本 x-version（兼容性规则见 compat.py）
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from .report import Report
 
 ID_PATTERN = re.compile(r"^\^([a-z]{2,4})_\[0-9A-HJKMNP-TV-Z\]\{26\}\$$")
 ID_GROUP_PATTERN = re.compile(r"^\^(?:([a-z]{2,4})|([a-z]+)\[([a-z]+)\])_\[0-9A-HJKMNP-TV-Z\]\{26\}\$$")
+SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 SNAKE = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 TITLE = re.compile(r"^[A-Z][A-Za-z0-9]*(\s|$)")
 
@@ -61,6 +63,8 @@ def lint_schemas(repo: Repo) -> Report:
             r.error(where, "S1 $schema 必须为 2020-12")
         if s.get("$id") != repo.expected_id(rel):
             r.error(where, f"S1 $id 应为 {repo.expected_id(rel)}")
+        if not SEMVER.match(str(s.get("x-version", ""))):
+            r.error(where, "S9 缺少语义化版本 x-version")
         is_root = "properties" in s
         if is_root and not TITLE.match(s.get("title", "")):
             r.error(where, "S2 顶层 Schema 的 title 必须以 ASCII PascalCase 类型名开头")

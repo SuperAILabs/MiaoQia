@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/common/types.schema.json",
+  "x-version": "0.1.0",
   "title": "通用类型",
   "description": "全部领域 Schema 共用的类型。约定见 docs/03-architecture/02-data-architecture.md。带证据类型（text、money、instant、org_ref、region、quantity）的 prov 必填：每个解析字段都可回到原文。字段缺失表示未知，不使用 null。",
   "$defs": {

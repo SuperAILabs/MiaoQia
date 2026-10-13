@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/organization/abnormal.schema.json",
+  "x-version": "0.1.0",
   "title": "OrgAbnormal 经营异常",
   "description": "列入或移出经营异常名录（含严重违法失信名单）的记录。移出时在同一事实上产生新版本。",
   "type": "object",

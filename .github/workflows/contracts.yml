@@ -31,6 +31,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                 # 兼容性检查需要目标分支的历史
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -56,8 +58,15 @@ jobs:
       - name: 安装前端依赖
         run: pnpm --dir web install --frozen-lockfile
 
+      - name: 契约工具自测
+        run: uv run --project tools/contracts --locked --group dev pytest -q tools/contracts/tests
+
       - name: 契约检查（Schema 方言、样例、事件、扩展包、YAML 键名）
         run: uv run --project tools/contracts --locked mqc check
+
+      - name: 兼容性检查（与目标分支比较）
+        if: github.event_name == 'pull_request'
+        run: uv run --project tools/contracts --locked mqc compat --base "origin/${{ github.base_ref }}" -v
 
       - name: 生成物与契约一致
         run: uv run --project tools/contracts --locked mqc generate --check

@@ -10,6 +10,9 @@ dependencies = [
   "datamodel-code-generator==0.34.0",
 ]
 
+[dependency-groups]
+dev = ["pytest==8.4.2"]
+
 [project.scripts]
 mqc = "mqc.cli:main"
 

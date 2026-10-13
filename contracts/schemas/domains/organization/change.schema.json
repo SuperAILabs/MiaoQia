@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/organization/change.schema.json",
+  "x-version": "0.1.0",
   "title": "OrgChange 企业变更记录",
   "description": "登记信息的一条变更记录。涉及自然人的变更（法定代表人、高管、自然人股东）只记录“发生了变更”，变更前后内容进入 personal_detail（个人信息）；组织股东变化以结构化方式记录。",
   "type": "object",

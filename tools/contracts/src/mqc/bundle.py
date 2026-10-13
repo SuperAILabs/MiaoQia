@@ -44,9 +44,9 @@ def type_names(repo: Repo) -> dict[tuple[str, str], str]:
     return names
 
 
-def _clean(node, base: str, names):
+def _clean(node, base: str, names, keep_validation: bool = False):
     if isinstance(node, list):
-        return [_clean(x, base, names) for x in node]
+        return [_clean(x, base, names, keep_validation) for x in node]
     if not isinstance(node, dict):
         return node
     if "$ref" in node:
@@ -57,28 +57,29 @@ def _clean(node, base: str, names):
         return {"$ref": f"#/$defs/{names[key]}"}
     out = {}
     for k, v in node.items():
-        if k in VALIDATION_ONLY or k in ("$id", "$schema", "$defs") or k.startswith("x-"):
+        if (k in VALIDATION_ONLY and not keep_validation) or k in ("$id", "$schema", "$defs") or k.startswith("x-"):
             continue
-        out[k] = _clean(v, base, names)
+        out[k] = _clean(v, base, names, keep_validation)
     if "allOf" in out:
         out["allOf"] = [x for x in out["allOf"] if x]
         if not out["allOf"]:
             del out["allOf"]
-        elif "properties" in out:
+        elif "properties" in out and not keep_validation:
             # 自身属性与 allOf 并列时，部分生成器会丢弃自身属性：把自身属性移入 allOf 的一项
             own = {k: out.pop(k) for k in ("properties", "required", "additionalProperties") if k in out}
             out["allOf"].append({"type": "object", **own})
     return out
 
 
-def build_bundle(repo: Repo) -> dict:
+def build_bundle(repo: Repo, keep_validation: bool = False) -> dict:
+    """keep_validation=True 时保留校验关键字，供兼容性比较使用。"""
     names = type_names(repo)
     defs = {}
     for s in repo.schemas.values():
         sid = s["$id"]
         if "properties" in s:
             root = {k: v for k, v in s.items() if k != "$defs"}
-            defs[names[(sid, "")]] = _clean(copy.deepcopy(root), sid, names)
+            defs[names[(sid, "")]] = _clean(copy.deepcopy(root), sid, names, keep_validation)
         for key, d in s.get("$defs", {}).items():
-            defs[names[(sid, f"/$defs/{key}")]] = _clean(copy.deepcopy(d), sid, names)
+            defs[names[(sid, f"/$defs/{key}")]] = _clean(copy.deepcopy(d), sid, names, keep_validation)
     return {"$schema": DIALECT, "title": "MiaoQiaContracts", "description": "生成用打包 Schema", "$defs": dict(sorted(defs.items()))}

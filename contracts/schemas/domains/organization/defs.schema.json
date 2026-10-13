@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/organization/defs.schema.json",
+  "x-version": "0.1.0",
   "title": "INF-ORG 公共定义",
   "description": "企业登记公示信息的枚举与嵌套对象。INF-ORG 的事实是来源公示的登记信息；组织主数据（Organization）由 entity-graph 依据这些事实解析生成并拥有。",
   "$defs": {

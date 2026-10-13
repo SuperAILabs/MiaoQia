@@ -119,6 +119,9 @@ contracts/schemas ──打包（统一类型名、改写跨文件引用、去�
 | `uv run --project tools/contracts mqc generate` | 重新生成三种语言的类型 |
 | `uv run --project tools/contracts mqc generate --check` | 生成物一致性检查 |
 | `uv run --project tools/contracts mqc fixtures --export DIR` | 导出正例，供往返测试 |
+| `uv run --project tools/contracts mqc compat --base origin/main -v` | 与目标分支比较的兼容性检查（合并请求必过） |
+
+**版本与兼容性**：每个 Schema 文件带 `x-version`。变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。核心契约冻结即把相应文件的 `x-version` 定为 `1.0.0`。
 
 ## 6. 命名约定
 
