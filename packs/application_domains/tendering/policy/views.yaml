@@ -3,7 +3,7 @@
 # fact_types：R1 模板使用的事实视图，是信息领域包领域 Schema 的投影，字段类型以 Schema 为准，本文件不重复定义。
 #   source  投影来源 Schema；unit 求值单位（每条公告、每个标包结果或每份合同求值一次）；when 进入该视图的条件；
 #   fields  视图字段 → 来源路径（路径相对 source；project. 前缀表示所属采购项目；[*] 表示展开；min()/any() 为聚合）。
-#   INF-PROC 已有正式 Schema；INF-INVP、INF-ORG、INF-CRED 的 Schema 尚未编写，对应条目为需求清单 [假设]，发布时对齐。
+#   来源字段为空或 null 时，视图中不出现该字段（表达式中 has() 为假，读取为未知）。
 #
 # view_items：可按名称引用的关联视图项，声明提供方、类型与新鲜度；组装后挂在 fact.<名称> 路径下，
 # 例如 winner.credit_flags 在表达式中为 fact.winner.credit_flags。
@@ -59,40 +59,46 @@ fact_types:
       buyer: buyer
       winner: contract.supplier
       org_ids: "[buyer, contract.supplier].org_id"
-  investment.construction_permit:        # INF-INVP 施工许可 [假设]
-    source: INF-INVP（Schema 待编写）
+  investment.construction_permit:
+    source: contracts/schemas/domains/investment/record.schema.json
+    unit: record
+    when: record_type == construction_permit
+    fields:
+      record_id: id
+      project_id: procurement_project_id
+      investment_project_id: investment_project_id
+      location: location.code
+      items: project.lots[*].items[*]    # 经 procurement_project_id 关联的采购项目标的；未关联时不出现
+      amount: construction_permit.contract_amount
+      winner: construction_permit.contractor
+      org_ids: "[owner, construction_permit.contractor, construction_permit.designer, construction_permit.supervisor].org_id"
+  org.change:
+    source: contracts/schemas/domains/organization/change.schema.json
     unit: record
     fields:
-      project_id: 关联的采购项目聚合（若已关联）
-      location: 项目地点行政区划代码
-      items: 经项目链关联到的采购标的（可能为空）
-      winner: 施工单位
-      org_ids: 涉及的已解析组织
-  org.change:                            # INF-ORG 企业变更 [假设]
-    source: INF-ORG（Schema 待编写）
+      subject: subject
+      change_type: change_type
+      status_after: status_after
+      org_ids: "[subject, org_shareholders_added[*], org_shareholders_removed[*]].org_id"
+  org.abnormal:
+    source: contracts/schemas/domains/organization/abnormal.schema.json
     unit: record
     fields:
-      subject: 变更主体
-      change_type: "equity | executive | name | address | scope | capital | status"
-      status_after: "仅 status 变更：active | revoked | cancelled"
-      org_ids: 涉及的已解析组织
-  org.abnormal:                          # INF-ORG 经营异常 [假设]
-    source: INF-ORG（Schema 待编写）
+      subject: subject
+      abnormal_type: list_type
+      resolved: "has(removed_on)"
+      org_ids: "[subject].org_id"
+  credit.record:
+    source: contracts/schemas/domains/credit/record.schema.json
     unit: record
+    when: record_type != credit_rating     # 信用评价不作为风险事件进入策略
     fields:
-      subject: 异常主体
-      abnormal_type: 异常类型
-      org_ids: 涉及的已解析组织
-  credit.record:                         # INF-CRED 司法与信用记录 [假设]
-    source: INF-CRED（Schema 待编写）
-    unit: record
-    fields:
-      subject: 记录主体
-      record_type: "dishonest | consumption_limit | enforcement | penalty | judgment"
-      role: "仅 judgment：plaintiff | defendant | third_party"
-      amount: 涉及金额
-      resolved: 是否已了结
-      org_ids: 涉及的已解析组织
+      subject: subject
+      record_type: record_type
+      role: judgment.role
+      amount: amount
+      resolved: resolved
+      org_ids: "[subject, judgment.counterparties[*]].org_id"
 
 view_items:
   buyer.profile:

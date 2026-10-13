@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/domains/organization/abnormal.schema.json",
+  "title": "OrgAbnormal 经营异常",
+  "description": "列入或移出经营异常名录（含严重违法失信名单）的记录。移出时在同一事实上产生新版本。",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "../../common/types.schema.json#/$defs/public_fact_meta"
+    }
+  ],
+  "required": [
+    "subject",
+    "list_type",
+    "listed_on"
+  ],
+  "properties": {
+    "info_domain": {
+      "const": "INF-ORG"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^oga_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "subject": {
+      "allOf": [
+        {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        {
+          "required": [
+            "prov"
+          ]
+        }
+      ]
+    },
+    "list_type": {
+      "enum": [
+        "abnormal_operation",
+        "serious_violation"
+      ],
+      "description": "经营异常名录、严重违法失信名单"
+    },
+    "reason": {
+      "allOf": [
+        {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        {
+          "required": [
+            "prov"
+          ]
+        }
+      ],
+      "description": "列入原因"
+    },
+    "reason_code": {
+      "enum": [
+        "no_annual_report",
+        "unreachable_address",
+        "false_disclosure",
+        "non_disclosure",
+        "other"
+      ]
+    },
+    "listed_on": {
+      "allOf": [
+        {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        },
+        {
+          "required": [
+            "prov"
+          ]
+        }
+      ]
+    },
+    "decision_authority": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    },
+    "removed_on": {
+      "$ref": "../../common/types.schema.json#/$defs/instant"
+    },
+    "removal_reason": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    }
+  },
+  "unevaluatedProperties": false
+}

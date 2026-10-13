@@ -18,6 +18,14 @@ prefixes:
   bdr: { object: BidResult, owner: domain-intelligence, pack: INF-PROC }
   ctr: { object: ContractRecord, owner: domain-intelligence, pack: INF-PROC }
   acc: { object: AcceptanceRecord, owner: domain-intelligence, pack: INF-PROC }
+  # domain-intelligence · INF-INVP
+  ivr: { object: InvestmentRecord, owner: domain-intelligence, pack: INF-INVP }
+  # domain-intelligence · INF-ORG
+  ogr: { object: OrgRegistration, owner: domain-intelligence, pack: INF-ORG }
+  ogc: { object: OrgChange, owner: domain-intelligence, pack: INF-ORG }
+  oga: { object: OrgAbnormal, owner: domain-intelligence, pack: INF-ORG }
+  # domain-intelligence · INF-CRED
+  crd: { object: CreditRecord, owner: domain-intelligence, pack: INF-CRED }
   # entity-graph
   org: { object: Organization, owner: entity-graph }
   prj: { object: Project, owner: entity-graph }

@@ -17,109 +17,255 @@
     "provenance": {
       "type": "object",
       "description": "字段溯源：证据位置、提取方法与置信度",
-      "required": ["evidence_ref", "method", "confidence"],
+      "required": [
+        "evidence_ref",
+        "method",
+        "confidence"
+      ],
       "additionalProperties": false,
       "properties": {
-        "evidence_ref": { "$ref": "#/$defs/ulid_id", "description": "ev_ 证据引用" },
-        "method": { "enum": ["rule", "model", "manual"] },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "extractor": { "type": "string", "pattern": "^[a-z0-9_.-]+@[0-9]+\\.[0-9]+\\.[0-9]+$", "description": "解析器标识与版本" }
+        "evidence_ref": {
+          "$ref": "#/$defs/ulid_id",
+          "description": "ev_ 证据引用"
+        },
+        "method": {
+          "enum": [
+            "rule",
+            "model",
+            "manual"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "extractor": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+@[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "解析器标识与版本"
+        }
       }
     },
     "text": {
       "type": "object",
-      "required": ["value"],
+      "required": [
+        "value"
+      ],
       "additionalProperties": false,
       "properties": {
-        "value": { "type": "string", "minLength": 1 },
-        "prov": { "$ref": "#/$defs/provenance" }
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prov": {
+          "$ref": "#/$defs/provenance"
+        }
       }
     },
     "money": {
       "type": "object",
-      "required": ["value", "currency"],
+      "required": [
+        "value",
+        "currency"
+      ],
       "additionalProperties": false,
       "properties": {
-        "value": { "$ref": "#/$defs/decimal", "description": "按币种基本单位归一（人民币为元）" },
-        "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "default": "CNY" },
-        "raw": { "type": "string", "description": "原文写法，如“120.5 万元”" },
-        "tax_included": { "type": ["boolean", "null"], "description": "是否含税；原文未说明为 null" },
-        "prov": { "$ref": "#/$defs/provenance" }
+        "value": {
+          "$ref": "#/$defs/decimal",
+          "description": "按币种基本单位归一（人民币为元）"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "default": "CNY"
+        },
+        "raw": {
+          "type": "string",
+          "description": "原文写法，如“120.5 万元”"
+        },
+        "tax_included": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "是否含税；原文未说明为 null"
+        },
+        "prov": {
+          "$ref": "#/$defs/provenance"
+        }
       }
     },
     "instant": {
       "type": "object",
-      "required": ["value", "precision"],
+      "required": [
+        "value",
+        "precision"
+      ],
       "additionalProperties": false,
       "properties": {
-        "value": { "type": "string", "format": "date-time", "description": "UTC；精度为日时取原始时区当日零点换算为 UTC" },
-        "precision": { "enum": ["year", "month", "day", "minute", "second"] },
-        "tz_raw": { "type": "string", "pattern": "^[+-][0-9]{2}:[0-9]{2}$", "default": "+08:00" },
-        "prov": { "$ref": "#/$defs/provenance" }
+        "value": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC；精度为日时取原始时区当日零点换算为 UTC"
+        },
+        "precision": {
+          "enum": [
+            "year",
+            "month",
+            "day",
+            "minute",
+            "second"
+          ]
+        },
+        "tz_raw": {
+          "type": "string",
+          "pattern": "^[+-][0-9]{2}:[0-9]{2}$",
+          "default": "+08:00"
+        },
+        "prov": {
+          "$ref": "#/$defs/provenance"
+        }
       }
     },
     "org_ref": {
       "type": "object",
       "description": "组织引用：保留原文名称，解析结果引用 entity-graph 的组织",
-      "required": ["name_raw"],
+      "required": [
+        "name_raw"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name_raw": { "type": "string", "minLength": 1 },
-        "org_id": { "type": ["string", "null"], "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "uscc": { "type": "string", "pattern": "^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$", "description": "统一社会信用代码（原文出现时）" },
-        "resolution_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "prov": { "$ref": "#/$defs/provenance" }
+        "name_raw": {
+          "type": "string",
+          "minLength": 1
+        },
+        "org_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "uscc": {
+          "type": "string",
+          "pattern": "^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$",
+          "description": "统一社会信用代码（原文出现时）"
+        },
+        "resolution_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "prov": {
+          "$ref": "#/$defs/provenance"
+        }
       }
     },
     "region": {
       "type": "object",
-      "required": ["code"],
+      "required": [
+        "code"
+      ],
       "additionalProperties": false,
       "properties": {
-        "code": { "type": "string", "pattern": "^[0-9]{6}$", "description": "GB/T 2260 行政区划代码" },
-        "name_raw": { "type": "string" },
-        "prov": { "$ref": "#/$defs/provenance" }
+        "code": {
+          "type": "string",
+          "pattern": "^[0-9]{6}$",
+          "description": "GB/T 2260 行政区划代码"
+        },
+        "name_raw": {
+          "type": "string"
+        },
+        "prov": {
+          "$ref": "#/$defs/provenance"
+        }
       }
     },
     "category": {
       "type": "object",
-      "required": ["scheme", "scheme_version", "code"],
+      "required": [
+        "scheme",
+        "scheme_version",
+        "code"
+      ],
       "additionalProperties": false,
       "properties": {
-        "scheme": { "type": "string", "description": "分类体系，如 gov-procurement-catalog、industry:building-materials" },
-        "scheme_version": { "type": "string" },
-        "code": { "type": "string" },
-        "name_raw": { "type": "string" },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        "scheme": {
+          "type": "string",
+          "description": "分类体系，如 gov-procurement-catalog、industry:building-materials"
+        },
+        "scheme_version": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "name_raw": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     },
     "quantity": {
       "type": "object",
-      "required": ["value"],
+      "required": [
+        "value"
+      ],
       "additionalProperties": false,
       "properties": {
-        "value": { "$ref": "#/$defs/decimal" },
-        "unit": { "type": "string", "description": "归一单位" },
-        "unit_raw": { "type": "string" },
-        "prov": { "$ref": "#/$defs/provenance" }
+        "value": {
+          "$ref": "#/$defs/decimal"
+        },
+        "unit": {
+          "type": "string",
+          "description": "归一单位"
+        },
+        "unit_raw": {
+          "type": "string"
+        },
+        "prov": {
+          "$ref": "#/$defs/provenance"
+        }
       }
     },
     "quality": {
       "type": "object",
-      "required": ["status"],
+      "required": [
+        "status"
+      ],
       "additionalProperties": false,
       "properties": {
-        "status": { "enum": ["ok", "warning", "suspect"] },
+        "status": {
+          "enum": [
+            "ok",
+            "warning",
+            "suspect"
+          ]
+        },
         "warnings": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["code"],
+            "required": [
+              "code"
+            ],
             "additionalProperties": false,
             "properties": {
-              "code": { "type": "string" },
-              "field_path": { "type": "string", "description": "JSON Pointer" },
-              "message": { "type": "string" }
+              "code": {
+                "type": "string"
+              },
+              "field_path": {
+                "type": "string",
+                "description": "JSON Pointer"
+              },
+              "message": {
+                "type": "string"
+              }
             }
           }
         }
@@ -128,20 +274,103 @@
     "public_fact_meta": {
       "type": "object",
       "description": "公共域领域事实的通用字段（数据架构第 5、7 节）",
-      "required": ["id", "schema_version", "version", "info_domain", "snapshot_ref", "revision_ref", "rights_tags", "classification", "observed_at", "recorded_at"],
+      "required": [
+        "id",
+        "schema_version",
+        "version",
+        "info_domain",
+        "snapshot_ref",
+        "revision_ref",
+        "rights_tags",
+        "classification",
+        "observed_at",
+        "recorded_at"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/ulid_id" },
-        "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-        "version": { "type": "integer", "minimum": 1, "description": "领域事实版本号" },
-        "info_domain": { "type": "string", "pattern": "^INF-[A-Z]+$" },
-        "snapshot_ref": { "type": "string", "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "revision_ref": { "type": "string", "pattern": "^exr_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "rights_tags": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "classification": { "enum": ["public", "internal", "sensitive", "personal"] },
-        "published_at": { "$ref": "#/$defs/instant" },
-        "observed_at": { "type": "string", "format": "date-time" },
-        "recorded_at": { "type": "string", "format": "date-time" },
-        "quality": { "$ref": "#/$defs/quality" }
+        "id": {
+          "$ref": "#/$defs/ulid_id"
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "领域事实版本号"
+        },
+        "info_domain": {
+          "type": "string",
+          "pattern": "^INF-[A-Z]+$"
+        },
+        "snapshot_ref": {
+          "type": "string",
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "revision_ref": {
+          "type": "string",
+          "pattern": "^exr_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "rights_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "classification": {
+          "enum": [
+            "public",
+            "internal",
+            "sensitive",
+            "personal"
+          ]
+        },
+        "published_at": {
+          "$ref": "#/$defs/instant"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "quality": {
+          "$ref": "#/$defs/quality"
+        }
+      }
+    },
+    "person": {
+      "type": "object",
+      "description": "自然人（法定代表人、自然人股东、高管、联系人等）。个人信息：单独加密存储，不进入检索、策略视图与模型输入（docs/03-architecture/06-security-and-tenancy.md 第 6 节）",
+      "x-classification": "personal",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "description": "原文职务，如 董事长、执行董事、经理"
+        }
+      }
+    },
+    "date_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/instant"
+        },
+        "to": {
+          "$ref": "#/$defs/instant"
+        }
       }
     }
   }

@@ -1,0 +1,16 @@
+# 信息领域包清单。格式见 docs/03-architecture/04-extensibility.md。
+pack:
+  id: INF-INVP
+  kind: information_domain
+  namespace: investment
+  version: 0.1.0                       # 草案：领域 Schema 评审中
+  platform_api: ">=1.0 <2.0"
+  requires:
+    - INF-ORG@^1.0                     # 建设单位、施工单位等解析为组织
+  owners: [tendering-domain-team, data-team]
+  provides:
+    schemas:
+      - contracts/schemas/domains/investment/record.schema.json
+    events: contracts/events/investment/events.asyncapi.yaml
+    # 投资项目实体与跨阶段项目链由 entity-graph 拥有，本包不定义项目级状态机。
+    # 待补：来源处理器、解析器、与采购项目的关联规则、质量规则、检索映射、统计与查询模板、研究工具、个人信息清单

@@ -6,7 +6,7 @@ template:
   objective: APP-TENDER.A02
   roles: [ROLE-MFR, ROLE-DEALER, ROLE-SUBCON]
   fact_types: [tendering.bid_result, tendering.contract_record, investment.construction_permit]
-  rollout_key: fact.project_id
+  rollout_key: 'has(fact.project_id) ? fact.project_id : fact.investment_project_id'   # 未关联采购项目的施工许可按投资项目分组
   view: [winner.profile, winner.credit_flags, winner.history_categories, winner.supplied_brand_owners]
 
   params:

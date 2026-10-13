@@ -1,0 +1,17 @@
+# 信息领域包清单。格式见 docs/03-architecture/04-extensibility.md。
+pack:
+  id: INF-CRED
+  kind: information_domain
+  namespace: credit
+  version: 0.1.0                       # 草案：领域 Schema 评审中
+  platform_api: ">=1.0 <2.0"
+  requires:
+    - INF-ORG@^1.0                     # 记录主体必须解析为组织
+  owners: [data-team]
+  provides:
+    schemas:
+      - contracts/schemas/domains/credit/record.schema.json
+    events: contracts/events/credit/events.asyncapi.yaml
+    # 采集范围：只采集主体为组织的记录；主体为自然人的记录不入库。
+    # 记录的了结状态是 resolved 字段，不另设状态机。
+    # 待补：来源处理器、解析器、主体解析与组织/自然人判别规则、质量规则、检索映射、研究工具 credit.query_records、个人信息清单

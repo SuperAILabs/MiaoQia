@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/domains/investment/record.schema.json",
+  "title": "InvestmentRecord 投资项目审批与建设记录",
+  "description": "投资项目从备案核准到竣工的一条审批或许可记录。跨信息领域的投资项目实体（Project）由 entity-graph 拥有，本记录以 investment_project_id 引用。",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "../../common/types.schema.json#/$defs/public_fact_meta"
+    },
+    {
+      "if": {
+        "properties": {
+          "record_type": {
+            "const": "construction_permit"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "construction_permit"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record_type": {
+            "const": "completion_filing"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "completion"
+        ]
+      }
+    }
+  ],
+  "required": [
+    "record_type",
+    "project_name",
+    "decided_on"
+  ],
+  "properties": {
+    "info_domain": {
+      "const": "INF-INVP"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "record_type": {
+      "enum": [
+        "filing",
+        "approval",
+        "feasibility_approval",
+        "eia_approval",
+        "land_approval",
+        "planning_permit",
+        "construction_permit",
+        "completion_filing"
+      ],
+      "description": "备案、核准、可研批复、环评批复、用地批复、规划许可、施工许可、竣工验收备案"
+    },
+    "project_code": {
+      "allOf": [
+        {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        {
+          "required": [
+            "prov"
+          ]
+        }
+      ],
+      "description": "投资项目统一代码"
+    },
+    "project_name": {
+      "allOf": [
+        {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        {
+          "required": [
+            "prov"
+          ]
+        }
+      ]
+    },
+    "investment_project_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "entity-graph 的投资项目实体"
+    },
+    "procurement_project_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "关联的采购项目聚合（如施工许可对应的施工招标项目），由聚合规则维护"
+    },
+    "owner": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
+      "description": "建设单位或项目单位"
+    },
+    "authority": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "审批或许可机关"
+    },
+    "document_no": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "批复文号或许可证号"
+    },
+    "decided_on": {
+      "allOf": [
+        {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        },
+        {
+          "required": [
+            "prov"
+          ]
+        }
+      ]
+    },
+    "location": {
+      "$ref": "../../common/types.schema.json#/$defs/region"
+    },
+    "total_investment": {
+      "$ref": "../../common/types.schema.json#/$defs/money"
+    },
+    "funding_source": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    },
+    "construction_scale": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "建设规模与内容"
+    },
+    "industry": {
+      "$ref": "../../common/types.schema.json#/$defs/category"
+    },
+    "construction_permit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractor": {
+          "allOf": [
+            {
+              "$ref": "../../common/types.schema.json#/$defs/org_ref"
+            },
+            {
+              "required": [
+                "prov"
+              ]
+            }
+          ],
+          "description": "施工单位"
+        },
+        "designer": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "supervisor": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "surveyor": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "contract_amount": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "area_sqm": {
+          "$ref": "../../common/types.schema.json#/$defs/decimal"
+        },
+        "planned_period": {
+          "$ref": "../../common/types.schema.json#/$defs/date_range"
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "completed_on": {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        },
+        "actual_cost": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        }
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}
