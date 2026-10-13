@@ -69,6 +69,8 @@
     }
   ],
   "required": [
+    "id",
+    "info_domain",
     "record_type",
     "subject",
     "case_or_doc_no",
@@ -93,29 +95,11 @@
       ]
     },
     "subject": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/org_ref"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ],
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
       "description": "记录主体（必须为组织）"
     },
     "case_or_doc_no": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/text"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ],
+      "$ref": "../../common/types.schema.json#/$defs/text",
       "description": "案号、决定书文号或评价编号"
     },
     "authority": {

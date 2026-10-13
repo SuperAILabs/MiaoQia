@@ -38,6 +38,8 @@
     }
   ],
   "required": [
+    "id",
+    "info_domain",
     "record_type",
     "project_name",
     "decided_on"
@@ -64,43 +66,19 @@
       "description": "备案、核准、可研批复、环评批复、用地批复、规划许可、施工许可、竣工验收备案"
     },
     "project_code": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/text"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ],
+      "$ref": "../../common/types.schema.json#/$defs/text",
       "description": "投资项目统一代码"
     },
     "project_name": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/text"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/text"
     },
     "investment_project_id": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": "string",
       "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
       "description": "entity-graph 的投资项目实体"
     },
     "procurement_project_id": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": "string",
       "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
       "description": "关联的采购项目聚合（如施工许可对应的施工招标项目），由聚合规则维护"
     },
@@ -117,16 +95,7 @@
       "description": "批复文号或许可证号"
     },
     "decided_on": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/instant"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/instant"
     },
     "location": {
       "$ref": "../../common/types.schema.json#/$defs/region"
@@ -149,16 +118,7 @@
       "additionalProperties": false,
       "properties": {
         "contractor": {
-          "allOf": [
-            {
-              "$ref": "../../common/types.schema.json#/$defs/org_ref"
-            },
-            {
-              "required": [
-                "prov"
-              ]
-            }
-          ],
+          "$ref": "../../common/types.schema.json#/$defs/org_ref",
           "description": "施工单位"
         },
         "designer": {

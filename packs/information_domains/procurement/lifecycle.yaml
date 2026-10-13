@@ -1,9 +1,10 @@
 # 采购项目生命周期状态机：domain-intelligence 的 lifecycle_engine 执行。
-# 状态取值见 contracts/schemas/domains/procurement/procurement-project.schema.json 的 stage。
 # 非法转换不强行修正，记为质量警告 LIFECYCLE_ILLEGAL_TRANSITION 并进入复核。
 lifecycle:
   object: ProcurementProject
+  schema: domains/procurement/procurement-project.schema.json     # 相对 contracts/schemas
   field: stage
+  trigger_source: { schema: domains/procurement/notice.schema.json, field: notice_type }
   initial:
     - { to: intent,    trigger: [intent, plan] }
     - { to: announced, trigger: [prequalification, tender, negotiation, consultation, inquiry, single_source, framework] }

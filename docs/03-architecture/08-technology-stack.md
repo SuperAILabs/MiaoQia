@@ -21,6 +21,7 @@
 | 领域 | 选型 | 理由 |
 |---|---|---|
 | HTTP 与契约 | 标准库 `net/http` + ogen（由 OpenAPI 生成服务端与客户端） | 契约先行，生成代码不手改 |
+| 领域类型生成 | go-jsonschema | 由 JSON Schema 生成结构体（流程见 [代码库结构](09-codebase-structure.md#5-代码生成)） |
 | 数据访问 | pgx v5 + sqlc | SQL 优先、编译期类型安全、直接设置 RLS 会话变量 |
 | 迁移 | goose | 每子系统独立迁移目录 |
 | 事件 | franz-go | 纯 Go、功能完整的 Kafka 客户端 |
@@ -39,6 +40,7 @@
 |---|---|---|
 | Web 框架 | FastAPI | 内部接口与运营管理接口 |
 | 数据校验 | Pydantic v2 | 与 JSON Schema 双向映射 |
+| 领域类型生成 | datamodel-code-generator | 由 JSON Schema 生成 Pydantic 模型 |
 | 数据访问 / 迁移 | SQLAlchemy 2.x / Alembic | 成熟、支持 RLS 会话变量 |
 | 事件 | confluent-kafka-python | librdkafka 绑定 |
 | 工作流 | Temporal Python SDK | 采集计划、回填、重放 |
@@ -53,6 +55,7 @@
 | 语言与构建 | TypeScript + React + Vite（pnpm 工作区） | 企业应用主流生态 |
 | 组件库 | Ant Design | 中文企业应用成熟组件 |
 | 数据层 | TanStack Query + 由 OpenAPI 生成的客户端 | 与契约一致 |
+| 领域类型生成 | json-schema-to-typescript | 由 JSON Schema 生成类型 |
 | 移动端 | 响应式 H5 | 产品体验方案已决定 |
 
 ## 3. 数据与消息（自建，ADR-0015）
@@ -103,7 +106,7 @@
 | 基础设施即代码 | OpenTofu |
 | 镜像仓库 | Harbor |
 | 可观测性 | OpenTelemetry Collector；VictoriaMetrics + Grafana；Loki；Tempo（AGPL 组件随私有部署分发前经法务确认） |
-| CI | GitHub Actions + 境内自建 runner |
+| CI | GitHub Actions + 境内自建 runner；契约检查工具 `mqc`（`tools/contracts/`） |
 | 本地开发 | Docker Compose（全部基础组件）+ 三个部署单元的进程角色启动脚本 |
 
 ## 7. 评估后不引入的组件

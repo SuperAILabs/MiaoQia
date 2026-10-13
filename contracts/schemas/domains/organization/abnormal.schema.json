@@ -10,6 +10,8 @@
     }
   ],
   "required": [
+    "id",
+    "info_domain",
     "subject",
     "list_type",
     "listed_on"
@@ -23,16 +25,7 @@
       "pattern": "^oga_[0-9A-HJKMNP-TV-Z]{26}$"
     },
     "subject": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/org_ref"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/org_ref"
     },
     "list_type": {
       "enum": [
@@ -42,16 +35,7 @@
       "description": "经营异常名录、严重违法失信名单"
     },
     "reason": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/text"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ],
+      "$ref": "../../common/types.schema.json#/$defs/text",
       "description": "列入原因"
     },
     "reason_code": {
@@ -64,16 +48,7 @@
       ]
     },
     "listed_on": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/instant"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/instant"
     },
     "decision_authority": {
       "$ref": "../../common/types.schema.json#/$defs/text"

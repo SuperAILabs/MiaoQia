@@ -1,6 +1,6 @@
 # 代码库结构
 
-> 状态：评审中 · 版本：2.0 · 更新：2026-10-13 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.1 · 更新：2026-10-13 · 负责人：首席架构师
 
 ## 1. 单一代码仓库
 
@@ -14,9 +14,11 @@ miaoqia/
 │   ├── events/<namespace>/        事件 AsyncAPI + Schema
 │   ├── policy/                    策略 DSL Schema 与 CEL 环境声明
 │   ├── packs/                     扩展包定义 Schema
+│   ├── tests/                     契约样例（正例与反例）
 │   └── identifiers.yaml           标识前缀登记
 │
 ├── services/                      Go 模块：平台服务
+│   ├── contracts/                 生成的领域类型（请勿手改）
 │   ├── kernel/                    通用基础设施（数据访问与 RLS、发件箱、事件消费、工作流、
 │   │                              配置、可观测、接口绑定、授权与审计 SDK、扩展包加载与 CEL 求值）
 │   ├── subsystems/<name>/         每个 Go 子系统一个目录
@@ -24,6 +26,7 @@ miaoqia/
 │   └── cmd/platform/              platform 部署单元入口与进程角色
 │
 ├── data/                          Python 工作区（uv）：公共域数据处理
+│   ├── contracts/                 miaoqia.contracts：生成的 Pydantic 模型（请勿手改）
 │   ├── kernel/                    miaoqia.kernel：数据访问与 RLS、发件箱写入、事件消费、
 │   │                              Temporal worker、配置、可观测、请求上下文、授权客户端
 │   ├── sdk/                       miaoqia.sdk：信息领域包 SPI
@@ -38,10 +41,10 @@ miaoqia/
 ├── web/                           前端（TypeScript 工作区）
 │   ├── apps/workspace/            客户 Web 应用
 │   ├── apps/ops-console/          运营控制台
-│   └── packages/                  组件、生成的 API 客户端、视图注册表
+│   └── packages/                  组件、生成的契约类型（contracts/）与 API 客户端、视图注册表
 │
 ├── deploy/                        Helm charts、角色清单、环境配置、OpenTofu
-├── tools/                         代码生成、契约检查、本地开发脚本
+├── tools/                         契约工具（contracts/，命令 mqc）、本地开发脚本
 ├── tests/
 │   ├── contract/                  跨子系统黑盒契约测试（同一套用例验证 Go 与 Python 实现）
 │   ├── e2e/                       端到端测试
@@ -94,15 +97,28 @@ type ChunkSearchTool struct {
 
 ## 5. 代码生成
 
-| 来源 | Go | Python | TypeScript |
-|---|---|---|---|
-| `contracts/schemas` | 类型与校验 | Pydantic 模型 | 类型 |
-| `contracts/apis` | 服务端骨架与客户端（ogen） | 服务端路由骨架与客户端 | 前端客户端 |
-| `contracts/events` | 事件模型、发布与消费辅助 | 事件模型、发布与消费辅助 | — |
-| `contracts/policy` | CEL 环境与类型声明 | — | 策略编辑器的类型与提示 |
-| `contracts/packs` | 扩展包定义校验器 | 扩展包定义校验器 | — |
+契约工具位于 `tools/contracts/`（命令 `mqc`），CI 工作流为 `.github/workflows/contracts.yml`。
 
-生成代码不手工修改；CI 校验生成物与契约一致。
+```text
+contracts/schemas ──打包（统一类型名、改写跨文件引用、去掉只用于校验的关键字）──► 打包 Schema
+   ├─► go-jsonschema               → services/contracts/contracts_gen.go
+   ├─► datamodel-code-generator    → data/contracts/src/miaoqia/contracts/models.py
+   └─► json-schema-to-typescript   → web/packages/contracts/src/index.ts
+```
+
+- **生成类型只表达结构**：证据必填、按类型的条件必填、标识格式等约束不进入类型，入站数据一律用原始 JSON Schema 校验（Go 用 santhosh-tekuri/jsonschema，Python 用 jsonschema）；
+- **类型名**：顶层 Schema 取 `title` 的首个词，`$defs` 取 `x-type-name` 或键名的 PascalCase，重名即报错；
+- **生成物提交到仓库**，`mqc generate --check` 校验其与契约一致；生成器版本分别固定在 `tools/contracts/gotools/go.mod`、`tools/contracts/pyproject.toml`、`web/packages/contracts/package.json`；
+- **Schema 写法**受方言规则约束（无 null、禁止额外属性、前缀须登记等），规则清单见 `tools/contracts/src/mqc/lint.py`；
+- **往返测试**：全部正例在 Go 与 Python 中按生成类型严格解析（未知字段即失败）；
+- `contracts/apis`（OpenAPI）与 `contracts/events` 的代码生成随第一批子系统接口与事件消费者一起建设，届时接入同一工具。
+
+| 命令（在仓库根目录） | 作用 |
+|---|---|
+| `uv run --project tools/contracts mqc check` | Schema 方言、样例、事件契约、扩展包一致性、YAML 键名 |
+| `uv run --project tools/contracts mqc generate` | 重新生成三种语言的类型 |
+| `uv run --project tools/contracts mqc generate --check` | 生成物一致性检查 |
+| `uv run --project tools/contracts mqc fixtures --export DIR` | 导出正例，供往返测试 |
 
 ## 6. 命名约定
 

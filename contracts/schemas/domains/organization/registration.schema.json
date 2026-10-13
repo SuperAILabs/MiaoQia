@@ -10,6 +10,8 @@
     }
   ],
   "required": [
+    "id",
+    "info_domain",
     "subject",
     "name",
     "status"
@@ -23,16 +25,7 @@
       "pattern": "^ogr_[0-9A-HJKMNP-TV-Z]{26}$"
     },
     "subject": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/org_ref"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ],
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
       "description": "登记主体；org_id 为 entity-graph 解析后的组织"
     },
     "uscc": {
@@ -41,16 +34,7 @@
       "description": "统一社会信用代码"
     },
     "name": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/text"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/text"
     },
     "former_names": {
       "type": "array",
@@ -80,16 +64,7 @@
       "$ref": "../../common/types.schema.json#/$defs/money"
     },
     "region": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/region"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ],
+      "$ref": "../../common/types.schema.json#/$defs/region",
       "description": "登记机关所在行政区划"
     },
     "address": {

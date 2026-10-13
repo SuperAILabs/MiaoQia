@@ -100,6 +100,8 @@
     }
   ],
   "required": [
+    "id",
+    "info_domain",
     "notice_type",
     "title",
     "buyer",
@@ -126,16 +128,7 @@
       "$ref": "defs.schema.json#/$defs/procurement_category"
     },
     "title": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/text"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/text"
     },
     "notice_code": {
       "$ref": "../../common/types.schema.json#/$defs/text",
@@ -150,10 +143,7 @@
       "description": "投资项目审批或备案编号"
     },
     "project_id": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": "string",
       "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
       "description": "当前归并到的采购项目。权威记录是 domain-intelligence 的 AggregationLink，本字段为其当前指针"
     },
@@ -166,16 +156,7 @@
       "description": "公告中显式引用的前序公告"
     },
     "buyer": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/org_ref"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/org_ref"
     },
     "agency": {
       "$ref": "../../common/types.schema.json#/$defs/org_ref"
@@ -185,31 +166,13 @@
       "description": "单一来源公示的拟定供应商"
     },
     "location": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/region"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ]
+      "$ref": "../../common/types.schema.json#/$defs/region"
     },
     "funding_source": {
       "$ref": "../../common/types.schema.json#/$defs/text"
     },
     "budget": {
-      "allOf": [
-        {
-          "$ref": "../../common/types.schema.json#/$defs/money"
-        },
-        {
-          "required": [
-            "prov"
-          ]
-        }
-      ],
+      "$ref": "../../common/types.schema.json#/$defs/money",
       "description": "公告级预算；各标包预算见 lots[].budget"
     },
     "max_price": {
@@ -256,10 +219,7 @@
           "description": "原文标包号；未分包为 \"1\""
         },
         "lot_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$",
           "description": "归并到的项目标包"
         },
@@ -294,26 +254,17 @@
           "$ref": "../../common/types.schema.json#/$defs/money"
         },
         "consortium_allowed": {
-          "type": [
-            "boolean",
-            "null"
-          ]
+          "type": "boolean"
         },
         "authorization_required": {
-          "type": [
-            "boolean",
-            "null"
-          ],
+          "type": "boolean",
           "description": "是否要求原厂授权"
         },
         "bid_bond": {
           "$ref": "../../common/types.schema.json#/$defs/money"
         },
         "bond_guarantee_accepted": {
-          "type": [
-            "boolean",
-            "null"
-          ],
+          "type": "boolean",
           "description": "是否接受保函"
         },
         "evaluation_method": {
@@ -386,35 +337,14 @@
           "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$"
         },
         "lot_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$"
         },
         "supplier": {
-          "allOf": [
-            {
-              "$ref": "../../common/types.schema.json#/$defs/org_ref"
-            },
-            {
-              "required": [
-                "prov"
-              ]
-            }
-          ]
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
         },
         "amount": {
-          "allOf": [
-            {
-              "$ref": "../../common/types.schema.json#/$defs/money"
-            },
-            {
-              "required": [
-                "prov"
-              ]
-            }
-          ]
+          "$ref": "../../common/types.schema.json#/$defs/money"
         },
         "signed_at": {
           "$ref": "../../common/types.schema.json#/$defs/instant"
@@ -439,10 +369,7 @@
           "pattern": "^acc_[0-9A-HJKMNP-TV-Z]{26}$"
         },
         "contract_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$"
         },
         "accepted_at": {

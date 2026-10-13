@@ -1,0 +1,86 @@
+# 公告样例。格式见 tools/contracts/src/mqc/fixtures.py。
+schema: domains/procurement/notice.schema.json
+base:
+  id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  schema_version: 1.0.0
+  version: 1
+  info_domain: INF-PROC
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  rights_tags: [public-gov]
+  classification: public
+  observed_at: "2026-11-01T01:02:03Z"
+  recorded_at: "2026-11-01T01:02:04Z"
+  notice_type: tender
+  trading_system: government_procurement
+  method: open_tender
+  title: { value: 市政给水管网改造工程管材采购, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.97, extractor: "proc.cn-ccgp@1.0.0" } }
+  buyer: { name_raw: 某市水务集团, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: *p }
+  location: { code: "330106", prov: *p }
+  budget: { value: "3200000", currency: CNY, raw: 320 万元, prov: *p }
+  lots:
+    - lot_key: "1"
+      items:
+        - id: itm_01JA8ZXXXXXXXXXXXXXXXXXXX1
+          name: { value: PE 给水管, prov: *p }
+          categories: [{ scheme: gov-procurement-catalog, scheme_version: "2022", code: A02 }]
+      deadlines:
+        - id: ddl_01JA8ZXXXXXXXXXXXXXXXXXXX1
+          type: bid_submission
+          at: { value: "2026-11-20T01:30:00Z", precision: minute, prov: *p }
+  contacts: [{ role: buyer, name: 张某, phone: "0571-00000000" }]
+cases:
+  - name: 字段缺少证据
+    valid: false
+    patch: [{ op: remove, path: /buyer/prov }]
+  - name: 标的名称缺少证据
+    valid: false
+    patch: [{ op: remove, path: /lots/0/items/0/name/prov }]
+  - name: 未知字段
+    valid: false
+    patch: [{ op: add, path: /contact_phone, value: "138" }]
+  - name: 金额为数字而非十进制字符串
+    valid: false
+    patch: [{ op: replace, path: /budget/value, value: 3200000 }]
+  - name: 字段为 null（缺失应省略）
+    valid: false
+    patch: [{ op: add, path: /project_id, value: null }]
+  - name: 未登记的标识前缀
+    valid: false
+    patch: [{ op: replace, path: /lots/0/items/0/id, value: xyz_01JA8ZXXXXXXXXXXXXXXXXXXX1 }]
+  - name: 结果公告缺投标结果
+    valid: false
+    patch: [{ op: replace, path: /notice_type, value: award }]
+  - name: 结果公告
+    valid: true
+    patch:
+      - { op: replace, path: /notice_type, value: award }
+      - op: add
+        path: /lots/0/bid_results
+        value:
+          - id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+            stage: award
+            is_winner: true
+            rank: 1
+            bidder: { name_raw: 某管业公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2, prov: *p }
+            price: { value: "2980000.50", currency: CNY, prov: *p }
+  - name: 更正公告缺变更明细
+    valid: false
+    patch: [{ op: replace, path: /notice_type, value: amendment }]
+  - name: 更正公告
+    valid: true
+    patch:
+      - { op: replace, path: /notice_type, value: amendment }
+      - op: add
+        path: /amendment
+        value:
+          amends_notice_ids: [ntc_01JA8ZXXXXXXXXXXXXXXXXXXX2]
+          changes:
+            - id: amd_01JA8ZXXXXXXXXXXXXXXXXXXX1
+              field_path: /lots/0/deadlines/0/at
+              before: "2026-11-20T01:30:00Z"
+              after: "2026-11-27T01:30:00Z"
+              prov: *p
+  - name: 合同公告缺合同
+    valid: false
+    patch: [{ op: replace, path: /notice_type, value: contract }]

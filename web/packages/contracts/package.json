@@ -1,0 +1,14 @@
+{
+  "name": "@miaoqia/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "由 contracts/schemas 生成的 TypeScript 类型（请勿手改）",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": { ".": { "types": "./src/index.ts" } },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "devDependencies": {
+    "json-schema-to-typescript": "15.0.4",
+    "typescript": "5.6.3"
+  }
+}

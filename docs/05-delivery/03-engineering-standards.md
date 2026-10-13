@@ -29,8 +29,8 @@
 1. 格式化与静态检查（Go：gofmt、golangci-lint；Python：ruff、pyright；TypeScript：eslint、tsc）；
 2. 依赖规则检查（Go：`internal/` 与 depguard；Python：import-linter）；
 3. 单元与集成测试；
-4. 契约兼容性检查与契约测试；
-5. 生成代码一致性检查；
+4. 契约检查（`mqc check`：Schema 方言、样例、事件契约、扩展包一致性）、契约兼容性检查与契约测试；
+5. 生成代码一致性检查（`mqc generate --check`）与往返测试，见 [代码库结构](../03-architecture/09-codebase-structure.md#5-代码生成)；
 6. 安全负向测试；
 7. 受影响扩展包的测试与评估回归；
 8. 依赖与镜像漏洞扫描（含 govulncheck）；

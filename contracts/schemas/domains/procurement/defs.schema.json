@@ -5,88 +5,239 @@
   "description": "公告与采购项目共用的枚举和嵌套对象。对象含义见 docs/02-business/application-domains/tendering/04-domain-model.md。",
   "$defs": {
     "notice_type": {
-      "enum": ["intent", "plan", "prequalification", "tender", "negotiation", "consultation", "inquiry",
-               "single_source", "framework", "amendment", "clarification", "termination",
-               "candidate", "award", "failure", "contract", "acceptance"],
+      "enum": [
+        "intent",
+        "plan",
+        "prequalification",
+        "tender",
+        "negotiation",
+        "consultation",
+        "inquiry",
+        "single_source",
+        "framework",
+        "amendment",
+        "clarification",
+        "termination",
+        "candidate",
+        "award",
+        "failure",
+        "contract",
+        "acceptance"
+      ],
       "description": "意向、计划、资格预审、招标、谈判、磋商、询价、单一来源公示、框架协议征集、更正、澄清、终止、候选人公示、中标/成交结果、流标/废标、合同、验收"
     },
     "trading_system": {
-      "enum": ["government_procurement", "construction_bidding", "soe_procurement"],
+      "enum": [
+        "government_procurement",
+        "construction_bidding",
+        "soe_procurement"
+      ],
       "description": "政府采购、依法必须招标的工程建设项目、国企自主采购"
     },
     "method": {
-      "enum": ["open_tender", "invited_tender", "negotiation", "consultation", "inquiry", "single_source",
-               "framework", "comparison", "direct", "e_mall", "other"],
+      "x-type-name": "ProcurementMethod",
+      "enum": [
+        "open_tender",
+        "invited_tender",
+        "negotiation",
+        "consultation",
+        "inquiry",
+        "single_source",
+        "framework",
+        "comparison",
+        "direct",
+        "e_mall",
+        "other"
+      ],
       "description": "公开招标、邀请招标、竞争性谈判、竞争性磋商、询价、单一来源、框架协议、比选、直接采购、电商采购、其他"
     },
-    "procurement_category": { "enum": ["goods", "works", "services"] },
-    "evaluation_method": { "enum": ["lowest_price", "comprehensive_scoring", "other"] },
-
+    "procurement_category": {
+      "enum": [
+        "goods",
+        "works",
+        "services"
+      ]
+    },
+    "evaluation_method": {
+      "enum": [
+        "lowest_price",
+        "comprehensive_scoring",
+        "other"
+      ]
+    },
     "item": {
       "type": "object",
       "description": "采购标的",
-      "required": ["id", "name"],
+      "required": [
+        "id",
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^itm_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "name": { "allOf": [{ "$ref": "../../common/types.schema.json#/$defs/text" }, { "required": ["prov"] }] },
-        "categories": { "type": "array", "items": { "$ref": "../../common/types.schema.json#/$defs/category" } },
-        "spec": { "$ref": "../../common/types.schema.json#/$defs/text" },
-        "quantity": { "$ref": "../../common/types.schema.json#/$defs/quantity" },
-        "brand_required": { "$ref": "../../common/types.schema.json#/$defs/text", "description": "公告指定的品牌" },
-        "model_required": { "$ref": "../../common/types.schema.json#/$defs/text" },
-        "unit_price": { "$ref": "../../common/types.schema.json#/$defs/money" }
+        "id": {
+          "type": "string",
+          "pattern": "^itm_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "name": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "../../common/types.schema.json#/$defs/category"
+          }
+        },
+        "spec": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "quantity": {
+          "$ref": "../../common/types.schema.json#/$defs/quantity"
+        },
+        "brand_required": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "公告指定的品牌"
+        },
+        "model_required": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "unit_price": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        }
       }
     },
     "requirement": {
       "type": "object",
       "description": "资格与技术要求",
-      "required": ["id", "kind", "text"],
+      "required": [
+        "id",
+        "kind",
+        "text"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^req_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "kind": { "enum": ["qualification", "performance", "personnel", "credit", "authorization", "consortium", "technical", "other"] },
-        "code": { "type": ["string", "null"], "description": "归一的资质或要求代码；无法归一时为 null" },
-        "text": { "allOf": [{ "$ref": "../../common/types.schema.json#/$defs/text" }, { "required": ["prov"] }] }
+        "id": {
+          "type": "string",
+          "pattern": "^req_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "kind": {
+          "enum": [
+            "qualification",
+            "performance",
+            "personnel",
+            "credit",
+            "authorization",
+            "consortium",
+            "technical",
+            "other"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "description": "归一的资质或要求代码；无法归一时为 null"
+        },
+        "text": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        }
       }
     },
     "deadline": {
       "type": "object",
-      "required": ["id", "type", "at"],
+      "required": [
+        "id",
+        "type",
+        "at"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^ddl_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "type": { "enum": ["registration_end", "doc_obtain_end", "clarification_end", "bid_submission", "bid_opening", "publicity_end"] },
-        "at": { "allOf": [{ "$ref": "../../common/types.schema.json#/$defs/instant" }, { "required": ["prov"] }] }
+        "id": {
+          "type": "string",
+          "pattern": "^ddl_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "type": {
+          "enum": [
+            "registration_end",
+            "doc_obtain_end",
+            "clarification_end",
+            "bid_submission",
+            "bid_opening",
+            "publicity_end"
+          ]
+        },
+        "at": {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        }
       }
     },
     "bid_result": {
       "type": "object",
       "description": "开标记录、候选人或中标结果中的一名投标人",
-      "required": ["id", "stage", "bidder"],
+      "required": [
+        "id",
+        "stage",
+        "bidder"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^bdr_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "stage": { "enum": ["opening", "candidate", "award"] },
-        "bidder": { "allOf": [{ "$ref": "../../common/types.schema.json#/$defs/org_ref" }, { "required": ["prov"] }] },
-        "consortium_members": { "type": "array", "items": { "$ref": "../../common/types.schema.json#/$defs/org_ref" } },
-        "rank": { "type": "integer", "minimum": 1 },
-        "is_winner": { "type": "boolean" },
-        "price": { "$ref": "../../common/types.schema.json#/$defs/money" },
-        "score": { "type": "number" }
+        "id": {
+          "type": "string",
+          "pattern": "^bdr_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "stage": {
+          "enum": [
+            "opening",
+            "candidate",
+            "award"
+          ]
+        },
+        "bidder": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "consortium_members": {
+          "type": "array",
+          "items": {
+            "$ref": "../../common/types.schema.json#/$defs/org_ref"
+          }
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "is_winner": {
+          "type": "boolean"
+        },
+        "price": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "score": {
+          "type": "number"
+        }
       }
     },
     "contact": {
       "type": "object",
       "description": "公告中的联系人。个人信息：单独加密存储，不进入检索、策略视图与模型输入（安全与租户第 6 节）",
       "x-classification": "personal",
-      "required": ["role"],
+      "required": [
+        "role"
+      ],
       "additionalProperties": false,
       "properties": {
-        "role": { "enum": ["buyer", "agency", "other"] },
-        "name": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string" }
+        "role": {
+          "enum": [
+            "buyer",
+            "agency",
+            "other"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
       }
     }
   }

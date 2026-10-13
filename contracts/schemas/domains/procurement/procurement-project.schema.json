@@ -4,68 +4,186 @@
   "title": "ProcurementProject 采购项目",
   "description": "同一采购项目的多条公告归并后的当前状态（领域项目聚合）。每个字段的 prov 指向其最新依据所在公告的证据；更正按 amendment.changes 应用后得到当前值。阶段由 packs/information_domains/procurement/lifecycle.yaml 的状态机维护。",
   "type": "object",
-  "allOf": [{ "$ref": "../../common/types.schema.json#/$defs/public_fact_meta" }],
-  "required": ["stage", "title", "buyer", "notice_ids", "lots"],
+  "allOf": [
+    {
+      "$ref": "../../common/types.schema.json#/$defs/public_fact_meta"
+    }
+  ],
+  "required": [
+    "id",
+    "info_domain",
+    "stage",
+    "title",
+    "buyer",
+    "notice_ids",
+    "lots"
+  ],
   "properties": {
-    "id": { "type": "string", "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$" },
-    "info_domain": { "const": "INF-PROC" },
-
-    "stage": {
-      "enum": ["intent", "announced", "amended", "evaluating", "candidate_published", "awarded",
-               "failed", "terminated", "contracted", "accepted"]
+    "id": {
+      "type": "string",
+      "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$"
     },
-    "trading_system": { "$ref": "defs.schema.json#/$defs/trading_system" },
-    "method": { "$ref": "defs.schema.json#/$defs/method" },
-    "procurement_category": { "$ref": "defs.schema.json#/$defs/procurement_category" },
-
-    "title": { "allOf": [{ "$ref": "../../common/types.schema.json#/$defs/text" }, { "required": ["prov"] }] },
-    "project_code": { "$ref": "../../common/types.schema.json#/$defs/text" },
-    "approval_code": { "$ref": "../../common/types.schema.json#/$defs/text" },
+    "info_domain": {
+      "const": "INF-PROC"
+    },
+    "stage": {
+      "enum": [
+        "intent",
+        "announced",
+        "amended",
+        "evaluating",
+        "candidate_published",
+        "awarded",
+        "failed",
+        "terminated",
+        "contracted",
+        "accepted"
+      ]
+    },
+    "trading_system": {
+      "$ref": "defs.schema.json#/$defs/trading_system"
+    },
+    "method": {
+      "$ref": "defs.schema.json#/$defs/method"
+    },
+    "procurement_category": {
+      "$ref": "defs.schema.json#/$defs/procurement_category"
+    },
+    "title": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    },
+    "project_code": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    },
+    "approval_code": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    },
     "investment_project_id": {
-      "type": ["string", "null"],
+      "type": "string",
       "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
       "description": "所属投资项目（entity-graph 的 Project 实体）"
     },
-
-    "buyer": { "allOf": [{ "$ref": "../../common/types.schema.json#/$defs/org_ref" }, { "required": ["prov"] }] },
-    "agency": { "$ref": "../../common/types.schema.json#/$defs/org_ref" },
-    "location": { "$ref": "../../common/types.schema.json#/$defs/region" },
-    "budget": { "$ref": "../../common/types.schema.json#/$defs/money" },
-
+    "buyer": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref"
+    },
+    "agency": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref"
+    },
+    "location": {
+      "$ref": "../../common/types.schema.json#/$defs/region"
+    },
+    "budget": {
+      "$ref": "../../common/types.schema.json#/$defs/money"
+    },
     "notice_ids": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string", "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$" },
+      "items": {
+        "type": "string",
+        "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$"
+      },
       "description": "按发布时间排序"
     },
-    "first_published_at": { "$ref": "../../common/types.schema.json#/$defs/instant" },
-
-    "lots": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/project_lot" } }
+    "first_published_at": {
+      "$ref": "../../common/types.schema.json#/$defs/instant"
+    },
+    "lots": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/project_lot"
+      }
+    }
   },
   "unevaluatedProperties": false,
-
   "$defs": {
     "project_lot": {
       "type": "object",
-      "required": ["id", "lot_key"],
+      "required": [
+        "id",
+        "lot_key"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$" },
-        "lot_key": { "type": "string" },
-        "name": { "$ref": "../../common/types.schema.json#/$defs/text" },
-        "procurement_category": { "$ref": "defs.schema.json#/$defs/procurement_category" },
-        "items": { "type": "array", "items": { "$ref": "defs.schema.json#/$defs/item" } },
-        "requirements": { "type": "array", "items": { "$ref": "defs.schema.json#/$defs/requirement" } },
-        "deadlines": { "type": "array", "items": { "$ref": "defs.schema.json#/$defs/deadline" }, "description": "应用全部更正后的当前时间节点" },
-        "budget": { "$ref": "../../common/types.schema.json#/$defs/money" },
-        "max_price": { "$ref": "../../common/types.schema.json#/$defs/money" },
-        "consortium_allowed": { "type": ["boolean", "null"] },
-        "authorization_required": { "type": ["boolean", "null"] },
-        "status": { "enum": ["open", "evaluating", "candidate_published", "awarded", "failed", "terminated", "contracted", "accepted"] },
-        "candidates": { "type": "array", "items": { "$ref": "defs.schema.json#/$defs/bid_result" } },
-        "winners": { "type": "array", "items": { "$ref": "defs.schema.json#/$defs/bid_result" }, "description": "中标或成交人；框架协议可有多个" },
-        "award_amount": { "$ref": "../../common/types.schema.json#/$defs/money" },
-        "contract_ids": { "type": "array", "items": { "type": "string", "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$" } }
+        "id": {
+          "type": "string",
+          "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "lot_key": {
+          "type": "string"
+        },
+        "name": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "procurement_category": {
+          "$ref": "defs.schema.json#/$defs/procurement_category"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/item"
+          }
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/requirement"
+          }
+        },
+        "deadlines": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/deadline"
+          },
+          "description": "应用全部更正后的当前时间节点"
+        },
+        "budget": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "max_price": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "consortium_allowed": {
+          "type": "boolean"
+        },
+        "authorization_required": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "evaluating",
+            "candidate_published",
+            "awarded",
+            "failed",
+            "terminated",
+            "contracted",
+            "accepted"
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/bid_result"
+          }
+        },
+        "winners": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/bid_result"
+          },
+          "description": "中标或成交人；框架协议可有多个"
+        },
+        "award_amount": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "contract_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$"
+          }
+        }
       }
     }
   }

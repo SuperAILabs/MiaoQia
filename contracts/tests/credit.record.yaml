@@ -1,0 +1,35 @@
+schema: domains/credit/record.schema.json
+base:
+  id: crd_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  schema_version: 1.0.0
+  version: 1
+  info_domain: INF-CRED
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  rights_tags: [public-court]
+  classification: public
+  observed_at: "2026-11-01T01:00:00Z"
+  recorded_at: "2026-11-01T01:00:01Z"
+  record_type: dishonest
+  subject: &org { name_raw: 某建设集团有限公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.99 } }
+  case_or_doc_no: { value: （2026）浙0106执1号, prov: *p }
+  authority: { name_raw: 某区人民法院, prov: *p }
+  amount: { value: "1250000", currency: CNY, prov: *p }
+  resolved: false
+cases:
+  - name: 失信缺执行法院
+    valid: false
+    patch: [{ op: remove, path: /authority }]
+  - name: 裁判文书缺诉讼地位
+    valid: false
+    patch: [{ op: replace, path: /record_type, value: judgment }]
+  - name: 裁判文书（被告）
+    valid: true
+    patch:
+      - { op: replace, path: /record_type, value: judgment }
+      - op: add
+        path: /judgment
+        value: { role: defendant, cause: { value: 建设工程施工合同纠纷, prov: *p }, counterparties: [*org] }
+  - name: 行政处罚缺处罚内容
+    valid: false
+    patch: [{ op: replace, path: /record_type, value: penalty }]

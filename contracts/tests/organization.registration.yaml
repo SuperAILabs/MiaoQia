@@ -1,0 +1,31 @@
+schema: domains/organization/registration.schema.json
+base:
+  id: ogr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  schema_version: 1.0.0
+  version: 1
+  info_domain: INF-ORG
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  rights_tags: [public-gsxt]
+  classification: public
+  observed_at: "2026-11-01T01:00:00Z"
+  recorded_at: "2026-11-01T01:00:01Z"
+  subject: &org { name_raw: 某建设集团有限公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.99 } }
+  uscc: 91330100MA2XXXXXX1
+  name: { value: 某建设集团有限公司, prov: *p }
+  status: active
+  region: { code: "330100", prov: *p }
+  legal_representative: { name: 张某 }
+  shareholders:
+    - { kind: organization, org: *org, share_ratio: "0.6" }
+    - { kind: natural_person, person: { name: 李某 }, share_ratio: "0.4" }
+cases:
+  - name: 自然人股东同时带组织引用
+    valid: false
+    patch: [{ op: add, path: /shareholders/1/org, value: { name_raw: 某公司, prov: *p } }]
+  - name: 组织股东缺组织引用
+    valid: false
+    patch: [{ op: remove, path: /shareholders/0/org }]
+  - name: 未知经营状态
+    valid: false
+    patch: [{ op: replace, path: /status, value: zombie }]

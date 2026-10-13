@@ -5,6 +5,7 @@
   "description": "企业登记公示信息的枚举与嵌套对象。INF-ORG 的事实是来源公示的登记信息；组织主数据（Organization）由 entity-graph 依据这些事实解析生成并拥有。",
   "$defs": {
     "status": {
+      "x-type-name": "OrgStatus",
       "enum": [
         "active",
         "suspended",
@@ -15,6 +16,7 @@
       "description": "存续（在业）、停业、吊销、注销、迁出"
     },
     "enterprise_type": {
+      "x-type-name": "OrgEnterpriseType",
       "enum": [
         "limited_liability",
         "joint_stock",
@@ -32,6 +34,7 @@
       "description": "有限责任公司、股份有限公司、全民所有制、集体所有制、合伙企业、个人独资企业、外商投资企业、分支机构、个体工商户、事业单位、社会组织、其他"
     },
     "change_type": {
+      "x-type-name": "OrgChangeType",
       "enum": [
         "name",
         "address",
@@ -46,6 +49,7 @@
       ]
     },
     "shareholder": {
+      "x-type-name": "OrgShareholder",
       "type": "object",
       "required": [
         "kind"

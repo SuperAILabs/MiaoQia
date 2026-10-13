@@ -1,0 +1,40 @@
+schema: domains/organization/change.schema.json
+base:
+  id: ogc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  schema_version: 1.0.0
+  version: 1
+  info_domain: INF-ORG
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  rights_tags: [public-gsxt]
+  classification: public
+  observed_at: "2026-11-01T01:00:00Z"
+  recorded_at: "2026-11-01T01:00:01Z"
+  subject: { name_raw: 某建设集团有限公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.99 } }
+  change_type: executive
+  changed_on: { value: "2026-10-31T16:00:00Z", precision: day, prov: *p }
+  natural_person_changes: 2
+  personal_detail: [{ name: 王某, role: 经理 }]
+cases:
+  - name: 高管变更写入变更前内容
+    valid: false
+    patch: [{ op: add, path: /before, value: { value: 王某, prov: *p } }]
+  - name: 股权变更写入变更后内容
+    valid: false
+    patch:
+      - { op: replace, path: /change_type, value: equity }
+      - { op: add, path: /after, value: { value: 李某 60%, prov: *p } }
+  - name: 状态变更缺变更后状态
+    valid: false
+    patch: [{ op: replace, path: /change_type, value: status }]
+  - name: 状态变更为吊销
+    valid: true
+    patch:
+      - { op: replace, path: /change_type, value: status }
+      - { op: add, path: /status_after, value: revoked }
+  - name: 地址变更记录前后内容
+    valid: true
+    patch:
+      - { op: replace, path: /change_type, value: address }
+      - { op: add, path: /before, value: { value: 某区某路 1 号, prov: *p } }
+      - { op: add, path: /after, value: { value: 某区某路 9 号, prov: *p } }

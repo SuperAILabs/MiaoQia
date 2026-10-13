@@ -1,0 +1,32 @@
+schema: domains/investment/record.schema.json
+base:
+  id: ivr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  schema_version: 1.0.0
+  version: 1
+  info_domain: INF-INVP
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  rights_tags: [public-gov]
+  classification: public
+  observed_at: "2026-11-01T01:00:00Z"
+  recorded_at: "2026-11-01T01:00:01Z"
+  record_type: construction_permit
+  project_code: { value: 2026-330106-48-01-012345, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.99 } }
+  project_name: { value: 某路给水管网改造工程, prov: *p }
+  decided_on: { value: "2026-10-31T16:00:00Z", precision: day, prov: *p }
+  location: { code: "330106", prov: *p }
+  construction_permit:
+    contractor: { name_raw: 某建设集团有限公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: *p }
+    contract_amount: { value: "18000000", currency: CNY, prov: *p }
+cases:
+  - name: 施工单位缺证据
+    valid: false
+    patch: [{ op: remove, path: /construction_permit/contractor/prov }]
+  - name: 施工许可缺许可内容
+    valid: false
+    patch: [{ op: remove, path: /construction_permit }]
+  - name: 竣工备案缺竣工内容
+    valid: false
+    patch:
+      - { op: replace, path: /record_type, value: completion_filing }
+      - { op: remove, path: /construction_permit }
