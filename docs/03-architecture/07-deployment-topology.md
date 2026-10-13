@@ -56,12 +56,12 @@
 roles:
   api:
     subsystems: [gateway, identity, commerce, governance, customer_context,
-                 detection, research, assessment, pursuit, learning, notification,
+                 detection, research, assessment, pursuit, learning, channels,
                  evidence, domain_intelligence, entity_graph, search, ai_platform, operations]
     expose: [http]
   consumer:
     subsystems: [evidence, domain_intelligence, entity_graph, search, detection,
-                 assessment, pursuit, learning, notification, commerce, governance]
+                 assessment, pursuit, learning, channels, commerce, governance]
     consume: all_registered
   workflow-worker:
     task_queues: [research, learning-simulation, detection-backfill,

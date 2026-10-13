@@ -33,7 +33,7 @@ miaoqia/
 │   │   ├── pursuit/
 │   │   ├── learning/
 │   │   ├── gateway/
-│   │   ├── notification/
+│   │   ├── channels/
 │   │   ├── identity/
 │   │   ├── commerce/
 │   │   ├── governance/

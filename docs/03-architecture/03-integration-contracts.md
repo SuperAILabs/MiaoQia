@@ -81,7 +81,7 @@
 |---|---|
 | `acquisition`、`evidence`、`domain`、`entity`、`search` | 数据供应平面子系统 |
 | `customer_context`、`detection`、`research`、`assessment`、`pursuit`、`learning` | 客户智能平面子系统 |
-| `gateway`、`notification` | 交互平面子系统 |
+| `gateway`、`channels` | 交互平面子系统 |
 | `identity`、`commerce`、`governance`、`ai_platform`、`operations` | 平台平面子系统 |
 | `<domain_pack>`（如 `tendering`） | 信息领域包定义的领域事件，由 `domain-intelligence` 发布 |
 

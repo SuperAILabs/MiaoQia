@@ -38,7 +38,7 @@
 flowchart TB
   subgraph EP["交互平面 Engagement Plane"]
     GWY["gateway<br/>接入网关"]
-    NTF["notification<br/>通知与渠道"]
+    NTF["channels<br/>渠道与会话"]
   end
 
   subgraph CIP["客户智能平面 Customer Intelligence Plane（租户域）"]
@@ -77,6 +77,7 @@ flowchart TB
   PUR --> LRN --> CTX
   RES -. 受控工具 .-> SRH & ENT & DOM & CTX
   GWY --> CTX & DET & RES & ASM & PUR & SRH & ENT
+  NTF -- 渠道内对话 --> RES
   DET & ASM & PUR --> NTF
   PP -. 支撑与约束 .-> EP & CIP & DSP
 ```
@@ -97,7 +98,7 @@ flowchart TB
 | 客户智能 | [`pursuit`](subsystems/pursuit.md) | 机会路径实例、阶段、任务、结果 | 推进、任务、结果 | `platform` |
 | 客户智能 | [`learning`](subsystems/learning.md) | 反馈、评估集、策略仿真、质量分析 | 反馈、评估集、评估运行、仿真结果 | `platform` |
 | 交互 | [`gateway`](subsystems/gateway.md) | REST/OpenAPI、BFF、MCP、Webhook、限流 | 接入凭证、Webhook 订阅 | `platform` |
-| 交互 | [`notification`](subsystems/notification.md) | 通知编排、偏好、摘要、渠道投递、快捷动作 | 通知、投递记录、偏好、动作令牌 | `platform` |
+| 交互 | [`channels`](subsystems/channels.md) | 多渠道双向接入：通知、渠道内对话、快捷动作、身份绑定、消息渲染 | 渠道安装与绑定、会话、通知与投递、偏好、动作令牌 | `platform` |
 | 平台 | [`identity`](subsystems/identity.md) | 租户、成员、角色、授权决策、审批 | 租户、成员、角色、授权关系、审批请求 | `platform` |
 | 平台 | [`commerce`](subsystems/commerce.md) | 套餐、权益、配额、计量、账单 | 订阅、权益、用量、账单 | `platform` |
 | 平台 | [`governance`](subsystems/governance.md) | 审计、数据分级、保留删除、合规登记 | 审计事件、分级目录、保留策略、合规登记 | `platform` |
@@ -165,7 +166,7 @@ sequenceDiagram
   participant SRH as search
   participant CTX as customer-context
   participant ASM as assessment
-  participant NTF as notification
+  participant NTF as channels
   DOM-->>DET: 领域事件
   DET->>SRH: 订阅反查：哪些租户的监测条件命中该事实
   DET->>CTX: 获取命中租户的有效策略版本（缓存）
@@ -173,7 +174,7 @@ sequenceDiagram
   DET-->>ASM: 事件 detection.signal.detected
   ASM->>ASM: 轻量判断（规则框架）或请求研究
   ASM-->>NTF: 事件 assessment.assessment.created
-  NTF->>NTF: 按偏好合并、限频、投递（企业微信/邮件）
+  NTF->>NTF: 按偏好合并、限频、投递（企业微信/飞书/钉钉/邮件）
 ```
 
 ### 4.3 研究：从问题到可取证报告

@@ -29,6 +29,7 @@
 
 | 组件 | 说明 |
 |---|---|
+| `intake` | 研究入口：把自然语言问题（来自 Web“问妙洽”、渠道内对话、MCP）路由到研究模板或检索，必要时向用户澄清 |
 | `case_manager` | 研究案例生命周期 |
 | `template_registry` | 研究模板（由应用领域包提供，版本化） |
 | `agent_runtime` | Agent 循环：在 Temporal 工作流中执行，每次模型调用与工具调用是活动（activity），可重试与恢复 |
@@ -51,6 +52,7 @@
 
 | 接口 | 类型 | 说明 |
 |---|---|---|
+| `Ask` | 命令 | 自然语言问题 + 会话上下文 → 选择模板或检索，返回研究案例或直接答复（Web、渠道、MCP 共用） |
 | `StartResearch` | 命令 | 模板、目标对象、问题、预算 → 返回案例与运行标识（异步） |
 | `GetResearchCase` / `GetResearchReport` | 查询 | 进展、工具调用轨迹、报告 |
 | `ProvideClarification` | 命令 | 回答 Agent 的澄清请求 |

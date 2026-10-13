@@ -20,7 +20,7 @@
 | 客户智能 | 推进与结果 | `miaoqia.pursuit` | `pur` | [pursuit.md](pursuit.md) |
 | 客户智能 | 反馈学习与评估 | `miaoqia.learning` | `lrn` | [learning.md](learning.md) |
 | 交互 | 接入网关 | `miaoqia.gateway` | `gwy` | [gateway.md](gateway.md) |
-| 交互 | 通知与渠道 | `miaoqia.notification` | `ntf` | [notification.md](notification.md) |
+| 交互 | 渠道与会话 | `miaoqia.channels` | `chn` | [channels.md](channels.md) |
 | 平台 | 身份与权限 | `miaoqia.identity` | `iam` | [identity.md](identity.md) |
 | 平台 | 订阅计量计费 | `miaoqia.commerce` | `com` | [commerce.md](commerce.md) |
 | 平台 | 审计与合规 | `miaoqia.governance` | `gov` | [governance.md](governance.md) |
@@ -61,7 +61,7 @@
 | 判断、决策 | `assessment` | 接口查询、事件 |
 | 推进、任务、结果 | `pursuit` | 接口查询、事件 |
 | 反馈、评估集、仿真结果 | `learning` | 接口查询、事件 |
-| 通知、投递、偏好 | `notification` | 接口查询 |
+| 通知、投递、偏好 | `channels` | 接口查询 |
 | 租户、成员、角色、授权、审批 | `identity` | 接口查询、事件、令牌声明 |
 | 订阅、权益、用量、账单 | `commerce` | 接口查询、事件 |
 | 审计事件、分级目录、保留策略 | `governance` | 接口查询 |

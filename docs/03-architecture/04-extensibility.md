@@ -11,7 +11,7 @@
 | 业务层级 | 扩展包 | 主要插入的子系统 |
 |---|---|---|
 | 信息领域 | 信息领域包（Information Domain Pack） | `acquisition`、`evidence`、`domain-intelligence`、`entity-graph`、`search`、`research`（工具） |
-| 应用领域 + 商业目标 + 机会路径 | 应用领域包（Application Domain Pack） | `customer-context`、`detection`、`research`、`assessment`、`pursuit`、`learning`、`notification`、`gateway`、Web |
+| 应用领域 + 商业目标 + 机会路径 | 应用领域包（Application Domain Pack） | `customer-context`、`detection`、`research`、`assessment`、`pursuit`、`learning`、`channels`、`gateway`、Web |
 | 行业（客户细分维度） | 行业包（Industry Pack） | `customer-context`、`entity-graph`、`search`、`detection` |
 
 此外，平台在技术层面提供若干独立 SPI：连接器、渠道适配器、模型供应商、外部系统同步。
@@ -65,7 +65,7 @@ pack:
 | 判断框架 | `assessment.framework_registry` |
 | 机会路径与衔接规则 | `pursuit.playbook_registry` |
 | 反馈原因标签、指标、基线评估集 | `learning` |
-| 通知卡片模板 | `notification` |
+| 通知卡片模板 | `channels` |
 | API 视图、MCP 工具、Skills | `gateway` |
 | Web 视图描述 | Web 前端（视图注册表） |
 
@@ -102,7 +102,7 @@ pack:
 | `RelationExtractor` | entity-graph | `extract(fact) → mentions + relations` |
 | `FeatureFunction` | detection | `compute(fact_view, context_view) → value` |
 | `ToolAdapter` | research | 把平台接口组合为受控工具 |
-| `ChannelAdapter` | notification | `send(message) → delivery`、`receive(callback) → action` |
+| `ChannelAdapter` | channels | `capabilities()`、`send(rendered) → delivery`、`receive(callback) → inbound_message \| action`、`verify(callback)`、`resolve_identity(user)` |
 | `SyncAdapter` | pursuit | 与 CRM/项目管理系统同步 |
 | `ModelProvider` | ai-platform | 新模型供应商接入 |
 

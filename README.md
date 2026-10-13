@@ -27,7 +27,7 @@ L0 平台             妙洽：商业机会研究与决策系统
 18 个子系统分属四个平面，逻辑架构按终态设计，部署从两个单元（`acquisition`、`platform`）开始，通过配置演进为独立服务。
 
 ```text
-交互平面        gateway · notification
+交互平面        gateway · channels
 客户智能平面    customer-context · detection · research · assessment · pursuit · learning
 数据供应平面    acquisition · evidence · domain-intelligence · entity-graph · search
 平台平面        identity · commerce · governance · ai-platform · operations

@@ -84,7 +84,7 @@ flowchart TB
 | ③ 研究与取证 | 这件事是真的吗？谁参与？背景如何？还缺什么？ | 按研究模板调用受控工具，交叉验证 | `ResearchCase`、`EvidenceBundle`、`ResearchReport` | `research` |
 | ④ 判断 | 与我们的目标是否相关、可信、可行、值得？ | 按判断框架执行硬门槛、评分和归纳 | `Assessment` | `assessment` |
 | ⑤ 决策 | 是否投入？投入什么？谁负责？ | 生成决策草案，执行审批 | `Decision` | `assessment`、`identity` |
-| ⑥ 推进与协作 | 下一步做什么？进展如何？ | 按机会路径推进阶段、任务、提醒 | `Pursuit`、`Task` | `pursuit`、`notification` |
+| ⑥ 推进与协作 | 下一步做什么？进展如何？ | 按机会路径推进阶段、任务、提醒 | `Pursuit`、`Task` | `pursuit`、`channels` |
 | ⑦ 结果与学习 | 结果如何？哪里判断对了、哪里错了？ | 记录结果与原因，更新评估集，提出策略调整 | `Outcome`、`Feedback`、`PolicyProposal` | `pursuit`、`learning` |
 
 旅程不是严格线性的：

@@ -13,7 +13,7 @@ docs/
 │   ├── 01-vision-and-positioning.md
 │   ├── 02-business-model.md
 │   ├── 03-capability-map.md
-│   └── 04-product-experience-proposal.md  产品体验方案（待决策）
+│   └── 04-product-experience-proposal.md  产品体验方案（部分待决策）
 │
 ├── 02-business/                  业务层：客户要完成什么、业务如何运转
 │   ├── 01-business-architecture.md
@@ -40,7 +40,7 @@ docs/
 │
 ├── 05-delivery/                  交付层：如何分阶段建成并验收
 │   ├── 00-initiation-readiness.md 立项准入清单
-│   ├── 04-data-quality-organization-proposal.md  数据、质量与组织方案（待决策）
+│   ├── 04-data-quality-organization-proposal.md  数据、质量与组织方案
 │   ├── 01-roadmap.md
 │   ├── 02-quality-and-acceptance.md
 │   └── 03-engineering-standards.md

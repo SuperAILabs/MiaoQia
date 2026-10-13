@@ -50,7 +50,7 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 | customer-context | 客户档案、多价值链角色、目标配置、策略 DSL、策略版本与审批 |
 | detection | 监测订阅、匹配、处置、信号、回填 |
 | assessment | 规则型判断框架、判断记录、决策与审批 |
-| notification | 企业微信、邮件、摘要、快捷反馈 |
+| channels | 企业微信、飞书、钉钉、邮件；摘要、快捷反馈、渠道内对话 |
 | gateway | REST API、BFF |
 | Web | 研究工作台（信号收件箱、证据查看、判断与反馈）、客户能力中心、管理控制台 |
 | learning | 反馈采集、评估集、质量报告 |
@@ -120,18 +120,7 @@ flowchart LR
 
 ## 4. 团队组织
 
-团队按平面与子系统所有权组织，每个子系统有唯一负责团队：
-
-| 团队 | 负责 |
-|---|---|
-| 平台工程 | `kernel`、`sdk`、基础设施、部署、可观测性、`identity`、`commerce`、`governance` |
-| 数据供应 | `acquisition`、`evidence`、`domain-intelligence`、信息领域包 |
-| 实体与检索 | `entity-graph`、`search` |
-| 客户智能 | `customer-context`、`detection`、`assessment`、`pursuit`、`learning` |
-| AI 与研究 | `ai-platform`、`research`、研究模板与评估 |
-| 产品体验 | Web 应用、`gateway`（BFF、MCP）、`notification` |
-| 领域与运营 | 应用领域包、行业包、`operations`、数据运营、托管研究服务 |
-| 安全与合规 | 安全架构、测试、合规登记（横向） |
+团队采用标准型配置（峰值约 42 人，M0 启动约 15 人），团队划分、人数、到岗节奏与决策机制见 [数据、质量与组织方案](04-data-quality-organization-proposal.md)。每个子系统有唯一负责人。
 
 ## 5. 早期使用客户
 
