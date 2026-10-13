@@ -11,7 +11,7 @@
 | 领域对象 Schema | JSON Schema 2020-12 | `contracts/schemas/` | 领域事实、租户对象、研究产物的结构 |
 | 子系统接口 | OpenAPI 3.1 | `contracts/apis/<subsystem>/` | 命令与查询接口 |
 | 事件 | AsyncAPI 3 + JSON Schema | `contracts/events/<namespace>/` | 领域事件与集成事件 |
-| 策略 DSL | JSON Schema + 语法说明 | `contracts/policy/` | 策略结构与可用字段 |
+| 策略 DSL | JSON Schema + CEL 环境与函数声明 | `contracts/policy/` | 策略结构、可用变量与函数，见 [策略 DSL](11-policy-dsl.md) |
 | 扩展包清单 | JSON Schema | `contracts/packs/` | 扩展包 manifest 与定义文件 |
 | 标识前缀 | YAML | `contracts/identifiers.yaml` | 前缀登记 |
 

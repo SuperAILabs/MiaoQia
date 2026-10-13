@@ -116,7 +116,7 @@ pack:
 |---|---|---|
 | 特征函数 | detection | 由领域事实视图与客户上下文视图计算特征值 |
 | 处置与信号合并规则 | detection | 条件 → 处置 / 合并键 |
-| 策略条件 | customer-context | 策略 DSL 子句中的条件（见 [customer-context](subsystems/customer-context.md)） |
+| 策略模板与条件 | customer-context | 策略模板、参数 Schema、视图声明与规则条件（见 [策略 DSL](11-policy-dsl.md)） |
 | 判断框架条件 | assessment | 门槛、评分项、缺口判定 |
 | 机会路径衔接条件 | pursuit | 阶段进入与路径衔接条件 |
 

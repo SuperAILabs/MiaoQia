@@ -41,7 +41,7 @@
 | C2 | 容量规划与非功能指标 | G0 | 🔵 专题对齐 | 技术选型专题 |
 | C3 | 模型 API 供应商 | G1 | 🟡 待决策：前期只接 API、不建私有推理（ADR-0016）；供应商按评测选定 | ADR-0016 |
 | C4 | 核心契约 v1 分批冻结 | G0 / G1 | 🔵 专题对齐 | 技术选型专题后启动 |
-| C5 | 策略 DSL 详细设计 | G1（M2 前） | 🔵 表达式语言已定为 CEL（ADR-0014），外层结构与函数库待设计 | [customer-context](../03-architecture/subsystems/customer-context.md) |
+| C5 | 策略 DSL 详细设计 | G1（M2 前） | 🟡 设计已提交评审；成本上限、灰度哈希维度、首批函数库待 M2 前确定 | [策略 DSL](../03-architecture/11-policy-dsl.md) |
 | C6 | 角色与权限矩阵 | G1（M2 前） | ⬜ 未开始 | 随产品方案确定后编写 |
 | C7 | 图查询引擎与 OCR 选型 | G1 | 🟡 推荐：图引擎 M3 末基准测试（PG 递归查询 / AGE / NebulaGraph）；OCR 先接 API | [技术选型](../03-architecture/08-technology-stack.md) |
 | C8 | ADR 评审与批准 | G0 | 🔵 专题对齐 | 技术选型专题逐项确认 |

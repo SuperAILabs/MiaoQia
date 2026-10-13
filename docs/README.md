@@ -34,6 +34,7 @@ docs/
 │   ├── 08-technology-stack.md
 │   ├── 09-codebase-structure.md
 │   ├── 10-tender-intel-reference.md
+│   ├── 11-policy-dsl.md
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
@@ -125,6 +126,7 @@ docs/
 | 选型与架构决策的理由 | `04-decisions/` 中对应 ADR | 引用 ADR 编号，不复述理由 |
 | 数据分级与模型路由约束 | `03-architecture/06-security-and-tenancy.md` 第 5 节 | 链接 |
 | 扩展包形式与扩展点 | `03-architecture/04-extensibility.md` | 链接 |
+| 策略 DSL（结构、求值语义、CEL 环境、下推） | `03-architecture/11-policy-dsl.md` | 链接 |
 | 渠道分批 | `03-architecture/subsystems/channels.md` 第 2 节 | 链接 |
 | 质量指标与发布门槛 | `05-delivery/02-quality-and-acceptance.md` | 引用指标名 |
 | 团队规模与组织 | `05-delivery/04-data-quality-organization-proposal.md` | 链接 |

@@ -34,7 +34,7 @@
 | `relevance` | 检索相关性评估：评估集回放、nDCG/召回率计算、影子查询比对 |
 | `mappings` | 索引映射，由信息领域包注册 |
 | `query_service` | 查询解析、权限过滤、混合检索、高亮 |
-| `percolator` | 订阅查询注册与反查 |
+| `percolator` | 订阅查询注册与反查；查询由策略编译下推而来，规则见 [策略 DSL](../11-policy-dsl.md#6-编译与下推) |
 | `tenant_index_manager` | 租户私有索引的创建、删除与隔离 |
 
 ## 4. 拥有的数据

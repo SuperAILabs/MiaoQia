@@ -30,7 +30,7 @@
 |---|---|
 | `watch_registry` | 监测订阅：策略编译产物与用户关注 |
 | `candidate_generator` | 订阅反查 + 实体关注索引 |
-| `matcher` | 策略执行器：硬门槛、排除、特征、排序 |
+| `matcher` | 策略求值器：视图组装、三值求值、处置决策，语义见 [策略 DSL](../11-policy-dsl.md#4-求值语义) |
 | `signal_store` | 信号存储、去重与合并 |
 | `pursuit_linker` | 领域事件 → 租户已有推进的关联 |
 | `backfill` | 历史回放匹配（Temporal 工作流） |

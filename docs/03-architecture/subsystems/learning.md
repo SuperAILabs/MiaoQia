@@ -32,7 +32,7 @@
 | `feedback` | 反馈与原因标签 |
 | `labeling` | 标注任务与质量控制 |
 | `datasets` | 评估集与版本 |
-| `simulator` | 策略回放仿真（Temporal 工作流，复用 `detection.DryRunPolicy` 的匹配逻辑） |
+| `simulator` | 策略回放仿真（Temporal 工作流，复用 `detection.DryRunPolicy` 的匹配逻辑；逻辑求值时间取被回放事件的时间，见 [策略 DSL](../11-policy-dsl.md#43-确定性与记录)） |
 | `evaluator` | 指标计算与报告 |
 | `drift` | 漂移监测 |
 | `proposals` | 改进提案 |
