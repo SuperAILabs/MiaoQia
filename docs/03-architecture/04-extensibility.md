@@ -1,6 +1,6 @@
 # 可扩展性设计
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.0 · 更新：2026-10-13 · 负责人：首席架构师
 
 ## 1. 设计目标
 
@@ -14,7 +14,7 @@
 | 应用领域 + 商业目标 + 机会路径 | 应用领域包（Application Domain Pack） | `customer-context`、`detection`、`research`、`assessment`、`pursuit`、`learning`、`channels`、`gateway`、Web |
 | 行业（客户细分维度） | 行业包（Industry Pack） | `customer-context`、`entity-graph`、`search`、`detection` |
 
-此外，平台在技术层面提供若干独立 SPI：连接器、渠道适配器、模型供应商、外部系统同步。
+此外，平台在技术层面还有若干内部适配器接口（渠道适配器、模型供应商、外部系统同步、受控工具适配），由平台团队实现，不对扩展包开放。
 
 ## 2. 扩展包结构
 
@@ -32,7 +32,15 @@ pack:
   provides: { … }                    # 按 kind 列出提供的扩展点
 ```
 
-扩展包以 Python 包分发（代码部分）+ 声明式定义文件（YAML/JSON，受 `contracts/packs/` Schema 校验）。声明式优先：能用声明表达的不写代码。
+扩展包由声明式定义文件（YAML/JSON，受 `contracts/packs/` Schema 校验）组成，按种类允许的形式不同（ADR-0014）：
+
+| 种类 | 形式 | 运行位置 |
+|---|---|---|
+| 信息领域包 | 声明 + Python 代码（实现第 3 节的代码型 SPI），以 Python 包分发 | Python 子系统 |
+| 应用领域包 | 纯声明 + CEL 表达式 | Go 子系统 |
+| 行业包 | 纯声明 | 按插入点加载 |
+
+声明式优先：能用声明表达的不写代码。
 
 ### 2.2 信息领域包
 
@@ -55,6 +63,8 @@ pack:
 
 ### 2.3 应用领域包
 
+应用领域包不含可执行代码：特征函数、处置规则、判断框架条件、机会路径衔接条件、策略模板中的条件均以 CEL 表达式声明，由 Go 子系统求值。
+
 | 提供项 | 插入点 |
 |---|---|
 | 客户细分模板（价值链角色、默认目标） | `customer-context` |
@@ -75,22 +85,21 @@ pack:
 |---|---|
 | 品类分类与跨分类映射 | `entity-graph`（`Category`） |
 | 产品、规格、品牌词表与同义词 | `search`、`entity-graph` |
-| 行业标签体系与品类分类增强器 | `evidence.enrichment` |
+| 行业标签体系与品类分类规则（声明） | `evidence.enrichment` |
 | 能力与资质模板 | `customer-context.profile` |
 | 默认排除与关注规则 | `customer-context.policy_engine` |
 
-## 3. SPI 规范
+## 3. 扩展点规范
+
+### 3.1 代码型 SPI（信息领域包，Python）
 
 所有代码型 SPI 遵循统一约束：
 
-1. **接口稳定**：SPI 定义在 `miaoqia.sdk` 中，按平台扩展 API 版本管理；
+1. **接口稳定**：SPI 定义在 Python `sdk` 中，按平台扩展 API 版本管理；
 2. **无副作用访问**：扩展代码只能通过 SPI 传入的上下文对象访问平台能力（例如解析器只能读取规范化文档、调用模型网关），不能直接访问数据库、网络或文件系统；
-3. **确定性优先**：匹配特征函数、聚合规则必须是确定性纯函数；
-4. **资源限制**：每次调用有超时与内存上限；
-5. **可观测**：调用自动带追踪与指标；
-6. **可测试**：每个扩展包必须附带测试夹具与评估样本，持续集成中运行。
-
-主要 SPI：
+3. **资源限制**：每次调用有超时与内存上限；
+4. **可观测**：调用自动带追踪与指标；
+5. **可测试**：每个扩展包必须附带测试夹具与评估样本，持续集成中运行。
 
 | SPI | 子系统 | 方法要点 |
 |---|---|---|
@@ -100,11 +109,18 @@ pack:
 | `Enricher` | evidence | `enrich(document_or_chunks, ctx) → tags/classes/mentions/vectors + confidence`；声明成本等级与适用范围 |
 | `Aggregator` | domain-intelligence | `candidates(fact) → keys`、`decide(fact, candidate) → link` |
 | `RelationExtractor` | entity-graph | `extract(fact) → mentions + relations` |
-| `FeatureFunction` | detection | `compute(fact_view, context_view) → value` |
-| `ToolAdapter` | research | 把平台接口组合为受控工具 |
-| `ChannelAdapter` | channels | `capabilities()`、`send(rendered) → delivery`、`receive(callback) → inbound_message \| action`、`verify(callback)`、`resolve_identity(user)` |
-| `SyncAdapter` | pursuit | 与 CRM/项目管理系统同步 |
-| `ModelProvider` | ai-platform | 新模型供应商接入 |
+
+### 3.2 表达式扩展点（应用领域包与行业包，CEL）
+
+| 扩展点 | 子系统 | 表达式内容 |
+|---|---|---|
+| 特征函数 | detection | 由领域事实视图与客户上下文视图计算特征值 |
+| 处置与信号合并规则 | detection | 条件 → 处置 / 合并键 |
+| 策略条件 | customer-context | 策略 DSL 子句中的条件（见 [customer-context](subsystems/customer-context.md)） |
+| 判断框架条件 | assessment | 门槛、评分项、缺口判定 |
+| 机会路径衔接条件 | pursuit | 阶段进入与路径衔接条件 |
+
+CEL 是非图灵完备的表达式语言：求值确定、无副作用、可静态类型检查，并可设置成本上限，因此天然满足确定性与资源限制要求。可用变量与函数由 `contracts/policy/` 中的 CEL 环境声明定义；平台函数库的新增函数需经架构评审，扩展包不能注册任意代码。
 
 ## 4. 加载、版本与发布
 

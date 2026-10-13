@@ -1,6 +1,6 @@
 # 渠道与会话子系统（channels）
 
-> 状态：评审中 · 版本：2.0 · 更新：2026-10-13 · 平面：交互 · 首期部署单元：`platform`（进程角色 `api` 与 `consumer`）
+> 状态：评审中 · 版本：2.0 · 更新：2026-10-13 · 平面：交互
 
 ## 1. 使命
 
@@ -42,7 +42,7 @@
         │ 回调、长连接、邮件收发
         ▼
 ┌──────────────────────── channels ────────────────────────┐
-│ 渠道适配器（每渠道一个，实现 ChannelAdapter SPI）           │
+│ 渠道适配器（每渠道一个，实现 ChannelAdapter 接口）         │
 │   ↓ 归一化为渠道无关的入站消息 / ↑ 渲染渠道格式            │
 │ 身份绑定 → 会话管理 → 意图路由                             │
 │   · 提问 / 研究请求 → research 的研究入口（同 Web“问妙洽”）│
@@ -115,7 +115,7 @@
 
 ## 8. 扩展点
 
-- **`ChannelAdapter` SPI**：`capabilities()`、`send(rendered_message)`、`receive(raw_callback) → inbound_message | action`、`verify(callback)`、`resolve_identity(raw_user)`；
+- **`ChannelAdapter` 接口**（平台内部适配器，由平台团队实现）：`capabilities()`、`send(rendered_message)`、`receive(raw_callback) → inbound_message | action`、`verify(callback)`、`resolve_identity(raw_user)`；
 - **渲染模板**：应用领域包提供领域卡片模板（渠道无关表示）；
 - 新渠道接入清单：适配器、能力声明、身份绑定方式、回调验签、速率限制、数据分级允许范围、测试夹具。
 

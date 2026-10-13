@@ -1,10 +1,10 @@
 # 总体架构
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 负责人：首席架构师
+> 状态：评审中 · 版本：1.1 · 更新：2026-10-13 · 负责人：首席架构师
 
 ## 1. 架构目标
 
-妙洽是一个长期演进的大型平台。架构以**终态业务需求**为设计基准，一次性确定子系统边界、数据所有权、契约和扩展机制；部署形态从两个单元起步，并可通过配置演进到完全独立的服务部署，无需重新设计。
+妙洽是一个长期演进的大型平台。架构以**终态业务需求**为设计基准，一次性确定子系统边界、数据所有权、契约和扩展机制；部署形态从少量部署单元起步（[ADR-0002](../04-decisions/0002-composable-deployment.md)），并可通过配置演进到完全独立的服务部署，无需重新设计。
 
 ### 1.1 质量属性
 
@@ -84,28 +84,7 @@ flowchart TB
 
 ### 2.1 子系统清单
 
-| 平面 | 子系统 | 核心职责 | 拥有的核心数据 | 首期部署单元 |
-|---|---|---|---|---|
-| 数据供应 | [`acquisition`](subsystems/acquisition.md) | 来源注册与权利、调度、抓取、原始归档、来源健康 | 来源、访问契约、抓取记录、原始制品 | `acquisition` |
-| 数据供应 | [`evidence`](subsystems/evidence.md) | 文档处理、快照、解析修订、字段溯源、质量、AI 内容增强 | 快照与修订元数据、证据定位（正文与增强结果在对象存储） | `platform` |
-| 数据供应 | [`domain-intelligence`](subsystems/domain-intelligence.md) | 领域事实与事件、生命周期、跨记录聚合 | 各信息领域的领域事实 | `platform` |
-| 数据供应 | [`entity-graph`](subsystems/entity-graph.md) | 实体主数据、实体解析、关系图谱 | 组织、项目、地点、品类、关系、合并历史 | `platform` |
-| 数据供应 | [`search`](subsystems/search.md) | 索引投影、全文/语义/混合检索、订阅反查 | 检索索引（派生） | `platform` |
-| 客户智能 | [`customer-context`](subsystems/customer-context.md) | 客户档案、目标、策略、知识资产 | 租户档案、目标配置、策略版本、知识资产 | `platform` |
-| 客户智能 | [`detection`](subsystems/detection.md) | 监测订阅、信号匹配、处置分层 | 监测订阅、信号 | `platform` |
-| 客户智能 | [`research`](subsystems/research.md) | 研究模板执行、Agent 运行、研究报告 | 研究案例、研究运行、证据集合、报告 | `platform` |
-| 客户智能 | [`assessment`](subsystems/assessment.md) | 判断框架执行、评估、决策与审批 | 判断、特征快照、决策 | `platform` |
-| 客户智能 | [`pursuit`](subsystems/pursuit.md) | 机会路径实例、阶段、任务、结果 | 推进、任务、结果 | `platform` |
-| 客户智能 | [`learning`](subsystems/learning.md) | 反馈、评估集、策略仿真、质量分析 | 反馈、评估集、评估运行、仿真结果 | `platform` |
-| 交互 | [`gateway`](subsystems/gateway.md) | REST/OpenAPI、BFF、MCP、Webhook、限流 | 接入凭证、Webhook 订阅 | `platform` |
-| 交互 | [`channels`](subsystems/channels.md) | 多渠道双向接入：通知、渠道内对话、快捷动作、身份绑定、消息渲染 | 渠道安装与绑定、会话、通知与投递、偏好、动作令牌 | `platform` |
-| 平台 | [`identity`](subsystems/identity.md) | 租户、成员、角色、授权决策、审批 | 租户、成员、角色、授权关系、审批请求 | `platform` |
-| 平台 | [`commerce`](subsystems/commerce.md) | 套餐、权益、配额、计量、账单 | 订阅、权益、用量、账单 | `platform` |
-| 平台 | [`governance`](subsystems/governance.md) | 审计、数据分级、保留删除、合规登记 | 审计事件、分级目录、保留策略、合规登记 | `platform` |
-| 平台 | [`ai-platform`](subsystems/ai-platform.md) | 模型网关、提示注册、嵌入、护栏、AI 计量 | 模型目录、提示版本、调用记录 | `platform` |
-| 平台 | [`operations`](subsystems/operations.md) | 人工复核队列、数据运营、托管服务、客户成功 | 复核任务、服务工单、工时 | `platform` |
-
-各子系统的规格见 [subsystems/](subsystems/README.md)。
+18 个子系统的职责、语言、部署单元与数据库登记在 [子系统索引](subsystems/README.md)，数据所有权见同文第 3 节。
 
 ### 2.2 依赖规则
 
@@ -125,7 +104,7 @@ flowchart TB
 
 | 方式 | 用途 | 技术 | 规范 |
 |---|---|---|---|
-| 同步查询与命令 | 用户请求、Agent 工具、子系统间查询 | 子系统公开接口（进程内或 HTTP/gRPC） | [集成契约](03-integration-contracts.md) |
+| 同步查询与命令 | 用户请求、Agent 工具、子系统间查询 | 子系统公开接口（同语言进程内或 HTTP；跨语言一律 HTTP） | [集成契约](03-integration-contracts.md) |
 | 领域事件 | 状态变化传播、读模型构建、触发下游 | Kafka + 事务性发件箱 + CloudEvents | [集成契约](03-integration-contracts.md) |
 | 持久化工作流 | 研究运行、策略仿真、批量处理、长周期推进提醒 | Temporal | [ADR-0005](../04-decisions/0005-durable-workflow-temporal.md) |
 | 大对象传递 | 原始制品、文档、导出文件 | 对象存储 + 事件中携带引用 | [数据架构](02-data-architecture.md) |

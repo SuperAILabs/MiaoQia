@@ -34,7 +34,6 @@ docs/
 │   ├── 08-technology-stack.md
 │   ├── 09-codebase-structure.md
 │   ├── 10-tender-intel-reference.md
-│   ├── 11-technology-selection-analysis.md  技术选型分析
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
@@ -96,7 +95,7 @@ docs/
 - **术语一致**：只使用 `glossary.md` 中定义的术语。需要新术语时，先补充术语表。
 - **事实与假设分离**：未经验证的判断标注 **[假设]**，需要外部数据确认的标注 **[待核验]**，并在文末列出。
 - **可执行**：每份文档都要回答“谁据此做什么”。纯背景性内容放在附录或归档中。
-- **单一事实来源**：同一事实只在一处完整定义，其他文档引用链接，不复制粘贴。
+- **单一事实来源**：同一事实只在一处完整定义，其他文档引用链接，不复制粘贴。主要事实的定义处见第 8 节。
 - **图表**：使用 Mermaid 或纯文本图，便于评审和版本对比。
 - **标识符**：代码、服务、事件、Schema 名称使用英文；说明文字使用中文。
 
@@ -110,3 +109,25 @@ docs/
 2. 涉及多个层级或子系统边界时，需同步更新相关 ADR；
 3. 由文档负责人和受影响子系统负责人评审；
 4. 合并后更新文档状态与版本号。
+
+## 8. 单一事实来源登记
+
+| 事实 | 唯一定义处 | 其他文档的做法 |
+|---|---|---|
+| 术语 | `glossary.md` | 直接使用术语 |
+| 业务层级 | `02-business/01-business-architecture.md` 第 1 节 | 一句话概述 + 链接 |
+| 商业目标目录 | `02-business/02-commercial-objectives.md` | 引用目标编号 |
+| 首发范围与分批 | `02-business/application-domains/tendering/05-release-plan.md` | 引用 |
+| 子系统清单、职责、语言、部署单元、数据库 | `03-architecture/subsystems/README.md` 第 1 节 | 链接，不复制表格 |
+| 数据所有权 | `03-architecture/subsystems/README.md` 第 3 节 | 链接 |
+| 进程角色与部署方式 | `03-architecture/07-deployment-topology.md` | 链接 |
+| 组件选型（语言、框架、基础组件） | `03-architecture/08-technology-stack.md` | 只写组件名 + 链接，不复述 ADR 中的理由 |
+| 选型与架构决策的理由 | `04-decisions/` 中对应 ADR | 引用 ADR 编号，不复述理由 |
+| 数据分级与模型路由约束 | `03-architecture/06-security-and-tenancy.md` 第 5 节 | 链接 |
+| 扩展包形式与扩展点 | `03-architecture/04-extensibility.md` | 链接 |
+| 渠道分批 | `03-architecture/subsystems/channels.md` 第 2 节 | 链接 |
+| 质量指标与发布门槛 | `05-delivery/02-quality-and-acceptance.md` | 引用指标名 |
+| 团队规模与组织 | `05-delivery/04-data-quality-organization-proposal.md` | 链接 |
+| 立项事项状态与决策时间线 | `05-delivery/00-initiation-readiness.md` | 时间线每条一句话 + 定义处链接 |
+
+ADR 记录决策当时的背景与理由，批准后不再修改；现行设计以架构文档为准，两者冲突时以新 ADR 修正。

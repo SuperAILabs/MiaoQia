@@ -16,7 +16,7 @@ ADR 记录重要且难以逆转的决策：背景、决策、备选方案与后�
 | 编号 | 标题 | 状态 |
 |---|---|---|
 | [0001](0001-business-hierarchy.md) | 业务层级模型 | 提议 |
-| [0002](0002-composable-deployment.md) | 逻辑架构按终态设计，部署从两个单元开始 | 提议 |
+| [0002](0002-composable-deployment.md) | 逻辑架构按终态设计，部署从少量单元开始 | 提议 |
 | [0003](0003-subsystem-boundaries.md) | 子系统划分与数据所有权 | 提议 |
 | [0004](0004-event-backbone-kafka-outbox.md) | 事件骨干：Kafka + 事务性发件箱 + CloudEvents | 提议 |
 | [0005](0005-durable-workflow-temporal.md) | 持久化工作流：Temporal | 提议 |
@@ -28,7 +28,7 @@ ADR 记录重要且难以逆转的决策：背景、决策、备选方案与后�
 | [0011](0011-immutable-evidence-dual-versioning.md) | 证据不可变与双版本 | 提议 |
 | [0012](0012-identity-keycloak-openfga.md) | 身份与授权：Keycloak + 关系型授权 | 提议 |
 | [0013](0013-tiered-persistence-and-search-enrichment.md) | 公共域分层持久化与检索增强 | 提议 |
-| [0014](0014-polyglot-backend-python-go.md) | 服务端语言：数据抓取与维护用 Python，平台服务用 Go | 提议 |
+| [0014](0014-polyglot-backend-python-go.md) | 服务端语言：数据抓取与维护用 Python，平台服务用 Go | 已批准 |
 | [0015](0015-self-hosted-open-source-infrastructure.md) | 基础设施开源自建优先 | 提议 |
 | [0016](0016-model-inference-via-api.md) | 前期 AI 推理只接 API | 提议 |
 

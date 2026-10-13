@@ -83,12 +83,7 @@
 
 ### 3.4 渠道分工
 
-渠道采用多渠道双向接入架构（见 [channels](../03-architecture/subsystems/channels.md)）：用户既能在渠道中收到简报与信号，也能直接向 Agent 提问、追问和反馈。
-
-| 批次 | 渠道 |
-|---|---|
-| 首批 | 企业微信、飞书、钉钉、邮件 |
-| 后续 | Telegram、Discord 等 |
+渠道采用多渠道双向接入架构：用户既能在渠道中收到简报与信号，也能直接向 Agent 提问、追问和反馈。渠道分批见 [channels](../03-architecture/subsystems/channels.md#2-渠道分批)。
 
 | 渠道 | 建材供应商 | 投资决策者 |
 |---|---|---|

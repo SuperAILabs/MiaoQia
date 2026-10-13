@@ -26,14 +26,14 @@
 
 合并请求必须全部通过：
 
-1. 格式化与静态检查（ruff、类型检查）；
-2. 依赖规则检查（import-linter）；
+1. 格式化与静态检查（Go：gofmt、golangci-lint；Python：ruff、pyright；TypeScript：eslint、tsc）；
+2. 依赖规则检查（Go：`internal/` 与 depguard；Python：import-linter）；
 3. 单元与集成测试；
 4. 契约兼容性检查与契约测试；
 5. 生成代码一致性检查；
 6. 安全负向测试；
 7. 受影响扩展包的测试与评估回归；
-8. 依赖与镜像漏洞扫描；
+8. 依赖与镜像漏洞扫描（含 govulncheck）；
 9. 数据库迁移检查（可向前兼容）。
 
 ## 4. 数据库迁移

@@ -146,7 +146,7 @@ PostgreSQL 中的领域事实只保存结构化字段（采购人、金额、截
 | **PostgreSQL 只读副本** | 领域统计、仿真与评估等重查询 | 与主库同一所有权；只读 |
 | **OpenSearch** | L4 检索层：文档、分块、领域事实、实体索引；订阅反查；租户知识检索 | `search` 子系统独占；全部为派生数据，可由权威数据重建 |
 | **Kafka** | 领域事件与集成事件 | 主题按发布子系统划分所有权 |
-| **Redis** | 缓存、限流、短期幂等记录、分布式锁 | 不作为任何数据的权威来源 |
+| **Valkey**（Redis 协议） | 缓存、限流、短期幂等记录、分布式锁 | 不作为任何数据的权威来源 |
 | **图查询引擎**（读模型） | 实体关系的多跳遍历 | `entity-graph` 独占；由 PostgreSQL 权威数据投影 |
 
 选型理由见 [ADR-0007](../04-decisions/0007-storage-portfolio.md) 与 [ADR-0013](../04-decisions/0013-tiered-persistence-and-search-enrichment.md)。
