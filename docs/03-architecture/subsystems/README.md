@@ -9,7 +9,7 @@
 | 平面 | 子系统 | 代码包 | 数据库 | 规格 |
 |---|---|---|---|---|
 | 数据供应 | 来源采集 | `miaoqia.acquisition` | `acq` | [acquisition.md](acquisition.md) |
-| 数据供应 | 证据与文档 | `miaoqia.evidence` | `evd` | [evidence.md](evidence.md) |
+| 数据供应 | 证据与内容理解 | `miaoqia.evidence` | `evd` | [evidence.md](evidence.md) |
 | 数据供应 | 领域情报 | `miaoqia.domain_intelligence` | `dom` | [domain-intelligence.md](domain-intelligence.md) |
 | 数据供应 | 实体与关系图谱 | `miaoqia.entity_graph` | `ent` | [entity-graph.md](entity-graph.md) |
 | 数据供应 | 检索与索引 | `miaoqia.search` | （OpenSearch） | [search.md](search.md) |

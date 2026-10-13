@@ -10,7 +10,9 @@
 
 **职责**
 
-- 索引投影：消费领域事实与实体事件，维护检索索引（派生数据，可完全重建）；
+- 索引投影：组合规范化文档（L1）、领域事实结构化字段（L2）与增强结果（L3），构建检索索引（L4，派生数据，可完全重建）；
+- 索引族：文档索引（公告级）、分块索引（段落级，供语义检索与 Agent 研究）、领域事实索引、实体索引、订阅反查索引；
+- 索引版本化：映射、分析器、词表或生效增强器变化时构建新版本索引，评估后别名切换；
 - 中文全文检索：分词、同义词、行业词表；
 - 语义检索：文本向量化（经 `ai-platform` 的嵌入服务）与向量检索；
 - 混合检索与重排；
@@ -27,7 +29,9 @@
 
 | 组件 | 说明 |
 |---|---|
-| `indexer` | 事件消费、文档构建、批量重建 |
+| `indexer` | 事件消费、文档组装（从对象存储读取 L1/L3，从接口获取 L2）、增量写入 |
+| `index_builder` | 新版本索引的批量构建（Temporal 工作流，读语料快照与增强结果） |
+| `relevance` | 检索相关性评估：评估集回放、nDCG/召回率计算、影子查询比对 |
 | `mappings` | 索引映射，由信息领域包注册 |
 | `query_service` | 查询解析、权限过滤、混合检索、高亮 |
 | `percolator` | 订阅查询注册与反查 |
@@ -35,7 +39,8 @@
 
 ## 4. 拥有的数据
 
-- 公共域索引：按信息领域与时间分区的索引；
+- 公共域索引：按索引族、信息领域与时间分区；每个索引带映射版本与构建标识，通过别名访问；
+- 索引版本登记：索引版本、来源数据范围、所用增强器版本、评估结果、别名状态；
 - 订阅查询索引：租户的监测条件（带租户标识，仅 `detection` 可注册和反查）；
 - 租户私有索引：每租户独立索引（或独立命名空间），存放其知识资产的检索投影。
 
@@ -48,25 +53,30 @@
 | `RegisterWatchQuery` / `RemoveWatchQuery` | 命令 | `detection` 专用 |
 | `Percolate` | 查询 | `detection` 专用：给定事实返回命中的订阅 |
 | `SearchTenantKnowledge` | 查询 | 租户知识检索 |
-| `RebuildIndex` | 命令 | 运维：重建指定索引 |
+| `SearchChunks` | 查询 | 分块级检索，返回分块文本、证据定位与所属快照（供 Agent 研究工具） |
+| `BuildIndexVersion` | 命令 | 构建新版本索引（异步） |
+| `EvaluateIndexVersion` | 命令 | 对新版本执行相关性评估与影子比对 |
+| `SwitchAlias` / `RollbackAlias` | 命令 | 切换或回退别名 |
 
 ## 6. 事件
 
-**消费**：`domain.fact.upserted.v1`、`entity.*`、`customer_context.knowledge.changed.v1`、`acquisition.source.rights_changed.v1`、`governance.deletion.requested.v1`。
+**消费**：`evidence.enrichment.completed.v1`、`evidence.enricher.promoted.v1`、`domain.fact.upserted.v1`、`entity.*`、`customer_context.knowledge.changed.v1`、`acquisition.source.rights_changed.v1`、`governance.deletion.requested.v1`。
 
-**发布**：`search.index.rebuilt.v1`。
+**发布**：`search.index.version_built.v1`、`search.alias.switched.v1`。
 
 ## 7. 扩展点
 
 - 信息领域包注册索引映射、分析器与字段权重；
 - 行业包注册同义词与词表；
-- 重排模型可插拔。
+- 重排模型可插拔；
+- 排序配置（字段权重、标签加权、混合检索融合参数）版本化，随索引版本评估与发布。
 
 ## 8. 伸缩与可靠性
 
 - 读写分离：索引写入异步，查询节点水平伸缩；
 - 索引落后于权威数据时，接口返回索引时间点；关键流程（如判断）始终回到权威数据核实；
-- 索引可从权威数据完全重建，重建期间使用别名切换实现零停机。
+- 索引可从对象存储（L1、L3）与 PostgreSQL（L2）完全重建，重建期间使用别名切换实现零停机；旧版本保留一个周期以便回退；
+- 检索质量通过相关性评估集持续度量，任何索引版本切换前必须评估不劣化。
 
 ## 9. 安全要点
 

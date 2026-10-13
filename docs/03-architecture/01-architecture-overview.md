@@ -51,7 +51,7 @@ flowchart TB
 
   subgraph DSP["数据供应平面 Data Supply Plane（公共域）"]
     ACQ["acquisition<br/>来源采集"]
-    EVD["evidence<br/>证据与文档"]
+    EVD["evidence<br/>证据与内容理解"]
     DOM["domain-intelligence<br/>领域情报"]
     ENT["entity-graph<br/>实体与关系图谱"]
     SRH["search<br/>检索与索引"]
@@ -85,7 +85,7 @@ flowchart TB
 | 平面 | 子系统 | 核心职责 | 拥有的核心数据 | 首期部署单元 |
 |---|---|---|---|---|
 | 数据供应 | [`acquisition`](subsystems/acquisition.md) | 来源注册与权利、调度、抓取、原始归档、来源健康 | 来源、访问契约、抓取记录、原始制品 | `acquisition` |
-| 数据供应 | [`evidence`](subsystems/evidence.md) | 文档处理、快照、解析修订、字段溯源、质量 | 快照、文档、解析修订、证据 | `platform` |
+| 数据供应 | [`evidence`](subsystems/evidence.md) | 文档处理、快照、解析修订、字段溯源、质量、AI 内容增强 | 快照与修订元数据、证据定位（正文与增强结果在对象存储） | `platform` |
 | 数据供应 | [`domain-intelligence`](subsystems/domain-intelligence.md) | 领域事实与事件、生命周期、跨记录聚合 | 各信息领域的领域事实 | `platform` |
 | 数据供应 | [`entity-graph`](subsystems/entity-graph.md) | 实体主数据、实体解析、关系图谱 | 组织、项目、地点、品类、关系、合并历史 | `platform` |
 | 数据供应 | [`search`](subsystems/search.md) | 索引投影、全文/语义/混合检索、订阅反查 | 检索索引（派生） | `platform` |
@@ -142,7 +142,9 @@ sequenceDiagram
   participant SRH as search
   ACQ->>OBJ: 写入原始制品（内容哈希）
   ACQ-->>EVD: 事件 acquisition.fetch.completed
-  EVD->>EVD: 判定是否新快照；文档处理；解析（领域包解析器）
+  EVD->>EVD: 判定是否新快照；文档处理；规范化正文写入对象存储；解析（领域包解析器）
+  EVD->>EVD: 内容增强（分类、标签、抽取、分块向量），结果写入对象存储
+  EVD-->>SRH: 事件 evidence.enrichment.completed
   EVD-->>DOM: 事件 evidence.extraction.revised
   DOM->>DOM: 生成/更新领域事实；生命周期转换；跨记录聚合
   DOM-->>ENT: 事件 domain.fact.upserted

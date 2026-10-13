@@ -27,6 +27,7 @@ ADR 记录重要且难以逆转的决策：背景、决策、备选方案与后�
 | [0010](0010-governed-agent-runtime.md) | 受治理的 Agent 运行时 | 提议 |
 | [0011](0011-immutable-evidence-dual-versioning.md) | 证据不可变与双版本 | 提议 |
 | [0012](0012-identity-keycloak-openfga.md) | 身份与授权：Keycloak + 关系型授权 | 提议 |
+| [0013](0013-tiered-persistence-and-search-enrichment.md) | 公共域分层持久化与检索增强 | 提议 |
 
 ## 待提出的 ADR
 

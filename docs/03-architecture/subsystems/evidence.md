@@ -1,10 +1,10 @@
-# 证据与文档子系统（evidence）
+# 证据与内容理解子系统（evidence）
 
 > 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 平面：数据供应 · 首期部署单元：`platform`（进程角色 `document-worker`）
 
 ## 1. 使命
 
-把原始制品转化为不可变、可定位、可复核的证据，并管理来源版本与解析版本，使平台中每一个结构化事实都能回到原文。
+把原始制品转化为不可变、可定位、可复核的证据和规范化内容，并通过规则与 AI 增强（抽取、标签、分类、向量化）持续提升内容的可检索性；管理来源版本、解析版本与增强版本，使平台中每一个结构化事实都能回到原文。
 
 ## 2. 职责与非职责
 
@@ -12,11 +12,13 @@
 
 - 快照判定：对同一来源对象，判断原始制品是否构成新的来源快照（规范化内容哈希）；
 - 文档处理：HTML 清洗与正文定位、PDF 文本与版面提取、Office 文档解析、图片与扫描件 OCR、压缩包与附件拆分、表格识别；
-- 规范化文档：统一的文档表示（段落、表格、页码、坐标），作为证据定位的坐标系；
+- 规范化文档：统一的文档表示（段落、表格、页码、坐标、分块），作为证据定位的坐标系，存放于对象存储（数据分层 L1）；
 - 解析编排：调用信息领域包的解析器，生成解析修订；
 - 字段溯源：每个解析字段的证据位置、方法、置信度；
 - 质量评估：完整性、一致性、可疑值检测；
-- 重放：解析器升级后对历史快照批量重新解析。
+- 内容增强：运行增强器（文档分类、品类分类、标的抽取、实体提及、业务标签、摘要、分块向量），产出版本化的增强结果（数据分层 L3）；
+- 语料快照：按月生成 Parquet 语料快照，供批量重算增强、评估与模型调优；
+- 重放：解析器或增强器升级后对历史数据批量重新处理。
 
 **非职责**
 
@@ -33,18 +35,26 @@
 | `extraction_orchestrator` | 选择领域包解析器、执行、生成解析修订 |
 | `provenance` | 证据定位器（文档、页、段、字符区间、表格单元）与字段溯源 |
 | `quality` | 质量规则执行与质量状态 |
-| `replay` | 解析器版本升级后的批量重放（Temporal 工作流） |
+| `enrichment` | 增强管线：增强器注册、成本分级执行（规则 → 小模型 → 大模型）、按内容哈希去重、结果写入对象存储、运行登记 |
+| `corpus` | 语料快照生成与管理 |
+| `replay` | 解析器与增强器升级后的批量重放（Temporal 工作流，热数据优先） |
 
 ## 4. 拥有的数据（公共域；客户授权文档在租户域）
 
 | 实体 | 说明 |
 |---|---|
 | `SourceSnapshot` | 来源对象的不可变版本：来源对象键、序号、规范化哈希、原始制品引用、观察时间 |
-| `NormalizedDocument` | 规范化文档（存对象存储，元数据在数据库） |
+| `NormalizedDocument` | 规范化文档与分块：正文存对象存储（`normalized/…`），数据库只存元数据与对象键 |
 | `ExtractionRevision` | 一次解析：快照、解析器标识与版本、结果、质量、创建时间 |
 | `FieldEvidence` | 字段 → 证据定位、方法（规则/模型/人工）、置信度 |
 | `EvidenceRef` | 可被引用的证据片段（`ev_` 前缀），包含定位器与快照版本 |
 | `QualityAssessment` | 质量状态与警告 |
+| `Enricher` / `EnricherVersion` | 增强器定义、版本、标签体系版本、评估结果、状态（候选/生效/退役） |
+| `EnrichmentRun` | 增强运行登记：增强器版本、数据范围、进度、成本、结果对象前缀 |
+| `EnrichmentResult` | 增强结果（存对象存储 `enrichment/…`，不进入数据库） |
+| `CorpusSnapshot` | 语料快照登记 |
+
+正文、附件文本、分块、增强结果和向量都**不**存入 PostgreSQL，见 [数据架构](../02-data-architecture.md#3-公共域的分层持久化)。
 
 ## 5. 接口
 
@@ -56,10 +66,13 @@
 | `GetDocument` | 查询 | 规范化文档与签名访问地址 |
 | `RequestReextraction` | 命令 | 对指定范围用指定解析器版本重放 |
 | `SubmitManualCorrection` | 命令 | 运营人员的人工修正：生成新的解析修订（方法=人工），不改变旧修订 |
+| `GetEnrichment` | 查询 | 指定快照或分块在指定增强器版本下的增强结果 |
+| `RunEnrichment` | 命令 | 对指定范围运行指定增强器版本（异步、受成本预算约束） |
+| `PromoteEnricherVersion` | 命令 | 经评估通过后将增强器版本设为生效（触发索引重建） |
 
 ## 6. 事件
 
-**发布**：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`（载荷含快照、修订、领域包标识、质量状态）、`evidence.quality.flagged.v1`、`evidence.artifact.refetch_requested.v1`。
+**发布**：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`（载荷含快照、修订、领域包标识、质量状态）、`evidence.quality.flagged.v1`、`evidence.artifact.refetch_requested.v1`、`evidence.enrichment.completed.v1`（单个快照的增强完成）、`evidence.enricher.promoted.v1`（增强器新版本生效）。
 
 **消费**：`acquisition.fetch.completed.v1`、`acquisition.source.rights_changed.v1`（更新证据的可见性标签）。
 
@@ -67,7 +80,8 @@
 
 - **解析器 SPI**（`Extractor`）：信息领域包提供，输入规范化文档，输出领域字段与字段溯源；
 - **文档处理插件**：新格式或专用 OCR 模型；
-- **质量规则**：领域包提供。
+- **质量规则**：领域包提供；
+- **增强器 SPI**（`Enricher`）：信息领域包与行业包提供分类器、抽取器、标签规则与标签体系。
 
 ## 8. 伸缩与可靠性
 

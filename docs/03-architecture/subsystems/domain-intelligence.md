@@ -37,7 +37,7 @@
 
 ## 4. 拥有的数据（公共域）
 
-- 各信息领域的领域事实表（例如 `proc.notice`、`proc.lot`、`proc.bid_result`、`invp.approval`），每个信息领域一个 schema；
+- 各信息领域的领域事实表（例如 `proc.notice`、`proc.lot`、`proc.bid_result`、`invp.approval`），每个信息领域一个 schema；只保存结构化字段与证据定位符，正文与附件文本留在对象存储；
 - `DomainFactVersion`：领域事实的版本链，引用产生它的解析修订；
 - `AggregationLink`：记录到领域对象的归并关系、方法、置信度、状态（自动/候选/已确认/已撤销）；
 - `LifecycleTransition`：状态转换、触发事实、时间；

@@ -42,6 +42,7 @@ pack:
 | 来源处理器 | `acquisition` `SourceHandler` SPI | 代码 |
 | 解析器 | `evidence` `Extractor` SPI | 代码（可调用模型网关） |
 | 质量规则 | `evidence.quality` | 声明 + 代码 |
+| 增强器与标签体系 | `evidence.enrichment` `Enricher` SPI | 声明（标签体系、规则）+ 代码（分类器、抽取器） |
 | 领域 Schema 与迁移 | `domain-intelligence.fact_store` | JSON Schema + 迁移脚本 |
 | 聚合规则 | `domain-intelligence.aggregator` | 声明 + 代码 |
 | 生命周期状态机 | `domain-intelligence.lifecycle_engine` | 声明 |
@@ -74,6 +75,7 @@ pack:
 |---|---|
 | 品类分类与跨分类映射 | `entity-graph`（`Category`） |
 | 产品、规格、品牌词表与同义词 | `search`、`entity-graph` |
+| 行业标签体系与品类分类增强器 | `evidence.enrichment` |
 | 能力与资质模板 | `customer-context.profile` |
 | 默认排除与关注规则 | `customer-context.policy_engine` |
 
@@ -95,6 +97,7 @@ pack:
 | `SourceHandler` | acquisition | `discover(plan) → refs`、`fetch(ref) → artifacts` |
 | `Connector` | acquisition | 新访问方式（授权 API、文件投递、客户系统） |
 | `Extractor` | evidence | `extract(document, ctx) → fields + provenance` |
+| `Enricher` | evidence | `enrich(document_or_chunks, ctx) → tags/classes/mentions/vectors + confidence`；声明成本等级与适用范围 |
 | `Aggregator` | domain-intelligence | `candidates(fact) → keys`、`decide(fact, candidate) → link` |
 | `RelationExtractor` | entity-graph | `extract(fact) → mentions + relations` |
 | `FeatureFunction` | detection | `compute(fact_view, context_view) → value` |

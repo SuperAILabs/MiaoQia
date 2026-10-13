@@ -26,12 +26,13 @@
 |---|---|---|
 | 事务数据库 | **PostgreSQL 16+**（ADR-0007） | RLS、分区、JSONB、逻辑复制、生态成熟 |
 | 对象存储 | S3 兼容（云厂商对象存储；私有部署使用 MinIO） | 标准接口 |
-| 检索 | **OpenSearch**（ADR-0007） | 中文分词插件、k-NN 向量、混合检索、percolator 订阅反查 |
+| 检索 | **OpenSearch**（ADR-0007、ADR-0013） | 中文分词插件、k-NN 向量、混合检索、percolator 订阅反查；版本化索引与别名切换 |
 | 图查询读模型 | 待基准测试后选定（NebulaGraph / Neo4j / Apache AGE） | 接口已固定为 `GraphQuery` |
 | 事件总线 | **Kafka**（ADR-0004） | 持久、可重放、分区有序、托管服务普及 |
 | 发件箱中继 | 自研轻量中继（轮询 + 通知） | 与子系统数据库一一对应，便于拆分；规模化后可替换为 CDC（Debezium） |
 | 事件 Schema | JSON Schema + AsyncAPI，CI 兼容性检查 | 与接口契约统一 |
 | 缓存 | Redis | 缓存、限流、短期幂等 |
+| 批处理与语料 | Parquet + Apache Arrow + DuckDB（嵌入式，运行于工作流 worker） | 语料快照、批量重算增强、评估，无需独立数据湖服务（ADR-0013） |
 | 工作流 | **Temporal**（ADR-0005） | 持久化、可恢复、定时器、人工中断、确定性重放 |
 
 ## 3. 文档与 AI
