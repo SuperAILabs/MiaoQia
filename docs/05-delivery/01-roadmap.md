@@ -19,7 +19,7 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 
 | 范围 | 交付 |
 |---|---|
-| 基础设施 | IaaS 账号与网络，以及 [技术选型](../03-architecture/08-technology-stack.md) 中的全部基础组件；开源自建（ADR-0015），以 OpenTofu + GitOps 管理 |
+| 基础设施 | IaaS 账号与网络，以及 [技术选型](../03-architecture/08-technology-stack.md) 中的全部基础组件；开源自建（ADR-0014），以 OpenTofu + GitOps 管理 |
 | 代码库 | monorepo（Go 模块、Python uv 工作区、TypeScript 工作区）、Go 与 Python 的 `kernel`、Python `sdk`、18 个子系统骨架、三个部署单元与进程角色、依赖检查 |
 | 契约体系 | `contracts/` 目录结构、Go/Python/TypeScript 代码生成、兼容性检查、跨语言契约测试框架 |
 | 平台横切 | 请求上下文、接口绑定（本地/远程）、发件箱与中继、事件消费框架、审计 SDK、授权 SDK、模型网关骨架 |
@@ -120,7 +120,7 @@ flowchart LR
 
 ## 4. 团队组织
 
-团队规模、划分、到岗节奏与决策机制见 [数据、质量与组织方案](04-data-quality-organization-proposal.md)。每个子系统有唯一负责人。
+团队规模、划分、到岗节奏与决策机制见 [数据、质量与组织](04-data-quality-organization.md)。每个子系统有唯一负责人。
 
 ## 5. 早期使用客户
 

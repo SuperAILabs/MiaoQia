@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/evidence/normalized-document.schema.json",
-  "x-version": "0.2.0",
+  "x-version": "0.1.0",
   "title": "NormalizedDocument 规范化文档",
   "description": "evidence 把原始制品（HTML、PDF、Office、扫描件）转换后的统一文档表示，存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是证据定位的坐标系：解析器只读取规范化文档，字段溯源以块序号与字符区间定位。",
   "type": "object",

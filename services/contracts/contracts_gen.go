@@ -183,7 +183,7 @@ type CellCoveredBy struct {
 	Row int `json:"row"`
 }
 
-// 公告中的联系人。按公开数据处理，供客户业务联系使用（ADR-0017）
+// 公告中的联系人。按公开数据处理，供客户业务联系使用
 type Contact struct {
 	// Email corresponds to the JSON schema field "email".
 	Email *string `json:"email,omitempty,omitzero"`
@@ -1245,7 +1245,7 @@ const OrgStatusMovedOut OrgStatus = "moved_out"
 const OrgStatusRevoked OrgStatus = "revoked"
 const OrgStatusSuspended OrgStatus = "suspended"
 
-// 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理（ADR-0017）
+// 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理
 type Person struct {
 	// Name corresponds to the JSON schema field "name".
 	Name string `json:"name"`

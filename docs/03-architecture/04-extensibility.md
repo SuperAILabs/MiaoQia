@@ -32,7 +32,7 @@ pack:
   provides: { … }                    # 按 kind 列出提供的扩展点
 ```
 
-扩展包由声明式定义文件（YAML/JSON，受 `contracts/packs/` Schema 校验）组成，按种类允许的形式不同（ADR-0014）：
+扩展包由声明式定义文件（YAML/JSON，受 `contracts/packs/` Schema 校验）组成，按种类允许的形式不同（ADR-0006）：
 
 | 种类 | 形式 | 运行位置 |
 |---|---|---|

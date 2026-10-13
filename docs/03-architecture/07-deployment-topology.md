@@ -7,7 +7,7 @@
 **逻辑架构按终态设计，部署从少量单元开始，演进通过配置完成。**（[ADR-0002](../04-decisions/0002-composable-deployment.md)）
 
 - 18 个子系统的边界、数据所有权、接口与事件契约从第一天按终态实现；
-- 基础设施从第一天按生产级自建（组件见 [技术选型](08-technology-stack.md)，原则见 [ADR-0015](../04-decisions/0015-self-hosted-open-source-infrastructure.md)），不使用替代方案过渡；
+- 基础设施从第一天按生产级自建（组件见 [技术选型](08-technology-stack.md)，原则见 [ADR-0014](../04-decisions/0014-self-hosted-open-source-infrastructure.md)），不使用替代方案过渡；
 - 应用代码打包为三个部署单元：`acquisition`、`data`、`platform`；每个子系统属于哪个单元以 [子系统索引](subsystems/README.md) 为准；
 - 任一子系统可以通过部署配置从所在单元拆出，独立部署，代码与契约不变。
 

@@ -4,7 +4,7 @@
 
   <样本编号>/
     meta.yaml       source_url、source_id、fetched_at、rights_tag、说明
-    raw.html        原始页面（公开来源信息按公开数据保留原文，见 ADR-0017）
+    raw.html        原始页面（公开来源信息按公开数据保留原文）
     expected.yaml   标注：facts: [{fact_type, fields: {JSON Pointer: 期望值}}]；只标注确定无疑的字段
 
 命令：

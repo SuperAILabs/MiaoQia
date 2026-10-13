@@ -483,7 +483,7 @@ export interface Category {
   confidence?: number;
 }
 /**
- * 公告中的联系人。按公开数据处理，供客户业务联系使用（ADR-0017）
+ * 公告中的联系人。按公开数据处理，供客户业务联系使用
  */
 export interface Contact {
   role: "buyer" | "agency" | "other";
@@ -544,7 +544,7 @@ export interface DateRange {
   to?: Instant;
 }
 /**
- * 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理（ADR-0017）
+ * 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理
  */
 export interface Person {
   name: string;

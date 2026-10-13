@@ -2,7 +2,7 @@
 # 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 3.5。
 template:
   id: TPL-TENDER-B05-ORGTRACK
-  version: 0.2.0
+  version: 0.1.0
   objective: APP-TENDER.B05
   roles: [ROLE-INVESTOR]
   fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change, org.abnormal]
