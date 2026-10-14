@@ -1,0 +1,22 @@
+[project]
+name = "miaoqia-runtime-data"
+version = "0.1.0"
+description = "data 部署单元入口与进程角色"
+requires-python = ">=3.12"
+dependencies = ["miaoqia-kernel", "miaoqia-evidence", "miaoqia-domain-intelligence", "miaoqia-entity-graph"]
+
+[project.scripts]
+mq-data = "miaoqia.runtime_data:main"
+
+[tool.uv.sources]
+miaoqia-kernel = { workspace = true }
+miaoqia-evidence = { workspace = true }
+miaoqia-domain-intelligence = { workspace = true }
+miaoqia-entity-graph = { workspace = true }
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/miaoqia"]

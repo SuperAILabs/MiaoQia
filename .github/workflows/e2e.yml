@@ -1,0 +1,48 @@
+# M0 退出标准的端到端验证：链路探针经三个部署单元，带追踪、审计与授权；identity 远程绑定（tests/e2e/m0.py）。
+name: e2e
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "data/**"
+      - "deploy/**"
+      - "contracts/**"
+      - "tools/dev/**"
+      - "tests/e2e/**"
+      - ".github/workflows/e2e.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  m0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+
+      - name: 启动本地基础组件
+        run: deploy/local/up.sh
+
+      - name: 端到端验证
+        run: uv run --project data --locked --all-packages python tests/e2e/m0.py
+
+      - name: 进程日志
+        if: failure()
+        run: tail -n 100 deploy/local/.data/e2e/*.log

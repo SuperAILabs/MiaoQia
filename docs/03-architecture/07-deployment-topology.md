@@ -31,7 +31,7 @@
 
 | 进程角色 | 内容 | 伸缩依据 |
 |---|---|---|
-| `acq-scheduler` | 采集计划与回填工作流（Temporal worker，任务队列 `acquisition-schedule`） | 固定副本 |
+| `acq-scheduler` | 采集计划与回填工作流（Temporal worker，任务队列 `acquisition-schedule`）；消费控制类事件（回填请求、链路探针） | 固定副本 |
 | `acq-fetcher` | HTTP/API 抓取执行器 | 任务队列深度 |
 | `acq-browser` | 浏览器渲染池（Playwright） | 渲染任务队列深度、内存 |
 | `acq-admin` | 来源注册、权利、健康的内部管理接口（经 `gateway` 暴露给运营控制台） | 固定副本 |
@@ -59,20 +59,7 @@
 | `outbox-relay` | 全部子系统（含 Python 子系统）的发件箱中继 | 发件箱 → Kafka | 发件箱积压 |
 | `scheduler` | 周期性任务（摘要、统计、健康检查） | 定时任务 | 固定副本（主备） |
 
-```yaml
-# deploy/platform/roles.yaml（示意）
-roles:
-  api:
-    subsystems: [gateway, identity, commerce, governance, customer_context, detection,
-                 research, assessment, pursuit, learning, channels, search, ai_platform, operations]
-    expose: [http]
-  consumer:
-    subsystems: [search, detection, assessment, pursuit, learning, channels, commerce, governance]
-    consume: all_registered
-  workflow-worker:
-    task_queues: [research, learning-simulation, detection-backfill,
-                  search-index-build, governance-deletion, pursuit-timers]
-```
+各单元的角色清单为 `deploy/<单元>/roles.yaml`；角色中的子系统必须属于该单元（由子系统索引生成的 `deploy/subsystems.yaml` 校验）。入口：platform 为 `services/cmd/platform -role <角色>`，acquisition 与 data 为 `mq-acquisition` / `mq-data --role <角色>`；配置项见各入口的说明。
 
 ### 2.4 基础组件的部署约定
 
@@ -133,6 +120,7 @@ flowchart LR
 - **子系统在同一进程中也不共享数据库连接与事务**：每个子系统使用自己的数据库账号与连接池；
 - **同语言子系统间同步调用经接口包**：同进程时为本地调用，但仍经过上下文传递、授权检查、超时与可观测埋点（与远程调用行为一致）；**跨语言调用一律为远程调用**；
 - **事件始终经 Kafka**：即使生产者与消费者在同一进程，也不使用进程内事件总线，保证拆分前后语义一致；
+- **绑定由配置切换**：`MIAOQIA_BINDING_<子系统>=remote` 时调用方经该子系统的远程客户端调用，该子系统不在本进程加载（视为已拆出）；
 - **Temporal 任务队列按子系统划分**：拆分子系统时只需让新服务监听其任务队列。
 
 ## 4. 拆分子系统的流程
@@ -186,7 +174,7 @@ flowchart LR
 | `prod` | 生产 | 真实数据 |
 | `private-<customer>` | 私有部署 | 客户环境 |
 
-本地开发通过容器编排一键启动全部基础组件与三个部署单元，保证开发环境与生产拓扑一致。
+本地开发以 `deploy/local/up.sh` 启动全部基础组件（Docker Compose，每子系统独立数据库与账号，主题按契约创建），三个部署单元以进程角色启动；`tests/e2e/m0.py` 在此环境上验证 M0 退出标准。
 
 ## 7. 地域与合规
 

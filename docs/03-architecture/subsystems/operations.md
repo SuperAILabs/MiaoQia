@@ -13,7 +13,8 @@
 - **托管研究服务**：为签约托管服务的租户执行研究、调优与简报，工作在租户授权范围内进行；
 - **客户成功**：实施进度、配置检查、健康度、续费风险；
 - **工单与工时**：所有人工工作以工单记录，含耗时、操作对象、结果；
-- **自动化候选**：统计高频重复人工操作，生成自动化建议。
+- **自动化候选**：统计高频重复人工操作，生成自动化建议；
+- **链路探针**：发起不含业务数据的探针，经 `acquisition`、`evidence` 回到本子系统，端到端验证事件骨干、追踪、审计与授权，并作为事件链路的健康监测（需 `platform:miaoqia` 上的 `can_trigger_probe` 关系）。
 
 ## 3. 拥有的数据
 
@@ -25,9 +26,9 @@
 
 ## 5. 事件
 
-**消费**：`evidence.quality.flagged.v1`、`acquisition.source.health_changed.v1`、`learning.drift.detected.v1`、各子系统的“需人工复核”事件。
+**消费**：`evidence.probe.forwarded.v1`、`evidence.quality.flagged.v1`、`acquisition.source.health_changed.v1`、`learning.drift.detected.v1`、各子系统的“需人工复核”事件。
 
-**发布**：`operations.review.completed.v1`、`operations.service_time.logged.v1`。
+**发布**：`operations.probe.requested.v1`、`operations.review.completed.v1`、`operations.service_time.logged.v1`。
 
 ## 6. 设计要点
 

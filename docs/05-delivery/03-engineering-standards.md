@@ -27,7 +27,7 @@
 合并请求必须全部通过：
 
 1. 格式化与静态检查（Go：gofmt、golangci-lint；Python：ruff、pyright；TypeScript：eslint、tsc）；
-2. 依赖规则检查（Go：`internal/` 与 depguard；Python：import-linter）；
+2. 依赖规则检查（Go：`internal/` 与 `services/archtest`；Python：import-linter）；
 3. 单元与集成测试；
 4. 契约检查（`mqc check`：Schema 方言、样例、事件契约、扩展包一致性）、契约兼容性检查（`mqc compat`，与目标分支比较）与契约测试；
 5. 生成代码一致性检查（`mqc generate --check`）与往返测试，见 [代码库结构](../03-architecture/09-codebase-structure.md#5-代码生成)；

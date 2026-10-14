@@ -14,6 +14,7 @@ miaoqia/
 │   ├── events/<namespace>/        事件 AsyncAPI + Schema
 │   ├── policy/                    策略 DSL Schema 与 CEL 环境声明
 │   ├── packs/                     扩展包定义 Schema
+│   ├── storage/                   内核表（发件箱、消费去重），Go 与 Python 内核共用
 │   ├── tests/                     契约样例（正例与反例）
 │   └── identifiers.yaml           标识前缀登记
 │
@@ -22,8 +23,8 @@ miaoqia/
 │   ├── kernel/                    通用基础设施（数据访问与 RLS、发件箱、事件消费、工作流、
 │   │                              配置、可观测、接口绑定、授权与审计 SDK、扩展包加载与 CEL 求值）
 │   ├── subsystems/<name>/         每个 Go 子系统一个目录
-│   ├── relay/                     发件箱中继（服务全部子系统库）
-│   └── cmd/platform/              platform 部署单元入口与进程角色
+│   ├── archtest/                  依赖规则检查（R1–R3、R5）
+│   └── cmd/platform/              platform 部署单元入口与进程角色（含发件箱中继角色）
 │
 ├── data/                          Python 工作区（uv）：公共域数据处理
 │   ├── contracts/                 miaoqia.contracts：生成的 Pydantic 模型（请勿手改）
@@ -43,8 +44,9 @@ miaoqia/
 │   ├── apps/ops-console/          运营控制台
 │   └── packages/                  组件、生成的契约类型（contracts/）与 API 客户端、视图注册表
 │
-├── deploy/                        Helm charts、角色清单、环境配置、OpenTofu
-├── tools/                         契约工具（contracts/，命令 mqc）、本地开发脚本
+├── deploy/                        subsystems.yaml（由子系统索引生成）、<单元>/roles.yaml 角色清单、local/ 本地环境；
+│                                  Helm charts、OpenTofu
+├── tools/                         契约工具（contracts/，命令 mqc）、dev/ 本地开发脚本
 ├── tests/
 │   ├── contract/                  跨子系统黑盒契约测试（同一套用例验证 Go 与 Python 实现）
 │   ├── e2e/                       端到端测试
@@ -78,7 +80,7 @@ miaoqia/
 | R6 | 子系统不得访问其他子系统的数据库（运行时：独立数据库账号无权限；静态：禁止引用其他子系统的表模型） |
 | R7 | 跨语言依赖只能经 `contracts/` 生成的远程客户端，不共享任何手写代码 |
 
-执行方式：Go 以 `internal/` 可见性与 golangci-lint `depguard` 检查；Python 以 import-linter 检查；两者都辅以数据库权限。
+执行方式：Go 以 `internal/` 可见性与依赖规则测试（`services/archtest`，读取依赖图与 `deploy/subsystems.yaml` 中的平面）检查；Python 以 import-linter（`data/pyproject.toml`）检查；两者都辅以数据库权限。
 
 ## 4. 接口绑定
 
@@ -104,6 +106,8 @@ contracts/schemas ──打包（统一类型名、改写跨文件引用、去�
    ├─► go-jsonschema               → services/contracts/contracts_gen.go
    ├─► datamodel-code-generator    → data/contracts/src/miaoqia/contracts/models.py
    └─► json-schema-to-typescript   → web/packages/contracts/src/index.ts
+contracts/apis/<子系统>/openapi.yaml
+   └─► ogen                        → services/contracts/apis/<子系统>/（客户端与服务端）
 ```
 
 - **生成类型只表达结构**：证据必填、按类型的条件必填、标识格式等约束不进入类型，入站数据一律用原始 JSON Schema 校验（Go 用 santhosh-tekuri/jsonschema，Python 用 jsonschema）；
@@ -111,7 +115,7 @@ contracts/schemas ──打包（统一类型名、改写跨文件引用、去�
 - **生成物提交到仓库**，`mqc generate --check` 校验其与契约一致；生成器版本分别固定在 `tools/contracts/gotools/go.mod`、`tools/contracts/pyproject.toml`、`web/packages/contracts/package.json`；
 - **Schema 写法**受方言规则约束（无 null、禁止额外属性、前缀须登记等），规则清单见 `tools/contracts/src/mqc/lint.py`；
 - **往返测试**：全部正例在 Go 与 Python 中按生成类型严格解析（未知字段即失败）；
-- `contracts/apis`（OpenAPI）与 `contracts/events` 的代码生成随第一批子系统接口与事件消费者一起建设，届时接入同一工具。
+- **接口绑定**：远程客户端与内部接口服务端由 ogen 生成；子系统的 `api/remote` 把生成的客户端适配为 `api` 中的接口，`api/apitest` 是提供方契约用例，本地与远程绑定都必须通过。
 
 | 命令（在仓库根目录） | 作用 |
 |---|---|

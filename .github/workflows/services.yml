@@ -1,0 +1,63 @@
+# Go 平台服务：静态检查与测试。
+name: services
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "contracts/policy/**"
+      - "contracts/storage/**"
+      - "contracts/apis/**"
+      - "deploy/subsystems.yaml"
+      - "deploy/platform/**"
+      - "docs/03-architecture/subsystems/identity.md"   # 权限矩阵由测试逐格校验
+      - "packs/application_domains/**"
+      - ".github/workflows/services.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: services-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
+      kafka:
+        image: apache/kafka:4.1.0          # 默认配置即单节点 KRaft，监听 localhost:9092
+        ports: ["9092:9092"]
+    env:
+      MIAOQIA_TEST_PG: postgres://postgres:postgres@localhost:5432/postgres
+      MIAOQIA_TEST_KAFKA: localhost:9092
+      MIAOQIA_TEST_OPENFGA: http://localhost:8081
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 启动 OpenFGA（内存存储；服务容器无法指定启动参数）
+        run: docker run -d --name openfga -p 8081:8080 openfga/openfga:v1.10.0 run
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
+
+      - name: 格式与静态检查
+        working-directory: services
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+          go vet ./...
+
+      - name: 测试（含竞态检查、依赖规则；集成与契约测试使用真实 PostgreSQL、Kafka、OpenFGA）
+        working-directory: services
+        run: go test -race ./...

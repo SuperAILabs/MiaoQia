@@ -1,0 +1,36 @@
+asyncapi: 3.0.0
+info:
+  title: acquisition 事件
+  version: 0.1.0
+  description: >
+    由 acquisition 发布。链路探针经过采集单元时发布 probe.emitted（见 contracts/events/operations）。
+    信封为 CloudEvents 1.0；公共域事件：miaoqiazone = public。
+channels:
+  public.acquisition:
+    address: public.acquisition
+    messages:
+      probeEmitted:
+        $ref: '#/components/messages/probeEmitted'
+operations:
+  publishAcquisitionEvents:
+    action: send
+    channel:
+      $ref: '#/channels/public.acquisition'
+components:
+  messages:
+    probeEmitted:
+      name: acquisition.probe.emitted.v1
+      summary: 链路探针经过采集单元
+      payload:
+        type: object
+        additionalProperties: false
+        required: [probe_id, hops]
+        properties:
+          probe_id:
+            type: string
+            pattern: ^prb_[0-9A-HJKMNP-TV-Z]{26}$
+          hops:
+            type: array
+            description: 已经过的子系统，按顺序
+            items:
+              type: string

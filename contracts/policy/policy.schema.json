@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/policy/policy.schema.json",
+  "title": "PolicyTemplate 策略模板",
+  "description": "策略模板与合成后策略的结构（语义见 docs/03-architecture/11-policy-dsl.md 第 3 节）。模板文件的顶层键为 template；租户策略在模板之外只填写参数与追加规则。",
+  "x-version": "0.1.0",
+  "type": "object",
+  "required": ["template"],
+  "additionalProperties": false,
+  "properties": {
+    "template": { "$ref": "#/$defs/template" }
+  },
+  "$defs": {
+    "template": {
+      "type": "object",
+      "required": ["id", "version", "objective", "fact_types", "rollout_key", "scope"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^TPL-[A-Z0-9]+(-[A-Z0-9]+)+$" },
+        "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+        "objective": { "type": "string", "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$" },
+        "roles": { "type": "array", "items": { "type": "string", "pattern": "^ROLE-[A-Z]+$" } },
+        "fact_types": { "$ref": "#/$defs/fact_types" },
+        "rollout_key": { "$ref": "#/$defs/expr" },
+        "view": { "type": "array", "items": { "type": "string" } },
+        "params": { "type": "object", "additionalProperties": { "$ref": "#/$defs/param" } },
+        "scope": {
+          "type": "object",
+          "required": ["fact_types"],
+          "additionalProperties": false,
+          "properties": {
+            "fact_types": { "$ref": "#/$defs/fact_types" },
+            "when": { "$ref": "#/$defs/expr" }
+          }
+        },
+        "require": { "type": "array", "items": { "$ref": "#/$defs/require_rule" } },
+        "exclude": { "type": "array", "items": { "$ref": "#/$defs/exclude_rule" } },
+        "watch": { "type": "array", "items": { "$ref": "#/$defs/watch_rule" } },
+        "boost": { "type": "array", "items": { "$ref": "#/$defs/weighted_rule" } },
+        "penalize": { "type": "array", "items": { "$ref": "#/$defs/weighted_rule" } },
+        "evidence_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "default": { "$ref": "#/$defs/field_evidence" },
+            "fields": { "type": "object", "additionalProperties": { "$ref": "#/$defs/field_evidence" } }
+          }
+        },
+        "thresholds": {
+          "type": "object",
+          "required": ["base_score", "pursue_at", "drop_below"],
+          "additionalProperties": false,
+          "properties": {
+            "base_score": { "type": "integer" },
+            "pursue_at": { "type": "integer" },
+            "drop_below": { "type": "integer" }
+          }
+        },
+        "route": {
+          "type": "object",
+          "propertyNames": { "enum": ["pursue_candidate", "review_candidate", "watch_signal"] },
+          "additionalProperties": { "$ref": "#/$defs/route" }
+        },
+        "examples": { "type": "array", "items": { "$ref": "#/$defs/example" } }
+      }
+    },
+    "fact_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z_]+\\.[a-z_]+$" }
+    },
+    "expr": { "type": "string", "minLength": 1, "maxLength": 2000, "description": "CEL 表达式（环境见 cel-environment.yaml）" },
+    "param": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "pattern": "^(int|double|bool|string|list<[a-z_]+>)$" },
+        "default": {},
+        "default_from": { "type": "string", "pattern": "^profile\\.[a-z_]+$" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "say": { "type": "string" }
+      }
+    },
+    "rule_base": {
+      "type": "object",
+      "x-mixin": true,
+      "required": ["id", "say", "when"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[RXWBP]-[A-Z0-9]+(-[A-Z0-9]+)*$" },
+        "say": { "type": "string", "minLength": 1 },
+        "when": { "$ref": "#/$defs/expr" },
+        "locked": { "type": "boolean" }
+      }
+    },
+    "require_rule": {
+      "allOf": [{ "$ref": "#/$defs/rule_base" }],
+      "unevaluatedProperties": false,
+      "properties": {
+        "id": { "pattern": "^R-" },
+        "missing": { "enum": ["reject", "review", "ignore"] },
+        "on_fail": { "enum": ["no_signal", "excluded"] },
+        "reason": { "type": "string" }
+      },
+      "if": { "properties": { "on_fail": { "const": "excluded" } }, "required": ["on_fail"] },
+      "then": { "required": ["reason"] }
+    },
+    "exclude_rule": {
+      "allOf": [{ "$ref": "#/$defs/rule_base" }],
+      "unevaluatedProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "id": { "pattern": "^X-" },
+        "reason": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+      }
+    },
+    "watch_rule": {
+      "allOf": [{ "$ref": "#/$defs/rule_base" }],
+      "unevaluatedProperties": false,
+      "properties": {
+        "id": { "pattern": "^W-" },
+        "ignore_requires": { "type": "array", "items": { "type": "string", "pattern": "^R-" } }
+      }
+    },
+    "weighted_rule": {
+      "allOf": [{ "$ref": "#/$defs/rule_base" }],
+      "unevaluatedProperties": false,
+      "required": ["weight"],
+      "properties": {
+        "id": { "pattern": "^[BP]-" },
+        "weight": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "field_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "methods": { "type": "array", "items": { "enum": ["rule", "model", "manual"] } }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "notify": {
+          "type": "object",
+          "required": ["audience", "mode"],
+          "additionalProperties": false,
+          "properties": {
+            "audience": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "pattern": "^(objective_owner|objective_members|role:[A-Z0-9_-]+)$" }
+            },
+            "mode": { "enum": ["immediate", "digest"] }
+          }
+        },
+        "research": {
+          "type": "object",
+          "required": ["template"],
+          "additionalProperties": false,
+          "properties": {
+            "template": { "type": "string", "pattern": "^RT-[A-Z0-9-]+$" },
+            "auto": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "example": {
+      "type": "object",
+      "required": ["name", "expect"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "fact_type": { "type": "string" },
+        "fact": { "type": "string", "description": "引用真实事实标识" },
+        "given": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fact": { "type": "object" },
+            "event": { "type": "object" },
+            "profile": { "type": "object" },
+            "lists": { "type": "object" },
+            "vocab": { "type": "object" },
+            "now": { "type": "string", "format": "date-time" }
+          }
+        },
+        "expect": { "enum": ["no_signal", "excluded", "watch_signal", "review_candidate", "pursue_candidate"] }
+      },
+      "oneOf": [{ "required": ["fact"] }, { "required": ["given"] }]
+    }
+  }
+}

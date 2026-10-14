@@ -1,0 +1,10 @@
+# data 部署单元的进程角色（docs/03-architecture/07-deployment-topology.md 第 2.2 节）。
+roles:
+  data-api:
+    subsystems: [evidence, domain-intelligence, entity-graph]
+  data-consumer:
+    subsystems: [evidence, domain-intelligence, entity-graph]
+  document-worker:
+    subsystems: [evidence]
+  data-workflow-worker:
+    subsystems: [evidence, domain-intelligence, entity-graph]

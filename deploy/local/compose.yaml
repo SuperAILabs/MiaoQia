@@ -1,0 +1,130 @@
+# 本地开发环境的基础组件（拓扑与生产一致：业务库与 Temporal 库分离，每子系统独立数据库与账号）。
+# 启动：deploy/local/up.sh；组件选型见 docs/03-architecture/08-technology-stack.md。
+# 尚未包含：对象存储（Ceph RGW）。
+name: miaoqia
+
+x-healthcheck: &hc
+  interval: 5s
+  timeout: 5s
+  retries: 30
+
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_PASSWORD: postgres
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_connections=400"]
+    ports: ["5432:5432"]
+    volumes:
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck: { <<: *hc, test: ["CMD", "pg_isready", "-U", "postgres"] }
+
+  postgres-temporal:
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    ports: ["5433:5432"]
+    healthcheck: { <<: *hc, test: ["CMD", "pg_isready", "-U", "temporal"] }
+
+  temporal:
+    image: temporalio/auto-setup:1.28.1
+    depends_on:
+      postgres-temporal: { condition: service_healthy }
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: postgres-temporal
+    ports: ["7233:7233"]
+    healthcheck: { <<: *hc, retries: 60, test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"] }
+
+  kafka:
+    image: apache/kafka:4.1.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,INTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"      # 主题由部署声明创建，与生产一致
+      KAFKA_NUM_PARTITIONS: 12
+    ports: ["9092:9092"]
+    healthcheck: { <<: *hc, test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"] }
+
+  opensearch:
+    image: opensearchproject/opensearch:3.2.0
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
+    ports: ["9200:9200"]
+    healthcheck: { <<: *hc, retries: 60, test: ["CMD-SHELL", "curl -fs localhost:9200/_cluster/health"] }
+
+  valkey:
+    image: valkey/valkey:8.1.3
+    ports: ["6379:6379"]
+    healthcheck: { <<: *hc, test: ["CMD", "valkey-cli", "ping"] }
+
+  keycloak:
+    image: keycloak/keycloak:26.3.4
+    depends_on:
+      postgres: { condition: service_healthy }
+    command: ["start-dev", "--http-port=8080", "--health-enabled=true", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    ports: ["8080:8080"]
+    healthcheck:   # 镜像不含 curl：经管理端口 9000 检查就绪
+      <<: *hc
+      retries: 60
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+
+  openfga-migrate:
+    image: openfga/openfga:v1.10.0
+    depends_on:
+      postgres: { condition: service_healthy }
+    command: ["migrate"]
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
+
+  openfga:
+    image: openfga/openfga:v1.10.0
+    depends_on:
+      openfga-migrate: { condition: service_completed_successfully }
+    command: ["run"]
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
+      OPENFGA_PLAYGROUND_ENABLED: "false"
+    ports: ["8081:8080"]
+
+  openbao:
+    image: openbao/openbao:2.4.1
+    command: ["server", "-dev", "-dev-root-token-id=dev-root", "-dev-listen-address=0.0.0.0:8200"]
+    cap_add: [IPC_LOCK]
+    ports: ["8200:8200"]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.135.0
+    command: ["--config=/etc/otel/collector.yaml"]
+    user: "0:0"
+    volumes:
+      - ./otel/collector.yaml:/etc/otel/collector.yaml:ro
+      - ./.data/otel:/data
+    ports: ["4317:4317", "4318:4318"]

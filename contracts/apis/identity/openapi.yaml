@@ -1,0 +1,66 @@
+openapi: 3.1.0
+info:
+  title: identity 内部接口
+  version: 0.1.0
+  description: >
+    identity 子系统的内部接口（docs/03-architecture/subsystems/identity.md 第 5 节）。只在内部监听端口提供；
+    请求上下文经 Miaoqia-Context 头传递，追踪上下文经 traceparent 头传递（约定见 docs/03-architecture/03-integration-contracts.md 第 2.2 节）。
+    错误为 RFC 9457 Problem Details。
+servers:
+  - url: /internal
+paths:
+  /v1/authz:check:
+    post:
+      operationId: checkAuthorization
+      summary: 授权决策（Check）
+      description: 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckRequest' }
+      responses:
+        '200':
+          description: 决策结果
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckResult' }
+        default:
+          description: 错误
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+components:
+  schemas:
+    CheckRequest:
+      type: object
+      additionalProperties: false
+      required: [relation, object]
+      properties:
+        subject:
+          type: string
+          description: 主体，例如 user:usr_…；缺省为请求上下文的调用主体
+          pattern: '^[a-z_]+:[A-Za-z0-9_:.-]+$'
+        relation:
+          type: string
+          description: 关系或动作，例如 can_trigger_probe
+          pattern: '^[a-z][a-z0-9_]*$'
+        object:
+          type: string
+          description: 资源，例如 platform:miaoqia、tenant:tnt_…
+          pattern: '^[a-z_]+:[A-Za-z0-9_.-]+$'
+    CheckResult:
+      type: object
+      additionalProperties: false
+      required: [allowed]
+      properties:
+        allowed: { type: boolean }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string, description: 稳定错误代码 }

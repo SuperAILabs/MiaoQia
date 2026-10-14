@@ -4,6 +4,7 @@
   P1  pack.yaml 声明的 Schema 与事件文件存在
   P2  生命周期状态机的状态与触发值都取自所引用 Schema 的枚举，所有状态可到达
 应用领域包（策略，语义见 docs/03-architecture/11-policy-dsl.md）：
+  P0  模板文件符合 contracts/policy/policy.schema.json
   P3  视图投影的来源 Schema 存在
   P4  模板引用的事实类型、视图项、特征、参数、档案字段、原因代码都已声明
   P5  规则编号前缀与子句一致且不重复；排除规则必须有原因代码
@@ -12,8 +13,11 @@
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
+
+from jsonschema import Draft202012Validator
 
 from .events import event_names
 from .repo import Repo, load_yaml
@@ -71,6 +75,11 @@ def check_information_pack(repo: Repo, pack_dir: Path) -> Report:
     return r
 
 
+def _template_validator(repo: Repo) -> Draft202012Validator:
+    schema = json.loads((repo.contracts / "policy" / "policy.schema.json").read_text(encoding="utf-8"))
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
 def check_application_pack(repo: Repo, pack_dir: Path) -> Report:
     r = Report()
     pack = load_yaml(pack_dir / "pack.yaml")["pack"]
@@ -110,7 +119,10 @@ def check_application_pack(repo: Repo, pack_dir: Path) -> Report:
     for tf in pol["templates"]:
         where = str((pack_dir / tf).relative_to(repo.root))
         text = (pack_dir / tf).read_text(encoding="utf-8")
-        t = load_yaml(pack_dir / tf)["template"]
+        doc = load_yaml(pack_dir / tf)
+        for e in sorted(_template_validator(repo).iter_errors(doc), key=lambda e: list(e.absolute_path)):
+            r.error(str((pack_dir / tf).relative_to(repo.root)), f"P0 /{'/'.join(map(str, e.absolute_path))}：{e.message}")
+        t = doc["template"]
         fts = t["fact_types"]
         for x in fts:
             if x not in fact_types:

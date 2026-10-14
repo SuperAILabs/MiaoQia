@@ -31,7 +31,7 @@
 | 授权 | OpenFGA Go SDK | 统一授权 SDK |
 | MCP | 官方 MCP Go SDK（Streamable HTTP） | 标准实现 |
 | 离线计算 | DuckDB（Go 绑定） | `learning` 指标与仿真汇总 |
-| 依赖规则 | `internal/` 可见性 + golangci-lint `depguard` | CI 强制子系统依赖规则 |
+| 依赖规则 | `internal/` 可见性 + 依赖规则测试（`services/archtest`） | CI 强制子系统依赖规则 |
 | 静态检查 | gofmt、golangci-lint、govulncheck | — |
 
 ### 2.2 Python（数据抓取与维护）
@@ -107,7 +107,7 @@
 | 镜像仓库 | Harbor |
 | 可观测性 | OpenTelemetry Collector；VictoriaMetrics + Grafana；Loki；Tempo（AGPL 组件随私有部署分发前经法务确认） |
 | CI | GitHub Actions + 境内自建 runner；契约检查工具 `mqc`（`tools/contracts/`） |
-| 本地开发 | Docker Compose（全部基础组件）+ 三个部署单元的进程角色启动脚本 |
+| 本地开发 | Docker Compose（全部基础组件，`deploy/local/`）+ 三个部署单元的进程角色入口 |
 
 ## 7. 评估后不引入的组件
 

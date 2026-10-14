@@ -1,0 +1,97 @@
+# 授权模型（OpenFGA）。权限矩阵与语义见 docs/03-architecture/subsystems/identity.md 第 7 节；
+# 测试逐格校验本模型与矩阵一致（contract_test.go）。
+#
+# 角色绑定在租户或组织单元上，组织单元继承上级的角色；租户域资源归属某个组织单元（unit）。
+# 外部协作者不是租户成员，只经资源上的直接关系（推进协作者、研究共享）获得访问。
+# 审批（策略激活、批量导出等）的“申请人不能批准自己”由 identity 的审批服务保证，不在本模型中表达。
+model
+  schema 1.1
+
+type user
+type service
+type service_account
+
+type platform
+  relations
+    define operator: [user, service]
+    define can_trigger_probe: operator
+
+type tenant
+  relations
+    define admin: [user]
+    define decision_maker: [user]
+    define business_developer: [user]
+    define pursuit_lead: [user]
+    define research_analyst: [user]
+    define domain_expert: [user]
+    define member: [user, service_account] or admin or decision_maker or business_developer or pursuit_lead or research_analyst or domain_expert
+    define can_view_profile: member
+    define can_edit_profile: domain_expert or admin
+    define can_manage_knowledge: domain_expert or admin
+    define can_create_objective: decision_maker or admin
+    define can_search_public: member
+    define can_start_research: decision_maker or business_developer or pursuit_lead or research_analyst
+    define can_request_export: decision_maker or business_developer or pursuit_lead or research_analyst or admin
+    define can_approve_export: admin
+    define can_view_usage: decision_maker or admin
+    define can_manage_members: admin
+    define can_view_audit: admin
+    define can_manage_data_policy: admin
+    define can_manage_credentials: admin
+    define can_approve_support_access: admin
+
+type org_unit
+  relations
+    define parent: [tenant, org_unit]
+    define admin: [user] or admin from parent
+    define decision_maker: [user] or decision_maker from parent
+    define business_developer: [user] or business_developer from parent
+    define pursuit_lead: [user] or pursuit_lead from parent
+    define research_analyst: [user] or research_analyst from parent
+    define domain_expert: [user] or domain_expert from parent
+    define member: [user, service_account] or member from parent or admin or decision_maker or business_developer or pursuit_lead or research_analyst or domain_expert
+
+# 租户启用的商业目标：策略、信号、判断与决策都归属目标
+type objective
+  relations
+    define unit: [org_unit, tenant]
+    define owner: [user]
+    define participant: ([user] or owner) and member from unit
+    define can_view: participant or decision_maker from unit or research_analyst from unit or admin from unit
+    define can_draft_policy: decision_maker from unit or admin from unit or (participant and business_developer from unit)
+    define can_request_activation: can_draft_policy
+    define can_approve_activation: decision_maker from unit or admin from unit
+    define can_view_signals: can_view
+    define can_feedback: decision_maker from unit or research_analyst from unit or (participant and pursuit_lead from unit) or (participant and business_developer from unit)
+    define can_assign: decision_maker from unit or (participant and business_developer from unit)
+    define can_draft_decision: decision_maker from unit or (participant and business_developer from unit) or (participant and pursuit_lead from unit)
+    define can_approve_decision: decision_maker from unit
+
+type research_case
+  relations
+    define unit: [org_unit, tenant]
+    define owner: [user]
+    define shared_with: [user]
+    define reader: owner or shared_with
+    define can_view: reader or decision_maker from unit or research_analyst from unit or admin from unit
+    define can_export: decision_maker from unit or research_analyst from unit or admin from unit or (reader and business_developer from unit) or (reader and pursuit_lead from unit)
+
+type pursuit
+  relations
+    define unit: [org_unit, tenant]
+    define owner: [user]
+    define collaborator: [user]
+    define involved: owner or collaborator
+    define can_view: involved or member from unit
+    define can_collaborate: involved or decision_maker from unit
+    define can_edit: decision_maker from unit or (involved and business_developer from unit) or (involved and pursuit_lead from unit)
+    define can_invite_external: can_edit
+
+# 知识资产：一般资产挂在 unit 上，成员可见；受限资产挂在 restricted_unit 上，只有业务专家、管理员与被授予的成员可见
+type knowledge_asset
+  relations
+    define unit: [org_unit, tenant]
+    define restricted_unit: [org_unit, tenant]
+    define viewer: [user]
+    define can_view: member from unit or (viewer and member from restricted_unit) or domain_expert from restricted_unit or admin from restricted_unit
+    define can_downgrade: admin from unit or admin from restricted_unit

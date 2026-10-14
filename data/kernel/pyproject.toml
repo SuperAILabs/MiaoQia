@@ -1,0 +1,27 @@
+[project]
+name = "miaoqia-kernel"
+version = "0.1.0"
+description = "数据供应平面的通用基础设施：请求上下文、数据访问与 RLS、发件箱、事件消费、审计、追踪"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic==1.20.0",
+    "confluent-kafka==2.16.0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.45.1",
+    "opentelemetry-sdk==1.45.1",
+    "psycopg[binary]==3.3.6",
+    "python-ulid==4.0.1",
+    "pyyaml==6.0.3",
+    "sqlalchemy==2.1.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.4.2",
+]
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/miaoqia"]

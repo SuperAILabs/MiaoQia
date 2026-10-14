@@ -38,6 +38,8 @@ def test_schema_rules(sandbox, monkeypatch, capsys, rule, mutate):
 @pytest.mark.parametrize("rule,rel,old,new", [
     ("Y1", "packs/information_domains/procurement/lifecycle.yaml", "trigger: [contract]", "on: [contract]"),
     ("P2", "packs/information_domains/procurement/lifecycle.yaml", "to: accepted,", "to: archived,"),
+    ("P0", "packs/application_domains/tendering/policy/templates/a01-direct-bid.yaml", "weight: 15", "weight: 0"),
+    ("P0", "packs/application_domains/tendering/policy/templates/a01-direct-bid.yaml", "mode: immediate", "mode: hourly"),
     ("P4", "packs/application_domains/tendering/policy/templates/a01-direct-bid.yaml", "reason: BLOCKED_BUYER", "reason: NOT_A_CODE"),
     ("E2", "contracts/events/org/events.asyncapi.yaml", "name: org.change.recorded.v1", "name: credit.change.recorded.v1"),
 ])

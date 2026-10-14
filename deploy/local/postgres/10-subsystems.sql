@@ -1,0 +1,225 @@
+-- 由 tools/dev/gen_local.py 根据子系统索引生成，请勿手改。
+-- 仅用于本地开发环境：密码与账号名相同。
+
+CREATE ROLE outbox_relay LOGIN PASSWORD 'outbox_relay';
+
+-- acquisition（Python，acquisition）
+CREATE ROLE acq_owner LOGIN PASSWORD 'acq_owner';
+CREATE ROLE acq_app LOGIN PASSWORD 'acq_app' NOBYPASSRLS;
+CREATE DATABASE acq OWNER acq_owner;
+REVOKE ALL ON DATABASE acq FROM PUBLIC;
+GRANT CONNECT ON DATABASE acq TO acq_app, outbox_relay;
+\connect acq
+ALTER SCHEMA public OWNER TO acq_owner;
+GRANT USAGE ON SCHEMA public TO acq_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE acq_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO acq_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE acq_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO acq_app;
+\connect postgres
+
+-- evidence（Python，data）
+CREATE ROLE evd_owner LOGIN PASSWORD 'evd_owner';
+CREATE ROLE evd_app LOGIN PASSWORD 'evd_app' NOBYPASSRLS;
+CREATE DATABASE evd OWNER evd_owner;
+REVOKE ALL ON DATABASE evd FROM PUBLIC;
+GRANT CONNECT ON DATABASE evd TO evd_app, outbox_relay;
+\connect evd
+ALTER SCHEMA public OWNER TO evd_owner;
+GRANT USAGE ON SCHEMA public TO evd_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE evd_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO evd_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE evd_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO evd_app;
+\connect postgres
+
+-- domain-intelligence（Python，data）
+CREATE ROLE dom_owner LOGIN PASSWORD 'dom_owner';
+CREATE ROLE dom_app LOGIN PASSWORD 'dom_app' NOBYPASSRLS;
+CREATE DATABASE dom OWNER dom_owner;
+REVOKE ALL ON DATABASE dom FROM PUBLIC;
+GRANT CONNECT ON DATABASE dom TO dom_app, outbox_relay;
+\connect dom
+ALTER SCHEMA public OWNER TO dom_owner;
+GRANT USAGE ON SCHEMA public TO dom_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE dom_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO dom_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE dom_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO dom_app;
+\connect postgres
+
+-- entity-graph（Python，data）
+CREATE ROLE ent_owner LOGIN PASSWORD 'ent_owner';
+CREATE ROLE ent_app LOGIN PASSWORD 'ent_app' NOBYPASSRLS;
+CREATE DATABASE ent OWNER ent_owner;
+REVOKE ALL ON DATABASE ent FROM PUBLIC;
+GRANT CONNECT ON DATABASE ent TO ent_app, outbox_relay;
+\connect ent
+ALTER SCHEMA public OWNER TO ent_owner;
+GRANT USAGE ON SCHEMA public TO ent_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE ent_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ent_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE ent_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ent_app;
+\connect postgres
+
+-- customer-context（Go，platform）
+CREATE ROLE ctx_owner LOGIN PASSWORD 'ctx_owner';
+CREATE ROLE ctx_app LOGIN PASSWORD 'ctx_app' NOBYPASSRLS;
+CREATE DATABASE ctx OWNER ctx_owner;
+REVOKE ALL ON DATABASE ctx FROM PUBLIC;
+GRANT CONNECT ON DATABASE ctx TO ctx_app, outbox_relay;
+\connect ctx
+ALTER SCHEMA public OWNER TO ctx_owner;
+GRANT USAGE ON SCHEMA public TO ctx_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE ctx_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ctx_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE ctx_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ctx_app;
+\connect postgres
+
+-- detection（Go，platform）
+CREATE ROLE det_owner LOGIN PASSWORD 'det_owner';
+CREATE ROLE det_app LOGIN PASSWORD 'det_app' NOBYPASSRLS;
+CREATE DATABASE det OWNER det_owner;
+REVOKE ALL ON DATABASE det FROM PUBLIC;
+GRANT CONNECT ON DATABASE det TO det_app, outbox_relay;
+\connect det
+ALTER SCHEMA public OWNER TO det_owner;
+GRANT USAGE ON SCHEMA public TO det_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE det_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO det_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE det_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO det_app;
+\connect postgres
+
+-- research（Go，platform）
+CREATE ROLE res_owner LOGIN PASSWORD 'res_owner';
+CREATE ROLE res_app LOGIN PASSWORD 'res_app' NOBYPASSRLS;
+CREATE DATABASE res OWNER res_owner;
+REVOKE ALL ON DATABASE res FROM PUBLIC;
+GRANT CONNECT ON DATABASE res TO res_app, outbox_relay;
+\connect res
+ALTER SCHEMA public OWNER TO res_owner;
+GRANT USAGE ON SCHEMA public TO res_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE res_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO res_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE res_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO res_app;
+\connect postgres
+
+-- assessment（Go，platform）
+CREATE ROLE asm_owner LOGIN PASSWORD 'asm_owner';
+CREATE ROLE asm_app LOGIN PASSWORD 'asm_app' NOBYPASSRLS;
+CREATE DATABASE asm OWNER asm_owner;
+REVOKE ALL ON DATABASE asm FROM PUBLIC;
+GRANT CONNECT ON DATABASE asm TO asm_app, outbox_relay;
+\connect asm
+ALTER SCHEMA public OWNER TO asm_owner;
+GRANT USAGE ON SCHEMA public TO asm_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE asm_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO asm_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE asm_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO asm_app;
+\connect postgres
+
+-- pursuit（Go，platform）
+CREATE ROLE pur_owner LOGIN PASSWORD 'pur_owner';
+CREATE ROLE pur_app LOGIN PASSWORD 'pur_app' NOBYPASSRLS;
+CREATE DATABASE pur OWNER pur_owner;
+REVOKE ALL ON DATABASE pur FROM PUBLIC;
+GRANT CONNECT ON DATABASE pur TO pur_app, outbox_relay;
+\connect pur
+ALTER SCHEMA public OWNER TO pur_owner;
+GRANT USAGE ON SCHEMA public TO pur_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE pur_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pur_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE pur_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO pur_app;
+\connect postgres
+
+-- learning（Go，platform）
+CREATE ROLE lrn_owner LOGIN PASSWORD 'lrn_owner';
+CREATE ROLE lrn_app LOGIN PASSWORD 'lrn_app' NOBYPASSRLS;
+CREATE DATABASE lrn OWNER lrn_owner;
+REVOKE ALL ON DATABASE lrn FROM PUBLIC;
+GRANT CONNECT ON DATABASE lrn TO lrn_app, outbox_relay;
+\connect lrn
+ALTER SCHEMA public OWNER TO lrn_owner;
+GRANT USAGE ON SCHEMA public TO lrn_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE lrn_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO lrn_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE lrn_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO lrn_app;
+\connect postgres
+
+-- gateway（Go，platform）
+CREATE ROLE gwy_owner LOGIN PASSWORD 'gwy_owner';
+CREATE ROLE gwy_app LOGIN PASSWORD 'gwy_app' NOBYPASSRLS;
+CREATE DATABASE gwy OWNER gwy_owner;
+REVOKE ALL ON DATABASE gwy FROM PUBLIC;
+GRANT CONNECT ON DATABASE gwy TO gwy_app, outbox_relay;
+\connect gwy
+ALTER SCHEMA public OWNER TO gwy_owner;
+GRANT USAGE ON SCHEMA public TO gwy_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE gwy_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO gwy_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE gwy_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO gwy_app;
+\connect postgres
+
+-- channels（Go，platform）
+CREATE ROLE chn_owner LOGIN PASSWORD 'chn_owner';
+CREATE ROLE chn_app LOGIN PASSWORD 'chn_app' NOBYPASSRLS;
+CREATE DATABASE chn OWNER chn_owner;
+REVOKE ALL ON DATABASE chn FROM PUBLIC;
+GRANT CONNECT ON DATABASE chn TO chn_app, outbox_relay;
+\connect chn
+ALTER SCHEMA public OWNER TO chn_owner;
+GRANT USAGE ON SCHEMA public TO chn_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE chn_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO chn_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE chn_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO chn_app;
+\connect postgres
+
+-- identity（Go，platform）
+CREATE ROLE iam_owner LOGIN PASSWORD 'iam_owner';
+CREATE ROLE iam_app LOGIN PASSWORD 'iam_app' NOBYPASSRLS;
+CREATE DATABASE iam OWNER iam_owner;
+REVOKE ALL ON DATABASE iam FROM PUBLIC;
+GRANT CONNECT ON DATABASE iam TO iam_app, outbox_relay;
+\connect iam
+ALTER SCHEMA public OWNER TO iam_owner;
+GRANT USAGE ON SCHEMA public TO iam_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE iam_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO iam_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE iam_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO iam_app;
+\connect postgres
+
+-- commerce（Go，platform）
+CREATE ROLE com_owner LOGIN PASSWORD 'com_owner';
+CREATE ROLE com_app LOGIN PASSWORD 'com_app' NOBYPASSRLS;
+CREATE DATABASE com OWNER com_owner;
+REVOKE ALL ON DATABASE com FROM PUBLIC;
+GRANT CONNECT ON DATABASE com TO com_app, outbox_relay;
+\connect com
+ALTER SCHEMA public OWNER TO com_owner;
+GRANT USAGE ON SCHEMA public TO com_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE com_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO com_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE com_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO com_app;
+\connect postgres
+
+-- governance（Go，platform）
+CREATE ROLE gov_owner LOGIN PASSWORD 'gov_owner';
+CREATE ROLE gov_app LOGIN PASSWORD 'gov_app' NOBYPASSRLS;
+CREATE DATABASE gov OWNER gov_owner;
+REVOKE ALL ON DATABASE gov FROM PUBLIC;
+GRANT CONNECT ON DATABASE gov TO gov_app, outbox_relay;
+\connect gov
+ALTER SCHEMA public OWNER TO gov_owner;
+GRANT USAGE ON SCHEMA public TO gov_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE gov_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO gov_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE gov_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO gov_app;
+\connect postgres
+
+-- ai-platform（Go，platform）
+CREATE ROLE aip_owner LOGIN PASSWORD 'aip_owner';
+CREATE ROLE aip_app LOGIN PASSWORD 'aip_app' NOBYPASSRLS;
+CREATE DATABASE aip OWNER aip_owner;
+REVOKE ALL ON DATABASE aip FROM PUBLIC;
+GRANT CONNECT ON DATABASE aip TO aip_app, outbox_relay;
+\connect aip
+ALTER SCHEMA public OWNER TO aip_owner;
+GRANT USAGE ON SCHEMA public TO aip_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE aip_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO aip_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE aip_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO aip_app;
+\connect postgres
+
+-- operations（Go，platform）
+CREATE ROLE ops_owner LOGIN PASSWORD 'ops_owner';
+CREATE ROLE ops_app LOGIN PASSWORD 'ops_app' NOBYPASSRLS;
+CREATE DATABASE ops OWNER ops_owner;
+REVOKE ALL ON DATABASE ops FROM PUBLIC;
+GRANT CONNECT ON DATABASE ops TO ops_app, outbox_relay;
+\connect ops
+ALTER SCHEMA public OWNER TO ops_owner;
+GRANT USAGE ON SCHEMA public TO ops_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE ops_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ops_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE ops_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ops_app;
+\connect postgres

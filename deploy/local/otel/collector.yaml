@@ -1,0 +1,19 @@
+# 本地 OpenTelemetry Collector：接收 OTLP，追踪写入文件（端到端测试据此校验链路），同时输出摘要日志。
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+processors:
+  batch: { timeout: 1s }
+exporters:
+  file:
+    path: /data/traces.jsonl
+  debug:
+    verbosity: basic
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file, debug]

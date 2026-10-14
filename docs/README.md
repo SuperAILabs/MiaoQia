@@ -121,6 +121,7 @@ docs/
 | 解析语料格式与评测 | `data/sdk/src/miaoqia/sdk/corpus.py` | 链接 |
 | 兼容性判定规则 | `tools/contracts/src/mqc/compat.py` | 链接 |
 | 标识前缀 | `contracts/identifiers.yaml` | 引用前缀 |
+| 内核表（发件箱、消费去重） | `contracts/storage/kernel.sql` | 链接 |
 | 信息领域的领域 Schema 与领域事件 | `contracts/schemas/domains/<领域>/`、`contracts/events/<命名空间>/` | 业务文档只写概念与含义 |
 | 信息领域生命周期状态机 | `packs/information_domains/<领域>/lifecycle.yaml` | 链接 |
 | 商业目标目录 | `02-business/02-commercial-objectives.md` | 引用目标编号 |

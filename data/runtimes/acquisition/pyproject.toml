@@ -1,0 +1,20 @@
+[project]
+name = "miaoqia-runtime-acquisition"
+version = "0.1.0"
+description = "acquisition 部署单元入口与进程角色"
+requires-python = ">=3.12"
+dependencies = ["miaoqia-kernel", "miaoqia-acquisition"]
+
+[project.scripts]
+mq-acquisition = "miaoqia.runtime_acquisition:main"
+
+[tool.uv.sources]
+miaoqia-kernel = { workspace = true }
+miaoqia-acquisition = { workspace = true }
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/miaoqia"]

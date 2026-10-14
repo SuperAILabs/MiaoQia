@@ -1,0 +1,16 @@
+# platform 部署单元的进程角色（docs/03-architecture/07-deployment-topology.md 第 2.3 节）。
+# 子系统必须属于 platform 单元（子系统索引）；tools/dev/gen_local.py --check 校验。
+roles:
+  api:
+    subsystems: [gateway, identity, commerce, governance, customer-context, detection,
+                 research, assessment, pursuit, learning, channels, search, ai-platform, operations]
+  consumer:
+    subsystems: [search, detection, assessment, pursuit, learning, channels, commerce, governance, operations]
+  workflow-worker:
+    subsystems: [research, learning, customer-context, pursuit, governance, search]
+  scheduler:
+    subsystems: [operations]
+
+# outbox-relay 读取全部子系统数据库的发件箱（含 Python 子系统），数据库清单取自子系统索引。
+outbox_relay:
+  dsn_template: ${MIAOQIA_RELAY_DSN_TEMPLATE}   # 例如 postgres://outbox_relay:…@pg:5432/{db}

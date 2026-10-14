@@ -15,6 +15,9 @@ on:
       - "web/packages/contracts/**"
       - "web/pnpm-lock.yaml"
       - ".github/workflows/contracts.yml"
+      - "docs/03-architecture/subsystems/README.md"
+      - "deploy/**"
+      - "tools/dev/**"
   push:
     branches: [main]
 
@@ -57,6 +60,9 @@ jobs:
 
       - name: 安装前端依赖
         run: pnpm --dir web install --frozen-lockfile
+
+      - name: 子系统清单、本地数据库与进程角色与子系统索引一致
+        run: uv run --project tools/contracts --locked python tools/dev/gen_local.py --check
 
       - name: 契约工具自测
         run: uv run --project tools/contracts --locked --group dev pytest -q tools/contracts/tests
