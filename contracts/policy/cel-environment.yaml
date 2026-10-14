@@ -1,0 +1,64 @@
+# 策略 DSL 的 CEL 环境：表达式可用的变量、平台函数与限制（语义见 docs/03-architecture/11-policy-dsl.md 第 5、8 节）。
+# Go 实现（services/kernel/policy）以本文件为准，测试校验两者一致。
+x-version: 0.1.0
+
+variables:
+  fact:     { type: map, say: 事实视图（视图目录 views.yaml 中的投影 + 模板声明的视图项） }
+  event:    { type: map, say: 触发事件：type、changed_fields 等 }
+  profile:  { type: map, say: 客户上下文快照 }
+  lists:    { type: map, say: 租户私有实体清单，键为清单种类，值为组织标识列表 }
+  vocab:    { type: map, say: 行业包词表，键为词表名，值为词列表 }
+  features: { type: map, say: 特征函数结果；只计算策略引用到的特征 }
+  params:   { type: map, say: 模板参数（按模板参数定义归一类型） }
+  now:      { type: timestamp, say: 逻辑求值时间 }
+
+functions:
+  category.any_match:
+    args: [list, list]
+    result: bool
+    say: 标的（每项含 categories[{scheme, code}]）的品类代码命中品类集合；下级按代码前缀“<上级>-”匹配
+  region.within:
+    args: [string, list]
+    result: bool
+    say: 行政区划代码在区划集合内（含下级：省 XX0000 含 XX****，市 XXXX00 含 XXXX**；000000 为全国）
+  text.contains_any:
+    args: [string, list]
+    result: bool
+    say: 文本包含词列表中任一词
+  money.cny:
+    args: [map]
+    result: double
+    say: 金额（value 为十进制字符串）归一为人民币元；非人民币金额在汇率视图就绪前取值为未知
+  time.days_between:
+    args: [dyn, dyn]
+    result: int
+    say: 从 a 到 b 的整天数（向下取整，可为负）；参数为时间戳或 RFC 3339 字符串
+  sets.overlaps:
+    args: [list, list]
+    result: bool
+    say: 两个列表是否有共同元素
+
+# 编译期估算使用的规模上界：表达式中列表与字符串的最大规模。超出上界的输入在视图组装时截断并告警。
+size_bounds:
+  default_list: 100
+  default_string: 2000
+  paths:
+    fact.items: 500
+    fact.requirements: 200
+    fact.candidates: 100
+    fact.org_ids: 200
+    fact.winner.credit_flags: 200
+    fact.winner.history_categories: 500
+    fact.winner.supplied_brand_owners: 500
+    fact.winner.past_buyer_ids: 2000
+    lists: 20000          # 每种清单
+    vocab: 1000           # 每个词表
+    params: 500           # 列表参数
+
+# 限制（第 8 节）。成本单位为 cel-go 成本单位。初值依据 R1 模板在上述规模上界下的基准测试
+# （services/kernel/policy：go test -run TestCostReport -v -report）：最大静态成本 200 005，最坏运行时成本 207 728。
+limits:
+  rules_per_policy: 200
+  expression_length: 2000
+  expression_static_cost: 500000      # 约为 R1 最大值的 2.5 倍
+  evaluation_runtime_cost: 1000000    # 约为 R1 最坏值的 5 倍

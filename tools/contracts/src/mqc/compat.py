@@ -267,11 +267,21 @@ def compare_identifiers(base: Repo, head: Repo) -> Report:
     return r
 
 
+def _tracked(root: Path) -> set[Path] | None:
+    """工作区中未被 .gitignore 排除的文件（含未提交的新文件）；root 不是 git 工作区时返回 None。"""
+    res = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "-z", "packs"], cwd=root, capture_output=True)
+    if res.returncode != 0:
+        return None
+    return {root / f for f in res.stdout.decode().split("\0") if f}
+
+
 def _pack_files(repo: Repo) -> dict[Path, dict[str, bytes]]:
+    keep = _tracked(repo.root)  # 基线由 git archive 解出，不含被忽略的文件；工作区需排除 __pycache__ 等
     out = {}
     for pf in sorted((repo.root / "packs").glob("*/*/pack.yaml")):
         d = pf.parent
-        out[d.relative_to(repo.root)] = {str(f.relative_to(d)): f.read_bytes() for f in sorted(d.rglob("*")) if f.is_file()}
+        out[d.relative_to(repo.root)] = {str(f.relative_to(d)): f.read_bytes() for f in sorted(d.rglob("*"))
+                                         if f.is_file() and (keep is None or f in keep)}
     return out
 
 

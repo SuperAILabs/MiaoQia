@@ -150,3 +150,11 @@ def test_template_change_requires_versions(sandbox):
     bump_version(sandbox, tpl, "template")
     bump_version(sandbox, "packs/application_domains/tendering/pack.yaml", "pack")
     assert run(sandbox).errors == []
+
+
+def test_ignored_files_do_not_count_as_pack_changes(sandbox):
+    (sandbox / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
+    cache = sandbox / "packs/information_domains/procurement/src/__pycache__"
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "x.cpython-312.pyc").write_bytes(b"\0")
+    assert not run(sandbox).errors

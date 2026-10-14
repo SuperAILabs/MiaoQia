@@ -1,0 +1,41 @@
+# Go 平台服务：静态检查与测试。
+name: services
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "contracts/policy/**"
+      - "packs/application_domains/**"
+      - ".github/workflows/services.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: services-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
+
+      - name: 格式与静态检查
+        working-directory: services
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+          go vet ./...
+
+      - name: 测试（含竞态检查；策略引擎样例与成本上限）
+        working-directory: services
+        run: go test -race ./...
