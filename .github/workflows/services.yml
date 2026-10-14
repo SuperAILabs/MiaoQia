@@ -6,6 +6,8 @@ on:
     paths:
       - "services/**"
       - "contracts/policy/**"
+      - "contracts/storage/**"
+      - "contracts/apis/**"
       - "packs/application_domains/**"
       - ".github/workflows/services.yml"
   push:
@@ -21,7 +23,20 @@ concurrency:
 jobs:
   go:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
+      kafka:
+        image: apache/kafka:4.1.0          # 默认配置即单节点 KRaft，监听 localhost:9092
+        ports: ["9092:9092"]
+    env:
+      MIAOQIA_TEST_PG: postgres://postgres:postgres@localhost:5432/postgres
+      MIAOQIA_TEST_KAFKA: localhost:9092
     steps:
       - uses: actions/checkout@v4
 
@@ -36,6 +51,6 @@ jobs:
           test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
           go vet ./...
 
-      - name: 测试（含竞态检查；策略引擎样例与成本上限）
+      - name: 测试（含竞态检查；集成测试使用真实 PostgreSQL 与 Kafka）
         working-directory: services
         run: go test -race ./...

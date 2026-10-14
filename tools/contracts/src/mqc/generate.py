@@ -4,6 +4,9 @@
   Python      data/contracts/src/miaoqia/contracts/models.py   datamodel-code-generator（版本固定于 tools/contracts/pyproject.toml）
   TypeScript  web/packages/contracts/src/index.ts        json-schema-to-typescript（版本固定于 web/packages/contracts/package.json）
 
+子系统接口（contracts/apis/<子系统>/openapi.yaml）：
+  Go          services/contracts/apis/<子系统>/          ogen 生成客户端与服务端（包名 <子系统>api，版本固定于 gotools/go.mod）
+
 pnpm 命令可用环境变量 MQC_PNPM 覆盖（例如 "npx -y pnpm@9.15.9"）。
 """
 from __future__ import annotations
@@ -75,6 +78,30 @@ def _gen_typescript(repo: Repo, bundle: Path, out: Path) -> None:
 GENERATORS = {"go": _gen_go, "python": _gen_python, "typescript": _gen_typescript}
 
 
+def _gen_apis(repo: Repo, tmpd: Path, check: bool, r: Report) -> int:
+    specs = sorted((repo.contracts / "apis").glob("*/openapi.yaml"))
+    for spec in specs:
+        sub = spec.parent.name
+        rel = Path("services/contracts/apis") / sub
+        out = tmpd / "apis" / sub
+        _run(["go", "tool", "ogen", "-clean", "-package", sub.replace("-", "") + "api", "-target", str(out), str(spec)],
+             repo.root / "tools/contracts/gotools")
+        new = {f.name: f.read_bytes() for f in sorted(out.glob("*.go"))}
+        target = repo.root / rel
+        if check:
+            old = {f.name: f.read_bytes() for f in sorted(target.glob("*.go"))} if target.exists() else {}
+            if old != new:
+                r.error(str(rel), "接口生成物与 OpenAPI 不一致，请运行 mqc generate 并提交")
+        else:
+            target.mkdir(parents=True, exist_ok=True)
+            for f in target.glob("*.go"):
+                f.unlink()
+            for name, b in new.items():
+                (target / name).write_bytes(b)
+            r.note(f"已生成 {rel}/")
+    return len(specs)
+
+
 def generate(repo: Repo, check: bool, langs: list[str]) -> Report:
     r = Report()
     bundle = build_bundle(repo)
@@ -94,5 +121,6 @@ def generate(repo: Repo, check: bool, langs: list[str]) -> Report:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(new)
                 r.note(f"已生成 {TARGETS[lang]}")
-    r.note(f"代码生成{'一致性检查' if check else ''}：{len(bundle['$defs'])} 个类型 × {len(langs)} 种语言")
+        n_api = _gen_apis(repo, tmpd, check, r) if "go" in langs else 0
+    r.note(f"代码生成{'一致性检查' if check else ''}：{len(bundle['$defs'])} 个类型 × {len(langs)} 种语言；{n_api} 个子系统接口")
     return r
