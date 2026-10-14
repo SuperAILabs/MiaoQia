@@ -10,12 +10,13 @@ import (
 
 	fga "github.com/openfga/go-sdk"
 	"github.com/openfga/go-sdk/client"
+	"github.com/openfga/language/pkg/go/transformer"
 
 	"github.com/superailabs/miaoqia/services/kernel/authz"
 )
 
-//go:embed model.json
-var modelJSON []byte
+//go:embed model.fga
+var modelDSL string
 
 // StoreName 是平台使用的 OpenFGA store。
 const StoreName = "miaoqia"
@@ -25,8 +26,24 @@ type OpenFGA struct {
 	c *client.OpenFgaClient
 }
 
-// Connect 连接 OpenFGA，确保 store 存在且最新的授权模型与内置模型一致（不一致时写入新模型版本）。
+// Model 返回内置授权模型（model.fga 转换为 OpenFGA 的 JSON 结构）。
+func Model() (fga.WriteAuthorizationModelRequest, error) {
+	var m fga.WriteAuthorizationModelRequest
+	js, err := transformer.TransformDSLToJSON(modelDSL)
+	if err != nil {
+		return m, fmt.Errorf("授权模型：%w", err)
+	}
+	err = json.Unmarshal([]byte(js), &m)
+	return m, err
+}
+
+// Connect 连接 OpenFGA 的平台 store，确保最新的授权模型与内置模型一致（不一致时写入新模型版本）。
 func Connect(ctx context.Context, url string) (*OpenFGA, error) {
+	return ConnectStore(ctx, url, StoreName)
+}
+
+// ConnectStore 同 Connect，使用指定名称的 store（测试使用独立 store）。
+func ConnectStore(ctx context.Context, url, storeName string) (*OpenFGA, error) {
 	c, err := client.NewSdkClient(&client.ClientConfiguration{ApiUrl: url})
 	if err != nil {
 		return nil, err
@@ -37,12 +54,12 @@ func Connect(ctx context.Context, url string) (*OpenFGA, error) {
 	}
 	var storeID string
 	for _, s := range stores.Stores {
-		if s.Name == StoreName {
+		if s.Name == storeName {
 			storeID = s.Id
 		}
 	}
 	if storeID == "" {
-		res, err := c.CreateStore(ctx).Body(client.ClientCreateStoreRequest{Name: StoreName}).Execute()
+		res, err := c.CreateStore(ctx).Body(client.ClientCreateStoreRequest{Name: storeName}).Execute()
 		if err != nil {
 			return nil, err
 		}
@@ -51,8 +68,8 @@ func Connect(ctx context.Context, url string) (*OpenFGA, error) {
 	if err := c.SetStoreId(storeID); err != nil {
 		return nil, err
 	}
-	var want fga.WriteAuthorizationModelRequest
-	if err := json.Unmarshal(modelJSON, &want); err != nil {
+	want, err := Model()
+	if err != nil {
 		return nil, err
 	}
 	models, err := c.ReadAuthorizationModels(ctx).Execute()
@@ -91,6 +108,22 @@ func (o *OpenFGA) Check(ctx context.Context, req authz.Request) (bool, error) {
 		return false, err
 	}
 	return res.GetAllowed(), nil
+}
+
+// GrantAll 写入多条关系（初始化与测试使用）。
+func (o *OpenFGA) GrantAll(ctx context.Context, tuples [][3]string) error {
+	for i := 0; i < len(tuples); i += 100 { // OpenFGA 单次写入上限 100 条
+		end := min(i+100, len(tuples))
+		var body client.ClientWriteTuplesBody
+		for _, t := range tuples[i:end] {
+			body = append(body, client.ClientTupleKey{User: t[0], Relation: t[1], Object: t[2]})
+		}
+		if _, err := o.c.WriteTuples(ctx).Body(body).Options(client.ClientWriteOptions{Conflict: client.ClientWriteConflictOptions{
+			OnDuplicateWrites: client.CLIENT_WRITE_REQUEST_ON_DUPLICATE_WRITES_IGNORE}}).Execute(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Grant 写入一条关系（管理与初始化用；授予本身是高影响动作，经 identity 的审批流程调用）。

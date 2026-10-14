@@ -10,6 +10,7 @@ on:
       - "contracts/apis/**"
       - "deploy/subsystems.yaml"
       - "deploy/platform/**"
+      - "docs/03-architecture/subsystems/identity.md"   # 权限矩阵由测试逐格校验
       - "packs/application_domains/**"
       - ".github/workflows/services.yml"
   push:

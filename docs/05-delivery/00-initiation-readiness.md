@@ -42,7 +42,7 @@
 | C3 | 模型 API 供应商 | G1 | 🟡 待决策：前期只接 API、不建私有推理（ADR-0015）；供应商按评测选定 | ADR-0015 |
 | C4 | 核心契约 v1 分批冻结 | G0 / G1 | 🟡 技术保障就绪：兼容性检查已接入 CI；首个真实招标公告样本已通过解析与 Schema 校验；积累更多来源样本后冻结为 1.0.0 | [代码库结构](../03-architecture/09-codebase-structure.md#5-代码生成) |
 | C5 | 策略 DSL 详细设计 | G1（M2 前） | ✅ 已完成：编译与求值引擎实现，R1 模板全部样例通过；成本上限与规则数由基准测试确定；下推编译随 M2 的 `detection` / `search` 实现 | [策略 DSL](../03-architecture/11-policy-dsl.md) |
-| C6 | 角色与权限矩阵 | G1（M2 前） | ⬜ 未开始 | 随产品方案确定后编写 |
+| C6 | 角色与权限矩阵 | G1（M2 前） | 🟡 草案已提交评审：权限矩阵、高影响动作与审批、属性条件、内部角色；授权模型已实现并由测试逐格校验 | [identity](../03-architecture/subsystems/identity.md#7-授权模型) |
 | C7 | 图查询引擎与 OCR 选型 | G1 | 🟡 推荐：图引擎 M3 末基准测试（PG 递归查询 / AGE / NebulaGraph）；OCR 先接 API | [技术选型](../03-architecture/08-technology-stack.md) |
 | C8 | ADR 评审与批准 | G0 | ✅ 已完成：ADR-0001～0015 全部批准 | [ADR 索引](../04-decisions/README.md) |
 | C9 | 服务端语言划分 | G0 | ✅ 已决定 | ADR-0006 |
