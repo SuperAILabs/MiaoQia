@@ -240,18 +240,21 @@ func (c *Compiled) Evaluate(in Input) (*Result, error) {
 			return finish(nil)
 		}
 	}
-	// 5. require
+	// 5. require：为假的硬条件优先于未知条件的 missing 处理。
 	for _, t := range requires {
 		r := rules[t.ID]
-		switch t.Result {
-		case False:
+		if t.Result == False {
 			if r.OnFail == "excluded" {
 				res.Disposition, res.Reason = Excluded, r.Reason
 			} else {
 				res.Disposition = NoSignal
 			}
 			return finish(nil)
-		case Unknown:
+		}
+	}
+	for _, t := range requires {
+		r := rules[t.ID]
+		if t.Result == Unknown {
 			switch r.Missing {
 			case "reject":
 				res.Disposition = NoSignal

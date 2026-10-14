@@ -2,6 +2,7 @@ package policy
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -96,6 +97,36 @@ func TestOnFailExcluded(t *testing.T) {
 	p.Require[0].Reason = ""
 	if _, issues := Compile(p, nil, DefaultLimits()); issues == nil {
 		t.Fatal("on_fail: excluded 缺少 reason 应编译失败")
+	}
+}
+
+func TestFalseRequirePrecedesUnknown(t *testing.T) {
+	for _, missing := range []string{"reject", "review", "ignore"} {
+		for _, onFail := range []string{"excluded", "no_signal"} {
+			for _, falseFirst := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/falseFirst=%t", missing, onFail, falseFirst), func(t *testing.T) {
+					p := basePolicy()
+					p.Require = []Rule{
+						{ID: "R-UNKNOWN", When: "fact.missing > 0", Missing: missing},
+						{ID: "R-FALSE", When: "false", OnFail: onFail, Reason: "SELF_IS_WINNER"},
+					}
+					if falseFirst {
+						p.Require[0], p.Require[1] = p.Require[1], p.Require[0]
+					}
+					r, err := mustCompile(t, p, DefaultLimits()).Evaluate(input(nil))
+					if err != nil {
+						t.Fatal(err)
+					}
+					want, reason := NoSignal, ""
+					if onFail == "excluded" {
+						want, reason = Excluded, "SELF_IS_WINNER"
+					}
+					if r.Disposition != want || r.Reason != reason || r.NeedsReview {
+						t.Fatalf("false require should take precedence: got %s / %s / review=%t", r.Disposition, r.Reason, r.NeedsReview)
+					}
+				})
+			}
+		}
 	}
 }
 

@@ -1,5 +1,5 @@
 """事件消费框架（与 Go 内核语义一致）：校验信封与主题，在子系统数据库事务中以事件 id 去重并处理，
-失败按退避重试，超过上限转入死信主题 dlq.<子系统>。"""
+失败按退避重试，超过上限转入死信主题 dlq.<子系统>；死信投递成功后才确认原消息。"""
 from __future__ import annotations
 
 import json
@@ -71,7 +71,7 @@ class Consumer:
         try:
             env = json.loads(msg.value())
             check_envelope(msg.topic(), env)
-        except (ValueError, outbox.InvalidEnvelope) as e:
+        except (TypeError, ValueError) as e:
             return self._dead_letter(prod, dlq, msg, e)
         h = self.handlers.get(env["type"])
         if h is None:
@@ -106,5 +106,16 @@ class Consumer:
         log.error("事件转入死信主题 consumer=%s topic=%s offset=%s error=%s", self.name, msg.topic(), msg.offset(), cause)
         headers = list(msg.headers() or []) + [("dlq_consumer", self.name.encode()), ("dlq_source_topic", msg.topic().encode()),
                                                ("dlq_error", str(cause).encode())]
-        prod.produce(dlq, value=msg.value(), key=msg.key(), headers=headers)
-        prod.flush(10)
+        delivered = False
+        delivery_error = None
+
+        def on_delivery(err, _msg):
+            nonlocal delivered, delivery_error
+            delivered, delivery_error = True, err
+
+        prod.produce(dlq, value=msg.value(), key=msg.key(), headers=headers, on_delivery=on_delivery)
+        pending = prod.flush(10)
+        if pending or not delivered:
+            raise TimeoutError(f"死信投递未确认 consumer={self.name} topic={dlq}")
+        if delivery_error is not None:
+            raise RuntimeError(f"死信投递失败 consumer={self.name} topic={dlq}: {delivery_error}")

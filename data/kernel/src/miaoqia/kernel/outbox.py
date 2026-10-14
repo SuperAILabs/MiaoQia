@@ -15,8 +15,16 @@ class InvalidEnvelope(ValueError):
     pass
 
 
-def validate(env: dict) -> None:
+def validate(env: Any) -> None:
     """域与租户一致性：租户事件必须带租户与单元，公共域事件必须为空。"""
+    if not isinstance(env, dict):
+        raise InvalidEnvelope("事件信封必须是 JSON 对象")
+    for key in ("specversion", "id", "type", "source"):
+        if not isinstance(env.get(key), str) or not env[key]:
+            raise InvalidEnvelope(f"事件信封属性 {key} 必须是非空字符串")
+    for key in ("subject", "miaoqiatenant", "miaoqiacell", "traceparent"):
+        if key in env and not isinstance(env[key], str):
+            raise InvalidEnvelope(f"事件信封属性 {key} 必须是字符串")
     zone = env.get("miaoqiazone")
     if zone == reqctx.PUBLIC and (env.get("miaoqiatenant") or env.get("miaoqiacell")):
         raise InvalidEnvelope(f"公共域事件 {env.get('id')} 不得携带租户或单元")
@@ -24,8 +32,8 @@ def validate(env: dict) -> None:
         raise InvalidEnvelope(f"租户事件 {env.get('id')} 必须携带租户与单元")
     if zone not in (reqctx.PUBLIC, reqctx.TENANT, reqctx.PLATFORM):
         raise InvalidEnvelope(f"事件 {env.get('id')} 的 miaoqiazone 取值非法：{zone!r}")
-    if env.get("specversion") != "1.0" or not all(env.get(k) for k in ("id", "type", "source")):
-        raise InvalidEnvelope(f"事件 {env.get('id')} 缺少 CloudEvents 必填属性")
+    if env["specversion"] != "1.0":
+        raise InvalidEnvelope(f"事件 {env['id']} 的 specversion 必须是 1.0")
 
 
 def topic(zone: str, cell: str, namespace: str) -> str:

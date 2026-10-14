@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import queue
 import signal
 import sys
 import threading
@@ -81,15 +82,32 @@ def run(unit: str, role: str, modules: list[Module]) -> None:
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
-    threads = [threading.Thread(target=c.run, name=c.name, daemon=True) for c in consumers]
-    for t in threads:
-        t.start()
-    stop.wait()
-    for c in consumers:
-        c.stop()
-    for t in threads:
-        t.join(10)
-    tracing.shutdown()
+    failures: queue.SimpleQueue[tuple[str, Exception]] = queue.SimpleQueue()
+
+    def consume(c: Consumer) -> None:
+        try:
+            c.run()
+            if not stop.is_set():
+                raise RuntimeError("消费者意外退出")
+        except Exception as e:  # noqa: BLE001 — 将线程失败交给主线程，结束进程以便外部重启
+            failures.put((c.name, e))
+            stop.set()
+
+    threads = [threading.Thread(target=consume, args=(c,), name=c.name, daemon=True) for c in consumers]
+    try:
+        for t in threads:
+            t.start()
+        stop.wait()
+    finally:
+        for c in consumers:
+            c.stop()
+        for t in threads:
+            if t.ident is not None:
+                t.join(10)
+        tracing.shutdown()
+    if not failures.empty():
+        name, error = failures.get_nowait()
+        raise RuntimeError(f"消费者 {name} 失败") from error
 
 
 def main(unit: str, modules: list[Module]) -> None:
