@@ -78,7 +78,7 @@ services:
     image: keycloak/keycloak:26.3.4
     depends_on:
       postgres: { condition: service_healthy }
-    command: ["start-dev", "--http-port=8080", "--health-enabled=true"]
+    command: ["start-dev", "--http-port=8080", "--health-enabled=true", "--import-realm"]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -86,7 +86,13 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
     ports: ["8080:8080"]
+    healthcheck:   # 镜像不含 curl：经管理端口 9000 检查就绪
+      <<: *hc
+      retries: 60
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
 
   openfga-migrate:
     image: openfga/openfga:v1.10.0

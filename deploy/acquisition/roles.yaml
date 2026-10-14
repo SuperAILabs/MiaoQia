@@ -1,0 +1,10 @@
+# acquisition 部署单元的进程角色（docs/03-architecture/07-deployment-topology.md 第 2.1 节）。
+roles:
+  acq-scheduler:            # 采集计划与回填工作流；同时消费控制类事件（回填请求、链路探针）
+    subsystems: [acquisition]
+  acq-fetcher:
+    subsystems: [acquisition]
+  acq-browser:
+    subsystems: [acquisition]
+  acq-admin:
+    subsystems: [acquisition]

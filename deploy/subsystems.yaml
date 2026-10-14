@@ -1,0 +1,20 @@
+# 由 tools/dev/gen_local.py 根据子系统索引（docs/03-architecture/subsystems/README.md）生成，请勿手改。
+subsystems:
+  acquisition: { plane: data_supply, language: python, unit: acquisition, database: acq }
+  evidence: { plane: data_supply, language: python, unit: data, database: evd }
+  domain-intelligence: { plane: data_supply, language: python, unit: data, database: dom }
+  entity-graph: { plane: data_supply, language: python, unit: data, database: ent }
+  search: { plane: data_supply, language: go, unit: platform }
+  customer-context: { plane: customer_intelligence, language: go, unit: platform, database: ctx }
+  detection: { plane: customer_intelligence, language: go, unit: platform, database: det }
+  research: { plane: customer_intelligence, language: go, unit: platform, database: res }
+  assessment: { plane: customer_intelligence, language: go, unit: platform, database: asm }
+  pursuit: { plane: customer_intelligence, language: go, unit: platform, database: pur }
+  learning: { plane: customer_intelligence, language: go, unit: platform, database: lrn }
+  gateway: { plane: interaction, language: go, unit: platform, database: gwy }
+  channels: { plane: interaction, language: go, unit: platform, database: chn }
+  identity: { plane: platform, language: go, unit: platform, database: iam }
+  commerce: { plane: platform, language: go, unit: platform, database: com }
+  governance: { plane: platform, language: go, unit: platform, database: gov }
+  ai-platform: { plane: platform, language: go, unit: platform, database: aip }
+  operations: { plane: platform, language: go, unit: platform, database: ops }

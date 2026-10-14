@@ -102,6 +102,7 @@ func (c *Consumer) handle(ctx context.Context, r *kgo.Record) error {
 	ectx, span := tracing.Tracer(c.Subsystem).Start(tracing.WithTraceparent(ectx, env.Traceparent), "consume "+env.Type,
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(attribute.String("messaging.destination.name", r.Topic), attribute.String("cloudevents.event_id", env.ID),
+			attribute.String("cloudevents.event_subject", env.Subject),
 			attribute.String("messaging.consumer.group.name", c.Name)))
 	defer span.End()
 

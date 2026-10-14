@@ -1,0 +1,38 @@
+asyncapi: 3.0.0
+info:
+  title: 审计事件流
+  version: 0.1.0
+  description: >
+    全部子系统经审计 SDK 发布（与业务写入同事务进入发件箱），由 governance 消费并不可篡改地存储
+    （docs/03-architecture/subsystems/governance.md）。审计条目只含引用与摘要，不含敏感内容。
+    信封为 CloudEvents 1.0；平台域事件：miaoqiazone = platform，涉及租户时带 miaoqiatenant。
+channels:
+  platform.audit:
+    address: platform.audit
+    messages:
+      entryRecorded:
+        $ref: '#/components/messages/entryRecorded'
+operations:
+  publishAuditEntries:
+    action: send
+    channel:
+      $ref: '#/channels/platform.audit'
+components:
+  messages:
+    entryRecorded:
+      name: audit.entry.recorded.v1
+      summary: 一条审计条目：谁、何时、对什么、做了什么、结果、依据
+      payload:
+        type: object
+        additionalProperties: false
+        required: [actor, actor_kind, subsystem, action, resource, result, occurred_at]
+        properties:
+          actor: { type: string, description: 调用主体标识 }
+          actor_kind: { type: string, enum: [user, service, service_account] }
+          tenant: { type: string }
+          subsystem: { type: string }
+          action: { type: string, description: 例如 operations.probe.trigger }
+          resource: { type: string, description: 资源引用 }
+          result: { type: string, enum: [succeeded, denied, failed] }
+          basis: { type: string, description: 依据，例如授权关系 }
+          occurred_at: { type: string, format: date-time }

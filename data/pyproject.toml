@@ -1,3 +1,49 @@
 # Python 工作区（uv）：公共域数据处理子系统与共享包。
 [tool.uv.workspace]
-members = ["contracts", "sdk", "kernel"]
+members = ["contracts", "sdk", "kernel", "subsystems/*", "runtimes/*"]
+
+[dependency-groups]
+dev = [
+    "import-linter==2.15",
+]
+
+# 依赖规则（docs/03-architecture/09-codebase-structure.md 第 3 节），CI 执行 lint-imports。
+[tool.importlinter]
+root_packages = ["miaoqia.kernel", "miaoqia.sdk", "miaoqia.contracts", "miaoqia.acquisition", "miaoqia.evidence", "miaoqia.domain_intelligence", "miaoqia.entity_graph"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "R1 acquisition 只能导入其他子系统的 api 包"
+type = "forbidden"
+source_modules = ["miaoqia.acquisition"]
+forbidden_modules = ["miaoqia.evidence.domain", "miaoqia.evidence.application", "miaoqia.evidence.infrastructure", "miaoqia.evidence.extensions", "miaoqia.domain_intelligence.domain", "miaoqia.domain_intelligence.application", "miaoqia.domain_intelligence.infrastructure", "miaoqia.domain_intelligence.extensions", "miaoqia.entity_graph.domain", "miaoqia.entity_graph.application", "miaoqia.entity_graph.infrastructure", "miaoqia.entity_graph.extensions"]
+
+[[tool.importlinter.contracts]]
+name = "R1 evidence 只能导入其他子系统的 api 包"
+type = "forbidden"
+source_modules = ["miaoqia.evidence"]
+forbidden_modules = ["miaoqia.acquisition.domain", "miaoqia.acquisition.application", "miaoqia.acquisition.infrastructure", "miaoqia.acquisition.extensions", "miaoqia.domain_intelligence.domain", "miaoqia.domain_intelligence.application", "miaoqia.domain_intelligence.infrastructure", "miaoqia.domain_intelligence.extensions", "miaoqia.entity_graph.domain", "miaoqia.entity_graph.application", "miaoqia.entity_graph.infrastructure", "miaoqia.entity_graph.extensions"]
+
+[[tool.importlinter.contracts]]
+name = "R1 domain_intelligence 只能导入其他子系统的 api 包"
+type = "forbidden"
+source_modules = ["miaoqia.domain_intelligence"]
+forbidden_modules = ["miaoqia.acquisition.domain", "miaoqia.acquisition.application", "miaoqia.acquisition.infrastructure", "miaoqia.acquisition.extensions", "miaoqia.evidence.domain", "miaoqia.evidence.application", "miaoqia.evidence.infrastructure", "miaoqia.evidence.extensions", "miaoqia.entity_graph.domain", "miaoqia.entity_graph.application", "miaoqia.entity_graph.infrastructure", "miaoqia.entity_graph.extensions"]
+
+[[tool.importlinter.contracts]]
+name = "R1 entity_graph 只能导入其他子系统的 api 包"
+type = "forbidden"
+source_modules = ["miaoqia.entity_graph"]
+forbidden_modules = ["miaoqia.acquisition.domain", "miaoqia.acquisition.application", "miaoqia.acquisition.infrastructure", "miaoqia.acquisition.extensions", "miaoqia.evidence.domain", "miaoqia.evidence.application", "miaoqia.evidence.infrastructure", "miaoqia.evidence.extensions", "miaoqia.domain_intelligence.domain", "miaoqia.domain_intelligence.application", "miaoqia.domain_intelligence.infrastructure", "miaoqia.domain_intelligence.extensions"]
+
+[[tool.importlinter.contracts]]
+name = "R3 kernel、sdk 与生成的契约不依赖任何子系统"
+type = "forbidden"
+source_modules = ["miaoqia.kernel", "miaoqia.sdk", "miaoqia.contracts"]
+forbidden_modules = ["miaoqia.acquisition", "miaoqia.evidence", "miaoqia.domain_intelligence", "miaoqia.entity_graph"]
+
+[[tool.importlinter.contracts]]
+name = "R5 domain 层不依赖框架与基础设施库"
+type = "forbidden"
+source_modules = ["miaoqia.acquisition.domain", "miaoqia.evidence.domain", "miaoqia.domain_intelligence.domain", "miaoqia.entity_graph.domain"]
+forbidden_modules = ["sqlalchemy", "psycopg", "confluent_kafka", "alembic", "opentelemetry", "miaoqia.kernel"]

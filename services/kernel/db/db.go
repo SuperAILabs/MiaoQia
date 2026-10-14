@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -68,7 +69,8 @@ func (d *DB) Tx(ctx context.Context, fn func(pgx.Tx) error) error {
 }
 
 // Migrate 以 owner 账号执行内核表与子系统迁移（goose，迁移文件在 migrations 中）。
-func Migrate(ctx context.Context, ownerDSN string, migrations fs.FS) error {
+// appRole 为应用账号名，迁移中可用 ${MIAOQIA_DB_APP_ROLE} 引用（需 -- +goose ENVSUB ON），例如收回追加式表的修改权限。
+func Migrate(ctx context.Context, ownerDSN, appRole string, migrations fs.FS) error {
 	cfg, err := pgx.ParseConfig(ownerDSN)
 	if err != nil {
 		return err
@@ -80,6 +82,11 @@ func Migrate(ctx context.Context, ownerDSN string, migrations fs.FS) error {
 	}
 	if migrations == nil {
 		return nil
+	}
+	if appRole != "" {
+		if err := os.Setenv("MIAOQIA_DB_APP_ROLE", appRole); err != nil {
+			return err
+		}
 	}
 	p, err := goose.NewProvider(goose.DialectPostgres, sqlDB, migrations)
 	if err != nil {

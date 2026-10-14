@@ -31,7 +31,7 @@ func setup(t *testing.T) fixture {
 	brokers := testenv.Brokers(t)
 	d := testenv.NewDatabase(t)
 	ctx := context.Background()
-	if err := db.Migrate(ctx, d.OwnerDSN, nil); err != nil {
+	if err := db.Migrate(ctx, d.OwnerDSN, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	d.GrantRelay(t)

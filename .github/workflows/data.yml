@@ -30,6 +30,10 @@ jobs:
         with:
           version: "0.11.32"
 
+      - name: 依赖规则（import-linter）
+        working-directory: data
+        run: uv run --locked --all-packages lint-imports
+
       - name: SDK 测试
         working-directory: data
         run: uv run --locked --package miaoqia-sdk --group dev pytest -q sdk/tests

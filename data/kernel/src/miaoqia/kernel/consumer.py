@@ -82,6 +82,7 @@ class Consumer:
         with reqctx.use(ctx), tracing.tracer(self.subsystem).start_as_current_span(
                 f"consume {env['type']}", context=span_ctx, kind=trace.SpanKind.CONSUMER,
                 attributes={"messaging.destination.name": msg.topic(), "cloudevents.event_id": env["id"],
+                            "cloudevents.event_subject": env.get("subject", ""),
                             "messaging.consumer.group.name": self.name}) as span:
             last: Exception | None = None
             for attempt in range(1, self.max_attempts + 1):

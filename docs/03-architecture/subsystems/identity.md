@@ -64,6 +64,8 @@
   └─ 数据分级、区域、目标、金额阈值、时间窗口
 ```
 
+授权模型的机器可读定义为 `services/subsystems/identity/internal/infra/model.json`（OpenFGA）；启动时与最新模型版本比对，不一致时写入新版本。内部接口见 `contracts/apis/identity/openapi.yaml`。
+
 高影响动作清单（需审批或特定授权）：策略激活与回滚、决策批准、批量导出、对外发送、联系人信息查看与使用、知识资产分级下调、Webhook 与 API 凭证创建、内部支持访问。
 
 ## 8. 安全要点

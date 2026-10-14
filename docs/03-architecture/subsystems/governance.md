@@ -34,7 +34,7 @@
 
 **发布**：`governance.deletion.requested.v1`（各子系统订阅并执行本地删除，回报完成）、`governance.retention.expired.v1`、`governance.classification.changed.v1`。
 
-**消费**：`acquisition.source.rights_changed.v1`、`identity.tenant.suspended.v1`、各子系统的删除完成回报事件。
+**消费**：`audit.entry.recorded.v1`（`platform.audit`，全部子系统的审计条目，追加式存储，应用账号无修改与删除权限）、`acquisition.source.rights_changed.v1`、`identity.tenant.suspended.v1`、各子系统的删除完成回报事件。
 
 ## 6. 设计要点
 

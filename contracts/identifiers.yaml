@@ -3,6 +3,8 @@
 prefixes:
   # 平台
   evt: { object: CloudEvent, owner: kernel }
+  prb: { object: PipelineProbe, owner: operations }
+  aud: { object: AuditEntry, owner: governance }
   # evidence
   snp: { object: SourceSnapshot, owner: evidence }
   exr: { object: ExtractionRevision, owner: evidence }
