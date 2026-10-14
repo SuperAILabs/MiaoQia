@@ -1,0 +1,68 @@
+asyncapi: 3.0.0
+info:
+  title: INF-CRED 领域事件
+  version: 0.1.0
+  description: 由 domain-intelligence 依据 INF-CRED 的变化检测规则发布。 信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。公共域事件：miaoqiazone = public。
+channels:
+  public.domain:
+    address: public.domain
+    messages:
+      recordPublished:
+        $ref: '#/components/messages/recordPublished'
+      recordResolved:
+        $ref: '#/components/messages/recordResolved'
+operations:
+  publishCreditEvents:
+    action: send
+    channel:
+      $ref: '#/channels/public.domain'
+components:
+  schemas:
+    base:
+      type: object
+      required:
+      - record_id
+      - subject_org_ids
+      - fact_version
+      - rights_tags
+      properties:
+        record_id:
+          type: string
+          pattern: ^crd_[0-9A-HJKMNP-TV-Z]{26}$
+        subject_org_ids:
+          type: array
+          items:
+            type: string
+            pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+          description: 涉及的已解析组织
+        fact_version:
+          type: integer
+          minimum: 1
+        rights_tags:
+          type: array
+          items:
+            type: string
+  messages:
+    recordPublished:
+      name: credit.record.published.v1
+      summary: 新的司法或信用记录
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          required:
+          - record_type
+          properties:
+            record_type:
+              type: string
+            amount_cny:
+              type:
+              - string
+              - 'null'
+              description: 十进制字符串
+    recordResolved:
+      name: credit.record.resolved.v1
+      summary: 记录已履行、结案、移出名单或修复
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'

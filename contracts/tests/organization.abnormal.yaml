@@ -1,0 +1,21 @@
+schema: domains/organization/abnormal.schema.json
+base:
+  id: oga_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  schema_version: 1.0.0
+  version: 1
+  info_domain: INF-ORG
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  rights_tags: [public-gsxt]
+  classification: public
+  observed_at: "2026-11-01T01:00:00Z"
+  recorded_at: "2026-11-01T01:00:01Z"
+  subject: { name_raw: 某建设集团有限公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.99 } }
+  list_type: abnormal_operation
+  reason: { value: 未按规定报送年度报告, prov: *p }
+  reason_code: no_annual_report
+  listed_on: { value: "2026-10-31T16:00:00Z", precision: day, prov: *p }
+cases:
+  - name: 未知名录类型
+    valid: false
+    patch: [{ op: replace, path: /list_type, value: watch_list }]

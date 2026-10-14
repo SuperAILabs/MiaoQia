@@ -6,32 +6,10 @@
 
 妙洽不是信息聚合网站、关键词订阅工具或 AI 内容生成工具。采集与入库是可靠的上下文供应链，产品价值发生在研究、判断、决策和推进中。
 
-## 业务层级
+## 业务与架构概要
 
-```text
-L0 平台             妙洽：商业机会研究与决策系统
- └─ L1 应用领域      招投标与政企采购（首个） | 企业客户开发 | 招商引资 | 投资研究 | …
-     │   └─ 消费 →  信息领域：公共采购、项目审批、企业工商、司法信用、知识产权 …
-     └─ L2 客户细分  价值链角色 × 行业 × 规模/区域
-         └─ L3 商业目标   直接投标、进入供货、规格入围、合作组队、竞争情报、风险评估 …
-             └─ L4 机会路径  阶段 · 研究模板 · 判断框架 · 决策门 · 行动
-                 └─ L5 运行实例  信号 → 研究 → 判断 → 决策 → 推进 → 结果 → 学习
-```
-
-- 招投标是第一个**应用领域**，不是产品边界；
-- 管材/建材等是招投标应用领域中**行业**维度上的取值，与价值链角色正交；
-- 直接投标只是众多**商业目标**之一，同一个客户可同时追求多个目标。
-
-## 系统架构
-
-18 个子系统分属四个平面，逻辑架构按终态设计，部署从两个单元（`acquisition`、`platform`）开始，通过配置演进为独立服务。
-
-```text
-交互平面        gateway · channels
-客户智能平面    customer-context · detection · research · assessment · pursuit · learning
-数据供应平面    acquisition · evidence · domain-intelligence · entity-graph · search
-平台平面        identity · commerce · governance · ai-platform · operations
-```
+- 业务按 L0 平台 → L1 应用领域 → L2 客户细分 → L3 商业目标 → L4 机会路径 → L5 运行实例组织；招投标是第一个应用领域，不是产品边界。见 [业务架构](docs/02-business/01-business-architecture.md)。
+- 18 个子系统分属交互、客户智能、数据供应、平台四个平面；公共域数据处理用 Python，平台服务用 Go，前端用 TypeScript；基础设施开源自建。见 [总体架构](docs/03-architecture/01-architecture-overview.md)、[子系统索引](docs/03-architecture/subsystems/README.md)、[技术选型](docs/03-architecture/08-technology-stack.md)。
 
 ## 文档
 
@@ -48,7 +26,7 @@ L0 平台             妙洽：商业机会研究与决策系统
 
 ## 项目状态
 
-立项设计阶段：业务层级、商业目标、子系统边界、契约原则与部署拓扑已形成评审稿，ADR 处于“提议”状态，待评审批准后进入 M0 工程基座建设。
+立项设计阶段，事项状态见 [立项准入清单](docs/05-delivery/00-initiation-readiness.md)。
 
 ## Tender Intel
 
@@ -56,9 +34,4 @@ L0 平台             妙洽：商业机会研究与决策系统
 
 ## 品牌
 
-| 项目 | 内容 |
-|---|---|
-| 中文名称 | 妙洽 |
-| 英文名称 | MiaoQia |
-| 域名 | [miaoqia.com](https://miaoqia.com) |
-| 正式定位 | AI 商业机会研究与决策系统 |
+见 [愿景与定位](docs/01-product/01-vision-and-positioning.md#8-品牌)。

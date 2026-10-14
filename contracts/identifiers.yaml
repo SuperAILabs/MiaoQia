@@ -1,0 +1,41 @@
+# 标识前缀登记（docs/03-architecture/02-data-architecture.md 第 4 节）。
+# 格式 <前缀>_<ULID>；新增前缀在此登记并经架构评审，禁止重复，分配后永不复用。
+prefixes:
+  # 平台
+  evt: { object: CloudEvent, owner: kernel }
+  # evidence
+  snp: { object: SourceSnapshot, owner: evidence }
+  exr: { object: ExtractionRevision, owner: evidence }
+  ev:  { object: EvidenceRef, owner: evidence }
+  # domain-intelligence · INF-PROC
+  pp:  { object: ProcurementProject, owner: domain-intelligence, pack: INF-PROC }
+  ntc: { object: Notice, owner: domain-intelligence, pack: INF-PROC }
+  amd: { object: Amendment, owner: domain-intelligence, pack: INF-PROC }
+  lot: { object: Lot, owner: domain-intelligence, pack: INF-PROC }
+  itm: { object: Item, owner: domain-intelligence, pack: INF-PROC }
+  req: { object: Requirement, owner: domain-intelligence, pack: INF-PROC }
+  ddl: { object: Deadline, owner: domain-intelligence, pack: INF-PROC }
+  bdr: { object: BidResult, owner: domain-intelligence, pack: INF-PROC }
+  ctr: { object: ContractRecord, owner: domain-intelligence, pack: INF-PROC }
+  acc: { object: AcceptanceRecord, owner: domain-intelligence, pack: INF-PROC }
+  # domain-intelligence · INF-INVP
+  ivr: { object: InvestmentRecord, owner: domain-intelligence, pack: INF-INVP }
+  # domain-intelligence · INF-ORG
+  ogr: { object: OrgRegistration, owner: domain-intelligence, pack: INF-ORG }
+  ogc: { object: OrgChange, owner: domain-intelligence, pack: INF-ORG }
+  oga: { object: OrgAbnormal, owner: domain-intelligence, pack: INF-ORG }
+  # domain-intelligence · INF-CRED
+  crd: { object: CreditRecord, owner: domain-intelligence, pack: INF-CRED }
+  # entity-graph
+  org: { object: Organization, owner: entity-graph }
+  prj: { object: Project, owner: entity-graph }
+  loc: { object: Location, owner: entity-graph }
+  cat: { object: Category, owner: entity-graph }
+  brd: { object: Brand, owner: entity-graph }
+  rel: { object: Relationship, owner: entity-graph }
+  # 客户智能平面
+  sig: { object: Signal, owner: detection }
+  rsc: { object: ResearchCase, owner: research }
+  asm: { object: Assessment, owner: assessment }
+  dec: { object: Decision, owner: assessment }
+  pur: { object: Pursuit, owner: pursuit }

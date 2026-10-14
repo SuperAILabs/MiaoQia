@@ -1,0 +1,24 @@
+# 采购项目生命周期状态机：domain-intelligence 的 lifecycle_engine 执行。
+# 非法转换不强行修正，记为质量警告 LIFECYCLE_ILLEGAL_TRANSITION 并进入复核。
+lifecycle:
+  object: ProcurementProject
+  schema: domains/procurement/procurement-project.schema.json     # 相对 contracts/schemas
+  field: stage
+  trigger_source: { schema: domains/procurement/notice.schema.json, field: notice_type }
+  initial:
+    - { to: intent,    trigger: [intent, plan] }
+    - { to: announced, trigger: [prequalification, tender, negotiation, consultation, inquiry, single_source, framework] }
+  transitions:
+    - { from: intent,              to: announced,           trigger: [prequalification, tender, negotiation, consultation, inquiry, single_source, framework] }
+    - { from: announced,           to: amended,             trigger: [amendment, clarification] }
+    - { from: amended,             to: announced,           trigger: [tender, negotiation, consultation, inquiry] }  # 重新发布
+    - { from: [announced, amended], to: evaluating,         trigger_time: bid_opening }                          # 到达开标时间
+    - { from: evaluating,          to: candidate_published, trigger: [candidate] }
+    - { from: [evaluating, candidate_published], to: awarded, trigger: [award] }
+    - { from: [evaluating, candidate_published], to: failed,  trigger: [failure] }
+    - { from: [intent, announced, amended, evaluating], to: terminated, trigger: [termination] }
+    - { from: awarded,             to: contracted,          trigger: [contract] }
+    - { from: contracted,          to: accepted,            trigger: [acceptance] }
+    - { from: failed,              to: announced,           trigger: [tender, negotiation, consultation, inquiry] }  # 重新采购
+  terminal: [accepted, terminated]
+  # 多标包项目：项目阶段取各标包中最靠前的未结束状态；各标包状态见 lots[].status。

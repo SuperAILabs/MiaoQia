@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/domains/credit/record.schema.json",
+  "x-version": "0.1.0",
+  "title": "CreditRecord 司法与信用记录",
+  "description": "以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人进入 persons。",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "../../common/types.schema.json#/$defs/public_fact_meta"
+    },
+    {
+      "if": {
+        "properties": {
+          "record_type": {
+            "const": "judgment"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "judgment"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record_type": {
+            "const": "penalty"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "penalty"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record_type": {
+            "const": "credit_rating"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "rating"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record_type": {
+            "enum": [
+              "dishonest",
+              "enforcement"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "authority"
+        ]
+      }
+    }
+  ],
+  "required": [
+    "id",
+    "info_domain",
+    "record_type",
+    "subject",
+    "case_or_doc_no",
+    "resolved"
+  ],
+  "properties": {
+    "info_domain": {
+      "const": "INF-CRED"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^crd_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "record_type": {
+      "enum": [
+        "dishonest",
+        "consumption_limit",
+        "enforcement",
+        "penalty",
+        "judgment",
+        "credit_rating"
+      ]
+    },
+    "subject": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
+      "description": "记录主体（必须为组织）"
+    },
+    "case_or_doc_no": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "案号、决定书文号或评价编号"
+    },
+    "authority": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
+      "description": "法院、行政机关或评价机构"
+    },
+    "filed_on": {
+      "$ref": "../../common/types.schema.json#/$defs/instant",
+      "description": "立案或作出决定日期"
+    },
+    "published_on": {
+      "$ref": "../../common/types.schema.json#/$defs/instant"
+    },
+    "amount": {
+      "$ref": "../../common/types.schema.json#/$defs/money",
+      "description": "执行标的、罚没金额或判决金额"
+    },
+    "resolved": {
+      "type": "boolean",
+      "description": "已履行、已结案、已移出名单或已修复"
+    },
+    "status_raw": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "原文履行情况或状态"
+    },
+    "resolved_on": {
+      "$ref": "../../common/types.schema.json#/$defs/instant"
+    },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "performance": {
+          "enum": [
+            "not_performed",
+            "partially_performed",
+            "performed"
+          ]
+        },
+        "unperformed_amount": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        }
+      }
+    },
+    "penalty": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "penalty_types": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "warning",
+              "fine",
+              "confiscation",
+              "suspension",
+              "license_revocation",
+              "other"
+            ]
+          }
+        },
+        "violation": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "legal_basis": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        }
+      }
+    },
+    "judgment": {
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "plaintiff",
+            "defendant",
+            "third_party",
+            "applicant",
+            "respondent"
+          ],
+          "description": "主体在本案中的地位"
+        },
+        "cause": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "案由"
+        },
+        "procedure": {
+          "enum": [
+            "first_instance",
+            "second_instance",
+            "retrial",
+            "enforcement",
+            "other"
+          ]
+        },
+        "counterparties": {
+          "type": "array",
+          "items": {
+            "$ref": "../../common/types.schema.json#/$defs/org_ref"
+          },
+          "description": "组织当事人；自然人当事人不记录身份"
+        },
+        "outcome": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        }
+      }
+    },
+    "rating": {
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scheme": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "评价体系，如 纳税信用、建筑市场信用"
+        },
+        "level": {
+          "type": "string"
+        },
+        "valid": {
+          "$ref": "../../common/types.schema.json#/$defs/date_range"
+        }
+      }
+    },
+    "persons": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/types.schema.json#/$defs/person"
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

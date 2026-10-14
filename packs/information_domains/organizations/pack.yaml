@@ -1,0 +1,18 @@
+# 信息领域包清单。格式见 docs/03-architecture/04-extensibility.md。
+pack:
+  id: INF-ORG
+  kind: information_domain
+  namespace: org
+  version: 0.1.0                       # 草案：领域 Schema 评审中
+  platform_api: ">=1.0 <2.0"
+  requires: []
+  owners: [data-team]
+  provides:
+    schemas:
+      - contracts/schemas/domains/organization/registration.schema.json
+      - contracts/schemas/domains/organization/change.schema.json
+      - contracts/schemas/domains/organization/abnormal.schema.json
+    events: contracts/events/org/events.asyncapi.yaml
+    # 组织主数据（Organization）由 entity-graph 依据本包事实解析生成；经营状态是登记信息字段，不另设状态机。
+    # 待补：来源处理器（公示系统、授权数据）、解析器、实体解析特征、质量规则、检索映射、研究工具、个人信息清单（法定代表人、自然人股东、高管）
+    # 年报暂不纳入，按 R2 需要补充。

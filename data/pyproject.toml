@@ -1,0 +1,3 @@
+# Python 工作区（uv）：公共域数据处理子系统与共享包。
+[tool.uv.workspace]
+members = ["contracts", "sdk"]

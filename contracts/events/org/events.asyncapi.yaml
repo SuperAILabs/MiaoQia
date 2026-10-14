@@ -1,0 +1,110 @@
+asyncapi: 3.0.0
+info:
+  title: INF-ORG 领域事件
+  version: 0.1.0
+  description: 由 domain-intelligence 依据 INF-ORG 的变化检测规则发布。组织主数据的变化由 entity-graph 另行发布 entity.* 事件。 信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。公共域事件：miaoqiazone
+    = public。
+channels:
+  public.domain:
+    address: public.domain
+    messages:
+      registrationUpdated:
+        $ref: '#/components/messages/registrationUpdated'
+      changeRecorded:
+        $ref: '#/components/messages/changeRecorded'
+      statusChanged:
+        $ref: '#/components/messages/statusChanged'
+      abnormalListed:
+        $ref: '#/components/messages/abnormalListed'
+      abnormalRemoved:
+        $ref: '#/components/messages/abnormalRemoved'
+operations:
+  publishOrgEvents:
+    action: send
+    channel:
+      $ref: '#/channels/public.domain'
+components:
+  schemas:
+    base:
+      type: object
+      required:
+      - record_id
+      - subject_org_ids
+      - fact_version
+      - rights_tags
+      properties:
+        record_id:
+          type: string
+          pattern: ^og[rca]_[0-9A-HJKMNP-TV-Z]{26}$
+        subject_org_ids:
+          type: array
+          items:
+            type: string
+            pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+          description: 涉及的已解析组织
+        fact_version:
+          type: integer
+          minimum: 1
+        rights_tags:
+          type: array
+          items:
+            type: string
+  messages:
+    registrationUpdated:
+      name: org.registration.updated.v1
+      summary: 登记信息出现新版本
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          properties:
+            changed_fields:
+              type: array
+              items:
+                type: string
+    changeRecorded:
+      name: org.change.recorded.v1
+      summary: 新的变更记录
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          required:
+          - change_type
+          properties:
+            change_type:
+              type: string
+    statusChanged:
+      name: org.status.changed.v1
+      summary: 经营状态变化（吊销、注销等）
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          required:
+          - status_after
+          properties:
+            status_before:
+              type:
+              - string
+              - 'null'
+            status_after:
+              type: string
+    abnormalListed:
+      name: org.abnormal.listed.v1
+      summary: 列入经营异常名录或严重违法失信名单
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          required:
+          - list_type
+          properties:
+            list_type:
+              type: string
+    abnormalRemoved:
+      name: org.abnormal.removed.v1
+      summary: 移出经营异常名录
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'

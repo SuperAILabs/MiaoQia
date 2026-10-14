@@ -1,33 +1,35 @@
 # 子系统规格
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 负责人：首席架构师
+> 状态：评审中 · 版本：1.1 · 更新：2026-10-13 · 负责人：首席架构师
 
 每个子系统是一个拥有独立职责、数据所有权和接口契约的业务能力单元，也是将来独立部署的最小粒度。
 
 ## 1. 索引
 
-| 平面 | 子系统 | 代码包 | 数据库 | 规格 |
-|---|---|---|---|---|
-| 数据供应 | 来源采集 | `miaoqia.acquisition` | `acq` | [acquisition.md](acquisition.md) |
-| 数据供应 | 证据与内容理解 | `miaoqia.evidence` | `evd` | [evidence.md](evidence.md) |
-| 数据供应 | 领域情报 | `miaoqia.domain_intelligence` | `dom` | [domain-intelligence.md](domain-intelligence.md) |
-| 数据供应 | 实体与关系图谱 | `miaoqia.entity_graph` | `ent` | [entity-graph.md](entity-graph.md) |
-| 数据供应 | 检索与索引 | `miaoqia.search` | （OpenSearch） | [search.md](search.md) |
-| 客户智能 | 客户上下文与策略 | `miaoqia.customer_context` | `ctx` | [customer-context.md](customer-context.md) |
-| 客户智能 | 监测与匹配 | `miaoqia.detection` | `det` | [detection.md](detection.md) |
-| 客户智能 | Agent 研究 | `miaoqia.research` | `res` | [research.md](research.md) |
-| 客户智能 | 判断与决策 | `miaoqia.assessment` | `asm` | [assessment.md](assessment.md) |
-| 客户智能 | 推进与结果 | `miaoqia.pursuit` | `pur` | [pursuit.md](pursuit.md) |
-| 客户智能 | 反馈学习与评估 | `miaoqia.learning` | `lrn` | [learning.md](learning.md) |
-| 交互 | 接入网关 | `miaoqia.gateway` | `gwy` | [gateway.md](gateway.md) |
-| 交互 | 渠道与会话 | `miaoqia.channels` | `chn` | [channels.md](channels.md) |
-| 平台 | 身份与权限 | `miaoqia.identity` | `iam` | [identity.md](identity.md) |
-| 平台 | 订阅计量计费 | `miaoqia.commerce` | `com` | [commerce.md](commerce.md) |
-| 平台 | 审计与合规 | `miaoqia.governance` | `gov` | [governance.md](governance.md) |
-| 平台 | AI 平台 | `miaoqia.ai_platform` | `aip` | [ai-platform.md](ai-platform.md) |
-| 平台 | 运营工作台 | `miaoqia.operations` | `ops` | [operations.md](operations.md) |
+本表是子系统的唯一登记处：平面、职责、语言（ADR-0006）、部署单元与数据库只在此定义，其他文档引用本表。子系统拥有的数据见第 3 节，进程角色见 [部署拓扑](../07-deployment-topology.md)。
 
-“数据库”列是该子系统独占的逻辑数据库（首期为同一 PostgreSQL 集群中的独立数据库与独立账号），见 [数据架构](../02-data-architecture.md)。
+| 平面 | 子系统 | 核心职责 | 语言 | 部署单元 | 数据库 |
+|---|---|---|---|---|---|
+| 数据供应 | [`acquisition`](acquisition.md) 来源采集 | 来源注册与权利、调度、抓取、原始归档、来源健康 | Python | `acquisition` | `acq` |
+| 数据供应 | [`evidence`](evidence.md) 证据与内容理解 | 文档处理、快照、解析修订、字段溯源、质量、AI 内容增强 | Python | `data`（租户文档解析为单元级实例） | `evd` |
+| 数据供应 | [`domain-intelligence`](domain-intelligence.md) 领域情报 | 领域事实与事件、生命周期、跨记录聚合、领域统计 | Python | `data` | `dom` |
+| 数据供应 | [`entity-graph`](entity-graph.md) 实体与关系图谱 | 实体主数据、实体解析、关系图谱 | Python | `data` | `ent` |
+| 数据供应 | [`search`](search.md) 检索与索引 | 索引投影、全文/语义/混合检索、订阅反查、租户知识检索 | Go | `platform` | （OpenSearch） |
+| 客户智能 | [`customer-context`](customer-context.md) 客户上下文与策略 | 客户档案、目标、策略、知识资产 | Go | `platform` | `ctx` |
+| 客户智能 | [`detection`](detection.md) 监测与匹配 | 监测订阅、信号匹配、处置分层 | Go | `platform` | `det` |
+| 客户智能 | [`research`](research.md) Agent 研究 | 研究模板执行、Agent 运行、研究报告 | Go | `platform` | `res` |
+| 客户智能 | [`assessment`](assessment.md) 判断与决策 | 判断框架执行、评估、决策与审批 | Go | `platform` | `asm` |
+| 客户智能 | [`pursuit`](pursuit.md) 推进与结果 | 机会路径实例、阶段、任务、结果 | Go | `platform` | `pur` |
+| 客户智能 | [`learning`](learning.md) 反馈学习与评估 | 反馈、评估集、策略仿真、质量分析 | Go | `platform` | `lrn` |
+| 交互 | [`gateway`](gateway.md) 接入网关 | REST/OpenAPI、BFF、MCP、Webhook、限流 | Go | `platform` | `gwy` |
+| 交互 | [`channels`](channels.md) 渠道与会话 | 多渠道双向接入：通知、渠道内对话、快捷动作、身份绑定 | Go | `platform` | `chn` |
+| 平台 | [`identity`](identity.md) 身份与权限 | 租户、成员、角色、授权决策、审批 | Go | `platform` | `iam` |
+| 平台 | [`commerce`](commerce.md) 订阅计量计费 | 套餐、权益、配额、计量、账单 | Go | `platform` | `com` |
+| 平台 | [`governance`](governance.md) 审计与合规 | 审计、数据分级、保留删除、合规登记 | Go | `platform` | `gov` |
+| 平台 | [`ai-platform`](ai-platform.md) AI 平台 | 模型网关、提示注册、嵌入、护栏、AI 计量 | Go | `platform` | `aip` |
+| 平台 | [`operations`](operations.md) 运营工作台 | 人工复核队列、数据运营、托管服务、客户成功 | Go | `platform` | `ops` |
+
+“数据库”列是该子系统独占的逻辑数据库（首期为同一 PostgreSQL 集群中的独立数据库与独立账号），见 [数据架构](../02-data-architecture.md)。代码包命名见 [代码库结构](../09-codebase-structure.md)。
 
 ## 2. 规格模板
 

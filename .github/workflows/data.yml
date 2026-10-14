@@ -1,0 +1,43 @@
+# Python 数据面：SDK 测试与语料评测。
+name: data
+
+on:
+  pull_request:
+    paths:
+      - "data/**"
+      - "packs/information_domains/**"
+      - "contracts/schemas/**"
+      - ".github/workflows/data.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+
+      - name: SDK 测试
+        working-directory: data
+        run: uv run --locked --package miaoqia-sdk --group dev pytest -q sdk/tests
+
+      - name: INF-PROC 语料评测（Schema 校验 + 关键字段准确率 ≥ 95%）
+        working-directory: data
+        run: >
+          uv run --locked --package miaoqia-sdk mq-corpus check ../packs/information_domains/procurement/corpus
+          --extractor miaoqia_pack_procurement.extractors.tender_notice:TenderNoticeExtractor
+          --path ../packs/information_domains/procurement/src
+          --schema domains/procurement/notice.schema.json
+          --min-accuracy 0.95

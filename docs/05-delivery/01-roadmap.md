@@ -19,14 +19,14 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 
 | 范围 | 交付 |
 |---|---|
-| 基础设施 | 云账号与网络、Kubernetes、PostgreSQL、对象存储、Kafka、Temporal、OpenSearch、Redis、Keycloak、OpenFGA、可观测性；全部以 Terraform + GitOps 管理 |
-| 代码库 | monorepo、uv 工作区、`kernel`、`sdk`、18 个子系统骨架、两个部署单元与进程角色、依赖检查 |
-| 契约体系 | `contracts/` 目录结构、代码生成、兼容性检查、契约测试框架 |
+| 基础设施 | IaaS 账号与网络，以及 [技术选型](../03-architecture/08-technology-stack.md) 中的全部基础组件；开源自建（ADR-0014），以 OpenTofu + GitOps 管理 |
+| 代码库 | monorepo（Go 模块、Python uv 工作区、TypeScript 工作区）、Go 与 Python 的 `kernel`、Python `sdk`、18 个子系统骨架、三个部署单元与进程角色、依赖检查 |
+| 契约体系 | `contracts/` 目录结构、Go/Python/TypeScript 代码生成、兼容性检查、跨语言契约测试框架 |
 | 平台横切 | 请求上下文、接口绑定（本地/远程）、发件箱与中继、事件消费框架、审计 SDK、授权 SDK、模型网关骨架 |
 | 身份 | 租户、成员、角色、登录、令牌、租户单元 `cell-01` 路由 |
 | 质量 | CI 流水线、安全负向测试框架、本地一键环境 |
 
-**退出标准**：一个“空业务”的事件在两个部署单元间端到端流转，带追踪、审计和授权；任一子系统可通过配置切换为远程绑定并通过契约测试。
+**退出标准**：一个“空业务”的事件在三个部署单元间端到端流转，带追踪、审计和授权；任一子系统可通过配置切换为远程绑定并通过契约测试。
 
 ### M1 公共采购数据供应（第 5–16 周）
 
@@ -62,7 +62,7 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 
 | 范围 | 交付 |
 |---|---|
-| ai-platform | 模型目录、路由、提示注册、护栏、计量、私有模型推理 |
+| ai-platform | 模型目录、路由、提示注册、护栏、计量、供应商适配器 |
 | research | Agent 运行时、工具注册、研究模板执行、引用校验、报告 |
 | 研究模板 | `RT-TENDER-ELIG`、`BUYER`、`COMPETE`、`PROJECT`、`WINNER`、`RISK`、`ORGTRACK`（`PRICE` 随 R2） |
 | assessment | 结合研究的判断框架（`AF-TENDER-BID`、`AF-TENDER-SUPPLY`） |
@@ -80,7 +80,7 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 | pursuit | 机会路径引擎、阶段、任务、领域事件挂钩、路径衔接、结果与复盘 |
 | 信息领域包 | `INF-QUAL` 资质、`INF-FISC` 财政 |
 | entity-graph | 图查询读模型（引擎选定）、组织画像 |
-| 应用领域包 | R1 完整发布；R2 目标（A04、A05、A06、B01、B02、B04）的机会路径与判断框架 |
+| 应用领域包 | R1 完整发布；R2 目标的机会路径与判断框架 |
 | Web | 推进工作台、策略实验室、市场与实体视图 |
 
 **退出标准**：`APP-TENDER` R1 满足发布门槛，正式对外发布；R2 进入内测。
@@ -95,7 +95,7 @@ M0 的启动条件见 [立项准入清单](00-initiation-readiness.md)。
 | operations | 托管研究服务工作台、客户成功、自动化候选 |
 | 部署 | 第二个租户单元、专属单元模板、私有部署包 |
 | 集成 | CRM 同步适配器 |
-| 应用领域包 | R2 发布；R3 目标（A03、C02、C03、D01、D02） |
+| 应用领域包 | R2 发布；R3 目标（批次划分见 [首发范围](../02-business/application-domains/tendering/05-release-plan.md#2-商业目标分批已决定)） |
 
 **退出标准**：商业化全流程运行；专属单元与私有部署通过演练。
 
@@ -120,7 +120,7 @@ flowchart LR
 
 ## 4. 团队组织
 
-团队采用标准型配置（峰值约 42 人，M0 启动约 15 人），团队划分、人数、到岗节奏与决策机制见 [数据、质量与组织方案](04-data-quality-organization-proposal.md)。每个子系统有唯一负责人。
+团队规模、划分、到岗节奏与决策机制见 [数据、质量与组织](04-data-quality-organization.md)。每个子系统有唯一负责人。
 
 ## 5. 早期使用客户
 

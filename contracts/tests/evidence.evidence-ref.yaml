@@ -1,0 +1,20 @@
+schema: evidence/evidence-ref.schema.json
+base:
+  id: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  pipeline_version: "doc.html@0.1.0"
+  locator: { block: 1, char_start: 5, char_end: 17 }
+  quote_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+cases:
+  - name: 定位缺块序号
+    valid: false
+    patch: [{ op: remove, path: /locator/block }]
+  - name: 表格单元定位
+    valid: true
+    patch: [{ op: replace, path: /locator, value: { block: 2, row: 1, col: 0 } }]
+  - name: 哈希格式错误
+    valid: false
+    patch: [{ op: replace, path: /quote_hash, value: md5:abc }]
+  - name: 跨块定位
+    valid: true
+    patch: [{ op: replace, path: /locator, value: { block: 1, char_start: 0, block_end: 2, char_end: 9 } }]

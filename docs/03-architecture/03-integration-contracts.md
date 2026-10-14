@@ -11,7 +11,7 @@
 | 领域对象 Schema | JSON Schema 2020-12 | `contracts/schemas/` | 领域事实、租户对象、研究产物的结构 |
 | 子系统接口 | OpenAPI 3.1 | `contracts/apis/<subsystem>/` | 命令与查询接口 |
 | 事件 | AsyncAPI 3 + JSON Schema | `contracts/events/<namespace>/` | 领域事件与集成事件 |
-| 策略 DSL | JSON Schema + 语法说明 | `contracts/policy/` | 策略结构与可用字段 |
+| 策略 DSL | JSON Schema + CEL 环境与函数声明 | `contracts/policy/` | 策略结构、可用变量与函数，见 [策略 DSL](11-policy-dsl.md) |
 | 扩展包清单 | JSON Schema | `contracts/packs/` | 扩展包 manifest 与定义文件 |
 | 标识前缀 | YAML | `contracts/identifiers.yaml` | 前缀登记 |
 
@@ -19,10 +19,10 @@
 
 ### 2.1 进程内与远程统一
 
-每个子系统在代码中公开一个接口包（`miaoqia.<subsystem>.api`），包含命令、查询及其数据传输对象。调用方只依赖该接口：
+每个子系统在代码中公开一个 `api` 包（命令、查询及其数据传输对象，见 [代码库结构](09-codebase-structure.md)）。调用方只依赖该接口：
 
-- 同一进程部署时，接口由本地实现直接提供；
-- 独立部署时，接口由生成的远程客户端（HTTP）提供；
+- 同语言、同一进程部署时，接口由本地实现直接提供；
+- 独立部署或跨语言调用时，接口由生成的远程客户端（HTTP）提供；
 - 两种实现通过同一套契约测试。
 
 因此拆分子系统只改变部署配置，不改变调用方代码。见 [部署拓扑](07-deployment-topology.md)。
@@ -110,7 +110,7 @@
 | 新增枚举值 | 有条件兼容 | 消费者必须容忍未知枚举 |
 | 删除字段、改变语义、改为必填 | 不兼容 | 新主版本事件类型（`.v2`），新旧并行发布一个过渡期 |
 
-持续集成中对契约变更执行兼容性检查。
+持续集成中对契约变更执行兼容性检查（`mqc compat`，规则见 [代码库结构](09-codebase-structure.md#5-代码生成)）。
 
 ## 4. 持久化工作流
 

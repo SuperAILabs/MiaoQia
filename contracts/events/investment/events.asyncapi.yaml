@@ -1,0 +1,106 @@
+asyncapi: 3.0.0
+info:
+  title: INF-INVP 领域事件
+  version: 0.1.0
+  description: 由 domain-intelligence 依据 INF-INVP 的变化检测规则发布。 信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。公共域事件：miaoqiazone = public。
+channels:
+  public.domain:
+    address: public.domain
+    messages:
+      recordPublished:
+        $ref: '#/components/messages/recordPublished'
+      approvalGranted:
+        $ref: '#/components/messages/approvalGranted'
+      constructionPermitIssued:
+        $ref: '#/components/messages/constructionPermitIssued'
+      completionFiled:
+        $ref: '#/components/messages/completionFiled'
+operations:
+  publishInvestmentEvents:
+    action: send
+    channel:
+      $ref: '#/channels/public.domain'
+components:
+  schemas:
+    base:
+      type: object
+      required:
+      - record_id
+      - subject_org_ids
+      - fact_version
+      - rights_tags
+      properties:
+        record_id:
+          type: string
+          pattern: ^ivr_[0-9A-HJKMNP-TV-Z]{26}$
+        subject_org_ids:
+          type: array
+          items:
+            type: string
+            pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+          description: 涉及的已解析组织
+        fact_version:
+          type: integer
+          minimum: 1
+        rights_tags:
+          type: array
+          items:
+            type: string
+  messages:
+    recordPublished:
+      name: investment.record.published.v1
+      summary: 新的审批、许可或竣工记录
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          required:
+          - record_type
+          properties:
+            record_type:
+              type: string
+            investment_project_id:
+              type:
+              - string
+              - 'null'
+    approvalGranted:
+      name: investment.approval.granted.v1
+      summary: 备案、核准、可研批复等前置审批通过（前置信号）
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          required:
+          - record_type
+          properties:
+            record_type:
+              enum:
+              - filing
+              - approval
+              - feasibility_approval
+              - eia_approval
+              - land_approval
+              - planning_permit
+    constructionPermitIssued:
+      name: investment.construction_permit.issued.v1
+      summary: 施工许可发放
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'
+        - type: object
+          properties:
+            procurement_project_id:
+              type:
+              - string
+              - 'null'
+              pattern: ^pp_[0-9A-HJKMNP-TV-Z]{26}$
+            contractor_org_id:
+              type:
+              - string
+              - 'null'
+    completionFiled:
+      name: investment.completion.filed.v1
+      summary: 竣工验收备案
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/base'

@@ -1,69 +1,52 @@
 # 代码库结构
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.1 · 更新：2026-10-13 · 负责人：首席架构师
 
 ## 1. 单一代码仓库
 
-妙洽采用单一代码仓库（monorepo）管理所有子系统、扩展包、契约、前端与部署配置。子系统的独立性由目录边界、独立数据库与自动化依赖检查保证，而不是由仓库隔离。
+妙洽采用单一代码仓库（monorepo）管理所有子系统、扩展包、契约、前端与部署配置。子系统的独立性由目录边界、独立数据库与自动化依赖检查保证，而不是由仓库隔离。子系统使用哪种语言以 [子系统索引](subsystems/README.md) 为准（ADR-0006）。
 
 ```text
 miaoqia/
-├── contracts/                     契约（唯一事实来源）
-│   ├── schemas/                   领域对象与研究产物 JSON Schema
+├── contracts/                     契约（唯一事实来源，与语言无关）
+│   ├── schemas/                   JSON Schema：common/ 通用类型、domains/<信息领域>/ 领域对象、研究产物
 │   ├── apis/<subsystem>/          子系统接口 OpenAPI
 │   ├── events/<namespace>/        事件 AsyncAPI + Schema
-│   ├── policy/                    策略 DSL Schema
+│   ├── policy/                    策略 DSL Schema 与 CEL 环境声明
 │   ├── packs/                     扩展包定义 Schema
+│   ├── tests/                     契约样例（正例与反例）
 │   └── identifiers.yaml           标识前缀登记
 │
-├── platform/                      Python 工作区
-│   ├── sdk/                       miaoqia.sdk：扩展 SPI、请求上下文、授权与审计 SDK
-│   ├── kernel/                    miaoqia.kernel：通用基础设施（数据访问、发件箱、事件消费、
-│   │                              工作流、配置、可观测、接口绑定与远程客户端生成）
-│   ├── subsystems/
-│   │   ├── acquisition/
-│   │   ├── evidence/
-│   │   ├── domain_intelligence/
-│   │   ├── entity_graph/
-│   │   ├── search/
-│   │   ├── customer_context/
-│   │   ├── detection/
-│   │   ├── research/
-│   │   ├── assessment/
-│   │   ├── pursuit/
-│   │   ├── learning/
-│   │   ├── gateway/
-│   │   ├── channels/
-│   │   ├── identity/
-│   │   ├── commerce/
-│   │   ├── governance/
-│   │   ├── ai_platform/
-│   │   └── operations/
-│   └── runtimes/
-│       ├── acquisition/           acquisition 部署单元入口与进程角色
-│       └── platform/              platform 部署单元入口与进程角色
+├── services/                      Go 模块：平台服务
+│   ├── contracts/                 生成的领域类型（请勿手改）
+│   ├── kernel/                    通用基础设施（数据访问与 RLS、发件箱、事件消费、工作流、
+│   │                              配置、可观测、接口绑定、授权与审计 SDK、扩展包加载与 CEL 求值）
+│   ├── subsystems/<name>/         每个 Go 子系统一个目录
+│   ├── relay/                     发件箱中继（服务全部子系统库）
+│   └── cmd/platform/              platform 部署单元入口与进程角色
+│
+├── data/                          Python 工作区（uv）：公共域数据处理
+│   ├── contracts/                 miaoqia.contracts：生成的 Pydantic 模型（请勿手改）
+│   ├── kernel/                    miaoqia.kernel：数据访问与 RLS、发件箱写入、事件消费、
+│   │                              Temporal worker、配置、可观测、请求上下文、授权客户端
+│   ├── sdk/                       miaoqia.sdk：信息领域包 SPI
+│   ├── subsystems/<name>/         每个 Python 子系统一个包
+│   └── runtimes/{acquisition,data}/  两个 Python 部署单元入口与进程角色
 │
 ├── packs/                         扩展包
-│   ├── information_domains/
-│   │   ├── procurement/           INF-PROC
-│   │   ├── investment_projects/   INF-INVP
-│   │   ├── organizations/         INF-ORG
-│   │   └── …
-│   ├── application_domains/
-│   │   └── tendering/             APP-TENDER
-│   └── industries/
-│       ├── building_materials/
-│       └── …
+│   ├── information_domains/       Python 代码 + 声明（如 procurement/ 即 INF-PROC）
+│   ├── application_domains/       纯声明 + CEL（如 tendering/ 即 APP-TENDER）
+│   └── industries/                纯声明
 │
 ├── web/                           前端（TypeScript 工作区）
 │   ├── apps/workspace/            客户 Web 应用
 │   ├── apps/ops-console/          运营控制台
-│   └── packages/                  组件、生成的 API 客户端、视图注册表
+│   └── packages/                  组件、生成的契约类型（contracts/）与 API 客户端、视图注册表
 │
-├── deploy/                        Helm charts、角色清单、环境配置、Terraform
-├── tools/                         代码生成、契约检查、本地开发脚本
+├── deploy/                        Helm charts、角色清单、环境配置、OpenTofu
+├── tools/                         契约工具（contracts/，命令 mqc）、本地开发脚本
 ├── tests/
-│   ├── contract/                  跨子系统契约测试
+│   ├── contract/                  跨子系统黑盒契约测试（同一套用例验证 Go 与 Python 实现）
 │   ├── e2e/                       端到端测试
 │   ├── security/                  跨租户、未知字段、提示注入、审批绕过测试
 │   └── evaluation/                评估集回归
@@ -72,63 +55,81 @@ miaoqia/
 
 ## 2. 子系统内部结构
 
-每个子系统遵循相同的内部分层：
+两种语言使用相同的分层，Go 子系统把 `api` 以外的层放在 `internal/` 下，由编译器保证外部不可导入：
 
-```text
-subsystems/<name>/
-├── api/              公开接口：命令、查询、DTO、事件定义（其他子系统唯一可导入的部分）
-├── domain/           领域模型与业务规则（无框架依赖）
-├── application/      用例编排、事务边界、事件发布
-├── infrastructure/   数据访问、外部适配、事件消费者、工作流与活动
-├── extensions/       本子系统定义的 SPI 注册表
-├── migrations/       本子系统数据库迁移
-└── tests/            单元与集成测试
-```
+| 层 | 内容 | Go 位置 | Python 位置 |
+|---|---|---|---|
+| `api` | 公开接口：命令、查询、DTO、事件定义（其他子系统唯一可导入的部分） | `<name>/api/` | `<name>/api/` |
+| `domain` | 领域模型与业务规则（无框架依赖） | `<name>/internal/domain/` | `<name>/domain/` |
+| `application` | 用例编排、事务边界、事件发布 | `<name>/internal/app/` | `<name>/application/` |
+| `infrastructure` | 数据访问、外部适配、事件消费者、工作流与活动 | `<name>/internal/infra/` | `<name>/infrastructure/` |
+| `extensions` | 本子系统定义的扩展点注册表 | `<name>/internal/ext/` | `<name>/extensions/` |
+| `migrations` | 本子系统数据库迁移 | `<name>/migrations/` | `<name>/migrations/` |
 
 ## 3. 依赖规则（CI 强制）
 
 | 规则 | 说明 |
 |---|---|
-| R1 | 子系统 A 只能导入子系统 B 的 `api` 包，禁止导入其 `domain`、`application`、`infrastructure` |
+| R1 | 子系统 A 只能导入子系统 B 的 `api` 包，禁止导入其其余各层 |
 | R2 | 依赖方向符合 [总体架构](01-architecture-overview.md#22-依赖规则)：交互 → 客户智能 → 数据供应；数据供应平面不得导入客户智能平面 |
-| R3 | 所有子系统可依赖 `kernel` 与 `sdk`；`kernel` 与 `sdk` 不依赖任何子系统 |
+| R3 | 所有子系统可依赖本语言的 `kernel` 与 `sdk`；`kernel` 与 `sdk` 不依赖任何子系统 |
 | R4 | 扩展包只能依赖 `sdk` 与被扩展子系统的 `api` |
 | R5 | `domain` 层不依赖任何框架与基础设施库 |
 | R6 | 子系统不得访问其他子系统的数据库（运行时：独立数据库账号无权限；静态：禁止引用其他子系统的表模型） |
+| R7 | 跨语言依赖只能经 `contracts/` 生成的远程客户端，不共享任何手写代码 |
 
-规则以 import-linter 配置和数据库权限双重保证。
+执行方式：Go 以 `internal/` 可见性与 golangci-lint `depguard` 检查；Python 以 import-linter 检查；两者都辅以数据库权限。
 
 ## 4. 接口绑定
 
-`kernel` 提供接口绑定机制：
+同语言内，`kernel` 提供接口绑定机制，调用方只依赖接口：
 
-```python
-# 调用方只依赖接口
-from miaoqia.entity_graph.api import EntityGraphQueries
+```go
+// 调用方只依赖 api 包中的接口
+import "github.com/superailabs/miaoqia/services/subsystems/search/api"
 
-class WinnerProfileTool:
-    def __init__(self, entities: EntityGraphQueries): ...
+type ChunkSearchTool struct {
+    search api.SearchQueries
+}
 ```
 
-部署配置决定 `EntityGraphQueries` 绑定到本地实现还是由 OpenAPI 生成的远程客户端。两种绑定都会经过统一的调用管线：上下文传递、授权、超时、重试策略、追踪与指标。
+部署配置决定接口绑定到本地实现还是由 OpenAPI 生成的远程客户端；跨语言时（例如 Go 的 `research` 调用 Python 的 `entity-graph`）只有远程客户端一种绑定。所有绑定都经过统一的调用管线：上下文传递、授权、超时、重试策略、追踪与指标。
 
 ## 5. 代码生成
 
-| 来源 | 生成物 |
-|---|---|
-| `contracts/schemas` | Pydantic 模型、TypeScript 类型 |
-| `contracts/apis` | 子系统远程客户端、服务端路由骨架、前端客户端 |
-| `contracts/events` | 事件模型、发布与消费辅助代码 |
-| `contracts/packs` | 扩展包定义校验器 |
+契约工具位于 `tools/contracts/`（命令 `mqc`），CI 工作流为 `.github/workflows/contracts.yml`。
 
-生成代码不手工修改；CI 校验生成物与契约一致。
+```text
+contracts/schemas ──打包（统一类型名、改写跨文件引用、去掉只用于校验的关键字）──► 打包 Schema
+   ├─► go-jsonschema               → services/contracts/contracts_gen.go
+   ├─► datamodel-code-generator    → data/contracts/src/miaoqia/contracts/models.py
+   └─► json-schema-to-typescript   → web/packages/contracts/src/index.ts
+```
+
+- **生成类型只表达结构**：证据必填、按类型的条件必填、标识格式等约束不进入类型，入站数据一律用原始 JSON Schema 校验（Go 用 santhosh-tekuri/jsonschema，Python 用 jsonschema）；
+- **类型名**：顶层 Schema 取 `title` 的首个词，`$defs` 取 `x-type-name` 或键名的 PascalCase，重名即报错；
+- **生成物提交到仓库**，`mqc generate --check` 校验其与契约一致；生成器版本分别固定在 `tools/contracts/gotools/go.mod`、`tools/contracts/pyproject.toml`、`web/packages/contracts/package.json`；
+- **Schema 写法**受方言规则约束（无 null、禁止额外属性、前缀须登记等），规则清单见 `tools/contracts/src/mqc/lint.py`；
+- **往返测试**：全部正例在 Go 与 Python 中按生成类型严格解析（未知字段即失败）；
+- `contracts/apis`（OpenAPI）与 `contracts/events` 的代码生成随第一批子系统接口与事件消费者一起建设，届时接入同一工具。
+
+| 命令（在仓库根目录） | 作用 |
+|---|---|
+| `uv run --project tools/contracts mqc check` | Schema 方言、样例、事件契约、扩展包一致性、YAML 键名 |
+| `uv run --project tools/contracts mqc generate` | 重新生成三种语言的类型 |
+| `uv run --project tools/contracts mqc generate --check` | 生成物一致性检查 |
+| `uv run --project tools/contracts mqc fixtures --export DIR` | 导出正例，供往返测试 |
+| `uv run --project tools/contracts mqc compat --base origin/main -v` | 与目标分支比较的兼容性检查（合并请求必过） |
+
+**版本与兼容性**：每个 Schema 文件带 `x-version`。变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。核心契约冻结即把相应文件的 `x-version` 定为 `1.0.0`。
 
 ## 6. 命名约定
 
 | 对象 | 约定 | 示例 |
 |---|---|---|
-| 子系统包 | `miaoqia.<snake_case>` | `miaoqia.entity_graph` |
-| 数据库 | 三字母代码 | `ent` |
+| Go 子系统包 | `services/subsystems/<lowercase>` | `services/subsystems/customercontext` |
+| Python 子系统包 | `miaoqia.<snake_case>` | `miaoqia.entity_graph` |
+| 数据库 | 三字母代码，见 [子系统索引](subsystems/README.md) | `ent` |
 | 事件类型 | `<namespace>.<entity>.<verb>.v<n>` | `entity.merge.applied.v1` |
 | 标识前缀 | 2–4 字母 + `_` | `org_`、`sig_` |
 | 接口 | 名词资源 + 动词命令 | `GET /v1/signals`、`POST /v1/policies/{id}:activate` |

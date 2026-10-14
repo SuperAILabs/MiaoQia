@@ -1,0 +1,44 @@
+# 人工标注：只标注原文中确定无疑的字段。交易制度（政府采购 / 依法必须招标 / 国企自主采购）原文未明示，不标注。
+facts:
+  - fact_type: tendering.notice
+    fields:
+      /notice_type: tender
+      /title/value: 中铁十八局集团有限公司G228丹东线（嘉陵江路西延段）改线工程PPP项目经理部商品混凝土采购公开招标
+      /notice_code/value: CRCC-1805ZB-G228-2026-01
+      /method: open_tender
+      /buyer/name_raw: 中铁十八局集团有限公司G228丹东线（嘉陵江路西延段）改线工程PPP项目经理部
+      /agency/name_raw: 中铁十八局集团有限公司物资集中采购中心
+      /project_owner/name_raw: 青岛中融联汇交通投资建设发展有限公司
+      /published_at/value: "2026-10-12T16:00:00Z"        # 落款 2026 年 10 月 13 日（北京时间）
+      /published_at/precision: day
+      /lots/0/lot_key: SH-01
+      /lots/0/consortium_allowed: false
+      /lots/0/document_fee/value: "500"
+      /lots/0/bid_bond/value: "200000"                   # 20 万元
+      /lots/0/items/0/name/value: 商品混凝土
+      /lots/0/items/0/spec/value: C15
+      /lots/0/items/0/quantity/value: "5"
+      /lots/0/items/0/quantity/unit_raw: m³
+      /lots/0/items/1/spec/value: C20细石
+      /lots/0/items/1/quantity/value: "834"
+      /lots/0/items/6/spec/value: C35自密实
+      /lots/0/items/6/quantity/value: "2242"
+      /lots/0/items/8/spec/value: C40
+      /lots/0/items/8/quantity/value: "7982"
+      /lots/0/deadlines/0/type: bid_submission
+      /lots/0/deadlines/0/at/value: "2026-11-04T02:00:00Z"   # 2026 年 11 月 04 日 10 时 00 分
+      /lots/0/deadlines/1/type: bid_opening
+      /lots/0/deadlines/1/at/value: "2026-11-04T02:00:00Z"
+      /lots/0/deadlines/2/type: doc_obtain_end
+      /lots/0/deadlines/2/at/value: "2026-10-18T15:59:00Z"   # 2026 年 10 月 18 日 23 时 59 分
+      /lots/0/requirements/0/kind: qualification             # 营业范围
+      /lots/0/requirements/1/kind: financial                 # 财务能力
+      /lots/0/requirements/2/kind: quality                   # 质量保证能力
+      /lots/0/requirements/3/kind: credit                    # 履约信用
+      /contacts/0/role: buyer
+      /contacts/0/name: 韦雄友
+      /contacts/0/phone: "18617775391"
+      /contacts/1/role: agency
+      /contacts/1/name: 苍宇
+      /contacts/1/phone: "13672001117"
+      /contacts/1/email: wbtaozi1983@126.com

@@ -1,8 +1,8 @@
 # 领域模型
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 负责人：招投标领域负责人、数据架构负责人
+> 状态：评审中 · 版本：1.1 · 更新：2026-10-13 · 负责人：招投标领域负责人、数据架构负责人
 
-本文定义招投标应用领域涉及的领域对象。公共域对象由 `INF-PROC` 信息领域包提供，租户域对象由 `APP-TENDER` 应用领域包提供。通用字段与版本规则见 [数据架构](../../../03-architecture/02-data-architecture.md)。
+本文定义招投标应用领域涉及的领域对象及其业务含义。公共域对象由 `INF-PROC` 信息领域包提供，字段级定义以 [`contracts/schemas/domains/procurement/`](../../../../contracts/schemas/domains/procurement/notice.schema.json) 为准：公告（`Notice`）按原文表达一条公告，采购项目（`ProcurementProject`）是归并后的当前状态，标包、标的、要求、时间节点、投标结果、合同与验收是其中的嵌套对象。租户域对象由 `APP-TENDER` 应用领域包提供。通用字段与版本规则见 [数据架构](../../../03-architecture/02-data-architecture.md)。
 
 ## 1. 公共域：采购信息领域对象
 
@@ -45,45 +45,11 @@ erDiagram
 
 ### 1.2 领域生命周期状态机
 
-`ProcurementProject.stage`：
-
-```mermaid
-stateDiagram-v2
-  [*] --> intent: 采购意向/计划
-  [*] --> announced: 直接发布公告
-  intent --> announced
-  announced --> amended: 更正/澄清
-  amended --> announced
-  announced --> evaluating: 截止/开标
-  amended --> evaluating
-  evaluating --> candidate_published: 候选人公示
-  evaluating --> awarded
-  candidate_published --> awarded
-  evaluating --> failed: 流标/废标
-  announced --> terminated: 终止
-  awarded --> contracted
-  contracted --> accepted: 验收
-  failed --> announced: 重新采购
-  accepted --> [*]
-  terminated --> [*]
-```
-
-状态转换由领域事件驱动，非法转换被记录为质量警告而不是强行修正。
+`ProcurementProject.stage` 经历意向、公告、更正、评审、候选人公示、中标、合同、验收等阶段，也可能流标、废标或终止后重新采购。状态转换由公告驱动，非法转换记为质量警告而不是强行修正。状态与转换的唯一定义是 [`packs/information_domains/procurement/lifecycle.yaml`](../../../../packs/information_domains/procurement/lifecycle.yaml)。
 
 ### 1.3 领域事件
 
-| 事件 | 触发 |
-|---|---|
-| `tendering.notice.published.v1` | 新公告被解析为领域事实 |
-| `tendering.notice.amended.v1` | 更正、澄清导致字段变化 |
-| `tendering.deadline.changed.v1` | 任一截止时间变化 |
-| `tendering.project.stage_changed.v1` | 项目阶段变化 |
-| `tendering.project.linked.v1` / `unlinked.v1` | 公告归并或撤销归并 |
-| `tendering.result.published.v1` | 候选人公示或中标结果发布 |
-| `tendering.contract.published.v1` | 合同公告发布 |
-| `tendering.procurement.failed.v1` | 流标、废标、终止 |
-
-事件规范见 [集成契约](../../../03-architecture/03-integration-contracts.md)。
+公告发布、更正、截止时间变化、阶段变化、归并与撤销归并、结果发布、合同发布、流标与终止各有一个领域事件。事件类型与载荷的唯一定义是 [`contracts/events/tendering/events.asyncapi.yaml`](../../../../contracts/events/tendering/events.asyncapi.yaml)，信封规范见 [集成契约](../../../03-architecture/03-integration-contracts.md)。
 
 ### 1.4 分类体系
 

@@ -1,0 +1,84 @@
+# C01 交易对手风险评估：监测租户的客户、伙伴与登记的交易对手出现的信用与经营风险。
+# 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 4.1。
+# 正在推进中的交易对手由 detection 的推进关联（pursuit_linker）处理，不经本策略。
+template:
+  id: TPL-TENDER-C01-RISK
+  version: 0.1.0
+  objective: APP-TENDER.C01
+  roles: [ROLE-MFR, ROLE-BIDDER, ROLE-PRIME, ROLE-DEALER, ROLE-INVESTOR]
+  fact_types: [credit.record, org.abnormal, org.change]
+  rollout_key: fact.subject.org_id
+  view: []
+
+  params:
+    severe_amount_cny: { type: int, default: 1000000, min: 0, say: 视为大额的执行或处罚金额 }
+
+  scope:
+    fact_types: [credit.record, org.abnormal, org.change]
+    when: '!has(fact.change_type) || fact.change_type == "status"'   # 企业变更只关注经营状态
+
+  require:
+    - id: R-COUNTERPARTY
+      say: 涉及我方客户、伙伴或登记的交易对手
+      when: sets.overlaps(fact.org_ids, lists.customers + lists.partners + lists.counterparties)
+      missing: reject
+
+  exclude:
+    - id: X-NOT-ADVERSE
+      say: 对方在诉讼中为原告
+      when: fact.record_type == "judgment" && fact.role == "plaintiff"
+      reason: NOT_ADVERSE
+
+  watch: []
+
+  boost:
+    - id: B-SEVERE
+      say: 失信或限制消费
+      when: features.credit_severity >= 3
+      weight: 30
+    - id: B-SERIOUS
+      say: 被执行或大额处罚
+      when: features.credit_severity == 2
+      weight: 20
+    - id: B-LARGE
+      say: 涉及金额不低于 {params.severe_amount_cny} 元
+      when: money.cny(fact.amount) >= params.severe_amount_cny
+      weight: 10
+    - id: B-STATUS
+      say: 经营状态变为吊销或注销
+      when: fact.status_after in ["revoked", "cancelled"]
+      weight: 30
+    - id: B-ABNORMAL
+      say: 被列入经营异常
+      when: event.type == "org.abnormal.listed.v1"
+      weight: 15
+
+  penalize:
+    - id: P-RESOLVED
+      say: 记录已了结
+      when: fact.resolved
+      weight: 20
+
+  thresholds: { base_score: 40, pursue_at: 60, drop_below: 25 }
+
+  route:
+    pursue_candidate:
+      notify: { audience: [objective_owner], mode: immediate }
+      research: { template: RT-TENDER-RISK, auto: true }
+    review_candidate:
+      notify: { audience: [objective_members], mode: digest }
+
+  examples:
+    - name: 客户被列为失信被执行人
+      given:
+        fact: { record_type: dishonest, resolved: false, subject: { org_id: org_b1 }, org_ids: [org_b1] }
+        event: { type: credit.record.published.v1 }
+        lists: { customers: [org_b1], partners: [], counterparties: [] }
+      expect: pursue_candidate
+    - name: 伙伴的已了结小额处罚
+      given:
+        fact: { record_type: penalty, resolved: true, amount: { value: "20000", currency: CNY },
+                subject: { org_id: org_p1 }, org_ids: [org_p1] }
+        event: { type: credit.record.published.v1 }
+        lists: { customers: [], partners: [org_p1], counterparties: [] }
+      expect: no_signal

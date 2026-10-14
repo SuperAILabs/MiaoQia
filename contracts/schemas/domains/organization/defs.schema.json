@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/domains/organization/defs.schema.json",
+  "x-version": "0.1.0",
+  "title": "INF-ORG 公共定义",
+  "description": "企业登记公示信息的枚举与嵌套对象。INF-ORG 的事实是来源公示的登记信息；组织主数据（Organization）由 entity-graph 依据这些事实解析生成并拥有。",
+  "$defs": {
+    "status": {
+      "x-type-name": "OrgStatus",
+      "enum": [
+        "active",
+        "suspended",
+        "revoked",
+        "cancelled",
+        "moved_out"
+      ],
+      "description": "存续（在业）、停业、吊销、注销、迁出"
+    },
+    "enterprise_type": {
+      "x-type-name": "OrgEnterpriseType",
+      "enum": [
+        "limited_liability",
+        "joint_stock",
+        "state_owned",
+        "collective",
+        "partnership",
+        "sole_proprietorship",
+        "foreign_invested",
+        "branch",
+        "individual_business",
+        "public_institution",
+        "social_organization",
+        "other"
+      ],
+      "description": "有限责任公司、股份有限公司、全民所有制、集体所有制、合伙企业、个人独资企业、外商投资企业、分支机构、个体工商户、事业单位、社会组织、其他"
+    },
+    "change_type": {
+      "x-type-name": "OrgChangeType",
+      "enum": [
+        "name",
+        "address",
+        "legal_representative",
+        "executive",
+        "equity",
+        "capital",
+        "scope",
+        "status",
+        "enterprise_type",
+        "other"
+      ]
+    },
+    "shareholder": {
+      "x-type-name": "OrgShareholder",
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "description": "股东：组织股东以组织引用表达，自然人股东以 person 表达",
+      "properties": {
+        "kind": {
+          "enum": [
+            "organization",
+            "natural_person"
+          ]
+        },
+        "org": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "person": {
+          "$ref": "../../common/types.schema.json#/$defs/person"
+        },
+        "share_ratio": {
+          "$ref": "../../common/types.schema.json#/$defs/decimal",
+          "description": "持股比例，0–1"
+        },
+        "subscribed_capital": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "organization"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "org"
+            ],
+            "not": {
+              "required": [
+                "person"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "natural_person"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "person"
+            ],
+            "not": {
+              "required": [
+                "org"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

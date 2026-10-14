@@ -1,0 +1,90 @@
+# 契约检查与代码生成一致性。规则见 docs/03-architecture/09-codebase-structure.md 第 5 节。
+name: contracts
+
+on:
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "packs/**"
+      - "tools/contracts/**"
+      - "services/contracts/**"
+      - "services/go.mod"
+      - "data/contracts/**"
+      - "data/pyproject.toml"
+      - "data/uv.lock"
+      - "web/packages/contracts/**"
+      - "web/pnpm-lock.yaml"
+      - ".github/workflows/contracts.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                 # 兼容性检查需要目标分支的历史
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/contracts/gotools/go.mod
+          cache-dependency-path: |
+            tools/contracts/gotools/go.sum
+            services/go.mod
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: 安装前端依赖
+        run: pnpm --dir web install --frozen-lockfile
+
+      - name: 契约工具自测
+        run: uv run --project tools/contracts --locked --group dev pytest -q tools/contracts/tests
+
+      - name: 契约检查（Schema 方言、样例、事件、扩展包、YAML 键名）
+        run: uv run --project tools/contracts --locked mqc check
+
+      - name: 兼容性检查（与目标分支比较）
+        if: github.event_name == 'pull_request'
+        run: uv run --project tools/contracts --locked mqc compat --base "origin/${{ github.base_ref }}" -v
+
+      - name: 生成物与契约一致
+        run: uv run --project tools/contracts --locked mqc generate --check
+
+      - name: 导出正例
+        run: uv run --project tools/contracts --locked mqc fixtures --export "$RUNNER_TEMP/fixtures"
+
+      - name: Go：编译、静态检查与往返测试
+        working-directory: services
+        env:
+          MQC_FIXTURES: ${{ runner.temp }}/fixtures
+        run: |
+          go vet ./...
+          go test ./contracts/...
+
+      - name: Python：往返测试
+        working-directory: data
+        run: uv run --locked --package miaoqia-contracts python contracts/tests/roundtrip.py "$RUNNER_TEMP/fixtures"
+
+      - name: TypeScript：类型检查
+        run: pnpm --dir web --filter @miaoqia/contracts typecheck

@@ -1,0 +1,89 @@
+# B05 目标企业经营跟踪：对租户登记的跟踪对象（lists.tracked），监测订单、合同、信用与重大企业变更。
+# 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 3.5。
+template:
+  id: TPL-TENDER-B05-ORGTRACK
+  version: 0.1.0
+  objective: APP-TENDER.B05
+  roles: [ROLE-INVESTOR]
+  fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change, org.abnormal]
+  rollout_key: 'has(fact.project_id) ? fact.project_id : fact.subject.org_id'
+  view: [winner.trailing_award_total, winner.past_buyer_ids]
+
+  params:
+    material_ratio:   { type: double, default: 0.1, min: 0.0, max: 1.0, say: 视为重大订单的金额占比 }
+    minor_change_types: { type: list<enum>, default: [address, name, scope] }
+
+  scope:
+    fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change, org.abnormal]
+
+  require:
+    - id: R-TRACKED
+      say: 涉及我方跟踪的企业
+      when: sets.overlaps(fact.org_ids, lists.tracked)
+      missing: reject
+
+  exclude:
+    - id: X-MINOR-CHANGE
+      say: 不影响经营判断的轻微企业变更
+      when: fact.change_type in params.minor_change_types
+      reason: MINOR_CHANGE
+    - id: X-NOT-ADVERSE
+      say: 跟踪对象在诉讼中为原告
+      when: fact.record_type == "judgment" && fact.role == "plaintiff"
+      reason: NOT_ADVERSE
+
+  watch:
+    - id: W-CANDIDATE
+      say: 跟踪对象进入候选人公示，结果未定
+      when: fact.result_type == "candidate_published"
+
+  boost:
+    - id: B-MATERIAL
+      say: 订单金额达到近一年中标总额的 {params.material_ratio} 以上
+      when: features.order_materiality >= params.material_ratio
+      weight: 25
+    - id: B-NEW-BUYER
+      say: 近三年首次从该采购人中标
+      when: features.first_award_from_buyer
+      weight: 10
+    - id: B-CREDIT
+      say: 较重信用事件
+      when: features.credit_severity >= 2
+      weight: 30
+    - id: B-EQUITY
+      say: 股权、注册资本或经营状态变更
+      when: fact.change_type in ["equity", "capital", "status"]
+      weight: 20
+    - id: B-ABNORMAL
+      say: 被列入经营异常
+      when: event.type == "org.abnormal.listed.v1"
+      weight: 20
+
+  penalize: []
+
+  thresholds: { base_score: 40, pursue_at: 60, drop_below: 0 }   # 跟踪对象的每条事件至少进入摘要
+
+  route:
+    pursue_candidate:
+      notify: { audience: [objective_owner], mode: immediate }
+    review_candidate:
+      notify: { audience: [objective_members], mode: digest }
+    watch_signal:
+      notify: { audience: [objective_members], mode: digest }
+
+  examples:
+    - name: 跟踪对象获得重大订单
+      given:
+        fact: { result_type: awarded, amount: { value: "30000000", currency: CNY },
+                buyer: { org_id: org_b1 },
+                winner: { org_id: org_t1, trailing_award_total: { value: "120000000", currency: CNY },
+                          past_buyer_ids: [org_b1] },
+                org_ids: [org_b1, org_t1] }
+        lists: { tracked: [org_t1] }
+      expect: pursue_candidate
+    - name: 跟踪对象地址变更
+      given:
+        fact: { change_type: address, subject: { org_id: org_t1 }, org_ids: [org_t1] }
+        event: { type: org.change.recorded.v1 }
+        lists: { tracked: [org_t1] }
+      expect: excluded

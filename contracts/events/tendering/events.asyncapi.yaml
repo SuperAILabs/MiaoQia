@@ -1,0 +1,135 @@
+asyncapi: 3.0.0
+info:
+  title: INF-PROC 领域事件
+  version: 0.1.0
+  description: >
+    由 domain-intelligence 依据 INF-PROC 的变化检测规则发布。信封为 CloudEvents 1.0，
+    约定见 docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。
+    公共域事件：miaoqiazone = public，租户与单元为空。
+channels:
+  public.domain:
+    address: public.domain
+    messages:
+      noticePublished:     { $ref: '#/components/messages/noticePublished' }
+      noticeAmended:       { $ref: '#/components/messages/noticeAmended' }
+      deadlineChanged:     { $ref: '#/components/messages/deadlineChanged' }
+      projectStageChanged: { $ref: '#/components/messages/projectStageChanged' }
+      projectLinked:       { $ref: '#/components/messages/projectLinked' }
+      projectUnlinked:     { $ref: '#/components/messages/projectUnlinked' }
+      resultPublished:     { $ref: '#/components/messages/resultPublished' }
+      contractPublished:   { $ref: '#/components/messages/contractPublished' }
+      procurementFailed:   { $ref: '#/components/messages/procurementFailed' }
+operations:
+  publishDomainEvents:
+    action: send
+    channel: { $ref: '#/channels/public.domain' }
+components:
+  schemas:
+    base:
+      type: object
+      required: [project_id, notice_id, fact_version, rights_tags]
+      properties:
+        project_id: { type: [string, 'null'], pattern: '^pp_[0-9A-HJKMNP-TV-Z]{26}$' }
+        notice_id: { type: string, pattern: '^ntc_[0-9A-HJKMNP-TV-Z]{26}$' }
+        fact_version: { type: integer, minimum: 1 }
+        rights_tags: { type: array, items: { type: string } }
+  messages:
+    noticePublished:
+      name: tendering.notice.published.v1
+      summary: 新公告被解析为领域事实
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [notice_type]
+            properties:
+              notice_type: { $ref: '../../schemas/domains/procurement/defs.schema.json#/$defs/notice_type' }
+    noticeAmended:
+      name: tendering.notice.amended.v1
+      summary: 更正、澄清导致被更正公告的字段变化
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [amended_notice_ids, changed_fields]
+            properties:
+              amended_notice_ids: { type: array, items: { type: string, pattern: '^ntc_[0-9A-HJKMNP-TV-Z]{26}$' } }
+              changed_fields: { type: array, items: { type: string }, description: JSON Pointer 列表 }
+    deadlineChanged:
+      name: tendering.deadline.changed.v1
+      summary: 任一截止时间变化（含首次确定）
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [lot_id, deadline_type, after]
+            properties:
+              lot_id: { type: string, pattern: '^lot_[0-9A-HJKMNP-TV-Z]{26}$' }
+              deadline_type: { type: string }
+              before: { type: [string, 'null'], format: date-time }
+              after: { type: string, format: date-time }
+    projectStageChanged:
+      name: tendering.project.stage_changed.v1
+      summary: 采购项目阶段变化（状态机见 packs/information_domains/procurement/lifecycle.yaml）
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [from, to]
+            properties:
+              from: { type: [string, 'null'] }
+              to: { type: string }
+    projectLinked:
+      name: tendering.project.linked.v1
+      summary: 公告归并到采购项目
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [method, confidence, status]
+            properties:
+              method: { enum: [project_code, explicit_reference, attribute_match, semantic] }
+              confidence: { type: number, minimum: 0, maximum: 1 }
+              status: { enum: [auto, candidate, confirmed] }
+    projectUnlinked:
+      name: tendering.project.unlinked.v1
+      summary: 撤销归并
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [previous_project_id]
+            properties:
+              previous_project_id: { type: string, pattern: '^pp_[0-9A-HJKMNP-TV-Z]{26}$' }
+    resultPublished:
+      name: tendering.result.published.v1
+      summary: 候选人公示或中标结果发布
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [stage, lot_ids]
+            properties:
+              stage: { enum: [candidate, award] }
+              lot_ids: { type: array, items: { type: string, pattern: '^lot_[0-9A-HJKMNP-TV-Z]{26}$' } }
+    contractPublished:
+      name: tendering.contract.published.v1
+      summary: 合同公告发布
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [contract_id]
+            properties:
+              contract_id: { type: string, pattern: '^ctr_[0-9A-HJKMNP-TV-Z]{26}$' }
+    procurementFailed:
+      name: tendering.procurement.failed.v1
+      summary: 流标、废标或终止
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/base'
+          - type: object
+            required: [ending_type]
+            properties:
+              ending_type: { enum: [terminated, failed_bid, voided] }
+              lot_ids: { type: array, items: { type: string } }

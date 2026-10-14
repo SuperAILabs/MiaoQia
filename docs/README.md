@@ -1,6 +1,6 @@
 # 妙洽文档体系
 
-本目录是妙洽（MiaoQia）的**正式、可执行**文档。产品、业务、架构和研发决策都以这里为准；对话记录、调研草稿和临时分析不属于正式文档，完成使命后归入 `archive/`。
+本目录是妙洽（MiaoQia）的**正式、可执行**文档。产品、业务、架构和研发决策都以这里为准。文档只表达现行设计与决策，不保留旧方案、替代说明或变更记录（历史由版本库追溯）；对话记录、调研草稿和临时分析不进入本目录，其中的有效结论并入对应的正式文档。
 
 ## 1. 目录结构
 
@@ -13,7 +13,7 @@ docs/
 │   ├── 01-vision-and-positioning.md
 │   ├── 02-business-model.md
 │   ├── 03-capability-map.md
-│   └── 04-product-experience-proposal.md  产品体验方案
+│   └── 04-product-experience.md  产品体验
 │
 ├── 02-business/                  业务层：客户要完成什么、业务如何运转
 │   ├── 01-business-architecture.md
@@ -34,18 +34,18 @@ docs/
 │   ├── 08-technology-stack.md
 │   ├── 09-codebase-structure.md
 │   ├── 10-tender-intel-reference.md
+│   ├── 11-policy-dsl.md
+│   ├── 12-capacity-plan.md
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
 │
 ├── 05-delivery/                  交付层：如何分阶段建成并验收
 │   ├── 00-initiation-readiness.md 立项准入清单
-│   ├── 04-data-quality-organization-proposal.md  数据、质量与组织方案
+│   ├── 04-data-quality-organization.md  数据、质量与组织
 │   ├── 01-roadmap.md
 │   ├── 02-quality-and-acceptance.md
 │   └── 03-engineering-standards.md
-│
-└── archive/                      已归档的过渡期材料（只读，不作为依据）
 ```
 
 ## 2. 阅读路径
@@ -78,7 +78,7 @@ docs/
 每份正式文档开头使用统一的元信息行：
 
 ```text
-> 状态：草案 | 评审中 | 已批准 | 已废弃 · 版本：x.y · 更新：YYYY-MM-DD · 负责人：角色或姓名
+> 状态：草案 | 评审中 | 已批准 · 版本：x.y · 更新：YYYY-MM-DD · 负责人：角色或姓名
 ```
 
 | 状态 | 含义 | 是否可作为研发依据 |
@@ -86,7 +86,6 @@ docs/
 | 草案 | 内容尚在形成，可能大幅修改 | 仅供讨论 |
 | 评审中 | 已提交评审，等待结论 | 可作为前期设计输入 |
 | 已批准 | 评审通过，作为执行依据 | 是 |
-| 已废弃 | 已被替代，保留以便追溯 | 否，必须注明替代文档 |
 
 版本号规则：结构性改动或结论变化升主版本，补充与修正升次版本。
 
@@ -94,14 +93,15 @@ docs/
 
 - **术语一致**：只使用 `glossary.md` 中定义的术语。需要新术语时，先补充术语表。
 - **事实与假设分离**：未经验证的判断标注 **[假设]**，需要外部数据确认的标注 **[待核验]**，并在文末列出。
-- **可执行**：每份文档都要回答“谁据此做什么”。纯背景性内容放在附录或归档中。
-- **单一事实来源**：同一事实只在一处完整定义，其他文档引用链接，不复制粘贴。
+- **可执行**：每份文档都要回答“谁据此做什么”。纯背景性内容放在附录中。
+- **只写现行**：内容调整时直接改写原处，不新增“替代”文档，不保留“原方案 / 已废弃 / 改为”之类的表述；不再适用的文档直接删除。只有此前没有覆盖的内容才新建文档。
+- **单一事实来源**：同一事实只在一处完整定义，其他文档引用链接，不复制粘贴。主要事实的定义处见第 8 节。
 - **图表**：使用 Mermaid 或纯文本图，便于评审和版本对比。
 - **标识符**：代码、服务、事件、Schema 名称使用英文；说明文字使用中文。
 
 ## 6. 架构决策记录（ADR）
 
-重要且难以逆转的技术或业务决策必须写成 ADR，存放在 `04-decisions/`，格式见该目录的 `README.md`。ADR 一经批准不可修改正文，只能由新的 ADR 替代。
+重要且难以逆转的技术或业务决策必须写成 ADR，存放在 `04-decisions/`，格式见该目录的 `README.md`。ADR 只表达现行决策，调整时直接修改对应 ADR。
 
 ## 7. 变更流程
 
@@ -109,3 +109,35 @@ docs/
 2. 涉及多个层级或子系统边界时，需同步更新相关 ADR；
 3. 由文档负责人和受影响子系统负责人评审；
 4. 合并后更新文档状态与版本号。
+
+## 8. 单一事实来源登记
+
+| 事实 | 唯一定义处 | 其他文档的做法 |
+|---|---|---|
+| 术语 | `glossary.md` | 直接使用术语 |
+| 业务层级 | `02-business/01-business-architecture.md` 第 1 节 | 一句话概述 + 链接 |
+| Schema 写法规则（方言） | `tools/contracts/src/mqc/lint.py` | 链接 |
+| 代码生成流程与命令、契约版本规则 | `03-architecture/09-codebase-structure.md` 第 5 节 | 链接 |
+| 解析语料格式与评测 | `data/sdk/src/miaoqia/sdk/corpus.py` | 链接 |
+| 兼容性判定规则 | `tools/contracts/src/mqc/compat.py` | 链接 |
+| 标识前缀 | `contracts/identifiers.yaml` | 引用前缀 |
+| 信息领域的领域 Schema 与领域事件 | `contracts/schemas/domains/<领域>/`、`contracts/events/<命名空间>/` | 业务文档只写概念与含义 |
+| 信息领域生命周期状态机 | `packs/information_domains/<领域>/lifecycle.yaml` | 链接 |
+| 商业目标目录 | `02-business/02-commercial-objectives.md` | 引用目标编号 |
+| 首发范围与分批 | `02-business/application-domains/tendering/05-release-plan.md` | 引用 |
+| 子系统清单、职责、语言、部署单元、数据库 | `03-architecture/subsystems/README.md` 第 1 节 | 链接，不复制表格 |
+| 数据所有权 | `03-architecture/subsystems/README.md` 第 3 节 | 链接 |
+| 进程角色与部署方式 | `03-architecture/07-deployment-topology.md` | 链接 |
+| 组件选型（语言、框架、基础组件） | `03-architecture/08-technology-stack.md` | 只写组件名 + 链接，不复述 ADR 中的理由 |
+| 选型与架构决策的理由 | `04-decisions/` 中对应 ADR | 引用 ADR 编号，不复述理由 |
+| 数据分级与模型路由约束 | `03-architecture/06-security-and-tenancy.md` 第 5 节 | 链接 |
+| 扩展包形式与扩展点 | `03-architecture/04-extensibility.md` | 链接 |
+| 策略 DSL（结构、求值语义、CEL 环境、下推） | `03-architecture/11-policy-dsl.md` | 链接 |
+| 策略模板、视图目录、特征函数、原因代码 | `packs/application_domains/<领域>/policy/` | 引用模板编号 |
+| 渠道分批 | `03-architecture/subsystems/channels.md` 第 2 节 | 链接 |
+| 规模假设、数据规模估算与资源规格 | `03-architecture/12-capacity-plan.md` | 链接 |
+| 质量指标与发布门槛 | `05-delivery/02-quality-and-acceptance.md` | 引用指标名 |
+| 团队规模与组织 | `05-delivery/04-data-quality-organization.md` | 链接 |
+| 立项事项状态 | `05-delivery/00-initiation-readiness.md` | 引用事项编号 |
+
+ADR 与架构文档都只表达现行决策；两者不一致即为缺陷，须在同一次变更中修正。

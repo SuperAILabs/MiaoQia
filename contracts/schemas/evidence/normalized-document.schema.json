@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/evidence/normalized-document.schema.json",
+  "x-version": "0.1.0",
+  "title": "NormalizedDocument 规范化文档",
+  "description": "evidence 把原始制品（HTML、PDF、Office、扫描件）转换后的统一文档表示，存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是证据定位的坐标系：解析器只读取规范化文档，字段溯源以块序号与字符区间定位。",
+  "type": "object",
+  "required": [
+    "snapshot_ref",
+    "pipeline_version",
+    "media_type",
+    "blocks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "snapshot_ref": {
+      "type": "string",
+      "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "pipeline_version": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+@[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "文档处理管线标识与版本"
+    },
+    "media_type": {
+      "enum": [
+        "text_html",
+        "application_pdf",
+        "office_document",
+        "image_scan",
+        "plain_text"
+      ]
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "description": "来源页面标题（未经解析器确认）"
+    },
+    "language": {
+      "type": "string",
+      "default": "zh"
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/block"
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attachment"
+      },
+      "description": "附件：各自是独立快照与独立规范化文档"
+    }
+  },
+  "$defs": {
+    "block": {
+      "type": "object",
+      "description": "文档中的一个块；index 在文档内从 0 连续编号，是定位的主坐标",
+      "required": [
+        "index",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "enum": [
+            "heading",
+            "paragraph",
+            "list_item",
+            "table"
+          ]
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "description": "仅 heading"
+        },
+        "text": {
+          "type": "string",
+          "description": "heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/cell"
+            }
+          },
+          "description": "仅 table：完整网格，每行列数相同；合并单元格的覆盖位置以 covered_by 指向起始单元格"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "分页文档的页码"
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "row_span": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "col_span": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "header": {
+          "type": "boolean"
+        },
+        "covered_by": {
+          "type": "object",
+          "required": [
+            "row",
+            "col"
+          ],
+          "additionalProperties": false,
+          "description": "被合并单元格覆盖的位置：表格按完整网格存放，覆盖位置的 text 为空并指向起始单元格",
+          "properties": {
+            "row": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "col": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "bbox": {
+      "type": "object",
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "additionalProperties": false,
+      "description": "页面坐标（左上角为原点，单位为点），用于界面高亮",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "w": {
+          "type": "number",
+          "minimum": 0
+        },
+        "h": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "snapshot_ref": {
+          "type": "string",
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "media_type": {
+          "type": "string"
+        }
+      }
+    },
+    "locator": {
+      "type": "object",
+      "description": "证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)；跨多个连续块时用 block_end，原文为各块文本直接拼接后的区间（如分两行排版的标题）",
+      "required": [
+        "block"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "block": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "row": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "col": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "block_end": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "跨块定位的最后一个块；char_end 相对该块"
+        }
+      }
+    }
+  }
+}

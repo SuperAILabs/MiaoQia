@@ -1,0 +1,424 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/domains/procurement/notice.schema.json",
+  "x-version": "0.1.0",
+  "title": "Notice 公告",
+  "description": "一条公告按原文表达的领域事实（随解析修订产生新版本）。跨公告的当前状态见 procurement-project.schema.json。未分包的公告视为一个标包（lot_key = \"1\"）。",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "../../common/types.schema.json#/$defs/public_fact_meta"
+    },
+    {
+      "if": {
+        "properties": {
+          "notice_type": {
+            "enum": [
+              "amendment",
+              "clarification"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "amendment"
+        ]
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "notice_type": {
+              "const": "contract"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "contract"
+          ]
+        },
+        "else": {
+          "if": {
+            "properties": {
+              "notice_type": {
+                "const": "acceptance"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "acceptance"
+            ]
+          },
+          "else": {
+            "if": {
+              "properties": {
+                "notice_type": {
+                  "enum": [
+                    "termination",
+                    "failure"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "ending"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "notice_type": {
+            "enum": [
+              "candidate",
+              "award"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "lots": {
+            "contains": {
+              "required": [
+                "bid_results"
+              ],
+              "properties": {
+                "bid_results": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "required": [
+    "id",
+    "info_domain",
+    "notice_type",
+    "title",
+    "buyer",
+    "lots"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "info_domain": {
+      "const": "INF-PROC"
+    },
+    "notice_type": {
+      "$ref": "defs.schema.json#/$defs/notice_type"
+    },
+    "trading_system": {
+      "$ref": "defs.schema.json#/$defs/trading_system"
+    },
+    "method": {
+      "$ref": "defs.schema.json#/$defs/method"
+    },
+    "procurement_category": {
+      "$ref": "defs.schema.json#/$defs/procurement_category"
+    },
+    "title": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    },
+    "notice_code": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "公告编号"
+    },
+    "project_code": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "项目编号（跨公告关联的首要依据）"
+    },
+    "approval_code": {
+      "$ref": "../../common/types.schema.json#/$defs/text",
+      "description": "投资项目审批或备案编号"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "当前归并到的采购项目。权威记录是 domain-intelligence 的 AggregationLink，本字段为其当前指针"
+    },
+    "related_notice_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$"
+      },
+      "description": "公告中显式引用的前序公告"
+    },
+    "buyer": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref"
+    },
+    "agency": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref"
+    },
+    "project_owner": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
+      "description": "建设单位或项目业主（施工企业作为招标人采购物资时尤其重要）"
+    },
+    "single_source_supplier": {
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
+      "description": "单一来源公示的拟定供应商"
+    },
+    "location": {
+      "$ref": "../../common/types.schema.json#/$defs/region"
+    },
+    "funding_source": {
+      "$ref": "../../common/types.schema.json#/$defs/text"
+    },
+    "budget": {
+      "$ref": "../../common/types.schema.json#/$defs/money",
+      "description": "公告级预算；各标包预算见 lots[].budget"
+    },
+    "max_price": {
+      "$ref": "../../common/types.schema.json#/$defs/money"
+    },
+    "lots": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/lot_section"
+      }
+    },
+    "amendment": {
+      "$ref": "#/$defs/amendment_section"
+    },
+    "contract": {
+      "$ref": "#/$defs/contract_section"
+    },
+    "acceptance": {
+      "$ref": "#/$defs/acceptance_section"
+    },
+    "ending": {
+      "$ref": "#/$defs/ending_section"
+    },
+    "contacts": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/contact"
+      }
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "lot_section": {
+      "type": "object",
+      "description": "本公告中出现的一个标包",
+      "required": [
+        "lot_key"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "lot_key": {
+          "type": "string",
+          "description": "原文标包号；未分包为 \"1\""
+        },
+        "lot_id": {
+          "type": "string",
+          "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$",
+          "description": "归并到的项目标包"
+        },
+        "name": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "procurement_category": {
+          "$ref": "defs.schema.json#/$defs/procurement_category"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/item"
+          }
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/requirement"
+          }
+        },
+        "deadlines": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/deadline"
+          }
+        },
+        "budget": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "max_price": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "consortium_allowed": {
+          "type": "boolean"
+        },
+        "authorization_required": {
+          "type": "boolean",
+          "description": "是否要求原厂授权"
+        },
+        "bid_bond": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "document_fee": {
+          "$ref": "../../common/types.schema.json#/$defs/money",
+          "description": "招标文件售价"
+        },
+        "bond_guarantee_accepted": {
+          "type": "boolean",
+          "description": "是否接受保函"
+        },
+        "evaluation_method": {
+          "$ref": "defs.schema.json#/$defs/evaluation_method"
+        },
+        "bid_results": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/bid_result"
+          }
+        }
+      }
+    },
+    "amendment_section": {
+      "type": "object",
+      "required": [
+        "amends_notice_ids",
+        "changes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "amends_notice_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$"
+          }
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "field_path",
+              "prov"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^amd_[0-9A-HJKMNP-TV-Z]{26}$"
+              },
+              "field_path": {
+                "type": "string",
+                "description": "被更正公告中的字段 JSON Pointer，如 /lots/0/deadlines/1/at；无法定位时为说明性路径并降为人工复核"
+              },
+              "before": {},
+              "after": {},
+              "prov": {
+                "$ref": "../../common/types.schema.json#/$defs/provenance"
+              }
+            }
+          }
+        }
+      }
+    },
+    "contract_section": {
+      "type": "object",
+      "required": [
+        "id",
+        "supplier",
+        "amount"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "lot_id": {
+          "type": "string",
+          "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "supplier": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "amount": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "signed_at": {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        },
+        "term_start": {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        },
+        "term_end": {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        }
+      }
+    },
+    "acceptance_section": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^acc_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "contract_id": {
+          "type": "string",
+          "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "accepted_at": {
+          "$ref": "../../common/types.schema.json#/$defs/instant"
+        },
+        "result": {
+          "enum": [
+            "passed",
+            "partial",
+            "failed"
+          ]
+        }
+      }
+    },
+    "ending_section": {
+      "type": "object",
+      "description": "终止、流标或废标",
+      "required": [
+        "ending_type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ending_type": {
+          "enum": [
+            "terminated",
+            "failed_bid",
+            "voided"
+          ]
+        },
+        "lot_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "涉及的标包；为空表示全部"
+        },
+        "reason": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        }
+      }
+    }
+  }
+}

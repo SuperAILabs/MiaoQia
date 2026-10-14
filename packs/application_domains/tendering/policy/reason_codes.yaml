@@ -1,0 +1,9 @@
+# 排除原因代码表：exclude 与 on_fail: excluded 的 reason 只能取自本表。
+reason_codes:
+  BLOCKED_PARTNER:     中标方或交易方在禁合作名单
+  BLOCKED_BUYER:       采购人在禁合作名单
+  EXCLUDED_TERM:       标题或标的命中排除词
+  SINGLE_SOURCE_OTHER: 单一来源采购且拟定供应商不是本租户
+  SELF_IS_WINNER:      本租户即中标方（转入履约跟踪，不作为供货线索）
+  MINOR_CHANGE:        不影响经营判断的轻微企业变更
+  NOT_ADVERSE:         本租户关注的组织在该记录中不是不利方

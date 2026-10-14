@@ -1,0 +1,125 @@
+# A02 进入供货：从中标结果、合同与施工许可中找出需要我方产品的项目和可接触的中标方。
+# 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 2.2。
+template:
+  id: TPL-TENDER-A02-SUPPLY
+  version: 0.1.0
+  objective: APP-TENDER.A02
+  roles: [ROLE-MFR, ROLE-DEALER, ROLE-SUBCON]
+  fact_types: [tendering.bid_result, tendering.contract_record, investment.construction_permit]
+  rollout_key: 'has(fact.project_id) ? fact.project_id : fact.investment_project_id'   # 未关联采购项目的施工许可按投资项目分组
+  view: [winner.profile, winner.credit_flags, winner.history_categories, winner.supplied_brand_owners]
+
+  params:
+    categories:    { type: list<category_code>, default_from: profile.offering_categories }
+    regions:       { type: list<region_code>,   default_from: profile.service_regions }
+    min_amount_cny:   { type: int, default: 0, min: 0 }
+    large_amount_cny: { type: int, default: 5000000, min: 0 }
+
+  scope:
+    fact_types: [tendering.bid_result, tendering.contract_record, investment.construction_permit]
+
+  require:
+    - id: R-CAT
+      say: 项目标的包含我方产品品类
+      when: category.any_match(fact.items, params.categories)
+      missing: review
+    - id: R-REGION
+      say: 项目位于服务区域
+      when: region.within(fact.location, params.regions)
+      missing: review
+    - id: R-WINNER
+      say: 已识别中标方或施工单位
+      when: has(fact.winner.org_id)
+      missing: review
+    - id: R-AMOUNT
+      say: 金额不低于 {params.min_amount_cny} 元
+      when: money.cny(fact.amount) >= params.min_amount_cny
+      missing: ignore
+
+  exclude:
+    - id: X-SELF
+      say: 我方即中标方（由履约跟踪处理）
+      when: fact.winner.org_id == profile.org_id
+      reason: SELF_IS_WINNER
+    - id: X-BLOCKED
+      say: 中标方在禁合作名单
+      when: fact.winner.org_id in lists.blocked
+      reason: BLOCKED_PARTNER
+
+  watch:
+    - id: W-CANDIDATE
+      say: 候选人公示阶段，中标结果尚未确定
+      when: fact.result_type == "candidate_published"
+
+  boost:
+    - id: B-PERMIT
+      say: 施工许可已发放，进入材料采购窗口
+      when: event.type == "investment.construction_permit.issued.v1"
+      weight: 15
+    - id: B-KNOWN-PRIME
+      say: 中标方是我方已有客户
+      when: fact.winner.org_id in lists.customers
+      weight: 15
+    - id: B-BUYS-CATEGORY
+      say: 中标方近三年项目中出现过我方品类
+      when: features.winner_buys_our_categories
+      weight: 10
+    - id: B-LARGE
+      say: 金额不低于 {params.large_amount_cny} 元
+      when: money.cny(fact.amount) >= params.large_amount_cny
+      weight: 10
+
+  penalize:
+    - id: P-CREDIT
+      say: 中标方近一年有未了结的较重信用风险
+      when: features.winner_credit_risk >= 2
+      weight: 25
+    - id: P-COMPETITOR-BRAND
+      say: 中标方近三年项目中使用过竞争对手品牌
+      when: features.winner_uses_competitor_brands
+      weight: 5
+
+  evidence_policy:
+    default: { min_confidence: 0.8, methods: [rule, model, manual] }
+    fields:
+      fact.winner.org_id: { min_confidence: 0.9 }   # 主体识别错误会把线索派给错误的总包
+
+  thresholds: { base_score: 50, pursue_at: 60, drop_below: 20 }   # 需至少一项加分才建议跟进
+
+  route:
+    pursue_candidate:
+      notify: { audience: [objective_owner], mode: immediate }
+      research: { template: RT-TENDER-WINNER, auto: true }
+    review_candidate:
+      notify: { audience: [objective_members], mode: digest }
+    watch_signal:
+      notify: { audience: [objective_members], mode: digest }
+
+  examples:
+    - name: 已有客户总包中标含我方品类的项目
+      given:
+        fact: { result_type: awarded, location: "330106", items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }],
+                amount: { value: "18000000", currency: CNY }, winner: { org_id: org_p1, credit_flags: [],
+                history_categories: [], supplied_brand_owners: [] } }
+        event: { type: tendering.result.published.v1 }
+        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        lists: { customers: [org_p1], blocked: [], competitors: [] }
+      expect: pursue_candidate
+    - name: 中标方有失信记录
+      given:
+        fact: { result_type: awarded, location: "330106", items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }],
+                amount: { value: "18000000", currency: CNY },
+                winner: { org_id: org_p2, credit_flags: [{ record_type: dishonest, resolved: false }],
+                          history_categories: [], supplied_brand_owners: [] } }
+        event: { type: tendering.result.published.v1 }
+        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        lists: { customers: [], blocked: [], competitors: [] }
+      expect: review_candidate
+    - name: 候选人公示进入观察
+      given:
+        fact: { result_type: candidate_published, location: "330106", items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }],
+                winner: { org_id: org_p1 } }
+        event: { type: tendering.result.published.v1 }
+        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        lists: { customers: [], blocked: [], competitors: [] }
+      expect: watch_signal
