@@ -1279,7 +1279,7 @@ class ProjectLot(BaseModel):
 
 
 class Signal(TenantMeta):
-    id: constr(pattern=r"^sig_[0-9A-HJKMNP-TV-Z]{26}$") | None = None
+    id: constr(pattern=r"^sig_[0-9A-HJKMNP-TV-Z]{26}$")
     objective_id: constr(pattern=r"^obj_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
         ..., description="租户启用的商业目标 TenantObjective"
     )

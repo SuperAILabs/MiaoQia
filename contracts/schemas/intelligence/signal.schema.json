@@ -12,7 +12,7 @@
       "then": { "required": ["reason_code"] }
     }
   ],
-  "required": ["objective_id", "objective_code", "policy", "subject", "disposition", "score", "trace", "view_snapshot_hash", "context_snapshot_version", "evaluated_at", "trigger_event_id", "status", "update_count"],
+  "required": ["id", "objective_id", "objective_code", "policy", "subject", "disposition", "score", "trace", "view_snapshot_hash", "context_snapshot_version", "evaluated_at", "trigger_event_id", "status", "update_count"],
   "properties": {
     "id": { "type": "string", "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$" },
     "objective_id": { "type": "string", "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$", "description": "租户启用的商业目标 TenantObjective" },

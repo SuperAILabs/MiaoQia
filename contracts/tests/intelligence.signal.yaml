@@ -47,3 +47,6 @@ cases:
   - name: 未登记字段
     valid: false
     patch: [{ op: add, path: /notice_snapshot, value: {} }]
+  - name: 缺信号标识
+    valid: false
+    patch: [{ op: remove, path: /id }]

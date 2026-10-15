@@ -175,11 +175,13 @@ func categoryAnyMatch(items, cats ref.Val) ref.Val {
 			return false
 		}
 		each(csl, func(c ref.Val) bool {
-			// 租户品类是行业包产品分类代码；其他分类体系（如政府采购品目）的代码不可比，不参与匹配
-			if sc, ok := field(c, "scheme"); ok {
-				if s, _ := sc.Value().(string); !strings.HasPrefix(s, "industry:") {
-					return false
-				}
+			// 租户品类是行业包产品分类代码；未标明体系或其他体系（如政府采购品目）的代码不可比，不参与匹配
+			sc, ok := field(c, "scheme")
+			if !ok {
+				return false
+			}
+			if s, _ := sc.Value().(string); !strings.HasPrefix(s, "industry:") {
+				return false
 			}
 			code, ok := field(c, "code")
 			if !ok {

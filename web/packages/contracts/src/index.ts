@@ -387,7 +387,7 @@ export type ProcurementProject = PublicFactMeta & {
  * detection 对一个求值单位按租户策略求值得到的结果（草案；语义见 docs/03-architecture/11-policy-dsl.md 第 4 节与 subsystems/detection.md）。同一策略对同一求值单位（subject 的 type、id 与 part_id）只有一条信号；求值单位状态变化导致的处置变化以 SignalUpdate 追加记录，并更新本对象的当前处置。no_signal 不产生信号。
  */
 export type Signal = TenantMeta & {
-  id?: string;
+  id: string;
   /**
    * 租户启用的商业目标 TenantObjective
    */

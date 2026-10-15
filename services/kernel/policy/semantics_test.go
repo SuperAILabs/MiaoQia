@@ -170,21 +170,23 @@ func TestRuntimeCostLimit(t *testing.T) {
 
 func TestPlatformFunctions(t *testing.T) {
 	cases := map[string]bool{
-		`region.within("330106", ["330000"])`:                                                                                    true,
-		`region.within("330106", ["330100"])`:                                                                                    true,
-		`region.within("330106", ["330200"])`:                                                                                    false,
-		`region.within("440300", ["000000"])`:                                                                                    true,
-		`category.any_match([{"categories": [{"code": "CAT-PIPE-PE-100"}]}], ["CAT-PIPE"])`:                                      true,
-		`category.any_match([{"categories": [{"code": "CAT-PIPELINE"}]}], ["CAT-PIPE"])`:                                         false,
-		`category.any_match([{"categories": [{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`: true,
-		`category.any_match([{"categories": [{"scheme": "gov-procurement-catalog", "code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`:     false,
-		`category.any_match([{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE"}], ["CAT-PIPE"])`:                   true,
-		`category.any_match([{"scheme": "industry:it", "code": "CAT-IT-SW"}], ["CAT-PIPE"])`:                                     false,
-		`text.contains_any("市政管网改造", ["管网", "道路"])`:                                                                              true,
-		`time.days_between("2026-11-02T00:00:00Z", "2026-11-01T12:00:00Z") == -1`:                                                true,
-		`time.days_between(now, "2026-11-20T09:30:00+08:00") == 19`:                                                              true,
-		`money.cny({"value": "120.5", "currency": "CNY"}) == 120.5`:                                                              true,
-		`sets.overlaps(["a", "b"], ["c", "b"])`:                                                                                  true,
+		`region.within("330106", ["330000"])`: true,
+		`region.within("330106", ["330100"])`: true,
+		`region.within("330106", ["330200"])`: false,
+		`region.within("440300", ["000000"])`: true,
+		`category.any_match([{"categories": [{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE-100"}]}], ["CAT-PIPE"])`: true,
+		`category.any_match([{"categories": [{"scheme": "industry:building-materials", "code": "CAT-PIPELINE"}]}], ["CAT-PIPE"])`:    false,
+		`category.any_match([{"categories": [{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`:     true,
+		`category.any_match([{"categories": [{"scheme": "gov-procurement-catalog", "code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`:         false,
+		`category.any_match([{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE"}], ["CAT-PIPE"])`:                       true,
+		`category.any_match([{"scheme": "industry:it", "code": "CAT-IT-SW"}], ["CAT-PIPE"])`:                                         false,
+		`category.any_match([{"categories": [{"code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`:                                              false,
+		`category.any_match([{"code": "CAT-PIPE-PE"}], ["CAT-PIPE"])`:                                                                false,
+		`text.contains_any("市政管网改造", ["管网", "道路"])`:                                                                                  true,
+		`time.days_between("2026-11-02T00:00:00Z", "2026-11-01T12:00:00Z") == -1`:                                                    true,
+		`time.days_between(now, "2026-11-20T09:30:00+08:00") == 19`:                                                                  true,
+		`money.cny({"value": "120.5", "currency": "CNY"}) == 120.5`:                                                                  true,
+		`sets.overlaps(["a", "b"], ["c", "b"])`:                                                                                      true,
 	}
 	for expr, want := range cases {
 		p := basePolicy()
