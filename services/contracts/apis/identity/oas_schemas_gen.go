@@ -4,6 +4,8 @@ package identityapi
 
 import (
 	"fmt"
+
+	"github.com/go-faster/errors"
 )
 
 func (s *ProblemStatusCode) Error() string {
@@ -63,6 +65,32 @@ func (s *CheckResult) GetAllowed() bool {
 // SetAllowed sets the value of Allowed.
 func (s *CheckResult) SetAllowed(val bool) {
 	s.Allowed = val
+}
+
+// Ref: #/components/schemas/CreateTenantRequest
+type CreateTenantRequest struct {
+	Name         string `json:"name"`
+	AdminSubject string `json:"admin_subject"`
+}
+
+// GetName returns the value of Name.
+func (s *CreateTenantRequest) GetName() string {
+	return s.Name
+}
+
+// GetAdminSubject returns the value of AdminSubject.
+func (s *CreateTenantRequest) GetAdminSubject() string {
+	return s.AdminSubject
+}
+
+// SetName sets the value of Name.
+func (s *CreateTenantRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetAdminSubject sets the value of AdminSubject.
+func (s *CreateTenantRequest) SetAdminSubject(val string) {
+	s.AdminSubject = val
 }
 
 // NewOptString returns new OptString with value set to v.
@@ -195,4 +223,577 @@ func (s *ProblemStatusCode) SetStatusCode(val int) {
 // SetResponse sets the value of Response.
 func (s *ProblemStatusCode) SetResponse(val Problem) {
 	s.Response = val
+}
+
+// Ref: #/components/schemas/PutMemberRequest
+type PutMemberRequest struct {
+	State           PutMemberRequestState       `json:"state"`
+	Roles           []PutMemberRequestRolesItem `json:"roles"`
+	ExpectedVersion int64                       `json:"expected_version"`
+}
+
+// GetState returns the value of State.
+func (s *PutMemberRequest) GetState() PutMemberRequestState {
+	return s.State
+}
+
+// GetRoles returns the value of Roles.
+func (s *PutMemberRequest) GetRoles() []PutMemberRequestRolesItem {
+	return s.Roles
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *PutMemberRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// SetState sets the value of State.
+func (s *PutMemberRequest) SetState(val PutMemberRequestState) {
+	s.State = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *PutMemberRequest) SetRoles(val []PutMemberRequestRolesItem) {
+	s.Roles = val
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *PutMemberRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+type PutMemberRequestRolesItem string
+
+const (
+	PutMemberRequestRolesItemAdmin             PutMemberRequestRolesItem = "admin"
+	PutMemberRequestRolesItemDecisionMaker     PutMemberRequestRolesItem = "decision_maker"
+	PutMemberRequestRolesItemBusinessDeveloper PutMemberRequestRolesItem = "business_developer"
+	PutMemberRequestRolesItemPursuitLead       PutMemberRequestRolesItem = "pursuit_lead"
+	PutMemberRequestRolesItemResearchAnalyst   PutMemberRequestRolesItem = "research_analyst"
+	PutMemberRequestRolesItemDomainExpert      PutMemberRequestRolesItem = "domain_expert"
+)
+
+// AllValues returns all PutMemberRequestRolesItem values.
+func (PutMemberRequestRolesItem) AllValues() []PutMemberRequestRolesItem {
+	return []PutMemberRequestRolesItem{
+		PutMemberRequestRolesItemAdmin,
+		PutMemberRequestRolesItemDecisionMaker,
+		PutMemberRequestRolesItemBusinessDeveloper,
+		PutMemberRequestRolesItemPursuitLead,
+		PutMemberRequestRolesItemResearchAnalyst,
+		PutMemberRequestRolesItemDomainExpert,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PutMemberRequestRolesItem) MarshalText() ([]byte, error) {
+	switch s {
+	case PutMemberRequestRolesItemAdmin:
+		return []byte(s), nil
+	case PutMemberRequestRolesItemDecisionMaker:
+		return []byte(s), nil
+	case PutMemberRequestRolesItemBusinessDeveloper:
+		return []byte(s), nil
+	case PutMemberRequestRolesItemPursuitLead:
+		return []byte(s), nil
+	case PutMemberRequestRolesItemResearchAnalyst:
+		return []byte(s), nil
+	case PutMemberRequestRolesItemDomainExpert:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PutMemberRequestRolesItem) UnmarshalText(data []byte) error {
+	switch PutMemberRequestRolesItem(data) {
+	case PutMemberRequestRolesItemAdmin:
+		*s = PutMemberRequestRolesItemAdmin
+		return nil
+	case PutMemberRequestRolesItemDecisionMaker:
+		*s = PutMemberRequestRolesItemDecisionMaker
+		return nil
+	case PutMemberRequestRolesItemBusinessDeveloper:
+		*s = PutMemberRequestRolesItemBusinessDeveloper
+		return nil
+	case PutMemberRequestRolesItemPursuitLead:
+		*s = PutMemberRequestRolesItemPursuitLead
+		return nil
+	case PutMemberRequestRolesItemResearchAnalyst:
+		*s = PutMemberRequestRolesItemResearchAnalyst
+		return nil
+	case PutMemberRequestRolesItemDomainExpert:
+		*s = PutMemberRequestRolesItemDomainExpert
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PutMemberRequestState string
+
+const (
+	PutMemberRequestStateActive  PutMemberRequestState = "active"
+	PutMemberRequestStateRemoved PutMemberRequestState = "removed"
+)
+
+// AllValues returns all PutMemberRequestState values.
+func (PutMemberRequestState) AllValues() []PutMemberRequestState {
+	return []PutMemberRequestState{
+		PutMemberRequestStateActive,
+		PutMemberRequestStateRemoved,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PutMemberRequestState) MarshalText() ([]byte, error) {
+	switch s {
+	case PutMemberRequestStateActive:
+		return []byte(s), nil
+	case PutMemberRequestStateRemoved:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PutMemberRequestState) UnmarshalText(data []byte) error {
+	switch PutMemberRequestState(data) {
+	case PutMemberRequestStateActive:
+		*s = PutMemberRequestStateActive
+		return nil
+	case PutMemberRequestStateRemoved:
+		*s = PutMemberRequestStateRemoved
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/Session
+type Session struct {
+	Tenant        string             `json:"tenant"`
+	Cell          SessionCell        `json:"cell"`
+	Subject       string             `json:"subject"`
+	State         SessionState       `json:"state"`
+	Roles         []SessionRolesItem `json:"roles"`
+	TenantVersion int64              `json:"tenant_version"`
+	MemberVersion int64              `json:"member_version"`
+}
+
+// GetTenant returns the value of Tenant.
+func (s *Session) GetTenant() string {
+	return s.Tenant
+}
+
+// GetCell returns the value of Cell.
+func (s *Session) GetCell() SessionCell {
+	return s.Cell
+}
+
+// GetSubject returns the value of Subject.
+func (s *Session) GetSubject() string {
+	return s.Subject
+}
+
+// GetState returns the value of State.
+func (s *Session) GetState() SessionState {
+	return s.State
+}
+
+// GetRoles returns the value of Roles.
+func (s *Session) GetRoles() []SessionRolesItem {
+	return s.Roles
+}
+
+// GetTenantVersion returns the value of TenantVersion.
+func (s *Session) GetTenantVersion() int64 {
+	return s.TenantVersion
+}
+
+// GetMemberVersion returns the value of MemberVersion.
+func (s *Session) GetMemberVersion() int64 {
+	return s.MemberVersion
+}
+
+// SetTenant sets the value of Tenant.
+func (s *Session) SetTenant(val string) {
+	s.Tenant = val
+}
+
+// SetCell sets the value of Cell.
+func (s *Session) SetCell(val SessionCell) {
+	s.Cell = val
+}
+
+// SetSubject sets the value of Subject.
+func (s *Session) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetState sets the value of State.
+func (s *Session) SetState(val SessionState) {
+	s.State = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *Session) SetRoles(val []SessionRolesItem) {
+	s.Roles = val
+}
+
+// SetTenantVersion sets the value of TenantVersion.
+func (s *Session) SetTenantVersion(val int64) {
+	s.TenantVersion = val
+}
+
+// SetMemberVersion sets the value of MemberVersion.
+func (s *Session) SetMemberVersion(val int64) {
+	s.MemberVersion = val
+}
+
+type SessionCell string
+
+const (
+	SessionCellCell01 SessionCell = "cell-01"
+)
+
+// AllValues returns all SessionCell values.
+func (SessionCell) AllValues() []SessionCell {
+	return []SessionCell{
+		SessionCellCell01,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SessionCell) MarshalText() ([]byte, error) {
+	switch s {
+	case SessionCellCell01:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SessionCell) UnmarshalText(data []byte) error {
+	switch SessionCell(data) {
+	case SessionCellCell01:
+		*s = SessionCellCell01
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SessionRolesItem string
+
+const (
+	SessionRolesItemAdmin             SessionRolesItem = "admin"
+	SessionRolesItemDecisionMaker     SessionRolesItem = "decision_maker"
+	SessionRolesItemBusinessDeveloper SessionRolesItem = "business_developer"
+	SessionRolesItemPursuitLead       SessionRolesItem = "pursuit_lead"
+	SessionRolesItemResearchAnalyst   SessionRolesItem = "research_analyst"
+	SessionRolesItemDomainExpert      SessionRolesItem = "domain_expert"
+)
+
+// AllValues returns all SessionRolesItem values.
+func (SessionRolesItem) AllValues() []SessionRolesItem {
+	return []SessionRolesItem{
+		SessionRolesItemAdmin,
+		SessionRolesItemDecisionMaker,
+		SessionRolesItemBusinessDeveloper,
+		SessionRolesItemPursuitLead,
+		SessionRolesItemResearchAnalyst,
+		SessionRolesItemDomainExpert,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SessionRolesItem) MarshalText() ([]byte, error) {
+	switch s {
+	case SessionRolesItemAdmin:
+		return []byte(s), nil
+	case SessionRolesItemDecisionMaker:
+		return []byte(s), nil
+	case SessionRolesItemBusinessDeveloper:
+		return []byte(s), nil
+	case SessionRolesItemPursuitLead:
+		return []byte(s), nil
+	case SessionRolesItemResearchAnalyst:
+		return []byte(s), nil
+	case SessionRolesItemDomainExpert:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SessionRolesItem) UnmarshalText(data []byte) error {
+	switch SessionRolesItem(data) {
+	case SessionRolesItemAdmin:
+		*s = SessionRolesItemAdmin
+		return nil
+	case SessionRolesItemDecisionMaker:
+		*s = SessionRolesItemDecisionMaker
+		return nil
+	case SessionRolesItemBusinessDeveloper:
+		*s = SessionRolesItemBusinessDeveloper
+		return nil
+	case SessionRolesItemPursuitLead:
+		*s = SessionRolesItemPursuitLead
+		return nil
+	case SessionRolesItemResearchAnalyst:
+		*s = SessionRolesItemResearchAnalyst
+		return nil
+	case SessionRolesItemDomainExpert:
+		*s = SessionRolesItemDomainExpert
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SessionState string
+
+const (
+	SessionStateActive  SessionState = "active"
+	SessionStateRemoved SessionState = "removed"
+)
+
+// AllValues returns all SessionState values.
+func (SessionState) AllValues() []SessionState {
+	return []SessionState{
+		SessionStateActive,
+		SessionStateRemoved,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SessionState) MarshalText() ([]byte, error) {
+	switch s {
+	case SessionStateActive:
+		return []byte(s), nil
+	case SessionStateRemoved:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SessionState) UnmarshalText(data []byte) error {
+	switch SessionState(data) {
+	case SessionStateActive:
+		*s = SessionStateActive
+		return nil
+	case SessionStateRemoved:
+		*s = SessionStateRemoved
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/SetTenantStateRequest
+type SetTenantStateRequest struct {
+	State           SetTenantStateRequestState `json:"state"`
+	ExpectedVersion int64                      `json:"expected_version"`
+}
+
+// GetState returns the value of State.
+func (s *SetTenantStateRequest) GetState() SetTenantStateRequestState {
+	return s.State
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *SetTenantStateRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// SetState sets the value of State.
+func (s *SetTenantStateRequest) SetState(val SetTenantStateRequestState) {
+	s.State = val
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *SetTenantStateRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+type SetTenantStateRequestState string
+
+const (
+	SetTenantStateRequestStateActive    SetTenantStateRequestState = "active"
+	SetTenantStateRequestStateSuspended SetTenantStateRequestState = "suspended"
+)
+
+// AllValues returns all SetTenantStateRequestState values.
+func (SetTenantStateRequestState) AllValues() []SetTenantStateRequestState {
+	return []SetTenantStateRequestState{
+		SetTenantStateRequestStateActive,
+		SetTenantStateRequestStateSuspended,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetTenantStateRequestState) MarshalText() ([]byte, error) {
+	switch s {
+	case SetTenantStateRequestStateActive:
+		return []byte(s), nil
+	case SetTenantStateRequestStateSuspended:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetTenantStateRequestState) UnmarshalText(data []byte) error {
+	switch SetTenantStateRequestState(data) {
+	case SetTenantStateRequestStateActive:
+		*s = SetTenantStateRequestStateActive
+		return nil
+	case SetTenantStateRequestStateSuspended:
+		*s = SetTenantStateRequestStateSuspended
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/Tenant
+type Tenant struct {
+	ID      string      `json:"id"`
+	Name    string      `json:"name"`
+	Cell    TenantCell  `json:"cell"`
+	State   TenantState `json:"state"`
+	Version int64       `json:"version"`
+}
+
+// GetID returns the value of ID.
+func (s *Tenant) GetID() string {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *Tenant) GetName() string {
+	return s.Name
+}
+
+// GetCell returns the value of Cell.
+func (s *Tenant) GetCell() TenantCell {
+	return s.Cell
+}
+
+// GetState returns the value of State.
+func (s *Tenant) GetState() TenantState {
+	return s.State
+}
+
+// GetVersion returns the value of Version.
+func (s *Tenant) GetVersion() int64 {
+	return s.Version
+}
+
+// SetID sets the value of ID.
+func (s *Tenant) SetID(val string) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *Tenant) SetName(val string) {
+	s.Name = val
+}
+
+// SetCell sets the value of Cell.
+func (s *Tenant) SetCell(val TenantCell) {
+	s.Cell = val
+}
+
+// SetState sets the value of State.
+func (s *Tenant) SetState(val TenantState) {
+	s.State = val
+}
+
+// SetVersion sets the value of Version.
+func (s *Tenant) SetVersion(val int64) {
+	s.Version = val
+}
+
+type TenantCell string
+
+const (
+	TenantCellCell01 TenantCell = "cell-01"
+)
+
+// AllValues returns all TenantCell values.
+func (TenantCell) AllValues() []TenantCell {
+	return []TenantCell{
+		TenantCellCell01,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TenantCell) MarshalText() ([]byte, error) {
+	switch s {
+	case TenantCellCell01:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TenantCell) UnmarshalText(data []byte) error {
+	switch TenantCell(data) {
+	case TenantCellCell01:
+		*s = TenantCellCell01
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type TenantState string
+
+const (
+	TenantStateActive    TenantState = "active"
+	TenantStateSuspended TenantState = "suspended"
+)
+
+// AllValues returns all TenantState values.
+func (TenantState) AllValues() []TenantState {
+	return []TenantState{
+		TenantStateActive,
+		TenantStateSuspended,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TenantState) MarshalText() ([]byte, error) {
+	switch s {
+	case TenantStateActive:
+		return []byte(s), nil
+	case TenantStateSuspended:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TenantState) UnmarshalText(data []byte) error {
+	switch TenantState(data) {
+	case TenantStateActive:
+		*s = TenantStateActive
+		return nil
+	case TenantStateSuspended:
+		*s = TenantStateSuspended
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }

@@ -1,4 +1,4 @@
-version: 2.0.0
+version: 3.0.0
 context:
   schema: schemas/integration/request-context.schema.json
   header: Miaoqia-Context
@@ -60,3 +60,13 @@ payload_validation:
     failure rolls back before DLQ
   failure: stop consumer when DLQ cannot be confirmed; do not commit later records
     past the failed offset
+
+directory:
+  session_api: /internal/v1/identity/session
+  binding: identity.SessionResolver
+  authority: identity PostgreSQL; current tenant state, membership, role bindings and cell
+  routing: token tenant must exist and be active; signed cell must equal authoritative cell-01
+  failure: unknown/disabled/removed/wrong-cell rejected; directory failure returns 503
+  administration: signed amr=mfa required; assurance never serialized in internal headers
+  roles: evaluate current SQL roles with the existing OpenFGA model on an isolated contextual object
+  concurrency: tenant row lock, expected versions, last active admin preserved

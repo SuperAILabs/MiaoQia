@@ -14,6 +14,15 @@ var (
 	rn1AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
+	rn5AllowedHeaders = map[string]string{
+		"PUT": "Content-Type,Idempotency-Key",
+	}
+	rn3AllowedHeaders = map[string]string{
+		"POST": "Content-Type,Idempotency-Key",
+	}
+	rn10AllowedHeaders = map[string]string{
+		"PUT": "Content-Type,Idempotency-Key",
+	}
 )
 
 func (s *Server) cutPrefix(path string) (string, bool) {
@@ -46,6 +55,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	args := [1]string{}
 
 	// Static code generated router with unwrapped path search.
 	switch {
@@ -54,29 +64,212 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/v1/authz:check"
+		case '/': // Prefix: "/v1/"
 
-			if l := len("/v1/authz:check"); len(elem) >= l && elem[0:l] == "/v1/authz:check" {
+			if l := len("/v1/"); len(elem) >= l && elem[0:l] == "/v1/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				// Leaf node.
-				switch r.Method {
-				case "POST":
-					s.handleCheckAuthorizationRequest([0]string{}, elemIsEscaped, w, r)
-				default:
-					s.notAllowed(w, r, notAllowedParams{
-						allowedMethods: "POST",
-						allowedHeaders: rn1AllowedHeaders,
-						acceptPost:     "application/json",
-						acceptPatch:    "",
-					})
+				break
+			}
+			switch elem[0] {
+			case 'a': // Prefix: "authz:check"
+
+				if l := len("authz:check"); len(elem) >= l && elem[0:l] == "authz:check" {
+					elem = elem[l:]
+				} else {
+					break
 				}
 
-				return
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "POST":
+						s.handleCheckAuthorizationRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "POST",
+							allowedHeaders: rn1AllowedHeaders,
+							acceptPost:     "application/json",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
+			case 'i': // Prefix: "identity/"
+
+				if l := len("identity/"); len(elem) >= l && elem[0:l] == "identity/" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 'm': // Prefix: "members/"
+
+					if l := len("members/"); len(elem) >= l && elem[0:l] == "members/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "subject"
+					// Leaf parameter, slashes are prohibited
+					idx := strings.IndexByte(elem, '/')
+					if idx >= 0 {
+						break
+					}
+					args[0] = elem
+					elem = ""
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleGetMemberRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "PUT":
+							s.handlePutMemberRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET,PUT",
+								allowedHeaders: rn5AllowedHeaders,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
+				case 's': // Prefix: "session"
+
+					if l := len("session"); len(elem) >= l && elem[0:l] == "session" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleResolveSessionRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
+				}
+
+			case 't': // Prefix: "tenants"
+
+				if l := len("tenants"); len(elem) >= l && elem[0:l] == "tenants" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch r.Method {
+					case "POST":
+						s.handleCreateTenantRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "POST",
+							allowedHeaders: rn3AllowedHeaders,
+							acceptPost:     "application/json",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "tenantID"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleGetTenantRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/state"
+
+						if l := len("/state"); len(elem) >= l && elem[0:l] == "/state" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "PUT":
+								s.handleSetTenantStateRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "PUT",
+									allowedHeaders: rn10AllowedHeaders,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					}
+
+				}
+
 			}
 
 		}
@@ -92,7 +285,7 @@ type Route struct {
 	operationGroup string
 	pathPattern    string
 	count          int
-	args           [0]string
+	args           [1]string
 }
 
 // Name returns ogen operation name.
@@ -165,29 +358,211 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/v1/authz:check"
+		case '/': // Prefix: "/v1/"
 
-			if l := len("/v1/authz:check"); len(elem) >= l && elem[0:l] == "/v1/authz:check" {
+			if l := len("/v1/"); len(elem) >= l && elem[0:l] == "/v1/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				// Leaf node.
-				switch method {
-				case "POST":
-					r.name = CheckAuthorizationOperation
-					r.summary = "授权决策（Check）"
-					r.operationID = "checkAuthorization"
-					r.operationGroup = ""
-					r.pathPattern = "/v1/authz:check"
-					r.args = args
-					r.count = 0
-					return r, true
-				default:
-					return
+				break
+			}
+			switch elem[0] {
+			case 'a': // Prefix: "authz:check"
+
+				if l := len("authz:check"); len(elem) >= l && elem[0:l] == "authz:check" {
+					elem = elem[l:]
+				} else {
+					break
 				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "POST":
+						r.name = CheckAuthorizationOperation
+						r.summary = "授权决策（Check）"
+						r.operationID = "checkAuthorization"
+						r.operationGroup = ""
+						r.pathPattern = "/v1/authz:check"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+			case 'i': // Prefix: "identity/"
+
+				if l := len("identity/"); len(elem) >= l && elem[0:l] == "identity/" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 'm': // Prefix: "members/"
+
+					if l := len("members/"); len(elem) >= l && elem[0:l] == "members/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "subject"
+					// Leaf parameter, slashes are prohibited
+					idx := strings.IndexByte(elem, '/')
+					if idx >= 0 {
+						break
+					}
+					args[0] = elem
+					elem = ""
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = GetMemberOperation
+							r.summary = ""
+							r.operationID = "getMember"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/identity/members/{subject}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "PUT":
+							r.name = PutMemberOperation
+							r.summary = ""
+							r.operationID = "putMember"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/identity/members/{subject}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+
+				case 's': // Prefix: "session"
+
+					if l := len("session"); len(elem) >= l && elem[0:l] == "session" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = ResolveSessionOperation
+							r.summary = ""
+							r.operationID = "resolveSession"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/identity/session"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+				}
+
+			case 't': // Prefix: "tenants"
+
+				if l := len("tenants"); len(elem) >= l && elem[0:l] == "tenants" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch method {
+					case "POST":
+						r.name = CreateTenantOperation
+						r.summary = ""
+						r.operationID = "createTenant"
+						r.operationGroup = ""
+						r.pathPattern = "/v1/tenants"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "tenantID"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = GetTenantOperation
+							r.summary = ""
+							r.operationID = "getTenant"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/tenants/{tenantID}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/state"
+
+						if l := len("/state"); len(elem) >= l && elem[0:l] == "/state" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "PUT":
+								r.name = SetTenantStateOperation
+								r.summary = ""
+								r.operationID = "setTenantState"
+								r.operationGroup = ""
+								r.pathPattern = "/v1/tenants/{tenantID}/state"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				}
+
 			}
 
 		}

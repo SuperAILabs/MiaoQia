@@ -47,7 +47,10 @@ docs/
 │   ├── 04-data-quality-organization.md  数据、质量与组织
 │   ├── 01-roadmap.md
 │   ├── 02-quality-and-acceptance.md
-│   └── 03-engineering-standards.md
+│   ├── 03-engineering-standards.md
+│   ├── 05-m0-runtime-acceptance.md M0运行时验收
+│   ├── 06-stage-baseline.md       范围与阶段交接基线
+│   └── 07-m0-identity-acceptance.md 身份生命周期与cell路由验收
 ```
 
 ## 2. 阅读路径
@@ -143,7 +146,9 @@ docs/
 | 规模假设、数据规模估算与资源规格 | `03-architecture/12-capacity-plan.md` | 链接 |
 | 质量指标与发布门槛 | `05-delivery/02-quality-and-acceptance.md` | 引用指标名 |
 | 责任、评审与资源安排 | `05-delivery/04-data-quality-organization.md` | 链接 |
-- [M0运行时验收](05-delivery/05-m0-runtime-acceptance.md)：HTTP认证、完整探针及现有消费者门禁。
+| M0运行时验收证据 | `05-delivery/05-m0-runtime-acceptance.md` | 引用具体门禁，不扩展为整个M0完成 |
+| M0身份生命周期与cell核验 | `05-delivery/07-m0-identity-acceptance.md` | 引用具体身份/路由范围，生产身份流程另验收 |
+| 当前阶段基线与能力交接 | `05-delivery/06-stage-baseline.md` | 引用剩余项与首次使用节点 |
 | 立项事项状态 | `05-delivery/00-initiation-readiness.md` | 引用事项编号 |
 
 ADR 与架构文档都只表达现行决策；两者不一致即为缺陷，须在同一次变更中修正。

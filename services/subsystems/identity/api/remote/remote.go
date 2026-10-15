@@ -57,3 +57,21 @@ func (c client) Check(ctx context.Context, req authz.Request) (bool, error) {
 			return res.Allowed, nil
 		})
 }
+
+// Resolve uses the same authenticated client and retry pipeline as Check.
+func (c client) Resolve(ctx context.Context) (*api.Session, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "ResolveSession", Idempotent: true}, func(ctx context.Context) (*api.Session, error) {
+		value, err := c.c.ResolveSession(ctx)
+		if err != nil {
+			var p *identityapi.ProblemStatusCode
+			if errors.As(err, &p) {
+				if p.StatusCode >= 500 {
+					return nil, fmt.Errorf("%w: identity unavailable", binding.ErrTransient)
+				}
+				return nil, &api.Error{Status: p.StatusCode, Code: p.Response.Code.Value}
+			}
+			return nil, err
+		}
+		return value, nil
+	})
+}

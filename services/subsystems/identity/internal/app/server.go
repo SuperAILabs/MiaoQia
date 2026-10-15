@@ -12,11 +12,13 @@ import (
 	identityapi "github.com/superailabs/miaoqia/services/contracts/apis/identity"
 	"github.com/superailabs/miaoqia/services/kernel/authz"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
+	"github.com/superailabs/miaoqia/services/subsystems/identity/api"
 )
 
 // Server 实现内部接口（由 OpenAPI 生成的服务端调用）。
 type Server struct {
-	Decider authz.Decider
+	Decider   authz.Decider
+	Directory *Directory
 }
 
 // WriteProtocolError 使生成服务端的解码/校验错误遵循同一Problem契约。
@@ -42,6 +44,10 @@ func (s *Server) CheckAuthorization(ctx context.Context, req *identityapi.CheckR
 // NewError 把错误转换为 RFC 9457 Problem Details。
 func (s *Server) NewError(_ context.Context, err error) *identityapi.ProblemStatusCode {
 	status, code := http.StatusInternalServerError, "internal"
+	var safe *api.Error
+	if errors.As(err, &safe) {
+		status, code = safe.Status, safe.Code
+	}
 	if errors.Is(err, reqctx.ErrMissing) {
 		status, code = http.StatusUnauthorized, "missing_context"
 	}
@@ -49,5 +55,25 @@ func (s *Server) NewError(_ context.Context, err error) *identityapi.ProblemStat
 		status, code = http.StatusBadRequest, "invalid_request"
 	}
 	return &identityapi.ProblemStatusCode{StatusCode: status, Response: identityapi.Problem{
-		Type: "https://errors.miaoqia.com/" + code, Title: err.Error(), Status: status, Code: identityapi.NewOptString(code)}}
+		Type: "https://errors.miaoqia.com/" + code, Title: code, Status: status, Code: identityapi.NewOptString(code)}}
+}
+
+func (s *Server) CreateTenant(ctx context.Context, req *identityapi.CreateTenantRequest, params identityapi.CreateTenantParams) (*identityapi.Tenant, error) {
+	return s.Directory.Create(ctx, req, params.IdempotencyKey)
+}
+func (s *Server) SetTenantState(ctx context.Context, req *identityapi.SetTenantStateRequest, params identityapi.SetTenantStateParams) (*identityapi.Tenant, error) {
+	return s.Directory.SetState(ctx, params.TenantID, req, params.IdempotencyKey)
+}
+func (s *Server) PutMember(ctx context.Context, req *identityapi.PutMemberRequest, params identityapi.PutMemberParams) (*identityapi.Session, error) {
+	return s.Directory.Put(ctx, params.Subject, req, params.IdempotencyKey)
+}
+func (s *Server) ResolveSession(ctx context.Context) (*identityapi.Session, error) {
+	return s.Directory.Resolve(ctx)
+}
+
+func (s *Server) GetTenant(ctx context.Context, params identityapi.GetTenantParams) (*identityapi.Tenant, error) {
+	return s.Directory.GetTenant(ctx, params.TenantID)
+}
+func (s *Server) GetMember(ctx context.Context, params identityapi.GetMemberParams) (*identityapi.Session, error) {
+	return s.Directory.GetMember(ctx, params.Subject)
 }

@@ -68,18 +68,7 @@ func TestM0RealComponents(t *testing.T) {
 	issuerClient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: roots}}, Timeout: 10 * time.Second}
 	token := func(user string) string {
 		values := url.Values{"grant_type": {"password"}, "client_id": {"miaoqia-dev"}, "username": {user}, "password": {user}}
-		response, err := issuerClient.PostForm(issuer+"/protocol/openid-connect/token", values)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer response.Body.Close()
-		var value struct {
-			AccessToken string `json:"access_token"`
-		}
-		if err := json.NewDecoder(response.Body).Decode(&value); err != nil || value.AccessToken == "" {
-			t.Fatalf("token acquisition failed: status=%d err=%v", response.StatusCode, err)
-		}
-		return value.AccessToken
+		return testenv.KeycloakToken(t, issuerClient, issuer, values)
 	}
 	operatorToken, visitorToken := token("operator"), token("visitor")
 	claims := jwt.MapClaims{}

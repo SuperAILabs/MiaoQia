@@ -196,6 +196,13 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 				return err
 			}
 			bindings.Provide(r.binding, c)
+			if sub == identityapi.Name {
+				resolver, ok := c.(identityapi.SessionResolver)
+				if !ok {
+					return fmt.Errorf("identity remote missing session resolver")
+				}
+				bindings.Provide(identityapi.SessionBinding, resolver)
+			}
 			delete(want, sub)
 			log.Info("远程绑定", "subsystem", sub, "url", os.Getenv(envKey(sub, "URL")))
 		} else {
@@ -283,7 +290,14 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 			m.Routes(envs[i], public, internal)
 		}
 	}
-	pub, err := gateway.Public(ctx, os.Getenv("MIAOQIA_GATEWAY_ISSUER"), os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public)
+	var resolver identityapi.SessionResolver
+	for _, env := range envs {
+		if value, ok := runtime.Lookup[identityapi.SessionResolver](env.Bindings, identityapi.SessionBinding); ok {
+			resolver = value
+			break
+		}
+	}
+	pub, err := gateway.Public(ctx, os.Getenv("MIAOQIA_GATEWAY_ISSUER"), os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public, resolver)
 	if err != nil {
 		return err
 	}

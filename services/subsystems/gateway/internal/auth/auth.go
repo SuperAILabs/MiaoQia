@@ -22,9 +22,10 @@ import (
 // Claims 是平台使用的令牌声明。
 type Claims struct {
 	jwt.RegisteredClaims
-	Tenant    string `json:"miaoqia_tenant,omitempty"` // 租户成员的令牌带租户；平台运营人员不带
-	Cell      string `json:"miaoqia_cell,omitempty"`
-	TokenType string `json:"typ"`
+	Tenant    string   `json:"miaoqia_tenant,omitempty"` // 租户成员的令牌带租户；平台运营人员不带
+	Cell      string   `json:"miaoqia_cell,omitempty"`
+	TokenType string   `json:"typ"`
+	AMR       []string `json:"amr,omitempty"`
 }
 
 // Verifier 校验令牌。
@@ -68,19 +69,31 @@ var ErrUnauthenticated = errors.New("gateway: 未认证")
 
 // Context 校验 Authorization 头中的令牌，返回请求上下文。
 func (v *Verifier) Context(r *http.Request) (reqctx.Context, error) {
+	rc, _, err := v.Verify(r)
+	return rc, err
+}
+
+// Verify returns context and signed MFA assurance; roles are never trusted from the token.
+func (v *Verifier) Verify(r *http.Request) (reqctx.Context, bool, error) {
 	raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || raw == "" {
-		return reqctx.Context{}, ErrUnauthenticated
+		return reqctx.Context{}, false, ErrUnauthenticated
 	}
 	var c Claims
 	_, err := jwt.ParseWithClaims(raw, &c, v.keys.Keyfunc, jwt.WithIssuer(v.issuer), jwt.WithValidMethods([]string{"RS256"}),
 		jwt.WithExpirationRequired(), jwt.WithAudience(v.audience), jwt.WithIssuedAt())
 	if err != nil || c.Subject == "" || c.TokenType != "Bearer" || c.IssuedAt == nil {
-		return reqctx.Context{}, ErrUnauthenticated
+		return reqctx.Context{}, false, ErrUnauthenticated
 	}
 	rc := reqctx.Context{Tenant: c.Tenant, Cell: c.Cell, Purpose: "interactive", Principal: reqctx.Principal{ID: c.Subject, Kind: "user"}}
 	if err := rc.Validate(); err != nil {
-		return reqctx.Context{}, ErrUnauthenticated
+		return reqctx.Context{}, false, ErrUnauthenticated
 	}
-	return rc, nil
+	mfa := false
+	for _, method := range c.AMR {
+		if method == "mfa" {
+			mfa = true
+		}
+	}
+	return rc, mfa, nil
 }

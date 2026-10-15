@@ -48,11 +48,13 @@
 | 成员、角色、组织管理 | 命令/查询 | 管理控制台 |
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
 
-内部授权Check契约见[`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。租户资源访问由OpenFGA关系模型判断；上下文提供租户不等于已获得该租户所有资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
+最小租户/成员/角色生命周期、权威目录核验与cell-01路由已实现，具体接口、MFA边界及真实组件证据见[M0身份验收](../../05-delivery/07-m0-identity-acceptance.md)。目录数据在iam中，角色权限复用OpenFGA模型；当前M0托管租户Check仅支持当前主体对tenant根资源，其他业务资源与协作者按其首次启用阶段补齐，不以权限矩阵代证全部接口。
+
+内部授权Check契约见[`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。目录核验租户/成员当前状态及单元；当前SQL角色经同一OpenFGA模型做隔离contextual tuples求值，持久化旧角色关系不恢复被撤销权限。上下文提供租户不等于已获得资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
 
 ## 6. 事件
 
-**发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.member.changed.v1`、`identity.approval.requested.v1`、`identity.approval.decided.v1`、`identity.support_access.granted.v1`。
+**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批与支持访问事件随对应功能实现。
 
 ## 7. 授权模型
 
@@ -170,7 +172,7 @@
 
 | 角色 | 平台权限 | 租户数据 |
 |---|---|---|
-| 平台运营 | `platform:miaoqia` 的 `operator`：链路探针、运行状态 | 无 |
+| 平台运营 | `platform:miaoqia` 的 `operator`：链路探针、运行状态；MFA下开通/停用租户及读取目录元数据 | 无 |
 | 数据运营 | 公共域数据维护（来源、解析复核、实体复核），经 `operations` 调用数据供应平面的命令接口 | 无 |
 | 研究分析师、客户成功 | 托管研究、策略调优 | 仅经内部支持访问，按租户逐次批准 |
 | 领域专家 | 应用领域包与行业包的设计与验收 | 无 |
@@ -185,7 +187,7 @@
 
 ## 8. 安全要点
 
-- 令牌中的租户声明是租户上下文的唯一来源；
+- 租户上下文来自已验证令牌，identity目录每次核对当前租户、成员状态与cell归属；错误上下文拒绝而不静默改写；
 - 服务账号最小权限、可轮换、可吊销；
 - 授权决策可审计（谁、何时、对什么、结果、依据）；
 - 管理员操作需要多因素认证。

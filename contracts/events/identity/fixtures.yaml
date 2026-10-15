@@ -1,0 +1,111 @@
+fixtures:
+- event: identity.tenant.created.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    state: active
+  cases:
+  - name: 缺少租户
+    valid: false
+    patch:
+    - op: remove
+      path: /tenant_id
+  - name: 未知字段拒绝
+    valid: false
+    patch:
+    - op: add
+      path: /token
+      value: forbidden
+  - name: 无效版本
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+- event: identity.tenant.suspended.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    state: suspended
+  cases:
+  - name: 缺少租户
+    valid: false
+    patch:
+    - op: remove
+      path: /tenant_id
+  - name: 未知字段拒绝
+    valid: false
+    patch:
+    - op: add
+      path: /token
+      value: forbidden
+  - name: 无效版本
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+- event: identity.tenant.activated.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    state: active
+  cases:
+  - name: 缺少租户
+    valid: false
+    patch:
+    - op: remove
+      path: /tenant_id
+  - name: 未知字段拒绝
+    valid: false
+    patch:
+    - op: add
+      path: /token
+      value: forbidden
+  - name: 无效版本
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+- event: identity.member.changed.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    state: active
+    subject: keycloak-user
+    roles:
+    - admin
+  cases:
+  - name: 缺少租户
+    valid: false
+    patch:
+    - op: remove
+      path: /tenant_id
+  - name: 未知字段拒绝
+    valid: false
+    patch:
+    - op: add
+      path: /token
+      value: forbidden
+  - name: 无效版本
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+  - name: 退出后清空角色
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: removed
+    - op: replace
+      path: /roles
+      value: []
+  - name: 退出不得保留角色
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: removed

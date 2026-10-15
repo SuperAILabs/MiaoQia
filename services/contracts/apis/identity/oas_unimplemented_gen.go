@@ -22,6 +22,48 @@ func (UnimplementedHandler) CheckAuthorization(ctx context.Context, req *CheckRe
 	return r, ht.ErrNotImplemented
 }
 
+// CreateTenant implements createTenant operation.
+//
+// POST /v1/tenants
+func (UnimplementedHandler) CreateTenant(ctx context.Context, req *CreateTenantRequest, params CreateTenantParams) (r *Tenant, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetMember implements getMember operation.
+//
+// GET /v1/identity/members/{subject}
+func (UnimplementedHandler) GetMember(ctx context.Context, params GetMemberParams) (r *Session, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetTenant implements getTenant operation.
+//
+// GET /v1/tenants/{tenantID}
+func (UnimplementedHandler) GetTenant(ctx context.Context, params GetTenantParams) (r *Tenant, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// PutMember implements putMember operation.
+//
+// PUT /v1/identity/members/{subject}
+func (UnimplementedHandler) PutMember(ctx context.Context, req *PutMemberRequest, params PutMemberParams) (r *Session, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ResolveSession implements resolveSession operation.
+//
+// GET /v1/identity/session
+func (UnimplementedHandler) ResolveSession(ctx context.Context) (r *Session, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// SetTenantState implements setTenantState operation.
+//
+// PUT /v1/tenants/{tenantID}/state
+func (UnimplementedHandler) SetTenantState(ctx context.Context, req *SetTenantStateRequest, params SetTenantStateParams) (r *Tenant, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // NewError creates *ProblemStatusCode from error returned by handler.
 //
 // Used for common default response.

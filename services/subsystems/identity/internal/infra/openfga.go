@@ -3,7 +3,9 @@ package infra
 
 import (
 	"context"
+	"crypto/rand"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -142,4 +144,24 @@ func (o *OpenFGA) GrantUntil(ctx context.Context, subject, relation, object stri
 	_, err := o.c.WriteTuples(ctx).Body(client.ClientWriteTuplesBody{{User: subject, Relation: relation, Object: object,
 		Condition: &fga.RelationshipCondition{Name: "not_expired", Context: &cond}}}).Execute()
 	return err
+}
+
+// CheckRoles evaluates current directory roles against the SAME OpenFGA model.
+// An unpredictable, nonpersisted object isolates this evaluation from stale stored tuples.
+// Directory lifecycle never writes role tuples, so SQL and FGA do not need a distributed commit.
+func (o *OpenFGA) CheckRoles(ctx context.Context, subject, relation string, roles []string) (bool, error) {
+	nonce := make([]byte, 16)
+	if _, err := rand.Read(nonce); err != nil {
+		return false, err
+	}
+	object := "tenant:directory-" + hex.EncodeToString(nonce)
+	tuples := []client.ClientContextualTupleKey{{User: subject, Relation: "member", Object: object}}
+	for _, role := range roles {
+		tuples = append(tuples, client.ClientContextualTupleKey{User: subject, Relation: role, Object: object})
+	}
+	result, err := o.c.Check(ctx).Body(client.ClientCheckRequest{User: subject, Relation: relation, Object: object, ContextualTuples: tuples}).Execute()
+	if err != nil {
+		return false, err
+	}
+	return result.GetAllowed(), nil
 }

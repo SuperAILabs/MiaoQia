@@ -4,36 +4,18 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
-	"encoding/json"
-	"encoding/pem"
-	"math/big"
-	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/superailabs/miaoqia/services/internal/testissuer"
 )
 
 func TestSignedTokenBoundaries(t *testing.T) {
 	t.Setenv("MIAOQIA_ENV", "production")
-	key, _ := rsa.GenerateKey(rand.Reader, 2048)
-	var mu sync.RWMutex
-	currentKey := key
-	currentID := "test"
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.RLock()
-		defer mu.RUnlock()
-		json.NewEncoder(w).Encode(map[string]any{"keys": []any{map[string]any{"kty": "RSA", "use": "sig", "alg": "RS256", "kid": currentID, "n": base64.RawURLEncoding.EncodeToString(currentKey.N.Bytes()), "e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(currentKey.E)).Bytes())}}})
-	}))
-	defer srv.Close()
-	ca := filepath.Join(t.TempDir(), "ca.pem")
-	os.WriteFile(ca, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: srv.Certificate().Raw}), 0600)
-	t.Setenv("MIAOQIA_GATEWAY_CA_FILE", ca)
+	issuer := testissuer.New(t)
+	key, srv := issuer.Key, issuer.Server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	v, err := NewVerifier(ctx, srv.URL, "miaoqia-api")
@@ -78,10 +60,7 @@ func TestSignedTokenBoundaries(t *testing.T) {
 	if _, err := v.Context(req); err == nil {
 		t.Fatal("invalid signature accepted")
 	}
-	mu.Lock()
-	currentKey = wrongKey
-	currentID = "rotated"
-	mu.Unlock()
+	issuer.Rotate(wrongKey, "rotated")
 	rotated := jwt.NewWithClaims(jwt.SigningMethodRS256, base)
 	rotated.Header["kid"] = "rotated"
 	raw, _ := rotated.SignedString(wrongKey)
@@ -109,6 +88,26 @@ func TestProductionIssuerRequiresHTTPSAndAudience(t *testing.T) {
 	for _, c := range [][2]string{{"http://localhost", "api"}, {"https://localhost", ""}} {
 		if _, err := NewVerifier(context.Background(), c[0], c[1]); err == nil {
 			t.Fatal("unsafe config accepted")
+		}
+	}
+}
+
+func TestMFAAssurance(t *testing.T) {
+	t.Setenv("MIAOQIA_ENV", "production")
+	issuer := testissuer.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	verifier, err := NewVerifier(ctx, issuer.Server.URL, "miaoqia-api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, strong := range []bool{false, true} {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("Authorization", "Bearer "+issuer.Token(t, "user", "", "", strong))
+		r.Header.Set("Miaoqia-MFA", "true")
+		_, mfa, err := verifier.Verify(r)
+		if err != nil || mfa != strong {
+			t.Fatalf("signed assurance strong=%v got=%v err=%v", strong, mfa, err)
 		}
 	}
 }

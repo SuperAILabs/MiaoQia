@@ -7,4 +7,10 @@ type OperationName = string
 
 const (
 	CheckAuthorizationOperation OperationName = "CheckAuthorization"
+	CreateTenantOperation       OperationName = "CreateTenant"
+	GetMemberOperation          OperationName = "GetMember"
+	GetTenantOperation          OperationName = "GetTenant"
+	PutMemberOperation          OperationName = "PutMember"
+	ResolveSessionOperation     OperationName = "ResolveSession"
+	SetTenantStateOperation     OperationName = "SetTenantState"
 )

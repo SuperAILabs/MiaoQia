@@ -1,4 +1,4 @@
-# M0 退出标准的端到端验证：链路探针经三个部署单元，带追踪、审计与授权；identity 远程绑定（tests/e2e/m0.py）。
+# M0 工程探针与 identity 本地/远程绑定验证（tests/e2e/m0.py）；整体退出另按阶段基线验收。
 name: e2e
 
 on:

@@ -1,0 +1,135 @@
+asyncapi: 3.0.0
+info:
+  title: identity 生命周期事件
+  version: 1.0.0
+channels:
+  platform.identity:
+    address: platform.identity
+    messages:
+      tenantCreated:
+        $ref: '#/components/messages/tenantCreated'
+      tenantSuspended:
+        $ref: '#/components/messages/tenantSuspended'
+      tenantActivated:
+        $ref: '#/components/messages/tenantActivated'
+      memberChanged:
+        $ref: '#/components/messages/memberChanged'
+operations:
+  publishIdentityEvents:
+    action: send
+    channel:
+      $ref: '#/channels/platform.identity'
+components:
+  messages:
+    tenantCreated:
+      name: identity.tenant.created.v1
+      x-fixtures-required: true
+      payload:
+        additionalProperties: false
+        properties:
+          state:
+            enum:
+            - active
+            type: string
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          version:
+            minimum: 1
+            type: integer
+        required:
+        - tenant_id
+        - version
+        - state
+        type: object
+    tenantSuspended:
+      name: identity.tenant.suspended.v1
+      x-fixtures-required: true
+      payload:
+        additionalProperties: false
+        properties:
+          state:
+            enum:
+            - suspended
+            type: string
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          version:
+            minimum: 1
+            type: integer
+        required:
+        - tenant_id
+        - version
+        - state
+        type: object
+    tenantActivated:
+      name: identity.tenant.activated.v1
+      x-fixtures-required: true
+      payload:
+        additionalProperties: false
+        properties:
+          state:
+            enum:
+            - active
+            type: string
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          version:
+            minimum: 1
+            type: integer
+        required:
+        - tenant_id
+        - version
+        - state
+        type: object
+    memberChanged:
+      name: identity.member.changed.v1
+      x-fixtures-required: true
+      payload:
+        additionalProperties: false
+        properties:
+          roles:
+            items:
+              enum:
+              - admin
+              - decision_maker
+              - business_developer
+              - pursuit_lead
+              - research_analyst
+              - domain_expert
+              type: string
+            maxItems: 6
+            type: array
+            uniqueItems: true
+          state:
+            enum:
+            - active
+            - removed
+            type: string
+          subject:
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+            type: string
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          version:
+            minimum: 1
+            type: integer
+        required:
+        - tenant_id
+        - subject
+        - version
+        - state
+        - roles
+        type: object
+        allOf:
+        - if:
+            properties:
+              state:
+                const: removed
+          then:
+            properties:
+              roles:
+                maxItems: 0

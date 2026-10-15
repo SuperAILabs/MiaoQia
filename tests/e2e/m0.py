@@ -1,7 +1,8 @@
-"""M0 退出标准的端到端验证（docs/05-delivery/01-roadmap.md M0）：
+"""M0 工程探针与身份绑定切换验证（docs/05-delivery/01-roadmap.md M0）：
 
   一个“空业务”的事件在三个部署单元间端到端流转，带追踪、审计和授权；
-  任一子系统可通过配置切换为远程绑定并通过契约测试。
+  当前已实现同步接口 identity.Authorizer 可配置切换本地/远程并通过契约测试。
+  此脚本不代证 M0 其他交付或未来子系统接口；整体退出见阶段基线。
 
 流程：operations（platform）发起链路探针 → acquisition（acquisition 单元）→ evidence（data 单元）→ operations。
 校验：探针完成且经过全部子系统；授权允许与拒绝都留下审计；三个单元的处理位于同一条追踪；

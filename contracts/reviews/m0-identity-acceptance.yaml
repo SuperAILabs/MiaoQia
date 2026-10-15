@@ -1,0 +1,165 @@
+status: accepted_gates_closed
+accepted_at: '2026-10-15T08:24:30.937109+00:00'
+authorization: 用户要求继续M0工程，优先补齐最小身份生命周期、cell-01路由、正反例/集成测试及工程文档；产品交互和原型不在本次范围。
+scope: M0租户创建/停用/恢复、成员加入/退出/角色、命令幂等、最小管理查询、权威cell-01核验；不是整个M0或生产IdP/MFA部署验收。
+gates:
+- id: M0-IDENTITY-LIFECYCLE
+  status: closed
+  evidence:
+  - Generated OpenAPI request validation; platform operator and tenant admin boundaries;
+    signed MFA required
+  - 'PostgreSQL transaction: directory + command receipt + lifecycle event + audit;
+    rollback on audit fault'
+  - 'Idempotency-Key: original response, concurrent creation, conflict and current
+    reauthorization'
+  - Expected versions, current-version queries and concurrent last-admin preservation
+  - Current SQL roles evaluated using the existing OpenFGA model, independent of stale
+    persisted role tuples
+  - Real Kafka lifecycle and audit relay; original payload schema validation
+- id: M0-CELL-ROUTING
+  status: closed
+  evidence:
+  - Local and generated mTLS remote identity.SessionResolver
+  - Gateway validates response schema and tenant/cell/subject/state binding
+  - Unknown tenant, disabled tenant, removed member and wrong cell fail closed; directory
+    SQL fault returns 503
+  - 'Real HTTPS Keycloak login: correct cell accepted, wrong cell rejected; removed
+    member old and new login tokens rejected'
+versions:
+  identity_openapi: 1.1.0
+  integration_profile: 3.0.0
+  identity_events: 1.0.0; four v1 types
+  components:
+    PostgreSQL: '18.6'
+    OpenFGA: 1.10.0
+    Kafka: 4.1.0
+    Keycloak: 26.3.4
+verification:
+  go_passed_tests_including_subtests: 279
+  go_passed_packages: 17
+  go_skips:
+  - TestCostReport
+  go_mode: -race -count=1 ./... with all real components and MQC_FIXTURES; go vet
+    ./... passed
+  python_combined_passed: 260
+  python_skips: 0
+  contract_tools_passed: 59
+  schema_files: 15
+  structural_cases: 112
+  event_types: 48
+  payload_cases: 111
+  api_cases: 34
+  roundtrip_go_python: 66
+  typescript: typecheck passed
+  generation: 67 types x 3 languages and identity generated API consistent
+  compatibility_base: 47daba7c07a49984572c17d512cb62123d2bff84
+  compatibility_result: '兼容性检查（基线 HEAD）：breaking 0、additive 9、doc 0
+
+    通过'
+  static_boundaries: gen_local --check; Python boundaries zero violations
+limitations:
+- Positive MFA administration uses the shared HTTPS signed test issuer; real Keycloak
+  password-login and revocation are tested separately; production MFA ceremony and
+  issuer/client policy require deployment evidence
+- M0 managed tenant Check supports current user and tenant-root resources; future
+  business resources, delegated identities, service accounts, collaborators and multiple
+  cells require their own gates
+- Revocation applies to new authorization checks after commit; already-admitted requests
+  are not forcibly interrupted
+- M0 model gateway, shared development deployment/recovery and CI/environment handoff
+  remain open; product design is separate
+prior_audits_preserved:
+- contracts/reviews/engineering-first-batch-freeze.yaml
+- contracts/reviews/first-batch-freeze.yaml
+- contracts/reviews/m0-runtime-acceptance.yaml
+artifacts:
+- path: contracts/apis/identity/fixtures.yaml
+  sha256: 2328f590e27f4228d5cc9dd511e9f5c7dc7246b0c2d600f71164ae6091cf070a
+- path: contracts/apis/identity/openapi.yaml
+  sha256: c36ce4bf912a60906fa85e0b569757e41c3a7df9a36918e181f7be7d2be9fd1c
+- path: contracts/events/identity/events.asyncapi.yaml
+  sha256: d267d9e28b1ce14aa8d01d9a6860f418de0528599ab3fef6ccbc90a06e98b58d
+- path: contracts/events/identity/fixtures.yaml
+  sha256: 8c461667ee4b18d3168e6056af9f9f88be3e12ac1cc0865445970f6d762692f4
+- path: contracts/integration.yaml
+  sha256: b5463934fc596ffbec7153746b48227262450f04190cc13a827943b5754548bf
+- path: data/contracts/src/miaoqia/contracts/event_payloads.json
+  sha256: 5b341f8f6e91c764fcbd1e42d910c42939ba7246e91ebda3087c9ea2dc46af86
+- path: deploy/local/keycloak/realm-miaoqia.json
+  sha256: 8e8aab3a6f75b99cb150ba25ff9ff82f158308f72fa5fa500e1887f0f6bdf4eb
+- path: docs/05-delivery/07-m0-identity-acceptance.md
+  sha256: e4977217f85d756da12e0b9d05e9a05600ef6ba1f722483b2f74b73de4d21118
+- path: services/cmd/platform/main.go
+  sha256: 3acffc0361cc7c46ccf6f9b91c370175653495b878f344bd2f54db45dd132a7f
+- path: services/contracts/apis/identity/oas_cfg_gen.go
+  sha256: 3daf7a2852cbe4da1375b728d4b575ed17b0ce1128f067f1885a66a726c49296
+- path: services/contracts/apis/identity/oas_client_gen.go
+  sha256: 9267dcdc1787c21be21dd27b02d1d1e40d93fd7158596816d9bb3b6e09b0ddff
+- path: services/contracts/apis/identity/oas_handlers_gen.go
+  sha256: e5640e9d9140ece8e5b6599c8af5f1d91eac69212aadd2d5534e5b61eebd41aa
+- path: services/contracts/apis/identity/oas_json_gen.go
+  sha256: 4275ddaf9cd210530c3db12e7944ee34e39f3edf5b965bf7a1ee8fedf7061f8f
+- path: services/contracts/apis/identity/oas_labeler_gen.go
+  sha256: 303f1f645c6c6018fb13d6541cb761e4117e5ce8165676a2acd9c16ed5b9a0f6
+- path: services/contracts/apis/identity/oas_middleware_gen.go
+  sha256: 26f16f828856b04a156453bd56472fc261b40b212be38f7b19f052a4fa92ec9c
+- path: services/contracts/apis/identity/oas_operations_gen.go
+  sha256: 3be90ba2f1083e76491e34e48f45e7b5d9d58b72955873ee5a28504a57daf224
+- path: services/contracts/apis/identity/oas_parameters_gen.go
+  sha256: 581bf1ce3afe0f365f3e95c3ce605f497b7c9aae8a782176cdcf7b9dd25ad012
+- path: services/contracts/apis/identity/oas_request_decoders_gen.go
+  sha256: 5987fa88e1cfd6169c63ffde42f17810cbc5e259547be245e88107868ce2b741
+- path: services/contracts/apis/identity/oas_request_encoders_gen.go
+  sha256: b0b303cc25d358d411d82346971c5b5227a797530d73bd877b82ac94057ea84c
+- path: services/contracts/apis/identity/oas_response_decoders_gen.go
+  sha256: 42826ca1f36c0ec1af77da5962429c76dc179899425227950a6ceb2c0547694f
+- path: services/contracts/apis/identity/oas_response_encoders_gen.go
+  sha256: 9c30a884d9ba59fa55f1ca1b01b7e8a1b7af1511c7210e9b2043d66d096ce427
+- path: services/contracts/apis/identity/oas_router_gen.go
+  sha256: 6fb886692c526dea6789be2625ea46a400897ea39f5dd147a6d0475b26ebe0e8
+- path: services/contracts/apis/identity/oas_schemas_gen.go
+  sha256: 80aadf7ecf3a48d4c78f7cb054830264e3b076594e1c5080c6a8724dbf0fbcf4
+- path: services/contracts/apis/identity/oas_server_gen.go
+  sha256: 8971bdf965bc664da0d8699e7265c1912dcf6bed8802042638474216c82cce39
+- path: services/contracts/apis/identity/oas_unimplemented_gen.go
+  sha256: ee6d2b7468aa4de376023af8156e81437e0d3ca9bafc78456b1613a73381bc09
+- path: services/contracts/apis/identity/oas_validators_gen.go
+  sha256: 14c0da34cf337c2b7f083fedb723c98bcab1d462e525b31aff3e74356dbfab75
+- path: services/contracts/events/payloads.json
+  sha256: 5b341f8f6e91c764fcbd1e42d910c42939ba7246e91ebda3087c9ea2dc46af86
+- path: services/internal/testissuer/issuer.go
+  sha256: 65485b19487d5d9932972a545c17d0689aa1583d99758fa05d16bd438a68cdc5
+- path: services/kernel/integration/identity_test.go
+  sha256: 128fb50d88412a89f3006523a0acf89bfa52b4ef3b9459d57c9084b1b97b11f5
+- path: services/kernel/integration/m0_test.go
+  sha256: b6e7cc92142bbf5ec781b04a11dd765daaa2dbfe260bf637a44e27ef06fdfaa2
+- path: services/kernel/internal/testenv/keycloak.go
+  sha256: 08b6f15e7ca2448aeb19a22c59d99ed1850cbec2a9de8fd81ea87664a60e242f
+- path: services/kernel/reqctx/authentication.go
+  sha256: 1c6638f71e340b495e1dd1693b63fb08b4e7056cd7f7d720a565eec6cd35d8f3
+- path: services/subsystems/gateway/gateway.go
+  sha256: a1bc92a36046c8c1d501fd1930da5e710fa9fe1a6439b61e4f5cb8b0fd8f4e79
+- path: services/subsystems/gateway/gateway_test.go
+  sha256: f0b316c3cffbef3adfa809f4b1781a9977f004d52691346a2354317fab7a3b2a
+- path: services/subsystems/gateway/internal/auth/auth.go
+  sha256: ea24127d594bb0abfa5240bdecd38b051c2230f094ee16add86e30aac7df4cc6
+- path: services/subsystems/gateway/internal/auth/auth_test.go
+  sha256: 6f58b8602ae5e42d336425a63a3889abda9e042195edca7f8ae542b987ed5f3c
+- path: services/subsystems/identity/api/remote/remote.go
+  sha256: 072125a4df3aeb8c732b59bf31866b3e080cadc561a2255e52d5d4d6b460e4bf
+- path: services/subsystems/identity/api/session.go
+  sha256: 3aa4050e0640b2790bd538251123c0aa571061333580ab6c424f9990f0266e70
+- path: services/subsystems/identity/identity.go
+  sha256: 061ee772dddcfaf808905687f3c7b29c0364093783d350dd0bbdf2abe815fd24
+- path: services/subsystems/identity/internal/app/commands.go
+  sha256: 9ada4fa3b2373b4fc8ea199f81d0382cf8cca35367ff57b5f4390d683cb01979
+- path: services/subsystems/identity/internal/app/decider.go
+  sha256: 9f028bc68c20e59a2f234f645d7b23495bc781df8c1f76bc97f4d19d92cf557a
+- path: services/subsystems/identity/internal/app/directory.go
+  sha256: ebd8a3708bd9b5a778ea5b02bafe60e004e9efe34e9b12dd5e401eca750f23c6
+- path: services/subsystems/identity/internal/app/server.go
+  sha256: a54ad3ab478ba79297ec6cc72dccebb0d35e5de3d412872743ce94b8ae7e540c
+- path: services/subsystems/identity/internal/infra/openfga.go
+  sha256: aac620b822ba29564f6bb0dbfef0ea9b2b9dada7d56ee09807c27d9ee5dd4605
+- path: services/subsystems/identity/migrations/00001_directory.sql
+  sha256: cf6600d8088f24a333982059d522afa74d95141691f7f3cd210a6931dd1b01cc

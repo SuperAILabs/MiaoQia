@@ -1,6 +1,6 @@
 # 接入网关子系统（gateway）
 
-> 状态：评审中 · 版本：1.1 · 更新：2026-10-15 · 平面：交互
+> 状态：评审中 · 版本：1.2 · 更新：2026-10-15 · 平面：交互
 
 ## 1. 使命
 
@@ -15,6 +15,7 @@
 - MCP 服务器：把业务能力以 MCP 工具与资源暴露给 AI 助手，作为 OAuth 资源服务器；
 - 出站 Webhook：客户订阅事件、签名、重试、失败告警；
 - 认证接入：校验令牌、派生租户与主体、注入请求上下文；M0实现校验issuer/audience、RS256签名、Bearer访问令牌类型与exp/iat/nbf，丢弃外部上下文头；真实HTTPS Keycloak及安全反例见[运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；
+- 租户路由：经identity.SessionResolver的本地/远程绑定核对当前租户、成员与cell-01；未知/停用/退出/错误cell拒绝，目录故障失败关闭；已签名amr=mfa仅在进程内传给管理命令，不接受外部上下文头或MFA头。见[M0身份验收](../../05-delivery/07-m0-identity-acceptance.md)；
 - 流量治理：限流、配额前置检查（向 `commerce` 查询）、请求大小与超时；
 - 幂等：写操作的 `Idempotency-Key` 管理；
 - 异步作业：长任务返回作业标识，统一查询接口。

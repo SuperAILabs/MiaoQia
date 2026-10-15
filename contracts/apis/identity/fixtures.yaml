@@ -74,3 +74,136 @@ fixtures:
     - op: add
       path: /token
       value: placeholder
+- schema: CreateTenantRequest
+  base:
+    name: 示例租户
+    admin_subject: keycloak-user
+  cases:
+  - name: 拒绝缺失字段
+    valid: false
+    patch:
+    - op: remove
+      path: /name
+  - name: 拒绝业务夹带路由
+    valid: false
+    patch:
+    - op: add
+      path: /cell_override
+      value: cell-02
+- schema: Tenant
+  base:
+    id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    name: 示例租户
+    cell: cell-01
+    state: active
+    version: 1
+  cases:
+  - name: 拒绝缺失字段
+    valid: false
+    patch:
+    - op: remove
+      path: /id
+  - name: 拒绝业务夹带路由
+    valid: false
+    patch:
+    - op: add
+      path: /cell_override
+      value: cell-02
+  - name: 拒绝非cell01
+    valid: false
+    patch:
+    - op: replace
+      path: /cell
+      value: cell-02
+- schema: SetTenantStateRequest
+  base:
+    state: suspended
+    expected_version: 1
+  cases:
+  - name: 拒绝缺失字段
+    valid: false
+    patch:
+    - op: remove
+      path: /state
+  - name: 拒绝业务夹带路由
+    valid: false
+    patch:
+    - op: add
+      path: /cell_override
+      value: cell-02
+- schema: PutMemberRequest
+  base:
+    state: active
+    roles:
+    - admin
+    expected_version: 0
+  cases:
+  - name: 拒绝缺失字段
+    valid: false
+    patch:
+    - op: remove
+      path: /state
+  - name: 拒绝业务夹带路由
+    valid: false
+    patch:
+    - op: add
+      path: /cell_override
+      value: cell-02
+  - name: 拒绝未登记角色
+    valid: false
+    patch:
+    - op: replace
+      path: /roles
+      value:
+      - superadmin
+  - name: 拒绝重复角色
+    valid: false
+    patch:
+    - op: replace
+      path: /roles
+      value:
+      - admin
+      - admin
+- schema: Session
+  base:
+    tenant: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    cell: cell-01
+    subject: keycloak-user
+    state: active
+    roles:
+    - admin
+    tenant_version: 1
+    member_version: 1
+  cases:
+  - name: 拒绝缺失字段
+    valid: false
+    patch:
+    - op: remove
+      path: /tenant
+  - name: 拒绝业务夹带路由
+    valid: false
+    patch:
+    - op: add
+      path: /cell_override
+      value: cell-02
+  - name: 拒绝非cell01
+    valid: false
+    patch:
+    - op: replace
+      path: /cell
+      value: cell-02
+  - name: 拒绝未登记角色
+    valid: false
+    patch:
+    - op: replace
+      path: /roles
+      value:
+      - superadmin
+  - name: 拒绝重复角色
+    valid: false
+    patch:
+    - op: replace
+      path: /roles
+      value:
+      - admin
+      - admin

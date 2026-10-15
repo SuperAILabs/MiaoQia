@@ -201,8 +201,7 @@ def test_api_additive_requires_version(sandbox):
     d['components']['schemas']['CheckRequest']['properties']['reason'] = {'type': 'string'}
     p.write_text(yaml.safe_dump(d))
     assert any('API additive' in e for e in run(sandbox).errors)
-    d['info']['version'] = '1.1.0'
-    p.write_text(yaml.safe_dump(d))
+    bump_version(sandbox, 'contracts/apis/identity/openapi.yaml', 'info')
     assert run(sandbox).errors == []
 
 

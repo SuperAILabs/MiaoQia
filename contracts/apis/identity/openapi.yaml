@@ -1,13 +1,10 @@
 openapi: 3.1.0
 info:
   title: identity 内部接口
-  version: 1.0.0
-  description: >
-    identity 子系统的内部接口（docs/03-architecture/subsystems/identity.md 第 5 节）。只在内部监听端口提供；
-    请求上下文经 Miaoqia-Context 头传递，追踪上下文经 traceparent 头传递（约定见 docs/03-architecture/03-integration-contracts.md 第 2.2 节）。
-    错误为 RFC 9457 Problem Details。
+  version: 1.1.0
+  description: identity接口。授权Check及会话核验经mTLS内部端口；生命周期命令仅经外部网关，要求已验证的MFA。租户来自上下文，cell归属来自identity目录。
 servers:
-  - url: /internal
+- url: /internal
 paths:
   /v1/authz:check:
     post:
@@ -20,50 +17,358 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CheckRequest' }
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
       responses:
         '200':
           description: 决策结果
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CheckResult' }
+              schema:
+                $ref: '#/components/schemas/CheckResult'
         default:
           description: 错误
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/tenants:
+    post:
+      operationId: createTenant
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+  /v1/tenants/{tenantID}/state:
+    put:
+      operationId: setTenantState
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetTenantStateRequest'
+      parameters:
+      - &id002
+        name: tenantID
+        in: path
+        required: true
+        schema: &id004
+          type: string
+          pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+  /v1/identity/members/{subject}:
+    put:
+      operationId: putMember
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PutMemberRequest'
+      parameters:
+      - &id001
+        name: subject
+        in: path
+        required: true
+        schema: &id003
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+    get:
+      operationId: getMember
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: 当前状态与版本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        default:
+          description: 失败关闭
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/session:
+    get:
+      operationId: resolveSession
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/tenants/{tenantID}:
+    get:
+      operationId: getTenant
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *id002
+      responses:
+        '200':
+          description: 当前状态与版本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        default:
+          description: 失败关闭
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 components:
   schemas:
     CheckRequest:
       type: object
       additionalProperties: false
-      required: [relation, object]
+      required:
+      - relation
+      - object
       properties:
         subject:
           type: string
           description: 主体，例如 user:usr_…；缺省为请求上下文的调用主体
-          pattern: '^[a-z_]+:[A-Za-z0-9_:.-]+$'
+          pattern: ^[a-z_]+:[A-Za-z0-9_:.-]+$
         relation:
           type: string
           description: 关系或动作，例如 can_trigger_probe
-          pattern: '^[a-z][a-z0-9_]*$'
+          pattern: ^[a-z][a-z0-9_]*$
         object:
           type: string
           description: 资源，例如 platform:miaoqia、tenant:tnt_…
-          pattern: '^[a-z_]+:[A-Za-z0-9_.-]+$'
+          pattern: ^[a-z_]+:[A-Za-z0-9_.-]+$
     CheckResult:
       type: object
       additionalProperties: false
-      required: [allowed]
+      required:
+      - allowed
       properties:
-        allowed: { type: boolean }
+        allowed:
+          type: boolean
     Problem:
       type: object
       additionalProperties: false
-      required: [type, title, status]
+      required:
+      - type
+      - title
+      - status
       properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer, minimum: 400, maximum: 599 }
-        detail: { type: string }
-        code: { type: string, description: 稳定错误代码 }
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          description: 稳定错误代码
+    CreateTenantRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - admin_subject
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        admin_subject: *id003
+    Tenant:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - cell
+      - state
+      - version
+      properties:
+        id: *id004
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        cell:
+          type: string
+          enum:
+          - cell-01
+        state:
+          type: string
+          enum:
+          - active
+          - suspended
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+    SetTenantStateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      - expected_version
+      properties:
+        state:
+          type: string
+          enum:
+          - active
+          - suspended
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+    PutMemberRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      - roles
+      - expected_version
+      properties:
+        state:
+          type: string
+          enum:
+          - active
+          - removed
+        roles:
+          type: array
+          uniqueItems: true
+          maxItems: 6
+          items:
+            type: string
+            enum: &id005
+            - admin
+            - decision_maker
+            - business_developer
+            - pursuit_lead
+            - research_analyst
+            - domain_expert
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 0
+    Session:
+      type: object
+      additionalProperties: false
+      required:
+      - tenant
+      - cell
+      - subject
+      - state
+      - roles
+      - tenant_version
+      - member_version
+      properties:
+        tenant:
+          type: string
+          pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+        cell:
+          type: string
+          enum:
+          - cell-01
+        subject: *id003
+        state:
+          type: string
+          enum:
+          - active
+          - removed
+        roles:
+          type: array
+          uniqueItems: true
+          maxItems: 6
+          items:
+            type: string
+            enum: *id005
+        tenant_version:
+          type: integer
+          format: int64
+          minimum: 1
+        member_version:
+          type: integer
+          format: int64
+          minimum: 1

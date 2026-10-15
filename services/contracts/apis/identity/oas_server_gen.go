@@ -14,6 +14,30 @@ type Handler interface {
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, req *CheckRequest) (*CheckResult, error)
+	// CreateTenant implements createTenant operation.
+	//
+	// POST /v1/tenants
+	CreateTenant(ctx context.Context, req *CreateTenantRequest, params CreateTenantParams) (*Tenant, error)
+	// GetMember implements getMember operation.
+	//
+	// GET /v1/identity/members/{subject}
+	GetMember(ctx context.Context, params GetMemberParams) (*Session, error)
+	// GetTenant implements getTenant operation.
+	//
+	// GET /v1/tenants/{tenantID}
+	GetTenant(ctx context.Context, params GetTenantParams) (*Tenant, error)
+	// PutMember implements putMember operation.
+	//
+	// PUT /v1/identity/members/{subject}
+	PutMember(ctx context.Context, req *PutMemberRequest, params PutMemberParams) (*Session, error)
+	// ResolveSession implements resolveSession operation.
+	//
+	// GET /v1/identity/session
+	ResolveSession(ctx context.Context) (*Session, error)
+	// SetTenantState implements setTenantState operation.
+	//
+	// PUT /v1/tenants/{tenantID}/state
+	SetTenantState(ctx context.Context, req *SetTenantStateRequest, params SetTenantStateParams) (*Tenant, error)
 	// NewError creates *ProblemStatusCode from error returned by handler.
 	//
 	// Used for common default response.

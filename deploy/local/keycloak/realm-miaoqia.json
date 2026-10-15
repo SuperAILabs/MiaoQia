@@ -19,8 +19,43 @@
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
+        },
+        {
+          "name": "miaoqia-tenant",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "miaoqia_tenant",
+            "claim.name": "miaoqia_tenant",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "miaoqia-cell",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "miaoqia_cell",
+            "claim.name": "miaoqia_cell",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "multivalued": "false"
+          }
         }
       ]
+    },
+    {
+      "clientId": "miaoqia-integration-admin",
+      "name": "仅隔离本地/CI设置测试用户属性；禁止作为生产客户端",
+      "publicClient": false,
+      "secret": "isolated-integration-only",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
     }
   ],
   "users": [
@@ -53,6 +88,18 @@
           "temporary": false
         }
       ]
+    },
+    {
+      "username": "service-account-miaoqia-integration-admin",
+      "enabled": true,
+      "serviceAccountClientId": "miaoqia-integration-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "manage-realm"
+        ]
+      }
     }
   ]
 }

@@ -1,6 +1,6 @@
 # M0 认证、探针与消费运行时验收
 
-> 状态：三项实现与真实组件门禁已关闭 · 版本：1.0 · 更新：2026-10-15 · 负责人：平台工程、安全、数据负责人
+> 状态：三项实现与真实组件门禁已关闭 · 版本：1.1 · 更新：2026-10-15 · 负责人：平台工程、安全、数据负责人
 
 本文对应 C4a 契约冻结后需要关闭的 HTTP 认证、完整 M0 探针与现有消费者载荷校验门禁。记录见[运行时验收清单](../../contracts/reviews/m0-runtime-acceptance.yaml)。关闭依据是实际生产代码和隔离的真实组件测试，不代表已经部署到生产环境，也不把这些结果扩展为整个 M0 或身份子系统全部完成。
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | M0-HTTP-AUTH | 实现及真实组件验收通过 | 网关验证 HTTPS Keycloak 的 RS256 Bearer 访问令牌、issuer、audience、exp/iat、nbf、主体和租户/单元；丢弃客户端上下文头。内部调用 TLS 1.3 双向认证、可信 CA、单个 SPIFFE URI SAN 和精确调用方白名单；缺配置失败关闭。签名、算法、令牌类型、受众/期限、JWKS换钥、无证书、错误CA、过期证书、未授权服务均有反例 |
 | M0-PROBE | 实现及真实组件验收通过 | HTTPS 网关 → mTLS identity/OpenFGA → operations 事务发件箱 → Go中继/Kafka → 独立 Python acquisition/evidence → Go operations 完成 → governance 审计落库；路径为 operations,acquisition,evidence,operations。验证追踪连续、允许/拒绝审计、重复完成去重、同分区重放栅栏与审计故障时业务回滚 |
-| M0-CONSUMER-PAYLOAD | 现有四个消费者验收通过 | operations.probe-completion、governance.audit-ingest、acquisition.probe、evidence.probe 均接入离线原始Schema载荷校验。全部93个事件载荷正反例由Go/Python运行；真实Kafka验证四个消费者各自的结构错误和业务语义错误进入死信，且无持久化业务去重行。死信发布被Kafka拒绝时不提交后续记录越过失败位点 |
+| M0-CONSUMER-PAYLOAD | 现有四个消费者验收通过 | operations.probe-completion、governance.audit-ingest、acquisition.probe、evidence.probe 均接入离线原始Schema载荷校验。当前全部事件载荷正反例由Go/Python运行；真实Kafka验证四个消费者各自的结构错误和业务语义错误进入死信，且无持久化业务去重行。死信发布被Kafka拒绝时不提交后续记录越过失败位点 |
 
 实际组件：Keycloak 26.3.4（隔离测试realm及HTTPS）、OpenFGA 1.10.0、Kafka 4.1.0、PostgreSQL 18.6。应用以生产认证策略运行；Keycloak测试realm的密码登录客户端只用于本地/CI测试，不是生产客户端模板。CI使用PostgreSQL17.6及相同Keycloak/OpenFGA/Kafka版本，CI结果须由相应流水线确认。
 
@@ -29,7 +29,7 @@
 
 上下文仍表达原调用主体；mTLS验证的是发送该上下文的服务。白名单服务可代理已验证的用户请求，授权关系仍由identity/OpenFGA判断。服务身份认证不会自动授予业务资源权限。
 
-集成安全配置已按不兼容变更升为[2.0.0](../../contracts/integration.yaml)；身份业务字段与既有事件v1载荷保持原结构。首批C4a/C4b冻结记录按审计用途保留，不改写历史哈希。
+当前集成安全配置为[3.0.0](../../contracts/integration.yaml)；既有Check与事件v1结构保持兼容；identity增量接口为1.1.0。租户生命周期和目录核验由[身份验收](07-m0-identity-acceptance.md)单独覆盖，此前验收记录的版本/哈希按审计用途保留。首批C4a/C4b冻结记录按审计用途保留，不改写历史哈希。
 
 ## 3. 载荷、语义与故障处理
 

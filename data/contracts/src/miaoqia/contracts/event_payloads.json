@@ -1104,6 +1104,208 @@
       }
     },
     {
+      "event": "identity.tenant.created.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "state": "active",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.created.v1",
+      "name": "缺少租户",
+      "valid": false,
+      "value": {
+        "state": "active",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.created.v1",
+      "name": "未知字段拒绝",
+      "valid": false,
+      "value": {
+        "state": "active",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token": "forbidden",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.created.v1",
+      "name": "无效版本",
+      "valid": false,
+      "value": {
+        "state": "active",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 0
+      }
+    },
+    {
+      "event": "identity.tenant.suspended.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "state": "suspended",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.suspended.v1",
+      "name": "缺少租户",
+      "valid": false,
+      "value": {
+        "state": "suspended",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.suspended.v1",
+      "name": "未知字段拒绝",
+      "valid": false,
+      "value": {
+        "state": "suspended",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token": "forbidden",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.suspended.v1",
+      "name": "无效版本",
+      "valid": false,
+      "value": {
+        "state": "suspended",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 0
+      }
+    },
+    {
+      "event": "identity.tenant.activated.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "state": "active",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.activated.v1",
+      "name": "缺少租户",
+      "valid": false,
+      "value": {
+        "state": "active",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.activated.v1",
+      "name": "未知字段拒绝",
+      "valid": false,
+      "value": {
+        "state": "active",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token": "forbidden",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.tenant.activated.v1",
+      "name": "无效版本",
+      "valid": false,
+      "value": {
+        "state": "active",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 0
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "roles": [
+          "admin"
+        ],
+        "state": "active",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
+      "name": "缺少租户",
+      "valid": false,
+      "value": {
+        "roles": [
+          "admin"
+        ],
+        "state": "active",
+        "subject": "keycloak-user",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
+      "name": "未知字段拒绝",
+      "valid": false,
+      "value": {
+        "roles": [
+          "admin"
+        ],
+        "state": "active",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token": "forbidden",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
+      "name": "无效版本",
+      "valid": false,
+      "value": {
+        "roles": [
+          "admin"
+        ],
+        "state": "active",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 0
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
+      "name": "退出后清空角色",
+      "valid": true,
+      "value": {
+        "roles": [],
+        "state": "removed",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
+      "name": "退出不得保留角色",
+      "valid": false,
+      "value": {
+        "roles": [
+          "admin"
+        ],
+        "state": "removed",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
       "event": "operations.probe.requested.v1",
       "name": "base",
       "valid": true,
@@ -2453,6 +2655,147 @@
         "artifact_ref",
         "rights_tags",
         "content_hash"
+      ],
+      "type": "object"
+    },
+    "identity.member.changed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "removed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "roles": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "roles": {
+          "items": {
+            "enum": [
+              "admin",
+              "decision_maker",
+              "business_developer",
+              "pursuit_lead",
+              "research_analyst",
+              "domain_expert"
+            ],
+            "type": "string"
+          },
+          "maxItems": 6,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "state": {
+          "enum": [
+            "active",
+            "removed"
+          ],
+          "type": "string"
+        },
+        "subject": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "tenant_id": {
+          "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "subject",
+        "version",
+        "state",
+        "roles"
+      ],
+      "type": "object"
+    },
+    "identity.tenant.activated.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "active"
+          ],
+          "type": "string"
+        },
+        "tenant_id": {
+          "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "version",
+        "state"
+      ],
+      "type": "object"
+    },
+    "identity.tenant.created.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "active"
+          ],
+          "type": "string"
+        },
+        "tenant_id": {
+          "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "version",
+        "state"
+      ],
+      "type": "object"
+    },
+    "identity.tenant.suspended.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "suspended"
+          ],
+          "type": "string"
+        },
+        "tenant_id": {
+          "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "version",
+        "state"
       ],
       "type": "object"
     },
