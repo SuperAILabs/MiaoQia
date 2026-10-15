@@ -68,6 +68,8 @@ miaoqia/
 | `extensions` | 本子系统定义的扩展点注册表 | `<name>/internal/ext/` | `<name>/extensions/` |
 | `migrations` | 本子系统数据库迁移 | `<name>/migrations/` | `<name>/migrations/` |
 
+迁移随部署产物分发，不依赖源码目录：Go 以 `go:embed` 编入二进制；Python 迁移位于包内（`src/miaoqia/<name>/migrations/`），作为包资源进入 wheel，由 `importlib.resources` 定位。CI 以 `tools/dev/check_installed_migrations.py` 从 wheel 安装到临时环境后验证可定位、可被 Alembic 读取。
+
 ## 3. 依赖规则（CI 强制）
 
 | 规则 | 说明 |

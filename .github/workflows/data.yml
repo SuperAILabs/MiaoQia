@@ -46,6 +46,9 @@ jobs:
           uv run --project tools/contracts --python 3.12 --locked python tools/dev/gen_local.py --check
           uv run --project data --locked --all-packages python tools/dev/check_python_boundaries.py
 
+      - name: 迁移随 wheel 分发（脱离源码目录安装后定位）
+        run: uv run --project data --locked python tools/dev/check_installed_migrations.py
+
       - name: SDK 与信息领域包测试
         working-directory: data
         run: uv run --locked --all-packages --group dev pytest -q sdk/tests subsystems/evidence/tests ../packs/information_domains/procurement/tests ../packs/information_domains/organizations/tests
