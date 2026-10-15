@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/integration/event-envelope.schema.json",
+  "x-version": "1.0.0",
+  "title": "EventEnvelope",
+  "description": "妙洽CloudEvents 1.0结构化JSON配置；时间和对象载荷为本平台必填；未知信封字段拒绝，空域字段省略。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "specversion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "source": {
+      "type": "string",
+      "pattern": "^miaoqia/[a-z][a-z0-9_-]*$"
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z_]+\\.[a-z_]+\\.[a-z_]+\\.v[1-9][0-9]*$"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subject": {
+      "type": "string",
+      "minLength": 1
+    },
+    "datacontenttype": {
+      "type": "string",
+      "const": "application/json"
+    },
+    "dataschema": {
+      "type": "string",
+      "format": "uri-reference",
+      "minLength": 1
+    },
+    "miaoqiazone": {
+      "type": "string",
+      "enum": [
+        "public",
+        "tenant",
+        "platform"
+      ]
+    },
+    "miaoqiatenant": {
+      "type": "string",
+      "minLength": 1,
+      "description": "已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。"
+    },
+    "miaoqiacell": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+    },
+    "traceparent": {
+      "type": "string",
+      "pattern": "^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "由对应AsyncAPI消息Schema校验；信封Schema仅要求对象。"
+    }
+  },
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "datacontenttype",
+    "miaoqiazone",
+    "data"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "miaoqiazone": {
+            "const": "public"
+          }
+        },
+        "required": [
+          "miaoqiazone"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "miaoqiatenant"
+              ]
+            },
+            {
+              "required": [
+                "miaoqiacell"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "miaoqiazone": {
+            "const": "tenant"
+          }
+        },
+        "required": [
+          "miaoqiazone"
+        ]
+      },
+      "then": {
+        "required": [
+          "miaoqiatenant",
+          "miaoqiacell"
+        ]
+      }
+    }
+  ],
+  "dependentRequired": {
+    "miaoqiacell": [
+      "miaoqiatenant"
+    ]
+  }
+}

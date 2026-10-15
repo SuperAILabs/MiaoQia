@@ -1,7 +1,7 @@
 schema: domains/credit/record.schema.json
 base:
   id: crd_01JA8ZXXXXXXXXXXXXXXXXXXX1
-  schema_version: 1.0.0
+  schema_version: 0.2.0
   version: 1
   info_domain: INF-CRED
   snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1

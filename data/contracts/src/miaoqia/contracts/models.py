@@ -24,10 +24,6 @@ class Result(Enum):
     failed = "failed"
 
 
-class AmendsNoticeId(RootModel[constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")]):
-    root: constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
-
-
 class Attachment(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -51,6 +47,18 @@ class Stage(Enum):
     opening = "opening"
     candidate = "candidate"
     award = "award"
+
+
+class ResultKind(Enum):
+    contract_award = "contract_award"
+    framework_shortlist = "framework_shortlist"
+
+
+class PriceKind(Enum):
+    total = "total"
+    unit = "unit"
+    annual_unit_sum = "annual_unit_sum"
+    estimated_total = "estimated_total"
 
 
 class Kind(Enum):
@@ -100,16 +108,15 @@ class Role(Enum):
     buyer = "buyer"
     agency = "agency"
     other = "other"
+    project_owner = "project_owner"
+    technical_support = "technical_support"
+    supervisor = "supervisor"
 
 
-class Contact(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    role: Role
-    name: str | None = None
-    phone: str | None = None
-    email: str | None = None
+class AmountKind(Enum):
+    total = "total"
+    ceiling = "ceiling"
+    estimated = "estimated"
 
 
 class RecordType(Enum):
@@ -159,6 +166,11 @@ class Type(Enum):
     bid_submission = "bid_submission"
     bid_opening = "bid_opening"
     publicity_end = "publicity_end"
+    registration_start = "registration_start"
+    doc_obtain_start = "doc_obtain_start"
+    bid_bond_end = "bid_bond_end"
+    site_visit = "site_visit"
+    clarification_meeting = "clarification_meeting"
 
 
 class Decimal(RootModel[constr(pattern=r"^-?[0-9]+(\.[0-9]+)?$")]):
@@ -177,6 +189,147 @@ class EvaluationMethod(Enum):
     lowest_price = "lowest_price"
     comprehensive_scoring = "comprehensive_scoring"
     other = "other"
+
+
+class EventArtifactRef(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1) = Field(
+        ..., description="原始制品稳定对象键/引用，不是短时签名URL"
+    )
+
+
+class EventChangedField(RootModel[constr(pattern=r"^(/([^~]|~[01])*)+$")]):
+    root: constr(pattern=r"^(/([^~]|~[01])*)+$")
+
+
+class EventChangedFields(RootModel[list[EventChangedField]]):
+    root: list[EventChangedField] = Field(..., min_length=1)
+
+
+class EventEntityId(
+    RootModel[
+        constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^prj_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^loc_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^cat_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^brd_[0-9A-HJKMNP-TV-Z]{26}$")
+    ]
+):
+    root: (
+        constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^prj_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^loc_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^cat_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^brd_[0-9A-HJKMNP-TV-Z]{26}$")
+    )
+
+
+class Miaoqiazone(Enum):
+    public = "public"
+    tenant = "tenant"
+    platform = "platform"
+
+
+class EventEnvelope(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    specversion: Literal["1.0"]
+    id: constr(pattern=r"^evt_[0-9A-HJKMNP-TV-Z]{26}$")
+    source: constr(pattern=r"^miaoqia/[a-z][a-z0-9_-]*$")
+    type: constr(pattern=r"^[a-z_]+\.[a-z_]+\.[a-z_]+\.v[1-9][0-9]*$")
+    time: AwareDatetime
+    subject: constr(min_length=1) | None = None
+    datacontenttype: Literal["application/json"]
+    dataschema: constr(min_length=1) | None = None
+    miaoqiazone: Miaoqiazone
+    miaoqiatenant: constr(min_length=1) | None = Field(
+        None,
+        description="已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。",
+    )
+    miaoqiacell: constr(pattern=r"^[a-z0-9][a-z0-9-]{0,62}$") | None = None
+    traceparent: constr(pattern=r"^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$") | None = None
+    data: dict[str, Any] = Field(
+        ..., description="由对应AsyncAPI消息Schema校验；信封Schema仅要求对象。"
+    )
+
+
+class EventFactId(
+    RootModel[
+        constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^pp_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^ogr_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^ogc_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^oga_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^ivr_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^crd_[0-9A-HJKMNP-TV-Z]{26}$")
+    ]
+):
+    root: (
+        constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^pp_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^ogr_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^ogc_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^oga_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^ivr_[0-9A-HJKMNP-TV-Z]{26}$")
+        | constr(pattern=r"^crd_[0-9A-HJKMNP-TV-Z]{26}$")
+    )
+
+
+class EventInfoDomain(RootModel[constr(pattern=r"^INF-[A-Z]+$")]):
+    root: constr(pattern=r"^INF-[A-Z]+$")
+
+
+class EventOccurredAt(RootModel[AwareDatetime]):
+    root: AwareDatetime
+
+
+class EventQualityStatus(Enum):
+    ok = "ok"
+    warning = "warning"
+    suspect = "suspect"
+
+
+class EventRelationshipId(RootModel[constr(pattern=r"^rel_[0-9A-HJKMNP-TV-Z]{26}$")]):
+    root: constr(pattern=r"^rel_[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+class EventRevisionRef(RootModel[constr(pattern=r"^exr_[0-9A-HJKMNP-TV-Z]{26}$")]):
+    root: constr(pattern=r"^exr_[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+class EventRightsSetItem(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
+class EventRightsSet(RootModel[list[EventRightsSetItem]]):
+    root: list[EventRightsSetItem] = Field(
+        ...,
+        description="有效权利集合；撤回全部权利时允许为空。与事实的溯源rights_tags不同。",
+    )
+
+
+class EventRightsTag(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
+class EventRightsTags(RootModel[list[EventRightsTag]]):
+    root: list[EventRightsTag] = Field(..., min_length=1)
+
+
+class EventSha256(RootModel[constr(pattern=r"^sha256:[0-9a-f]{64}$")]):
+    root: constr(pattern=r"^sha256:[0-9a-f]{64}$")
+
+
+class EventSnapshotRef(RootModel[constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")]):
+    root: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+class EventSourceId(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
+class EventVersion(RootModel[conint(ge=1)]):
+    root: conint(ge=1)
 
 
 class Precision(Enum):
@@ -238,6 +391,8 @@ class NoticeType(Enum):
     failure = "failure"
     contract = "contract"
     acceptance = "acceptance"
+    price_limit = "price_limit"
+    supplier_enrollment = "supplier_enrollment"
 
 
 class ListType(Enum):
@@ -320,6 +475,7 @@ class ProcurementMethod(Enum):
     direct = "direct"
     e_mall = "e_mall"
     other = "other"
+    selection = "selection"
 
 
 class Stage1(Enum):
@@ -333,6 +489,10 @@ class Stage1(Enum):
     terminated = "terminated"
     contracted = "contracted"
     accepted = "accepted"
+    shortlisted = "shortlisted"
+    acceptance_failed = "acceptance_failed"
+    partially_accepted = "partially_accepted"
+    acceptance_pending = "acceptance_pending"
 
 
 class NoticeId(RootModel[constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")]):
@@ -348,12 +508,30 @@ class Status(Enum):
     terminated = "terminated"
     contracted = "contracted"
     accepted = "accepted"
+    shortlisted = "shortlisted"
+    acceptance_failed = "acceptance_failed"
+    partially_accepted = "partially_accepted"
+    acceptance_pending = "acceptance_pending"
 
 
 class Method(Enum):
     rule = "rule"
     model = "model"
     manual = "manual"
+
+
+class Provenance(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    evidence_ref: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
+        ..., description="只能引用 evidence 的 ev_ 标识，不接受其他类型标识"
+    )
+    method: Method
+    confidence: confloat(ge=0.0, le=1.0)
+    extractor: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") | None = Field(
+        None, description="解析器标识与版本"
+    )
 
 
 class Classification(Enum):
@@ -386,93 +564,6 @@ class Quality(BaseModel):
     warnings: list[Warning] | None = None
 
 
-class Kind2(Enum):
-    qualification = "qualification"
-    performance = "performance"
-    personnel = "personnel"
-    financial = "financial"
-    quality = "quality"
-    credit = "credit"
-    authorization = "authorization"
-    consortium = "consortium"
-    technical = "technical"
-    other = "other"
-
-
-class TradingSystem(Enum):
-    government_procurement = "government_procurement"
-    construction_bidding = "construction_bidding"
-    soe_procurement = "soe_procurement"
-
-
-class UlidId(RootModel[constr(pattern=r"^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$")]):
-    root: constr(pattern=r"^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
-        ..., description="类型化 ULID，前缀登记在 contracts/identifiers.yaml"
-    )
-
-
-class Block(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    index: conint(ge=0)
-    kind: Kind
-    level: conint(ge=1, le=6) | None = Field(None, description="仅 heading")
-    text: str | None = Field(
-        None,
-        description="heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计",
-    )
-    rows: list[list[Cell]] | None = Field(
-        None,
-        description="仅 table：完整网格，每行列数相同；合并单元格的覆盖位置以 covered_by 指向起始单元格",
-    )
-    page: conint(ge=1) | None = Field(None, description="分页文档的页码")
-    bbox: Bbox | None = None
-
-
-class EvidenceRef(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$")
-    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
-    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$")
-    locator: Locator
-    quote_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
-        ..., description="被引用原文片段的哈希，用于校验定位未漂移"
-    )
-
-
-class NormalizedDocument(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
-    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
-        ..., description="文档处理管线标识与版本"
-    )
-    media_type: MediaType
-    source_url: str | None = None
-    title: str | None = Field(None, description="来源页面标题（未经解析器确认）")
-    language: str | None = "zh"
-    blocks: list[Block]
-    attachments: list[Attachment] | None = Field(
-        None, description="附件：各自是独立快照与独立规范化文档"
-    )
-
-
-class Provenance(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    evidence_ref: UlidId
-    method: Method
-    confidence: confloat(ge=0.0, le=1.0)
-    extractor: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") | None = Field(
-        None, description="解析器标识与版本"
-    )
-
-
 class Quantity(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -494,12 +585,64 @@ class Region(BaseModel):
     prov: Provenance
 
 
+class Kind2(Enum):
+    user = "user"
+    service = "service"
+    service_account = "service_account"
+
+
+class Principal(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(min_length=1)
+    kind: Kind2
+
+
+class RequestContext(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    principal: Principal
+    tenant: constr(min_length=1) | None = Field(
+        None,
+        description="已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。",
+    )
+    cell: constr(pattern=r"^[a-z0-9][a-z0-9-]{0,62}$") | None = None
+    purpose: constr(min_length=1) | None = None
+
+
+class Kind3(Enum):
+    qualification = "qualification"
+    performance = "performance"
+    personnel = "personnel"
+    financial = "financial"
+    quality = "quality"
+    credit = "credit"
+    authorization = "authorization"
+    consortium = "consortium"
+    technical = "technical"
+    other = "other"
+
+
 class Text(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     value: constr(min_length=1)
     prov: Provenance
+
+
+class TradingSystem(Enum):
+    government_procurement = "government_procurement"
+    construction_bidding = "construction_bidding"
+    soe_procurement = "soe_procurement"
+
+
+class UlidId(RootModel[constr(pattern=r"^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$")]):
+    root: constr(pattern=r"^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
+        ..., description="类型化 ULID，前缀登记在 contracts/identifiers.yaml"
+    )
 
 
 class Change(BaseModel):
@@ -520,8 +663,32 @@ class AmendmentSection(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    amends_notice_ids: list[AmendsNoticeId] = Field(..., min_length=1)
+    amends_notice_ids: list[constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")] = Field(
+        ...,
+        description="已解析的前序公告标识；暂未归并时允许为空，保留 original_reference 并进入复核，不伪造标识",
+    )
     changes: list[Change]
+    original_reference: Text | None = None
+    summary: Text | None = None
+
+
+class Block(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    index: conint(ge=0)
+    kind: Kind
+    level: conint(ge=1, le=6) | None = Field(None, description="仅 heading")
+    text: str | None = Field(
+        None,
+        description="heading、paragraph、list_item 的纯文本；字符区间以 Unicode 码点计",
+    )
+    rows: list[list[Cell]] | None = Field(
+        None,
+        description="仅 table：完整网格，每行列数相同；合并单元格的覆盖位置以 covered_by 指向起始单元格",
+    )
+    page: conint(ge=1) | None = Field(None, description="分页文档的页码")
+    bbox: Bbox | None = None
 
 
 class Penalty(BaseModel):
@@ -540,6 +707,19 @@ class EndingSection(BaseModel):
     ending_type: EndingType
     lot_keys: list[str] | None = Field(None, description="涉及的标包；为空表示全部")
     reason: Text | None = None
+
+
+class EvidenceRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$")
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$")
+    locator: Locator
+    quote_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="被引用原文片段的哈希，用于校验定位未漂移"
+    )
 
 
 class Instant(BaseModel):
@@ -565,6 +745,24 @@ class Money(BaseModel):
     prov: Provenance
 
 
+class NormalizedDocument(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
+        ..., description="文档处理管线标识与版本"
+    )
+    media_type: MediaType
+    source_url: str | None = None
+    title: str | None = Field(None, description="来源页面标题（未经解析器确认）")
+    language: str | None = "zh"
+    blocks: list[Block]
+    attachments: list[Attachment] | None = Field(
+        None, description="附件：各自是独立快照与独立规范化文档"
+    )
+
+
 class OrgRef(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -577,6 +775,8 @@ class OrgRef(BaseModel):
     ) = Field(None, description="统一社会信用代码（原文出现时）")
     resolution_confidence: confloat(ge=0.0, le=1.0) | None = None
     prov: Provenance
+    address: Text | None = None
+    uscc_prov: Provenance | None = None
 
 
 class OrgShareholder(BaseModel):
@@ -586,8 +786,30 @@ class OrgShareholder(BaseModel):
     kind: Kind1
     org: OrgRef | None = None
     person: Person | None = None
-    share_ratio: Decimal | None = None
+    share_ratio: constr(pattern=r"^(0(\.[0-9]+)?|1(\.0+)?)$") | None = Field(
+        None, description="0—1持股比例，原文百分数除以100"
+    )
     subscribed_capital: Money | None = None
+    share_ratio_prov: Provenance | None = None
+
+
+class ProcurementConditions(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    scope: Text | None = None
+    delivery_period: Text | None = None
+    delivery_location: Text | None = None
+    payment_terms: Text | None = None
+    document_access: Text | None = None
+    submission_place: Text | None = None
+    opening_place: Text | None = None
+    consortium_terms: Text | None = None
+    sme_policy: Text | None = None
+    imported_products: Text | None = None
+    agent_participation: Text | None = None
+    contract_pricing: Text | None = None
+    planned_publication: Text | None = None
 
 
 class PublicFactMeta(BaseModel):
@@ -605,14 +827,24 @@ class PublicFactMeta(BaseModel):
     quality: Quality | None = None
 
 
+class Rate(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    value: constr(pattern=r"^[0-9]+(\.[0-9]+)?$")
+    raw: str | None = None
+    basis: Text | None = None
+    prov: Provenance
+
+
 class Requirement(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     id: constr(pattern=r"^req_[0-9A-HJKMNP-TV-Z]{26}$")
-    kind: Kind2
+    kind: Kind3
     code: str | None = Field(
-        None, description="归一的资质或要求代码；无法归一时为 null"
+        None, description="归一的资质或要求代码；无法归一时省略，不使用 null"
     )
     text: Text
 
@@ -625,6 +857,18 @@ class AcceptanceSection(BaseModel):
     contract_id: constr(pattern=r"^ctr_[0-9A-HJKMNP-TV-Z]{26}$") | None = None
     accepted_at: Instant | None = None
     result: Result | None = None
+    contract_code: Text | None = None
+    contract_name: Text | None = None
+    supplier: OrgRef | None = None
+    opinion: Text | None = None
+    result_prov: Provenance | None = None
+    scope: Text | None = None
+    dispute: Text | None = None
+    judicial_outcome: list[Text] | None = Field(
+        None,
+        description="裁判结论原文段落分别溯源；技术质量、合同解除及付款结论分别保留，不把当事人主张作为法院结论。",
+        min_length=1,
+    )
 
 
 class BidResult(BaseModel):
@@ -634,11 +878,34 @@ class BidResult(BaseModel):
     id: constr(pattern=r"^bdr_[0-9A-HJKMNP-TV-Z]{26}$")
     stage: Stage
     bidder: OrgRef
-    consortium_members: list[OrgRef] | None = None
+    consortium_members: list[OrgRef] | None = Field(None, min_length=1)
     rank: conint(ge=1) | None = None
     is_winner: bool | None = None
     price: Money | None = None
     score: float | None = None
+    price_rate: Rate | None = None
+    result_kind: ResultKind | None = Field(
+        None, description="普通中标或框架第一阶段入围；入围不代表第二阶段成交/签约"
+    )
+    consortium_lead: OrgRef | None = None
+    price_kind: PriceKind | None = Field(
+        None, description="报价金额含义；年单价合计、单价和估算额不得当项目总成交额"
+    )
+    price_kind_prov: Provenance | None = None
+
+
+class Contact(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    role: Role
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    organization: OrgRef | None = None
+    name_prov: Provenance | None = None
+    phone_prov: Provenance | None = None
+    email_prov: Provenance | None = None
 
 
 class ContractSection(BaseModel):
@@ -652,6 +919,13 @@ class ContractSection(BaseModel):
     signed_at: Instant | None = None
     term_start: Instant | None = None
     term_end: Instant | None = None
+    code: Text | None = None
+    name: Text | None = None
+    amount_kind: AmountKind | None = Field(
+        None, description="原文明确金额语义时填写；最高合同金额不得当作实际成交额"
+    )
+    conditions: ProcurementConditions | None = None
+    amount_kind_prov: Provenance | None = None
 
 
 class Enforcement(BaseModel):
@@ -780,6 +1054,13 @@ class LotSection(BaseModel):
     bond_guarantee_accepted: bool | None = Field(None, description="是否接受保函")
     evaluation_method: EvaluationMethod | None = None
     bid_results: list[BidResult] | None = None
+    conditions: ProcurementConditions | None = None
+    max_price_rate: Rate | None = None
+    project_name: Text | None = None
+    project_code: Text | None = None
+    project_owner: OrgRef | None = None
+    estimated_contract_amount: Money | None = None
+    ending: EndingSection | None = None
 
 
 class Notice(PublicFactMeta):
@@ -800,7 +1081,7 @@ class Notice(PublicFactMeta):
     related_notice_ids: list[constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")] | None = (
         Field(None, description="公告中显式引用的前序公告")
     )
-    buyer: OrgRef
+    buyer: OrgRef | None = None
     agency: OrgRef | None = None
     project_owner: OrgRef | None = None
     single_source_supplier: OrgRef | None = None
@@ -814,6 +1095,11 @@ class Notice(PublicFactMeta):
     acceptance: AcceptanceSection | None = None
     ending: EndingSection | None = None
     contacts: list[Contact] | None = None
+    award_amount: Money | None = None
+    result_details_pending: bool | None = Field(
+        None,
+        description="结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人",
+    )
 
 
 class OrgAbnormal(PublicFactMeta):
@@ -835,7 +1121,7 @@ class OrgChange(PublicFactMeta):
     subject: OrgRef
     change_type: OrgChangeType
     change_item_raw: Text | None = None
-    changed_on: Instant
+    changed_on: Instant | None = None
     before: Text | None = None
     after: Text | None = None
     status_after: OrgStatus | None = None
@@ -843,6 +1129,7 @@ class OrgChange(PublicFactMeta):
     capital_after: Money | None = None
     org_shareholders_added: list[OrgRef] | None = None
     org_shareholders_removed: list[OrgRef] | None = None
+    status_after_prov: Provenance | None = None
 
 
 class OrgRegistration(PublicFactMeta):
@@ -857,7 +1144,7 @@ class OrgRegistration(PublicFactMeta):
     former_names: list[Text] | None = None
     enterprise_type: OrgEnterpriseType | None = None
     enterprise_type_raw: Text | None = None
-    status: OrgStatus
+    status: OrgStatus | None = None
     established_on: Instant | None = None
     business_term: DateRange | None = None
     registered_capital: Money | None = None
@@ -872,6 +1159,9 @@ class OrgRegistration(PublicFactMeta):
     shareholders: list[OrgShareholder] | None = None
     branches: list[OrgRef] | None = None
     parent: OrgRef | None = None
+    uscc_prov: Provenance | None = None
+    status_prov: Provenance | None = None
+    legal_representative_prov: Provenance | None = None
 
 
 class ProjectLot(BaseModel):
@@ -894,10 +1184,19 @@ class ProjectLot(BaseModel):
     status: Status | None = None
     candidates: list[BidResult] | None = None
     winners: list[BidResult] | None = Field(
-        None, description="中标或成交人；框架协议可有多个"
+        None,
+        description="实际中标/成交供应商，可多家；框架第一阶段入围另存shortlisted_suppliers",
     )
     award_amount: Money | None = None
     contract_ids: list[constr(pattern=r"^ctr_[0-9A-HJKMNP-TV-Z]{26}$")] | None = None
+    conditions: ProcurementConditions | None = None
+    max_price_rate: Rate | None = None
+    project_name: Text | None = None
+    project_code: Text | None = None
+    project_owner: OrgRef | None = None
+    estimated_contract_amount: Money | None = None
+    ending: EndingSection | None = None
+    shortlisted_suppliers: list[BidResult] | None = None
 
 
 class Rating(BaseModel):

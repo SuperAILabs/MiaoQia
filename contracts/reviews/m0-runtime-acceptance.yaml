@@ -1,0 +1,257 @@
+status: accepted_gates_closed
+accepted_at: '2026-10-14T17:00:25.686885+00:00'
+authorization: 用户授权补齐生产认证、完整M0探针、各消费者运行时校验并在满足条件后关闭对应验收门禁。
+scope: M0应用HTTP生产认证策略、三个部署单元的完整跨语言探针、全部四个现有消费者；实现与隔离真实组件验收，不表示实际生产部署已完成。
+gates:
+- id: M0-HTTP-AUTH
+  status: closed
+  evidence:
+  - 'TestSignedTokenBoundaries: issuer/audience/signature/RS256/exp/iat/nbf/access-token-type/subject/tenant-cell;
+    JWKS rotation'
+  - 'TestRealMutualTLS: valid, missing, wrong CA, expired, unauthorized service'
+  - TestProductionMissingConfigFailsClosed
+  - 'TestM0RealComponents: real HTTPS Keycloak and generated identity client over
+    mTLS/OpenFGA'
+- id: M0-PROBE
+  status: closed
+  pipeline:
+  - HTTPS gateway
+  - mTLS identity/OpenFGA
+  - operations transaction/outbox
+  - Go relay/Kafka
+  - Python acquisition
+  - Python evidence
+  - Go operations completion
+  - governance audit
+  evidence:
+  - 'TestM0RealComponents: independently running Python modules; exact four-hop path'
+  - Production tracer initialization; identical trace ID across Go/Python outboxes
+  - Granted/denied/trigger/completion audit; replay barrier and exactly-once accounting
+  - 'PostgreSQL audit-write fault: authorized and denied requests fail visibly; business
+    transaction rolls back'
+- id: M0-CONSUMER-PAYLOAD
+  status: closed
+  consumers:
+  - operations.probe-completion
+  - governance.audit-ingest
+  - acquisition.probe
+  - evidence.probe
+  schema_source: generated offline AsyncAPI payloads; original validation keywords
+    retained; no remote loads
+  evidence:
+  - All 93 payload positive/negative fixtures in both languages
+  - No registered handler without schema; canonical schemas cannot be overridden
+  - 'Real Kafka: four consumers, eight schema/semantic-invalid events reached DLQ
+    without persisted inbox/business effects'
+  - 'TestDeadLetterFailureDoesNotCommitFollowingRecord: real broker rejects DLQ message;
+    following record not handled and failed partition offset not advanced'
+versions:
+  integration_profile: 2.0.0
+  contract_schema_and_existing_event_payloads: unchanged from prior baselines; type.v1
+    retained
+  prior_audits:
+  - contracts/reviews/engineering-first-batch-freeze.yaml
+  - contracts/reviews/first-batch-freeze.yaml
+  compatibility_note: Transmission authentication tightened via profile major version
+    2; prior freeze records preserved for audit.
+verification:
+  go_tests_including_subtests: 239
+  go_skips:
+  - TestCostReport
+  skip_disposition: Only optional policy cost report; no real-component acceptance
+    gate skipped
+  python_combined_tests: 228
+  contract_tools_tests: 58
+  schema_files: 15
+  schema_cases: 112
+  event_types: 44
+  payload_cases: 93
+  api_cases: 13
+  generated_types: 67
+  roundtrip_facts: 66
+  manual_c4b_facts: 30
+  python_dependency_rules: 6
+  static_python_boundary_violations: 0
+  runtime_components:
+    Keycloak: 26.3.4 with HTTPS and isolated development test realm; application enforces
+      production authentication policy
+    OpenFGA: 1.10.0 isolated memory instance
+    Kafka: 4.1.0 isolated KRaft instance
+    PostgreSQL: 18.6 Homebrew; temporary test databases/roles
+  runtime_environment_keys:
+  - MIAOQIA_TEST_PG
+  - MIAOQIA_TEST_KAFKA
+  - MIAOQIA_TEST_OPENFGA
+  - MIAOQIA_TEST_KEYCLOAK
+  - MIAOQIA_GATEWAY_CA_FILE
+  - MQC_FIXTURES
+  compat_base_commit: dd2d691bac325ab96152de07a542a6529205dd2f
+  commands:
+  - command: go -C services test -json -count=1 -race ./...
+    result: passed
+  - command: go -C services vet ./...
+    result: passed
+  - command: uv run --project data --locked --all-packages --group dev pytest -q data/kernel/tests
+      data/sdk/tests data/subsystems/evidence/tests packs/information_domains/procurement/tests
+      packs/information_domains/organizations/tests
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked --group dev pytest
+      -q tools/contracts/tests
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc check
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc compat --base
+      HEAD
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc generate
+      --check
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked python tools/dev/gen_local.py
+      --check
+    result: passed
+  - command: cd data && uv run --locked --all-packages lint-imports
+    result: passed
+  - command: cd data && uv run --locked --all-packages python ../tools/dev/check_python_boundaries.py
+    result: passed
+  - command: uv run --project data --locked --all-packages mq-corpus check packs/information_domains/procurement/corpus
+      --reviewed --schema domains/procurement/notice.schema.json --export /tmp/miaoqia-m0-fixtures
+    result: passed
+  - command: uv run --project data --locked --all-packages mq-corpus check packs/information_domains/organizations/corpus
+      --reviewed --schema domains/organization/registration.schema.json --schema domains/organization/change.schema.json
+      --schema domains/organization/abnormal.schema.json --export /tmp/miaoqia-m0-fixtures
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc fixtures
+      --export /tmp/miaoqia-m0-fixtures
+    result: passed
+  - command: MQC_FIXTURES=/tmp/miaoqia-m0-fixtures go -C services test ./contracts/...
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-contracts python data/contracts/tests/roundtrip.py
+      /tmp/miaoqia-m0-fixtures
+    result: passed
+  - command: pnpm --dir web --filter @miaoqia/contracts typecheck
+    result: passed
+  - command: bash -n tools/dev/m0_test_certificates.sh
+    result: passed
+  - command: bash tools/dev/m0_test_certificates.sh /tmp/miaoqia-m0-runtime/script-certificate-check
+    result: passed
+  - command: openssl verify -CAfile /tmp/miaoqia-m0-runtime/script-certificate-check/ca.crt
+      /tmp/miaoqia-m0-runtime/script-certificate-check/server.crt
+    result: passed
+  - command: git diff --check
+    result: passed
+artifacts:
+- path: contracts/integration.yaml
+  sha256: dd69ecd40c7017a33759846cd084fd343ccf06dbd5362f81c17ec68f3a591131
+- path: services/contracts/events/payloads.json
+  sha256: 9d65086a7b9d6e4ad259f62ff4f0c2f57a8a1e253964ac61956a4c1167acf237
+- path: services/contracts/events/validate.go
+  sha256: 27d1ab4558825b56458af97c7cc357b626cadacb4ff02969ea688973c415f01b
+- path: services/contracts/events/validate_test.go
+  sha256: 490b1538f6166d4a235a1d0e787719d96efc6184f7020fb184a1d360f63911ed
+- path: data/contracts/src/miaoqia/contracts/event_payloads.json
+  sha256: 9d65086a7b9d6e4ad259f62ff4f0c2f57a8a1e253964ac61956a4c1167acf237
+- path: services/kernel/consumer/consumer.go
+  sha256: e17eaadb72d0c53644cbfe211caa03ff6f0218694dd374b8e4cc2c021bbebb5e
+- path: services/kernel/consumer/validation_test.go
+  sha256: b06cfef7f19c561832f84aa3b1372c9011c05cedafd0e82806c1432a756b2f82
+- path: data/kernel/src/miaoqia/kernel/consumer.py
+  sha256: c4a55e63ee0417b2244a9ae93d3084e7b1df384ecd8b83e76ee03b4d1bb01986
+- path: data/kernel/src/miaoqia/kernel/payloads.py
+  sha256: bf1c1fc7b8b7e97d6e771687949a02f66f5110e2495584ae055f35da0e216249
+- path: data/kernel/src/miaoqia/kernel/tracing.py
+  sha256: df919a7f742bf8b21f08a0c3fef203a6af6f2a53699f4dc219f1f775bd5e9779
+- path: services/kernel/tracing/tracing.go
+  sha256: f556044453d65ddb237c67732df9c874f5c023bf969e253e89ebf33562114948
+- path: services/kernel/relay/relay_test.go
+  sha256: 7c5dd707b3d1877e8a475cc522066cdb959318f78816172399fbfed86646ea17
+- path: services/kernel/transportsecurity/tls.go
+  sha256: 5f032546c5480c82115c54ae1e101abea515b9348ca815c8ad3f9c3b1f9c2849
+- path: services/kernel/transportsecurity/tls_test.go
+  sha256: f465bb9044f320d3a141afdbd5213dddcc49c0f9d367ac267f8978e54e0dbc10
+- path: services/kernel/internal/testenv/certs.go
+  sha256: 2436b0ea1cac4040fd35ece17bdc868db593c3e7a865eb09b2dc2c8ada1b9305
+- path: services/kernel/integration/m0_test.go
+  sha256: e1e6b2b13ff8d1383ca28c922d02e9664a44e85120e3ffe45db3d30d2147ea58
+- path: services/subsystems/gateway/internal/auth/auth.go
+  sha256: 18faca7d1294f0a7b51f24ca0e50fbce2b0b03ca3809a504150c4029770ec3aa
+- path: services/subsystems/gateway/internal/auth/auth_test.go
+  sha256: f36651bc23de1b80fd671f98e9ae087ecc30fa15372b8eed03b23842d3eeb68b
+- path: services/subsystems/gateway/gateway.go
+  sha256: 821a6813a78ad55afc1a3f3e642f052e5fbb40f0928994a7ec02b31164e33d8c
+- path: services/kernel/binding/binding.go
+  sha256: 80557196a9d2f6ba5803effdf1f6941b5ea4dc934be1f3980406367bfae6ee82
+- path: services/subsystems/identity/api/remote/remote.go
+  sha256: b32d423c0d2098461a3091fc3e0f20c68d9167b035e3a440561582dc595b9889
+- path: services/cmd/platform/main.go
+  sha256: 90360ec433b926c969850112de86f113893439aac144598d2f9445453b4fea8f
+- path: services/subsystems/operations/internal/app/probes.go
+  sha256: 63ef26aaa07649d286f3686cdb7ae797e7c083e767f3257c5ebc24f82a462947
+- path: services/subsystems/governance/internal/app/audit.go
+  sha256: 533d28edb37b51889907c784039b72755932de2bdd45d3ba355b3b65d7f9b2aa
+- path: data/subsystems/acquisition/src/miaoqia/acquisition/application/probe.py
+  sha256: 7dd861cfcb3832eef46b66d0130fbcda8e92230e0cf92b225e08123c70de2c5f
+- path: data/subsystems/evidence/src/miaoqia/evidence/application/probe.py
+  sha256: 7515867a8e50a272c51eb92cd1ac2883842bc85f7d203f0c3a2e0c5258c5c4e0
+- path: data/kernel/tests/test_payloads.py
+  sha256: 83a48998fb2e3c65c511f2836e4891a1212872de430b196b5ca67d37b19518c4
+- path: data/kernel/tests/test_kernel.py
+  sha256: 177ef0ef965f3d7ba7a1d90c585ac10c9472215522d7a8c57ad57af30515f88c
+- path: data/kernel/tests/m0_worker.py
+  sha256: 4cea51c11cc32e0b23b654fe09a8943d3cab03d8fe893fc2a156c8214a1e8150
+- path: data/kernel/pyproject.toml
+  sha256: 6749dce459a8128e905a8a57685e5959b7ce19f172bedf48a0ad05bb486b09ee
+- path: data/uv.lock
+  sha256: 972ee342d7ee06e4ed38aa32ecaa86f8c9a9153c1fe96ae488dfa5a3474b1f10
+- path: services/go.mod
+  sha256: 48ac0f301ccd2dc3f32b22020670a08b351c650e494eca9fabd3b0e7b7178037
+- path: services/go.sum
+  sha256: cd818eaaf5006345e864d60f2adb681518fcffe43b1d13c429a6bb44d8438db1
+- path: tools/contracts/src/mqc/generate.py
+  sha256: cf461c37f524edcaaa0f0e02d89767bcf0652176d9e246f440674869bfaa8bb2
+- path: tools/dev/m0_test_certificates.sh
+  sha256: 5e7b3c01c187470da36c0b90b7200290d7534a4147075109a1f9efb6ad42be27
+- path: deploy/local/keycloak/realm-miaoqia.json
+  sha256: a703afe3b635d1dd60d060f0a4b3e73daf7967737a42dd9880bfdebf932fe9e4
+- path: .github/workflows/services.yml
+  sha256: 4a0b92cfe639dfdc5a9b9ad2814ad5960d45f0a5556946877848d9330f60ad32
+- path: .github/workflows/contracts.yml
+  sha256: 9ff5b73e6341684f6c6d2a644d257f0f70b99b7d4e74ada2936a9df3cd4aae10
+- path: .github/workflows/data.yml
+  sha256: 737fcd907fc126c4042273a4fb229acfdd07713e0535f7dca54aa0cee4806cbc
+- path: docs/05-delivery/05-m0-runtime-acceptance.md
+  sha256: 0e04c5a1bab03d326353dbe6deac8f5ff4c2dafee02aea8941703b5ec443a9d6
+- path: docs/05-delivery/00-initiation-readiness.md
+  sha256: 3fcb8a051d85bd26d09480383e49f3e9805d32cbfe16d84e5a3211b739243c9b
+- path: docs/03-architecture/13-contract-readiness.md
+  sha256: 449f757e7cf25bc513f79a137e99cff85e9af87d110cee5e9d4da79551904e1f
+- path: docs/03-architecture/03-integration-contracts.md
+  sha256: facb65accf0ca8cdcdb3f2c47724a9fa1f2d4a9a27f0c3397f3fe38763f01f10
+- path: docs/03-architecture/06-security-and-tenancy.md
+  sha256: e5fe7ba38f195142946b739957bf776218f581d88592a5c617499127d0544439
+- path: docs/03-architecture/09-codebase-structure.md
+  sha256: 9dfe780fc3bafdcb36120f18def52164db3dfd9b117a3433057a175d25ad895b
+- path: docs/README.md
+  sha256: 32272a34fd04552ada38c1f0f842d2362db3e8e1fc072f6c7cadb745db9caa19
+- path: README.md
+  sha256: a1ab2259c64cd2648288936e03ed291d44fe4d088d9fc692f1c903f769966043
+- path: docs/03-architecture/subsystems/identity.md
+  sha256: 88e8d1d709787f9de35142dce0a1a314050646f636aa3d322d918129915bee37
+- path: docs/03-architecture/subsystems/gateway.md
+  sha256: 974a15ea75ecae62a4664a8c135c1d49b4a8823493d452f91f51125e7bb4f7ce
+- path: docs/03-architecture/subsystems/operations.md
+  sha256: e86bfe047af4c3fe4735a1a70544747c0a4528fe1995abe1861c1b750663782b
+- path: docs/03-architecture/subsystems/acquisition.md
+  sha256: 3605fbce68a361415c4bd33497b55a9f166c3ff58626484dcf2d2d19cc05837e
+- path: docs/03-architecture/subsystems/evidence.md
+  sha256: 446391b97cd7de2dce65545e7d202ceffa8215666bb8ad02e269944e5ae42ec2
+- path: docs/03-architecture/subsystems/governance.md
+  sha256: b5fc011c1c41d85d3482c81101311e411a0965529f5141cfc21a79a035bdc3cc
+remaining_deployment_gates:
+- Production certificate issuance/rotation/revocation, network and reverse proxy configuration
+- Kafka/database service identities and ACL deployment
+- Production Keycloak client flows; the committed password-grant realm is test-only
+- Production rollout, backup/recovery and monitoring/alerting
+- Approval/MCP and future subsystem consumers/interfaces are outside this acceptance
+  scope
+readme_decision: root README updated to current M0 engineering preparation and acceptance
+  status; architecture and subsystem docs aligned.

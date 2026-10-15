@@ -104,6 +104,28 @@ def _gen_apis(repo: Repo, tmpd: Path, check: bool, r: Report) -> int:
 
 def generate(repo: Repo, check: bool, langs: list[str]) -> Report:
     r = Report()
+    # 运行时载荷复用与兼容检查相同的引用展开，保留全部校验关键字。
+    from .compat import _messages
+    from .repo import load_yaml
+    from .fixtures import _apply
+    import copy
+    runtime_cases = []
+    for path in sorted((repo.contracts / "events").glob("*/fixtures.yaml")):
+        for spec in load_yaml(path).get("fixtures", []):
+            for case in [{"name":"base", "valid":True}, *spec.get("cases", [])]:
+                value = copy.deepcopy(case.get("instance", spec["base"]))
+                for patch in case.get("patch", []):
+                    value = _apply(value, patch)
+                runtime_cases.append({"event":spec["event"], "name":case["name"], "valid":case["valid"], "value":value})
+    runtime_bytes = (json.dumps({"schemas": _messages(repo), "cases":runtime_cases}, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode()
+    for rel in [Path("services/contracts/events/payloads.json"), Path("data/contracts/src/miaoqia/contracts/event_payloads.json")]:
+        path = repo.root / rel
+        if check:
+            if not path.exists() or path.read_bytes() != runtime_bytes:
+                r.error(str(rel), "运行时载荷制品与AsyncAPI不一致")
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(runtime_bytes)
     bundle = build_bundle(repo)
     with tempfile.TemporaryDirectory() as tmp:
         tmpd = Path(tmp)

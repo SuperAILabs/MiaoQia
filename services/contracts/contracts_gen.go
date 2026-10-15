@@ -9,14 +9,38 @@ type AcceptanceSection struct {
 	// AcceptedAt corresponds to the JSON schema field "accepted_at".
 	AcceptedAt *Instant `json:"accepted_at,omitempty,omitzero"`
 
+	// ContractCode corresponds to the JSON schema field "contract_code".
+	ContractCode *Text `json:"contract_code,omitempty,omitzero"`
+
 	// ContractId corresponds to the JSON schema field "contract_id".
 	ContractId *string `json:"contract_id,omitempty,omitzero"`
+
+	// ContractName corresponds to the JSON schema field "contract_name".
+	ContractName *Text `json:"contract_name,omitempty,omitzero"`
+
+	// Dispute corresponds to the JSON schema field "dispute".
+	Dispute *Text `json:"dispute,omitempty,omitzero"`
 
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`
 
+	// 裁判结论原文段落分别溯源；技术质量、合同解除及付款结论分别保留，不把当事人主张作为法院结论。
+	JudicialOutcome []Text `json:"judicial_outcome,omitempty,omitzero"`
+
+	// Opinion corresponds to the JSON schema field "opinion".
+	Opinion *Text `json:"opinion,omitempty,omitzero"`
+
 	// Result corresponds to the JSON schema field "result".
 	Result *AcceptanceSectionResult `json:"result,omitempty,omitzero"`
+
+	// ResultProv corresponds to the JSON schema field "result_prov".
+	ResultProv *Provenance `json:"result_prov,omitempty,omitzero"`
+
+	// Scope corresponds to the JSON schema field "scope".
+	Scope *Text `json:"scope,omitempty,omitzero"`
+
+	// Supplier corresponds to the JSON schema field "supplier".
+	Supplier *OrgRef `json:"supplier,omitempty,omitzero"`
 }
 
 type AcceptanceSectionResult string
@@ -26,11 +50,17 @@ const AcceptanceSectionResultPartial AcceptanceSectionResult = "partial"
 const AcceptanceSectionResultPassed AcceptanceSectionResult = "passed"
 
 type AmendmentSection struct {
-	// AmendsNoticeIds corresponds to the JSON schema field "amends_notice_ids".
+	// 已解析的前序公告标识；暂未归并时允许为空，保留 original_reference 并进入复核，不伪造标识
 	AmendsNoticeIds []string `json:"amends_notice_ids"`
 
 	// Changes corresponds to the JSON schema field "changes".
 	Changes []AmendmentSectionChangesElem `json:"changes"`
+
+	// OriginalReference corresponds to the JSON schema field "original_reference".
+	OriginalReference *Text `json:"original_reference,omitempty,omitzero"`
+
+	// Summary corresponds to the JSON schema field "summary".
+	Summary *Text `json:"summary,omitempty,omitzero"`
 }
 
 type AmendmentSectionChangesElem struct {
@@ -81,6 +111,9 @@ type BidResult struct {
 	// Bidder corresponds to the JSON schema field "bidder".
 	Bidder OrgRef `json:"bidder"`
 
+	// ConsortiumLead corresponds to the JSON schema field "consortium_lead".
+	ConsortiumLead *OrgRef `json:"consortium_lead,omitempty,omitzero"`
+
 	// ConsortiumMembers corresponds to the JSON schema field "consortium_members".
 	ConsortiumMembers []OrgRef `json:"consortium_members,omitempty,omitzero"`
 
@@ -93,8 +126,20 @@ type BidResult struct {
 	// Price corresponds to the JSON schema field "price".
 	Price *Money `json:"price,omitempty,omitzero"`
 
+	// 报价金额含义；年单价合计、单价和估算额不得当项目总成交额
+	PriceKind *BidResultPriceKind `json:"price_kind,omitempty,omitzero"`
+
+	// PriceKindProv corresponds to the JSON schema field "price_kind_prov".
+	PriceKindProv *Provenance `json:"price_kind_prov,omitempty,omitzero"`
+
+	// PriceRate corresponds to the JSON schema field "price_rate".
+	PriceRate *Rate `json:"price_rate,omitempty,omitzero"`
+
 	// Rank corresponds to the JSON schema field "rank".
 	Rank *int `json:"rank,omitempty,omitzero"`
+
+	// 普通中标或框架第一阶段入围；入围不代表第二阶段成交/签约
+	ResultKind *BidResultResultKind `json:"result_kind,omitempty,omitzero"`
 
 	// Score corresponds to the JSON schema field "score".
 	Score *float64 `json:"score,omitempty,omitzero"`
@@ -102,6 +147,18 @@ type BidResult struct {
 	// Stage corresponds to the JSON schema field "stage".
 	Stage BidResultStage `json:"stage"`
 }
+
+type BidResultPriceKind string
+
+const BidResultPriceKindAnnualUnitSum BidResultPriceKind = "annual_unit_sum"
+const BidResultPriceKindEstimatedTotal BidResultPriceKind = "estimated_total"
+const BidResultPriceKindTotal BidResultPriceKind = "total"
+const BidResultPriceKindUnit BidResultPriceKind = "unit"
+
+type BidResultResultKind string
+
+const BidResultResultKindContractAward BidResultResultKind = "contract_award"
+const BidResultResultKindFrameworkShortlist BidResultResultKind = "framework_shortlist"
 
 type BidResultStage string
 
@@ -183,16 +240,28 @@ type CellCoveredBy struct {
 	Row int `json:"row"`
 }
 
-// 公告中的联系人。按公开数据处理，供客户业务联系使用
+// 公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略
 type Contact struct {
 	// Email corresponds to the JSON schema field "email".
 	Email *string `json:"email,omitempty,omitzero"`
 
+	// EmailProv corresponds to the JSON schema field "email_prov".
+	EmailProv *Provenance `json:"email_prov,omitempty,omitzero"`
+
 	// Name corresponds to the JSON schema field "name".
 	Name *string `json:"name,omitempty,omitzero"`
 
+	// NameProv corresponds to the JSON schema field "name_prov".
+	NameProv *Provenance `json:"name_prov,omitempty,omitzero"`
+
+	// Organization corresponds to the JSON schema field "organization".
+	Organization *OrgRef `json:"organization,omitempty,omitzero"`
+
 	// Phone corresponds to the JSON schema field "phone".
 	Phone *string `json:"phone,omitempty,omitzero"`
+
+	// PhoneProv corresponds to the JSON schema field "phone_prov".
+	PhoneProv *Provenance `json:"phone_prov,omitempty,omitzero"`
 
 	// Role corresponds to the JSON schema field "role".
 	Role ContactRole `json:"role"`
@@ -203,16 +272,34 @@ type ContactRole string
 const ContactRoleAgency ContactRole = "agency"
 const ContactRoleBuyer ContactRole = "buyer"
 const ContactRoleOther ContactRole = "other"
+const ContactRoleProjectOwner ContactRole = "project_owner"
+const ContactRoleSupervisor ContactRole = "supervisor"
+const ContactRoleTechnicalSupport ContactRole = "technical_support"
 
 type ContractSection struct {
 	// Amount corresponds to the JSON schema field "amount".
 	Amount Money `json:"amount"`
+
+	// 原文明确金额语义时填写；最高合同金额不得当作实际成交额
+	AmountKind *ContractSectionAmountKind `json:"amount_kind,omitempty,omitzero"`
+
+	// AmountKindProv corresponds to the JSON schema field "amount_kind_prov".
+	AmountKindProv *Provenance `json:"amount_kind_prov,omitempty,omitzero"`
+
+	// Code corresponds to the JSON schema field "code".
+	Code *Text `json:"code,omitempty,omitzero"`
+
+	// Conditions corresponds to the JSON schema field "conditions".
+	Conditions *ProcurementConditions `json:"conditions,omitempty,omitzero"`
 
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`
 
 	// LotId corresponds to the JSON schema field "lot_id".
 	LotId *string `json:"lot_id,omitempty,omitzero"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name *Text `json:"name,omitempty,omitzero"`
 
 	// SignedAt corresponds to the JSON schema field "signed_at".
 	SignedAt *Instant `json:"signed_at,omitempty,omitzero"`
@@ -226,6 +313,12 @@ type ContractSection struct {
 	// TermStart corresponds to the JSON schema field "term_start".
 	TermStart *Instant `json:"term_start,omitempty,omitzero"`
 }
+
+type ContractSectionAmountKind string
+
+const ContractSectionAmountKindCeiling ContractSectionAmountKind = "ceiling"
+const ContractSectionAmountKindEstimated ContractSectionAmountKind = "estimated"
+const ContractSectionAmountKindTotal ContractSectionAmountKind = "total"
 
 // 以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人进入
 // persons。
@@ -420,12 +513,17 @@ type Deadline struct {
 
 type DeadlineType string
 
+const DeadlineTypeBidBondEnd DeadlineType = "bid_bond_end"
 const DeadlineTypeBidOpening DeadlineType = "bid_opening"
 const DeadlineTypeBidSubmission DeadlineType = "bid_submission"
 const DeadlineTypeClarificationEnd DeadlineType = "clarification_end"
+const DeadlineTypeClarificationMeeting DeadlineType = "clarification_meeting"
 const DeadlineTypeDocObtainEnd DeadlineType = "doc_obtain_end"
+const DeadlineTypeDocObtainStart DeadlineType = "doc_obtain_start"
 const DeadlineTypePublicityEnd DeadlineType = "publicity_end"
 const DeadlineTypeRegistrationEnd DeadlineType = "registration_end"
+const DeadlineTypeRegistrationStart DeadlineType = "registration_start"
+const DeadlineTypeSiteVisit DeadlineType = "site_visit"
 
 // 十进制字符串，避免浮点误差
 type Decimal string
@@ -453,6 +551,93 @@ type EvaluationMethod string
 const EvaluationMethodComprehensiveScoring EvaluationMethod = "comprehensive_scoring"
 const EvaluationMethodLowestPrice EvaluationMethod = "lowest_price"
 const EvaluationMethodOther EvaluationMethod = "other"
+
+// 原始制品稳定对象键/引用，不是短时签名URL
+type EventArtifactRef string
+
+type EventChangedFields []string
+
+type EventEntityId interface{}
+
+// 妙洽CloudEvents 1.0结构化JSON配置；时间和对象载荷为本平台必填；未知信封字段拒绝，空域字段省略。
+type EventEnvelope struct {
+	// 由对应AsyncAPI消息Schema校验；信封Schema仅要求对象。
+	Data EventEnvelopeData `json:"data"`
+
+	// Datacontenttype corresponds to the JSON schema field "datacontenttype".
+	Datacontenttype string `json:"datacontenttype"`
+
+	// Dataschema corresponds to the JSON schema field "dataschema".
+	Dataschema *string `json:"dataschema,omitempty,omitzero"`
+
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// Miaoqiacell corresponds to the JSON schema field "miaoqiacell".
+	Miaoqiacell *string `json:"miaoqiacell,omitempty,omitzero"`
+
+	// 已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。
+	Miaoqiatenant *string `json:"miaoqiatenant,omitempty,omitzero"`
+
+	// Miaoqiazone corresponds to the JSON schema field "miaoqiazone".
+	Miaoqiazone EventEnvelopeMiaoqiazone `json:"miaoqiazone"`
+
+	// Source corresponds to the JSON schema field "source".
+	Source string `json:"source"`
+
+	// Specversion corresponds to the JSON schema field "specversion".
+	Specversion string `json:"specversion"`
+
+	// Subject corresponds to the JSON schema field "subject".
+	Subject *string `json:"subject,omitempty,omitzero"`
+
+	// Time corresponds to the JSON schema field "time".
+	Time time.Time `json:"time"`
+
+	// Traceparent corresponds to the JSON schema field "traceparent".
+	Traceparent *string `json:"traceparent,omitempty,omitzero"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type string `json:"type"`
+}
+
+// 由对应AsyncAPI消息Schema校验；信封Schema仅要求对象。
+type EventEnvelopeData map[string]interface{}
+
+type EventEnvelopeMiaoqiazone string
+
+const EventEnvelopeMiaoqiazonePlatform EventEnvelopeMiaoqiazone = "platform"
+const EventEnvelopeMiaoqiazonePublic EventEnvelopeMiaoqiazone = "public"
+const EventEnvelopeMiaoqiazoneTenant EventEnvelopeMiaoqiazone = "tenant"
+
+type EventFactId interface{}
+
+type EventInfoDomain string
+
+type EventOccurredAt time.Time
+
+type EventQualityStatus string
+
+const EventQualityStatusOk EventQualityStatus = "ok"
+const EventQualityStatusSuspect EventQualityStatus = "suspect"
+const EventQualityStatusWarning EventQualityStatus = "warning"
+
+type EventRelationshipId string
+
+type EventRevisionRef string
+
+// 有效权利集合；撤回全部权利时允许为空。与事实的溯源rights_tags不同。
+type EventRightsSet []string
+
+type EventRightsTags []string
+
+type EventSha256 string
+
+type EventSnapshotRef string
+
+type EventSourceId string
+
+type EventVersion int
 
 // 可被引用的证据片段：指向某个快照在某个处理管线版本下的规范化文档中的一个位置。由 evidence 分配 ev_
 // 标识；字段溯源（provenance.evidence_ref）与研究报告引用都指向它。
@@ -691,6 +876,9 @@ type LotSection struct {
 	// Budget corresponds to the JSON schema field "budget".
 	Budget *Money `json:"budget,omitempty,omitzero"`
 
+	// Conditions corresponds to the JSON schema field "conditions".
+	Conditions *ProcurementConditions `json:"conditions,omitempty,omitzero"`
+
 	// ConsortiumAllowed corresponds to the JSON schema field "consortium_allowed".
 	ConsortiumAllowed *bool `json:"consortium_allowed,omitempty,omitzero"`
 
@@ -699,6 +887,13 @@ type LotSection struct {
 
 	// DocumentFee corresponds to the JSON schema field "document_fee".
 	DocumentFee *Money `json:"document_fee,omitempty,omitzero"`
+
+	// Ending corresponds to the JSON schema field "ending".
+	Ending *EndingSection `json:"ending,omitempty,omitzero"`
+
+	// EstimatedContractAmount corresponds to the JSON schema field
+	// "estimated_contract_amount".
+	EstimatedContractAmount *Money `json:"estimated_contract_amount,omitempty,omitzero"`
 
 	// EvaluationMethod corresponds to the JSON schema field "evaluation_method".
 	EvaluationMethod *EvaluationMethod `json:"evaluation_method,omitempty,omitzero"`
@@ -715,12 +910,24 @@ type LotSection struct {
 	// MaxPrice corresponds to the JSON schema field "max_price".
 	MaxPrice *Money `json:"max_price,omitempty,omitzero"`
 
+	// MaxPriceRate corresponds to the JSON schema field "max_price_rate".
+	MaxPriceRate *Rate `json:"max_price_rate,omitempty,omitzero"`
+
 	// Name corresponds to the JSON schema field "name".
 	Name *Text `json:"name,omitempty,omitzero"`
 
 	// ProcurementCategory corresponds to the JSON schema field
 	// "procurement_category".
 	ProcurementCategory *ProcurementCategory `json:"procurement_category,omitempty,omitzero"`
+
+	// ProjectCode corresponds to the JSON schema field "project_code".
+	ProjectCode *Text `json:"project_code,omitempty,omitzero"`
+
+	// ProjectName corresponds to the JSON schema field "project_name".
+	ProjectName *Text `json:"project_name,omitempty,omitzero"`
+
+	// ProjectOwner corresponds to the JSON schema field "project_owner".
+	ProjectOwner *OrgRef `json:"project_owner,omitempty,omitzero"`
 
 	// Requirements corresponds to the JSON schema field "requirements".
 	Requirements []Requirement `json:"requirements,omitempty,omitzero"`
@@ -794,11 +1001,14 @@ type Notice struct {
 	// ApprovalCode corresponds to the JSON schema field "approval_code".
 	ApprovalCode *Text `json:"approval_code,omitempty,omitzero"`
 
+	// AwardAmount corresponds to the JSON schema field "award_amount".
+	AwardAmount *Money `json:"award_amount,omitempty,omitzero"`
+
 	// Budget corresponds to the JSON schema field "budget".
 	Budget *Money `json:"budget,omitempty,omitzero"`
 
 	// Buyer corresponds to the JSON schema field "buyer".
-	Buyer OrgRef `json:"buyer"`
+	Buyer *OrgRef `json:"buyer,omitempty,omitzero"`
 
 	// Classification corresponds to the JSON schema field "classification".
 	Classification PublicFactMetaClassification `json:"classification"`
@@ -867,6 +1077,9 @@ type Notice struct {
 	// 公告中显式引用的前序公告
 	RelatedNoticeIds []string `json:"related_notice_ids,omitempty,omitzero"`
 
+	// 结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人
+	ResultDetailsPending *bool `json:"result_details_pending,omitempty,omitzero"`
+
 	// RevisionRef corresponds to the JSON schema field "revision_ref".
 	RevisionRef string `json:"revision_ref"`
 
@@ -909,7 +1122,9 @@ const NoticeTypeIntent NoticeType = "intent"
 const NoticeTypeNegotiation NoticeType = "negotiation"
 const NoticeTypePlan NoticeType = "plan"
 const NoticeTypePrequalification NoticeType = "prequalification"
+const NoticeTypePriceLimit NoticeType = "price_limit"
 const NoticeTypeSingleSource NoticeType = "single_source"
+const NoticeTypeSupplierEnrollment NoticeType = "supplier_enrollment"
 const NoticeTypeTender NoticeType = "tender"
 const NoticeTypeTermination NoticeType = "termination"
 
@@ -1010,7 +1225,7 @@ type OrgChange struct {
 	ChangeType OrgChangeType `json:"change_type"`
 
 	// ChangedOn corresponds to the JSON schema field "changed_on".
-	ChangedOn Instant `json:"changed_on"`
+	ChangedOn *Instant `json:"changed_on,omitempty,omitzero"`
 
 	// Classification corresponds to the JSON schema field "classification".
 	Classification PublicFactMetaClassification `json:"classification"`
@@ -1056,6 +1271,9 @@ type OrgChange struct {
 	// StatusAfter corresponds to the JSON schema field "status_after".
 	StatusAfter *OrgStatus `json:"status_after,omitempty,omitzero"`
 
+	// StatusAfterProv corresponds to the JSON schema field "status_after_prov".
+	StatusAfterProv *Provenance `json:"status_after_prov,omitempty,omitzero"`
+
 	// Subject corresponds to the JSON schema field "subject".
 	Subject OrgRef `json:"subject"`
 
@@ -1076,6 +1294,20 @@ const OrgChangeTypeOther OrgChangeType = "other"
 const OrgChangeTypeScope OrgChangeType = "scope"
 const OrgChangeTypeStatus OrgChangeType = "status"
 
+type OrgChange_0 map[string]interface{}
+
+type OrgChange_1 map[string]interface{}
+
+type OrgChange_2 map[string]interface{}
+
+type OrgChange_3 map[string]interface{}
+
+type OrgChange_4 map[string]interface{}
+
+type OrgChange_5 map[string]interface{}
+
+type OrgChange_6 map[string]interface{}
+
 type OrgEnterpriseType string
 
 const OrgEnterpriseTypeBranch OrgEnterpriseType = "branch"
@@ -1093,6 +1325,9 @@ const OrgEnterpriseTypeStateOwned OrgEnterpriseType = "state_owned"
 
 // 组织引用：保留原文名称，解析结果引用 entity-graph 的组织
 type OrgRef struct {
+	// Address corresponds to the JSON schema field "address".
+	Address *Text `json:"address,omitempty,omitzero"`
+
 	// NameRaw corresponds to the JSON schema field "name_raw".
 	NameRaw string `json:"name_raw"`
 
@@ -1108,6 +1343,9 @@ type OrgRef struct {
 
 	// 统一社会信用代码（原文出现时）
 	Uscc *string `json:"uscc,omitempty,omitzero"`
+
+	// UsccProv corresponds to the JSON schema field "uscc_prov".
+	UsccProv *Provenance `json:"uscc_prov,omitempty,omitzero"`
 }
 
 // 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。
@@ -1154,6 +1392,10 @@ type OrgRegistration struct {
 	// LegalRepresentative corresponds to the JSON schema field
 	// "legal_representative".
 	LegalRepresentative *Person `json:"legal_representative,omitempty,omitzero"`
+
+	// LegalRepresentativeProv corresponds to the JSON schema field
+	// "legal_representative_prov".
+	LegalRepresentativeProv *Provenance `json:"legal_representative_prov,omitempty,omitzero"`
 
 	// Name corresponds to the JSON schema field "name".
 	Name Text `json:"name"`
@@ -1202,13 +1444,19 @@ type OrgRegistration struct {
 	SnapshotRef string `json:"snapshot_ref"`
 
 	// Status corresponds to the JSON schema field "status".
-	Status OrgStatus `json:"status"`
+	Status *OrgStatus `json:"status,omitempty,omitzero"`
+
+	// StatusProv corresponds to the JSON schema field "status_prov".
+	StatusProv *Provenance `json:"status_prov,omitempty,omitzero"`
 
 	// Subject corresponds to the JSON schema field "subject".
 	Subject OrgRef `json:"subject"`
 
 	// 统一社会信用代码
 	Uscc *string `json:"uscc,omitempty,omitzero"`
+
+	// UsccProv corresponds to the JSON schema field "uscc_prov".
+	UsccProv *Provenance `json:"uscc_prov,omitempty,omitzero"`
 
 	// 领域事实版本号
 	Version int `json:"version"`
@@ -1225,8 +1473,11 @@ type OrgShareholder struct {
 	// Person corresponds to the JSON schema field "person".
 	Person *Person `json:"person,omitempty,omitzero"`
 
-	// ShareRatio corresponds to the JSON schema field "share_ratio".
-	ShareRatio *Decimal `json:"share_ratio,omitempty,omitzero"`
+	// 0—1持股比例，原文百分数除以100
+	ShareRatio *string `json:"share_ratio,omitempty,omitzero"`
+
+	// ShareRatioProv corresponds to the JSON schema field "share_ratio_prov".
+	ShareRatioProv *Provenance `json:"share_ratio_prov,omitempty,omitzero"`
 
 	// SubscribedCapital corresponds to the JSON schema field "subscribed_capital".
 	SubscribedCapital *Money `json:"subscribed_capital,omitempty,omitzero"`
@@ -1260,6 +1511,48 @@ const ProcurementCategoryGoods ProcurementCategory = "goods"
 const ProcurementCategoryServices ProcurementCategory = "services"
 const ProcurementCategoryWorks ProcurementCategory = "works"
 
+// 公告与项目标包共用的带证据采购条件；只记录已确认的原文，不把模板未选项当成事实
+type ProcurementConditions struct {
+	// AgentParticipation corresponds to the JSON schema field "agent_participation".
+	AgentParticipation *Text `json:"agent_participation,omitempty,omitzero"`
+
+	// ConsortiumTerms corresponds to the JSON schema field "consortium_terms".
+	ConsortiumTerms *Text `json:"consortium_terms,omitempty,omitzero"`
+
+	// ContractPricing corresponds to the JSON schema field "contract_pricing".
+	ContractPricing *Text `json:"contract_pricing,omitempty,omitzero"`
+
+	// DeliveryLocation corresponds to the JSON schema field "delivery_location".
+	DeliveryLocation *Text `json:"delivery_location,omitempty,omitzero"`
+
+	// DeliveryPeriod corresponds to the JSON schema field "delivery_period".
+	DeliveryPeriod *Text `json:"delivery_period,omitempty,omitzero"`
+
+	// DocumentAccess corresponds to the JSON schema field "document_access".
+	DocumentAccess *Text `json:"document_access,omitempty,omitzero"`
+
+	// ImportedProducts corresponds to the JSON schema field "imported_products".
+	ImportedProducts *Text `json:"imported_products,omitempty,omitzero"`
+
+	// OpeningPlace corresponds to the JSON schema field "opening_place".
+	OpeningPlace *Text `json:"opening_place,omitempty,omitzero"`
+
+	// PaymentTerms corresponds to the JSON schema field "payment_terms".
+	PaymentTerms *Text `json:"payment_terms,omitempty,omitzero"`
+
+	// PlannedPublication corresponds to the JSON schema field "planned_publication".
+	PlannedPublication *Text `json:"planned_publication,omitempty,omitzero"`
+
+	// Scope corresponds to the JSON schema field "scope".
+	Scope *Text `json:"scope,omitempty,omitzero"`
+
+	// SmePolicy corresponds to the JSON schema field "sme_policy".
+	SmePolicy *Text `json:"sme_policy,omitempty,omitzero"`
+
+	// SubmissionPlace corresponds to the JSON schema field "submission_place".
+	SubmissionPlace *Text `json:"submission_place,omitempty,omitzero"`
+}
+
 type ProcurementMethod string
 
 const ProcurementMethodComparison ProcurementMethod = "comparison"
@@ -1272,6 +1565,7 @@ const ProcurementMethodInvitedTender ProcurementMethod = "invited_tender"
 const ProcurementMethodNegotiation ProcurementMethod = "negotiation"
 const ProcurementMethodOpenTender ProcurementMethod = "open_tender"
 const ProcurementMethodOther ProcurementMethod = "other"
+const ProcurementMethodSelection ProcurementMethod = "selection"
 const ProcurementMethodSingleSource ProcurementMethod = "single_source"
 
 // 同一采购项目的多条公告归并后的当前状态（领域项目聚合）。每个字段的 prov 指向其最新依据所在公告的证据；更正按 amendment.changes
@@ -1365,6 +1659,8 @@ type ProcurementProject struct {
 
 type ProcurementProjectStage string
 
+const ProcurementProjectStageAcceptanceFailed ProcurementProjectStage = "acceptance_failed"
+const ProcurementProjectStageAcceptancePending ProcurementProjectStage = "acceptance_pending"
 const ProcurementProjectStageAccepted ProcurementProjectStage = "accepted"
 const ProcurementProjectStageAmended ProcurementProjectStage = "amended"
 const ProcurementProjectStageAnnounced ProcurementProjectStage = "announced"
@@ -1374,6 +1670,8 @@ const ProcurementProjectStageContracted ProcurementProjectStage = "contracted"
 const ProcurementProjectStageEvaluating ProcurementProjectStage = "evaluating"
 const ProcurementProjectStageFailed ProcurementProjectStage = "failed"
 const ProcurementProjectStageIntent ProcurementProjectStage = "intent"
+const ProcurementProjectStagePartiallyAccepted ProcurementProjectStage = "partially_accepted"
+const ProcurementProjectStageShortlisted ProcurementProjectStage = "shortlisted"
 const ProcurementProjectStageTerminated ProcurementProjectStage = "terminated"
 
 type ProjectLot struct {
@@ -1390,6 +1688,9 @@ type ProjectLot struct {
 	// Candidates corresponds to the JSON schema field "candidates".
 	Candidates []BidResult `json:"candidates,omitempty,omitzero"`
 
+	// Conditions corresponds to the JSON schema field "conditions".
+	Conditions *ProcurementConditions `json:"conditions,omitempty,omitzero"`
+
 	// ConsortiumAllowed corresponds to the JSON schema field "consortium_allowed".
 	ConsortiumAllowed *bool `json:"consortium_allowed,omitempty,omitzero"`
 
@@ -1398,6 +1699,13 @@ type ProjectLot struct {
 
 	// 应用全部更正后的当前时间节点
 	Deadlines []Deadline `json:"deadlines,omitempty,omitzero"`
+
+	// Ending corresponds to the JSON schema field "ending".
+	Ending *EndingSection `json:"ending,omitempty,omitzero"`
+
+	// EstimatedContractAmount corresponds to the JSON schema field
+	// "estimated_contract_amount".
+	EstimatedContractAmount *Money `json:"estimated_contract_amount,omitempty,omitzero"`
 
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`
@@ -1411,6 +1719,9 @@ type ProjectLot struct {
 	// MaxPrice corresponds to the JSON schema field "max_price".
 	MaxPrice *Money `json:"max_price,omitempty,omitzero"`
 
+	// MaxPriceRate corresponds to the JSON schema field "max_price_rate".
+	MaxPriceRate *Rate `json:"max_price_rate,omitempty,omitzero"`
+
 	// Name corresponds to the JSON schema field "name".
 	Name *Text `json:"name,omitempty,omitzero"`
 
@@ -1418,18 +1729,33 @@ type ProjectLot struct {
 	// "procurement_category".
 	ProcurementCategory *ProcurementCategory `json:"procurement_category,omitempty,omitzero"`
 
+	// ProjectCode corresponds to the JSON schema field "project_code".
+	ProjectCode *Text `json:"project_code,omitempty,omitzero"`
+
+	// ProjectName corresponds to the JSON schema field "project_name".
+	ProjectName *Text `json:"project_name,omitempty,omitzero"`
+
+	// ProjectOwner corresponds to the JSON schema field "project_owner".
+	ProjectOwner *OrgRef `json:"project_owner,omitempty,omitzero"`
+
 	// Requirements corresponds to the JSON schema field "requirements".
 	Requirements []Requirement `json:"requirements,omitempty,omitzero"`
+
+	// ShortlistedSuppliers corresponds to the JSON schema field
+	// "shortlisted_suppliers".
+	ShortlistedSuppliers []BidResult `json:"shortlisted_suppliers,omitempty,omitzero"`
 
 	// Status corresponds to the JSON schema field "status".
 	Status *ProjectLotStatus `json:"status,omitempty,omitzero"`
 
-	// 中标或成交人；框架协议可有多个
+	// 实际中标/成交供应商，可多家；框架第一阶段入围另存shortlisted_suppliers
 	Winners []BidResult `json:"winners,omitempty,omitzero"`
 }
 
 type ProjectLotStatus string
 
+const ProjectLotStatusAcceptanceFailed ProjectLotStatus = "acceptance_failed"
+const ProjectLotStatusAcceptancePending ProjectLotStatus = "acceptance_pending"
 const ProjectLotStatusAccepted ProjectLotStatus = "accepted"
 const ProjectLotStatusAwarded ProjectLotStatus = "awarded"
 const ProjectLotStatusCandidatePublished ProjectLotStatus = "candidate_published"
@@ -1437,6 +1763,8 @@ const ProjectLotStatusContracted ProjectLotStatus = "contracted"
 const ProjectLotStatusEvaluating ProjectLotStatus = "evaluating"
 const ProjectLotStatusFailed ProjectLotStatus = "failed"
 const ProjectLotStatusOpen ProjectLotStatus = "open"
+const ProjectLotStatusPartiallyAccepted ProjectLotStatus = "partially_accepted"
+const ProjectLotStatusShortlisted ProjectLotStatus = "shortlisted"
 const ProjectLotStatusTerminated ProjectLotStatus = "terminated"
 
 // 字段溯源：证据位置、提取方法与置信度
@@ -1444,8 +1772,8 @@ type Provenance struct {
 	// Confidence corresponds to the JSON schema field "confidence".
 	Confidence float64 `json:"confidence"`
 
-	// EvidenceRef corresponds to the JSON schema field "evidence_ref".
-	EvidenceRef UlidId `json:"evidence_ref"`
+	// 只能引用 evidence 的 ev_ 标识，不接受其他类型标识
+	EvidenceRef string `json:"evidence_ref"`
 
 	// 解析器标识与版本
 	Extractor *string `json:"extractor,omitempty,omitzero"`
@@ -1545,6 +1873,21 @@ type Quantity struct {
 	Value Decimal `json:"value"`
 }
 
+// 百分比报价或限价；100 表示 100%，不得写入 money 或换算为项目总价
+type Rate struct {
+	// Basis corresponds to the JSON schema field "basis".
+	Basis *Text `json:"basis,omitempty,omitzero"`
+
+	// Prov corresponds to the JSON schema field "prov".
+	Prov Provenance `json:"prov"`
+
+	// Raw corresponds to the JSON schema field "raw".
+	Raw *string `json:"raw,omitempty,omitzero"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value string `json:"value"`
+}
+
 type Region struct {
 	// GB/T 2260 行政区划代码
 	Code string `json:"code"`
@@ -1556,9 +1899,38 @@ type Region struct {
 	Prov Provenance `json:"prov"`
 }
 
+// 内部可信边界的请求上下文；Base64URL无填充编码JSON；不接受外部请求提供的此头。
+type RequestContext struct {
+	// Cell corresponds to the JSON schema field "cell".
+	Cell *string `json:"cell,omitempty,omitzero"`
+
+	// Principal corresponds to the JSON schema field "principal".
+	Principal RequestContextPrincipal `json:"principal"`
+
+	// Purpose corresponds to the JSON schema field "purpose".
+	Purpose *string `json:"purpose,omitempty,omitzero"`
+
+	// 已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。
+	Tenant *string `json:"tenant,omitempty,omitzero"`
+}
+
+type RequestContextPrincipal struct {
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind RequestContextPrincipalKind `json:"kind"`
+}
+
+type RequestContextPrincipalKind string
+
+const RequestContextPrincipalKindService RequestContextPrincipalKind = "service"
+const RequestContextPrincipalKindServiceAccount RequestContextPrincipalKind = "service_account"
+const RequestContextPrincipalKindUser RequestContextPrincipalKind = "user"
+
 // 资格与技术要求
 type Requirement struct {
-	// 归一的资质或要求代码；无法归一时为 null
+	// 归一的资质或要求代码；无法归一时省略，不使用 null
 	Code *string `json:"code,omitempty,omitzero"`
 
 	// Id corresponds to the JSON schema field "id".

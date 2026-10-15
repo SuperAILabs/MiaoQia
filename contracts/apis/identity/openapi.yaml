@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: identity 内部接口
-  version: 0.1.0
+  version: 1.0.0
   description: >
     identity 子系统的内部接口（docs/03-architecture/subsystems/identity.md 第 5 节）。只在内部监听端口提供；
     请求上下文经 Miaoqia-Context 头传递，追踪上下文经 traceparent 头传递（约定见 docs/03-architecture/03-integration-contracts.md 第 2.2 节）。
@@ -13,7 +13,9 @@ paths:
     post:
       operationId: checkAuthorization
       summary: 授权决策（Check）
-      description: 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试。
+      description: 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。
+      x-timeout-ms: 5000
+      x-idempotent: true
       requestBody:
         required: true
         content:
@@ -57,10 +59,11 @@ components:
         allowed: { type: boolean }
     Problem:
       type: object
+      additionalProperties: false
       required: [type, title, status]
       properties:
         type: { type: string }
         title: { type: string }
-        status: { type: integer }
+        status: { type: integer, minimum: 400, maximum: 599 }
         detail: { type: string }
         code: { type: string, description: 稳定错误代码 }

@@ -19,7 +19,11 @@ for f in files:
         failed += 1
         continue
     try:
-        cls.model_validate(json.loads(f.read_text(encoding="utf-8")))
+        original = json.loads(f.read_text(encoding="utf-8"))
+        model = cls.model_validate(original)
+        encoded = json.loads(model.model_dump_json(exclude_unset=True))
+        if encoded != original:
+            raise ValueError("往返改变了字段或值")
     except Exception as e:  # noqa: BLE001
         print(f"✗ {f.name}：{str(e)[:300]}")
         failed += 1

@@ -1,0 +1,77 @@
+fixtures:
+- event: domain.fact.upserted.v1
+  base:
+    info_domain: INF-PROC
+    fact_id: ntc_00000000000000000000000000
+    changed_fields:
+    - /title
+    rights_tags:
+    - fixture-value
+    snapshot_ref: snp_00000000000000000000000000
+    revision_ref: exr_00000000000000000000000000
+    object_type: fixture-value
+    fact_version: 1
+    schema_version: 1.0.0
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /info_domain
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法fact_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /fact_id
+      value: bad_00000000000000000000000000
+- event: domain.aggregation.changed.v1
+  base:
+    info_domain: INF-PROC
+    changed_fields:
+    - /title
+    rights_tags:
+    - fixture-value
+    aggregation_id: ntc_00000000000000000000000000
+    aggregation_version: 1
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /info_domain
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法aggregation_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /aggregation_id
+      value: bad_00000000000000000000000000
+- event: domain.coverage.gap_detected.v1
+  base:
+    info_domain: INF-PROC
+    source_id: fixture-value
+    reason_code: fixture-value
+    query: fixture-value
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /info_domain
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass

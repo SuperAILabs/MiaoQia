@@ -16,6 +16,7 @@ from .fixtures import check_fixtures, export_valid
 from .generate import TARGETS, generate
 from .lint import lint_schemas, lint_yaml_keys
 from .packs import check_packs
+from .integration import check_integration
 from .repo import Repo, find_root
 from .report import Report
 
@@ -52,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
         yamls = sorted(list((repo.root / "contracts").rglob("*.yaml")) + list((repo.root / "packs").rglob("*.yaml")))
         stages = [("Schema 方言", lambda: lint_schemas(repo)), ("样例", lambda: check_fixtures(repo)),
                   ("事件契约", lambda: check_events(repo)), ("扩展包", lambda: check_packs(repo)),
+                  ("工程横切", lambda: check_integration(repo)),
                   ("YAML 键名", lambda: lint_yaml_keys(yamls, repo.root))]
         for name, stage in stages:
             try:

@@ -1,0 +1,113 @@
+fixtures:
+- event: acquisition.probe.emitted.v1
+  base:
+    probe_id: prb_00000000000000000000000000
+    hops:
+    - fixture-value
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /probe_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法probe_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /probe_id
+      value: bad_00000000000000000000000000
+- event: acquisition.fetch.completed.v1
+  base:
+    source_id: fixture-value
+    artifact_ref: fixture-value
+    rights_tags:
+    - fixture-value
+    content_hash: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    fetched_at: '2026-10-14T00:00:00Z'
+    source_url: https://example.org/notice
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /source_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+- event: acquisition.fetch.failed.v1
+  base:
+    source_id: fixture-value
+    source_url: https://example.org/notice
+    failed_at: '2026-10-14T00:00:00Z'
+    error_code: fixture-value
+    retryable: false
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /source_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+- event: acquisition.source.health_changed.v1
+  base:
+    source_id: fixture-value
+    before: healthy
+    after: healthy
+    reason_code: fixture-value
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /source_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+- event: acquisition.source.rights_changed.v1
+  base:
+    source_id: fixture-value
+    rights_version: 1
+    before:
+    - fixture-value
+    after:
+    - fixture-value
+    effective_at: '2026-10-14T00:00:00Z'
+    action: retain
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /source_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 撤回全部权利时有效集合为空
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: withdraw
+    - op: replace
+      path: /after
+      value: []

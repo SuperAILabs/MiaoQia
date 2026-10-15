@@ -1,10 +1,6 @@
 /* 由 tools/contracts（mqc generate）从 contracts/schemas 生成，请勿手改。 */
 
 /**
- * 类型化 ULID，前缀登记在 contracts/identifiers.yaml
- */
-export type UlidId = string;
-/**
  * 十进制字符串，避免浮点误差
  */
 export type Decimal = string;
@@ -57,7 +53,38 @@ export type CreditRecord = PublicFactMeta & {
   persons?: Person[];
   [k: string]: unknown;
 };
+/**
+ * 类型化 ULID，前缀登记在 contracts/identifiers.yaml
+ */
+export type UlidId = string;
 export type EvaluationMethod = "lowest_price" | "comprehensive_scoring" | "other";
+/**
+ * 原始制品稳定对象键/引用，不是短时签名URL
+ */
+export type EventArtifactRef = string;
+/**
+ * @minItems 1
+ */
+export type EventChangedFields = [string, ...string[]];
+export type EventEntityId = string;
+export type EventFactId = string;
+export type EventInfoDomain = string;
+export type EventOccurredAt = string;
+export type EventQualityStatus = "ok" | "warning" | "suspect";
+export type EventRelationshipId = string;
+export type EventRevisionRef = string;
+/**
+ * 有效权利集合；撤回全部权利时允许为空。与事实的溯源rights_tags不同。
+ */
+export type EventRightsSet = string[];
+/**
+ * @minItems 1
+ */
+export type EventRightsTags = [string, ...string[]];
+export type EventSha256 = string;
+export type EventSnapshotRef = string;
+export type EventSourceId = string;
+export type EventVersion = number;
 /**
  * 投资项目从备案核准到竣工的一条审批或许可记录。跨信息领域的投资项目实体（Project）由 entity-graph 拥有，本记录以 investment_project_id 引用。
  */
@@ -133,7 +160,7 @@ export type Notice = PublicFactMeta & {
    * 公告中显式引用的前序公告
    */
   related_notice_ids?: string[];
-  buyer: OrgRef;
+  buyer?: OrgRef;
   agency?: OrgRef;
   project_owner?: OrgRef;
   single_source_supplier?: OrgRef;
@@ -150,10 +177,15 @@ export type Notice = PublicFactMeta & {
   acceptance?: AcceptanceSection;
   ending?: EndingSection;
   contacts?: Contact[];
+  award_amount?: Money;
+  /**
+   * 结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人
+   */
+  result_details_pending?: boolean;
   [k: string]: unknown;
 };
 /**
- * 意向、计划、资格预审、招标、谈判、磋商、询价、单一来源公示、框架协议征集、更正、澄清、终止、候选人公示、中标/成交结果、流标/废标、合同、验收
+ * 意向、计划、资格预审、招标、谈判、磋商、询价、单一来源公示、框架协议征集、更正、澄清、终止、候选人公示、中标/成交结果、流标/废标、合同、验收、最高限价独立公告、供应商名录征集（不等同框架协议）
  */
 export type NoticeType =
   | "intent"
@@ -172,13 +204,15 @@ export type NoticeType =
   | "award"
   | "failure"
   | "contract"
-  | "acceptance";
+  | "acceptance"
+  | "price_limit"
+  | "supplier_enrollment";
 /**
  * 政府采购、依法必须招标的工程建设项目、国企自主采购
  */
 export type TradingSystem = "government_procurement" | "construction_bidding" | "soe_procurement";
 /**
- * 公开招标、邀请招标、竞争性谈判、竞争性磋商、询价、单一来源、框架协议、比选、直接采购、电商采购、其他
+ * 公开招标、邀请招标、竞争性谈判、竞争性磋商、询价、单一来源、框架协议、比选、直接采购、电商采购、其他、公开遴选
  */
 export type ProcurementMethod =
   | "open_tender"
@@ -191,7 +225,8 @@ export type ProcurementMethod =
   | "comparison"
   | "direct"
   | "e_mall"
-  | "other";
+  | "other"
+  | "selection";
 /**
  * 列入或移出经营异常名录（含严重违法失信名单）的记录。移出时在同一事实上产生新版本。
  */
@@ -215,12 +250,14 @@ export type OrgAbnormal = PublicFactMeta & {
  * 登记信息的一条变更记录。before / after 保留原文变更前后内容（含法定代表人、高管、自然人股东）；组织股东变化另以结构化方式记录。
  */
 export type OrgChange = PublicFactMeta & {
+  [k: string]: unknown;
+} & {
   info_domain: "INF-ORG";
   id: string;
   subject: OrgRef;
   change_type: OrgChangeType;
   change_item_raw?: Text;
-  changed_on: Instant;
+  changed_on?: Instant;
   before?: Text;
   after?: Text;
   status_after?: OrgStatus;
@@ -228,6 +265,7 @@ export type OrgChange = PublicFactMeta & {
   capital_after?: Money;
   org_shareholders_added?: OrgRef[];
   org_shareholders_removed?: OrgRef[];
+  status_after_prov?: Provenance;
   [k: string]: unknown;
 };
 export type OrgChangeType =
@@ -276,7 +314,7 @@ export type OrgRegistration = PublicFactMeta & {
   former_names?: Text[];
   enterprise_type?: OrgEnterpriseType;
   enterprise_type_raw?: Text;
-  status: OrgStatus;
+  status?: OrgStatus;
   established_on?: Instant;
   business_term?: DateRange;
   registered_capital?: Money;
@@ -291,6 +329,9 @@ export type OrgRegistration = PublicFactMeta & {
   shareholders?: OrgShareholder[];
   branches?: OrgRef[];
   parent?: OrgRef;
+  uscc_prov?: Provenance;
+  status_prov?: Provenance;
+  legal_representative_prov?: Provenance;
   [k: string]: unknown;
 };
 /**
@@ -309,7 +350,11 @@ export type ProcurementProject = PublicFactMeta & {
     | "failed"
     | "terminated"
     | "contracted"
-    | "accepted";
+    | "accepted"
+    | "shortlisted"
+    | "acceptance_failed"
+    | "partially_accepted"
+    | "acceptance_pending";
   trading_system?: TradingSystem;
   method?: ProcurementMethod;
   procurement_category?: ProcurementCategory;
@@ -344,6 +389,19 @@ export interface AcceptanceSection {
   contract_id?: string;
   accepted_at?: Instant;
   result?: "passed" | "partial" | "failed";
+  contract_code?: Text;
+  contract_name?: Text;
+  supplier?: OrgRef;
+  opinion?: Text;
+  result_prov?: Provenance;
+  scope?: Text;
+  dispute?: Text;
+  /**
+   * 裁判结论原文段落分别溯源；技术质量、合同解除及付款结论分别保留，不把当事人主张作为法院结论。
+   *
+   * @minItems 1
+   */
+  judicial_outcome?: [Text, ...Text[]];
 }
 export interface Instant {
   /**
@@ -358,7 +416,10 @@ export interface Instant {
  * 字段溯源：证据位置、提取方法与置信度
  */
 export interface Provenance {
-  evidence_ref: UlidId;
+  /**
+   * 只能引用 evidence 的 ev_ 标识，不接受其他类型标识
+   */
+  evidence_ref: string;
   method: "rule" | "model" | "manual";
   confidence: number;
   /**
@@ -366,11 +427,30 @@ export interface Provenance {
    */
   extractor?: string;
 }
+export interface Text {
+  value: string;
+  prov: Provenance;
+}
+/**
+ * 组织引用：保留原文名称，解析结果引用 entity-graph 的组织
+ */
+export interface OrgRef {
+  name_raw: string;
+  org_id?: string;
+  /**
+   * 统一社会信用代码（原文出现时）
+   */
+  uscc?: string;
+  resolution_confidence?: number;
+  prov: Provenance;
+  address?: Text;
+  uscc_prov?: Provenance;
+}
 export interface AmendmentSection {
   /**
-   * @minItems 1
+   * 已解析的前序公告标识；暂未归并时允许为空，保留 original_reference 并进入复核，不伪造标识
    */
-  amends_notice_ids: [string, ...string[]];
+  amends_notice_ids: string[];
   changes: {
     id: string;
     /**
@@ -381,6 +461,8 @@ export interface AmendmentSection {
     after?: unknown;
     prov: Provenance;
   }[];
+  original_reference?: Text;
+  summary?: Text;
 }
 export interface Attachment {
   name: string;
@@ -403,24 +485,25 @@ export interface BidResult {
   id: string;
   stage: "opening" | "candidate" | "award";
   bidder: OrgRef;
-  consortium_members?: OrgRef[];
+  /**
+   * @minItems 1
+   */
+  consortium_members?: [OrgRef, ...OrgRef[]];
   rank?: number;
   is_winner?: boolean;
   price?: Money;
   score?: number;
-}
-/**
- * 组织引用：保留原文名称，解析结果引用 entity-graph 的组织
- */
-export interface OrgRef {
-  name_raw: string;
-  org_id?: string;
+  price_rate?: Rate;
   /**
-   * 统一社会信用代码（原文出现时）
+   * 普通中标或框架第一阶段入围；入围不代表第二阶段成交/签约
    */
-  uscc?: string;
-  resolution_confidence?: number;
-  prov: Provenance;
+  result_kind?: "contract_award" | "framework_shortlist";
+  consortium_lead?: OrgRef;
+  /**
+   * 报价金额含义；年单价合计、单价和估算额不得当项目总成交额
+   */
+  price_kind?: "total" | "unit" | "annual_unit_sum" | "estimated_total";
+  price_kind_prov?: Provenance;
 }
 export interface Money {
   value: Decimal;
@@ -433,6 +516,15 @@ export interface Money {
    * 是否含税；原文未说明时不出现
    */
   tax_included?: boolean;
+  prov: Provenance;
+}
+/**
+ * 百分比报价或限价；100 表示 100%，不得写入 money 或换算为项目总价
+ */
+export interface Rate {
+  value: string;
+  raw?: string;
+  basis?: Text;
   prov: Provenance;
 }
 /**
@@ -483,13 +575,17 @@ export interface Category {
   confidence?: number;
 }
 /**
- * 公告中的联系人。按公开数据处理，供客户业务联系使用
+ * 公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略
  */
 export interface Contact {
-  role: "buyer" | "agency" | "other";
+  role: "buyer" | "agency" | "other" | "project_owner" | "technical_support" | "supervisor";
   name?: string;
   phone?: string;
   email?: string;
+  organization?: OrgRef;
+  name_prov?: Provenance;
+  phone_prov?: Provenance;
+  email_prov?: Provenance;
 }
 export interface ContractSection {
   id: string;
@@ -499,6 +595,32 @@ export interface ContractSection {
   signed_at?: Instant;
   term_start?: Instant;
   term_end?: Instant;
+  code?: Text;
+  name?: Text;
+  /**
+   * 原文明确金额语义时填写；最高合同金额不得当作实际成交额
+   */
+  amount_kind?: "total" | "ceiling" | "estimated";
+  conditions?: ProcurementConditions;
+  amount_kind_prov?: Provenance;
+}
+/**
+ * 公告与项目标包共用的带证据采购条件；只记录已确认的原文，不把模板未选项当成事实
+ */
+export interface ProcurementConditions {
+  scope?: Text;
+  delivery_period?: Text;
+  delivery_location?: Text;
+  payment_terms?: Text;
+  document_access?: Text;
+  submission_place?: Text;
+  opening_place?: Text;
+  consortium_terms?: Text;
+  sme_policy?: Text;
+  imported_products?: Text;
+  agent_participation?: Text;
+  contract_pricing?: Text;
+  planned_publication?: Text;
 }
 /**
  * 公共域领域事实的通用字段（数据架构第 5、7 节）
@@ -535,10 +657,6 @@ export interface Quality {
     message?: string;
   }[];
 }
-export interface Text {
-  value: string;
-  prov: Provenance;
-}
 export interface DateRange {
   from?: Instant;
   to?: Instant;
@@ -556,7 +674,17 @@ export interface Person {
 export interface Deadline {
   id: string;
   type:
-    "registration_end" | "doc_obtain_end" | "clarification_end" | "bid_submission" | "bid_opening" | "publicity_end";
+    | "registration_end"
+    | "doc_obtain_end"
+    | "clarification_end"
+    | "bid_submission"
+    | "bid_opening"
+    | "publicity_end"
+    | "registration_start"
+    | "doc_obtain_start"
+    | "bid_bond_end"
+    | "site_visit"
+    | "clarification_meeting";
   at: Instant;
 }
 /**
@@ -569,6 +697,32 @@ export interface EndingSection {
    */
   lot_keys?: string[];
   reason?: Text;
+}
+/**
+ * 妙洽CloudEvents 1.0结构化JSON配置；时间和对象载荷为本平台必填；未知信封字段拒绝，空域字段省略。
+ */
+export interface EventEnvelope {
+  specversion: "1.0";
+  id: string;
+  source: string;
+  type: string;
+  time: string;
+  subject?: string;
+  datacontenttype: "application/json";
+  dataschema?: string;
+  miaoqiazone: "public" | "tenant" | "platform";
+  /**
+   * 已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。
+   */
+  miaoqiatenant?: string;
+  miaoqiacell?: string;
+  traceparent?: string;
+  /**
+   * 由对应AsyncAPI消息Schema校验；信封Schema仅要求对象。
+   */
+  data: {
+    [k: string]: unknown;
+  };
 }
 /**
  * 可被引用的证据片段：指向某个快照在某个处理管线版本下的规范化文档中的一个位置。由 evidence 分配 ev_ 标识；字段溯源（provenance.evidence_ref）与研究报告引用都指向它。
@@ -659,6 +813,13 @@ export interface LotSection {
   bond_guarantee_accepted?: boolean;
   evaluation_method?: EvaluationMethod;
   bid_results?: BidResult[];
+  conditions?: ProcurementConditions;
+  max_price_rate?: Rate;
+  project_name?: Text;
+  project_code?: Text;
+  project_owner?: OrgRef;
+  estimated_contract_amount?: Money;
+  ending?: EndingSection;
 }
 /**
  * 资格与技术要求
@@ -677,7 +838,7 @@ export interface Requirement {
     | "technical"
     | "other";
   /**
-   * 归一的资质或要求代码；无法归一时为 null
+   * 归一的资质或要求代码；无法归一时省略，不使用 null
    */
   code?: string;
   text: Text;
@@ -711,8 +872,12 @@ export interface OrgShareholder {
   kind: "organization" | "natural_person";
   org?: OrgRef;
   person?: Person;
-  share_ratio?: Decimal;
+  /**
+   * 0—1持股比例，原文百分数除以100
+   */
+  share_ratio?: string;
   subscribed_capital?: Money;
+  share_ratio_prov?: Provenance;
 }
 export interface ProjectLot {
   id: string;
@@ -730,12 +895,46 @@ export interface ProjectLot {
   consortium_allowed?: boolean;
   authorization_required?: boolean;
   status?:
-    "open" | "evaluating" | "candidate_published" | "awarded" | "failed" | "terminated" | "contracted" | "accepted";
+    | "open"
+    | "evaluating"
+    | "candidate_published"
+    | "awarded"
+    | "failed"
+    | "terminated"
+    | "contracted"
+    | "accepted"
+    | "shortlisted"
+    | "acceptance_failed"
+    | "partially_accepted"
+    | "acceptance_pending";
   candidates?: BidResult[];
   /**
-   * 中标或成交人；框架协议可有多个
+   * 实际中标/成交供应商，可多家；框架第一阶段入围另存shortlisted_suppliers
    */
   winners?: BidResult[];
   award_amount?: Money;
   contract_ids?: string[];
+  conditions?: ProcurementConditions;
+  max_price_rate?: Rate;
+  project_name?: Text;
+  project_code?: Text;
+  project_owner?: OrgRef;
+  estimated_contract_amount?: Money;
+  ending?: EndingSection;
+  shortlisted_suppliers?: BidResult[];
+}
+/**
+ * 内部可信边界的请求上下文；Base64URL无填充编码JSON；不接受外部请求提供的此头。
+ */
+export interface RequestContext {
+  principal: {
+    id: string;
+    kind: "user" | "service" | "service_account";
+  };
+  /**
+   * 已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。
+   */
+  tenant?: string;
+  cell?: string;
+  purpose?: string;
 }

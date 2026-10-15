@@ -1,7 +1,7 @@
 """扩展包一致性检查：packs/ 中的声明与 contracts/ 对齐。
 
 信息领域包：
-  P1  pack.yaml 声明的 Schema 与事件文件存在
+  P1  pack.yaml 声明的 Schema、事件文件与领域校验入口存在且合规；含代码的包必须登记领域校验入口
   P2  生命周期状态机的状态与触发值都取自所引用 Schema 的枚举，所有状态可到达
 应用领域包（策略，语义见 docs/03-architecture/11-policy-dsl.md）：
   P0  模板文件符合 contracts/policy/policy.schema.json
@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -20,7 +21,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from .events import event_names
-from .repo import Repo, load_yaml
+from .repo import Repo, find_root, load_yaml
 from .report import Report
 
 W = r"([A-Za-z0-9_]+)"
@@ -42,6 +43,20 @@ def _enum_at(repo: Repo, schema_rel: str, field: str) -> set[str] | None:
     return set(node.get("enum", []))
 
 
+_ENTRYPOINTS = None
+
+
+def _entrypoints():
+    """入口登记规则唯一定义在 SDK；从当前检出按文件路径加载（与 tools/dev/gen_local.py 加载 kernel 同法），契约工具不依赖 SDK 包。"""
+    global _ENTRYPOINTS
+    if _ENTRYPOINTS is None:
+        source = find_root() / "data/sdk/src/miaoqia/sdk/entrypoints.py"
+        spec = importlib.util.spec_from_file_location("mq_sdk_entrypoints", source)
+        _ENTRYPOINTS = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_ENTRYPOINTS)
+    return _ENTRYPOINTS
+
+
 def check_information_pack(repo: Repo, pack_dir: Path) -> Report:
     r = Report()
     where = str(pack_dir.relative_to(repo.root))
@@ -52,6 +67,13 @@ def check_information_pack(repo: Repo, pack_dir: Path) -> Report:
             r.error(where, f"P1 Schema 不存在：{sp}")
     if "events" in prov and not (repo.root / prov["events"]).exists():
         r.error(where, f"P1 事件文件不存在：{prov['events']}")
+    if "semantic_validator" in prov:
+        try:
+            _entrypoints().resolve_semantic_validator(pack_dir, prov["semantic_validator"])
+        except ValueError as exc:
+            r.error(where, f"P1 {exc}")
+    elif (pack_dir / "src").exists():
+        r.error(where, "P1 代码型领域包必须登记semantic_validator")
     if "lifecycle" in prov:
         lc = load_yaml(pack_dir / prov["lifecycle"])["lifecycle"]
         states = _enum_at(repo, lc["schema"], lc["field"])
@@ -61,7 +83,16 @@ def check_information_pack(repo: Repo, pack_dir: Path) -> Report:
             return r
         reached, used = set(), set()
         for t in lc["initial"]:
+            if t["to"] not in states:
+                r.error(where, f"P2 初始状态 {t['to']} 不在 {lc['field']} 枚举中")
             reached.add(t["to"]); used |= set(t["trigger"])
+        conditions = [t.get("when", {}) for t in lc["initial"] + lc["transitions"]]
+        conditions.append(lc.get("current_projection_filter", {}))
+        for condition in conditions:
+            try:
+                Draft202012Validator.check_schema(condition)
+            except Exception as exc:  # noqa: BLE001 契约条件错误应报告
+                r.error(where, f"P2 生命周期when不是有效JSON Schema：{exc}")
         for t in lc["transitions"]:
             fr = t["from"] if isinstance(t["from"], list) else [t["from"]]
             for s in fr + [t["to"]]:

@@ -1,0 +1,29 @@
+fixtures:
+- event: operations.probe.requested.v1
+  base:
+    probe_id: prb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    requested_at: '2026-10-14T08:00:00Z'
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /probe_id
+  - name: 未知字段拒绝
+    valid: false
+    patch:
+    - op: add
+      path: /secret
+      value: credential-placeholder
+  - name: 无效时间
+    valid: false
+    patch:
+    - op: replace
+      path: /requested_at
+      value: not-a-time
+  - name: 其他对象标识不能冒充探针
+    valid: false
+    patch:
+    - op: replace
+      path: /probe_id
+      value: evt_01JA8ZXXXXXXXXXXXXXXXXXXX1

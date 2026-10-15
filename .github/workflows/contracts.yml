@@ -5,11 +5,15 @@ on:
   pull_request:
     paths:
       - "contracts/**"
+      - "tests/contract/**"
       - "packs/**"
       - "tools/contracts/**"
+      - "tools/dev/**"
       - "services/contracts/**"
       - "services/go.mod"
       - "data/contracts/**"
+      - "data/sdk/**"
+      - "data/kernel/src/miaoqia/kernel/scopes.py"
       - "data/pyproject.toml"
       - "data/uv.lock"
       - "web/packages/contracts/**"
@@ -17,7 +21,6 @@ on:
       - ".github/workflows/contracts.yml"
       - "docs/03-architecture/subsystems/README.md"
       - "deploy/**"
-      - "tools/dev/**"
   push:
     branches: [main]
 
@@ -62,23 +65,28 @@ jobs:
         run: pnpm --dir web install --frozen-lockfile
 
       - name: 子系统清单、本地数据库与进程角色与子系统索引一致
-        run: uv run --project tools/contracts --locked python tools/dev/gen_local.py --check
+        run: uv run --project tools/contracts --python 3.12 --locked python tools/dev/gen_local.py --check
 
       - name: 契约工具自测
-        run: uv run --project tools/contracts --locked --group dev pytest -q tools/contracts/tests
+        run: uv run --project tools/contracts --python 3.12 --locked --group dev pytest -q tools/contracts/tests
 
       - name: 契约检查（Schema 方言、样例、事件、扩展包、YAML 键名）
-        run: uv run --project tools/contracts --locked mqc check
+        run: uv run --project tools/contracts --python 3.12 --locked mqc check
 
       - name: 兼容性检查（与目标分支比较）
         if: github.event_name == 'pull_request'
-        run: uv run --project tools/contracts --locked mqc compat --base "origin/${{ github.base_ref }}" -v
+        run: uv run --project tools/contracts --python 3.12 --locked mqc compat --base "origin/${{ github.base_ref }}" -v
 
       - name: 生成物与契约一致
-        run: uv run --project tools/contracts --locked mqc generate --check
+        run: uv run --project tools/contracts --python 3.12 --locked mqc generate --check
 
       - name: 导出正例
-        run: uv run --project tools/contracts --locked mqc fixtures --export "$RUNNER_TEMP/fixtures"
+        run: uv run --project tools/contracts --python 3.12 --locked mqc fixtures --export "$RUNNER_TEMP/fixtures"
+
+      - name: 真实原件人工映射与三语言往返正例
+        run: |
+          uv run --project data --locked --package miaoqia-sdk mq-corpus check packs/information_domains/procurement/corpus --reviewed --schema domains/procurement/notice.schema.json --export "$RUNNER_TEMP/fixtures"
+          uv run --project data --locked --package miaoqia-sdk mq-corpus check packs/information_domains/organizations/corpus --reviewed --schema domains/organization/registration.schema.json --schema domains/organization/change.schema.json --schema domains/organization/abnormal.schema.json --export "$RUNNER_TEMP/fixtures"
 
       - name: Go：编译、静态检查与往返测试
         working-directory: services

@@ -1,0 +1,6 @@
+version: 1.0.0
+definition: kernel.sql
+copies:
+- services/kernel/db/kernel.sql
+- data/kernel/src/miaoqia/kernel/kernel.sql
+compatibility: 稳定版本的表结构变化须审查迁移、已有行和账号权限；CREATE IF NOT EXISTS不执行已有表升级。

@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/common/event-types.schema.json",
+  "x-version": "1.0.0",
+  "title": "公共事件载荷原语",
+  "description": "公共数据事件复用的引用与值域；信封仍由集成契约定义。制品引用只传稳定对象键，不传签名URL或凭据。",
+  "$defs": {
+    "source_id": {
+      "type": "string",
+      "minLength": 1,
+      "x-type-name": "EventSourceId"
+    },
+    "artifact_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "原始制品稳定对象键/引用，不是短时签名URL",
+      "x-type-name": "EventArtifactRef"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-type-name": "EventSha256"
+    },
+    "rights_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "x-type-name": "EventRightsTags"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "x-type-name": "EventVersion"
+    },
+    "changed_fields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(/([^~]|~[01])*)+$"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "x-type-name": "EventChangedFields"
+    },
+    "info_domain": {
+      "type": "string",
+      "pattern": "^INF-[A-Z]+$",
+      "x-type-name": "EventInfoDomain"
+    },
+    "fact_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^ogr_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^ogc_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^oga_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^crd_[0-9A-HJKMNP-TV-Z]{26}$"
+        }
+      ],
+      "x-type-name": "EventFactId"
+    },
+    "entity_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$"
+        }
+      ],
+      "x-type-name": "EventEntityId"
+    },
+    "snapshot_ref": {
+      "type": "string",
+      "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$",
+      "x-type-name": "EventSnapshotRef"
+    },
+    "revision_ref": {
+      "type": "string",
+      "pattern": "^exr_[0-9A-HJKMNP-TV-Z]{26}$",
+      "x-type-name": "EventRevisionRef"
+    },
+    "relationship_id": {
+      "type": "string",
+      "pattern": "^rel_[0-9A-HJKMNP-TV-Z]{26}$",
+      "x-type-name": "EventRelationshipId"
+    },
+    "quality_status": {
+      "enum": [
+        "ok",
+        "warning",
+        "suspect"
+      ],
+      "x-type-name": "EventQualityStatus"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-type-name": "EventOccurredAt"
+    },
+    "rights_set": {
+      "x-type-name": "EventRightsSet",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "有效权利集合；撤回全部权利时允许为空。与事实的溯源rights_tags不同。"
+    }
+  }
+}

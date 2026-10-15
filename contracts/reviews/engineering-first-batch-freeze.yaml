@@ -1,0 +1,287 @@
+status: frozen
+batch: C4a-engineering-cross-cutting
+version: 1.0.0
+frozen_at: '2026-10-14T16:05:53.342820+00:00'
+approval:
+  authority: 用户已授权审查、修复、同步文档，满足条件后冻结；本轮全部明确门禁通过
+  statement: 继续审查并补齐 C4a 工程横切契约，完善正反例和兼容性验证，修复发现的问题并同步更新相关文档，满足条件后冻结。
+files:
+- path: contracts/identifiers.yaml
+  sha256: d5624dad763d19d600bf893c7615ef85fba644e09fe9e12aa6d3741c9065901c
+  version: 1.0.0
+- path: contracts/storage/kernel.sql
+  sha256: 809063a3500ac0dfe1af5038a71549318343221622276c61f9aae1fdf45998fa
+  version: 1.0.0
+  version_owner: contracts/storage/kernel.yaml
+- path: contracts/storage/kernel.yaml
+  sha256: 8f142a5ad74fa5a2fa2c0edcd28c3e78e0b842af96a4a691a33d279c3d7f4dcf
+  version: 1.0.0
+- path: contracts/integration.yaml
+  sha256: b20cba95c6e3f388334b486349a011adad0f56060c7ee83693cefb8d30e4a939
+  version: 1.0.0
+- path: contracts/schemas/integration/request-context.schema.json
+  sha256: d80d9a1dc2a7d9d5b555126d711a5dde6413c34b5f64b1eed5847427239991ed
+  version: 1.0.0
+- path: contracts/schemas/integration/event-envelope.schema.json
+  sha256: b51c4e8eb3c488197b826c09d7cf505e0374c1a4e84a631b558d413cf850cfb6
+  version: 1.0.0
+- path: contracts/apis/identity/openapi.yaml
+  sha256: 12a1bbabc1096b328d4eaa3e77daf559c515d94d449e5afd1d4198d64ae0c509
+  version: 1.0.0
+- path: contracts/events/audit/events.asyncapi.yaml
+  sha256: 00627d5e7dbad0b2304bd85ec2d4898adfd7817c36165ff8488574ba3ff6a130
+  version: 1.0.0
+- path: contracts/events/operations/events.asyncapi.yaml
+  sha256: b52e60de47656a1cb22a610ae63dea2c49bc56212465a30e379a631895ff6ced
+  version: 1.0.0
+reused_frozen_dependencies:
+- path: contracts/events/acquisition/events.asyncapi.yaml
+  sha256: 2ed1ee3c1e313cabaa5dadbdc252dfe090759a68ffa1ff4336a215eef11c029f
+  version: 1.0.0
+  baseline: contracts/reviews/first-batch-freeze.yaml
+- path: contracts/events/evidence/events.asyncapi.yaml
+  sha256: 6056f634664d9f237a73850f20831b653d5562b5d8351cc111538ef619806e33
+  version: 1.0.0
+  baseline: contracts/reviews/first-batch-freeze.yaml
+- path: contracts/schemas/common/event-types.schema.json
+  sha256: f6ffb145c1779140f1e73ddc1a1662e145063a9f0f25b168be26641945b644df
+  version: 1.0.0
+  baseline: contracts/reviews/first-batch-freeze.yaml
+fixture_artifacts:
+- path: contracts/tests/integration.event-envelope.json
+  sha256: 1f66554aeacb9d253be3ec367a4df4df28050a19debf2846baffc5063cecb841
+- path: contracts/tests/integration.request-context.json
+  sha256: 4a73423b3bbd25aee2b06ca0002d75843d5b73f627c1c2ef3a1264dfa56052ab
+- path: contracts/apis/identity/fixtures.yaml
+  sha256: 229440d3680ef9137b323feb4f8a5bf37cd608d36fd5bf31a5d4f18b58204850
+- path: contracts/events/audit/fixtures.yaml
+  sha256: 5d81a150ecee7c985c1dab48a1786e6c94d4d224ea98224406339d0cc39b1112
+- path: contracts/events/operations/fixtures.yaml
+  sha256: c35352cbc1236211acb744557e35d8eaf1cff42e36b2116e00e38489c2d3104f
+- path: contracts/events/acquisition/fixtures.yaml
+  sha256: ebcb8ff23e18b65dd50cb0f260fda36f80c5b659df985c7205c119034f3946ef
+- path: contracts/events/evidence/fixtures.yaml
+  sha256: 928a86f855a052220342bb8863b0adea601c1402a81b1fbce50e03c2d5ed3cce
+supporting_artifacts:
+- path: services/kernel/reqctx/reqctx.go
+  sha256: 90a450d50cbe3677ea23bd4a47232d18b5ad1ec14ef70afaad0165c182a204b4
+- path: services/kernel/reqctx/contract_test.go
+  sha256: 2f177b3505dedbbe1c22b308efd997afd545ad7fc237d1ac8509962e03c40ce0
+- path: services/kernel/outbox/outbox.go
+  sha256: b750374aec24aad912b01bd8f7a7fdff25eaa9c030ced59ec2169b33d97e5cc7
+- path: services/kernel/outbox/outbox_test.go
+  sha256: 76958c1cf143dda95589586953799cb119c54e50c8d329f3304234f4828c00df
+- path: services/kernel/outbox/contract_test.go
+  sha256: 8152736edb542ec0f3e26dbbbf4bbe028e5eba3e130f9088c745f35f0239a98f
+- path: services/kernel/consumer/consumer.go
+  sha256: 08f64ed087cd65cc03508504080a132fb386aa90efd874957edce83142200500
+- path: services/kernel/binding/binding.go
+  sha256: d758d28d739e2e696feec5601544cadb4ea1f61d76a3b11fd0d8da075e74b1ae
+- path: services/kernel/authz/authz.go
+  sha256: d8467ed1936a3e71b0728a1ba3dbb929f9e3a43bac900ba04840e49384ff732a
+- path: services/kernel/db/db.go
+  sha256: e78ce6366a28c02f4467917773f8de0fd339dcfb12c5860499f2fd8fc54f2917
+- path: services/kernel/db/db_test.go
+  sha256: 7d18d2f44bc560c3eee033bb6a52443da4e223d8f052ea4ad059acefa7c3e7fd
+- path: services/kernel/db/kernel.sql
+  sha256: 809063a3500ac0dfe1af5038a71549318343221622276c61f9aae1fdf45998fa
+- path: services/subsystems/identity/identity.go
+  sha256: c1fc7d41a5db619cfc1a0962df0f2cfd654558eba5078adb18c9c95ee4228226
+- path: services/subsystems/identity/internal/app/decider.go
+  sha256: 3c2f48b0c8b174066bd7dfb84be0517f03cebc83402bdebc9f1c9c72ba24e878
+- path: services/subsystems/identity/internal/app/server.go
+  sha256: a9550a20753874660199c450332f9cbc9646fb517c880aa19f3c5aabca9de389
+- path: services/subsystems/identity/contract_test.go
+  sha256: cdddd963ec59c1d841722f2e8bed009a7a6a140581d48ebc7996969c08f6a0bd
+- path: services/subsystems/identity/api/apitest/apitest.go
+  sha256: 6eaef39d7658909ca7bfeaab3b7be711f8079192fd48b0408a35f57b3c64793f
+- path: services/subsystems/identity/matrix_test.go
+  sha256: f408b1983c5d59568d135f428e49aeda94ef7e27cc5f09fb73cab4c493c380d4
+- path: data/kernel/src/miaoqia/kernel/reqctx.py
+  sha256: 4c70308e9d40f481b7dc72117adcdaa68faa81c8b350e507a3557592bdc06cac
+- path: data/kernel/src/miaoqia/kernel/outbox.py
+  sha256: 73a5d87ee2d3bdc2b2e206dcb3bd0224772eed9d79daeab6bb11e27579c8f717
+- path: data/kernel/src/miaoqia/kernel/consumer.py
+  sha256: bbd866087b8c8ab196beaaf64adc85bb110d2ddb1bb99837573d15393e73618f
+- path: data/kernel/src/miaoqia/kernel/db.py
+  sha256: 9e59aa2ed76a05efcebbbb378a976058c3e35b8c13c2a2e709d459009c0ea004
+- path: data/kernel/src/miaoqia/kernel/kernel.sql
+  sha256: 809063a3500ac0dfe1af5038a71549318343221622276c61f9aae1fdf45998fa
+- path: data/kernel/tests/test_contracts.py
+  sha256: f296a074be1d127dcd8fd114879b12a6e6ae3b85d240225adb39488f7d31f567
+- path: data/contracts/tests/roundtrip.py
+  sha256: a4245a0f8d934dfc92b68d1f9733656fa87e1aa0bee98fe2312cbef0d0e63779
+- path: services/contracts/roundtrip_test.go
+  sha256: 200154514fa56154b8474194977330f44b8053b4fc3b69a02ecb922bce57cbeb
+- path: services/contracts/contracts_gen.go
+  sha256: 4e6482330c6da52bd09345c7276903b647b75c707b73d076523fadc06d7d8620
+- path: data/contracts/src/miaoqia/contracts/models.py
+  sha256: 6127b637d046ef7f2a37dc69aed036396a82c0a5e2ba86bcae80ff7e245b193f
+- path: web/packages/contracts/src/index.ts
+  sha256: f7e03c12a0a14ddcf50872668dd5ecc3b8df5a79dd9f2d21c3fc9595b7f5e9aa
+- path: tools/contracts/src/mqc/integration.py
+  sha256: 59e712e39eb74d9333701a4bc4e460fc20efa488b65e22e99af0c162263c6adf
+- path: tools/contracts/src/mqc/compat.py
+  sha256: 43182d9df3d389c2085152447c87fde3913aa613c3b8f2ca8a3e6a7228e432b1
+- path: tools/contracts/src/mqc/fixtures.py
+  sha256: cfb13848c54ac9c395a1c37b6e23c0746f5a8cd79347bb91d482bbd178c9bcc3
+- path: tools/contracts/src/mqc/cli.py
+  sha256: 93bb058e87d914a4f2e879fd0905bf15ce501b56c7b2c7112a075e6b11d96df4
+- path: tools/contracts/tests/test_check.py
+  sha256: 883696caa35e4fd1323cf3c81d67149611c26df7220bc80d30f7ecc7010260b3
+- path: tools/contracts/tests/test_compat.py
+  sha256: 1320437183d1de96b30708ff0fbc5017422f028fc5d2dc7eb00aaff94d81c2a8
+- path: tools/contracts/pyproject.toml
+  sha256: f11d789a422f382b3b8552d02a45d91e4b85794477afa28a3520525fc5556889
+- path: tools/contracts/uv.lock
+  sha256: 764c865e3cc8594bf30ce90d88d578ad47c041e977493566b529261984f30356
+- path: data/sdk/pyproject.toml
+  sha256: 68bfdaa72d9e87ed3290b1e47af550036006b6ea2c5f50ea1593015442a102a4
+- path: data/uv.lock
+  sha256: 8c0078f6a53a6d1bb267ee5b926e9b6127a22fb0fc892d44f0489f629d6d2777
+- path: .github/workflows/contracts.yml
+  sha256: 17c00f1e926528e2fd288797de31bca209e6c2f028e8eec28a4e8a8ac5641c25
+- path: .github/workflows/services.yml
+  sha256: 437b9cb080a2efcac6ab3d004dc930679997351ddb69c2e99681eb7c99bf3323
+- path: .github/workflows/data.yml
+  sha256: 49aa065c54ee9a919a07b39e1b5ff6f3adbbbf3affe9e9f75128eaceda7c2bf0
+- path: docs/03-architecture/03-integration-contracts.md
+  sha256: db5f6247b0afd65dd1335a5acb4722f702a5a73c7ef02be28ec7b47dca80dc61
+- path: docs/03-architecture/09-codebase-structure.md
+  sha256: 1964222254e5ad016c9b2bb3af14aebe21cb19f58fdadede175999064cddead5
+- path: docs/03-architecture/subsystems/identity.md
+  sha256: 17ef0652bb570c9db4c479684fa39d7fa2deb45d3ab010f5b37f13e50ac69e05
+- path: docs/03-architecture/13-contract-readiness.md
+  sha256: 199e6a5b3e22feba1686d1d9836f67fb3c89d62f41464803b459230fef20d0b6
+- path: docs/05-delivery/00-initiation-readiness.md
+  sha256: e7f4bba56815ac76880dc34dc4eea8102091c1a6d3e96cbf07e76e4520115281
+- path: services/contracts/apis/identity/oas_cfg_gen.go
+  sha256: 7d33ff6bf3a3adf45d494c386c90b9cff1ae769be2364dc49c3eec59887a8e8d
+- path: services/contracts/apis/identity/oas_client_gen.go
+  sha256: 443cd87fe73d08fd8b2aa370b4089bed1f42586d475b24190649889ec8d0392b
+- path: services/contracts/apis/identity/oas_handlers_gen.go
+  sha256: c9ff770e6b5d1a150561248fc88ab1f4376c0b272fdc41dfa942faa06a98ed3b
+- path: services/contracts/apis/identity/oas_json_gen.go
+  sha256: a389e6f2a875996b8876a247d0d6fcebda6fec1d17cb35485c693f0c77da1649
+- path: services/contracts/apis/identity/oas_labeler_gen.go
+  sha256: 303f1f645c6c6018fb13d6541cb761e4117e5ce8165676a2acd9c16ed5b9a0f6
+- path: services/contracts/apis/identity/oas_middleware_gen.go
+  sha256: 26f16f828856b04a156453bd56472fc261b40b212be38f7b19f052a4fa92ec9c
+- path: services/contracts/apis/identity/oas_operations_gen.go
+  sha256: 7d6fb2e4a15956388b3915553ecb00fe0eb62840b27bd706676658b102d85606
+- path: services/contracts/apis/identity/oas_request_decoders_gen.go
+  sha256: dc59fa54ba3bb2d9dba1d12797b2f5f375cf0ec2bb63a33d15cece8a53bc97f8
+- path: services/contracts/apis/identity/oas_request_encoders_gen.go
+  sha256: adc4f917dfbb07b810bd609d3d03b28ed5faae64272d0f18ed1907653048d1ae
+- path: services/contracts/apis/identity/oas_response_decoders_gen.go
+  sha256: b1cc8583db89e3c042b43aac7bed0bca5e5b5207e556ed9181a75213ae44225f
+- path: services/contracts/apis/identity/oas_response_encoders_gen.go
+  sha256: 0771015d5cb585968dae4786baa90acf591aa00e815c53ce81f227dfcfdb0e84
+- path: services/contracts/apis/identity/oas_router_gen.go
+  sha256: 03af2db6b8c973313778152a574d6010b766204f13969f912efbce4918e8e6f9
+- path: services/contracts/apis/identity/oas_schemas_gen.go
+  sha256: ff5c86e26110a08c276eb60780529a16c86315982ee22673e84ef84ab2e61a20
+- path: services/contracts/apis/identity/oas_server_gen.go
+  sha256: 370d73c61e0b8886bf6165bc32e6d6810ed1fa74ce69005fdcb6f500bdc54218
+- path: services/contracts/apis/identity/oas_unimplemented_gen.go
+  sha256: 8a876e837e1c17a812f94c564c109c30734d2dd62bcf9cbe8eb0cea41ec8f72c
+- path: services/contracts/apis/identity/oas_validators_gen.go
+  sha256: 5446e1143ea101ec885b6e65c350eadb9d915ed5b35f4b4a9928aead4a7f44d8
+verification:
+  status: passed
+  c4a_cases: 60
+  all_schema_files: 15
+  all_schema_cases: 112
+  all_event_types: 44
+  all_event_payload_cases: 93
+  api_cases: 13
+  contract_tool_tests: 38
+  sdk_tests: 58
+  python_kernel_tests: 60
+  go_passed_tests_including_subtests: 92
+  go_skips:
+  - package: github.com/superailabs/miaoqia/services/kernel/policy
+    test: TestCostReport
+  skip_disposition: 仅策略成本报告为可选报告；无工程横切、身份、数据库或Kafka门禁跳过。
+  generated_types: 67
+  roundtrip_facts: 66
+  manual_c4b_facts_reverified: 30
+  dependency_rules: 6
+  runtime_components:
+    postgresql: 18.6 Homebrew; existing server, tests create isolated temporary databases/roles
+    openfga: 1.10.0; isolated in-memory instance on loopback
+    kafka: 4.1.0; isolated single-node KRaft instance on loopback
+  runtime_environment_keys:
+  - MIAOQIA_TEST_PG
+  - MIAOQIA_TEST_OPENFGA
+  - MIAOQIA_TEST_KAFKA
+  - MQC_FIXTURES
+  compat:
+    base: HEAD
+    base_commit: dd2d691bac325ab96152de07a542a6529205dd2f
+    scope: 整个未提交工作区的累计差异，含前轮C4b；不声称21项breaking均由本轮造成。
+    breaking: 21
+    additive: 98
+    doc: 9
+    c4a_api_breaking: 3
+    result: 0.x草案升1.0.0合规；既有事件v1载荷保持原结构，不以文档版本绕过类型版本迁移。
+  commands:
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc check
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc compat --base
+      HEAD
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc generate
+      --check
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked --group dev pytest
+      -q tools/contracts/tests
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-kernel --group dev pytest
+      -q data/kernel/tests
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-sdk --group dev pytest
+      -q data/sdk/tests
+    result: passed
+  - command: go -C services test -json -race -count=1 ./...
+    result: passed
+  - command: go -C services vet ./...
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc fixtures
+      --export /tmp/miaoqia-c4a-fixtures
+    result: passed
+  - command: MQC_FIXTURES=/tmp/miaoqia-c4a-fixtures go -C services test -count=1 ./contracts/...
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-contracts python data/contracts/tests/roundtrip.py
+      /tmp/miaoqia-c4a-fixtures
+    result: passed
+  - command: pnpm --dir web --filter @miaoqia/contracts typecheck
+    result: passed
+  - command: cd data && uv run --locked --all-packages lint-imports
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked python tools/dev/gen_local.py
+      --check
+    result: passed
+  - command: git diff --check
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-sdk mq-corpus check
+      packs/information_domains/procurement/corpus --reviewed --schema domains/procurement/notice.schema.json
+      --export /tmp/miaoqia-c4a-fixtures
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-sdk mq-corpus check
+      packs/information_domains/organizations/corpus --reviewed --schema domains/organization/registration.schema.json
+      --schema domains/organization/change.schema.json --schema domains/organization/abnormal.schema.json
+      --export /tmp/miaoqia-c4a-fixtures
+    result: passed
+c4b_baseline:
+  path: contracts/reviews/first-batch-freeze.yaml
+  contract_and_version_owner_hashes: 18份契约与2份包版本归属文件均未改变；历史生成物/验证器哈希按审计目的保留。
+not_proven:
+- 生产内部调用身份认证、gateway令牌验证与审批实现
+- 所有消费者的生产载荷Schema验证；现有框架校验信封和路由，载荷验证由具体消费者实现
+- M0完整探针应用链路与生产部署验收
+- 全部跨语言子系统接口
+- 全国来源解析、OCR与授权供应商接口
+- CI固定PostgreSQL17.6的运行结果；本轮实际测试18.6
+readme_decision: root README reviewed-no-update; current project remains initiation
+  design and links to the updated readiness list

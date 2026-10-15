@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/procurement/notice.schema.json",
-  "x-version": "0.1.0",
+  "x-version": "1.0.0",
   "title": "Notice 公告",
   "description": "一条公告按原文表达的领域事实（随解析修订产生新版本）。跨公告的当前状态见 procurement-project.schema.json。未分包的公告视为一个标包（lot_key = \"1\"）。",
   "type": "object",
@@ -83,15 +83,60 @@
         }
       },
       "then": {
-        "properties": {
-          "lots": {
-            "contains": {
-              "required": [
-                "bid_results"
-              ],
+        "if": {
+          "required": [
+            "result_details_pending"
+          ],
+          "properties": {
+            "result_details_pending": {
+              "const": true
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "quality"
+          ],
+          "properties": {
+            "quality": {
               "properties": {
-                "bid_results": {
-                  "minItems": 1
+                "status": {
+                  "enum": [
+                    "warning",
+                    "suspect"
+                  ]
+                },
+                "warnings": {
+                  "contains": {
+                    "properties": {
+                      "code": {
+                        "const": "RESULT_DETAILS_PENDING"
+                      }
+                    },
+                    "required": [
+                      "code"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "status",
+                "warnings"
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "lots": {
+              "contains": {
+                "required": [
+                  "bid_results"
+                ],
+                "properties": {
+                  "bid_results": {
+                    "minItems": 1
+                  }
                 }
               }
             }
@@ -105,7 +150,6 @@
     "info_domain",
     "notice_type",
     "title",
-    "buyer",
     "lots"
   ],
   "properties": {
@@ -157,7 +201,8 @@
       "description": "公告中显式引用的前序公告"
     },
     "buyer": {
-      "$ref": "../../common/types.schema.json#/$defs/org_ref"
+      "$ref": "../../common/types.schema.json#/$defs/org_ref",
+      "description": "公告正文明确时记录；缺失则省略并进入质量复核，不从项目标题猜测采购人"
     },
     "agency": {
       "$ref": "../../common/types.schema.json#/$defs/org_ref"
@@ -207,6 +252,14 @@
       "items": {
         "$ref": "defs.schema.json#/$defs/contact"
       }
+    },
+    "award_amount": {
+      "$ref": "../../common/types.schema.json#/$defs/money",
+      "description": "公告明确的结果汇总金额；不能分摊到未知标包，也不能用代理费替代"
+    },
+    "result_details_pending": {
+      "type": "boolean",
+      "description": "结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人"
     }
   },
   "unevaluatedProperties": false,
@@ -284,6 +337,30 @@
           "items": {
             "$ref": "defs.schema.json#/$defs/bid_result"
           }
+        },
+        "conditions": {
+          "$ref": "defs.schema.json#/$defs/procurement_conditions"
+        },
+        "max_price_rate": {
+          "$ref": "../../common/types.schema.json#/$defs/rate"
+        },
+        "project_name": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "合并采购中该标包所属建设项目，不能用公告级项目名覆盖所有标包"
+        },
+        "project_code": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "project_owner": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "estimated_contract_amount": {
+          "$ref": "../../common/types.schema.json#/$defs/money",
+          "description": "合同估算价；不等于采购预算或中标金额"
+        },
+        "ending": {
+          "$ref": "#/$defs/ending_section",
+          "description": "仅当前标包的流标/废标/终止，不能传播成整个项目失败"
         }
       }
     },
@@ -297,11 +374,11 @@
       "properties": {
         "amends_notice_ids": {
           "type": "array",
-          "minItems": 1,
           "items": {
             "type": "string",
             "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$"
-          }
+          },
+          "description": "已解析的前序公告标识；暂未归并时允许为空，保留 original_reference 并进入复核，不伪造标识"
         },
         "changes": {
           "type": "array",
@@ -329,8 +406,30 @@
               }
             }
           }
+        },
+        "original_reference": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "summary": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "amends_notice_ids": {
+                "maxItems": 0
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "original_reference"
+            ]
+          }
+        }
+      ]
     },
     "contract_section": {
       "type": "object",
@@ -363,7 +462,32 @@
         },
         "term_end": {
           "$ref": "../../common/types.schema.json#/$defs/instant"
+        },
+        "code": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "name": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "amount_kind": {
+          "enum": [
+            "total",
+            "ceiling",
+            "estimated"
+          ],
+          "description": "原文明确金额语义时填写；最高合同金额不得当作实际成交额"
+        },
+        "conditions": {
+          "$ref": "defs.schema.json#/$defs/procurement_conditions"
+        },
+        "amount_kind_prov": {
+          "$ref": "../../common/types.schema.json#/$defs/provenance"
         }
+      },
+      "dependentRequired": {
+        "amount_kind": [
+          "amount_kind_prov"
+        ]
       }
     },
     "acceptance_section": {
@@ -390,7 +514,42 @@
             "partial",
             "failed"
           ]
+        },
+        "contract_code": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "contract_name": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "supplier": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "opinion": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "result_prov": {
+          "$ref": "../../common/types.schema.json#/$defs/provenance"
+        },
+        "scope": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "dispute": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "验收争议的当事人主张；不等同法院认定，保留原文证据。"
+        },
+        "judicial_outcome": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "../../common/types.schema.json#/$defs/text"
+          },
+          "description": "裁判结论原文段落分别溯源；技术质量、合同解除及付款结论分别保留，不把当事人主张作为法院结论。"
         }
+      },
+      "dependentRequired": {
+        "result": [
+          "result_prov"
+        ]
       }
     },
     "ending_section": {

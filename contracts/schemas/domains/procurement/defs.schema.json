@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/procurement/defs.schema.json",
-  "x-version": "0.1.0",
+  "x-version": "1.0.0",
   "title": "INF-PROC 公共定义",
   "description": "公告与采购项目共用的枚举和嵌套对象。对象含义见 docs/02-business/application-domains/tendering/04-domain-model.md。",
   "$defs": {
@@ -23,9 +23,11 @@
         "award",
         "failure",
         "contract",
-        "acceptance"
+        "acceptance",
+        "price_limit",
+        "supplier_enrollment"
       ],
-      "description": "意向、计划、资格预审、招标、谈判、磋商、询价、单一来源公示、框架协议征集、更正、澄清、终止、候选人公示、中标/成交结果、流标/废标、合同、验收"
+      "description": "意向、计划、资格预审、招标、谈判、磋商、询价、单一来源公示、框架协议征集、更正、澄清、终止、候选人公示、中标/成交结果、流标/废标、合同、验收、最高限价独立公告、供应商名录征集（不等同框架协议）"
     },
     "trading_system": {
       "enum": [
@@ -48,9 +50,10 @@
         "comparison",
         "direct",
         "e_mall",
-        "other"
+        "other",
+        "selection"
       ],
-      "description": "公开招标、邀请招标、竞争性谈判、竞争性磋商、询价、单一来源、框架协议、比选、直接采购、电商采购、其他"
+      "description": "公开招标、邀请招标、竞争性谈判、竞争性磋商、询价、单一来源、框架协议、比选、直接采购、电商采购、其他、公开遴选"
     },
     "procurement_category": {
       "enum": [
@@ -136,7 +139,7 @@
         },
         "code": {
           "type": "string",
-          "description": "归一的资质或要求代码；无法归一时为 null"
+          "description": "归一的资质或要求代码；无法归一时省略，不使用 null"
         },
         "text": {
           "$ref": "../../common/types.schema.json#/$defs/text"
@@ -163,7 +166,12 @@
             "clarification_end",
             "bid_submission",
             "bid_opening",
-            "publicity_end"
+            "publicity_end",
+            "registration_start",
+            "doc_obtain_start",
+            "bid_bond_end",
+            "site_visit",
+            "clarification_meeting"
           ]
         },
         "at": {
@@ -199,7 +207,8 @@
           "type": "array",
           "items": {
             "$ref": "../../common/types.schema.json#/$defs/org_ref"
-          }
+          },
+          "minItems": 1
         },
         "rank": {
           "type": "integer",
@@ -213,12 +222,44 @@
         },
         "score": {
           "type": "number"
+        },
+        "price_rate": {
+          "$ref": "../../common/types.schema.json#/$defs/rate"
+        },
+        "result_kind": {
+          "enum": [
+            "contract_award",
+            "framework_shortlist"
+          ],
+          "description": "普通中标或框架第一阶段入围；入围不代表第二阶段成交/签约"
+        },
+        "consortium_lead": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref",
+          "description": "仅在原文明确牵头人时填写，不把列表第一家推断为牵头人"
+        },
+        "price_kind": {
+          "enum": [
+            "total",
+            "unit",
+            "annual_unit_sum",
+            "estimated_total"
+          ],
+          "description": "报价金额含义；年单价合计、单价和估算额不得当项目总成交额"
+        },
+        "price_kind_prov": {
+          "$ref": "../../common/types.schema.json#/$defs/provenance"
         }
+      },
+      "dependentRequired": {
+        "price_kind": [
+          "price",
+          "price_kind_prov"
+        ]
       }
     },
     "contact": {
       "type": "object",
-      "description": "公告中的联系人。按公开数据处理，供客户业务联系使用",
+      "description": "公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略",
       "required": [
         "role"
       ],
@@ -228,7 +269,10 @@
           "enum": [
             "buyer",
             "agency",
-            "other"
+            "other",
+            "project_owner",
+            "technical_support",
+            "supervisor"
           ]
         },
         "name": {
@@ -239,6 +283,88 @@
         },
         "email": {
           "type": "string"
+        },
+        "organization": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "name_prov": {
+          "$ref": "../../common/types.schema.json#/$defs/provenance"
+        },
+        "phone_prov": {
+          "$ref": "../../common/types.schema.json#/$defs/provenance"
+        },
+        "email_prov": {
+          "$ref": "../../common/types.schema.json#/$defs/provenance"
+        }
+      },
+      "dependentRequired": {
+        "name": [
+          "name_prov"
+        ],
+        "phone": [
+          "phone_prov"
+        ],
+        "email": [
+          "email_prov"
+        ]
+      }
+    },
+    "procurement_conditions": {
+      "type": "object",
+      "description": "公告与项目标包共用的带证据采购条件；只记录已确认的原文，不把模板未选项当成事实",
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "采购或建设范围"
+        },
+        "delivery_period": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "工期、交货期或服务期（保留相对时间原文）"
+        },
+        "delivery_location": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "交付地点原文"
+        },
+        "payment_terms": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "结算、付款条件"
+        },
+        "document_access": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "文件获取平台、地点、方式与时间窗口"
+        },
+        "submission_place": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "投标或响应递交地点/平台"
+        },
+        "opening_place": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "开标地点/平台"
+        },
+        "consortium_terms": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "联合体限制、成员职责和数量"
+        },
+        "sme_policy": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "中小企业预留、分包比例及适用条件"
+        },
+        "imported_products": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "进口产品限制"
+        },
+        "agent_participation": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "代理商参与条件"
+        },
+        "contract_pricing": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "固定总价、固定单价、费率等合同定价方式"
+        },
+        "planned_publication": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "计划招标发布时间原文，如2026-10；暂定计划不能当成已发布或投标截止时间"
         }
       }
     }

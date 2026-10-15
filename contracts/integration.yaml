@@ -1,0 +1,62 @@
+version: 2.0.0
+context:
+  schema: schemas/integration/request-context.schema.json
+  header: Miaoqia-Context
+  encoding: base64url_without_padding
+  trust: verified_mtls_peer_only
+  max_encoded_bytes: 8192
+envelope:
+  schema: schemas/integration/event-envelope.schema.json
+  routing:
+    public: public.<namespace>
+    tenant: cell-<cell>.<namespace>
+    platform: platform.<namespace>
+  namespace: 主题命名空间可与事件类型不同，例如public.domain发布tendering/org事件；不接受未知主题前缀。
+identity:
+  api: apis/identity/openapi.yaml
+  timeout_ms: 5000
+  max_attempts: 3
+  retry: transient_only
+  delegation: 显式subject是内部可信服务的授权查询参数，外部调用不得绕过gateway验证；资源权限由OpenFGA关系模型决定。
+authentication:
+  environment: production_by_default; only explicit MIAOQIA_ENV=development permits
+    plaintext laboratory transport
+  public:
+    issuer_env: MIAOQIA_GATEWAY_ISSUER
+    audience_env: MIAOQIA_GATEWAY_AUDIENCE
+    issuer_ca_env: MIAOQIA_GATEWAY_CA_FILE
+    checks:
+    - https_issuer
+    - rs256_signature
+    - issuer
+    - audience
+    - required_exp_iat
+    - nbf_iat
+    - bearer_access_token
+    - subject
+    - tenant_cell_pair
+    client_context_header: discarded
+    server_cert_env: MIAOQIA_PUBLIC_TLS_CERT
+    server_key_env: MIAOQIA_PUBLIC_TLS_KEY
+  internal:
+    minimum_tls: '1.3'
+    mode: mutual_tls
+    cert_env: MIAOQIA_INTERNAL_TLS_CERT
+    key_env: MIAOQIA_INTERNAL_TLS_KEY
+    ca_env: MIAOQIA_INTERNAL_TLS_CA
+    allowed_peers_env: MIAOQIA_INTERNAL_ALLOWED_PEERS
+    peer_id: one URI SAN matching the configured spiffe://miaoqia/service/<service>
+      allowlist
+  scope: M0 application HTTP authentication; production deployment, broker/database
+    identity and PKI operations have independent deployment gates
+payload_validation:
+  artifacts:
+  - services/contracts/events/payloads.json
+  - data/contracts/src/miaoqia/contracts/event_payloads.json
+  source: AsyncAPI payloads, references expanded with validation keywords retained
+  startup: every registered handler requires a compiled schema
+  runtime: validate before inbox/business transaction; reject invalid shape to DLQ
+  semantics: M0 handlers verify probe origin/subject/hops and audit origin/tenant;
+    failure rolls back before DLQ
+  failure: stop consumer when DLQ cannot be confirmed; do not commit later records
+    past the failed offset

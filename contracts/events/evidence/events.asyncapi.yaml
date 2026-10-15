@@ -1,16 +1,29 @@
 asyncapi: 3.0.0
 info:
   title: evidence 事件
-  version: 0.1.0
-  description: >
-    由 evidence 发布。链路探针经过数据单元时发布 probe.forwarded（见 contracts/events/operations）。
+  version: 1.0.0
+  description: '由 evidence 发布。链路探针经过数据单元时发布 probe.forwarded（见 contracts/events/operations）。
     信封为 CloudEvents 1.0；公共域事件：miaoqiazone = public。
+
+    '
 channels:
   public.evidence:
     address: public.evidence
     messages:
       probeForwarded:
         $ref: '#/components/messages/probeForwarded'
+      snapshotCreated:
+        $ref: '#/components/messages/snapshotCreated'
+      extractionRevised:
+        $ref: '#/components/messages/extractionRevised'
+      qualityFlagged:
+        $ref: '#/components/messages/qualityFlagged'
+      artifactRefetchRequested:
+        $ref: '#/components/messages/artifactRefetchRequested'
+      enrichmentCompleted:
+        $ref: '#/components/messages/enrichmentCompleted'
+      enricherPromoted:
+        $ref: '#/components/messages/enricherPromoted'
 operations:
   publishEvidenceEvents:
     action: send
@@ -24,7 +37,9 @@ components:
       payload:
         type: object
         additionalProperties: false
-        required: [probe_id, hops]
+        required:
+        - probe_id
+        - hops
         properties:
           probe_id:
             type: string
@@ -33,3 +48,157 @@ components:
             type: array
             items:
               type: string
+      x-fixtures-required: true
+    snapshotCreated:
+      name: evidence.snapshot.created.v1
+      summary: 不可变快照建立
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          snapshot_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/snapshot_ref
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          artifact_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/artifact_ref
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          content_hash:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+        required:
+        - snapshot_ref
+        - source_id
+        - artifact_ref
+        - rights_tags
+        - content_hash
+      x-fixtures-required: true
+    extractionRevised:
+      name: evidence.extraction.revised.v1
+      summary: 解析修订生成
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          snapshot_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/snapshot_ref
+          revision_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/revision_ref
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          pack_id:
+            type: string
+            minLength: 1
+          pack_version:
+            type: string
+            pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+          quality_status:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/quality_status
+        required:
+        - snapshot_ref
+        - revision_ref
+        - rights_tags
+        - pack_id
+        - pack_version
+        - quality_status
+      x-fixtures-required: true
+    qualityFlagged:
+      name: evidence.quality.flagged.v1
+      summary: 证据质量标记
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          snapshot_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/snapshot_ref
+          revision_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/revision_ref
+          quality_status:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/quality_status
+          reason_codes:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            minItems: 1
+            uniqueItems: true
+        required:
+        - snapshot_ref
+        - quality_status
+        - reason_codes
+      x-fixtures-required: true
+    artifactRefetchRequested:
+      name: evidence.artifact.refetch_requested.v1
+      summary: 缺失或损坏制品请求补采
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          snapshot_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/snapshot_ref
+          source_url:
+            type: string
+            format: uri
+          reason_code:
+            type: string
+            minLength: 1
+          artifact_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/artifact_ref
+        required:
+        - source_id
+        - snapshot_ref
+        - source_url
+        - reason_code
+      x-fixtures-required: true
+    enrichmentCompleted:
+      name: evidence.enrichment.completed.v1
+      summary: 快照增强完成
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          snapshot_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/snapshot_ref
+          revision_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/revision_ref
+          enricher_id:
+            type: string
+            minLength: 1
+          enricher_version:
+            type: string
+            minLength: 1
+          quality_status:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/quality_status
+        required:
+        - snapshot_ref
+        - revision_ref
+        - enricher_id
+        - enricher_version
+        - quality_status
+      x-fixtures-required: true
+    enricherPromoted:
+      name: evidence.enricher.promoted.v1
+      summary: 增强器版本生效
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          enricher_id:
+            type: string
+            minLength: 1
+          before_version:
+            type: string
+            minLength: 1
+          after_version:
+            type: string
+            minLength: 1
+          effective_at:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+        required:
+        - enricher_id
+        - before_version
+        - after_version
+        - effective_at
+      x-fixtures-required: true

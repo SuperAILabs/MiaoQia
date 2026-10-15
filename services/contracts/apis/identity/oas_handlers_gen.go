@@ -35,7 +35,7 @@ func (c *codeRecorder) Unwrap() http.ResponseWriter {
 
 // handleCheckAuthorizationRequest handles checkAuthorization operation.
 //
-// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试。.
+// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
 //
 // POST /v1/authz:check
 func (s *Server) handleCheckAuthorizationRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {

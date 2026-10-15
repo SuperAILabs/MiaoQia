@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/organization/registration.schema.json",
-  "x-version": "0.1.0",
+  "x-version": "1.0.0",
   "title": "OrgRegistration 企业登记信息",
   "description": "一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。",
   "type": "object",
@@ -14,8 +14,7 @@
     "id",
     "info_domain",
     "subject",
-    "name",
-    "status"
+    "name"
   ],
   "properties": {
     "info_domain": {
@@ -50,7 +49,8 @@
       "$ref": "../../common/types.schema.json#/$defs/text"
     },
     "status": {
-      "$ref": "defs.schema.json#/$defs/status"
+      "$ref": "defs.schema.json#/$defs/status",
+      "description": "只在来源明确披露登记状态时填写；不能由参投、未生产或挂牌推断存续"
     },
     "established_on": {
       "$ref": "../../common/types.schema.json#/$defs/instant"
@@ -104,7 +104,27 @@
     "parent": {
       "$ref": "../../common/types.schema.json#/$defs/org_ref",
       "description": "分支机构的隶属企业"
+    },
+    "uscc_prov": {
+      "$ref": "../../common/types.schema.json#/$defs/provenance"
+    },
+    "status_prov": {
+      "$ref": "../../common/types.schema.json#/$defs/provenance"
+    },
+    "legal_representative_prov": {
+      "$ref": "../../common/types.schema.json#/$defs/provenance"
     }
   },
-  "unevaluatedProperties": false
+  "unevaluatedProperties": false,
+  "dependentRequired": {
+    "uscc": [
+      "uscc_prov"
+    ],
+    "status": [
+      "status_prov"
+    ],
+    "legal_representative": [
+      "legal_representative_prov"
+    ]
+  }
 }

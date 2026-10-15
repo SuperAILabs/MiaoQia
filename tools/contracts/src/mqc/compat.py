@@ -21,10 +21,12 @@ import tarfile
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urljoin, urldefrag
 
 from .bundle import build_bundle, type_names
 from .repo import Repo, load_yaml
 from .report import Report
+from .events import event_components
 
 LEVELS = {"doc": 0, "additive": 1, "breaking": 2}
 DOC_KEYS = {"description", "title", "default", "examples", "$comment"}
@@ -169,6 +171,9 @@ def _file_of(repo: Repo) -> dict[str, Path]:
 
 def compare_schemas(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
     r = Report()
+    for f in sorted(set(base.schemas) & set(head.schemas)):
+        if _semver(head.schemas[f]["x-version"]) < _semver(base.schemas[f]["x-version"]):
+            r.error(str(f), "Schema版本不得回退")
     ob = build_bundle(base, keep_validation=True)["$defs"]
     nb = build_bundle(head, keep_validation=True)["$defs"]
     files_o, files_n = _file_of(base), _file_of(head)
@@ -217,29 +222,46 @@ def _messages(repo: Repo) -> dict[str, dict]:
     out = {}
     for f in sorted((repo.contracts / "events").glob("*/*.asyncapi.yaml")):
         doc = load_yaml(f)
-        comps = doc.get("components", {})
+        comps = event_components(repo, f, doc)
         for m in (comps.get("messages") or {}).values():
-            out[m["name"]] = _inline(m.get("payload", {}), comps)
+            base_uri = "https://schemas.miaoqia.com/" + str(f.relative_to(repo.contracts))
+            out[m["name"]] = _inline(m.get("payload", {}), comps, repo=repo, base_uri=base_uri)
     return out
 
 
-def _inline(node, comps, depth=0):
+def _inline(node, comps, depth=0, *, repo=None, base_uri="", seen=frozenset()):
     if depth > 20:
         return node
     if isinstance(node, list):
-        return [_inline(x, comps, depth + 1) for x in node]
+        return [_inline(x, comps, depth + 1, repo=repo, base_uri=base_uri, seen=seen) for x in node]
     if not isinstance(node, dict):
         return node
     ref = node.get("$ref")
     if isinstance(ref, str) and ref.startswith("#/components/schemas/"):
-        return _inline(comps["schemas"][ref.split("/")[-1]], comps, depth + 1)
-    if isinstance(ref, str) and "#/$defs/" in ref:
-        return {"$ref": "#/$defs/" + ref.split("#/$defs/")[-1]}
-    return {k: _inline(v, comps, depth + 1) for k, v in node.items()}
+        return _inline(comps["schemas"][ref.split("/")[-1]], comps, depth + 1,
+                       repo=repo, base_uri=base_uri, seen=seen)
+    if isinstance(ref, str) and repo is not None:
+        uri = urljoin(base_uri, ref)
+        if uri in seen:
+            return {"$ref": uri}
+        target = repo.registry.resolver(base_uri).lookup(uri).contents
+        expanded = _inline(target, comps, depth + 1, repo=repo,
+                           base_uri=urldefrag(uri)[0], seen=seen | {uri})
+        siblings = {k: _inline(v, comps, depth + 1, repo=repo, base_uri=base_uri, seen=seen)
+                    for k, v in node.items() if k != "$ref"}
+        return {**expanded, **siblings}
+    return {k: _inline(v, comps, depth + 1, repo=repo, base_uri=base_uri, seen=seen)
+            for k, v in node.items() if k not in ("$id", "$schema", "$defs")}
 
 
 def compare_events(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
     r = Report()
+    for path in sorted((base.contracts / "events").glob("*/*.asyncapi.yaml")):
+        target = head.contracts / path.relative_to(base.contracts)
+        if target.exists():
+            old, new = load_yaml(path), load_yaml(target)
+            if _semver(new["info"]["version"]) < _semver(old["info"]["version"]):
+                r.error(str(target), "AsyncAPI文档版本不得回退")
     ob, nb = _messages(base), _messages(head)
     changes: list[Change] = []
     for name in sorted(set(ob) - set(nb)):
@@ -257,13 +279,101 @@ def compare_events(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
 
 def compare_identifiers(base: Repo, head: Repo) -> Report:
     r = Report()
-    ob = load_yaml(base.contracts / "identifiers.yaml")["prefixes"]
-    nb = load_yaml(head.contracts / "identifiers.yaml")["prefixes"]
+    old, new = load_yaml(base.contracts / "identifiers.yaml"), load_yaml(head.contracts / "identifiers.yaml")
+    ob, nb = old["prefixes"], new["prefixes"]
+    if old.get("version") and not bump_ok(old["version"], new.get("version", "0.0.0"), "additive" if set(nb) - set(ob) else "doc"):
+        r.error("identifiers.yaml", "新增前缀须升次版本；登记版本不得回退")
     for p in sorted(set(ob) - set(nb)):
         r.error("identifiers.yaml", f"删除了前缀 {p}_：前缀分配后永不复用，不得删除")
     for p in sorted(set(ob) & set(nb)):
-        if ob[p].get("object") != nb[p].get("object"):
-            r.error("identifiers.yaml", f"前缀 {p}_ 的对象由 {ob[p].get('object')} 改为 {nb[p].get('object')}")
+        if any(ob[p].get(key) != nb[p].get(key) for key in ("object", "owner", "pack")):
+            r.error("identifiers.yaml", f"前缀 {p}_ 的对象/所有者/领域归属发生改变")
+    return r
+
+
+def compare_apis(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
+    """复用Schema差异算法；稳定接口的破坏性变更必须增加路径主版本。"""
+    r, changes = Report(), []
+    for path in sorted((base.contracts / "apis").glob("*/openapi.yaml")):
+        target = head.contracts / path.relative_to(base.contracts)
+        if not target.exists():
+            r.error(str(path.relative_to(base.root)), "删除已发布接口")
+            continue
+        old, new = load_yaml(path), load_yaml(target)
+        if _semver(new["info"]["version"]) < _semver(old["info"]["version"]):
+            r.error(str(target), "OpenAPI版本不得回退")
+        own = []
+        for route, item in old["paths"].items():
+            for verb, op in item.items():
+                if verb not in {"get", "post", "put", "delete", "patch"}:
+                    continue
+                newer = new.get("paths", {}).get(route, {}).get(verb)
+                if newer is None:
+                    r.error(str(target), f"删除接口 {verb} {route}；须保留过渡期")
+                    continue
+                def schemas(operation, components):
+                    values = {}
+                    for media, content in operation.get("requestBody", {}).get("content", {}).items():
+                        values["request:" + media] = _inline(content["schema"], components)
+                    for status, response in operation.get("responses", {}).items():
+                        for media, content in response.get("content", {}).items():
+                            values["response:" + status + ":" + media] = _inline(content["schema"], components)
+                    return values
+                a, b = schemas(op, old.get("components", {})), schemas(newer, new.get("components", {}))
+                for key in sorted(set(a) | set(b)):
+                    where = f"api:{verb}:{route}/{key}"
+                    if key not in b:
+                        own.append(Change("breaking", where, "删除请求/响应Schema"))
+                    elif key not in a:
+                        own.append(Change("additive", where, "新增请求/响应Schema"))
+                    else:
+                        own += diff(a[key], b[key], where)
+                if not op.get("requestBody", {}).get("required") and newer.get("requestBody", {}).get("required"):
+                    own.append(Change("breaking", f"api:{route}", "请求体改为必填"))
+        for route in sorted(set(new["paths"]) - set(old["paths"])):
+            own.append(Change("additive", f"api:{route}", "新增路径"))
+        if own:
+            level = max((c.level for c in own), key=LEVELS.get)
+            ov, nv = old["info"]["version"], new["info"]["version"]
+            if not bump_ok(ov, nv, level):
+                r.error(str(target), f"API {level}变更须提升info.version")
+            if level == "breaking" and _semver(ov)[0] >= 1:
+                r.error(str(target), "稳定API已发布路径不允许breaking变更，须新路径主版本并保留旧路径")
+        changes += own
+    return r, changes
+
+
+def compare_storage(base: Repo, head: Repo) -> Report:
+    r = Report()
+    old, new = base.contracts / "storage/kernel.sql", head.contracts / "storage/kernel.sql"
+    if old.exists() and (not new.exists() or old.read_bytes() != new.read_bytes()):
+        metadata = head.contracts / "storage/kernel.yaml"
+        prior = base.contracts / "storage/kernel.yaml"
+        if not metadata.exists() or not prior.exists():
+            r.error("storage/kernel.sql", "SQL变更缺少版本化迁移基线；须人工审查已有表升级")
+        else:
+            a, b = load_yaml(prior), load_yaml(metadata)
+            if not bump_ok(a["version"], b["version"], "breaking") or not b.get("migrations"):
+                r.error("storage/kernel.sql", "SQL变更须升版本并提供迁移文件；CREATE IF NOT EXISTS不升级已有表")
+            for migration in b.get("migrations", []):
+                if not (head.root / migration).is_file():
+                    r.error("storage/kernel.sql", f"迁移文件不存在 {migration}")
+    return r
+
+
+def compare_profiles(base: Repo, head: Repo) -> Report:
+    r = Report()
+    for relative in ("integration.yaml", "storage/kernel.yaml"):
+        old, new = base.contracts / relative, head.contracts / relative
+        if not old.exists():
+            continue
+        if not new.exists():
+            r.error(relative, "不得删除工程契约基线")
+            continue
+        a, b = load_yaml(old), load_yaml(new)
+        level = "breaking" if {k:v for k,v in a.items() if k != "version"} != {k:v for k,v in b.items() if k != "version"} else "doc"
+        if not bump_ok(a["version"], b["version"], level):
+            r.error(relative, f"工程配置{level}变化须升版本（保守判定，语义须人工审查）")
     return r
 
 
@@ -325,10 +435,12 @@ def compat(head: Repo, base_ref: str, verbose: bool) -> Report:
         base = Repo(Path(tmp))
         rs, cs = compare_schemas(base, head)
         re_, ce = compare_events(base, head)
+        ra, ca = compare_apis(base, head)
         r.extend(rs); r.extend(re_)
+        r.extend(ra); r.extend(compare_storage(base, head)); r.extend(compare_profiles(base, head))
         r.extend(compare_identifiers(base, head))
         r.extend(compare_packs(base, head))
-        allc = cs + ce
+        allc = cs + ce + ca
         counts = {lvl: sum(1 for c in allc if c.level == lvl) for lvl in LEVELS}
         r.note(f"兼容性检查（基线 {base_ref}）：breaking {counts['breaking']}、additive {counts['additive']}、doc {counts['doc']}")
         for c in allc if verbose else [c for c in allc if c.level == "breaking"]:
