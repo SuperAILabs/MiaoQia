@@ -71,6 +71,9 @@ func fixture(t *testing.T, binding string) (check func(user, relation, object st
 	t.Helper()
 	url := os.Getenv("MIAOQIA_TEST_OPENFGA")
 	if url == "" {
+		if os.Getenv("CI") != "" {
+			t.Fatal("CI 中必须设置 MIAOQIA_TEST_OPENFGA，矩阵逐格校验不能跳过")
+		}
 		t.Skip("未设置 MIAOQIA_TEST_OPENFGA（例如 http://localhost:8081）")
 	}
 	ctx := context.Background()
