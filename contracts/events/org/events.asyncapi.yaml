@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: INF-ORG 领域事件
-  version: 0.1.0
+  version: 1.0.0
   description: 由 domain-intelligence 依据 INF-ORG 的变化检测规则发布。组织主数据的变化由 entity-graph 另行发布 entity.* 事件。 信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。公共域事件：miaoqiazone
     = public。
 channels:

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/procurement/procurement-project.schema.json",
-  "x-version": "0.1.0",
+  "x-version": "1.0.0",
   "title": "ProcurementProject 采购项目",
   "description": "同一采购项目的多条公告归并后的当前状态（领域项目聚合）。每个字段的 prov 指向其最新依据所在公告的证据；更正按 amendment.changes 应用后得到当前值。阶段由 packs/information_domains/procurement/lifecycle.yaml 的状态机维护。",
   "type": "object",
@@ -38,7 +38,11 @@
         "failed",
         "terminated",
         "contracted",
-        "accepted"
+        "accepted",
+        "shortlisted",
+        "acceptance_failed",
+        "partially_accepted",
+        "acceptance_pending"
       ]
     },
     "trading_system": {
@@ -163,7 +167,11 @@
             "failed",
             "terminated",
             "contracted",
-            "accepted"
+            "accepted",
+            "shortlisted",
+            "acceptance_failed",
+            "partially_accepted",
+            "acceptance_pending"
           ]
         },
         "candidates": {
@@ -177,7 +185,7 @@
           "items": {
             "$ref": "defs.schema.json#/$defs/bid_result"
           },
-          "description": "中标或成交人；框架协议可有多个"
+          "description": "实际中标/成交供应商，可多家；框架第一阶段入围另存shortlisted_suppliers"
         },
         "award_amount": {
           "$ref": "../../common/types.schema.json#/$defs/money"
@@ -187,6 +195,35 @@
           "items": {
             "type": "string",
             "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$"
+          }
+        },
+        "conditions": {
+          "$ref": "defs.schema.json#/$defs/procurement_conditions"
+        },
+        "max_price_rate": {
+          "$ref": "../../common/types.schema.json#/$defs/rate"
+        },
+        "project_name": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "合并采购中该标包所属建设项目，不能用公告级项目名覆盖所有标包"
+        },
+        "project_code": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "project_owner": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref"
+        },
+        "estimated_contract_amount": {
+          "$ref": "../../common/types.schema.json#/$defs/money",
+          "description": "合同估算价；不等于采购预算或中标金额"
+        },
+        "ending": {
+          "$ref": "notice.schema.json#/$defs/ending_section"
+        },
+        "shortlisted_suppliers": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/bid_result"
           }
         }
       }

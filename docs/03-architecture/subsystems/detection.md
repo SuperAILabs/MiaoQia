@@ -53,7 +53,7 @@
 | `ExplainSignal` | 查询 | 命中/未命中的规则、证据、特征（可解释性） |
 | `TriageSignal` | 命令 | 用户手动调整处置（同时产生反馈事件） |
 | `RunBackfill` | 命令 | 回放匹配 |
-| `DryRunPolicy` | 查询 | 给定策略版本与事实样本的匹配结果（供 `learning` 仿真复用） |
+| `DryRunPolicy` | 查询 | 给定完整输入快照的诊断求值；调用共享 kernel/policy，不是 learning 仿真的依赖 |
 
 ## 6. 事件
 
@@ -64,7 +64,7 @@
 ## 7. 扩展点
 
 - 应用领域包以 CEL 表达式提供特征函数、处置规则模板与信号合并规则（见 [可扩展性](../04-extensibility.md#32-表达式扩展点应用领域包与行业包cel)）；
-- `DryRunPolicy` 与匹配使用同一份求值代码，供 `learning` 仿真复用。
+- `DryRunPolicy`、在线匹配与 learning 仿真直接使用同一 `kernel/policy` 求值器。仿真遍历固定数据集，不依赖在线候选生成或订阅反查；输入投影须固定事实、上下文、视图、函数与逻辑时间版本。
 
 ## 8. 伸缩与可靠性
 

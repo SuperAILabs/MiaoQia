@@ -1,0 +1,55 @@
+fixtures:
+- event: tendering.acceptance.published.v1
+  base:
+    project_id: pp_00000000000000000000000000
+    notice_id: ntc_00000000000000000000000000
+    fact_version: 1
+    rights_tags:
+    - fixture-value
+    acceptance_id: acc_00000000000000000000000000
+    result: passed
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /project_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法project_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /project_id
+      value: bad_00000000000000000000000000
+- event: tendering.framework.shortlisted.v1
+  base:
+    project_id: pp_00000000000000000000000000
+    notice_id: ntc_00000000000000000000000000
+    fact_version: 1
+    rights_tags:
+    - fixture-value
+    lot_keys:
+    - fixture-value
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /project_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法project_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /project_id
+      value: bad_00000000000000000000000000

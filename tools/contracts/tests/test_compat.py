@@ -24,11 +24,11 @@ def edit_text(root: Path, rel: str, old: str, new: str) -> None:
     p.write_text(s.replace(old, new, 1), encoding="utf-8")
 
 
-def bump_schema(root: Path, rel: str) -> None:
-    """把 Schema 的 x-version 提升一个次版本（与当前取值无关）。"""
+def bump_schema(root: Path, rel: str, *, breaking: bool = False) -> None:
+    """按兼容级别提升版本：稳定契约的破坏性变更须升主版本。"""
     def f(d):
         major, minor, _ = (int(x) for x in d["x-version"].split("."))
-        d["x-version"] = f"{major}.{minor + 1}.0"
+        d["x-version"] = f"{major + 1}.0.0" if breaking and major else f"{major}.{minor + 1}.0"
     edit_json(root, rel, f)
 
 
@@ -101,7 +101,7 @@ def test_removed_field_requires_bump_on_file_and_roots(sandbox):
 def test_bump_satisfies(sandbox):
     edit_json(sandbox, PDEFS, lambda d: d["$defs"]["item"]["properties"].pop("spec"))
     for rel in (PDEFS, NOTICE, "contracts/schemas/domains/procurement/procurement-project.schema.json"):
-        bump_schema(sandbox, rel)
+        bump_schema(sandbox, rel, breaking=True)
     assert run(sandbox).errors == []
 
 
@@ -121,8 +121,10 @@ def test_doc_change_needs_no_bump(sandbox):
 # ---------- 端到端：事件、前缀、扩展包 ----------
 
 def test_event_breaking_change_rejected_even_with_bump(sandbox):
-    edit_text(sandbox, "contracts/events/tendering/events.asyncapi.yaml",
-              "required: [method, confidence, status]", "required: [method, confidence, status, reviewer]")
+    p = sandbox / "contracts/events/tendering/events.asyncapi.yaml"
+    doc = yaml.safe_load(p.read_text())
+    doc["components"]["messages"]["projectLinked"]["payload"]["allOf"][1]["required"].append("reviewer")
+    p.write_text(yaml.safe_dump(doc, allow_unicode=True))
     errs = run(sandbox).errors
     assert any("tendering.project.linked.v1" in e and ".v<n+1>" in e for e in errs)
 
@@ -158,3 +160,80 @@ def test_ignored_files_do_not_count_as_pack_changes(sandbox):
     cache.mkdir(parents=True, exist_ok=True)
     (cache / "x.cpython-312.pyc").write_bytes(b"\0")
     assert not run(sandbox).errors
+
+
+def test_event_compat_resolves_external_schema_constraints(sandbox):
+    p = sandbox / "contracts/schemas/domains/procurement/defs.schema.json"
+    doc = json.loads(p.read_text())
+    doc["$defs"]["notice_type"]["enum"].remove("tender")
+    doc["x-version"] = "0.4.0"
+    p.write_text(json.dumps(doc))
+    errors = run(sandbox).errors
+    assert any("tendering.notice.published.v1" in e and "删除枚举值" in e for e in errors)
+
+
+def test_stable_api_breaking_requires_new_path(sandbox):
+    p = sandbox / 'contracts/apis/identity/openapi.yaml'
+    d = yaml.safe_load(p.read_text())
+    d['components']['schemas']['CheckRequest']['required'].append('subject')
+    d['info']['version'] = '2.0.0'
+    p.write_text(yaml.safe_dump(d))
+    assert any('新路径主版本' in e for e in run(sandbox).errors)
+
+
+def test_api_component_change_cannot_hide_behind_ref(sandbox):
+    p = sandbox / 'contracts/apis/identity/openapi.yaml'
+    d = yaml.safe_load(p.read_text())
+    d['components']['schemas']['CheckRequest']['properties']['relation']['pattern'] = '^read$'
+    p.write_text(yaml.safe_dump(d))
+    assert any('API breaking' in e for e in run(sandbox).errors)
+
+
+def test_storage_change_requires_migration(sandbox):
+    p = sandbox / 'contracts/storage/kernel.sql'
+    p.write_text(p.read_text().replace('event_id      text', 'event_id      varchar(10)'))
+    assert any('迁移文件' in e for e in run(sandbox).errors)
+
+
+def test_api_additive_requires_version(sandbox):
+    p = sandbox / 'contracts/apis/identity/openapi.yaml'
+    d = yaml.safe_load(p.read_text())
+    d['components']['schemas']['CheckRequest']['properties']['reason'] = {'type': 'string'}
+    p.write_text(yaml.safe_dump(d))
+    assert any('API additive' in e for e in run(sandbox).errors)
+    d['info']['version'] = '1.1.0'
+    p.write_text(yaml.safe_dump(d))
+    assert run(sandbox).errors == []
+
+
+def test_identifier_owner_cannot_be_reassigned(sandbox):
+    p = sandbox / 'contracts/identifiers.yaml'
+    d = yaml.safe_load(p.read_text())
+    d['prefixes']['usr']['owner'] = 'other'
+    p.write_text(yaml.safe_dump(d))
+    assert any('所有者' in e for e in run(sandbox).errors)
+
+
+def test_versions_cannot_regress(sandbox):
+    edit_json(sandbox, NOTICE, lambda d:d.update({'x-version':'0.9.0'}))
+    assert any('不得回退' in e for e in run(sandbox).errors)
+
+
+def test_new_identifier_requires_minor_version(sandbox):
+    p = sandbox / 'contracts/identifiers.yaml'
+    d = yaml.safe_load(p.read_text())
+    d['prefixes']['new'] = {'object':'NewObject','owner':'kernel'}
+    p.write_text(yaml.safe_dump(d))
+    assert any('新增前缀' in e for e in run(sandbox).errors)
+    major, minor, _ = map(int, d['version'].split('.'))
+    d['version'] = f'{major}.{minor + 1}.0'
+    p.write_text(yaml.safe_dump(d))
+    assert run(sandbox).errors == []
+
+
+def test_engineering_profile_change_requires_major(sandbox):
+    p = sandbox / 'contracts/integration.yaml'
+    d = yaml.safe_load(p.read_text())
+    d['context']['header'] = 'Other-Context'
+    p.write_text(yaml.safe_dump(d))
+    assert any('工程配置breaking' in e for e in run(sandbox).errors)

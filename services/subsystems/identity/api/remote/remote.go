@@ -6,20 +6,35 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	identityapi "github.com/superailabs/miaoqia/services/contracts/apis/identity"
 	"github.com/superailabs/miaoqia/services/kernel/authz"
 	"github.com/superailabs/miaoqia/services/kernel/binding"
+	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
 	"github.com/superailabs/miaoqia/services/subsystems/identity/api"
 )
 
 // NewAuthorizer 返回远程授权决策点；baseURL 为 identity 内部接口地址，例如 http://platform-api:8091/internal。
 func NewAuthorizer(baseURL string) (api.Authorizer, error) {
-	cl, err := identityapi.NewClient(baseURL, identityapi.WithClient(&http.Client{Transport: binding.Transport{}}))
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Host == "" || u.User != nil || (!transportsecurity.Development() && u.Scheme != "https") {
+		return nil, fmt.Errorf("identity remote requires authenticated HTTPS")
+	}
+	base, err := transportsecurity.Client()
+	if err != nil {
+		return nil, err
+	}
+	cl, err := identityapi.NewClient(baseURL, identityapi.WithClient(&http.Client{Transport: binding.Transport{Base: base}, CheckRedirect: refuseRedirect}))
 	if err != nil {
 		return nil, err
 	}
 	return client{cl}, nil
+}
+
+// refuseRedirect 拒绝内部授权接口的任何重定向：重定向后的请求会重新附加请求上下文头，且目标未经入口校验，可能降级为明文或转向其他主机。
+func refuseRedirect(*http.Request, []*http.Request) error {
+	return errors.New("identity remote refuses redirects")
 }
 
 type client struct{ c *identityapi.Client }

@@ -1,0 +1,40 @@
+fixtures:
+- event: audit.entry.recorded.v1
+  base:
+    actor: svc:operations
+    actor_kind: service
+    subsystem: operations
+    action: operations.probe.trigger
+    resource: prb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    result: succeeded
+    occurred_at: '2026-10-14T08:00:00Z'
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /actor
+  - name: 未知字段拒绝
+    valid: false
+    patch:
+    - op: add
+      path: /secret
+      value: credential-placeholder
+  - name: 无效时间
+    valid: false
+    patch:
+    - op: replace
+      path: /occurred_at
+      value: not-a-time
+  - name: 非法主体类别
+    valid: false
+    patch:
+    - op: replace
+      path: /actor_kind
+      value: anonymous
+  - name: 非法审计结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: unknown

@@ -1,0 +1,193 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "contract",
+      "title": {
+        "value": "华林中心基础设施灾后重建项目-科研监测设备购置（二次）合同公告_国家林业和草原局政府网",
+        "prov": {
+          "evidence_ref": "ev_7DBNKHEN4CR7AERQ7C53X0GRHA",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "中国林业科学研究院华北林业实验中心",
+        "prov": {
+          "evidence_ref": "ev_DG5BETCSFQXFFEHW25VKC1SGF9",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "ZSTX-ZB-2025-33",
+        "prov": {
+          "evidence_ref": "ev_82RGEPKNZ8HAPWT2FJHZPV79DK",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "contract": {
+        "id": "ctr_JVS0BWF6KWJF68S6VMF3V46QNE",
+        "code": {
+          "value": "HW-2026-01",
+          "prov": {
+            "evidence_ref": "ev_VCQQGWFT6QGF6DCCDE9YZV1BYH",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "北京天恒昕业科技发展有限公司",
+          "prov": {
+            "evidence_ref": "ev_YCNH9YSMS57X10GSSN9Z44BS8P",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "amount": {
+          "value": "3480560.39",
+          "currency": "CNY",
+          "raw": "3480560.39元",
+          "prov": {
+            "evidence_ref": "ev_SP0DW667ES7VRTNC1KD28GYY9B",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "signed_at": {
+          "value": "2026-01-14T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_5YATYXJQED3W9BSSS2QNAP9JEJ",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "conditions": {
+          "delivery_period": {
+            "value": "自合同签订之日起30天",
+            "prov": {
+              "evidence_ref": "ev_K55GFHXG7H62EXAJKP2KXW1B92",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "proc.manual-review@0.1.0"
+            }
+          }
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "CONTRACT_TERM_CONFLICT",
+            "message": "网页30天与扫描合同首付款到账后15个工作日不一致，两份证据保留并复核"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_7DBNKHEN4CR7AERQ7C53X0GRHA": {
+      "id": "ev_7DBNKHEN4CR7AERQ7C53X0GRHA",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 43
+      },
+      "quote_hash": "sha256:6dcb2a8b2d5f1cff3feefbbffe271491ebf5eeb074e3ee664fd83e6e8975995e"
+    },
+    "ev_DG5BETCSFQXFFEHW25VKC1SGF9": {
+      "id": "ev_DG5BETCSFQXFFEHW25VKC1SGF9",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 8,
+        "char_end": 25
+      },
+      "quote_hash": "sha256:e14e9baae3254a3f255e28115a56977aa27bc8b22861e08e23f3a6764ec8308e"
+    },
+    "ev_82RGEPKNZ8HAPWT2FJHZPV79DK": {
+      "id": "ev_82RGEPKNZ8HAPWT2FJHZPV79DK",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 3,
+        "char_start": 34,
+        "char_end": 49
+      },
+      "quote_hash": "sha256:64b53560a7602ef3c4e197c8a8e63cc6e63cf792a0a3ce28b7e38207128a4121"
+    },
+    "ev_VCQQGWFT6QGF6DCCDE9YZV1BYH": {
+      "id": "ev_VCQQGWFT6QGF6DCCDE9YZV1BYH",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 8,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:0eec3632d89a50acafa315ca8a530a1b648adab965024744a3410f7accb78951"
+    },
+    "ev_YCNH9YSMS57X10GSSN9Z44BS8P": {
+      "id": "ev_YCNH9YSMS57X10GSSN9Z44BS8P",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 9,
+        "char_start": 9,
+        "char_end": 23
+      },
+      "quote_hash": "sha256:612783a6bc054106f28207d609e87d541fb5f0d354fe787048d46f033f9368ce"
+    },
+    "ev_SP0DW667ES7VRTNC1KD28GYY9B": {
+      "id": "ev_SP0DW667ES7VRTNC1KD28GYY9B",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 16,
+        "char_start": 8,
+        "char_end": 19
+      },
+      "quote_hash": "sha256:16f6cc76063b44d8b0be8dd467a3ad4ed69a3ee3482a74a73299d03f50b63f38"
+    },
+    "ev_5YATYXJQED3W9BSSS2QNAP9JEJ": {
+      "id": "ev_5YATYXJQED3W9BSSS2QNAP9JEJ",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 21,
+        "char_start": 9,
+        "char_end": 19
+      },
+      "quote_hash": "sha256:f942ca1c873844a98fcad1e1dd68d66c71ae66d4db2e877eec2d6a90a2e5b87d"
+    },
+    "ev_K55GFHXG7H62EXAJKP2KXW1B92": {
+      "id": "ev_K55GFHXG7H62EXAJKP2KXW1B92",
+      "snapshot_ref": "snp_5E3DFNGHQ3BH8HK43EQ0HCFGT2",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 18,
+        "char_start": 13,
+        "char_end": 24
+      },
+      "quote_hash": "sha256:5a8e4811cb9694b2f943d5130a1e688deccada969224505472f7f246352ed507"
+    }
+  }
+}

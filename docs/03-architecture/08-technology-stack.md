@@ -1,6 +1,6 @@
 # 技术选型
 
-> 状态：评审中 · 版本：2.1 · 更新：2026-10-13 · 负责人：首席架构师
+> 状态：评审中 · 版本：3.0 · 更新：2026-10-14 · 负责人：首席架构师
 
 选型原则：成熟、开源、可离线自建、许可证允许向私有部署客户分发、团队可招聘、不依赖任何云厂商的专有服务（ADR-0014）。本文是组件选型的唯一清单；决策理由见各 ADR，不在此重复。
 
@@ -63,7 +63,7 @@
 | 领域 | 选型 | 说明 |
 |---|---|---|
 | 事务数据库 | **PostgreSQL 17+**（CloudNativePG，ADR-0007） | RLS、分区、只读副本、PITR |
-| 对象存储 | **S3 标准协议**；生产使用 IaaS 供应商对象存储（ADR-0014 价格例外）；私有部署与 `staging` 使用 Ceph RGW（Rook） | MinIO 社区版已停止积极维护，不采用 |
+| 对象存储 | **受测S3公共子集**；生产使用 IaaS 供应商对象存储（ADR-0014 价格例外）；私有部署与 `staging` 使用 Ceph RGW（Rook） | MinIO 社区版已停止积极维护，不采用 |
 | 检索 | **OpenSearch 3.x**（自建，OpenSearch Operator；ADR-0007、ADR-0013） | 中文分词、k-NN、混合检索、percolator；版本化索引与别名切换 |
 | 图查询读模型 | M3 末以真实查询基准测试后选定，候选：PostgreSQL 递归查询、Apache AGE、NebulaGraph | 接口已固定为 `GraphQuery`；M4 才需要 |
 | 事件总线 | **Kafka 4.x KRaft**（Strimzi，ADR-0004） | 持久、可重放、分区有序 |
@@ -79,7 +79,7 @@
 | 浏览器渲染 | Playwright（Chromium） | 动态页面采集 |
 | HTML 解析 | lxml、selectolax | 高性能 |
 | PDF | pdfplumber、pypdfium2 | 文本与版面；PyMuPDF（AGPL）未取得商业许可前不作为默认依赖 |
-| OCR 与版面 | 文档解析/OCR API 与多模态模型 API；PaddleOCR（CPU）为可选自建方案 | 前期不建设 GPU |
+| OCR 与版面 | 文档解析/OCR API 与多模态模型 API；前期不建设私有OCR推理 | 前期不建设 GPU |
 | Office | python-docx、openpyxl 等；必要时 LibreOffice 沙箱转换 | — |
 | 模型访问 | 自研模型网关（`ai-platform`，Go），OpenAI 兼容协议适配器为主 | 统一路由、计量与治理；私有部署客户可指向自有端点 |
 | 模型供应商 | 境内已备案的多家模型 API | 合规已由法务确认；按评测选定主选与备选 |
@@ -121,4 +121,4 @@
 
 ## 8. 云与区域
 
-云厂商只作为 IaaS 供应商，选择规则见 ADR-0014；区域与可用区要求见 [部署拓扑](07-deployment-topology.md)。
+开发使用不限定厂商的VPS；正式运行前选择阿里云或AWS中国区。云厂商只提供IaaS与ADR-0014允许的对象存储；比较、推荐、区域与迁移验收见[部署拓扑](07-deployment-topology.md#9-开发-vps-与生产云选择)。

@@ -1,4 +1,3 @@
-# 公告样例。格式见 tools/contracts/src/mqc/fixtures.py。
 schema: domains/procurement/notice.schema.json
 base:
   id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
@@ -7,80 +6,451 @@ base:
   info_domain: INF-PROC
   snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
   revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
-  rights_tags: [public-gov]
+  rights_tags:
+  - public-gov
   classification: public
-  observed_at: "2026-11-01T01:02:03Z"
-  recorded_at: "2026-11-01T01:02:04Z"
+  observed_at: '2026-11-01T01:02:03Z'
+  recorded_at: '2026-11-01T01:02:04Z'
   notice_type: tender
   trading_system: government_procurement
   method: open_tender
-  title: { value: 市政给水管网改造工程管材采购, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.97, extractor: "proc.cn-ccgp@1.0.0" } }
-  buyer: { name_raw: 某市水务集团, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: *p }
-  location: { code: "330106", prov: *p }
-  budget: { value: "3200000", currency: CNY, raw: 320 万元, prov: *p }
+  title:
+    value: 市政给水管网改造工程管材采购
+    prov: &id001
+      evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      method: rule
+      confidence: 0.97
+      extractor: proc.cn-ccgp@1.0.0
+  buyer: &id002
+    name_raw: 某市水务集团
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    prov: *id001
+  location:
+    code: '330106'
+    prov: *id001
+  budget:
+    value: '3200000'
+    currency: CNY
+    raw: 320 万元
+    prov: *id001
   lots:
-    - lot_key: "1"
-      items:
-        - id: itm_01JA8ZXXXXXXXXXXXXXXXXXXX1
-          name: { value: PE 给水管, prov: *p }
-          categories: [{ scheme: gov-procurement-catalog, scheme_version: "2022", code: A02 }]
-      deadlines:
-        - id: ddl_01JA8ZXXXXXXXXXXXXXXXXXXX1
-          type: bid_submission
-          at: { value: "2026-11-20T01:30:00Z", precision: minute, prov: *p }
-  contacts: [{ role: buyer, name: 张某, phone: "0571-00000000" }]
+  - lot_key: '1'
+    items:
+    - id: itm_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      name:
+        value: PE 给水管
+        prov: *id001
+      categories:
+      - scheme: gov-procurement-catalog
+        scheme_version: '2022'
+        code: A02
+    deadlines:
+    - id: ddl_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      type: bid_submission
+      at:
+        value: '2026-11-20T01:30:00Z'
+        precision: minute
+        prov: *id001
+  contacts:
+  - role: buyer
+    name: 张某
+    phone: 0571-00000000
+    name_prov: *id001
+    phone_prov: *id001
 cases:
-  - name: 字段缺少证据
-    valid: false
-    patch: [{ op: remove, path: /buyer/prov }]
-  - name: 标的名称缺少证据
-    valid: false
-    patch: [{ op: remove, path: /lots/0/items/0/name/prov }]
-  - name: 未知字段
-    valid: false
-    patch: [{ op: add, path: /contact_phone, value: "138" }]
-  - name: 金额为数字而非十进制字符串
-    valid: false
-    patch: [{ op: replace, path: /budget/value, value: 3200000 }]
-  - name: 字段为 null（缺失应省略）
-    valid: false
-    patch: [{ op: add, path: /project_id, value: null }]
-  - name: 未登记的标识前缀
-    valid: false
-    patch: [{ op: replace, path: /lots/0/items/0/id, value: xyz_01JA8ZXXXXXXXXXXXXXXXXXXX1 }]
-  - name: 结果公告缺投标结果
-    valid: false
-    patch: [{ op: replace, path: /notice_type, value: award }]
-  - name: 结果公告
-    valid: true
-    patch:
-      - { op: replace, path: /notice_type, value: award }
-      - op: add
-        path: /lots/0/bid_results
-        value:
-          - id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
-            stage: award
-            is_winner: true
-            rank: 1
-            bidder: { name_raw: 某管业公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2, prov: *p }
-            price: { value: "2980000.50", currency: CNY, prov: *p }
-  - name: 更正公告缺变更明细
-    valid: false
-    patch: [{ op: replace, path: /notice_type, value: amendment }]
-  - name: 更正公告
-    valid: true
-    patch:
-      - { op: replace, path: /notice_type, value: amendment }
-      - op: add
-        path: /amendment
-        value:
-          amends_notice_ids: [ntc_01JA8ZXXXXXXXXXXXXXXXXXXX2]
-          changes:
-            - id: amd_01JA8ZXXXXXXXXXXXXXXXXXXX1
-              field_path: /lots/0/deadlines/0/at
-              before: "2026-11-20T01:30:00Z"
-              after: "2026-11-27T01:30:00Z"
-              prov: *p
-  - name: 合同公告缺合同
-    valid: false
-    patch: [{ op: replace, path: /notice_type, value: contract }]
+- name: 字段缺少证据
+  valid: false
+  patch:
+  - op: remove
+    path: /buyer/prov
+- name: 标的名称缺少证据
+  valid: false
+  patch:
+  - op: remove
+    path: /lots/0/items/0/name/prov
+- name: 未知字段
+  valid: false
+  patch:
+  - op: add
+    path: /contact_phone
+    value: '138'
+- name: 金额为数字而非十进制字符串
+  valid: false
+  patch:
+  - op: replace
+    path: /budget/value
+    value: 3200000
+- name: 字段为 null（缺失应省略）
+  valid: false
+  patch:
+  - op: add
+    path: /project_id
+    value: null
+- name: 未登记的标识前缀
+  valid: false
+  patch:
+  - op: replace
+    path: /lots/0/items/0/id
+    value: xyz_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- name: 结果公告缺投标结果
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: award
+- name: 结果公告
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: award
+  - op: add
+    path: /lots/0/bid_results
+    value:
+    - id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      stage: award
+      is_winner: true
+      rank: 1
+      bidder:
+        name_raw: 某管业公司
+        org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+        prov: *id001
+      price:
+        value: '2980000.50'
+        currency: CNY
+        prov: *id001
+- name: 更正公告缺变更明细
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: amendment
+- name: 更正公告
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: amendment
+  - op: add
+    path: /amendment
+    value:
+      amends_notice_ids:
+      - ntc_01JA8ZXXXXXXXXXXXXXXXXXXX2
+      changes:
+      - id: amd_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        field_path: /lots/0/deadlines/0/at
+        before: '2026-11-20T01:30:00Z'
+        after: '2026-11-27T01:30:00Z'
+        prov: *id001
+- name: 合同公告缺合同
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: contract
+- name: 联系电话缺少证据
+  valid: false
+  patch:
+  - op: remove
+    path: /contacts/0/phone_prov
+- name: 证据引用不能使用组织标识
+  valid: false
+  patch:
+  - op: replace
+    path: /buyer/prov/evidence_ref
+    value: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- name: 采购人未知时不伪造主体
+  valid: true
+  patch:
+  - op: remove
+    path: /buyer
+- name: 费率限价与履约条件
+  valid: true
+  patch:
+  - op: add
+    path: /lots/0/max_price_rate
+    value:
+      value: '100'
+      raw: 投标费率最高限价100%
+      basis:
+        value: 审定建安费用
+        prov: *id001
+      prov: *id001
+  - op: add
+    path: /lots/0/conditions
+    value:
+      delivery_period:
+        value: 合同签订后90天
+        prov: *id001
+      payment_terms:
+        value: 验收后凭发票支付
+        prov: *id001
+      document_access:
+        value: 网上获取，每个工作日09至17时
+        prov: *id001
+      sme_policy:
+        value: 联合体中小企业份额不少于40%
+        prov: *id001
+  - op: add
+    path: /lots/0/project_name
+    value:
+      value: 某建设项目
+      prov: *id001
+- name: 费率不能为负数
+  valid: false
+  patch:
+  - op: add
+    path: /lots/0/max_price_rate
+    value:
+      value: '-1'
+      prov: *id001
+- name: 付款条件必须带证据
+  valid: false
+  patch:
+  - op: add
+    path: /lots/0/conditions
+    value:
+      payment_terms:
+        value: 验收后付款
+- name: 文件获取起始时间
+  valid: true
+  patch:
+  - op: replace
+    path: /lots/0/deadlines/0/type
+    value: doc_obtain_start
+- name: 关联未完成的更正保留原文引用
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: amendment
+  - op: add
+    path: /amendment
+    value:
+      amends_notice_ids: []
+      original_reference:
+        value: 原项目编号ABC的公告
+        prov: *id001
+      summary:
+        value: 截止时间另行通知
+        prov: *id001
+      changes: []
+- name: 未关联更正不能没有原文引用
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: amendment
+  - op: add
+    path: /amendment
+    value:
+      amends_notice_ids: []
+      changes: []
+- name: 独立控制价公告不误判更正
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: price_limit
+- name: 供应商名录征集不冒充框架协议
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: supplier_enrollment
+- name: 合同估算与计划发布时间
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: plan
+  - op: add
+    path: /lots/0/estimated_contract_amount
+    value:
+      value: '49000000'
+      currency: CNY
+      prov: *id001
+  - op: add
+    path: /lots/0/conditions
+    value:
+      planned_publication:
+        value: 2026-10（暂定）
+        prov: *id001
+- name: 结果明细不可得必须报告质量缺口
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: award
+  - op: add
+    path: /result_details_pending
+    value: true
+  - op: add
+    path: /quality
+    value:
+      status: warning
+      warnings:
+      - code: RESULT_DETAILS_PENDING
+- name: 未知中标人不能冒充正常完整结果
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: award
+  - op: add
+    path: /result_details_pending
+    value: true
+  - op: add
+    path: /quality
+    value:
+      status: ok
+      warnings:
+      - code: RESULT_DETAILS_PENDING
+- name: 验收结论必须带证据
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: acceptance
+  - op: add
+    path: /acceptance
+    value:
+      id: acc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      result: passed
+- name: 合同最高额明确为限额
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: contract
+  - op: add
+    path: /contract
+    value:
+      id: ctr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      supplier:
+        name_raw: 某施工公司
+        prov: *id001
+      amount:
+        value: '350000'
+        currency: CNY
+        prov: *id001
+      amount_kind: ceiling
+      amount_kind_prov: *id001
+- name: 合同限额语义不能缺少证据
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: contract
+  - op: add
+    path: /contract
+    value:
+      id: ctr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      supplier:
+        name_raw: 某施工公司
+        prov: *id001
+      amount:
+        value: '350000'
+        currency: CNY
+        prov: *id001
+      amount_kind: ceiling
+- name: 年单价合计报价保持独立语义
+  valid: true
+  patch:
+  - &id003
+    op: replace
+    path: /notice_type
+    value: award
+  - &id004
+    op: add
+    path: /lots/0/bid_results
+    value:
+    - id: bdr_00000000000000000000000000
+      stage: award
+      result_kind: contract_award
+      is_winner: true
+      bidder: *id002
+      price:
+        value: '2995118'
+        currency: CNY
+        prov: *id001
+      price_kind: annual_unit_sum
+      price_kind_prov: *id001
+- name: 金额含义必须有证据
+  valid: false
+  patch:
+  - *id003
+  - *id004
+  - op: remove
+    path: /lots/0/bid_results/0/price_kind_prov
+- name: 金额含义不能脱离报价
+  valid: false
+  patch:
+  - *id003
+  - *id004
+  - op: remove
+    path: /lots/0/bid_results/0/price
+- name: 争议与裁判分别带证据
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: acceptance
+  - op: add
+    path: /acceptance
+    value:
+      id: acc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      result: failed
+      result_prov: &id005
+        evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        method: rule
+        confidence: 0.97
+        extractor: proc.cn-ccgp@1.0.0
+      dispute:
+        value: 供应商对报告提出异议
+        prov: *id005
+      judicial_outcome:
+      - value: 法院未解除合同并判部分付款
+        prov: *id005
+- name: 争议不得缺原文证据
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: acceptance
+  - op: add
+    path: /acceptance
+    value:
+      id: acc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      result: failed
+      result_prov: &id006
+        evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        method: rule
+        confidence: 0.97
+        extractor: proc.cn-ccgp@1.0.0
+      dispute:
+        value: 供应商对报告提出异议
+      judicial_outcome:
+      - value: 法院未解除合同并判部分付款
+        prov: *id006
+- name: 裁判不得缺原文证据
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_type
+    value: acceptance
+  - op: add
+    path: /acceptance
+    value:
+      id: acc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      result: failed
+      result_prov: &id007
+        evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        method: rule
+        confidence: 0.97
+        extractor: proc.cn-ccgp@1.0.0
+      dispute:
+        value: 供应商对报告提出异议
+        prov: *id007
+      judicial_outcome:
+      - value: 法院未解除合同并判部分付款

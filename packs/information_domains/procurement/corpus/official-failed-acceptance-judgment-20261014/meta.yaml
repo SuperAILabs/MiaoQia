@@ -1,0 +1,12 @@
+source_id: official-failed-acceptance-judgment-20261014
+source_url: https://www.gdcourts.gov.cn/caipanwenshuxuandeng/caipanwenshuxuandeng/content/post_1045953.html
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //div[@class="article"]
+response_charset: utf-8
+notes: 法院官网原始二审判决；原文法院认定的2013年技术验收事实，不是采购人验收公告，也不当成2026年当前状态。二审未解除合同并判部分付款；不得由验收失败推断解约。政府/国企交易制度未确认，不伪造trading_system。
+response_sha256: bfe9ba66cc4aaa176dbd59292581bedfb7317627042a2590ad56b5931b0042b8
+raw_sha256: 1fb7231b39eda09498f942f9a055696d7e1887bdddedf9771e77b5ecf3ae3807
+source_kind: court_original_judgment
+gate_scope: accepted_first_party_judicial_edge_case

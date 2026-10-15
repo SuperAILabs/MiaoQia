@@ -1,0 +1,173 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "award",
+      "title": {
+        "value": "数据中心（一期）和协同办公平台运行维护（2026-2029）项目中标公告",
+        "prov": {
+          "evidence_ref": "ev_C0999PAB1JZ9C2GN3MQ1K4E6KT",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "JSZC-321283-RTZX-G2026-0011",
+        "prov": {
+          "evidence_ref": "ev_Y8P2NT0971RDE57JEVJ97SRC02",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1",
+          "bid_results": [
+            {
+              "id": "bdr_CRVJJ85GHAGXMAPWKYCBVW1K1H",
+              "stage": "award",
+              "result_kind": "contract_award",
+              "is_winner": true,
+              "bidder": {
+                "name_raw": "泰兴市数据产业发展集团有限公司",
+                "prov": {
+                  "evidence_ref": "ev_0C0TPRGMXMD3VT166FWB5WG7VC",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                },
+                "uscc": "91321283MADWT8A11R",
+                "uscc_prov": {
+                  "evidence_ref": "ev_0XAJ69E5XAFN5K16EN5CN8CEMZ",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                },
+                "address": {
+                  "value": "泰兴高新技术产业开发区人才科技广场20号楼2楼",
+                  "prov": {
+                    "evidence_ref": "ev_AFB71RQMZZPK3056H295D65EGN",
+                    "method": "manual",
+                    "confidence": 1,
+                    "extractor": "manual-review@0.1.0"
+                  }
+                }
+              },
+              "consortium_members": [
+                {
+                  "name_raw": "江苏移动信息系统集成有限公司",
+                  "prov": {
+                    "evidence_ref": "ev_PEVYSXVPD5BZ7Z4P5A74QG8ZF0",
+                    "method": "manual",
+                    "confidence": 1,
+                    "extractor": "manual-review@0.1.0"
+                  }
+                }
+              ],
+              "price": {
+                "value": "4186666",
+                "currency": "CNY",
+                "raw": "4186666元",
+                "prov": {
+                  "evidence_ref": "ev_9GZ691WWKMBE4JWETBA1HNXH08",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "ev_C0999PAB1JZ9C2GN3MQ1K4E6KT": {
+      "id": "ev_C0999PAB1JZ9C2GN3MQ1K4E6KT",
+      "snapshot_ref": "snp_CWZG098ZK873MQBJNC8HN0P7VP",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 36
+      },
+      "quote_hash": "sha256:481e85dbdd2d105a0520de6d53703dedaab1edbdab3abd6617c02be0f46127fb"
+    },
+    "ev_Y8P2NT0971RDE57JEVJ97SRC02": {
+      "id": "ev_Y8P2NT0971RDE57JEVJ97SRC02",
+      "snapshot_ref": "snp_CWZG098ZK873MQBJNC8HN0P7VP",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 7,
+        "char_end": 34
+      },
+      "quote_hash": "sha256:4e49c38b9ae0322d58e66a81db67f55db3dc29f7bdf4a6a4fd9aebab726a3583"
+    },
+    "ev_0C0TPRGMXMD3VT166FWB5WG7VC": {
+      "id": "ev_0C0TPRGMXMD3VT166FWB5WG7VC",
+      "snapshot_ref": "snp_CWZG098ZK873MQBJNC8HN0P7VP",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 4,
+        "char_start": 0,
+        "char_end": 15,
+        "row": 1,
+        "col": 1
+      },
+      "quote_hash": "sha256:e825abba238269a75e8c05d2277407c90129fb7644cebe7d402c703825ef6edd"
+    },
+    "ev_0XAJ69E5XAFN5K16EN5CN8CEMZ": {
+      "id": "ev_0XAJ69E5XAFN5K16EN5CN8CEMZ",
+      "snapshot_ref": "snp_CWZG098ZK873MQBJNC8HN0P7VP",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 4,
+        "char_start": 0,
+        "char_end": 18,
+        "row": 1,
+        "col": 2
+      },
+      "quote_hash": "sha256:7c6e393af316839cc861c841f118439b8abe82a90caaf7131837c7689d25441e"
+    },
+    "ev_AFB71RQMZZPK3056H295D65EGN": {
+      "id": "ev_AFB71RQMZZPK3056H295D65EGN",
+      "snapshot_ref": "snp_CWZG098ZK873MQBJNC8HN0P7VP",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 4,
+        "char_start": 0,
+        "char_end": 23,
+        "row": 1,
+        "col": 3
+      },
+      "quote_hash": "sha256:d583309f80160710cf2ca1579023b9a1dd3f6b4e42f133b31cf49452337bee2b"
+    },
+    "ev_PEVYSXVPD5BZ7Z4P5A74QG8ZF0": {
+      "id": "ev_PEVYSXVPD5BZ7Z4P5A74QG8ZF0",
+      "snapshot_ref": "snp_CWZG098ZK873MQBJNC8HN0P7VP",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 15,
+        "char_start": 33,
+        "char_end": 47
+      },
+      "quote_hash": "sha256:a97ad6c92c1362d3b4fb01852f6d76bf1594d59c60f2494d6a7f18cbd7a9f0ac"
+    },
+    "ev_9GZ691WWKMBE4JWETBA1HNXH08": {
+      "id": "ev_9GZ691WWKMBE4JWETBA1HNXH08",
+      "snapshot_ref": "snp_CWZG098ZK873MQBJNC8HN0P7VP",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 4,
+        "char_start": 0,
+        "char_end": 8,
+        "row": 1,
+        "col": 5
+      },
+      "quote_hash": "sha256:d10832469e61c5a4c5aea10f79d72527e5e7c7523a272cc80e7ddccaed9c466d"
+    }
+  }
+}

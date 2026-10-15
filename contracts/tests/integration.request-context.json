@@ -1,0 +1,152 @@
+{
+  "schema": "integration/request-context.schema.json",
+  "base": {
+    "principal": {
+      "id": "svc:operations",
+      "kind": "service"
+    }
+  },
+  "cases": [
+    {
+      "name": "租户和单元成对",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "name": "完整租户上下文",
+      "valid": true,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "cell": "01"
+      }
+    },
+    {
+      "name": "空主体",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "",
+          "kind": "service"
+        }
+      }
+    },
+    {
+      "name": "非法主体类别",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "root"
+        }
+      }
+    },
+    {
+      "name": "未知上下文字段",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "secret": "placeholder"
+      }
+    },
+    {
+      "name": "未知主体字段",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service",
+          "token": "placeholder"
+        }
+      }
+    },
+    {
+      "name": "缺少主体",
+      "valid": false,
+      "instance": {}
+    },
+    {
+      "name": "孤立单元",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "cell": "01"
+      }
+    },
+    {
+      "name": "单元禁止主题注入",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "cell": "01.other"
+      }
+    },
+    {
+      "name": "空用途",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "purpose": ""
+      }
+    },
+    {
+      "name": "租户类型错误",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "tenant": 12,
+        "cell": "01"
+      }
+    },
+    {
+      "name": "字段null",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": "svc:operations",
+          "kind": "service"
+        },
+        "purpose": null
+      }
+    },
+    {
+      "name": "主体标识类型错误",
+      "valid": false,
+      "instance": {
+        "principal": {
+          "id": 123,
+          "kind": "service"
+        }
+      }
+    },
+    {
+      "name": "非对象根值",
+      "valid": false,
+      "instance": null
+    }
+  ]
+}

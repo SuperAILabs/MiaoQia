@@ -1,0 +1,76 @@
+fixtures:
+- schema: CheckRequest
+  base:
+    relation: can_trigger_probe
+    object: platform:miaoqia
+  cases:
+  - name: 缺少关系
+    valid: false
+    patch:
+    - op: remove
+      path: /relation
+  - name: 资源格式错误
+    valid: false
+    patch:
+    - op: replace
+      path: /object
+      value: bad
+  - name: 关系格式错误
+    valid: false
+    patch:
+    - op: replace
+      path: /relation
+      value: can:read
+  - name: 主体格式错误
+    valid: false
+    patch:
+    - op: add
+      path: /subject
+      value: bad
+  - name: 业务参数不得传租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_other
+  - name: 主体参数不能为空
+    valid: false
+    patch:
+    - op: add
+      path: /subject
+      value: ''
+- schema: CheckResult
+  base:
+    allowed: false
+  cases:
+  - name: 允许结果
+    valid: true
+    patch:
+    - op: replace
+      path: /allowed
+      value: true
+  - name: 禁止夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_other
+- schema: Problem
+  base:
+    type: https://errors.miaoqia.com/invalid_context
+    title: 请求上下文无效
+    status: 400
+    code: invalid_context
+  cases:
+  - name: 非错误HTTP状态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: 200
+  - name: 未知错误字段
+    valid: false
+    patch:
+    - op: add
+      path: /token
+      value: placeholder

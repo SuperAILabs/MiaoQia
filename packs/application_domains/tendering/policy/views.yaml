@@ -1,9 +1,13 @@
 # 视图目录：策略求值前由 detection 组装的只读视图（语义见 docs/03-architecture/11-policy-dsl.md 第 5.1 节）。
 #
 # fact_types：R1 模板使用的事实视图，是信息领域包领域 Schema 的投影，字段类型以 Schema 为准，本文件不重复定义。
-#   source  投影来源 Schema；unit 求值单位（每条公告、每个标包结果或每份合同求值一次）；when 进入该视图的条件；
-#   fields  视图字段 → 来源路径（路径相对 source；project. 前缀表示所属采购项目；[*] 表示展开；min()/any() 为聚合）。
+#   source  投影来源 Schema；unit 求值单位（每个项目标包、每条公告、每个标包结果或每份合同求值一次）；when 进入该视图的条件；
+#   triggers 触发重新求值的领域事件（缺省为来源事实首次发布的事件）；
+#   fields  视图字段 → 来源路径（路径相对 source；project. 前缀表示所属采购项目；lot. 表示当前标包；latest_notice. 表示项目最新一条非更正采购公告；[*] 表示展开；min()/any() 为聚合）。
 #   来源字段为空或 null 时，视图中不出现该字段（表达式中 has() 为假，读取为未知）。
+#   enrichment.category(标的) 读取 L3 品类分类增强结果（数据架构 3.3）：只保留行业包分类体系、达到增强器发布门槛的品类，
+#   展开为品类列表；该字段的证据置信度取所保留品类的最低值、方法记为 model 或 rule，受模板 evidence_policy 约束，
+#   不达标时读取为未知。没有可用品类时视图中不出现该字段。
 #
 # view_items：可按名称引用的关联视图项，声明提供方、类型与新鲜度；组装后挂在 fact.<名称> 路径下，
 # 例如 winner.credit_flags 在表达式中为 fact.winner.credit_flags。
@@ -12,40 +16,70 @@
 #
 
 fact_types:
-  tendering.notice:
-    source: contracts/schemas/domains/procurement/notice.schema.json
-    unit: notice
-    when: notice_type in [intent, plan, prequalification, tender, negotiation, consultation, inquiry, single_source, framework]
+  # 商机视图：A01 按采购项目标包的当前状态求值，不按单条公告求值。公告按原文表达，更正与澄清
+  # 是独立公告，由投影器应用到 ProcurementProject（截止时间、标的、预算等为应用全部更正后的值），
+  # 因此更正后的截止时间、预算变化会体现在本视图中。同一模板对同一标包只保留一条信号，处置变化以
+  # 信号更新记录（11-policy-dsl.md 4.3）。
+  tendering.lot_opportunity:
+    source: contracts/schemas/domains/procurement/procurement-project.schema.json
+    unit: lot                            # 每个项目标包求值一次；信号键为 (模板, project_id, lot_id)
+    when: stage in [intent, announced, amended] and (not has(lot.status) or lot.status == open)
+    triggers:                            # 触发重新求值的领域事件；逻辑求值时间取事件时间
+      - tendering.notice.published.v1
+      - tendering.notice.amended.v1
+      - tendering.deadline.changed.v1
+      - tendering.project.stage_changed.v1
+      - tendering.project.linked.v1
+      - tendering.project.unlinked.v1
     fields:
-      notice_id: id
-      project_id: project_id
-      notice_type: notice_type
-      title: title.value
+      project_id: id
+      lot_id: lot.id
+      stage: stage
       method: method
+      title: title.value
       location: location.code
-      budget: budget
-      max_price: max_price
-      items: lots[*].items[*]
-      requirements: lots[*].requirements[*]
-      bid_deadline: min(lots[*].deadlines[type=bid_submission].at.value)
-      consortium_allowed: any(lots[*].consortium_allowed)
-      single_source_supplier: single_source_supplier
+      budget: "has(lot.budget) ? lot.budget : budget"
+      max_price: lot.max_price
+      items: lot.items[*]
+      categories: enrichment.category(lot.items[*])
+      requirements: lot.requirements[*]
+      bid_deadline: min(lot.deadlines[type=bid_submission].at.value)
+      consortium_allowed: lot.consortium_allowed
+      single_source_supplier: latest_notice.single_source_supplier   # 最新一条非更正采购公告（notice_ids 中最后一条）
       buyer: buyer
-      org_ids: "[buyer, agency, single_source_supplier].org_id"
+      org_ids: "[buyer, agency, latest_notice.single_source_supplier].org_id"
+  # 采购结果视图：每包每条 bid_result 独立求值。候选人保留 candidate_published 语义；实际中标逐条保留供应商，
+  # 不能按 rank=1 选成唯一 winner，rank 可并列。框架第一阶段入围只进入 tendering.framework_shortlist，
+  # 不触发 A02 的已成交供货路径；第二阶段成交须有实际中标证据。未公布单家报价时 amount 缺失；
+  # 只有 price_kind=total 进入金额，年单价合计、单价、估算和未知含义不代替项目总额。
+  # 本地契约检查不证明生产投影器已实现。
   tendering.bid_result:
     source: contracts/schemas/domains/procurement/notice.schema.json
-    unit: lot                            # 结果公告中的每个标包求值一次
-    when: notice_type in [candidate, award]
+    unit: bid_result                     # 每包每条结果独立求值，不能只取第一名
+    when: notice_type == candidate or (notice_type == award and result.is_winner == true and (not has(result.result_kind) or result.result_kind == contract_award))
     fields:
       project_id: project_id
       result_type: "notice_type == candidate ? candidate_published : awarded"
       location: location.code
       items: project.lots[lot_id].items[*]     # 结果公告常不重复标的，取项目标包的当前标的
-      amount: lot.bid_results[is_winner or rank=1].price
+      categories: enrichment.category(project.lots[lot_id].items[*])
+      amount: result.price[price_kind == total] # 年单价合计/单价/未知含义不当项目成交总额
       buyer: buyer
-      winner: lot.bid_results[is_winner or rank=1].bidder
+      winner: result.bidder
       candidates: lot.bid_results[*]
-      org_ids: "[buyer, lot.bid_results[*].bidder, lot.bid_results[*].consortium_members[*]].org_id"
+      org_ids: "[buyer, result.bidder, result.consortium_members[*]].org_id"
+  tendering.framework_shortlist:
+    source: contracts/schemas/domains/procurement/notice.schema.json
+    unit: bid_result                     # 各入围供应商独立投影，仍非第二阶段成交
+    when: notice_type == award and result.result_kind == framework_shortlist
+    fields:
+      project_id: project_id
+      notice_id: id
+      lot_key: lot.lot_key
+      supplier: result.bidder
+      rank: result.rank
+      amount: result.price                # 附件未审阅时不出现，不拿最高入围单价补齐
+      org_ids: "[buyer, result.bidder, result.consortium_members[*]].org_id"
   tendering.contract_record:
     source: contracts/schemas/domains/procurement/notice.schema.json
     unit: notice
@@ -54,6 +88,7 @@ fact_types:
       project_id: project_id
       location: location.code
       items: project.lots[contract.lot_id].items[*]
+      categories: enrichment.category(project.lots[contract.lot_id].items[*])
       amount: contract.amount
       buyer: buyer
       winner: contract.supplier
@@ -68,6 +103,7 @@ fact_types:
       investment_project_id: investment_project_id
       location: location.code
       items: project.lots[*].items[*]    # 经 procurement_project_id 关联的采购项目标的；未关联时不出现
+      categories: enrichment.category(project.lots[*].items[*])
       amount: construction_permit.contract_amount
       winner: construction_permit.contractor
       org_ids: "[owner, construction_permit.contractor, construction_permit.designer, construction_permit.supervisor].org_id"

@@ -1,6 +1,9 @@
 # 标识前缀登记（docs/03-architecture/02-data-architecture.md 第 4 节）。
 # 格式 <前缀>_<ULID>；新增前缀在此登记并经架构评审，禁止重复，分配后永不复用。
+version: 1.1.0
 prefixes:
+  usr: { object: User, owner: identity }
+  tnt: { object: Tenant, owner: identity }
   # 平台
   evt: { object: CloudEvent, owner: kernel }
   prb: { object: PipelineProbe, owner: operations }
@@ -35,7 +38,11 @@ prefixes:
   cat: { object: Category, owner: entity-graph }
   brd: { object: Brand, owner: entity-graph }
   rel: { object: Relationship, owner: entity-graph }
+  prg: { object: Program, owner: entity-graph }         # 计划与资金目标对象（草案）
   # 客户智能平面
+  obj: { object: TenantObjective, owner: customer-context }
+  pol: { object: Policy, owner: customer-context }
+  mkt: { object: Market, owner: customer-context }        # 租户定义的市场：区域 × 品类 × 时间窗 × 主体类型（草案）
   sig: { object: Signal, owner: detection }
   rsc: { object: ResearchCase, owner: research }
   asm: { object: Assessment, owner: assessment }

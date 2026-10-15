@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: operations 事件
-  version: 0.1.0
+  version: 1.0.0
   description: >
     链路探针：运营人员或定时任务发起一次不含业务数据的探针，依次经过 acquisition、evidence，回到 operations，
     用于端到端验证事件骨干（发件箱、中继、Kafka、消费者）、追踪、审计与授权，并作为事件链路的健康监测。
@@ -22,6 +22,7 @@ components:
     probeRequested:
       name: operations.probe.requested.v1
       summary: 发起一次链路探针
+      x-fixtures-required: true
       payload:
         type: object
         additionalProperties: false

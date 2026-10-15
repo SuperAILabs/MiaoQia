@@ -20,6 +20,7 @@ import yaml
 
 from . import db, tracing
 from .consumer import Consumer
+from .scopes import instance_scope, role_scopes
 
 log = logging.getLogger("miaoqia.runtime")
 
@@ -34,6 +35,8 @@ class Env:
     brokers: str
     db: db.Database | None
     subsystem: str
+    data_scope: str = "public"
+    cell: str = ""
 
     def config(self, key: str) -> str:
         return os.environ.get(env_key(self.subsystem, key), "")
@@ -52,22 +55,31 @@ def _deploy_dir() -> Path:
     return Path(os.environ.get("MIAOQIA_DEPLOY_DIR", "deploy"))
 
 
-def migrate(modules: list[Module]) -> None:
+def prepare_role(unit: str, role: str, modules: list[Module]):
+    roles = yaml.safe_load((_deploy_dir() / unit / "roles.yaml").read_text())["roles"]
+    if role not in roles:
+        raise ValueError(f"未知角色 {role!r}")
+    spec = roles[role]
+    registry = yaml.safe_load((_deploy_dir() / "subsystems.yaml").read_text())["subsystems"]
+    scopes = role_scopes(spec, registry, unit=unit, available={m.name for m in modules})
+    return spec, scopes
+
+
+def migrate(unit: str, role: str, modules: list[Module]) -> None:
+    spec, scopes = prepare_role(unit, role, modules)
     for m in modules:
-        if not m.database:
+        if m.name not in scopes or not m.database:
             continue
         dsn = os.environ.get(env_key(m.name, "DB_OWNER_DSN"))
         if not dsn:
             raise SystemExit(f"未配置 {env_key(m.name, 'DB_OWNER_DSN')}")
         db.migrate(dsn, m.migrations)
-        log.info("迁移完成 subsystem=%s database=%s", m.name, m.database)
+        log.info("迁移完成 subsystem=%s scope=%s cell=%s", m.name, scopes[m.name], spec.get("cell", ""))
 
 
 def run(unit: str, role: str, modules: list[Module]) -> None:
-    roles = yaml.safe_load((_deploy_dir() / unit / "roles.yaml").read_text(encoding="utf-8"))["roles"]
-    if role not in roles:
-        raise SystemExit(f"未知角色 {role!r}")
-    want = set(roles[role].get("subsystems", []))
+    spec, scopes = prepare_role(unit, role, modules)
+    want = set(scopes)
     tracing.setup(unit, role)
     brokers = os.environ.get("MIAOQIA_KAFKA_BROKERS", "")
     consumers: list[Consumer] = []
@@ -75,7 +87,7 @@ def run(unit: str, role: str, modules: list[Module]) -> None:
         if m.name not in want:
             continue
         d = db.Database(os.environ[env_key(m.name, "DB_DSN")]) if m.database and m.consumers else None
-        env = Env(role=role, brokers=brokers, db=d, subsystem=m.name)
+        env = Env(role=role, brokers=brokers, db=d, subsystem=m.name, data_scope=scopes[m.name], cell=spec.get("cell", ""))
         if m.consumers:
             consumers += m.consumers(env)
     log.info("进程角色启动 unit=%s role=%s subsystems=%s consumers=%d", unit, role, sorted(want), len(consumers))
@@ -117,7 +129,7 @@ def main(unit: str, modules: list[Module]) -> None:
     p.add_argument("--role")
     a = p.parse_args()
     if a.command == "migrate":
-        migrate(modules)
+        migrate(unit, a.role or {"acquisition": "acq-admin", "data": "data-api"}[unit], modules)
     elif a.role:
         run(unit, a.role, modules)
     else:

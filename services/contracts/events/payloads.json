@@ -1,0 +1,3547 @@
+{
+  "cases": [
+    {
+      "event": "acquisition.probe.emitted.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ],
+        "probe_id": "prb_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "acquisition.probe.emitted.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "acquisition.probe.emitted.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ],
+        "probe_id": "prb_00000000000000000000000000",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "acquisition.probe.emitted.v1",
+      "name": "非法probe_id前缀",
+      "valid": false,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ],
+        "probe_id": "bad_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "artifact_ref": "fixture-value",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-10-14T00:00:00Z",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "source_id": "fixture-value",
+        "source_url": "https://example.org/notice"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "fixture-value",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-10-14T00:00:00Z",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "source_url": "https://example.org/notice"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "fixture-value",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-10-14T00:00:00Z",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "source_id": "fixture-value",
+        "source_url": "https://example.org/notice",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "acquisition.fetch.failed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "error_code": "fixture-value",
+        "failed_at": "2026-10-14T00:00:00Z",
+        "retryable": false,
+        "source_id": "fixture-value",
+        "source_url": "https://example.org/notice"
+      }
+    },
+    {
+      "event": "acquisition.fetch.failed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "error_code": "fixture-value",
+        "failed_at": "2026-10-14T00:00:00Z",
+        "retryable": false,
+        "source_url": "https://example.org/notice"
+      }
+    },
+    {
+      "event": "acquisition.fetch.failed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "error_code": "fixture-value",
+        "failed_at": "2026-10-14T00:00:00Z",
+        "retryable": false,
+        "source_id": "fixture-value",
+        "source_url": "https://example.org/notice",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "acquisition.source.health_changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "after": "healthy",
+        "before": "healthy",
+        "reason_code": "fixture-value",
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "acquisition.source.health_changed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "after": "healthy",
+        "before": "healthy",
+        "reason_code": "fixture-value"
+      }
+    },
+    {
+      "event": "acquisition.source.health_changed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "after": "healthy",
+        "before": "healthy",
+        "reason_code": "fixture-value",
+        "source_id": "fixture-value",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "acquisition.source.rights_changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "action": "retain",
+        "after": [
+          "fixture-value"
+        ],
+        "before": [
+          "fixture-value"
+        ],
+        "effective_at": "2026-10-14T00:00:00Z",
+        "rights_version": 1,
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "acquisition.source.rights_changed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "action": "retain",
+        "after": [
+          "fixture-value"
+        ],
+        "before": [
+          "fixture-value"
+        ],
+        "effective_at": "2026-10-14T00:00:00Z",
+        "rights_version": 1
+      }
+    },
+    {
+      "event": "acquisition.source.rights_changed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "action": "retain",
+        "after": [
+          "fixture-value"
+        ],
+        "before": [
+          "fixture-value"
+        ],
+        "effective_at": "2026-10-14T00:00:00Z",
+        "rights_version": 1,
+        "source_id": "fixture-value",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "acquisition.source.rights_changed.v1",
+      "name": "撤回全部权利时有效集合为空",
+      "valid": true,
+      "value": {
+        "action": "withdraw",
+        "after": [],
+        "before": [
+          "fixture-value"
+        ],
+        "effective_at": "2026-10-14T00:00:00Z",
+        "rights_version": 1,
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "service",
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor_kind": "service",
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "未知字段拒绝",
+      "valid": false,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "service",
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "secret": "credential-placeholder",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "无效时间",
+      "valid": false,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "service",
+        "occurred_at": "not-a-time",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "非法主体类别",
+      "valid": false,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "anonymous",
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "非法审计结果",
+      "valid": false,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "service",
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "unknown",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "domain.fact.upserted.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "fact_id": "ntc_00000000000000000000000000",
+        "fact_version": 1,
+        "info_domain": "INF-PROC",
+        "object_type": "fixture-value",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "schema_version": "1.0.0",
+        "snapshot_ref": "snp_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "domain.fact.upserted.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "fact_id": "ntc_00000000000000000000000000",
+        "fact_version": 1,
+        "object_type": "fixture-value",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "schema_version": "1.0.0",
+        "snapshot_ref": "snp_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "domain.fact.upserted.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "fact_id": "ntc_00000000000000000000000000",
+        "fact_version": 1,
+        "info_domain": "INF-PROC",
+        "object_type": "fixture-value",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "schema_version": "1.0.0",
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "domain.fact.upserted.v1",
+      "name": "非法fact_id前缀",
+      "valid": false,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "fact_id": "bad_00000000000000000000000000",
+        "fact_version": 1,
+        "info_domain": "INF-PROC",
+        "object_type": "fixture-value",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "schema_version": "1.0.0",
+        "snapshot_ref": "snp_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "domain.aggregation.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "aggregation_id": "ntc_00000000000000000000000000",
+        "aggregation_version": 1,
+        "changed_fields": [
+          "/title"
+        ],
+        "info_domain": "INF-PROC",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "domain.aggregation.changed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "aggregation_id": "ntc_00000000000000000000000000",
+        "aggregation_version": 1,
+        "changed_fields": [
+          "/title"
+        ],
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "domain.aggregation.changed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "aggregation_id": "ntc_00000000000000000000000000",
+        "aggregation_version": 1,
+        "changed_fields": [
+          "/title"
+        ],
+        "info_domain": "INF-PROC",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "domain.aggregation.changed.v1",
+      "name": "非法aggregation_id前缀",
+      "valid": false,
+      "value": {
+        "aggregation_id": "bad_00000000000000000000000000",
+        "aggregation_version": 1,
+        "changed_fields": [
+          "/title"
+        ],
+        "info_domain": "INF-PROC",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "domain.coverage.gap_detected.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "info_domain": "INF-PROC",
+        "query": "fixture-value",
+        "reason_code": "fixture-value",
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "domain.coverage.gap_detected.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "query": "fixture-value",
+        "reason_code": "fixture-value",
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "domain.coverage.gap_detected.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "info_domain": "INF-PROC",
+        "query": "fixture-value",
+        "reason_code": "fixture-value",
+        "source_id": "fixture-value",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "entity.entity.created.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "entity_id": "org_00000000000000000000000000",
+        "entity_type": "organization",
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.entity.created.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "entity_type": "organization",
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.entity.created.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "entity_id": "org_00000000000000000000000000",
+        "entity_type": "organization",
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "entity.entity.created.v1",
+      "name": "非法entity_id前缀",
+      "valid": false,
+      "value": {
+        "entity_id": "bad_00000000000000000000000000",
+        "entity_type": "organization",
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.entity.updated.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "entity_id": "org_00000000000000000000000000",
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.entity.updated.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.entity.updated.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "entity_id": "org_00000000000000000000000000",
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "entity.entity.updated.v1",
+      "name": "非法entity_id前缀",
+      "valid": false,
+      "value": {
+        "changed_fields": [
+          "/title"
+        ],
+        "entity_id": "bad_00000000000000000000000000",
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.merge.applied.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "absorbed_ids": [
+          "org_00000000000000000000000000"
+        ],
+        "entity_version": 1,
+        "merge_id": "fixture-value",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "survivor_id": "org_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "entity.merge.applied.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "absorbed_ids": [
+          "org_00000000000000000000000000"
+        ],
+        "entity_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "survivor_id": "org_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "entity.merge.applied.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "absorbed_ids": [
+          "org_00000000000000000000000000"
+        ],
+        "entity_version": 1,
+        "merge_id": "fixture-value",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "survivor_id": "org_00000000000000000000000000",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "entity.merge.applied.v1",
+      "name": "非法survivor_id前缀",
+      "valid": false,
+      "value": {
+        "absorbed_ids": [
+          "org_00000000000000000000000000"
+        ],
+        "entity_version": 1,
+        "merge_id": "fixture-value",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "survivor_id": "bad_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "entity.merge.reverted.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "entity_version": 1,
+        "merge_id": "fixture-value",
+        "restored_ids": [
+          "org_00000000000000000000000000"
+        ],
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.merge.reverted.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "entity_version": 1,
+        "restored_ids": [
+          "org_00000000000000000000000000"
+        ],
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "entity.merge.reverted.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "entity_version": 1,
+        "merge_id": "fixture-value",
+        "restored_ids": [
+          "org_00000000000000000000000000"
+        ],
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "entity.relationship.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "action": "upsert",
+        "from_entity_id": "org_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_type": "fixture-value",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "to_entity_id": "org_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "entity.relationship.changed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "action": "upsert",
+        "from_entity_id": "org_00000000000000000000000000",
+        "relationship_type": "fixture-value",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "to_entity_id": "org_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "entity.relationship.changed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "action": "upsert",
+        "from_entity_id": "org_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_type": "fixture-value",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "tenant_secret": "should-not-pass",
+        "to_entity_id": "org_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "entity.relationship.changed.v1",
+      "name": "非法relationship_id前缀",
+      "valid": false,
+      "value": {
+        "action": "upsert",
+        "from_entity_id": "org_00000000000000000000000000",
+        "relationship_id": "bad_00000000000000000000000000",
+        "relationship_type": "fixture-value",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "to_entity_id": "org_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.probe.forwarded.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ],
+        "probe_id": "prb_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.probe.forwarded.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "evidence.probe.forwarded.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ],
+        "probe_id": "prb_00000000000000000000000000",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "evidence.probe.forwarded.v1",
+      "name": "非法probe_id前缀",
+      "valid": false,
+      "value": {
+        "hops": [
+          "fixture-value"
+        ],
+        "probe_id": "bad_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.snapshot.created.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "artifact_ref": "fixture-value",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "evidence.snapshot.created.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "fixture-value",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "evidence.snapshot.created.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "fixture-value",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "source_id": "fixture-value",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "evidence.snapshot.created.v1",
+      "name": "非法snapshot_ref前缀",
+      "valid": false,
+      "value": {
+        "artifact_ref": "fixture-value",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "bad_00000000000000000000000000",
+        "source_id": "fixture-value"
+      }
+    },
+    {
+      "event": "evidence.extraction.revised.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "pack_id": "fixture-value",
+        "pack_version": "1.0.0",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "snp_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.extraction.revised.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "pack_id": "fixture-value",
+        "pack_version": "1.0.0",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "evidence.extraction.revised.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "pack_id": "fixture-value",
+        "pack_version": "1.0.0",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "evidence.extraction.revised.v1",
+      "name": "非法snapshot_ref前缀",
+      "valid": false,
+      "value": {
+        "pack_id": "fixture-value",
+        "pack_version": "1.0.0",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "bad_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.quality.flagged.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "quality_status": "ok",
+        "reason_codes": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "snp_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.quality.flagged.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "quality_status": "ok",
+        "reason_codes": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "evidence.quality.flagged.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "quality_status": "ok",
+        "reason_codes": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "evidence.quality.flagged.v1",
+      "name": "非法snapshot_ref前缀",
+      "valid": false,
+      "value": {
+        "quality_status": "ok",
+        "reason_codes": [
+          "fixture-value"
+        ],
+        "snapshot_ref": "bad_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.artifact.refetch_requested.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "reason_code": "fixture-value",
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "source_id": "fixture-value",
+        "source_url": "https://example.org/notice"
+      }
+    },
+    {
+      "event": "evidence.artifact.refetch_requested.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "reason_code": "fixture-value",
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "source_url": "https://example.org/notice"
+      }
+    },
+    {
+      "event": "evidence.artifact.refetch_requested.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "reason_code": "fixture-value",
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "source_id": "fixture-value",
+        "source_url": "https://example.org/notice",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "evidence.artifact.refetch_requested.v1",
+      "name": "非法snapshot_ref前缀",
+      "valid": false,
+      "value": {
+        "reason_code": "fixture-value",
+        "snapshot_ref": "bad_00000000000000000000000000",
+        "source_id": "fixture-value",
+        "source_url": "https://example.org/notice"
+      }
+    },
+    {
+      "event": "evidence.enrichment.completed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "enricher_id": "fixture-value",
+        "enricher_version": "fixture-value",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000",
+        "snapshot_ref": "snp_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.enrichment.completed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "enricher_id": "fixture-value",
+        "enricher_version": "fixture-value",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.enrichment.completed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "enricher_id": "fixture-value",
+        "enricher_version": "fixture-value",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000",
+        "snapshot_ref": "snp_00000000000000000000000000",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "evidence.enrichment.completed.v1",
+      "name": "非法snapshot_ref前缀",
+      "valid": false,
+      "value": {
+        "enricher_id": "fixture-value",
+        "enricher_version": "fixture-value",
+        "quality_status": "ok",
+        "revision_ref": "exr_00000000000000000000000000",
+        "snapshot_ref": "bad_00000000000000000000000000"
+      }
+    },
+    {
+      "event": "evidence.enricher.promoted.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "after_version": "fixture-value",
+        "before_version": "fixture-value",
+        "effective_at": "2026-10-14T00:00:00Z",
+        "enricher_id": "fixture-value"
+      }
+    },
+    {
+      "event": "evidence.enricher.promoted.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "after_version": "fixture-value",
+        "before_version": "fixture-value",
+        "effective_at": "2026-10-14T00:00:00Z"
+      }
+    },
+    {
+      "event": "evidence.enricher.promoted.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "after_version": "fixture-value",
+        "before_version": "fixture-value",
+        "effective_at": "2026-10-14T00:00:00Z",
+        "enricher_id": "fixture-value",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "operations.probe.requested.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "probe_id": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "requested_at": "2026-10-14T08:00:00Z"
+      }
+    },
+    {
+      "event": "operations.probe.requested.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "requested_at": "2026-10-14T08:00:00Z"
+      }
+    },
+    {
+      "event": "operations.probe.requested.v1",
+      "name": "未知字段拒绝",
+      "valid": false,
+      "value": {
+        "probe_id": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "requested_at": "2026-10-14T08:00:00Z",
+        "secret": "credential-placeholder"
+      }
+    },
+    {
+      "event": "operations.probe.requested.v1",
+      "name": "无效时间",
+      "valid": false,
+      "value": {
+        "probe_id": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "requested_at": "not-a-time"
+      }
+    },
+    {
+      "event": "operations.probe.requested.v1",
+      "name": "其他对象标识不能冒充探针",
+      "valid": false,
+      "value": {
+        "probe_id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "requested_at": "2026-10-14T08:00:00Z"
+      }
+    },
+    {
+      "event": "tendering.acceptance.published.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "acceptance_id": "acc_00000000000000000000000000",
+        "fact_version": 1,
+        "notice_id": "ntc_00000000000000000000000000",
+        "project_id": "pp_00000000000000000000000000",
+        "result": "passed",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "tendering.acceptance.published.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "acceptance_id": "acc_00000000000000000000000000",
+        "fact_version": 1,
+        "notice_id": "ntc_00000000000000000000000000",
+        "result": "passed",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "tendering.acceptance.published.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "acceptance_id": "acc_00000000000000000000000000",
+        "fact_version": 1,
+        "notice_id": "ntc_00000000000000000000000000",
+        "project_id": "pp_00000000000000000000000000",
+        "result": "passed",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "tendering.acceptance.published.v1",
+      "name": "非法project_id前缀",
+      "valid": false,
+      "value": {
+        "acceptance_id": "acc_00000000000000000000000000",
+        "fact_version": 1,
+        "notice_id": "ntc_00000000000000000000000000",
+        "project_id": "bad_00000000000000000000000000",
+        "result": "passed",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "tendering.framework.shortlisted.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "fact_version": 1,
+        "lot_keys": [
+          "fixture-value"
+        ],
+        "notice_id": "ntc_00000000000000000000000000",
+        "project_id": "pp_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "tendering.framework.shortlisted.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "fact_version": 1,
+        "lot_keys": [
+          "fixture-value"
+        ],
+        "notice_id": "ntc_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    },
+    {
+      "event": "tendering.framework.shortlisted.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "fact_version": 1,
+        "lot_keys": [
+          "fixture-value"
+        ],
+        "notice_id": "ntc_00000000000000000000000000",
+        "project_id": "pp_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "tendering.framework.shortlisted.v1",
+      "name": "非法project_id前缀",
+      "valid": false,
+      "value": {
+        "fact_version": 1,
+        "lot_keys": [
+          "fixture-value"
+        ],
+        "notice_id": "ntc_00000000000000000000000000",
+        "project_id": "bad_00000000000000000000000000",
+        "rights_tags": [
+          "fixture-value"
+        ]
+      }
+    }
+  ],
+  "schemas": {
+    "acquisition.fetch.completed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "原始制品稳定对象键/引用，不是短时签名URL",
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventArtifactRef"
+        },
+        "content_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "artifact_ref",
+        "rights_tags",
+        "content_hash",
+        "fetched_at",
+        "source_url"
+      ],
+      "type": "object"
+    },
+    "acquisition.fetch.failed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "error_code": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "failed_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_url",
+        "failed_at",
+        "error_code",
+        "retryable"
+      ],
+      "type": "object"
+    },
+    "acquisition.probe.emitted.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "hops": {
+          "description": "已经过的子系统，按顺序",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "probe_id": {
+          "pattern": "^prb_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "probe_id",
+        "hops"
+      ],
+      "type": "object"
+    },
+    "acquisition.source.health_changed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "before": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "reason_code": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        }
+      },
+      "required": [
+        "source_id",
+        "before",
+        "after",
+        "reason_code"
+      ],
+      "type": "object"
+    },
+    "acquisition.source.rights_changed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "retain",
+            "restrict",
+            "withdraw"
+          ]
+        },
+        "after": {
+          "description": "有效权利集合；撤回全部权利时允许为空。与事实的溯源rights_tags不同。",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsSet"
+        },
+        "before": {
+          "description": "有效权利集合；撤回全部权利时允许为空。与事实的溯源rights_tags不同。",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsSet"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "rights_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        }
+      },
+      "required": [
+        "source_id",
+        "rights_version",
+        "before",
+        "after",
+        "effective_at",
+        "action"
+      ],
+      "type": "object"
+    },
+    "audit.entry.recorded.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "例如 operations.probe.trigger",
+          "type": "string"
+        },
+        "actor": {
+          "description": "调用主体标识",
+          "type": "string"
+        },
+        "actor_kind": {
+          "enum": [
+            "user",
+            "service",
+            "service_account"
+          ],
+          "type": "string"
+        },
+        "basis": {
+          "description": "依据，例如授权关系",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "resource": {
+          "description": "资源引用",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "succeeded",
+            "denied",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "subsystem": {
+          "type": "string"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor",
+        "actor_kind",
+        "subsystem",
+        "action",
+        "resource",
+        "result",
+        "occurred_at"
+      ],
+      "type": "object"
+    },
+    "credit.record.published.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^crd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "amount_cny": {
+              "description": "十进制字符串",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "record_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "record_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "credit.record.resolved.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^crd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "domain.aggregation.changed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation_id": {
+          "oneOf": [
+            {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^ogr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^ogc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^oga_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^crd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          ],
+          "x-type-name": "EventFactId"
+        },
+        "aggregation_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "changed_fields": {
+          "items": {
+            "pattern": "^(/([^~]|~[01])*)+$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventChangedFields"
+        },
+        "info_domain": {
+          "pattern": "^INF-[A-Z]+$",
+          "type": "string",
+          "x-type-name": "EventInfoDomain"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        }
+      },
+      "required": [
+        "info_domain",
+        "changed_fields",
+        "rights_tags",
+        "aggregation_id",
+        "aggregation_version"
+      ],
+      "type": "object"
+    },
+    "domain.coverage.gap_detected.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "info_domain": {
+          "pattern": "^INF-[A-Z]+$",
+          "type": "string",
+          "x-type-name": "EventInfoDomain"
+        },
+        "query": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "reason_code": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        }
+      },
+      "required": [
+        "info_domain",
+        "source_id",
+        "reason_code",
+        "query"
+      ],
+      "type": "object"
+    },
+    "domain.fact.upserted.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "changed_fields": {
+          "items": {
+            "pattern": "^(/([^~]|~[01])*)+$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventChangedFields"
+        },
+        "fact_id": {
+          "oneOf": [
+            {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^ogr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^ogc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^oga_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^crd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          ],
+          "x-type-name": "EventFactId"
+        },
+        "fact_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "info_domain": {
+          "pattern": "^INF-[A-Z]+$",
+          "type": "string",
+          "x-type-name": "EventInfoDomain"
+        },
+        "object_type": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision_ref": {
+          "pattern": "^exr_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventRevisionRef"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "schema_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "type": "string"
+        },
+        "snapshot_ref": {
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventSnapshotRef"
+        }
+      },
+      "required": [
+        "info_domain",
+        "fact_id",
+        "changed_fields",
+        "rights_tags",
+        "snapshot_ref",
+        "revision_ref",
+        "object_type",
+        "fact_version",
+        "schema_version"
+      ],
+      "type": "object"
+    },
+    "entity.entity.created.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "oneOf": [
+            {
+              "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          ],
+          "x-type-name": "EventEntityId"
+        },
+        "entity_type": {
+          "enum": [
+            "organization",
+            "project",
+            "location",
+            "category",
+            "brand"
+          ]
+        },
+        "entity_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        }
+      },
+      "required": [
+        "entity_id",
+        "rights_tags",
+        "entity_version",
+        "entity_type"
+      ],
+      "type": "object"
+    },
+    "entity.entity.updated.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "changed_fields": {
+          "items": {
+            "pattern": "^(/([^~]|~[01])*)+$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventChangedFields"
+        },
+        "entity_id": {
+          "oneOf": [
+            {
+              "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          ],
+          "x-type-name": "EventEntityId"
+        },
+        "entity_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        }
+      },
+      "required": [
+        "entity_id",
+        "changed_fields",
+        "rights_tags",
+        "entity_version"
+      ],
+      "type": "object"
+    },
+    "entity.merge.applied.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "absorbed_ids": {
+          "items": {
+            "oneOf": [
+              {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            ],
+            "x-type-name": "EventEntityId"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "entity_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "merge_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "survivor_id": {
+          "oneOf": [
+            {
+              "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          ],
+          "x-type-name": "EventEntityId"
+        }
+      },
+      "required": [
+        "merge_id",
+        "survivor_id",
+        "absorbed_ids",
+        "entity_version",
+        "rights_tags"
+      ],
+      "type": "object"
+    },
+    "entity.merge.reverted.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "merge_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "restored_ids": {
+          "items": {
+            "oneOf": [
+              {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            ],
+            "x-type-name": "EventEntityId"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        }
+      },
+      "required": [
+        "merge_id",
+        "restored_ids",
+        "entity_version",
+        "rights_tags"
+      ],
+      "type": "object"
+    },
+    "entity.relationship.changed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "upsert",
+            "remove"
+          ]
+        },
+        "from_entity_id": {
+          "oneOf": [
+            {
+              "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          ],
+          "x-type-name": "EventEntityId"
+        },
+        "relationship_id": {
+          "pattern": "^rel_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventRelationshipId"
+        },
+        "relationship_type": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "relationship_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "to_entity_id": {
+          "oneOf": [
+            {
+              "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^loc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^cat_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            {
+              "pattern": "^brd_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          ],
+          "x-type-name": "EventEntityId"
+        }
+      },
+      "required": [
+        "relationship_id",
+        "rights_tags",
+        "from_entity_id",
+        "to_entity_id",
+        "relationship_type",
+        "relationship_version",
+        "action"
+      ],
+      "type": "object"
+    },
+    "evidence.artifact.refetch_requested.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "原始制品稳定对象键/引用，不是短时签名URL",
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventArtifactRef"
+        },
+        "reason_code": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "snapshot_ref": {
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventSnapshotRef"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "snapshot_ref",
+        "source_url",
+        "reason_code"
+      ],
+      "type": "object"
+    },
+    "evidence.enricher.promoted.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "after_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "before_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "enricher_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "enricher_id",
+        "before_version",
+        "after_version",
+        "effective_at"
+      ],
+      "type": "object"
+    },
+    "evidence.enrichment.completed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "enricher_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "enricher_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "quality_status": {
+          "enum": [
+            "ok",
+            "warning",
+            "suspect"
+          ],
+          "x-type-name": "EventQualityStatus"
+        },
+        "revision_ref": {
+          "pattern": "^exr_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventRevisionRef"
+        },
+        "snapshot_ref": {
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventSnapshotRef"
+        }
+      },
+      "required": [
+        "snapshot_ref",
+        "revision_ref",
+        "enricher_id",
+        "enricher_version",
+        "quality_status"
+      ],
+      "type": "object"
+    },
+    "evidence.extraction.revised.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "pack_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "pack_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "type": "string"
+        },
+        "quality_status": {
+          "enum": [
+            "ok",
+            "warning",
+            "suspect"
+          ],
+          "x-type-name": "EventQualityStatus"
+        },
+        "revision_ref": {
+          "pattern": "^exr_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventRevisionRef"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "snapshot_ref": {
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventSnapshotRef"
+        }
+      },
+      "required": [
+        "snapshot_ref",
+        "revision_ref",
+        "rights_tags",
+        "pack_id",
+        "pack_version",
+        "quality_status"
+      ],
+      "type": "object"
+    },
+    "evidence.probe.forwarded.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "hops": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "probe_id": {
+          "pattern": "^prb_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "probe_id",
+        "hops"
+      ],
+      "type": "object"
+    },
+    "evidence.quality.flagged.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "quality_status": {
+          "enum": [
+            "ok",
+            "warning",
+            "suspect"
+          ],
+          "x-type-name": "EventQualityStatus"
+        },
+        "reason_codes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "revision_ref": {
+          "pattern": "^exr_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventRevisionRef"
+        },
+        "snapshot_ref": {
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventSnapshotRef"
+        }
+      },
+      "required": [
+        "snapshot_ref",
+        "quality_status",
+        "reason_codes"
+      ],
+      "type": "object"
+    },
+    "evidence.snapshot.created.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "原始制品稳定对象键/引用，不是短时签名URL",
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventArtifactRef"
+        },
+        "content_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "snapshot_ref": {
+          "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventSnapshotRef"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        }
+      },
+      "required": [
+        "snapshot_ref",
+        "source_id",
+        "artifact_ref",
+        "rights_tags",
+        "content_hash"
+      ],
+      "type": "object"
+    },
+    "investment.approval.granted.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "record_type": {
+              "enum": [
+                "filing",
+                "approval",
+                "feasibility_approval",
+                "eia_approval",
+                "land_approval",
+                "planning_permit"
+              ]
+            }
+          },
+          "required": [
+            "record_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "investment.completion.filed.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "investment.construction_permit.issued.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "contractor_org_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "procurement_project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "investment.record.published.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^ivr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "investment_project_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "record_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "record_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "operations.probe.requested.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "probe_id": {
+          "pattern": "^prb_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "probe_id",
+        "requested_at"
+      ],
+      "type": "object"
+    },
+    "org.abnormal.listed.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^og[rca]_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "list_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "list_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "org.abnormal.removed.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^og[rca]_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "org.change.recorded.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^og[rca]_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "change_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "change_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "org.registration.updated.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^og[rca]_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "changed_fields": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "org.status.changed.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "record_id": {
+              "pattern": "^og[rca]_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_org_ids": {
+              "description": "涉及的已解析组织",
+              "items": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "subject_org_ids",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "status_after": {
+              "type": "string"
+            },
+            "status_before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "status_after"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.acceptance.published.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "acceptance_id": {
+              "pattern": "^acc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "result": {
+              "enum": [
+                "passed",
+                "partial",
+                "failed"
+              ]
+            }
+          },
+          "required": [
+            "acceptance_id",
+            "result"
+          ],
+          "type": "object"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "tendering.contract.published.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "contract_id": {
+              "pattern": "^ctr_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "contract_id"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.deadline.changed.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "after": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "before": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "deadline_type": {
+              "type": "string"
+            },
+            "lot_id": {
+              "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "lot_id",
+            "deadline_type",
+            "after"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.framework.shortlisted.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "lot_keys": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "lot_keys"
+          ],
+          "type": "object"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "tendering.notice.amended.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "amended_notice_ids": {
+              "items": {
+                "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "changed_fields": {
+              "description": "JSON Pointer 列表，相对 ProcurementProject（如 /lots/0/deadlines）",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "amended_notice_ids",
+            "changed_fields"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.notice.published.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "notice_type": {
+              "description": "意向、计划、资格预审、招标、谈判、磋商、询价、单一来源公示、框架协议征集、更正、澄清、终止、候选人公示、中标/成交结果、流标/废标、合同、验收、最高限价独立公告、供应商名录征集（不等同框架协议）",
+              "enum": [
+                "intent",
+                "plan",
+                "prequalification",
+                "tender",
+                "negotiation",
+                "consultation",
+                "inquiry",
+                "single_source",
+                "framework",
+                "amendment",
+                "clarification",
+                "termination",
+                "candidate",
+                "award",
+                "failure",
+                "contract",
+                "acceptance",
+                "price_limit",
+                "supplier_enrollment"
+              ]
+            }
+          },
+          "required": [
+            "notice_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.procurement.failed.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "ending_type": {
+              "enum": [
+                "terminated",
+                "failed_bid",
+                "voided"
+              ]
+            },
+            "lot_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "ending_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.project.linked.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "confidence": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "method": {
+              "enum": [
+                "project_code",
+                "explicit_reference",
+                "attribute_match",
+                "semantic"
+              ]
+            },
+            "status": {
+              "enum": [
+                "auto",
+                "candidate",
+                "confirmed"
+              ]
+            }
+          },
+          "required": [
+            "method",
+            "confidence",
+            "status"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.project.stage_changed.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "from": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.project.unlinked.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "previous_project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "previous_project_id"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "tendering.result.published.v1": {
+      "allOf": [
+        {
+          "properties": {
+            "fact_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "notice_id": {
+              "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "project_id": {
+              "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rights_tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "project_id",
+            "notice_id",
+            "fact_version",
+            "rights_tags"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "lot_ids": {
+              "items": {
+                "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "stage": {
+              "enum": [
+                "candidate",
+                "award"
+              ]
+            }
+          },
+          "required": [
+            "stage",
+            "lot_ids"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  }
+}

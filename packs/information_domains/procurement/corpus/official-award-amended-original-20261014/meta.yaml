@@ -1,0 +1,10 @@
+source_id: official-award-amended-original
+source_url: https://www.ccgp.gov.cn/cggg/zygg/zbgg/202606/t20260617_26763266.htm
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: div.vF_detail_content
+response_sha256: 22861a17ce4adcc1e5bf5c6e4965e9795d1740caada728c7ef4cfb513868695c
+raw_sha256: 46cbd3a81668f13fa1e9709e48db4641072afc79ee2ce81716cefa64c52bd54e
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。

@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: 审计事件流
-  version: 0.1.0
+  version: 1.0.0
   description: >
     全部子系统经审计 SDK 发布（与业务写入同事务进入发件箱），由 governance 消费并不可篡改地存储
     （docs/03-architecture/subsystems/governance.md）。审计条目只含引用与摘要，不含敏感内容。
@@ -22,6 +22,7 @@ components:
     entryRecorded:
       name: audit.entry.recorded.v1
       summary: 一条审计条目：谁、何时、对什么、做了什么、结果、依据
+      x-fixtures-required: true
       payload:
         type: object
         additionalProperties: false

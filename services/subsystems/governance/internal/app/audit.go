@@ -4,6 +4,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 
@@ -17,6 +18,9 @@ func Ingest(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) error {
 	var d audit.Data
 	if err := json.Unmarshal(env.Data, &d); err != nil {
 		return err
+	}
+	if env.Source != "miaoqia/"+d.Subsystem || d.Tenant != env.Tenant || d.Actor == "" || d.Action == "" || d.Resource == "" {
+		return errors.New("audit origin/context mismatch")
 	}
 	var tenant *string
 	if d.Tenant != "" {

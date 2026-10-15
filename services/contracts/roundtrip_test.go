@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -23,9 +24,12 @@ func TestRoundTrip(t *testing.T) {
 		"OrgChange":          func() any { return &OrgChange{} },
 		"OrgAbnormal":        func() any { return &OrgAbnormal{} },
 		"CreditRecord":       func() any { return &CreditRecord{} },
+		"Signal":             func() any { return &Signal{} },
 		"InvestmentRecord":   func() any { return &InvestmentRecord{} },
 		"NormalizedDocument": func() any { return &NormalizedDocument{} },
 		"EvidenceRef":        func() any { return &EvidenceRef{} },
+		"EventEnvelope":      func() any { return &EventEnvelope{} },
+		"RequestContext":     func() any { return &RequestContext{} },
 	}
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil || len(files) == 0 {
@@ -44,8 +48,25 @@ func TestRoundTrip(t *testing.T) {
 		}
 		dec := json.NewDecoder(bytes.NewReader(raw))
 		dec.DisallowUnknownFields()
-		if err := dec.Decode(mk()); err != nil {
+		model := mk()
+		if err := dec.Decode(model); err != nil {
 			t.Errorf("%s：%v", filepath.Base(f), err)
+			continue
+		}
+		encoded, err := json.Marshal(model)
+		if err != nil {
+			t.Errorf("%s：重新编码失败 %v", filepath.Base(f), err)
+			continue
+		}
+		var before, after any
+		if err := json.Unmarshal(raw, &before); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(encoded, &after); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(before, after) {
+			t.Errorf("%s：往返改变了字段或值", filepath.Base(f))
 		}
 	}
 }

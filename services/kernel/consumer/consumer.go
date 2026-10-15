@@ -7,8 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/superailabs/miaoqia/services/contracts/events"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -28,22 +29,49 @@ type Handler func(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) error
 
 // Consumer 是一个消费者（一个消费组）。
 type Consumer struct {
-	Name        string // 消费者标识，同时作为消费组与去重键，例如 operations.probe-completion
-	Subsystem   string // 所属子系统
-	DeadLetter  string // 死信主题，默认 dlq.<子系统>
-	Brokers     []string
-	Topics      []string
-	Handlers    map[string]Handler // 按事件类型；未登记的类型直接确认（消费者必须容忍新事件类型）
-	DB          *db.DB
-	MaxAttempts int           // 默认 5
-	Backoff     time.Duration // 首次重试间隔，默认 200ms，逐次翻倍
-	Log         *slog.Logger
+	Name           string // 消费者标识，同时作为消费组与去重键，例如 operations.probe-completion
+	Subsystem      string // 所属子系统
+	DeadLetter     string // 死信主题，默认 dlq.<子系统>
+	Brokers        []string
+	Topics         []string
+	Handlers       map[string]Handler // 按事件类型；未登记的类型直接确认（消费者必须容忍新事件类型）
+	PayloadSchemas map[string]any     // 显式私有事件Schema；已登记类型使用离线生成制品
+	DB             *db.DB
+	MaxAttempts    int           // 默认 5
+	Backoff        time.Duration // 首次重试间隔，默认 200ms，逐次翻倍
+	Log            *slog.Logger
 
-	client *kgo.Client
+	client     *kgo.Client
+	validators map[string]*jsonschema.Schema
+}
+
+// Prepare 确保每个已登记处理函数都有可编译的Schema；不允许启动后静默跳过验证。
+func (c *Consumer) Prepare() error {
+	c.validators = map[string]*jsonschema.Schema{}
+	for name := range c.Handlers {
+		s, err := events.Schema(name)
+		if raw, ok := c.PayloadSchemas[name]; ok {
+			if err == nil {
+				return fmt.Errorf("canonical payload schema cannot be overridden: %s", name)
+			}
+			if !errors.Is(err, events.ErrUnknown) {
+				return err
+			}
+			s, err = events.Compile(raw)
+		}
+		if err != nil {
+			return err
+		}
+		c.validators[name] = s
+	}
+	return nil
 }
 
 // Run 消费直到 ctx 结束。
 func (c *Consumer) Run(ctx context.Context) error {
+	if err := c.Prepare(); err != nil {
+		return err
+	}
 	if c.MaxAttempts == 0 {
 		c.MaxAttempts = 5
 	}
@@ -72,12 +100,20 @@ func (c *Consumer) Run(ctx context.Context) error {
 			c.Log.Warn("拉取失败", "consumer", c.Name, "error", err)
 		}
 		var done []*kgo.Record
+		var handleErr error
 		fs.EachRecord(func(r *kgo.Record) {
+			if handleErr != nil {
+				return
+			}
 			if err := c.handle(ctx, r); err != nil {
-				return // ctx 结束：不确认，重启后重新投递
+				handleErr = err
+				return
 			}
 			done = append(done, r)
 		})
+		if handleErr != nil {
+			return handleErr
+		} // 不让后续同分区记录的提交跨过未投递成功的死信
 		if len(done) > 0 {
 			if err := cl.CommitRecords(ctx, done...); err != nil && ctx.Err() == nil {
 				c.Log.Warn("确认位点失败", "consumer", c.Name, "error", err)
@@ -98,7 +134,10 @@ func (c *Consumer) handle(ctx context.Context, r *kgo.Record) error {
 	if !ok {
 		return nil
 	}
-	ectx := reqctx.Service(reqctx.With(ctx, reqctx.Context{Tenant: env.Tenant, Cell: env.Cell, Purpose: "event"}), c.Subsystem)
+	if err := events.Validate(c.validators[env.Type], env.Data); err != nil {
+		return c.deadLetter(ctx, r, err)
+	}
+	ectx := reqctx.Service(reqctx.With(ctx, eventContext(&env)), c.Subsystem)
 	ectx, span := tracing.Tracer(c.Subsystem).Start(tracing.WithTraceparent(ectx, env.Traceparent), "consume "+env.Type,
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(attribute.String("messaging.destination.name", r.Topic), attribute.String("cloudevents.event_id", env.ID),
@@ -136,19 +175,18 @@ func (c *Consumer) handle(ctx context.Context, r *kgo.Record) error {
 	return c.deadLetter(ectx, r, last)
 }
 
+// eventContext 是事件处理的请求上下文。请求上下文要求租户与单元成对；平台域事件可只带租户（信封契约允许），
+// 此时以平台身份处理、不带租户，租户仍可从 env.Tenant 读取。
+func eventContext(env *outbox.Envelope) reqctx.Context {
+	if env.Cell == "" {
+		return reqctx.Context{Purpose: "event"}
+	}
+	return reqctx.Context{Tenant: env.Tenant, Cell: env.Cell, Purpose: "event"}
+}
+
 // checkEnvelope 校验信封与主题一致：单元主题只接受该单元的租户事件，公共主题只接受公共域事件。
 func checkEnvelope(topic string, env *outbox.Envelope) error {
-	if err := env.Validate(); err != nil {
-		return err
-	}
-	prefix, _, _ := strings.Cut(topic, ".")
-	switch {
-	case prefix == "public" && env.Zone != reqctx.ZonePublic,
-		prefix == "platform" && env.Zone != reqctx.ZonePlatform,
-		strings.HasPrefix(prefix, "cell-") && (env.Zone != reqctx.ZoneTenant || "cell-"+env.Cell != prefix):
-		return fmt.Errorf("事件 %s 的域 %s / 单元 %q 与主题 %s 不符", env.ID, env.Zone, env.Cell, topic)
-	}
-	return nil
+	return env.CheckTopic(topic)
 }
 
 func (c *Consumer) deadLetter(ctx context.Context, r *kgo.Record, cause error) error {

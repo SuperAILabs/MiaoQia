@@ -1,0 +1,8 @@
+source_id: official-multiwinner
+source_url: https://www.ccgp.gov.cn/cggg/dfgg/zbgg/202506/t20250624_24839822.htm
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //div[@class="vF_detail_content"]
+response_sha256: 88709fc25edf2913d42b6b05da2c1aabaff2b29daf5ddcb501b386ced362fd0a
+raw_sha256: 45a404a7e1b68c677c4fee2d573215e23998c3da060691e7cbd5781ffd6b128d

@@ -1,0 +1,10 @@
+source_id: official-enterprise-henan
+source_url: https://hnsggzyjy.henan.gov.cn/jyxx/002003/002003007/20250627/8dbf5745bda44bd1adb7f21fa5af89ee.html
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //body
+response_sha256: 221678ffb8c7839184676f4b831a8f4164972013838224f7c917fd6ab616b5de
+raw_sha256: ece3a87098c4f2c78d4bb89ffef292a24f014a927ea5addc30f3c26e3e2dcd37
+notes: 产权交易公告是企业登记字段公示来源，不是采购公告或授权供应商API验收；未披露登记状态时省略。注册资本表头单位万元，10000万元=100000000元；股权比例51%/49%归一0.51/0.49并限定各股东行证据。
+schema: domains/organization/registration.schema.json

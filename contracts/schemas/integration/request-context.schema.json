@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/integration/request-context.schema.json",
+  "x-version": "1.0.0",
+  "title": "RequestContext",
+  "description": "内部可信边界的请求上下文；Base64URL无填充编码JSON；不接受外部请求提供的此头。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "user",
+            "service",
+            "service_account"
+          ]
+        }
+      }
+    },
+    "tenant": {
+      "type": "string",
+      "minLength": 1,
+      "description": "已验证的租户标识；新分配使用登记的tnt_ULID，不能从业务参数派生。"
+    },
+    "cell": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "principal"
+  ],
+  "dependentRequired": {
+    "tenant": [
+      "cell"
+    ],
+    "cell": [
+      "tenant"
+    ]
+  }
+}

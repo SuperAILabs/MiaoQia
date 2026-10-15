@@ -29,7 +29,7 @@
 | 平台 | [`ai-platform`](ai-platform.md) AI 平台 | 模型网关、提示注册、嵌入、护栏、AI 计量 | Go | `platform` | `aip` |
 | 平台 | [`operations`](operations.md) 运营工作台 | 人工复核队列、数据运营、托管服务、客户成功 | Go | `platform` | `ops` |
 
-“数据库”列是该子系统独占的逻辑数据库（首期为同一 PostgreSQL 集群中的独立数据库与独立账号），见 [数据架构](../02-data-architecture.md)。代码包命名见 [代码库结构](../09-codebase-structure.md)。
+“数据库”列是子系统的数据库代码；每个数据域/Cell实例分别绑定独占逻辑数据库与独立账号（公共与租户实例不能绑定同一数据库），见 [数据架构](../02-data-architecture.md)。代码包命名见 [代码库结构](../09-codebase-structure.md)。
 
 ## 2. 规格模板
 
@@ -62,10 +62,22 @@
 | 研究案例与报告 | `research` | 接口查询、事件 |
 | 判断、决策 | `assessment` | 接口查询、事件 |
 | 推进、任务、结果 | `pursuit` | 接口查询、事件 |
-| 反馈、评估集、仿真结果 | `learning` | 接口查询、事件 |
+| 租户反馈、评估集、仿真结果 | `learning` | 接口查询、事件 |
+| 公共专业评估基线与获批快照 | 对应能力所有者（evidence/search/ai-platform 等） | 版本化制品与接口 |
 | 通知、投递、偏好 | `channels` | 接口查询 |
 | 租户、成员、角色、授权、审批 | `identity` | 接口查询、事件、令牌声明 |
 | 订阅、权益、用量、账单 | `commerce` | 接口查询、事件 |
 | 审计事件、分级目录、保留策略 | `governance` | 接口查询 |
 | 模型目录、提示版本、模型调用记录 | `ai-platform` | 接口查询 |
 | 复核任务、服务工单 | `operations` | 接口查询、事件 |
+
+## 4. 运行实例的数据域
+
+平面登记表示逻辑能力归属；语言表示实现方式；部署单元表示镜像打包。三者都不是数据隔离边界。默认数据域：数据供应为 `public`，客户智能与交互为 `tenant`，平台为 `platform`（平台支撑服务按授权处理租户标识与数据）。以下能力在不同实例中复用代码：
+
+| 子系统 | 允许的数据域 | 隔离要求 |
+|---|---|---|
+| `evidence` | `public,tenant` | 公共文档与租户文档分别部署；租户实例随 Cell |
+| `search` | `public,tenant` | 公共索引与租户知识/订阅索引分别部署；租户实例随 Cell |
+
+上表与默认规则生成 `deploy/subsystems.yaml` 的 `data_scopes`。进程角色对这两个子系统必须声明 `data_scopes`；取值为 `tenant` 时必须声明 `cell`，取值为 `public` 时不得绑定 `cell`，同一进程不能同时加载同一子系统的两个数据域实例。Python 启动、迁移与 `tools/dev/gen_local.py --check` 共用纯角色校验；Go 启动与迁移使用同一 RoleScopes，三者执行同一份 tests/contract/instance-scopes.json 正反例，检查登记、角色、重复模块、多余scope与单元归属，实例仍需独立凭证与存储，不能以清单校验代替运行时隔离验收。

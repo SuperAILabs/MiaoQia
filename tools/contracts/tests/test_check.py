@@ -36,11 +36,12 @@ def test_schema_rules(sandbox, monkeypatch, capsys, rule, mutate):
 
 
 @pytest.mark.parametrize("rule,rel,old,new", [
-    ("Y1", "packs/information_domains/procurement/lifecycle.yaml", "trigger: [contract]", "on: [contract]"),
-    ("P2", "packs/information_domains/procurement/lifecycle.yaml", "to: accepted,", "to: archived,"),
+    ("Y1", "packs/information_domains/procurement/lifecycle.yaml", "trigger:\n    - contract", "on:\n    - contract"),
+    ("P2", "packs/information_domains/procurement/lifecycle.yaml", "to: accepted", "to: archived"),
     ("P0", "packs/application_domains/tendering/policy/templates/a01-direct-bid.yaml", "weight: 15", "weight: 0"),
     ("P0", "packs/application_domains/tendering/policy/templates/a01-direct-bid.yaml", "mode: immediate", "mode: hourly"),
     ("P4", "packs/application_domains/tendering/policy/templates/a01-direct-bid.yaml", "reason: BLOCKED_BUYER", "reason: NOT_A_CODE"),
+    ("P6", "packs/application_domains/tendering/policy/views.yaml", "- tendering.deadline.changed.v1", "- tendering.deadline.moved.v1"),
     ("E2", "contracts/events/org/events.asyncapi.yaml", "name: org.change.recorded.v1", "name: credit.change.recorded.v1"),
 ])
 def test_text_rules(sandbox, monkeypatch, capsys, rule, rel, old, new):
@@ -58,3 +59,34 @@ def test_bad_fixture_detected(sandbox, monkeypatch, capsys):
     p.write_text(s.replace("  - name: 失信缺执行法院\n    valid: false", "  - name: 失信缺执行法院\n    valid: true", 1), encoding="utf-8")
     code, out = run_check(sandbox, monkeypatch, capsys)
     assert code == 1 and "应通过，实际被拒绝" in out.err
+
+
+def test_missing_event_fixture_detected(sandbox, monkeypatch, capsys):
+    (sandbox / "contracts/events/entity/fixtures.yaml").unlink()
+    code, out = run_check(sandbox, monkeypatch, capsys)
+    assert code == 1 and "E5" in out.err and "缺少事件载荷正反例" in out.err
+
+
+def test_datetime_format_is_active():
+    from jsonschema import Draft202012Validator
+    v = Draft202012Validator({'type': 'string', 'format': 'date-time'},
+                             format_checker=Draft202012Validator.FORMAT_CHECKER)
+    assert v.is_valid('2026-10-14T08:00:00Z')
+    assert not v.is_valid('not-a-time')
+    assert not v.is_valid('2026-02-30T08:00:00Z')
+
+
+def test_bad_api_fixture_detected(sandbox, monkeypatch, capsys):
+    import yaml
+    p = sandbox / 'contracts/apis/identity/fixtures.yaml'
+    d = yaml.safe_load(p.read_text())
+    d['fixtures'][0]['base']['tenant'] = 'other'
+    p.write_text(yaml.safe_dump(d))
+    code, out = run_check(sandbox, monkeypatch, capsys)
+    assert code == 1 and '应通过，实际被拒绝' in out.err
+
+
+def test_replace_missing_fixture_path_is_not_a_negative_control():
+    from mqc.fixtures import _apply
+    with pytest.raises(ValueError, match='目标不存在'):
+        _apply({}, {'op':'replace','path':'/missing','value':1})

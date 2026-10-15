@@ -1,0 +1,10 @@
+source_id: official-amendment
+source_url: https://www.ccgp.gov.cn/cggg/zygg/gzgg/202606/t20260623_26792369.htm
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: div.vF_detail_content
+response_sha256: 5592ef41bbc4575d80950bc21a4646aa776af75f512933697267303ae14c4aff
+raw_sha256: c658fcff6845d6d1fc550f7297fd8ba3109567e00075c8ca469e39ee6805b87d
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。

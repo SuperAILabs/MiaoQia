@@ -85,3 +85,57 @@ func TestRowLevelSecurity(t *testing.T) {
 		t.Fatalf("无请求上下文应拒绝，得到 %v", err)
 	}
 }
+
+func TestKernelConstraintsAndRelayPrivileges(t *testing.T) {
+	d := testenv.NewDatabase(t)
+	ctx := context.Background()
+	if err := db.Migrate(ctx, d.OwnerDSN, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	d.GrantRelay(t)
+	c, err := pgx.Connect(ctx, d.OwnerDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close(ctx)
+	insert := `INSERT INTO kernel_outbox(event_id,topic,partition_key,envelope) VALUES('evt_contract','public.domain','object','{}')`
+	if _, err := c.Exec(ctx, insert); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Exec(ctx, insert); err == nil {
+		t.Fatal("重复event_id须拒绝")
+	}
+	if _, err := c.Exec(ctx, `INSERT INTO kernel_inbox(consumer,event_id) VALUES('a','evt_contract'),('b','evt_contract')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Exec(ctx, `INSERT INTO kernel_inbox(consumer,event_id) VALUES('a','evt_contract')`); err == nil {
+		t.Fatal("同一消费者须去重")
+	}
+	tx, err := c.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO kernel_inbox(consumer,event_id) VALUES('rollback','evt_contract')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := c.QueryRow(ctx, `SELECT count(*) FROM kernel_inbox WHERE consumer='rollback'`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("回滚=%d %v", n, err)
+	}
+	relay, err := pgx.Connect(ctx, d.RelayDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer relay.Close(ctx)
+	if _, err := relay.Exec(ctx, `UPDATE kernel_outbox SET published_at=now()`); err != nil {
+		t.Fatal(err)
+	}
+	for _, sql := range []string{`UPDATE kernel_outbox SET envelope='{}'`, `DELETE FROM kernel_outbox`, `INSERT INTO kernel_inbox(consumer,event_id) VALUES('relay','event')`} {
+		if _, err := relay.Exec(ctx, sql); err == nil {
+			t.Fatalf("中继越权: %s", sql)
+		}
+	}
+}

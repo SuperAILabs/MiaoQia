@@ -5,7 +5,7 @@ description = "信息领域包 SPI：规范化文档访问、字段溯源、中�
 requires-python = ">=3.12"
 dependencies = [
   "miaoqia-contracts",
-  "jsonschema==4.26.0",
+  "jsonschema[format-nongpl]==4.26.0",
   "referencing==0.37.0",
   "pyyaml==6.0.3",
   "lxml==6.0.2",

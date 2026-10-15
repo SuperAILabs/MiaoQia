@@ -6,27 +6,61 @@ base:
   info_domain: INF-PROC
   snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
   revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
-  rights_tags: [public-gov]
+  rights_tags:
+  - public-gov
   classification: public
-  observed_at: "2026-11-01T01:02:03Z"
-  recorded_at: "2026-11-25T01:02:04Z"
+  observed_at: '2026-11-01T01:02:03Z'
+  recorded_at: '2026-11-25T01:02:04Z'
   stage: awarded
-  title: { value: 市政给水管网改造工程管材采购, prov: &p { evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1, method: rule, confidence: 0.97 } }
-  buyer: { name_raw: 某市水务集团, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1, prov: *p }
-  notice_ids: [ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1, ntc_01JA8ZXXXXXXXXXXXXXXXXXXX2]
+  title:
+    value: 市政给水管网改造工程管材采购
+    prov: &id001
+      evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      method: rule
+      confidence: 0.97
+  buyer:
+    name_raw: 某市水务集团
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    prov: *id001
+  notice_ids:
+  - ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - ntc_01JA8ZXXXXXXXXXXXXXXXXXXX2
   lots:
-    - id: lot_01JA8ZXXXXXXXXXXXXXXXXXXX1
-      lot_key: "1"
-      status: awarded
-      winners:
-        - id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
-          stage: award
-          is_winner: true
-          bidder: { name_raw: 某管业公司, org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2, prov: *p }
+  - id: lot_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    lot_key: '1'
+    status: awarded
+    winners:
+    - id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      stage: award
+      is_winner: true
+      bidder:
+        name_raw: 某管业公司
+        org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+        prov: *id001
 cases:
-  - name: 未知阶段
-    valid: false
-    patch: [{ op: replace, path: /stage, value: closed }]
-  - name: 没有公告
-    valid: false
-    patch: [{ op: replace, path: /notice_ids, value: [] }]
+- name: 未知阶段
+  valid: false
+  patch:
+  - op: replace
+    path: /stage
+    value: closed
+- name: 没有公告
+  valid: false
+  patch:
+  - op: replace
+    path: /notice_ids
+    value: []
+- name: 项目标包保留采购条件与费率
+  valid: true
+  patch:
+  - op: add
+    path: /lots/0/conditions
+    value:
+      delivery_location:
+        value: 按各分部指定地点交货
+        prov: *id001
+  - op: add
+    path: /lots/0/max_price_rate
+    value:
+      value: '95.5'
+      prov: *id001

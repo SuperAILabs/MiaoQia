@@ -1,0 +1,8 @@
+source_id: official-consortium
+source_url: https://www.ccgp.gov.cn/cggg/dfgg/zbgg/202606/t20260609_26717301.htm
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //div[@class="vF_detail_content"]
+response_sha256: 7847e7cd88bc6f0b1ebd37010727de6489ff77a4123a1ed6088b6746c06d38a3
+raw_sha256: 8fb01ef4d8e40456ee4343eaa141bae2475a378c54af8c1e4e17e6aa0c077554

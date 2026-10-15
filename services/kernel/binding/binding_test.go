@@ -38,6 +38,7 @@ func TestInvokeRetriesOnlyIdempotent(t *testing.T) {
 
 // 远程调用：客户端传输附加请求上下文，内部服务端恢复它；缺少上下文头的请求被拒绝。
 func TestContextPropagation(t *testing.T) {
+	t.Setenv("MIAOQIA_ENV", "development")
 	var got reqctx.Context
 	srv := httptest.NewServer(binding.InternalServer("x", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got, _ = reqctx.From(r.Context())

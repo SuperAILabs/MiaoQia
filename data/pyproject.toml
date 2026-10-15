@@ -47,3 +47,7 @@ name = "R5 domain 层不依赖框架与基础设施库"
 type = "forbidden"
 source_modules = ["miaoqia.acquisition.domain", "miaoqia.evidence.domain", "miaoqia.domain_intelligence.domain", "miaoqia.entity_graph.domain"]
 forbidden_modules = ["sqlalchemy", "psycopg", "confluent_kafka", "alembic", "opentelemetry", "miaoqia.kernel"]
+
+# 领域规则与样本测试位于各包；只用于测试加载，不改变SDK运行依赖。
+[tool.pytest.ini_options]
+pythonpath = ["../packs/information_domains/procurement/src", "../packs/information_domains/organizations/src"]

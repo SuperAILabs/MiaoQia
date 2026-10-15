@@ -60,7 +60,9 @@
 
 ## 6. 事件
 
-**消费**：`evidence.enrichment.completed.v1`、`evidence.enricher.promoted.v1`、`domain.fact.upserted.v1`、`entity.*`、`customer_context.knowledge.changed.v1`、`acquisition.source.rights_changed.v1`、`governance.deletion.requested.v1`。
+**公共实例消费**：公共域的 `evidence.enrichment.completed.v1`、`evidence.enricher.promoted.v1`、`domain.fact.upserted.v1`、`entity.*`、来源权利变更及公共删除控制事件，不消费租户知识或订阅事件。
+
+**租户实例消费**：所属 Cell 的知识变更与删除控制事件；订阅由 detection 的命令接口注册，反查事实由 detection 提交。公共来源撤权通过公共引用失效控制通知同步到各 Cell。租户知识的解析/增强事件随租户文档管线实现时单独定义，不能复用公共 evidence 主题来携带租户内容。
 
 **发布**：`search.index.version_built.v1`、`search.alias.switched.v1`。
 
@@ -75,7 +77,7 @@
 
 - 读写分离：索引写入异步，查询节点水平伸缩；
 - 索引落后于权威数据时，接口返回索引时间点；关键流程（如判断）始终回到权威数据核实；
-- 索引可从对象存储（L1、L3）与 PostgreSQL（L2）完全重建，重建期间使用别名切换实现零停机；旧版本保留一个周期以便回退；
+- 索引可从本数据域的版本化制品（L1、L3）与数据所有者公开接口/导出的事实快照（L2）完全重建，不直接查询其他子系统数据库，重建期间使用别名切换实现零停机；旧版本保留一个周期以便回退；
 - 检索质量通过相关性评估集持续度量，任何索引版本切换前必须评估不劣化。
 
 ## 9. 安全要点
@@ -88,3 +90,9 @@
 
 1. 中文分词与行业词表的维护流程；
 2. 向量模型选型与向量维度。
+
+## 11. 数据域实例与评估所有权
+
+本子系统复用实现但分别运行公共与单元级租户实例。公共实例只持有公共投影；租户实例持有所属 Cell 的知识与订阅投影，收到公共事实后反查本单元订阅。两种实例分别管理索引、凭证、缓存、别名、队列、重建和删除范围；公共重建不能读取租户订阅或知识。查询按范围路由，不能以公共实例提供统一入口而跨域读取租户索引。
+
+公共相关性基线与公共评估快照由 search 维护，租户反馈集由 learning 管理。search 拥有检索指标、索引评估执行、门禁与别名发布决定；租户评估在租户实例执行。公共实例只能接收经 governance 审批、明确授权并去标识化的不可变评估快照，不能同步查询 learning。

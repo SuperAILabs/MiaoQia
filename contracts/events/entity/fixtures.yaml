@@ -1,0 +1,127 @@
+fixtures:
+- event: entity.entity.created.v1
+  base:
+    entity_id: org_00000000000000000000000000
+    rights_tags:
+    - fixture-value
+    entity_version: 1
+    entity_type: organization
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /entity_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法entity_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /entity_id
+      value: bad_00000000000000000000000000
+- event: entity.entity.updated.v1
+  base:
+    entity_id: org_00000000000000000000000000
+    changed_fields:
+    - /title
+    rights_tags:
+    - fixture-value
+    entity_version: 1
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /entity_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法entity_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /entity_id
+      value: bad_00000000000000000000000000
+- event: entity.merge.applied.v1
+  base:
+    merge_id: fixture-value
+    survivor_id: org_00000000000000000000000000
+    absorbed_ids:
+    - org_00000000000000000000000000
+    entity_version: 1
+    rights_tags:
+    - fixture-value
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /merge_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法survivor_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /survivor_id
+      value: bad_00000000000000000000000000
+- event: entity.merge.reverted.v1
+  base:
+    merge_id: fixture-value
+    restored_ids:
+    - org_00000000000000000000000000
+    entity_version: 1
+    rights_tags:
+    - fixture-value
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /merge_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+- event: entity.relationship.changed.v1
+  base:
+    relationship_id: rel_00000000000000000000000000
+    rights_tags:
+    - fixture-value
+    from_entity_id: org_00000000000000000000000000
+    to_entity_id: org_00000000000000000000000000
+    relationship_type: fixture-value
+    relationship_version: 1
+    action: upsert
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /relationship_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 非法relationship_id前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /relationship_id
+      value: bad_00000000000000000000000000

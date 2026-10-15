@@ -1,6 +1,6 @@
 # 领域模型
 
-> 状态：评审中 · 版本：1.1 · 更新：2026-10-13 · 负责人：招投标领域负责人、数据架构负责人
+> 状态：评审中 · 版本：3.0 · 更新：2026-10-14 · 负责人：招投标领域负责人、数据架构负责人
 
 本文定义招投标应用领域涉及的领域对象及其业务含义。公共域对象由 `INF-PROC` 信息领域包提供，字段级定义以 [`contracts/schemas/domains/procurement/`](../../../../contracts/schemas/domains/procurement/notice.schema.json) 为准：公告（`Notice`）按原文表达一条公告，采购项目（`ProcurementProject`）是归并后的当前状态，标包、标的、要求、时间节点、投标结果、合同与验收是其中的嵌套对象。租户域对象由 `APP-TENDER` 应用领域包提供。通用字段与版本规则见 [数据架构](../../../03-architecture/02-data-architecture.md)。
 
@@ -31,21 +31,27 @@ erDiagram
 | `Item` | `itm_` | 采购标的：品目、名称、规格、数量、单位、品牌型号要求、单价。 |
 | `Requirement` | `req_` | 资格与技术要求：类型、原文、结构化代码、证据。 |
 | `Deadline` | `ddl_` | 时间节点：类型、时间、精度、时区、证据。 |
-| `BidResult` | `bdr_` | 开标、候选人、中标结果：投标人、排名、报价、得分、是否中标。 |
+| `BidResult` | `bdr_` | 开标、候选人、中标或框架入围结果：投标人、联合体成员、排名、报价、得分、结果性质和是否实际中标。 |
 | `ContractRecord` | `ctr_` | 合同公告：合同金额、期限、双方。 |
-| `AcceptanceRecord` | `acc_` | 验收公告。 |
+| `AcceptanceRecord` | `acc_` | 验收事实及其来源；包括验收公告和原始司法文书记载的历史验收，分别标明来源与语义。 |
 
 ### 1.1 字段要求
 
-- 金额：数值、币种、单位（元/万元归一）、含税说明、精度、证据；
+- 金额：十进制字符串、币种、单位归一、含税说明、原文与证据；费率限价/报价用 `rate` 表达，不能冒充项目总价；
+- 结果：同一公告可多包中标和部分废标并存，公告汇总金额不得分摊给未知标包；结果明细不可得时显式记录质量缺口。
+- 合同：编号/名称、最高限额与实际金额区分，网页与附件条件冲突保留两份证据。
+- 供应商/结果：组织名称、信用代码及地址分别溯源；联合体成员单列，原文明示牵头人时才填consortium_lead。同包可有多个实际成交或入围记录，result_kind区分contract_award与framework_shortlist，入围is_winner=false，排名可并列；最高入围单价不当项目总成交价；报价用price_kind区别总额、单价、年单价合计和估算，含义带独立证据。原文不分包时使用内部unpartitioned键，不宣称来源包号。
+- 验收：合同编号/名称、供应商、意见、结论证据和验收时间；同页多个对象分别表达，未知日期省略；通过、部分、失败与未知结果分别处理，公告出现不代表通过。原始司法文书保留当事人争议（dispute）和逐段裁判结论（judicial_outcome），分别附证据，技术失败不自动推断合同解除。
+- 多项目合并招标：标包可分别记录项目名/编号/业主，不将公告级主体覆盖所有项目；
+- 采购条件：公告与项目共用 `procurement_conditions`，保留文件获取、履约/交付/付款、联合体与中小企业政策的带证据原文；相对工期不强行转换为截止日期；
 - 时间：时间值、精度（日/分钟）、时区、证据；
-- 主体：名称原文、解析后的 `organization_id`、解析置信度；
-- 每个关键字段带 `field_provenance`：证据引用、提取方法（规则/模型/人工）、置信度；
-- 联系人字段单独分级，详见 [安全与租户](../../../03-architecture/06-security-and-tenancy.md)。
+- 主体：名称原文、解析后的 `org_id`、解析置信度；
+- 每个关键字段带 `prov`：证据引用、提取方法（规则/模型/人工）、置信度；
+- 公开业务联系人可明文检索并进入模型，姓名/电话/邮箱分别附证据；租户提供的联系信息按租户数据分级处理，详见 [安全与租户](../../../03-architecture/06-security-and-tenancy.md)。
 
 ### 1.2 领域生命周期状态机
 
-`ProcurementProject.stage` 经历意向、公告、更正、评审、候选人公示、中标、合同、验收等阶段，也可能流标、废标或终止后重新采购。状态转换由公告驱动，非法转换记为质量警告而不是强行修正。状态与转换的唯一定义是 [`packs/information_domains/procurement/lifecycle.yaml`](../../../../packs/information_domains/procurement/lifecycle.yaml)。
+`ProcurementProject.stage` 经历意向、公告、更正、评审、候选人公示、中标、合同、验收等阶段，也可能流标、废标或终止后重新采购。状态转换由公告驱动，允许冷启动从结果、合同和验收阶段建档，不伪造前序公告；多包独立处置。更正修订原业务阶段的字段，不把已中标/签约/验收对象退回公告阶段；晚到前序公告只补历史。非法转换记为质量警告而不是强行修正。框架第一阶段入围进入shortlisted，供应商单列shortlisted_suppliers，不当成第二阶段成交。验收passed/failed/partial/未知分别进入accepted/acceptance_failed/partially_accepted/acceptance_pending，失败可复验，不当采购流标或自动解约；历史司法验收难例不自动更新当前阶段。when使用标准JSON Schema对完整公告求值。状态与转换的唯一定义是 [`packs/information_domains/procurement/lifecycle.yaml`](../../../../packs/information_domains/procurement/lifecycle.yaml)。
 
 ### 1.3 领域事件
 

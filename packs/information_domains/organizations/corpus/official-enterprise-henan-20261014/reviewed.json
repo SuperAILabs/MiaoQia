@@ -1,0 +1,305 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "subject": {
+        "name_raw": "河南垂天智能制造有限公司",
+        "prov": {
+          "evidence_ref": "ev_H18B9G2X5AG15TNJKYA3X1WA5A",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91410600MA9G6MKM86",
+        "uscc_prov": {
+          "evidence_ref": "ev_K811A3NYCQGZ5BBH8XAG95QMHV",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "name": {
+        "value": "河南垂天智能制造有限公司",
+        "prov": {
+          "evidence_ref": "ev_H18B9G2X5AG15TNJKYA3X1WA5A",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "uscc": "91410600MA9G6MKM86",
+      "uscc_prov": {
+        "evidence_ref": "ev_K811A3NYCQGZ5BBH8XAG95QMHV",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "enterprise_type": "limited_liability",
+      "enterprise_type_raw": {
+        "value": "有限责任公司",
+        "prov": {
+          "evidence_ref": "ev_QZCDQD05Y6MFQSHSR2QMER0VDP",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "registered_capital": {
+        "value": "100000000",
+        "currency": "CNY",
+        "raw": "10000.000000人民币",
+        "prov": {
+          "evidence_ref": "ev_XXFAW68DY21WNSBPJMTY8HJ3QD",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "legal_representative": {
+        "name": "马传琦"
+      },
+      "legal_representative_prov": {
+        "evidence_ref": "ev_V6RYEN5BJE4B3PAX4G5HSK1YE8",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "shareholders": [
+        {
+          "kind": "organization",
+          "org": {
+            "name_raw": "河南垂天科技有限公司",
+            "prov": {
+              "evidence_ref": "ev_6X71SHSQ3C7Q49FQVW3VP1RS91",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "manual-review@0.1.0"
+            }
+          },
+          "share_ratio": "0.51",
+          "share_ratio_prov": {
+            "evidence_ref": "ev_FKBDC1H5121NEW3JZ8VX6EC04J",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "manual-review@0.1.0"
+          }
+        },
+        {
+          "kind": "organization",
+          "org": {
+            "name_raw": "鹤壁鹤威新能源汽车有限公司",
+            "prov": {
+              "evidence_ref": "ev_A9VAFXYYTAHJRM1R825QZKNBT3",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "manual-review@0.1.0"
+            }
+          },
+          "share_ratio": "0.49",
+          "share_ratio_prov": {
+            "evidence_ref": "ev_850JSBG66AQN4S5B0FCY50VBYY",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "manual-review@0.1.0"
+          }
+        }
+      ],
+      "established_on": {
+        "value": "2020-12-21T16:00:00Z",
+        "precision": "day",
+        "tz_raw": "+08:00",
+        "prov": {
+          "evidence_ref": "ev_PJMQE6C5T523NMPSK2NR4JA9QQ",
+          "method": "manual",
+          "confidence": 0.95,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "address": {
+        "value": "河南省鹤壁市城乡一体化示范区燕山路与富春江路交叉口向南100米路西；河南省鹤壁市城乡一体化示范区新安江路与六盘山路交叉口东北角人工智能产业园6号楼北楼",
+        "prov": {
+          "evidence_ref": "ev_6BKYT660QT8G8FJ6GPT79BH2CP",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "business_scope": {
+        "value": "一般项目：金属结构制造；金属结构销售；照明器具制造；照明器具销售；半导体照明器件制造；半导体照明器件销售；半导体分立器件制造；半导体分立器件销售；人工智能行业应用系统集成服务；信息系统集成服务；软件开发；软件销售；物联网应用服务；物联网技术服务；物联网技术研发；通信设备制造；通信设备销售；货物进出口；技术进出口；新兴能源技术研发；金属表面处理及热处理加工；喷涂加工；电力设施器材制造；电力设施器材销售（除依法须经批准的项目外，凭营业执照依法自主开展经营活动）许可项目：特种设备制造；特种设备设计；特种设备安装改造修理；建设工程施工（依法须经批准的项目，经相关部门批准后方可开展经营活动，具体经营项目以相关部门批准文件或许可证件为准）",
+        "prov": {
+          "evidence_ref": "ev_GAPB5YXT5EN570ZNBTZ7VNE340",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      }
+    }
+  ],
+  "evidence": {
+    "ev_H18B9G2X5AG15TNJKYA3X1WA5A": {
+      "id": "ev_H18B9G2X5AG15TNJKYA3X1WA5A",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 7,
+        "char_start": 0,
+        "char_end": 12
+      },
+      "quote_hash": "sha256:4029cee84ac3253626f2e6f75acefaa579578c67b47524dfe1c49fc708e06127"
+    },
+    "ev_K811A3NYCQGZ5BBH8XAG95QMHV": {
+      "id": "ev_K811A3NYCQGZ5BBH8XAG95QMHV",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 18,
+        "row": 6,
+        "col": 1
+      },
+      "quote_hash": "sha256:5e137fc3663655416838d6297dc8036a85efb516c2dc0ec195d8df4e94950be1"
+    },
+    "ev_QZCDQD05Y6MFQSHSR2QMER0VDP": {
+      "id": "ev_QZCDQD05Y6MFQSHSR2QMER0VDP",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 6,
+        "row": 5,
+        "col": 1
+      },
+      "quote_hash": "sha256:085e7a9bd86178ea36480094ff589acb2af377cbfa840a3cc2ada94f18004685"
+    },
+    "ev_XXFAW68DY21WNSBPJMTY8HJ3QD": {
+      "id": "ev_XXFAW68DY21WNSBPJMTY8HJ3QD",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 15,
+        "row": 3,
+        "col": 3
+      },
+      "quote_hash": "sha256:7f42d2645062e87c82370bc3d9061a034dc668cf4f96a3baab83948827cc670b"
+    },
+    "ev_V6RYEN5BJE4B3PAX4G5HSK1YE8": {
+      "id": "ev_V6RYEN5BJE4B3PAX4G5HSK1YE8",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 3,
+        "row": 2,
+        "col": 1
+      },
+      "quote_hash": "sha256:0493d8e317fcdd731e5251c1e2ea519b937e27094696973254f838e06c596184"
+    },
+    "ev_6X71SHSQ3C7Q49FQVW3VP1RS91": {
+      "id": "ev_6X71SHSQ3C7Q49FQVW3VP1RS91",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 10,
+        "row": 13,
+        "col": 1
+      },
+      "quote_hash": "sha256:96b34e139f6a49b8e4b50721be6e6784ce306c122a501e15732704298a2a2b8f"
+    },
+    "ev_A9VAFXYYTAHJRM1R825QZKNBT3": {
+      "id": "ev_A9VAFXYYTAHJRM1R825QZKNBT3",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 13,
+        "row": 14,
+        "col": 1
+      },
+      "quote_hash": "sha256:52932418de2f2c908e37ceb25404298343e53f13cef49897cb066478dfef333e"
+    },
+    "ev_PJMQE6C5T523NMPSK2NR4JA9QQ": {
+      "id": "ev_PJMQE6C5T523NMPSK2NR4JA9QQ",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 10,
+        "row": 3,
+        "col": 1
+      },
+      "quote_hash": "sha256:8f7951da4c5084ab0a7b8f93008f62d5bb534822de54c43c1f3d86519d7f51f3"
+    },
+    "ev_6BKYT660QT8G8FJ6GPT79BH2CP": {
+      "id": "ev_6BKYT660QT8G8FJ6GPT79BH2CP",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 75,
+        "row": 1,
+        "col": 1
+      },
+      "quote_hash": "sha256:d5e85e3fc43b6c1858674b2671e1ad6dd75eeeb2d65e4e5f23f63138468e95a2"
+    },
+    "ev_GAPB5YXT5EN570ZNBTZ7VNE340": {
+      "id": "ev_GAPB5YXT5EN570ZNBTZ7VNE340",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 317,
+        "row": 7,
+        "col": 1
+      },
+      "quote_hash": "sha256:c44ca975c46b2cf3565f107f47dcc2fcd4d64d19fcd06015d86ccf9affbcfce8"
+    },
+    "ev_WHT87TC2PYC7A01T1SWJMZRF8T": {
+      "id": "ev_WHT87TC2PYC7A01T1SWJMZRF8T",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 7,
+        "char_start": 12,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:031b4af5197ec30a926f48cf40e11a7dbc470048a21e4003b7a3c07c5dab1baa"
+    },
+    "ev_850JSBG66AQN4S5B0FCY50VBYY": {
+      "id": "ev_850JSBG66AQN4S5B0FCY50VBYY",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 2,
+        "row": 14,
+        "col": 3
+      },
+      "quote_hash": "sha256:0e17daca5f3e175f448bacace3bc0da47d0655a74c8dd0dc497a3afbdad95f1f"
+    },
+    "ev_FKBDC1H5121NEW3JZ8VX6EC04J": {
+      "id": "ev_FKBDC1H5121NEW3JZ8VX6EC04J",
+      "snapshot_ref": "snp_CRGFXP7DP88T2DF1MDJ10QCQZ8",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 0,
+        "char_end": 2,
+        "row": 13,
+        "col": 3
+      },
+      "quote_hash": "sha256:031b4af5197ec30a926f48cf40e11a7dbc470048a21e4003b7a3c07c5dab1baa"
+    }
+  }
+}

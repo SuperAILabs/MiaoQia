@@ -15,4 +15,6 @@ writer = outbox.Writer(subsystem=NAME, namespace=NAME, zone=reqctx.PUBLIC)
 
 def on_requested(conn: Connection, env: dict) -> None:
     pid = env["data"]["probe_id"]
+    if env['source'] != 'miaoqia/operations' or env['subject'] != pid:
+        raise ValueError('probe origin/subject mismatch')
     writer.append(conn, outbox.Event(type=EMITTED, subject=pid, data={"probe_id": pid, "hops": ["operations", NAME]}))

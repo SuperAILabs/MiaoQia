@@ -13,7 +13,7 @@ from confluent_kafka import KafkaError, Message, Producer
 from opentelemetry import trace
 from sqlalchemy import Connection, text
 
-from . import outbox, reqctx, tracing
+from . import outbox, reqctx, tracing, payloads
 from .db import Database
 
 log = logging.getLogger("miaoqia.kernel.consumer")
@@ -22,12 +22,16 @@ Handler = Callable[[Connection, dict], None]
 
 
 def check_envelope(topic: str, env: dict) -> None:
-    outbox.validate(env)
-    prefix = topic.split(".", 1)[0]
-    zone, cell = env.get("miaoqiazone"), env.get("miaoqiacell", "")
-    if ((prefix == "public" and zone != reqctx.PUBLIC) or (prefix == "platform" and zone != reqctx.PLATFORM)
-            or (prefix.startswith("cell-") and (zone != reqctx.TENANT or f"cell-{cell}" != prefix))):
-        raise outbox.InvalidEnvelope(f"事件 {env.get('id')} 的域 {zone} / 单元 {cell!r} 与主题 {topic} 不符")
+    outbox.check_topic(topic, env)
+
+
+def event_context(subsystem: str, env: dict) -> reqctx.Context:
+    """事件处理上下文。请求上下文要求租户与单元成对；平台域事件可只带租户（信封契约允许），
+    此时以平台身份处理、不带租户，租户仍可从信封 miaoqiatenant 读取。"""
+    tenant, cell = env.get("miaoqiatenant", ""), env.get("miaoqiacell", "")
+    if not cell:
+        tenant = ""
+    return reqctx.service(subsystem, reqctx.Context(principal=reqctx.Principal("", ""), tenant=tenant, cell=cell, purpose="event"))
 
 
 @dataclass
@@ -41,12 +45,15 @@ class Consumer:
     dead_letter: str = ""
     max_attempts: int = 5
     backoff: float = 0.2
+    payload_schemas: dict = field(default_factory=dict)
+    _validators: dict = field(default_factory=dict, init=False)
     _stop: bool = field(default=False, init=False)
 
     def stop(self) -> None:
         self._stop = True
 
     def run(self) -> None:
+        self._validators = {name: payloads.validator(name, self.payload_schemas) for name in self.handlers}
         dlq = self.dead_letter or f"dlq.{self.subsystem}"
         kc = KafkaConsumer({"bootstrap.servers": self.brokers, "group.id": self.name, "enable.auto.commit": False,
                             "auto.offset.reset": "earliest"})
@@ -76,8 +83,12 @@ class Consumer:
         h = self.handlers.get(env["type"])
         if h is None:
             return
-        ctx = reqctx.service(self.subsystem, reqctx.Context(principal=reqctx.Principal("", ""), tenant=env.get("miaoqiatenant", ""),
-                                                             cell=env.get("miaoqiacell", ""), purpose="event"))
+        validator = self._validators.get(env['type'])
+        if validator is None:
+            validator = payloads.validator(env['type'], self.payload_schemas)
+        if not validator.is_valid(env['data']):
+            return self._dead_letter(prod, dlq, msg, ValueError('payload_schema_invalid'))
+        ctx = event_context(self.subsystem, env)
         span_ctx = tracing.context_from(env.get("traceparent", ""))
         with reqctx.use(ctx), tracing.tracer(self.subsystem).start_as_current_span(
                 f"consume {env['type']}", context=span_ctx, kind=trace.SpanKind.CONSUMER,

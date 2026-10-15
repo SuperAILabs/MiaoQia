@@ -13,7 +13,8 @@ docs/
 │   ├── 01-vision-and-positioning.md
 │   ├── 02-business-model.md
 │   ├── 03-capability-map.md
-│   └── 04-product-experience.md  产品体验
+│   ├── 04-product-experience.md  产品体验
+│   └── 05-product-requirements.md 产品需求落地规格
 │
 ├── 02-business/                  业务层：客户要完成什么、业务如何运转
 │   ├── 01-business-architecture.md
@@ -36,6 +37,7 @@ docs/
 │   ├── 10-tender-intel-reference.md
 │   ├── 11-policy-dsl.md
 │   ├── 12-capacity-plan.md
+│   ├── 13-contract-readiness.md
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
@@ -125,6 +127,8 @@ docs/
 | 信息领域的领域 Schema 与领域事件 | `contracts/schemas/domains/<领域>/`、`contracts/events/<命名空间>/` | 业务文档只写概念与含义 |
 | 信息领域生命周期状态机 | `packs/information_domains/<领域>/lifecycle.yaml` | 链接 |
 | 商业目标目录 | `02-business/02-commercial-objectives.md` | 引用目标编号 |
+| 候选采购来源与状态 | `packs/information_domains/procurement/source-inventory.yaml` | 仅引用，启用前逐来源验收 |
+| 首批契约范围与冻结证据 | `03-architecture/13-contract-readiness.md` | 引用对应阶段门禁 |
 | 首发范围与分批 | `02-business/application-domains/tendering/05-release-plan.md` | 引用 |
 | 子系统清单、职责、语言、部署单元、数据库 | `03-architecture/subsystems/README.md` 第 1 节 | 链接，不复制表格 |
 | 数据所有权 | `03-architecture/subsystems/README.md` 第 3 节 | 链接 |
@@ -138,7 +142,8 @@ docs/
 | 渠道分批 | `03-architecture/subsystems/channels.md` 第 2 节 | 链接 |
 | 规模假设、数据规模估算与资源规格 | `03-architecture/12-capacity-plan.md` | 链接 |
 | 质量指标与发布门槛 | `05-delivery/02-quality-and-acceptance.md` | 引用指标名 |
-| 团队规模与组织 | `05-delivery/04-data-quality-organization.md` | 链接 |
+| 责任、评审与资源安排 | `05-delivery/04-data-quality-organization.md` | 链接 |
+- [M0运行时验收](05-delivery/05-m0-runtime-acceptance.md)：HTTP认证、完整探针及现有消费者门禁。
 | 立项事项状态 | `05-delivery/00-initiation-readiness.md` | 引用事项编号 |
 
 ADR 与架构文档都只表达现行决策；两者不一致即为缺陷，须在同一次变更中修正。

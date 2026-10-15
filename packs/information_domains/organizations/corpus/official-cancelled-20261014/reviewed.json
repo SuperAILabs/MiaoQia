@@ -1,0 +1,104 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "subject": {
+        "name_raw": "深圳市极劲刻智能科技有限公司平湖分公司",
+        "prov": {
+          "evidence_ref": "ev_R7X89Z7RJ8Y34VM6FPQC01Y866",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91440300MADBUTUB4C",
+        "uscc_prov": {
+          "evidence_ref": "ev_V025Z7SA88W7GKNFX33AQNC004",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "name": {
+        "value": "深圳市极劲刻智能科技有限公司平湖分公司",
+        "prov": {
+          "evidence_ref": "ev_R7X89Z7RJ8Y34VM6FPQC01Y866",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "uscc": "91440300MADBUTUB4C",
+      "uscc_prov": {
+        "evidence_ref": "ev_V025Z7SA88W7GKNFX33AQNC004",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "enterprise_type": "branch",
+      "status": "cancelled",
+      "status_prov": {
+        "evidence_ref": "ev_B91QFDQH9K9NADBE9X4SBN6XPG",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "approved_on": {
+        "value": "2025-03-30T16:00:00Z",
+        "precision": "day",
+        "tz_raw": "+08:00",
+        "prov": {
+          "evidence_ref": "ev_KCEAPK5719K721DK1GSR499ASF",
+          "method": "manual",
+          "confidence": 0.95,
+          "extractor": "manual-review@0.1.0"
+        }
+      }
+    }
+  ],
+  "evidence": {
+    "ev_R7X89Z7RJ8Y34VM6FPQC01Y866": {
+      "id": "ev_R7X89Z7RJ8Y34VM6FPQC01Y866",
+      "snapshot_ref": "snp_QDPY4TTGGWH5DQJXMSZ6V0H2VG",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 0,
+        "char_end": 19
+      },
+      "quote_hash": "sha256:1f24dc096b3cb880db700ce07a08aee9004512b16f7291ef3ecdd262d4425f50"
+    },
+    "ev_V025Z7SA88W7GKNFX33AQNC004": {
+      "id": "ev_V025Z7SA88W7GKNFX33AQNC004",
+      "snapshot_ref": "snp_QDPY4TTGGWH5DQJXMSZ6V0H2VG",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 29,
+        "char_end": 47
+      },
+      "quote_hash": "sha256:a3e6dd187047d1cda0955c912abb11cb56e879ccb37f48f580ddb753a855caf4"
+    },
+    "ev_B91QFDQH9K9NADBE9X4SBN6XPG": {
+      "id": "ev_B91QFDQH9K9NADBE9X4SBN6XPG",
+      "snapshot_ref": "snp_QDPY4TTGGWH5DQJXMSZ6V0H2VG",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 74,
+        "char_end": 81
+      },
+      "quote_hash": "sha256:2a47ee5db27e6731b8a7ee728794f40773d7da232154ea7b7be0f4edd7a307a7"
+    },
+    "ev_KCEAPK5719K721DK1GSR499ASF": {
+      "id": "ev_KCEAPK5719K721DK1GSR499ASF",
+      "snapshot_ref": "snp_QDPY4TTGGWH5DQJXMSZ6V0H2VG",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 64,
+        "char_end": 74
+      },
+      "quote_hash": "sha256:ec77465afe6020c2e0ff3782d5e526aeba94580178c0aa7f9117d1e0bf56bf69"
+    }
+  }
+}

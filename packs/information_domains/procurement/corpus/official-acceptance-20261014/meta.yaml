@@ -1,0 +1,10 @@
+source_id: official-acceptance
+source_url: https://www.songjiang.gov.cn/xwzx/001004/001004002/20261012/149be4ab-c685-4b43-adb1-0d3d677c076d.html
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: div.ewb-article-detail
+response_sha256: f867b78ff07c9e5f84d43d5c3353dd5afe3373814958a92118b1f2fb373039e5
+raw_sha256: 0bd870713c5059e38cba25f2b948f8bcb58d8b0827791fd5f1beb36215a330cd
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。

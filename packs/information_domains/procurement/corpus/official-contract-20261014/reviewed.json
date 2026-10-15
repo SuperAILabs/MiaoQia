@@ -1,0 +1,209 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "contract",
+      "title": {
+        "value": "营区零星维修工程（YZLNN2026-Q7-001-ZYQT）合同公告",
+        "prov": {
+          "evidence_ref": "ev_F3F2KK6WN1ZV28DCGRENV5G8XD",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "project_code": {
+        "value": "YZLNN2026-Q7-001-ZYQT",
+        "prov": {
+          "evidence_ref": "ev_VBPJ0QRVVC1HMVR46F5SNBKSV5",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "buyer": {
+        "name_raw": "广西某单位",
+        "prov": {
+          "evidence_ref": "ev_AVZ8GD6G0H92G9BQN43G3M6WWG",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "contract": {
+        "id": "ctr_KFC6CSBMS9DKXYQBK7415J1P1H",
+        "code": {
+          "value": "JW-2026-GX16-B001",
+          "prov": {
+            "evidence_ref": "ev_V6VMHQKR0SFRZH64KSP02WK8C9",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "name": {
+          "value": "营区零星维修工程合同",
+          "prov": {
+            "evidence_ref": "ev_KEG45EZ1A0QPWWX3V2PJPRS5J0",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "广西丰尚建设集团有限公司",
+          "prov": {
+            "evidence_ref": "ev_T5CY5XT7XY7FT4F9815Y0NMNDV",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "amount": {
+          "value": "350000",
+          "currency": "CNY",
+          "raw": "¥350000.00",
+          "prov": {
+            "evidence_ref": "ev_2DPYXHVR04NKPQFRTQW52MAVW1",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "amount_kind": "ceiling",
+        "signed_at": {
+          "value": "2026-04-15T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_BP1G2HN6S4FVJRN9Q6A1PG8THY",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "amount_kind_prov": {
+          "evidence_ref": "ev_59D82WKG1Z73QGHGA7464JY7Y6",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "BUYER_NAME_CONFLICT",
+            "message": "合同主体广西某单位与模板采购人SPD-13不一致，保留原文复核，不能据模板废标标题误判"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_F3F2KK6WN1ZV28DCGRENV5G8XD": {
+      "id": "ev_F3F2KK6WN1ZV28DCGRENV5G8XD",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 35
+      },
+      "quote_hash": "sha256:7e1296b1408d56d5e9551aa1c16d5641ef142ea3078dcdc0bee7dbf50412e617"
+    },
+    "ev_VBPJ0QRVVC1HMVR46F5SNBKSV5": {
+      "id": "ev_VBPJ0QRVVC1HMVR46F5SNBKSV5",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 9,
+        "char_end": 30
+      },
+      "quote_hash": "sha256:c636d63b2edbcc8060c736fd034576689701dc41d312c08aa2dc5d05fada8b5c"
+    },
+    "ev_AVZ8GD6G0H92G9BQN43G3M6WWG": {
+      "id": "ev_AVZ8GD6G0H92G9BQN43G3M6WWG",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 12,
+        "char_start": 8,
+        "char_end": 13
+      },
+      "quote_hash": "sha256:8a4c596fb62612986e68de15f9e165f9513e021bfdbf1a276f9908669e6556af"
+    },
+    "ev_V6VMHQKR0SFRZH64KSP02WK8C9": {
+      "id": "ev_V6VMHQKR0SFRZH64KSP02WK8C9",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 7,
+        "char_start": 7,
+        "char_end": 24
+      },
+      "quote_hash": "sha256:8ca0799713d14063e6b9527aa6d6545cab1c0b75dcfe413d12fc72bbd099a691"
+    },
+    "ev_KEG45EZ1A0QPWWX3V2PJPRS5J0": {
+      "id": "ev_KEG45EZ1A0QPWWX3V2PJPRS5J0",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 8,
+        "char_start": 7,
+        "char_end": 17
+      },
+      "quote_hash": "sha256:cf0c733391dfe514b09ac4b4ce685f48f3c6a873696b8e9bacca23cdceefd4b0"
+    },
+    "ev_T5CY5XT7XY7FT4F9815Y0NMNDV": {
+      "id": "ev_T5CY5XT7XY7FT4F9815Y0NMNDV",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 14,
+        "char_start": 8,
+        "char_end": 20
+      },
+      "quote_hash": "sha256:ac4a8664f0f9d561009d0529cbc91555b1b6eff5ade675e6a97f5a9b7ddcfaab"
+    },
+    "ev_2DPYXHVR04NKPQFRTQW52MAVW1": {
+      "id": "ev_2DPYXHVR04NKPQFRTQW52MAVW1",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 23,
+        "char_start": 13,
+        "char_end": 23
+      },
+      "quote_hash": "sha256:88db973fa7c9afce6228776a3e6a5190be863eb7bd5cd5b404e531fb45dbebef"
+    },
+    "ev_BP1G2HN6S4FVJRN9Q6A1PG8THY": {
+      "id": "ev_BP1G2HN6S4FVJRN9Q6A1PG8THY",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 26,
+        "char_start": 9,
+        "char_end": 19
+      },
+      "quote_hash": "sha256:257c7285ce8678b9316bf3a195cd79616e8a6563a730e6e053213d8f5f3f60d0"
+    },
+    "ev_59D82WKG1Z73QGHGA7464JY7Y6": {
+      "id": "ev_59D82WKG1Z73QGHGA7464JY7Y6",
+      "snapshot_ref": "snp_0MPF8D0WS8CGFZ22TEBQYFG99B",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 23,
+        "char_start": 25,
+        "char_end": 52
+      },
+      "quote_hash": "sha256:a3d3a7c7a67ff8d0b6b225169e2cc0230ce9306e35ee654d3258698d504e0b57"
+    }
+  }
+}

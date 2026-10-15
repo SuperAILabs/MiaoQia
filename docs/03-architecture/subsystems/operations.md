@@ -16,6 +16,8 @@
 - **自动化候选**：统计高频重复人工操作，生成自动化建议；
 - **链路探针**：发起不含业务数据的探针，经 `acquisition`、`evidence` 回到本子系统，端到端验证事件骨干、追踪、审计与授权，并作为事件链路的健康监测（需 `platform:miaoqia` 上的 `can_trigger_probe` 关系）。
 
+M0探针的运行时验收见[完整链路](../../05-delivery/05-m0-runtime-acceptance.md)：HTTPS网关与mTLS授权后，记录/请求事件/审计同事务提交；审计失败回滚或返回运行错误。完成消费者先校验离线载荷Schema，再核对来源、subject与规定hops路径；重复完成不重复记账。
+
 ## 3. 拥有的数据
 
 `ReviewTask`、`ReviewDecision`、`ServiceTicket`、`ServiceTimeLog`、`CustomerHealth`、`AutomationCandidate`。

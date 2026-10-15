@@ -1,0 +1,726 @@
+[
+  {
+    "name": "public",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": true
+  },
+  {
+    "name": "tenant",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "tenant"
+      },
+      "cell": "cell-01"
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": true
+  },
+  {
+    "name": "missing_scope",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ]
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "blank_scope",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": ""
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "blank_single_scope",
+    "spec": {
+      "subsystems": [
+        "acquisition"
+      ],
+      "data_scopes": {
+        "acquisition": ""
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "acquisition",
+    "valid": false
+  },
+  {
+    "name": "public_with_cell",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public"
+      },
+      "cell": "cell-01"
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "tenant_without_cell",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "tenant"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "tenant_bad_cell",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "tenant"
+      },
+      "cell": "bad.cell"
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "scope_for_unloaded",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public",
+        "identity": "platform"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "duplicate_module",
+    "spec": {
+      "subsystems": [
+        "evidence",
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "unregistered_module",
+    "spec": {
+      "subsystems": [
+        "unknown"
+      ]
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "wrong_unit",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "platform",
+    "valid": false
+  },
+  {
+    "name": "public_default",
+    "spec": {
+      "subsystems": [
+        "acquisition"
+      ]
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "acquisition",
+    "valid": true
+  },
+  {
+    "name": "platform_default",
+    "spec": {
+      "subsystems": [
+        "identity"
+      ]
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "platform",
+    "valid": true
+  },
+  {
+    "name": "platform_bad_cell",
+    "spec": {
+      "subsystems": [
+        "identity"
+      ],
+      "cell": "bad.cell"
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "platform",
+    "valid": false
+  },
+  {
+    "name": "empty_modules",
+    "spec": {
+      "subsystems": []
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "empty_registration",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": []
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "invalid_registration",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "unknown"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "duplicate_registration",
+    "spec": {
+      "subsystems": [
+        "evidence"
+      ],
+      "data_scopes": {
+        "evidence": "public"
+      }
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "public"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "data",
+    "valid": false
+  },
+  {
+    "name": "null_scope_map",
+    "spec": {
+      "subsystems": [
+        "acquisition"
+      ],
+      "data_scopes": null
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "acquisition",
+    "valid": false
+  },
+  {
+    "name": "numeric_cell",
+    "spec": {
+      "subsystems": [
+        "identity"
+      ],
+      "cell": 9
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "platform",
+    "valid": false
+  },
+  {
+    "name": "null_cell",
+    "spec": {
+      "subsystems": [
+        "identity"
+      ],
+      "cell": null
+    },
+    "registry": {
+      "evidence": {
+        "unit": "data",
+        "data_scopes": [
+          "public",
+          "tenant"
+        ]
+      },
+      "acquisition": {
+        "unit": "acquisition",
+        "data_scopes": [
+          "public"
+        ]
+      },
+      "identity": {
+        "unit": "platform",
+        "data_scopes": [
+          "platform"
+        ]
+      }
+    },
+    "unit": "platform",
+    "valid": false
+  }
+]

@@ -1,16 +1,25 @@
 asyncapi: 3.0.0
 info:
   title: acquisition 事件
-  version: 0.1.0
-  description: >
-    由 acquisition 发布。链路探针经过采集单元时发布 probe.emitted（见 contracts/events/operations）。
+  version: 1.0.0
+  description: '由 acquisition 发布。链路探针经过采集单元时发布 probe.emitted（见 contracts/events/operations）。
     信封为 CloudEvents 1.0；公共域事件：miaoqiazone = public。
+
+    '
 channels:
   public.acquisition:
     address: public.acquisition
     messages:
       probeEmitted:
         $ref: '#/components/messages/probeEmitted'
+      fetchCompleted:
+        $ref: '#/components/messages/fetchCompleted'
+      fetchFailed:
+        $ref: '#/components/messages/fetchFailed'
+      sourceHealthChanged:
+        $ref: '#/components/messages/sourceHealthChanged'
+      sourceRightsChanged:
+        $ref: '#/components/messages/sourceRightsChanged'
 operations:
   publishAcquisitionEvents:
     action: send
@@ -24,7 +33,9 @@ components:
       payload:
         type: object
         additionalProperties: false
-        required: [probe_id, hops]
+        required:
+        - probe_id
+        - hops
         properties:
           probe_id:
             type: string
@@ -34,3 +45,118 @@ components:
             description: 已经过的子系统，按顺序
             items:
               type: string
+      x-fixtures-required: true
+    fetchCompleted:
+      name: acquisition.fetch.completed.v1
+      summary: 制品归档完成
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          artifact_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/artifact_ref
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          content_hash:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+          fetched_at:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+          source_url:
+            type: string
+            format: uri
+        required:
+        - source_id
+        - artifact_ref
+        - rights_tags
+        - content_hash
+        - fetched_at
+        - source_url
+      x-fixtures-required: true
+    fetchFailed:
+      name: acquisition.fetch.failed.v1
+      summary: 最终抓取失败
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          source_url:
+            type: string
+            format: uri
+          failed_at:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+          error_code:
+            type: string
+            minLength: 1
+          retryable:
+            type: boolean
+        required:
+        - source_id
+        - source_url
+        - failed_at
+        - error_code
+        - retryable
+      x-fixtures-required: true
+    sourceHealthChanged:
+      name: acquisition.source.health_changed.v1
+      summary: 来源健康变化
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          before:
+            enum:
+            - healthy
+            - degraded
+            - unavailable
+            - unknown
+          after:
+            enum:
+            - healthy
+            - degraded
+            - unavailable
+            - unknown
+          reason_code:
+            type: string
+            minLength: 1
+        required:
+        - source_id
+        - before
+        - after
+        - reason_code
+      x-fixtures-required: true
+    sourceRightsChanged:
+      name: acquisition.source.rights_changed.v1
+      summary: 来源权利变化
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          rights_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          before:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_set
+          after:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_set
+          effective_at:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+          action:
+            enum:
+            - retain
+            - restrict
+            - withdraw
+        required:
+        - source_id
+        - rights_version
+        - before
+        - after
+        - effective_at
+        - action
+      x-fixtures-required: true

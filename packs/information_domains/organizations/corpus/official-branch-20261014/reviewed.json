@@ -1,0 +1,373 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "subject": {
+        "name_raw": "广东中和农信小额贷款有限公司连南分公司",
+        "prov": {
+          "evidence_ref": "ev_EPHMMBTPW0YNRZVH8QK9PVMHGV",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91441826MA54EDYD45",
+        "uscc_prov": {
+          "evidence_ref": "ev_FSW69RVFNZ5SWTFDP5M8MHFV9V",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "name": {
+        "value": "广东中和农信小额贷款有限公司连南分公司",
+        "prov": {
+          "evidence_ref": "ev_EPHMMBTPW0YNRZVH8QK9PVMHGV",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "uscc": "91441826MA54EDYD45",
+      "uscc_prov": {
+        "evidence_ref": "ev_FSW69RVFNZ5SWTFDP5M8MHFV9V",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "enterprise_type": "branch",
+      "parent": {
+        "name_raw": "广东中和农信小额贷款有限公司",
+        "prov": {
+          "evidence_ref": "ev_7XKQ3EFHCAS35F66CJ5RV9V2P7",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91440101MA5CXB8B85",
+        "uscc_prov": {
+          "evidence_ref": "ev_GHEX8D662VK44V1Q2WA1Z5NDTT",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "CANCELLATION_REGISTRATION_PENDING",
+            "message": "原文只批准注销并要求后续办理注销登记，不填cancelled或实际注销日"
+          }
+        ]
+      }
+    },
+    {
+      "subject": {
+        "name_raw": "广东中和农信小额贷款有限公司曲江分公司",
+        "prov": {
+          "evidence_ref": "ev_WX4YPX90CK11EC7K63TM8PZW5R",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91440221MA55FUBUX1",
+        "uscc_prov": {
+          "evidence_ref": "ev_YT7S8YYTVC99PSPVRXXRRQ9JWB",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "name": {
+        "value": "广东中和农信小额贷款有限公司曲江分公司",
+        "prov": {
+          "evidence_ref": "ev_WX4YPX90CK11EC7K63TM8PZW5R",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "uscc": "91440221MA55FUBUX1",
+      "uscc_prov": {
+        "evidence_ref": "ev_YT7S8YYTVC99PSPVRXXRRQ9JWB",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "enterprise_type": "branch",
+      "parent": {
+        "name_raw": "广东中和农信小额贷款有限公司",
+        "prov": {
+          "evidence_ref": "ev_7XKQ3EFHCAS35F66CJ5RV9V2P7",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91440101MA5CXB8B85",
+        "uscc_prov": {
+          "evidence_ref": "ev_GHEX8D662VK44V1Q2WA1Z5NDTT",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "CANCELLATION_REGISTRATION_PENDING",
+            "message": "原文只批准注销并要求后续办理注销登记，不填cancelled或实际注销日"
+          }
+        ]
+      }
+    },
+    {
+      "subject": {
+        "name_raw": "广东中和农信小额贷款有限公司始兴分公司",
+        "prov": {
+          "evidence_ref": "ev_AE3YZ0CA5H7D93NAN4K6T2KN9F",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91440222MA568BQ43R",
+        "uscc_prov": {
+          "evidence_ref": "ev_6XGQ1813V8ZGSTCCW16XX0NDB6",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "name": {
+        "value": "广东中和农信小额贷款有限公司始兴分公司",
+        "prov": {
+          "evidence_ref": "ev_AE3YZ0CA5H7D93NAN4K6T2KN9F",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "uscc": "91440222MA568BQ43R",
+      "uscc_prov": {
+        "evidence_ref": "ev_6XGQ1813V8ZGSTCCW16XX0NDB6",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "enterprise_type": "branch",
+      "parent": {
+        "name_raw": "广东中和农信小额贷款有限公司",
+        "prov": {
+          "evidence_ref": "ev_7XKQ3EFHCAS35F66CJ5RV9V2P7",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91440101MA5CXB8B85",
+        "uscc_prov": {
+          "evidence_ref": "ev_GHEX8D662VK44V1Q2WA1Z5NDTT",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "CANCELLATION_REGISTRATION_PENDING",
+            "message": "原文只批准注销并要求后续办理注销登记，不填cancelled或实际注销日"
+          }
+        ]
+      }
+    },
+    {
+      "subject": {
+        "name_raw": "广东中和农信小额贷款有限公司陆河分公司",
+        "prov": {
+          "evidence_ref": "ev_7E5AEFVRADYX3WNEYV322XVQF6",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91441523MA56Y9AD1K",
+        "uscc_prov": {
+          "evidence_ref": "ev_BZJKSX8BCFXKP6FXXWXEH1T54V",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "name": {
+        "value": "广东中和农信小额贷款有限公司陆河分公司",
+        "prov": {
+          "evidence_ref": "ev_7E5AEFVRADYX3WNEYV322XVQF6",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "uscc": "91441523MA56Y9AD1K",
+      "uscc_prov": {
+        "evidence_ref": "ev_BZJKSX8BCFXKP6FXXWXEH1T54V",
+        "method": "manual",
+        "confidence": 1,
+        "extractor": "manual-review@0.1.0"
+      },
+      "enterprise_type": "branch",
+      "parent": {
+        "name_raw": "广东中和农信小额贷款有限公司",
+        "prov": {
+          "evidence_ref": "ev_7XKQ3EFHCAS35F66CJ5RV9V2P7",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91440101MA5CXB8B85",
+        "uscc_prov": {
+          "evidence_ref": "ev_GHEX8D662VK44V1Q2WA1Z5NDTT",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "CANCELLATION_REGISTRATION_PENDING",
+            "message": "原文只批准注销并要求后续办理注销登记，不填cancelled或实际注销日"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_EPHMMBTPW0YNRZVH8QK9PVMHGV": {
+      "id": "ev_EPHMMBTPW0YNRZVH8QK9PVMHGV",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 19,
+        "row": 1,
+        "col": 0
+      },
+      "quote_hash": "sha256:5bc7421632ec298890da9fda940ac871aab50865b10edd42812f3e531a47def1"
+    },
+    "ev_FSW69RVFNZ5SWTFDP5M8MHFV9V": {
+      "id": "ev_FSW69RVFNZ5SWTFDP5M8MHFV9V",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 29,
+        "char_end": 47,
+        "row": 1,
+        "col": 0
+      },
+      "quote_hash": "sha256:7499d3cab0de25c252def945d84832344be07b6f3092db4e9848f866d33ee89b"
+    },
+    "ev_7XKQ3EFHCAS35F66CJ5RV9V2P7": {
+      "id": "ev_7XKQ3EFHCAS35F66CJ5RV9V2P7",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 6,
+        "char_end": 20
+      },
+      "quote_hash": "sha256:705711d49fec3f1dd1db3be988a44aa5abaa0a5b64cfb54f8955db8046f8a333"
+    },
+    "ev_GHEX8D662VK44V1Q2WA1Z5NDTT": {
+      "id": "ev_GHEX8D662VK44V1Q2WA1Z5NDTT",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 30,
+        "char_end": 48
+      },
+      "quote_hash": "sha256:116dd1b300518d7f299c62dacd805fd0ce462a9546d1040a530398b8d8335f61"
+    },
+    "ev_WX4YPX90CK11EC7K63TM8PZW5R": {
+      "id": "ev_WX4YPX90CK11EC7K63TM8PZW5R",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 19,
+        "row": 2,
+        "col": 0
+      },
+      "quote_hash": "sha256:ad6978a41ca55050599c8c02246474f44d683e7e0cce886474745e1b70e7cd4d"
+    },
+    "ev_YT7S8YYTVC99PSPVRXXRRQ9JWB": {
+      "id": "ev_YT7S8YYTVC99PSPVRXXRRQ9JWB",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 29,
+        "char_end": 47,
+        "row": 2,
+        "col": 0
+      },
+      "quote_hash": "sha256:1f3f518c7c496f8cdd518a1d8f7e161258fe206d432e354c7f83a8d531d35e57"
+    },
+    "ev_AE3YZ0CA5H7D93NAN4K6T2KN9F": {
+      "id": "ev_AE3YZ0CA5H7D93NAN4K6T2KN9F",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 19,
+        "row": 3,
+        "col": 0
+      },
+      "quote_hash": "sha256:c464e69b33bd7e68200cb3c5931cbda586388c3b74959684cbd019d38a2280ad"
+    },
+    "ev_6XGQ1813V8ZGSTCCW16XX0NDB6": {
+      "id": "ev_6XGQ1813V8ZGSTCCW16XX0NDB6",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 29,
+        "char_end": 47,
+        "row": 3,
+        "col": 0
+      },
+      "quote_hash": "sha256:3ee42680397d5ef987a89bfdf919b147ce9c3b79f7c2538916afb55a070ab1f6"
+    },
+    "ev_7E5AEFVRADYX3WNEYV322XVQF6": {
+      "id": "ev_7E5AEFVRADYX3WNEYV322XVQF6",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 19,
+        "row": 4,
+        "col": 0
+      },
+      "quote_hash": "sha256:02d9a7bb7408456d4de6d4e9f04922e96b07428c2eebde83cf840a73f78f87d0"
+    },
+    "ev_BZJKSX8BCFXKP6FXXWXEH1T54V": {
+      "id": "ev_BZJKSX8BCFXKP6FXXWXEH1T54V",
+      "snapshot_ref": "snp_347875R50P6E0QQYVFREVPH1C4",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 29,
+        "char_end": 47,
+        "row": 4,
+        "col": 0
+      },
+      "quote_hash": "sha256:988971c088e10c14ebcf7c0054061b47f41672be9ef71e889f95c16d5ad61a04"
+    }
+  }
+}

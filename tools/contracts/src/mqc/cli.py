@@ -4,6 +4,7 @@
   mqc generate [--check] [--lang go|python|typescript ...]
   mqc fixtures --export DIR     导出全部正例为 JSON，供生成代码的往返测试
   mqc compat --base REF [-v]    与基线比较的契约兼容性检查
+  mqc freeze-check              冻结记录哈希核对（受约束段落阻断，其余只报告）
 """
 from __future__ import annotations
 
@@ -12,10 +13,12 @@ import sys
 
 from .compat import compat
 from .events import check_events
+from .freeze import check_freeze
 from .fixtures import check_fixtures, export_valid
 from .generate import TARGETS, generate
 from .lint import lint_schemas, lint_yaml_keys
 from .packs import check_packs
+from .integration import check_integration
 from .repo import Repo, find_root
 from .report import Report
 
@@ -42,6 +45,7 @@ def main(argv: list[str] | None = None) -> int:
     cp = sub.add_parser("compat", help="与基线比较的契约兼容性检查")
     cp.add_argument("--base", required=True, help="基线 git ref，例如 origin/main")
     cp.add_argument("-v", "--verbose", action="store_true", help="列出全部变更（默认只列 breaking）")
+    sub.add_parser("freeze-check", help="核对 contracts/reviews/ 冻结记录的哈希")
     fx = sub.add_parser("fixtures", help="导出样例")
     fx.add_argument("--export", required=True, metavar="DIR")
     args = ap.parse_args(argv)
@@ -52,6 +56,7 @@ def main(argv: list[str] | None = None) -> int:
         yamls = sorted(list((repo.root / "contracts").rglob("*.yaml")) + list((repo.root / "packs").rglob("*.yaml")))
         stages = [("Schema 方言", lambda: lint_schemas(repo)), ("样例", lambda: check_fixtures(repo)),
                   ("事件契约", lambda: check_events(repo)), ("扩展包", lambda: check_packs(repo)),
+                  ("工程横切", lambda: check_integration(repo)),
                   ("YAML 键名", lambda: lint_yaml_keys(yamls, repo.root))]
         for name, stage in stages:
             try:
@@ -60,6 +65,8 @@ def main(argv: list[str] | None = None) -> int:
                 r.error(name, f"检查中断：{type(e).__name__}: {str(e)[:200]}")
     elif args.cmd == "compat":
         r.extend(compat(repo, args.base, args.verbose))
+    elif args.cmd == "freeze-check":
+        r.extend(check_freeze(repo))
     elif args.cmd == "fixtures":
         from pathlib import Path
         r.note(f"已导出 {export_valid(repo, Path(args.export).resolve())} 个正例到 {args.export}")

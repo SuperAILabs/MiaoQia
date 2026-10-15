@@ -1,0 +1,161 @@
+asyncapi: 3.0.0
+info:
+  title: entity公共数据事件
+  version: 1.0.0
+  description: CloudEvents 1.0公共域信封，miaoqiazone=public；只定义data载荷。
+channels:
+  public.entity:
+    address: public.entity
+    messages:
+      entityCreated:
+        $ref: '#/components/messages/entityCreated'
+      entityUpdated:
+        $ref: '#/components/messages/entityUpdated'
+      mergeApplied:
+        $ref: '#/components/messages/mergeApplied'
+      mergeReverted:
+        $ref: '#/components/messages/mergeReverted'
+      relationshipChanged:
+        $ref: '#/components/messages/relationshipChanged'
+operations:
+  publishEntityEvents:
+    action: send
+    channel:
+      $ref: '#/channels/public.entity'
+components:
+  messages:
+    entityCreated:
+      name: entity.entity.created.v1
+      summary: 实体创建
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          entity_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/entity_id
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          entity_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          entity_type:
+            enum:
+            - organization
+            - project
+            - location
+            - category
+            - brand
+        required:
+        - entity_id
+        - rights_tags
+        - entity_version
+        - entity_type
+      x-fixtures-required: true
+    entityUpdated:
+      name: entity.entity.updated.v1
+      summary: 实体变化
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          entity_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/entity_id
+          changed_fields:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/changed_fields
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          entity_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+        required:
+        - entity_id
+        - changed_fields
+        - rights_tags
+        - entity_version
+      x-fixtures-required: true
+    mergeApplied:
+      name: entity.merge.applied.v1
+      summary: 实体合并应用，可撤销
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          merge_id:
+            type: string
+            minLength: 1
+          survivor_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/entity_id
+          absorbed_ids:
+            type: array
+            items:
+              $ref: ../../schemas/common/event-types.schema.json#/$defs/entity_id
+            minItems: 1
+            uniqueItems: true
+          entity_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+        required:
+        - merge_id
+        - survivor_id
+        - absorbed_ids
+        - entity_version
+        - rights_tags
+      x-fixtures-required: true
+    mergeReverted:
+      name: entity.merge.reverted.v1
+      summary: 撤销指定实体合并
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          merge_id:
+            type: string
+            minLength: 1
+          restored_ids:
+            type: array
+            items:
+              $ref: ../../schemas/common/event-types.schema.json#/$defs/entity_id
+            minItems: 1
+            uniqueItems: true
+          entity_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+        required:
+        - merge_id
+        - restored_ids
+        - entity_version
+        - rights_tags
+      x-fixtures-required: true
+    relationshipChanged:
+      name: entity.relationship.changed.v1
+      summary: 关系边变化
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          relationship_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/relationship_id
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          from_entity_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/entity_id
+          to_entity_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/entity_id
+          relationship_type:
+            type: string
+            minLength: 1
+          relationship_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          action:
+            enum:
+            - upsert
+            - remove
+        required:
+        - relationship_id
+        - rights_tags
+        - from_entity_id
+        - to_entity_id
+        - relationship_type
+        - relationship_version
+        - action
+      x-fixtures-required: true

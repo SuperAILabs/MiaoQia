@@ -1,6 +1,6 @@
 # 集成契约
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.0 · 更新：2026-10-15 · 负责人：首席架构师
 
 契约是子系统之间唯一的耦合点。所有契约以机器可读文件存放在仓库的 `contracts/` 目录，是代码生成、文档生成和契约测试的唯一来源。
 
@@ -12,8 +12,9 @@
 | 子系统接口 | OpenAPI 3.1 | `contracts/apis/<subsystem>/` | 命令与查询接口 |
 | 事件 | AsyncAPI 3 + JSON Schema | `contracts/events/<namespace>/` | 领域事件与集成事件 |
 | 策略 DSL | JSON Schema + CEL 环境与函数声明 | `contracts/policy/` | 策略结构、可用变量与函数，见 [策略 DSL](11-policy-dsl.md) |
-| 扩展包清单 | JSON Schema | `contracts/packs/` | 扩展包 manifest 与定义文件 |
 | 标识前缀 | YAML | `contracts/identifiers.yaml` | 前缀登记 |
+
+扩展包清单（`packs/<种类>/<包>/pack.yaml`）与定义文件不是 `contracts/` 中的契约，没有独立 Schema；它们必须与上表契约一致，由 `mqc check` 的扩展包一致性规则 P0–P7（`tools/contracts/src/mqc/packs.py`）校验，其中应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验。规则与适用范围见 [可扩展性设计](04-extensibility.md#21-通用-manifest)。
 
 ## 2. 子系统接口
 
@@ -37,7 +38,7 @@
 | 分页 | 游标分页 |
 | 幂等 | 所有写操作接受 `Idempotency-Key`；子系统保证同键同结果 |
 | 异步 | 长操作返回 `202` 与作业标识，作业统一查询 |
-| 上下文 | 请求上下文（租户、主体、用途、追踪标识、预算）由框架传递，不出现在业务参数中：对外请求由 `gateway` 从令牌派生；内部调用经 `Miaoqia-Context` 头与 `traceparent` 头传递，只在内部监听端口接受 |
+| 上下文 | 请求上下文（租户、单元、主体、用途）由框架传递，不出现在业务参数中：对外请求由 `gateway` 从令牌派生；内部调用经 `Miaoqia-Context` 头与 `traceparent` 头传递，只在内部监听端口经mTLS与调用方白名单接受；JSON按无填充Base64URL编码，最大8192字节，未知键、null、空主体和不成对的租户/单元拒绝。追踪独立走traceparent；预算由commerce运行门禁处理，不属于已实现的上下文字段 |
 | 字段白名单 | 出入站 Schema 默认 `additionalProperties: false`；扩展只能进入命名空间化的 `extensions`，并按下游逐一净化 |
 | 超时 | 每个接口声明超时与重试安全性 |
 
@@ -56,22 +57,25 @@
 ```json
 {
   "specversion": "1.0",
-  "id": "evt_01JA…",
-  "source": "miaoqia/domain-intelligence",
-  "type": "tendering.result.published.v1",
-  "time": "2026-10-12T08:00:00Z",
-  "subject": "pp_01JA…",
+  "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+  "source": "miaoqia/operations",
+  "type": "operations.probe.requested.v1",
+  "time": "2026-10-14T08:00:00Z",
+  "subject": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
   "datacontenttype": "application/json",
-  "dataschema": "contracts/events/tendering/result.published.v1.json",
-  "miaoqiazone": "public",
-  "miaoqiatenant": null,
-  "miaoqiacell": null,
-  "traceparent": "00-…",
-  "data": { }
+  "miaoqiazone": "platform",
+  "data": {
+    "probe_id": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+    "requested_at": "2026-10-14T08:00:00Z"
+  }
 }
 ```
 
-租户事件必须带 `miaoqiatenant` 与 `miaoqiacell`；公共域事件必须为空。
+机器定义见[`integration.yaml`](../../contracts/integration.yaml)、[请求上下文Schema](../../contracts/schemas/integration/request-context.schema.json)及[事件信封Schema](../../contracts/schemas/integration/event-envelope.schema.json)。此配置基于[CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md)，额外要求time与对象data；未知信封键、null和不合法属性拒绝。载荷字段另按AsyncAPI校验，不能以信封通过代证载荷通过。
+
+租户事件必须带 `miaoqiatenant` 与 `miaoqiacell`；公共域事件省略这两个字段。平台事件可带租户，带单元时也必须带租户。
+
+公共数据事件载荷原语位于`contracts/schemas/common/event-types.schema.json`。新载荷关闭未知字段；AsyncAPI中声明`x-fixtures-required`的消息须有`fixtures.yaml`正反例。Schema和事件复用同一补丁验证器，事件兼容检查展开引用的实际Schema。已有v1消息收紧须发布新事件版本，不以AsyncAPI文档版本提升代替类型版本迁移。
 
 ### 3.2 命名
 
@@ -100,10 +104,11 @@
 - **消费**：消费者必须幂等（以事件 `id` 去重或以业务版本号判断）；
 - **顺序**：只保证同一分区键内有序；消费者不得假设跨对象顺序；
 - **重放**：所有主题保留足够时间以支持读模型重建；公共域领域事件长期保留（或可从权威数据重新生成）；
-- **校验**：消费者校验信封为 JSON 对象、必填属性类型正确且与主题一致（公共主题只接受公共域事件，单元主题只接受该单元的租户事件），不符直接进入死信；
+- **校验**：消费者校验信封为 JSON 对象、必填属性类型正确且与主题一致（公共主题只接受公共域事件，单元主题只接受该单元的租户事件），未知主题前缀、错误域或错误单元直接进入死信；发布前使用同一路由校验，显式topic不得绕过。主题命名空间可与事件类型不同，例如public.domain承载tendering/org事件；
 - **失败**：重试带退避，超过上限进入死信主题 `dlq.<子系统>` 并告警；死信可人工重放；
-- **确认**：只有确认死信投递成功后才能确认原消息；投递失败或超时保留原消费位点；
+- **确认**：只有确认死信投递成功后才能确认原消息；投递失败或超时保留原消费位点并停止消费，不允许后续同分区记录越过该失败位点提交；
 - **运行时**：Python 运行时将消费者线程的未处理异常或意外退出传递到主线程，停止同进程消费者并以失败状态退出，由外部进程管理器重启；
+- **载荷验证**：每个登记处理函数启动前须有可编译的离线原Schema。Go/Python共用mqc生成制品；校验在inbox/业务事务前完成，结构错误直接死信，业务语义错误回滚后重试/死信。现有四个消费者已通过[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)，未来消费者需补自己的集成测试；
 - **事件载荷**：携带足以让多数消费者无需回查的数据，但不携带大对象（用引用）和敏感原文。
 
 ### 3.5 Schema 演进
@@ -132,6 +137,8 @@
 
 ## 6. 契约测试
 
-- 每个子系统接口有提供方契约测试，本地实现与远程客户端都必须通过；
+- 每个子系统接口有提供方契约测试，本地实现与远程客户端都必须通过；identity的参数校验、默认主体、授权拒绝、缺上下文与HTTP错误格式使用同一契约，真实OpenFGA验证跨租户及权限矩阵；
+- JSON Schema校验依赖启用format-nongpl；无效日期时间必须被拒绝，不能仅构造一个缺少格式实现的FormatChecker；
+- 工程信封和上下文使用同一JSON完整实例集，mqc与Go/Python均运行正反例；存储结构使用真实PostgreSQL验证唯一键、事务回滚、RLS与中继账号权限；
 - 每个事件消费者对其消费的事件 Schema 有消费方测试；
 - 安全负向测试：在所有合法字段之外加入未知键、其他租户标识、密钥形态值等，验证被拒绝或净化，见 [研发规范](../05-delivery/03-engineering-standards.md)。

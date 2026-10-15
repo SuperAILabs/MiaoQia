@@ -13,13 +13,18 @@
 //	MIAOQIA_<子系统>_<KEY>         子系统配置，例如 MIAOQIA_IDENTITY_OPENFGA_URL
 //	MIAOQIA_BINDING_<子系统>       local（默认）或 remote；remote 时经 MIAOQIA_<子系统>_URL 调用远程接口
 //	MIAOQIA_HTTP_ADDR / MIAOQIA_INTERNAL_ADDR   对外与内部监听地址，默认 :8090 / :8091
-//	MIAOQIA_GATEWAY_ISSUER        令牌签发方（Keycloak realm 地址）
+//	MIAOQIA_GATEWAY_ISSUER / MIAOQIA_GATEWAY_AUDIENCE   HTTPS Keycloak realm与资源受众
+//	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
+//	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
+//	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
+//	MIAOQIA_INTERNAL_ALLOWED_PEERS  精确SPIFFE URI SAN白名单
 //	MIAOQIA_RELAY_DSN_TEMPLATE    中继连接串模板，{db} 替换为数据库代码
 //	OTEL_EXPORTER_OTLP_ENDPOINT   追踪导出地址（OTLP/gRPC）
 package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -40,6 +45,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/relay"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
+	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
 	"github.com/superailabs/miaoqia/services/subsystems/aiplatform"
 	"github.com/superailabs/miaoqia/services/subsystems/assessment"
 	"github.com/superailabs/miaoqia/services/subsystems/channels"
@@ -78,16 +84,15 @@ func envKey(sub, key string) string {
 }
 
 type manifest struct {
-	Roles map[string]struct {
-		Subsystems []string `yaml:"subsystems"`
-	} `yaml:"roles"`
+	Roles map[string]runtime.RoleSpec `yaml:"roles"`
 }
 
 type registry struct {
 	Subsystems map[string]struct {
-		Language string `yaml:"language"`
-		Unit     string `yaml:"unit"`
-		Database string `yaml:"database"`
+		Language   string   `yaml:"language"`
+		Unit       string   `yaml:"unit"`
+		Database   string   `yaml:"database"`
+		DataScopes []string `yaml:"data_scopes"`
 	} `yaml:"subsystems"`
 }
 
@@ -108,7 +113,11 @@ func main() {
 	var err error
 	switch {
 	case flag.Arg(0) == "migrate":
-		err = migrate(ctx, log)
+		if flag.NArg() != 1 {
+			err = fmt.Errorf("迁移不接受额外位置参数；请使用 -role <角色> migrate")
+		} else {
+			err = migrate(ctx, log, *role)
+		}
 	case flag.Arg(0) == "grant" && flag.NArg() == 4:
 		err = identity.Grant(ctx, os.Getenv(envKey("identity", "OPENFGA_URL")), flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case *role != "":
@@ -130,10 +139,17 @@ func deployDir() string {
 	return "deploy"
 }
 
-func migrate(ctx context.Context, log *slog.Logger) error {
+func migrate(ctx context.Context, log *slog.Logger, role string) error {
+	if role == "" {
+		role = "api"
+	}
+	spec, scopes, _, err := loadRole(role)
+	if err != nil {
+		return err
+	}
 	for _, mk := range modules {
 		m := mk()
-		if m.Database == "" {
+		if _, selected := scopes[m.Name]; !selected || m.Database == "" {
 			continue
 		}
 		dsn := os.Getenv(envKey(m.Name, "DB_OWNER_DSN"))
@@ -143,7 +159,7 @@ func migrate(ctx context.Context, log *slog.Logger) error {
 		if err := db.Migrate(ctx, dsn, m.Database+"_app", m.Migrations); err != nil {
 			return fmt.Errorf("%s 迁移失败：%w", m.Name, err)
 		}
-		log.Info("迁移完成", "subsystem", m.Name, "database", m.Database)
+		log.Info("迁移完成", "subsystem", m.Name, "database", m.Database, "scope", scopes[m.Name], "cell", spec.Cell)
 	}
 	return nil
 }
@@ -162,13 +178,9 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 	if role == "outbox-relay" {
 		return runRelay(ctx, log, brokers)
 	}
-	var mf manifest
-	if err := readYAML(filepath.Join(deployDir(), "platform", "roles.yaml"), &mf); err != nil {
+	spec, scopes, inventory, err := loadRole(role)
+	if err != nil {
 		return err
-	}
-	spec, ok := mf.Roles[role]
-	if !ok {
-		return fmt.Errorf("未知角色 %q", role)
 	}
 	want := map[string]bool{}
 	for _, s := range spec.Subsystems {
@@ -190,6 +202,20 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 			want[sub] = true
 		}
 	}
+	for name := range want {
+		if _, exists := scopes[name]; exists {
+			continue
+		}
+		entry := inventory.Subsystems[name]
+		if entry.Unit != "platform" {
+			return fmt.Errorf("本地绑定 %s 不属于 platform", name)
+		}
+		scope, err := runtime.InstanceScope(name, nil, spec.Cell, entry.DataScopes)
+		if err != nil {
+			return err
+		}
+		scopes[name] = scope
+	}
 	var loaded []runtime.Module
 	var envs []*runtime.Env
 	for _, mk := range modules {
@@ -197,7 +223,7 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 		if !want[m.Name] {
 			continue
 		}
-		env := &runtime.Env{Role: role, Brokers: brokers, Log: log.With("subsystem", m.Name), Bindings: bindings,
+		env := &runtime.Env{DataScope: scopes[m.Name], Cell: spec.Cell, Role: role, Brokers: brokers, Log: log.With("subsystem", m.Name), Bindings: bindings,
 			Config: func(k string) string { return os.Getenv(envKey(m.Name, k)) }}
 		if m.Database != "" && (m.Consumers != nil || m.Routes != nil || m.Start != nil) {
 			d, err := db.Open(ctx, os.Getenv(envKey(m.Name, "DB_DSN")))
@@ -222,9 +248,9 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 	log.Info("进程角色启动", "role", role, "subsystems", names)
 
 	switch role {
-	case "api":
+	case "api", "public-search-api":
 		return serveAPI(ctx, log, loaded, envs)
-	case "consumer":
+	case "consumer", "public-search-consumer":
 		errc := make(chan error, 16)
 		n := 0
 		for i, m := range loaded {
@@ -257,7 +283,7 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 			m.Routes(envs[i], public, internal)
 		}
 	}
-	pub, err := gateway.Public(ctx, os.Getenv("MIAOQIA_GATEWAY_ISSUER"), public)
+	pub, err := gateway.Public(ctx, os.Getenv("MIAOQIA_GATEWAY_ISSUER"), os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public)
 	if err != nil {
 		return err
 	}
@@ -271,20 +297,46 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 		{Addr: addr("MIAOQIA_HTTP_ADDR", ":8090"), Handler: pub, ReadHeaderTimeout: 10 * time.Second},
 		{Addr: addr("MIAOQIA_INTERNAL_ADDR", ":8091"), Handler: internal, ReadHeaderTimeout: 10 * time.Second},
 	}
+	if !transportsecurity.Development() {
+		tlsConfig, err := transportsecurity.Config("MIAOQIA_INTERNAL_TLS", true)
+		if err != nil {
+			return err
+		}
+		if os.Getenv("MIAOQIA_INTERNAL_ALLOWED_PEERS") == "" {
+			return fmt.Errorf("missing internal peer allowlist")
+		}
+		servers[1].TLSConfig = tlsConfig
+		servers[0].TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+		for _, key := range []string{"MIAOQIA_PUBLIC_TLS_CERT", "MIAOQIA_PUBLIC_TLS_KEY"} {
+			if os.Getenv(key) == "" {
+				return fmt.Errorf("missing %s", key)
+			}
+		}
+	}
+	defer func() {
+		sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		for _, s := range servers {
+			_ = s.Shutdown(sctx)
+		}
+	}()
 	errc := make(chan error, len(servers))
 	for _, s := range servers {
-		go func() { errc <- s.ListenAndServe() }()
+		go func() {
+			if transportsecurity.Development() {
+				errc <- s.ListenAndServe()
+			} else if s == servers[0] {
+				errc <- s.ListenAndServeTLS(os.Getenv("MIAOQIA_PUBLIC_TLS_CERT"), os.Getenv("MIAOQIA_PUBLIC_TLS_KEY"))
+			} else {
+				errc <- s.ListenAndServeTLS("", "")
+			}
+		}()
 		log.Info("监听", "addr", s.Addr)
 	}
 	select {
 	case <-ctx.Done():
 	case err := <-errc:
 		return err
-	}
-	sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	for _, s := range servers {
-		_ = s.Shutdown(sctx)
 	}
 	return nil
 }

@@ -41,6 +41,8 @@ def _apply(doc, op: dict):
             parent[int(last)] = op["value"]
     else:
         if kind in ("add", "replace"):
+            if kind == "replace" and last not in parent:
+                raise ValueError(f"replace目标不存在：{op['path']}")
             parent[last] = op["value"]
         elif kind == "remove":
             del parent[last]
@@ -49,9 +51,28 @@ def _apply(doc, op: dict):
     return doc
 
 
+def check_cases(validator, spec: dict, where: str, report: Report) -> int:
+    """Schema与事件共用同一补丁/正反例执行器。"""
+    cases = [{"name": "基准实例", "valid": True, "patch": []}] + spec.get("cases", [])
+    for case in cases:
+        try:
+            instance = copy.deepcopy(case.get("instance", spec["base"]))
+            for op in case.get("patch", []):
+                instance = _apply(instance, op)
+            errors = list(validator.iter_errors(instance))
+        except Exception as exc:  # noqa: BLE001 验证制品错误也应完整报告
+            report.error(where, f"「{case['name']}」无法校验：{type(exc).__name__}: {str(exc)[:160]}")
+            continue
+        if case["valid"] and errors:
+            report.error(where, f"「{case['name']}」应通过，实际被拒绝：{errors[0].message[:160]}")
+        if not case["valid"] and not errors:
+            report.error(where, f"「{case['name']}」应被拒绝，实际通过")
+    return len(cases)
+
+
 def check_fixtures(repo: Repo) -> Report:
     r = Report()
-    files = sorted((repo.contracts / "tests").glob("*.yaml"))
+    files = sorted([*(repo.contracts / "tests").glob("*.yaml"), *(repo.contracts / "tests").glob("*.json")])
     total = 0
     covered = set()
     for f in files:
@@ -64,25 +85,7 @@ def check_fixtures(repo: Repo) -> Report:
             r.error(where, f"Schema 不存在：{rel}")
             continue
         v = Draft202012Validator(schema, registry=repo.registry, format_checker=Draft202012Validator.FORMAT_CHECKER)
-        cases = [{"name": "基准实例", "valid": True, "patch": []}] + spec.get("cases", [])
-        for c in cases:
-            total += 1
-            inst = copy.deepcopy(spec["base"])
-            try:
-                for op in c.get("patch", []):
-                    inst = _apply(inst, op)
-            except (KeyError, IndexError, ValueError) as e:
-                r.error(where, f"「{c['name']}」补丁无法应用：{e}")
-                continue
-            try:
-                errs = list(v.iter_errors(inst))
-            except Exception as e:  # noqa: BLE001  Schema 本身有错误（例如 $ref 无法解析）时，报告而不中断
-                r.error(where, f"「{c['name']}」无法校验：{type(e).__name__}: {str(e)[:160]}")
-                continue
-            if c["valid"] and errs:
-                r.error(where, f"「{c['name']}」应通过，实际被拒绝：{errs[0].message[:160]}")
-            if not c["valid"] and not errs:
-                r.error(where, f"「{c['name']}」应被拒绝，实际通过")
+        total += check_cases(v, spec, where, r)
     roots = {rel for rel, s in repo.schemas.items() if "properties" in s}
     for rel in sorted(roots - covered):
         r.error(f"schemas/{rel.as_posix()}", "顶层 Schema 没有样例（contracts/tests/）")
@@ -99,13 +102,13 @@ def export_valid(repo: Repo, out_dir: Path) -> int:
     names = type_names(repo)
     out_dir.mkdir(parents=True, exist_ok=True)
     n = 0
-    for f in sorted((repo.contracts / "tests").glob("*.yaml")):
+    for f in sorted([*(repo.contracts / "tests").glob("*.yaml"), *(repo.contracts / "tests").glob("*.json")]):
         spec = load_yaml(f)
         schema = repo.schemas[Path(spec["schema"])]
         tname = names[(schema["$id"], "")]
         cases = [{"name": "基准实例", "valid": True, "patch": []}] + spec.get("cases", [])
         for i, c in enumerate(x for x in cases if x["valid"]):
-            inst = copy.deepcopy(spec["base"])
+            inst = copy.deepcopy(c.get("instance", spec["base"]))
             for op in c.get("patch", []):
                 inst = _apply(inst, op)
             (out_dir / f"{tname}__{f.stem}_{i}.json").write_text(json.dumps(inst, ensure_ascii=False), encoding="utf-8")

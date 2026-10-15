@@ -31,6 +31,7 @@ class Database:
     def tx(self) -> Iterator[Connection]:
         """事务：开始时把请求上下文写入事务级会话变量；没有请求上下文时拒绝执行。"""
         c = reqctx.current()
+        c.validate()
         with self.engine.begin() as conn:
             conn.execute(
                 text("SELECT set_config('app.tenant_id', :t, true), set_config('app.cell', :c, true), "

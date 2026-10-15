@@ -1,0 +1,9 @@
+source_id: official-ordinary-multiwinner-20261014
+source_url: https://njggzy.nanjing.gov.cn/njweb/uploadfile/9455c8ad-5fb9-483a-bae3-6cd6d4193526/【中标结果公示】二次供水设备采购及相关服务成交结果公告.pdf
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+raw_sha256: ae469167163fac41d7a4876d3862cac3e7d24fe4dd67345d259665cc659a45be
+normalized_sha256: a1f6118956234438c608b06eedfe2728f89b9262085f6fd0cd0f95f16eda3478
+normalization_method: pdfplumber文本层提取，保留页边界；两页渲染复核，不代表OCR或版面模型评估
+notes: 同一采购项下五名中标人；标段未另编号，lot_key为内部非分标键unpartitioned，不伪造原文包号。年单价合计不是总成交额。

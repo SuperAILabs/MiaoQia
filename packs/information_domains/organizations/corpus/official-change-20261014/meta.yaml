@@ -1,0 +1,11 @@
+source_id: official-change-20261014
+source_url: https://www.wlmq.gov.cn/wlmqs/c119225/202603/46ce24d94f6642bbb58b1b26e7e23d1f.shtml
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //div[@id="NewsContent"]
+response_charset: utf-8
+notes: 只取同一信用代码的明确名称变更行；名单调整日期不是企业实际登记变更日；另有信用代码和运营主体变化行不擅自合并。
+response_sha256: 2ca73f3e93792ab482413098eb2e6c80d0f9c4ba6ebfc46615c3f1e1dc01592e
+raw_sha256: 5cd144ce94123fa0554ad2a5a21a8309909c7329989501e77d25c286816e0f5a
+schema: domains/organization/change.schema.json

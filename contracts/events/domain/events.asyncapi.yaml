@@ -1,0 +1,111 @@
+asyncapi: 3.0.0
+info:
+  title: domain公共数据事件
+  version: 1.0.0
+  description: CloudEvents 1.0公共域信封，miaoqiazone=public；只定义data载荷。
+channels:
+  public.domain:
+    address: public.domain
+    messages:
+      factUpserted:
+        $ref: '#/components/messages/factUpserted'
+      aggregationChanged:
+        $ref: '#/components/messages/aggregationChanged'
+      coverageGapDetected:
+        $ref: '#/components/messages/coverageGapDetected'
+operations:
+  publishDomainEvents:
+    action: send
+    channel:
+      $ref: '#/channels/public.domain'
+components:
+  messages:
+    factUpserted:
+      name: domain.fact.upserted.v1
+      summary: 领域事实写入新版本
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          info_domain:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/info_domain
+          fact_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/fact_id
+          changed_fields:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/changed_fields
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          snapshot_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/snapshot_ref
+          revision_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/revision_ref
+          object_type:
+            type: string
+            minLength: 1
+          fact_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          schema_version:
+            type: string
+            pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        required:
+        - info_domain
+        - fact_id
+        - changed_fields
+        - rights_tags
+        - snapshot_ref
+        - revision_ref
+        - object_type
+        - fact_version
+        - schema_version
+      x-fixtures-required: true
+    aggregationChanged:
+      name: domain.aggregation.changed.v1
+      summary: 聚合对象变化
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          info_domain:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/info_domain
+          changed_fields:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/changed_fields
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          aggregation_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/fact_id
+          aggregation_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+        required:
+        - info_domain
+        - changed_fields
+        - rights_tags
+        - aggregation_id
+        - aggregation_version
+      x-fixtures-required: true
+    coverageGapDetected:
+      name: domain.coverage.gap_detected.v1
+      summary: 按需补采覆盖缺口
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          info_domain:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/info_domain
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          reason_code:
+            type: string
+            minLength: 1
+          query:
+            type: string
+            minLength: 1
+          from:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+          to:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+        required:
+        - info_domain
+        - source_id
+        - reason_code
+        - query
+      x-fixtures-required: true

@@ -1,0 +1,358 @@
+status: frozen
+batch: C4b-public-procurement-organization
+authorization: 用户已授权满足条件后冻结；不需要额外冻结许可
+files:
+- path: contracts/schemas/common/event-types.schema.json
+  current_version: 1.0.0
+  sha256: f6ffb145c1779140f1e73ddc1a1662e145063a9f0f25b168be26641945b644df
+- path: contracts/schemas/common/types.schema.json
+  current_version: 1.0.0
+  sha256: d590f0febfe4338b92714e1bda6a7ba8c038ddbe7e50e81acb75e6b9144832e5
+- path: contracts/schemas/evidence/evidence-ref.schema.json
+  current_version: 1.0.0
+  sha256: c30908d59b868faa94736aaf26987f45a08ea2c52d3ed1d6f72e33b5de27f706
+- path: contracts/schemas/evidence/normalized-document.schema.json
+  current_version: 1.0.0
+  sha256: 83ad3d41879f69cf60cb6adce9612ac2c8653732f9771ecab5c2eb4ecee5fa6d
+- path: contracts/schemas/domains/procurement/defs.schema.json
+  current_version: 1.0.0
+  sha256: c15bce507f858ce3fd46e6683f9d4535912d4536a635b6771e15c9afccf2f924
+- path: contracts/schemas/domains/procurement/notice.schema.json
+  current_version: 1.0.0
+  sha256: 9cc3e55408fe1b415589cb8ddfebb67aaae308093588df44909fe63a0fcea7aa
+- path: contracts/schemas/domains/procurement/procurement-project.schema.json
+  current_version: 1.0.0
+  sha256: 287d9f62b68b8631824a8c368cf1eda7f500fd740f7e5e43bcbc286d5d02680e
+- path: contracts/schemas/domains/organization/abnormal.schema.json
+  current_version: 1.0.0
+  sha256: 28b91be8b38f08c65ef02a2f41c243208ad30b60bc71890cbc4ed9e40781b7d5
+- path: contracts/schemas/domains/organization/change.schema.json
+  current_version: 1.0.0
+  sha256: 11490282762a87d400f1ba852628c672b2492361db06efe68408e60c4d184c86
+- path: contracts/schemas/domains/organization/defs.schema.json
+  current_version: 1.0.0
+  sha256: cf768f0ec16f34f98ef695b2030bd2a20967a9e1ff4c4381f548c334ad5a0bee
+- path: contracts/schemas/domains/organization/registration.schema.json
+  current_version: 1.0.0
+  sha256: 77139dc12df9e4ad87f1a6640134724c356d182c6f5b504f89e4170cde18a421
+- path: contracts/events/acquisition/events.asyncapi.yaml
+  current_version: 1.0.0
+  sha256: 2ed1ee3c1e313cabaa5dadbdc252dfe090759a68ffa1ff4336a215eef11c029f
+- path: contracts/events/evidence/events.asyncapi.yaml
+  current_version: 1.0.0
+  sha256: 6056f634664d9f237a73850f20831b653d5562b5d8351cc111538ef619806e33
+- path: contracts/events/domain/events.asyncapi.yaml
+  current_version: 1.0.0
+  sha256: 4cfb012678862b3a8c8d278dfbfa2383815f1a832602f6eaa7f1299825fe880d
+- path: contracts/events/entity/events.asyncapi.yaml
+  current_version: 1.0.0
+  sha256: 60879009fcd8fdfec0855f81a63bc12a9c45daad127ad15feb4a16096fa1dd38
+- path: contracts/events/org/events.asyncapi.yaml
+  current_version: 1.0.0
+  sha256: ae1004d3cbc53eb309f98320d15c91c7bd56d60bb2adbfc3617f506d16781695
+- path: contracts/events/tendering/events.asyncapi.yaml
+  current_version: 1.0.0
+  sha256: 10f02c99474f8402a7d9c1680c682211e44164032c51abb130f94ebb91effe4c
+- path: packs/information_domains/procurement/lifecycle.yaml
+  current_version: 1.0.0
+  sha256: 0c17541a2dcf71893f8456aa5190d0f047fd0caca9e1d20594fb688c1b26f08b
+  version_owner: packs/information_domains/procurement/pack.yaml
+sample_sets:
+- path: packs/information_domains/procurement/corpus/lifecycle-manifest.json
+  originals: 15
+  manual_facts: 20
+  manifest_sha256: 3aa1b97015fb2690bb71ba49da878b6ba299bb83a1141d03eeabe02e97547648
+  reviewed_artifacts:
+  - path: packs/information_domains/procurement/corpus/official-award-20261014/reviewed.json
+    sha256: 5f255f6b7e9077ab55b6a8257a1166db938489d248b56c48531126944793ee19
+  - path: packs/information_domains/procurement/corpus/official-amendment-20261014/reviewed.json
+    sha256: 1bba677d911a5fbcf60dd23610ec6ad4de34e01db0c55f262ed2302fc50f1263
+  - path: packs/information_domains/procurement/corpus/official-award-amended-original-20261014/reviewed.json
+    sha256: 1bdc44e5336e2726ab15aef38cbb12ef0905e6151ce8c45a92d6630b8ec5cbf2
+  - path: packs/information_domains/procurement/corpus/official-amendment-deadline-20261014/reviewed.json
+    sha256: 705fd0f1e1232e8c0fb64ec7572961fde491abab95f27dba8f812e0870b581bd
+  - path: packs/information_domains/procurement/corpus/official-contract-20261014/reviewed.json
+    sha256: 9cc67dc9985fe4805b115e308e320790a842694e5d6c74fc02881a71fbdd3bf0
+  - path: packs/information_domains/procurement/corpus/official-contract-forestry-20261014/reviewed.json
+    sha256: f921eebd73604d8288f1a14c02dfa53bfae061461be88bdac182cd969f0cc43d
+  - path: packs/information_domains/procurement/corpus/official-acceptance-20261014/reviewed.json
+    sha256: 59ff0c34ad7ed6ba192393be546cd1ba4fcda1c14ed977ac7f7fac22201c0d1c
+  - path: packs/information_domains/procurement/corpus/official-acceptance-yantai-20261014/reviewed.json
+    sha256: a1bfaa76901dad165d214102ed0adb07abe008162e94bd0b4a8fe966c570c482
+  - path: packs/information_domains/procurement/corpus/official-candidate-20261014/reviewed.json
+    sha256: 43a61bacf9d0000ca7a4686023934b84e881c6dc772404e48a3493c99b1418f5
+  - path: packs/information_domains/procurement/corpus/official-contract-attachment-20261014/reviewed.json
+    sha256: 155adbedf6ab2c9c21dde39edd8255517338d79d857bc834bde2b189ef384b1d
+  - path: packs/information_domains/procurement/corpus/official-failure-20261014/reviewed.json
+    sha256: 57a2022a1eba2ad5c0f6295f526feef9cefff3b2f611b3c1cecbfb2cfd296b8f
+  - path: packs/information_domains/procurement/corpus/official-consortium-20261014/reviewed.json
+    sha256: 3741a204961609876fc94b2cdd0e638ca4a2b5a2f2da5fdda41b3596a369e3c0
+  - path: packs/information_domains/procurement/corpus/official-multiwinner-20261014/reviewed.json
+    sha256: 425a966094b9c8d7a5d6b32b4ae62fcb149c43f03d79986084d6bbaf344df2e4
+  - path: packs/information_domains/procurement/corpus/official-ordinary-multiwinner-20261014/reviewed.json
+    sha256: 3582629814b54efce085441abe1499eeaabae871cd3a6c8e323c45e76b9e1dee
+  - path: packs/information_domains/procurement/corpus/official-failed-acceptance-judgment-20261014/reviewed.json
+    sha256: f34021f77254ec9dca9ccdcef1f48eaf2ae38187cd0a1be4b8bf240701b60f14
+  version: 0.4.0
+  original_and_metadata_artifacts:
+  - path: packs/information_domains/procurement/corpus/official-award-20261014/meta.yaml
+    sha256: 6656afb9a61f1086ce1ccb45e6b33b9762960fe71cb0a5986fb74c7f20a6ad63
+  - path: packs/information_domains/procurement/corpus/official-award-20261014/raw.html
+    sha256: 1a80eb40ea54ad3e399daaf3db008846afb87aea21dcb64173048b3e595065ed
+  - path: packs/information_domains/procurement/corpus/official-award-20261014/response.html
+    sha256: 273e9d3b4b708166aad46ed758bced95a3c20460050b2ed4f9235d354085b0dc
+  - path: packs/information_domains/procurement/corpus/official-amendment-20261014/meta.yaml
+    sha256: 3f2def410d96d7393213c3e8cd98b88ffb2b3ad6396d0315294e3ba2e2a0df45
+  - path: packs/information_domains/procurement/corpus/official-amendment-20261014/raw.html
+    sha256: c658fcff6845d6d1fc550f7297fd8ba3109567e00075c8ca469e39ee6805b87d
+  - path: packs/information_domains/procurement/corpus/official-amendment-20261014/response.html
+    sha256: 5592ef41bbc4575d80950bc21a4646aa776af75f512933697267303ae14c4aff
+  - path: packs/information_domains/procurement/corpus/official-award-amended-original-20261014/meta.yaml
+    sha256: a9101888b4f6cbf3e876b4bea7e737f8ebe8cf903abaa7c844c2dbd2cf244ff6
+  - path: packs/information_domains/procurement/corpus/official-award-amended-original-20261014/raw.html
+    sha256: 46cbd3a81668f13fa1e9709e48db4641072afc79ee2ce81716cefa64c52bd54e
+  - path: packs/information_domains/procurement/corpus/official-award-amended-original-20261014/response.html
+    sha256: 22861a17ce4adcc1e5bf5c6e4965e9795d1740caada728c7ef4cfb513868695c
+  - path: packs/information_domains/procurement/corpus/official-amendment-deadline-20261014/meta.yaml
+    sha256: fb3b87f7874ef3dea0b061bfb8b22bb32c9639561d9c15c7854d5d2400ce2c9a
+  - path: packs/information_domains/procurement/corpus/official-amendment-deadline-20261014/raw.html
+    sha256: 343461aace4e95e83874977e2694324490d34b53ca8a1364ab9e25718312d01f
+  - path: packs/information_domains/procurement/corpus/official-amendment-deadline-20261014/response.html
+    sha256: beabd2a9f3cf2084988e7d5fbf132ee0ce17d80079862f8f309b9bd82daa6670
+  - path: packs/information_domains/procurement/corpus/official-contract-20261014/meta.yaml
+    sha256: 75fb06c96176ad1ae942e1636e6d5a54dd8a210b04cbf80d0ab353eb5c6e2c6d
+  - path: packs/information_domains/procurement/corpus/official-contract-20261014/raw.html
+    sha256: 6cd51c160d4b7a89dead34f8fe6951e59e284efff1dabc9742ceb0b957292330
+  - path: packs/information_domains/procurement/corpus/official-contract-20261014/response.html
+    sha256: 2eb5d73fa563430309b2aa1f6a4047951161bd7385e70b116200f733b530933c
+  - path: packs/information_domains/procurement/corpus/official-contract-forestry-20261014/meta.yaml
+    sha256: b6597a849ffb537b5908e8551b7a952896388c67c235ddc58ca549a292aaeab4
+  - path: packs/information_domains/procurement/corpus/official-contract-forestry-20261014/raw.html
+    sha256: 7621bd22d1169702e7f5bc01ee8ced3810abfbd8e40453c5d572ce6a69dd8a59
+  - path: packs/information_domains/procurement/corpus/official-contract-forestry-20261014/response.html
+    sha256: 81be12bdd3bfc4210fb083fcb910d9c6bc202ed89e28d6d9218fab4b095739a7
+  - path: packs/information_domains/procurement/corpus/official-acceptance-20261014/meta.yaml
+    sha256: 380863bf16de2b875c8e25b136a6baee8f54e8763da62d257267ad5faf337fb2
+  - path: packs/information_domains/procurement/corpus/official-acceptance-20261014/raw.html
+    sha256: 0bd870713c5059e38cba25f2b948f8bcb58d8b0827791fd5f1beb36215a330cd
+  - path: packs/information_domains/procurement/corpus/official-acceptance-20261014/response.html
+    sha256: f867b78ff07c9e5f84d43d5c3353dd5afe3373814958a92118b1f2fb373039e5
+  - path: packs/information_domains/procurement/corpus/official-acceptance-yantai-20261014/meta.yaml
+    sha256: 94a9e754be85c59619948b1b41f69b1bc6f005a55731dc998b41aa7e57743f95
+  - path: packs/information_domains/procurement/corpus/official-acceptance-yantai-20261014/raw.html
+    sha256: 4ced9103fa7a4e57893f6e2058d54cd5dad72175a629d7dfae7b48e1e133037b
+  - path: packs/information_domains/procurement/corpus/official-acceptance-yantai-20261014/response.html
+    sha256: 298d8434117042d15b2dd3cda3640836ea520ae77881e1cb49dfb56fbddc61a0
+  - path: packs/information_domains/procurement/corpus/official-candidate-20261014/meta.yaml
+    sha256: 56db7325724dae7cd4d3f6d9ebc4cd4a3e1228c348d292ea18390adcd0ea2520
+  - path: packs/information_domains/procurement/corpus/official-candidate-20261014/raw.html
+    sha256: 34edac24d7df29d67702c89ba4d30a1d018848f230c1177032d4d88ee5be065a
+  - path: packs/information_domains/procurement/corpus/official-candidate-20261014/response.html
+    sha256: fdeb01e3e28525fa7e5dd3d95f7db2082efbea6b165af4c4dd6ea4853188148b
+  - path: packs/information_domains/procurement/corpus/official-contract-attachment-20261014/meta.yaml
+    sha256: 11b300bad09756902578777a7030b8eca724e1cfc7e4dce0a5ad09ff09af8288
+  - path: packs/information_domains/procurement/corpus/official-contract-attachment-20261014/normalized.json
+    sha256: 70a874a7e5de48abbd3e30505b978d1ccd336947d598c2a9bba469da2a65cdb3
+  - path: packs/information_domains/procurement/corpus/official-contract-attachment-20261014/raw.pdf
+    sha256: 5c1714431905b2838e5ebc3c9050db1930985dcf45844da1e913c13c7720869b
+  - path: packs/information_domains/procurement/corpus/official-failure-20261014/meta.yaml
+    sha256: 0ccfade2b35368b5e9878881197303243d76fb1a8f878b41a8b6a932dc4825fd
+  - path: packs/information_domains/procurement/corpus/official-failure-20261014/raw.html
+    sha256: 291c8c4837424e910333cdc9bcd814787bf9d94e9fca34d6d55f247accd25775
+  - path: packs/information_domains/procurement/corpus/official-failure-20261014/response.html
+    sha256: 6759e6e33ffef7d528426ab40f9850a904466f46b1e9777cffeb80e4fd93f2a0
+  - path: packs/information_domains/procurement/corpus/official-consortium-20261014/meta.yaml
+    sha256: 61b3e65fb7622cf00091300d9b6990b2df0ab46c944be6d520a33486c5abdf97
+  - path: packs/information_domains/procurement/corpus/official-consortium-20261014/raw.html
+    sha256: 8fb01ef4d8e40456ee4343eaa141bae2475a378c54af8c1e4e17e6aa0c077554
+  - path: packs/information_domains/procurement/corpus/official-consortium-20261014/response.html
+    sha256: 7847e7cd88bc6f0b1ebd37010727de6489ff77a4123a1ed6088b6746c06d38a3
+  - path: packs/information_domains/procurement/corpus/official-multiwinner-20261014/meta.yaml
+    sha256: 9161a2f2c967ce36452e3eed375c8f473db4394a6045abdf063175ebf843a6b0
+  - path: packs/information_domains/procurement/corpus/official-multiwinner-20261014/raw.html
+    sha256: 45a404a7e1b68c677c4fee2d573215e23998c3da060691e7cbd5781ffd6b128d
+  - path: packs/information_domains/procurement/corpus/official-multiwinner-20261014/response.html
+    sha256: 88709fc25edf2913d42b6b05da2c1aabaff2b29daf5ddcb501b386ced362fd0a
+  - path: packs/information_domains/procurement/corpus/official-ordinary-multiwinner-20261014/meta.yaml
+    sha256: 1a3c4ed8937d2ea5c09de99146807d8691504f50fdd7e052b042995fc8e6f03d
+  - path: packs/information_domains/procurement/corpus/official-ordinary-multiwinner-20261014/normalized.json
+    sha256: a1f6118956234438c608b06eedfe2728f89b9262085f6fd0cd0f95f16eda3478
+  - path: packs/information_domains/procurement/corpus/official-ordinary-multiwinner-20261014/raw.pdf
+    sha256: ae469167163fac41d7a4876d3862cac3e7d24fe4dd67345d259665cc659a45be
+  - path: packs/information_domains/procurement/corpus/official-failed-acceptance-judgment-20261014/meta.yaml
+    sha256: 2951fc8f193c48b72a1d8684229a60a37a19ec8bd56a1834956808571d65975d
+  - path: packs/information_domains/procurement/corpus/official-failed-acceptance-judgment-20261014/raw.html
+    sha256: 1fb7231b39eda09498f942f9a055696d7e1887bdddedf9771e77b5ecf3ae3807
+  - path: packs/information_domains/procurement/corpus/official-failed-acceptance-judgment-20261014/response.html
+    sha256: bfe9ba66cc4aaa176dbd59292581bedfb7317627042a2590ad56b5931b0042b8
+- path: packs/information_domains/organizations/corpus/manifest.json
+  originals: 5
+  manual_facts: 10
+  manifest_sha256: 696e5e7a77d0ff30d067d1831c278b8eec2abc57085f253b0318d604ff6bb05b
+  reviewed_artifacts:
+  - path: packs/information_domains/organizations/corpus/official-enterprise-henan-20261014/reviewed.json
+    sha256: a890c8cf3bf78dbe8f456ae197b026391ae6ac069bb9ea2aa6e6a39090148f5b
+  - path: packs/information_domains/organizations/corpus/official-abnormal-20261014/reviewed.json
+    sha256: b96c82975829f5489201f330d618f745c6ac912ee3578fb7082ab84d89ce4850
+  - path: packs/information_domains/organizations/corpus/official-branch-20261014/reviewed.json
+    sha256: 0d6b9904c1ee909268250a75b7635bbf07ac8b53b3e5983fcf7ee9809ec4ba44
+  - path: packs/information_domains/organizations/corpus/official-cancelled-20261014/reviewed.json
+    sha256: 33b0559693b8c42a5f7997a69ef968ceab3c82ae1cdfecdeb69ff4a46d65ac76
+  - path: packs/information_domains/organizations/corpus/official-change-20261014/reviewed.json
+    sha256: 302d73f5b806cd3fee702c06894473a1aefd03cbcc879cd00cc0383b3d6f990d
+  version: 0.2.0
+  original_and_metadata_artifacts:
+  - path: packs/information_domains/organizations/corpus/official-enterprise-henan-20261014/meta.yaml
+    sha256: 2f51cf0987dad220fcec9e287acb814d6455e22532306c261cd0075b909c5583
+  - path: packs/information_domains/organizations/corpus/official-enterprise-henan-20261014/raw.html
+    sha256: ece3a87098c4f2c78d4bb89ffef292a24f014a927ea5addc30f3c26e3e2dcd37
+  - path: packs/information_domains/organizations/corpus/official-enterprise-henan-20261014/response.html
+    sha256: 221678ffb8c7839184676f4b831a8f4164972013838224f7c917fd6ab616b5de
+  - path: packs/information_domains/organizations/corpus/official-abnormal-20261014/meta.yaml
+    sha256: 6531b5b5dae07a5881367c810e165a50a9169a2d7df4ab030c5324289755723d
+  - path: packs/information_domains/organizations/corpus/official-abnormal-20261014/raw.html
+    sha256: 77dd746f461b398dab046ae88eb7e5bbfcf3deda34a3bf6cd73c32105f1e7420
+  - path: packs/information_domains/organizations/corpus/official-abnormal-20261014/response.html
+    sha256: 29d4d4175f884e0b79a7f8c6a4e5c8f583debf006b1898a8dc5fb4ca554719a9
+  - path: packs/information_domains/organizations/corpus/official-branch-20261014/meta.yaml
+    sha256: efb888c36b0ecaeb37e7afd51891f7b1164a6dacb74aa4b1d1ae707192822bc9
+  - path: packs/information_domains/organizations/corpus/official-branch-20261014/raw.html
+    sha256: 26e583de6cb10779c1d4faa0b0ca0486509c523a627d2f0c80dcca48a6bbeb61
+  - path: packs/information_domains/organizations/corpus/official-branch-20261014/response.html
+    sha256: 9515f56266b5e3c9d919f52d1b1d5daf70df1e5930db13c282b81b50f2fbf34a
+  - path: packs/information_domains/organizations/corpus/official-cancelled-20261014/meta.yaml
+    sha256: 9b5989fbdcb9cd963ee8ad3510fa4f6f2b69bced72ff8c3e7557788a1a25d04d
+  - path: packs/information_domains/organizations/corpus/official-cancelled-20261014/raw.html
+    sha256: 0de6cc314cd2a7e0330c37a57757dc303dff27adc7885a22c04edf595bf0f42a
+  - path: packs/information_domains/organizations/corpus/official-cancelled-20261014/response.html
+    sha256: 34996622e099b3a17e3dd6257311548cca14c34ed9506b92872e709b965983a1
+  - path: packs/information_domains/organizations/corpus/official-change-20261014/meta.yaml
+    sha256: af29841341541f60ccaed608b950e7720d6b158d46bf0d806c21c0e4991ee5ac
+  - path: packs/information_domains/organizations/corpus/official-change-20261014/raw.html
+    sha256: 5cd144ce94123fa0554ad2a5a21a8309909c7329989501e77d25c286816e0f5a
+  - path: packs/information_domains/organizations/corpus/official-change-20261014/response.html
+    sha256: 2ca73f3e93792ab482413098eb2e6c80d0f9c4ba6ebfc46615c3f1e1dc01592e
+verification:
+  schema_cases: 76
+  event_payload_cases: 82
+  contract_tool_tests: 27
+  sdk_tests: 58
+  manual_roundtrip_facts: 30
+  generated_types: 65
+  compat_base: HEAD
+  breaking_changes: 18
+  additive_changes: 96
+  status: passed_with_version_bumps
+  compat_base_commit: dd2d691bac325ab96152de07a542a6529205dd2f
+  structural_roundtrip_facts: 31
+  total_roundtrip_facts: 61
+  automatic_golden_fields: 40/40 in one existing source; not lifecycle accuracy
+  dependency_rules: 6
+  commands:
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc check
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc compat --base
+      HEAD
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked --group dev pytest
+      -q tools/contracts/tests
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-sdk --group dev pytest
+      -q data/sdk/tests
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc generate
+      --check
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked mqc fixtures
+      --export /tmp/miaoqia-freeze-fixtures
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-sdk mq-corpus check
+      packs/information_domains/procurement/corpus --reviewed --schema domains/procurement/notice.schema.json
+      --export /tmp/miaoqia-freeze-fixtures
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-sdk mq-corpus check
+      packs/information_domains/organizations/corpus --reviewed --schema domains/organization/registration.schema.json
+      --schema domains/organization/change.schema.json --schema domains/organization/abnormal.schema.json
+      --export /tmp/miaoqia-freeze-fixtures
+    result: passed
+  - command: uv run --project data --locked --package miaoqia-sdk mq-corpus check
+      packs/information_domains/procurement/corpus --extractor miaoqia_pack_procurement.extractors.tender_notice:TenderNoticeExtractor
+      --path packs/information_domains/procurement/src --schema domains/procurement/notice.schema.json
+      --min-accuracy 0.95
+    result: passed
+  - command: cd services && MQC_FIXTURES=/tmp/miaoqia-freeze-fixtures go test ./contracts/...
+    result: passed
+  - command: cd services && go vet ./...
+    result: passed
+  - command: cd data && uv run --locked --package miaoqia-contracts python contracts/tests/roundtrip.py
+      /tmp/miaoqia-freeze-fixtures
+    result: passed
+  - command: pnpm --dir web --filter @miaoqia/contracts typecheck
+    result: passed
+  - command: cd data && uv run --locked --all-packages lint-imports
+    result: passed
+  - command: uv run --project tools/contracts --python 3.12 --locked python tools/dev/gen_local.py
+      --check
+    result: passed
+  - command: git diff --check
+    result: passed
+not_proven:
+- 生产解析器对新增来源的自动准确率
+- OCR全量准确率
+- 授权供应商接口交付
+- 生产聚合、并发、更正执行和重放
+- 全国来源覆盖
+- 采购人验收失败公告已取得
+- C4a工程横切批次冻结
+- 审批/信用等其他信息领域冻结
+frozen_at: '2026-10-14T15:30:21.173300+00:00'
+schema_version: 1.0.0
+approval:
+  authority: 用户明确授权满足条件后冻结；本轮确认一手验收失败来源标准
+  source_standard: 接受原始司法文书，但保留验收争议与裁判结论
+  sample: official-failed-acceptance-judgment-20261014
+  source_kind: court_original_judgment
+  gate_scope: accepted_first_party_judicial_edge_case
+  interpretation: 历史技术失败与当事人异议、二审质量/解约/付款裁判分别保留，不当采购人验收公告或当前阶段
+version_owners:
+- path: packs/information_domains/procurement/pack.yaml
+  version: 1.0.0
+  sha256: e0da0bb53deb7ef031824d49de777041bf5f66d575105a19887b854975cd6c39
+- path: packs/information_domains/organizations/pack.yaml
+  version: 1.0.0
+  sha256: b1b1cb42080948da0db96bb9f3cb1f249670382097671f24efe98073c76e9335
+supporting_artifacts:
+- path: contracts/tests/credit.record.yaml
+  sha256: f56b51b9f1dd03aa9d80ab51197b3e2e74dd56eb90d525f26ac79d9c77dfb20b
+- path: contracts/tests/evidence.evidence-ref.yaml
+  sha256: 00fb9fdbc8d7fd04530fa6198cf7d9e8b3218d99dc7a839de18681eb8d4b4548
+- path: contracts/tests/evidence.normalized-document.yaml
+  sha256: 1d13444dd8b6479cbb8d45c75089f4b536425694646b72898ffef0239fff5fab
+- path: contracts/tests/investment.record.yaml
+  sha256: 96910ddff90ac950c618ac6a83207326327eddb1c008fa042dbe754a99555626
+- path: contracts/tests/organization.abnormal.yaml
+  sha256: 28a3ffeb7b04d0beeb2cbc7e58dfe263ad19150bc3c0ded50dda24ceb235728c
+- path: contracts/tests/organization.change.yaml
+  sha256: 51d0c34fe1eb81587d1c72e560523c8b664a286b313520adaa67e37a7def5999
+- path: contracts/tests/organization.registration.yaml
+  sha256: d26ab003531d8119195ad62b4dc42c5a64df45b8d957ed9753054016f91d4b8d
+- path: contracts/tests/procurement.notice.yaml
+  sha256: e5ce07b772f1d250582f71e7220bd063e0d4f8be41043ab0f75122d562a17654
+- path: contracts/tests/procurement.project.yaml
+  sha256: fd00832907c07a1be7e3be9c1290f2e41aa1c0055cea90e0e40b099fb8969262
+- path: contracts/events/acquisition/fixtures.yaml
+  sha256: ebcb8ff23e18b65dd50cb0f260fda36f80c5b659df985c7205c119034f3946ef
+- path: contracts/events/domain/fixtures.yaml
+  sha256: 97ea3d88e3c54d36762082a564f98d5b3f6c6a96f0cd9cabfa3abe7329cffd57
+- path: contracts/events/entity/fixtures.yaml
+  sha256: 1ca5dd37a582d486ead8ddaba659bf9bd713c84d55cd855406e4531e4d05b5b7
+- path: contracts/events/evidence/fixtures.yaml
+  sha256: 928a86f855a052220342bb8863b0adea601c1402a81b1fbce50e03c2d5ed3cce
+- path: contracts/events/tendering/fixtures.yaml
+  sha256: ad15b66f3e62dc1c8a2860b0450be91ae4cfb21a73308fd455a3ff5d474af9b7
+- path: services/contracts/contracts_gen.go
+  sha256: 60fd664eb2fa46161d906a1c59e74554fcce75ff6223f529082c653fe692599b
+- path: data/contracts/src/miaoqia/contracts/models.py
+  sha256: 71021d8e0a7d5541439c489fb066ca1c0c896ce25ea8bc7d40a86c04bb82ead4
+- path: web/packages/contracts/src/index.ts
+  sha256: e06840212135dda57ef938a2be09d6f0b8d57e4714eb56af9c056302debba0bd

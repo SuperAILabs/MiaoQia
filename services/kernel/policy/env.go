@@ -162,15 +162,27 @@ func categoryAnyMatch(items, cats ref.Val) ref.Val {
 	}
 	matched := false
 	each(il, func(item ref.Val) bool {
+		// 元素可以是品类本身（视图 fact.categories），也可以是带 categories 的标的
 		cs, ok := field(item, "categories")
 		if !ok {
-			return false
+			if _, isCat := field(item, "code"); !isCat {
+				return false
+			}
+			cs = types.DefaultTypeAdapter.NativeToValue([]ref.Val{item})
 		}
 		csl, ok := listOf(cs)
 		if !ok {
 			return false
 		}
 		each(csl, func(c ref.Val) bool {
+			// 租户品类是行业包产品分类代码；未标明体系或其他体系（如政府采购品目）的代码不可比，不参与匹配
+			sc, ok := field(c, "scheme")
+			if !ok {
+				return false
+			}
+			if s, _ := sc.Value().(string); !strings.HasPrefix(s, "industry:") {
+				return false
+			}
 			code, ok := field(c, "code")
 			if !ok {
 				return false

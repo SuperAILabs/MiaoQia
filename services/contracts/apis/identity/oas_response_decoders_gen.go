@@ -82,6 +82,15 @@ func decodeCheckAuthorizationResponse(resp *http.Response) (res *CheckResult, _ 
 				}
 				return res, err
 			}
+			// Validate response.
+			if err := func() error {
+				if err := response.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return res, errors.Wrap(err, "validate")
+			}
 			return &ProblemStatusCode{
 				StatusCode: resp.StatusCode,
 				Response:   response,

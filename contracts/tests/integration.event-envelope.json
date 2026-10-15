@@ -1,0 +1,294 @@
+{
+  "schema": "integration/event-envelope.schema.json",
+  "base": {
+    "specversion": "1.0",
+    "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+    "source": "miaoqia/operations",
+    "type": "operations.probe.requested.v1",
+    "time": "2026-10-14T08:00:00Z",
+    "datacontenttype": "application/json",
+    "miaoqiazone": "public",
+    "data": {}
+  },
+  "cases": [
+    {
+      "name": "公共事件不得带租户",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {},
+        "miaoqiatenant": "tnt_a"
+      }
+    },
+    {
+      "name": "公共事件不得带单元",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {},
+        "miaoqiacell": "01"
+      }
+    },
+    {
+      "name": "未知信封字段",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {},
+        "secret": "placeholder"
+      }
+    },
+    {
+      "name": "错误协议版本",
+      "valid": false,
+      "instance": {
+        "specversion": "2.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {}
+      }
+    },
+    {
+      "name": "错误标识前缀",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {}
+      }
+    },
+    {
+      "name": "错误事件类型",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {}
+      }
+    },
+    {
+      "name": "缺少时间",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {}
+      }
+    },
+    {
+      "name": "无效时间",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "bad",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {}
+      }
+    },
+    {
+      "name": "非对象载荷",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": []
+      }
+    },
+    {
+      "name": "非法来源",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": " ",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {}
+      }
+    },
+    {
+      "name": "非法追踪头",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {},
+        "traceparent": "00-bad"
+      }
+    },
+    {
+      "name": "租户事件缺租户单元",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "tenant",
+        "data": {}
+      }
+    },
+    {
+      "name": "平台域事件",
+      "valid": true,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "platform",
+        "data": {}
+      }
+    },
+    {
+      "name": "租户域事件",
+      "valid": true,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "tenant",
+        "data": {},
+        "miaoqiatenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "miaoqiacell": "01"
+      }
+    },
+    {
+      "name": "空可选字段",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {},
+        "subject": ""
+      }
+    },
+    {
+      "name": "字段null",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {},
+        "dataschema": null
+      }
+    },
+    {
+      "name": "非JSON编码",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "text/plain",
+        "miaoqiazone": "public",
+        "data": {}
+      }
+    },
+    {
+      "name": "载荷null",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": null
+      }
+    },
+    {
+      "name": "非对象根值",
+      "valid": false,
+      "instance": null
+    },
+    {
+      "name": "非法Schema引用",
+      "valid": false,
+      "instance": {
+        "specversion": "1.0",
+        "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "miaoqia/operations",
+        "type": "operations.probe.requested.v1",
+        "time": "2026-10-14T08:00:00Z",
+        "datacontenttype": "application/json",
+        "miaoqiazone": "public",
+        "data": {},
+        "dataschema": "%invalid"
+      }
+    }
+  ]
+}

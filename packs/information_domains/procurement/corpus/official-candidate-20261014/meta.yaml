@@ -1,0 +1,11 @@
+source_id: official-candidate
+source_url: https://ggzy.sc.yichang.gov.cn/jyxx/003001/003001004/20260423/a8b40b24-319a-4322-aa3f-3e924b0ae8cf.html
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: smallest div containing 招标概况 and 3480000
+response_sha256: fdeb01e3e28525fa7e5dd3d95f7db2082efbea6b165af4c4dd6ea4853188148b
+raw_sha256: 34edac24d7df29d67702c89ba4d30a1d018848f230c1177032d4d88ee5be065a
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。
+attachment_status: 官方附件下载要求验证码；不规避；只验正文与不可得附件状态

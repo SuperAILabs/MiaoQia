@@ -1,0 +1,11 @@
+source_id: official-branch-20261014
+source_url: https://www.gdjr.gov.cn/gdjr/zwgk/dfjrgl/content/post_41476.html
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //div[@id="zoom"]
+response_charset: utf-8
+notes: 金融监管同意注销，仍要求30日内办理市场监管注销手续；不当成已注销登记。
+response_sha256: 9515f56266b5e3c9d919f52d1b1d5daf70df1e5930db13c282b81b50f2fbf34a
+raw_sha256: 26e583de6cb10779c1d4faa0b0ca0486509c523a627d2f0c80dcca48a6bbeb61
+schema: domains/organization/registration.schema.json

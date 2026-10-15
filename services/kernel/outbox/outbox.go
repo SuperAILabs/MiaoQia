@@ -3,11 +3,15 @@
 package outbox
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jackc/pgx/v5"
 
@@ -15,6 +19,36 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
 )
+
+var eventIDPattern = regexp.MustCompile(`^evt_[0-9A-HJKMNP-TV-Z]{26}$`)
+var sourcePattern = regexp.MustCompile(`^miaoqia/[a-z][a-z0-9_-]*$`)
+var eventTypePattern = regexp.MustCompile(`^[a-z_]+\.[a-z_]+\.[a-z_]+\.v[1-9][0-9]*$`)
+var cellPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
+var tracePattern = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$`)
+var topicPattern = regexp.MustCompile(`^(public|platform|cell-[a-z0-9][a-z0-9-]{0,62})\.[a-z][a-z0-9_-]*$`)
+
+// UnmarshalJSON 拒绝未知信封键和显式null，防止零值掩盖非法输入。
+func (e *Envelope) UnmarshalJSON(data []byte) error {
+	type plain Envelope
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if raw == nil {
+		return fmt.Errorf("信封必须为对象")
+	}
+	for key, value := range raw {
+		if bytes.Equal(value, []byte("null")) || bytes.Equal(value, []byte(`""`)) {
+			return fmt.Errorf("信封字段%s不得为null", key)
+		}
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode((*plain)(e)); err != nil {
+		return err
+	}
+	return e.Validate()
+}
 
 // Envelope 是 CloudEvents 1.0 结构化模式的信封。
 type Envelope struct {
@@ -45,11 +79,41 @@ func (e *Envelope) Validate() error {
 			return fmt.Errorf("租户事件 %s 必须携带租户与单元", e.ID)
 		}
 	case reqctx.ZonePlatform:
+		if e.Cell != "" && e.Tenant == "" {
+			return fmt.Errorf("平台单元必须带租户")
+		}
 	default:
 		return fmt.Errorf("事件 %s 的 miaoqiazone 取值非法：%q", e.ID, e.Zone)
 	}
-	if e.SpecVersion != "1.0" || e.ID == "" || e.Type == "" || e.Source == "" {
+	if e.SpecVersion != "1.0" || !eventIDPattern.MatchString(e.ID) || !eventTypePattern.MatchString(e.Type) || !sourcePattern.MatchString(e.Source) {
 		return fmt.Errorf("事件 %s 缺少 CloudEvents 必填属性", e.ID)
+	}
+	if e.Time.IsZero() || e.DataContentType != "application/json" || (e.Cell != "" && !cellPattern.MatchString(e.Cell)) || (e.Traceparent != "" && !tracePattern.MatchString(e.Traceparent)) {
+		return fmt.Errorf("事件时间、编码、单元或追踪无效")
+	}
+	if e.DataSchema != "" {
+		if _, err := url.Parse(e.DataSchema); err != nil || strings.IndexFunc(e.DataSchema, func(r rune) bool { return unicode.IsSpace(r) || r > 127 }) >= 0 {
+			return fmt.Errorf("dataschema必须为URI引用")
+		}
+	}
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(e.Data, &body); err != nil || body == nil {
+		return fmt.Errorf("事件data必须为JSON对象")
+	}
+	return nil
+}
+
+// CheckTopic 校验发布与消费的域/单元路由。类型命名空间与主题命名空间不必相同。
+func (e *Envelope) CheckTopic(topic string) error {
+	if err := e.Validate(); err != nil {
+		return err
+	}
+	if !topicPattern.MatchString(topic) {
+		return fmt.Errorf("非法事件主题%s", topic)
+	}
+	prefix, _, _ := strings.Cut(topic, ".")
+	if (prefix == "public" && e.Zone != reqctx.ZonePublic) || (prefix == "platform" && e.Zone != reqctx.ZonePlatform) || (strings.HasPrefix(prefix, "cell-") && (e.Zone != reqctx.ZoneTenant || prefix != "cell-"+e.Cell)) {
+		return fmt.Errorf("事件域/单元与主题不符")
 	}
 	return nil
 }
@@ -86,7 +150,13 @@ func Topic(zone reqctx.Zone, cell, namespace string) string {
 
 // Append 在事务 tx 中追加事件并通知中继。租户与主体取自请求上下文，不取自事件数据。
 func (w Writer) Append(ctx context.Context, tx pgx.Tx, ev Event) (*Envelope, error) {
-	rc, _ := reqctx.From(ctx)
+	rc, ok := reqctx.From(ctx)
+	if !ok {
+		return nil, reqctx.ErrMissing
+	}
+	if err := rc.Validate(); err != nil {
+		return nil, err
+	}
 	data, err := json.Marshal(ev.Data)
 	if err != nil {
 		return nil, err
@@ -105,6 +175,9 @@ func (w Writer) Append(ctx context.Context, tx pgx.Tx, ev Event) (*Envelope, err
 	topic := ev.Topic
 	if topic == "" {
 		topic = Topic(w.Zone, env.Cell, w.Namespace)
+	}
+	if err := env.CheckTopic(topic); err != nil {
+		return nil, err
 	}
 	key := ev.PartitionKey
 	if key == "" {

@@ -1,0 +1,10 @@
+source_id: official-acceptance-yantai
+source_url: https://scjgj.yantai.gov.cn/art/2025/1/24/art_49660_2902718.html
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: div.content-box
+response_sha256: 298d8434117042d15b2dd3cda3640836ea520ae77881e1cb49dfb56fbddc61a0
+raw_sha256: 4ced9103fa7a4e57893f6e2058d54cd5dad72175a629d7dfae7b48e1e133037b
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。 验收日期只写详见附件，当前页面未提供可下载附件地址；不得猜测日期。

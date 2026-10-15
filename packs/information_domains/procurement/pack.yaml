@@ -3,7 +3,7 @@ pack:
   id: INF-PROC
   kind: information_domain
   namespace: tendering                 # 领域事件与事实类型的命名空间（tendering.*）
-  version: 0.1.0                       # 草案：领域 Schema 评审中
+  version: 1.0.0                       # C4b 冻结基线，见 contracts/reviews/first-batch-freeze.yaml
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-ORG@^1.0                     # 采购人、代理、投标人解析为组织
@@ -17,4 +17,5 @@ pack:
     extractors:                        # Python 代码（src/），SPI 见 miaoqia.sdk
       - miaoqia_pack_procurement.extractors.tender_notice:TenderNoticeExtractor
     corpus: corpus/                    # 真实样本与人工标注，评测命令见 data/sdk/src/miaoqia/sdk/corpus.py
+    semantic_validator: miaoqia_pack_procurement.validation:validate   # 领域语义校验，SDK 只做证据完整性
     # 待补：来源处理器、更多公告类型的解析器、聚合规则、质量规则、检索映射、统计与查询模板、研究工具

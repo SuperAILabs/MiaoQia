@@ -1,0 +1,10 @@
+source_id: official-forestry-contract-attachment
+source_url: https://www.forestry.gov.cn/u/cms/www/202601/19110921528j.pdf
+parent_sample: official-contract-forestry-20261014
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+raw_sha256: 5c1714431905b2838e5ebc3c9050db1930985dcf45844da1e913c13c7720869b
+review_mode: manual
+normalization_method: 人工目视转录第2页主体、第3页前两行货物表及第6页金额/交货期；不是OCR性能评估
+notes: 22页扫描合同，无文本层。全PDF保留，未转录页不能用于全文覆盖声明。
+normalized_sha256: 70a874a7e5de48abbd3e30505b978d1ccd336947d598c2a9bba469da2a65cdb3

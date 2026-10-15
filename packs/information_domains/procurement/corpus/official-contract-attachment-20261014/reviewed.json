@@ -1,0 +1,273 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "contract",
+      "title": {
+        "value": "合同书",
+        "prov": {
+          "evidence_ref": "ev_WZV5HX07R18VQVKJEXZ4451J6V",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1",
+          "items": [
+            {
+              "id": "itm_J7XYZ6CNHB9M1ZPH2GKPNK5A9M",
+              "name": {
+                "value": "智能人工气候箱",
+                "prov": {
+                  "evidence_ref": "ev_N073RK6SPMC7E4ASJ0ARNASS0V",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "unit_price": {
+                "value": "31093.58",
+                "currency": "CNY",
+                "raw": "31093.58",
+                "prov": {
+                  "evidence_ref": "ev_DFGZ2T3QHS5RYZ6ZQ148MGJC68",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            },
+            {
+              "id": "itm_6423SD7TSPMGFD3Q995E95NCFT",
+              "name": {
+                "value": "三孔 PCR 仪",
+                "prov": {
+                  "evidence_ref": "ev_2NQYCP1B74A3EEY791152TYG26",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "unit_price": {
+                "value": "146715.03",
+                "currency": "CNY",
+                "raw": "146715.03",
+                "prov": {
+                  "evidence_ref": "ev_TEZT8R2HNSPPS8EQTJE8M7HWDR",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "buyer": {
+        "name_raw": "中国林业科学研究院华北林业实验中心",
+        "prov": {
+          "evidence_ref": "ev_36E7ZQ0EXATER689Y5T2TT50Y2",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "ZSTX-ZB-2025-33",
+        "prov": {
+          "evidence_ref": "ev_PRWV0HCTEMQGH29G8JXCM318WF",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "contract": {
+        "id": "ctr_JNW5T2B2X5NZBRBGDFKQKZ6TB9",
+        "supplier": {
+          "name_raw": "北京天恒昕业科技发展有限公司",
+          "prov": {
+            "evidence_ref": "ev_K9WS5V3A203GSCDG05GCVHVP6G",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "amount": {
+          "value": "3480560.39",
+          "currency": "CNY",
+          "raw": "3480560.39 元",
+          "prov": {
+            "evidence_ref": "ev_P5AT4HZ72CS9XRDKVCQ6VW6SNH",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "amount_kind": "total",
+        "conditions": {
+          "delivery_period": {
+            "value": "签订合同首付款到账后15个工作日内将货物发送至甲方指定地点。",
+            "prov": {
+              "evidence_ref": "ev_KGEX1XSAFQHVW6XDXAKNAGKBY1",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "proc.manual-review@0.1.0"
+            }
+          }
+        },
+        "amount_kind_prov": {
+          "evidence_ref": "ev_74830YBHJS210RZG1AWPVNB0EF",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "PARTIAL_MANUAL_TRANSCRIPTION",
+            "message": "只转录第2/3/6页选定字段，不代表全22页OCR完成"
+          },
+          {
+            "code": "CONTRACT_TERM_CONFLICT",
+            "message": "附件交货条件与网页不同"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_WZV5HX07R18VQVKJEXZ4451J6V": {
+      "id": "ev_WZV5HX07R18VQVKJEXZ4451J6V",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 3
+      },
+      "quote_hash": "sha256:a4dcd2a36ee3f42a6a6ea4fdf8b976cc16f2d50270c6e960ac6b92525409d6d8"
+    },
+    "ev_36E7ZQ0EXATER689Y5T2TT50Y2": {
+      "id": "ev_36E7ZQ0EXATER689Y5T2TT50Y2",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 3,
+        "char_end": 20
+      },
+      "quote_hash": "sha256:e14e9baae3254a3f255e28115a56977aa27bc8b22861e08e23f3a6764ec8308e"
+    },
+    "ev_PRWV0HCTEMQGH29G8JXCM318WF": {
+      "id": "ev_PRWV0HCTEMQGH29G8JXCM318WF",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 54,
+        "char_end": 69
+      },
+      "quote_hash": "sha256:64b53560a7602ef3c4e197c8a8e63cc6e63cf792a0a3ce28b7e38207128a4121"
+    },
+    "ev_K9WS5V3A203GSCDG05GCVHVP6G": {
+      "id": "ev_K9WS5V3A203GSCDG05GCVHVP6G",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 89,
+        "char_end": 103
+      },
+      "quote_hash": "sha256:612783a6bc054106f28207d609e87d541fb5f0d354fe787048d46f033f9368ce"
+    },
+    "ev_P5AT4HZ72CS9XRDKVCQ6VW6SNH": {
+      "id": "ev_P5AT4HZ72CS9XRDKVCQ6VW6SNH",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 3,
+        "char_start": 10,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:e8c584f1acc4fca7675fe5d426ef40c7c0a169709c73d4a9f095acd2480579b7"
+    },
+    "ev_KGEX1XSAFQHVW6XDXAKNAGKBY1": {
+      "id": "ev_KGEX1XSAFQHVW6XDXAKNAGKBY1",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 4,
+        "char_start": 5,
+        "char_end": 35
+      },
+      "quote_hash": "sha256:58da6b18cec771f50a6046c00dfab74aad22b94d235fec27a3317faf9e00095c"
+    },
+    "ev_N073RK6SPMC7E4ASJ0ARNASS0V": {
+      "id": "ev_N073RK6SPMC7E4ASJ0ARNASS0V",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 0,
+        "char_end": 7,
+        "row": 1,
+        "col": 1
+      },
+      "quote_hash": "sha256:b89231ed64a571cf09818c2d9d4b6f6e7b87de1f60d06d842f719349e2200ff5"
+    },
+    "ev_DFGZ2T3QHS5RYZ6ZQ148MGJC68": {
+      "id": "ev_DFGZ2T3QHS5RYZ6ZQ148MGJC68",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 0,
+        "char_end": 8,
+        "row": 1,
+        "col": 6
+      },
+      "quote_hash": "sha256:6028e36e3c496fd11d6f8cc0dc56477a4e95bc2040bb96e073dd9549e56365fa"
+    },
+    "ev_2NQYCP1B74A3EEY791152TYG26": {
+      "id": "ev_2NQYCP1B74A3EEY791152TYG26",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 0,
+        "char_end": 8,
+        "row": 2,
+        "col": 1
+      },
+      "quote_hash": "sha256:c1a6564fc52b64e6bbc5b829969fb79e631c19028ad8bc10a1ba47cb46b4dd59"
+    },
+    "ev_TEZT8R2HNSPPS8EQTJE8M7HWDR": {
+      "id": "ev_TEZT8R2HNSPPS8EQTJE8M7HWDR",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 0,
+        "char_end": 9,
+        "row": 2,
+        "col": 6
+      },
+      "quote_hash": "sha256:62fe12d98f77eac350ee53610db143fbbe5dfbf5d96c6d3a4249094a556865e1"
+    },
+    "ev_74830YBHJS210RZG1AWPVNB0EF": {
+      "id": "ev_74830YBHJS210RZG1AWPVNB0EF",
+      "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+      "pipeline_version": "doc.manual-review@0.1.0",
+      "locator": {
+        "block": 3,
+        "char_start": 0,
+        "char_end": 23
+      },
+      "quote_hash": "sha256:5faf173b48f339841aa9e11e694a21bfb6330cfed661ab92f99ffaeeaec11eaf"
+    }
+  }
+}

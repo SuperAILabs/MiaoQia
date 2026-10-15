@@ -29,7 +29,7 @@ func trimTrailingSlashes(u *url.URL) {
 type Invoker interface {
 	// CheckAuthorization invokes checkAuthorization operation.
 	//
-	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试。.
+	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, request *CheckRequest) (*CheckResult, error)
@@ -76,7 +76,7 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 
 // CheckAuthorization invokes checkAuthorization operation.
 //
-// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试。.
+// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
 //
 // POST /v1/authz:check
 func (c *Client) CheckAuthorization(ctx context.Context, request *CheckRequest) (*CheckResult, error) {
