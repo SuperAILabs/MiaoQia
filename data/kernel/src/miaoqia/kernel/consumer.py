@@ -25,6 +25,15 @@ def check_envelope(topic: str, env: dict) -> None:
     outbox.check_topic(topic, env)
 
 
+def event_context(subsystem: str, env: dict) -> reqctx.Context:
+    """事件处理上下文。请求上下文要求租户与单元成对；平台域事件可只带租户（信封契约允许），
+    此时以平台身份处理、不带租户，租户仍可从信封 miaoqiatenant 读取。"""
+    tenant, cell = env.get("miaoqiatenant", ""), env.get("miaoqiacell", "")
+    if not cell:
+        tenant = ""
+    return reqctx.service(subsystem, reqctx.Context(principal=reqctx.Principal("", ""), tenant=tenant, cell=cell, purpose="event"))
+
+
 @dataclass
 class Consumer:
     name: str                     # 消费者标识，同时作为消费组与去重键
@@ -79,8 +88,7 @@ class Consumer:
             validator = payloads.validator(env['type'], self.payload_schemas)
         if not validator.is_valid(env['data']):
             return self._dead_letter(prod, dlq, msg, ValueError('payload_schema_invalid'))
-        ctx = reqctx.service(self.subsystem, reqctx.Context(principal=reqctx.Principal("", ""), tenant=env.get("miaoqiatenant", ""),
-                                                             cell=env.get("miaoqiacell", ""), purpose="event"))
+        ctx = event_context(self.subsystem, env)
         span_ctx = tracing.context_from(env.get("traceparent", ""))
         with reqctx.use(ctx), tracing.tracer(self.subsystem).start_as_current_span(
                 f"consume {env['type']}", context=span_ctx, kind=trace.SpanKind.CONSUMER,
