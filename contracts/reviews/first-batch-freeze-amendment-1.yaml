@@ -1,0 +1,18 @@
+status: amended
+amends: contracts/reviews/first-batch-freeze.yaml
+amended_at: '2026-10-15T08:00:00+00:00'
+approval:
+  authority: 项目负责人确认采用“核对工具加修订记录”方案；原冻结记录不改
+reason: >-
+  冻结后 daa9d5a 为两个领域包补登 semantic_validator 入口（领域语义校验，SDK 只做证据完整性）。
+  包版本仍为 1.0.0，冻结的 Schema、事件与生命周期定义未变；冻结时的 pack.yaml 原文未进入版本库，
+  这里登记当前内容作为版本属主的新基线。
+version_owners:
+- path: packs/information_domains/procurement/pack.yaml
+  version: 1.0.0
+  sha256: 52bf54b2759e105aeb93a1ceb7b431205f7286e42a13fe73d93d92ab26feea99
+  commit: daa9d5a
+- path: packs/information_domains/organizations/pack.yaml
+  version: 1.0.0
+  sha256: 206310d473753b1bae7cf1c974b600ca0e43173d231f48899f3f5d2f61001a17
+  commit: daa9d5a

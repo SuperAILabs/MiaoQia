@@ -73,6 +73,9 @@ jobs:
       - name: 契约检查（Schema 方言、样例、事件、扩展包、YAML 键名）
         run: uv run --project tools/contracts --python 3.12 --locked mqc check
 
+      - name: 冻结记录哈希核对
+        run: uv run --project tools/contracts --python 3.12 --locked mqc freeze-check
+
       - name: 兼容性检查（与目标分支比较）
         if: github.event_name == 'pull_request'
         run: uv run --project tools/contracts --python 3.12 --locked mqc compat --base "origin/${{ github.base_ref }}" -v
