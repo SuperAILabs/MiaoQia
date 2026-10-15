@@ -2,14 +2,30 @@
 # 子系统必须属于 platform 单元（子系统索引）；tools/dev/gen_local.py --check 校验。
 roles:
   api:
+    data_scopes: {search: tenant}
+    cell: cell-01
     subsystems: [gateway, identity, commerce, governance, customer-context, detection,
                  research, assessment, pursuit, learning, channels, search, ai-platform, operations]
   consumer:
+    data_scopes: {search: tenant}
+    cell: cell-01
     subsystems: [search, detection, assessment, pursuit, learning, channels, commerce, governance, operations]
   workflow-worker:
+    data_scopes: {search: tenant}
+    cell: cell-01
     subsystems: [research, learning, customer-context, pursuit, governance, search]
   scheduler:
     subsystems: [operations]
+
+  public-search-api:
+    subsystems: [search]
+    data_scopes: {search: public}
+  public-search-consumer:
+    subsystems: [search]
+    data_scopes: {search: public}
+  public-search-workflow-worker:
+    subsystems: [search]
+    data_scopes: {search: public}
 
 # outbox-relay 读取全部子系统数据库的发件箱（含 Python 子系统），数据库清单取自子系统索引。
 outbox_relay:

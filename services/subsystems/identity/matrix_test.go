@@ -155,4 +155,10 @@ func TestPermissionMatrix(t *testing.T) {
 	if !check("user:bd_v", "can_draft_policy", "objective:ov1") {
 		t.Error("单元 v 的业务开拓者应能为下级单元 v1 中参与的目标起草策略")
 	}
+	if err := fga.GrantAll(ctx, [][3]string{{"tenant:other", "parent", "org_unit:other"}, {"org_unit:other", "unit", "objective:other"}, {"user:bd_v", "participant", "objective:other"}}); err != nil {
+		t.Fatal(err)
+	}
+	if check("user:bd_v", "can_view", "objective:other") {
+		t.Fatal("另一租户的资源不能仅凭参与关系访问")
+	}
 }

@@ -3,8 +3,11 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/ogen-go/ogen/ogenerrors"
 
 	identityapi "github.com/superailabs/miaoqia/services/contracts/apis/identity"
 	"github.com/superailabs/miaoqia/services/kernel/authz"
@@ -14,6 +17,14 @@ import (
 // Server 实现内部接口（由 OpenAPI 生成的服务端调用）。
 type Server struct {
 	Decider authz.Decider
+}
+
+// WriteProtocolError 使生成服务端的解码/校验错误遵循同一Problem契约。
+func WriteProtocolError(_ context.Context, w http.ResponseWriter, _ *http.Request, err error) {
+	status := ogenerrors.ErrorCode(err)
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(&identityapi.Problem{Type: "https://errors.miaoqia.com/invalid_request", Title: "请求无效", Status: status, Code: identityapi.NewOptString("invalid_request")})
 }
 
 var _ identityapi.Handler = (*Server)(nil)
@@ -33,6 +44,9 @@ func (s *Server) NewError(_ context.Context, err error) *identityapi.ProblemStat
 	status, code := http.StatusInternalServerError, "internal"
 	if errors.Is(err, reqctx.ErrMissing) {
 		status, code = http.StatusUnauthorized, "missing_context"
+	}
+	if errors.Is(err, authz.ErrInvalid) {
+		status, code = http.StatusBadRequest, "invalid_request"
 	}
 	return &identityapi.ProblemStatusCode{StatusCode: status, Response: identityapi.Problem{
 		Type: "https://errors.miaoqia.com/" + code, Title: err.Error(), Status: status, Code: identityapi.NewOptString(code)}}

@@ -1,20 +1,20 @@
 # 由 tools/dev/gen_local.py 根据子系统索引（docs/03-architecture/subsystems/README.md）生成，请勿手改。
 subsystems:
-  acquisition: { plane: data_supply, language: python, unit: acquisition, database: acq }
-  evidence: { plane: data_supply, language: python, unit: data, database: evd }
-  domain-intelligence: { plane: data_supply, language: python, unit: data, database: dom }
-  entity-graph: { plane: data_supply, language: python, unit: data, database: ent }
-  search: { plane: data_supply, language: go, unit: platform }
-  customer-context: { plane: customer_intelligence, language: go, unit: platform, database: ctx }
-  detection: { plane: customer_intelligence, language: go, unit: platform, database: det }
-  research: { plane: customer_intelligence, language: go, unit: platform, database: res }
-  assessment: { plane: customer_intelligence, language: go, unit: platform, database: asm }
-  pursuit: { plane: customer_intelligence, language: go, unit: platform, database: pur }
-  learning: { plane: customer_intelligence, language: go, unit: platform, database: lrn }
-  gateway: { plane: interaction, language: go, unit: platform, database: gwy }
-  channels: { plane: interaction, language: go, unit: platform, database: chn }
-  identity: { plane: platform, language: go, unit: platform, database: iam }
-  commerce: { plane: platform, language: go, unit: platform, database: com }
-  governance: { plane: platform, language: go, unit: platform, database: gov }
-  ai-platform: { plane: platform, language: go, unit: platform, database: aip }
-  operations: { plane: platform, language: go, unit: platform, database: ops }
+  acquisition: { plane: data_supply, language: python, unit: acquisition, database: acq, data_scopes: [public] }
+  evidence: { plane: data_supply, language: python, unit: data, database: evd, data_scopes: [public, tenant] }
+  domain-intelligence: { plane: data_supply, language: python, unit: data, database: dom, data_scopes: [public] }
+  entity-graph: { plane: data_supply, language: python, unit: data, database: ent, data_scopes: [public] }
+  search: { plane: data_supply, language: go, unit: platform, data_scopes: [public, tenant] }
+  customer-context: { plane: customer_intelligence, language: go, unit: platform, database: ctx, data_scopes: [tenant] }
+  detection: { plane: customer_intelligence, language: go, unit: platform, database: det, data_scopes: [tenant] }
+  research: { plane: customer_intelligence, language: go, unit: platform, database: res, data_scopes: [tenant] }
+  assessment: { plane: customer_intelligence, language: go, unit: platform, database: asm, data_scopes: [tenant] }
+  pursuit: { plane: customer_intelligence, language: go, unit: platform, database: pur, data_scopes: [tenant] }
+  learning: { plane: customer_intelligence, language: go, unit: platform, database: lrn, data_scopes: [tenant] }
+  gateway: { plane: interaction, language: go, unit: platform, database: gwy, data_scopes: [tenant] }
+  channels: { plane: interaction, language: go, unit: platform, database: chn, data_scopes: [tenant] }
+  identity: { plane: platform, language: go, unit: platform, database: iam, data_scopes: [platform] }
+  commerce: { plane: platform, language: go, unit: platform, database: com, data_scopes: [platform] }
+  governance: { plane: platform, language: go, unit: platform, database: gov, data_scopes: [platform] }
+  ai-platform: { plane: platform, language: go, unit: platform, database: aip, data_scopes: [platform] }
+  operations: { plane: platform, language: go, unit: platform, database: ops, data_scopes: [platform] }

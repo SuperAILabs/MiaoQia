@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 )
@@ -23,6 +24,17 @@ type Decider interface {
 
 // ErrForbidden 表示授权拒绝。
 var ErrForbidden = errors.New("authz: 无权执行该操作")
+var ErrInvalid = errors.New("authz: 请求无效")
+var subjectPattern = regexp.MustCompile(`^[a-z_]+:[A-Za-z0-9_:.-]+$`)
+var relationPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+var objectPattern = regexp.MustCompile(`^[a-z_]+:[A-Za-z0-9_.-]+$`)
+
+func (r Request) Validate() error {
+	if (r.Subject != "" && !subjectPattern.MatchString(r.Subject)) || !relationPattern.MatchString(r.Relation) || !objectPattern.MatchString(r.Object) {
+		return ErrInvalid
+	}
+	return nil
+}
 
 // Subject 把请求上下文中的调用主体转换为授权模型中的主体，例如 user:usr_…、service:operations。
 func Subject(p reqctx.Principal) string {

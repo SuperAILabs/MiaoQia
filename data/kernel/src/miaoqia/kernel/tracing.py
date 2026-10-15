@@ -17,12 +17,10 @@ _provider: TracerProvider | None = None
 def setup(service: str, role: str) -> None:
     """设置了 OTEL_EXPORTER_OTLP_ENDPOINT 时以 OTLP/gRPC 导出，否则只在进程内传递上下文。"""
     global _provider
-    if not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        return
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-
     _provider = TracerProvider(resource=Resource.create({"service.name": service, "service.instance.id": role}))
-    _provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(insecure=True)))
+    if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        _provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
     trace.set_tracer_provider(_provider)
 
 

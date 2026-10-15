@@ -15,8 +15,8 @@ import (
 )
 
 // Public 包装对外接口：校验令牌、派生请求上下文、开启服务端追踪。issuer 为 Keycloak realm 地址。
-func Public(ctx context.Context, issuer string, h http.Handler) (http.Handler, error) {
-	v, err := auth.NewVerifier(ctx, issuer)
+func Public(ctx context.Context, issuer, audience string, h http.Handler) (http.Handler, error) {
+	v, err := auth.NewVerifier(ctx, issuer, audience)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,9 @@ func Public(ctx context.Context, issuer string, h http.Handler) (http.Handler, e
 		ctx, span := tracing.Tracer(api.Name).Start(reqctx.With(r.Context(), rc), r.Method+" "+r.URL.Path,
 			trace.WithSpanKind(trace.SpanKindServer))
 		defer span.End()
-		h.ServeHTTP(w, r.WithContext(ctx))
+		r = r.Clone(ctx)
+		r.Header.Del(reqctx.Header)
+		h.ServeHTTP(w, r)
 	}), nil
 }
 

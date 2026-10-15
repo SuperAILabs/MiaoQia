@@ -106,7 +106,7 @@ def test_outbox_consumer_dedupe_and_dead_letter(database, kafka):
         seen.append(env["subject"])
 
     c = consumer.Consumer(name="pkt.probe", subsystem="pkt", brokers=kafka["brokers"], topics=[kafka["public"]],
-                          handlers={"pkt.probe.emitted.v1": handle}, db=d, dead_letter=kafka["dlq"], max_attempts=3, backoff=0.01)
+                          handlers={"pkt.probe.emitted.v1": handle}, payload_schemas={"pkt.probe.emitted.v1": {"type":"object", "required":["fail"], "additionalProperties":False, "properties":{"fail":{"type":"boolean"}}}}, db=d, dead_letter=kafka["dlq"], max_attempts=3, backoff=0.01)
     th = threading.Thread(target=c.run, daemon=True)
     th.start()
     deadline = time.time() + 45

@@ -8,7 +8,19 @@
       "name": "本地开发与端到端测试（仅本地环境）",
       "publicClient": true,
       "directAccessGrantsEnabled": true,
-      "standardFlowEnabled": false
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "miaoqia-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "miaoqia-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -19,7 +31,13 @@
       "firstName": "本地",
       "lastName": "运营",
       "email": "operator@example.invalid",
-      "credentials": [{ "type": "password", "value": "operator", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "operator",
+          "temporary": false
+        }
+      ]
     },
     {
       "username": "visitor",
@@ -28,7 +46,13 @@
       "firstName": "本地",
       "lastName": "访客",
       "email": "visitor@example.invalid",
-      "credentials": [{ "type": "password", "value": "visitor", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "visitor",
+          "temporary": false
+        }
+      ]
     }
   ]
 }

@@ -28,12 +28,14 @@ type Module struct {
 
 // Env 是子系统运行环境：本子系统的数据库与配置、事件总线地址、其他子系统接口的绑定。
 type Env struct {
-	Role     string
-	DB       *db.DB // 本子系统数据库（应用账号）；无数据库时为 nil
-	Brokers  []string
-	Log      *slog.Logger
-	Config   func(key string) string // 本子系统配置（环境变量 MIAOQIA_<子系统>_<KEY>）
-	Bindings *Bindings
+	DataScope string // 本实例 public / tenant / platform；独立于逻辑平面
+	Cell      string // tenant 实例所属单元
+	Role      string
+	DB        *db.DB // 本子系统数据库（应用账号）；无数据库时为 nil
+	Brokers   []string
+	Log       *slog.Logger
+	Config    func(key string) string // 本子系统配置（环境变量 MIAOQIA_<子系统>_<KEY>）
+	Bindings  *Bindings
 }
 
 // Bindings 保存同语言子系统接口的绑定（本地实现或远程客户端），由组装代码按部署配置填充。

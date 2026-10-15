@@ -20,15 +20,16 @@ var propagator = propagation.TraceContext{}
 // 返回的函数在进程退出前调用，刷新未导出的数据。
 func Setup(ctx context.Context, service, role string) (func(context.Context) error, error) {
 	otel.SetTextMapPropagator(propagator)
-	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" {
-		return func(context.Context) error { return nil }, nil
-	}
-	exp, err := otlptracegrpc.New(ctx)
-	if err != nil {
-		return nil, err
-	}
 	res := resource.NewSchemaless(semconv.ServiceName(service), semconv.ServiceInstanceID(role))
-	tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(exp), sdktrace.WithResource(res))
+	options := []sdktrace.TracerProviderOption{sdktrace.WithResource(res)}
+	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
+		exp, err := otlptracegrpc.New(ctx)
+		if err != nil {
+			return nil, err
+		}
+		options = append(options, sdktrace.WithBatcher(exp))
+	}
+	tp := sdktrace.NewTracerProvider(options...)
 	otel.SetTracerProvider(tp)
 	return tp.Shutdown, nil
 }

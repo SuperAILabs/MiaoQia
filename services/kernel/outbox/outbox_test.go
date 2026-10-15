@@ -1,7 +1,9 @@
 package outbox
 
 import (
+	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 )
@@ -20,7 +22,7 @@ func TestTopic(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	base := Envelope{SpecVersion: "1.0", ID: "evt_1", Source: "miaoqia/x", Type: "x.y.z.v1"}
+	base := Envelope{SpecVersion: "1.0", ID: "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1", Source: "miaoqia/x", Type: "x.y.z.v1", Time: time.Now(), DataContentType: "application/json", Data: json.RawMessage(`{}`)}
 	pub := base
 	pub.Zone, pub.Tenant = reqctx.ZonePublic, "tnt_a"
 	if pub.Validate() == nil {

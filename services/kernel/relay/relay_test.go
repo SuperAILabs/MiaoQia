@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/superailabs/miaoqia/services/kernel/consumer"
 	"github.com/superailabs/miaoqia/services/kernel/db"
+	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/internal/testenv"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/relay"
@@ -74,7 +77,8 @@ func TestOutboxRelayConsumer(t *testing.T) {
 	f := setup(t)
 	var handled, failures atomic.Int32
 	c := &consumer.Consumer{
-		Name: "kt.probe", Subsystem: "kt", DeadLetter: f.topics["dlq.kt"], Brokers: f.brokers,
+		PayloadSchemas: ktPayloadSchemas(),
+		Name:           "kt.probe", Subsystem: "kt", DeadLetter: f.topics["dlq.kt"], Brokers: f.brokers,
 		Topics: []string{f.topics["public.kt"]}, DB: f.app, MaxAttempts: 3, Backoff: 20 * time.Millisecond,
 		Handlers: map[string]consumer.Handler{"kt.probe.emitted.v1": func(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) error {
 			var d struct{ Fail bool }
@@ -128,7 +132,7 @@ func TestEnvelopeZoneMismatchGoesToDeadLetter(t *testing.T) {
 	f := setup(t)
 	var handled atomic.Int32
 	c := &consumer.Consumer{Name: "kt.zone", Subsystem: "kt", DeadLetter: f.topics["dlq.kt"], Brokers: f.brokers,
-		Topics: []string{f.topics["public.kt"]}, DB: f.app,
+		Topics: []string{f.topics["public.kt"]}, DB: f.app, PayloadSchemas: ktPayloadSchemas(),
 		Handlers: map[string]consumer.Handler{"kt.probe.emitted.v1": func(context.Context, pgx.Tx, *outbox.Envelope) error {
 			handled.Add(1)
 			return nil
@@ -136,15 +140,15 @@ func TestEnvelopeZoneMismatchGoesToDeadLetter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() { _ = c.Run(ctx) }()
-	env, _ := json.Marshal(outbox.Envelope{SpecVersion: "1.0", ID: "evt_x", Source: "miaoqia/kt", Type: "kt.probe.emitted.v1",
-		Zone: reqctx.ZoneTenant, Tenant: "tnt_a", Cell: "01", Data: json.RawMessage(`{}`)})
+	env, _ := json.Marshal(outbox.Envelope{SpecVersion: "1.0", ID: ids.New("evt"), Time: time.Now(), DataContentType: "application/json", Source: "miaoqia/kt", Type: "kt.probe.emitted.v1",
+		Zone: reqctx.ZoneTenant, Tenant: "tnt_a", Cell: "01", Data: json.RawMessage(`{"fail":false}`)})
 	prod, _ := kgo.NewClient(kgo.SeedBrokers(f.brokers...))
 	defer prod.Close()
 	if err := prod.ProduceSync(context.Background(), &kgo.Record{Topic: f.topics["public.kt"], Value: env}).FirstErr(); err != nil {
 		t.Fatal(err)
 	}
 	dl := readOne(t, f.brokers, f.topics["dlq.kt"])
-	if handled.Load() != 0 || header(dl, "dlq_error") == "" {
+	if handled.Load() != 0 || !strings.Contains(header(dl, "dlq_error"), "主题") {
 		t.Fatal("域不符的事件不应被处理，应转入死信")
 	}
 }
@@ -188,4 +192,68 @@ func header(r *kgo.Record, k string) string {
 		}
 	}
 	return ""
+}
+
+// 真正的Kafka拒绝死信发布时，后续同分区记录不能越过失败位点提交。
+func TestDeadLetterFailureDoesNotCommitFollowingRecord(t *testing.T) {
+	f := setup(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	cl, err := kgo.NewClient(kgo.SeedBrokers(f.brokers...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cl.Close()
+	admin := kadm.NewClient(cl)
+	value := "100"
+	configs, err := admin.AlterTopicConfigs(ctx, []kadm.AlterConfig{{Op: kadm.SetConfig, Name: "max.message.bytes", Value: &value}}, f.topics["dlq.kt"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, response := range configs {
+		if response.Err != nil {
+			t.Fatal(response.Err)
+		}
+	}
+	f.publish(t, "kt.probe.emitted.v1", "prb_same", true)
+	f.publish(t, "kt.probe.emitted.v1", "prb_same", false)
+	waitFor(t, func() bool {
+		var n int
+		_ = f.app.Tx(reqctx.Service(ctx, "kt"), func(tx pgx.Tx) error {
+			return tx.QueryRow(ctx, `SELECT count(*) FROM kernel_outbox WHERE published_at IS NOT NULL`).Scan(&n)
+		})
+		return n == 2
+	}, "both records published before consumer starts")
+	var handled atomic.Int32
+	name := "kt.dlq-failure." + f.topics["public.kt"]
+	c := &consumer.Consumer{Name: name, Subsystem: "kt", Topics: []string{f.topics["public.kt"]}, DeadLetter: f.topics["dlq.kt"], Brokers: f.brokers, DB: f.app, MaxAttempts: 1, Backoff: time.Millisecond, PayloadSchemas: ktPayloadSchemas(), Handlers: map[string]consumer.Handler{"kt.probe.emitted.v1": func(_ context.Context, _ pgx.Tx, env *outbox.Envelope) error {
+		var data struct{ Fail bool }
+		json.Unmarshal(env.Data, &data)
+		if data.Fail {
+			return errors.New("forced handler failure")
+		}
+		handled.Add(1)
+		return nil
+	}}}
+	if err := c.Run(ctx); err == nil || ctx.Err() != nil {
+		t.Fatalf("expected broker rejection, got %v", err)
+	}
+	if handled.Load() != 0 {
+		t.Fatal("following record processed after unconfirmed DLQ")
+	}
+	offsets, err := admin.FetchOffsets(ctx, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, partitions := range offsets {
+		for _, offset := range partitions {
+			if offset.At >= 0 {
+				t.Fatal("failed partition offset advanced")
+			}
+		}
+	}
+}
+
+func ktPayloadSchemas() map[string]any {
+	return map[string]any{"kt.probe.emitted.v1": map[string]any{"type": "object", "required": []string{"fail"}, "additionalProperties": false, "properties": map[string]any{"fail": map[string]any{"type": "boolean"}}}}
 }

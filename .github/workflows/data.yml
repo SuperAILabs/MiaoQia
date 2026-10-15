@@ -5,8 +5,15 @@ on:
   pull_request:
     paths:
       - "data/**"
+      - "tests/contract/**"
+      - "tools/dev/**"
+      - "deploy/**"
+      - "docs/03-architecture/subsystems/README.md"
       - "packs/information_domains/**"
       - "contracts/schemas/**"
+      - "contracts/events/**"
+      - "contracts/tests/integration.*"
+      - "contracts/integration.yaml"
       - "contracts/storage/**"
       - ".github/workflows/data.yml"
   push:
@@ -34,9 +41,14 @@ jobs:
         working-directory: data
         run: uv run --locked --all-packages lint-imports
 
-      - name: SDK 测试
+      - name: 实例域与扩展包依赖
+        run: |
+          uv run --project tools/contracts --python 3.12 --locked python tools/dev/gen_local.py --check
+          uv run --project data --locked --all-packages python tools/dev/check_python_boundaries.py
+
+      - name: SDK 与信息领域包测试
         working-directory: data
-        run: uv run --locked --package miaoqia-sdk --group dev pytest -q sdk/tests
+        run: uv run --locked --all-packages --group dev pytest -q sdk/tests subsystems/evidence/tests ../packs/information_domains/procurement/tests ../packs/information_domains/organizations/tests
 
       - name: INF-PROC 语料评测（Schema 校验 + 关键字段准确率 ≥ 95%）
         working-directory: data
@@ -46,6 +58,18 @@ jobs:
           --path ../packs/information_domains/procurement/src
           --schema domains/procurement/notice.schema.json
           --min-accuracy 0.95
+
+      - name: 生命周期真实原件与人工契约映射
+        working-directory: data
+        run: >
+          uv run --locked --package miaoqia-sdk mq-corpus check ../packs/information_domains/procurement/corpus
+          --reviewed --schema domains/procurement/notice.schema.json
+
+      - name: 企业登记真实原件与人工契约映射
+        working-directory: data
+        run: >
+          uv run --locked --package miaoqia-sdk mq-corpus check ../packs/information_domains/organizations/corpus
+          --reviewed --schema domains/organization/registration.schema.json --schema domains/organization/change.schema.json --schema domains/organization/abnormal.schema.json
 
   kernel:
     runs-on: ubuntu-24.04

@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import re
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -21,6 +22,12 @@ OUT = ROOT / "deploy/local/postgres/10-subsystems.sql"
 REGISTRY = ROOT / "deploy/subsystems.yaml"
 ROLES = {u: ROOT / f"deploy/{u}/roles.yaml" for u in ("acquisition", "data", "platform")}
 ROW = re.compile(r"^\| ([^|]+?) \| \[`([a-z-]+)`\][^|]*\|[^|]*\| (Go|Python) \| `([a-z]+)`[^|]*\| (?:`([a-z]{3})`|（[^）]+）) \|$")
+
+
+# 只加载纯校验模块，不导入kernel的数据库/消息依赖；CI与启动规则共用。
+_scope_spec = importlib.util.spec_from_file_location("mq_instance_scopes", ROOT / "data/kernel/src/miaoqia/kernel/scopes.py")
+_scope_module = importlib.util.module_from_spec(_scope_spec)
+_scope_spec.loader.exec_module(_scope_module)
 
 
 PLANES = {"数据供应": "data_supply", "客户智能": "customer_intelligence", "交互": "interaction", "平台": "platform"}
@@ -74,24 +81,50 @@ def topics() -> list[str]:
     return sorted(out)
 
 
+def data_scopes() -> dict[str, list[str]]:
+    """默认规则与索引第4节的跨域能力登记；平面不决定实例访问域。"""
+    defaults = {"data_supply": "public", "customer_intelligence": "tenant",
+                "interaction": "tenant", "platform": "platform"}
+    scopes = {name: [defaults[plane]] for plane, name, *_ in rows()}
+    section = INDEX.read_text().split("## 4. 运行实例的数据域", 1)[1]
+    seen = set()
+    for line in section.splitlines():
+        if not line.startswith("| `"):
+            continue
+        match = re.fullmatch(r"\| `([^`]+)` \| `([^`]+)` \|.*", line)
+        if match is None:
+            raise ValueError(f"非法数据域登记行：{line}")
+        name, values = match.groups()
+        declared = [value.strip() for value in values.split(",")]
+        if name not in scopes or name in seen or not declared or len(set(declared)) != len(declared) or not set(declared) <= {"public", "tenant", "platform"}:
+            raise ValueError(f"非法数据域登记：{name} {values}")
+        seen.add(name)
+        scopes[name] = declared
+    return scopes
+
+
 def render_registry() -> str:
     out = ["# 由 tools/dev/gen_local.py 根据子系统索引（docs/03-architecture/subsystems/README.md）生成，请勿手改。", "subsystems:"]
+    scopes = data_scopes()
     for plane, name, lang, unit, db in rows():
-        out.append(f"  {name}: {{ plane: {plane}, language: {lang.lower()}, unit: {unit}" + (f", database: {db} }}" if db else " }"))
+        out.append(f"  {name}: {{ plane: {plane}, language: {lang.lower()}, unit: {unit}" + (f", database: {db}" if db else "") + f", data_scopes: [{', '.join(scopes[name])}] }}")
     return "\n".join(out) + "\n"
 
 
-def check_roles() -> list[str]:
+def check_roles(role_files=None) -> list[str]:
     import yaml
 
     units = {name: unit for name, _, unit, _ in subsystems()}
     errs = []
-    for unit, path in ROLES.items():
+    scopes = data_scopes()
+    inventory = {name: {"unit": unit, "data_scopes": scopes[name]} for name, unit in units.items()}
+    for unit, path in (ROLES if role_files is None else role_files).items():
         doc = yaml.safe_load(path.read_text(encoding="utf-8"))
         for role, spec in doc["roles"].items():
-            for sub in spec.get("subsystems", []):
-                if units.get(sub) != unit:
-                    errs.append(f"{path.relative_to(ROOT)}：角色 {role} 中的 {sub} 不属于 {unit} 单元")
+            try:
+                _scope_module.role_scopes(spec, inventory, unit=unit)
+            except ValueError as exc:
+                errs.append(f"{path}：角色 {role}：{exc}")
     return errs
 
 

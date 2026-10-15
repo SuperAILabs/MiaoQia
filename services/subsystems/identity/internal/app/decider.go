@@ -14,6 +14,9 @@ type Decider struct {
 }
 
 func (d Decider) Check(ctx context.Context, req authz.Request) (bool, error) {
+	if err := req.Validate(); err != nil {
+		return false, err
+	}
 	if req.Subject == "" {
 		rc, ok := reqctx.From(ctx)
 		if !ok || rc.Principal.ID == "" {

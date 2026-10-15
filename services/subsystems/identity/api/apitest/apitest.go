@@ -42,4 +42,11 @@ func RunAuthorizer(t *testing.T, a api.Authorizer, f Fixture) {
 			t.Fatal("期望错误")
 		}
 	})
+	for _, invalid := range []authz.Request{{Relation: "can:read", Object: f.Granted.Object}, {Relation: f.Granted.Relation, Object: "invalid"}} {
+		t.Run("非法业务参数拒绝", func(t *testing.T) {
+			if _, err := a.Check(ctx, invalid); err == nil {
+				t.Fatal("非法请求必须拒绝")
+			}
+		})
+	}
 }

@@ -58,6 +58,9 @@ func (d *DB) Tx(ctx context.Context, fn func(pgx.Tx) error) error {
 	if !ok {
 		return reqctx.ErrMissing
 	}
+	if err := rc.Validate(); err != nil {
+		return err
+	}
 	return pgx.BeginFunc(ctx, d.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx,
 			`SELECT set_config('app.tenant_id', $1, true), set_config('app.cell', $2, true), set_config('app.principal', $3, true)`,

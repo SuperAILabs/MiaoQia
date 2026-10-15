@@ -5,10 +5,21 @@ on:
   pull_request:
     paths:
       - "services/**"
+      - "tests/contract/**"
+      - "data/**"
+      - "tools/dev/**"
+      - "deploy/local/keycloak/**"
       - "contracts/policy/**"
+      - "contracts/events/**"
       - "contracts/storage/**"
       - "contracts/apis/**"
+      - "contracts/schemas/integration/**"
+      - "contracts/tests/integration.*"
+      - "contracts/identifiers.yaml"
+      - "contracts/integration.yaml"
       - "deploy/subsystems.yaml"
+      - "docs/03-architecture/01-architecture-overview.md"
+      - "docs/03-architecture/subsystems/README.md"
       - "deploy/platform/**"
       - "docs/03-architecture/subsystems/identity.md"   # 权限矩阵由测试逐格校验
       - "packs/application_domains/**"
@@ -51,6 +62,31 @@ jobs:
         with:
           go-version-file: services/go.mod
           cache-dependency-path: services/go.sum
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+          python-version: "3.12"
+
+      - name: Python真实模块依赖
+        run: uv sync --project data --locked --all-packages
+
+      - name: HTTPS Keycloak及M0真实组件配置
+        run: |
+          tools/dev/m0_test_certificates.sh "$RUNNER_TEMP/m0-tls"
+          docker run -d --name m0-keycloak --user 0:0 -p 127.0.0.1:18443:8443 \
+            -v "$RUNNER_TEMP/m0-tls:/opt/keycloak/conf/testtls:ro" \
+            -v "$GITHUB_WORKSPACE/deploy/local/keycloak:/opt/keycloak/data/import:ro" \
+            quay.io/keycloak/keycloak:26.3.4 start-dev --hostname=https://localhost:18443 \
+            --https-certificate-file=/opt/keycloak/conf/testtls/server.crt \
+            --https-certificate-key-file=/opt/keycloak/conf/testtls/server.key --import-realm
+          for attempt in $(seq 1 60); do
+            if curl -fsS --cacert "$RUNNER_TEMP/m0-tls/ca.crt" https://localhost:18443/realms/miaoqia/.well-known/openid-configuration >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS --cacert "$RUNNER_TEMP/m0-tls/ca.crt" https://localhost:18443/realms/miaoqia/.well-known/openid-configuration >/dev/null
+          echo "MIAOQIA_TEST_KEYCLOAK=https://localhost:18443/realms/miaoqia" >> "$GITHUB_ENV"
+          echo "MIAOQIA_GATEWAY_CA_FILE=$RUNNER_TEMP/m0-tls/ca.crt" >> "$GITHUB_ENV"
 
       - name: 格式与静态检查
         working-directory: services

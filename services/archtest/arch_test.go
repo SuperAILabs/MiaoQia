@@ -95,6 +95,19 @@ func subsystemOf(path string) (string, string, bool) {
 var forbiddenPlanes = map[string][]string{
 	"data_supply":           {"customer_intelligence", "interaction"},
 	"customer_intelligence": {"interaction"},
+	"platform":              {"data_supply", "customer_intelligence", "interaction"},
+}
+
+func forbiddenDependency(from, fromPlane, toPlane string) bool {
+	if from == "operations" && fromPlane == "platform" {
+		return false // 内部交互客户端，例外已在总体架构登记。
+	}
+	for _, bad := range forbiddenPlanes[fromPlane] {
+		if toPlane == bad {
+			return true
+		}
+	}
+	return false
 }
 
 func TestDependencyRules(t *testing.T) {
@@ -124,10 +137,11 @@ func TestDependencyRules(t *testing.T) {
 				if toSub != "api" && !strings.HasPrefix(toSub, "api/") {
 					t.Errorf("R1 %s 只能导入 %s 的 api 包，实际导入 %s", p.ImportPath, to, imp)
 				}
-				for _, bad := range forbiddenPlanes[pl[from]] {
-					if pl[to] == bad {
-						t.Errorf("R2 %s（%s）不得依赖 %s（%s）", from, pl[from], to, pl[to])
-					}
+				if forbiddenDependency(from, pl[from], pl[to]) {
+					t.Errorf("R2 %s（%s）不得依赖 %s（%s）", from, pl[from], to, pl[to])
+				}
+				if from == "learning" && to == "detection" {
+					t.Errorf("仿真契约：learning 直接复用 kernel/policy，不依赖 %s", imp)
 				}
 			}
 			if inSub && (fromSub == "internal/domain" || strings.HasPrefix(fromSub, "internal/domain/")) {
@@ -141,5 +155,19 @@ func TestDependencyRules(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Fatal("没有检查到任何依赖")
+	}
+}
+
+func TestPlatformDependencyRule(t *testing.T) {
+	for _, plane := range []string{"data_supply", "customer_intelligence", "interaction"} {
+		if !forbiddenDependency("identity", "platform", plane) {
+			t.Fatalf("平台依赖 %s 未被拒绝", plane)
+		}
+		if forbiddenDependency("operations", "platform", plane) {
+			t.Fatalf("operations 的客户端例外被拒绝：%s", plane)
+		}
+	}
+	if forbiddenDependency("identity", "platform", "platform") {
+		t.Fatal("平台内部依赖应允许")
 	}
 }

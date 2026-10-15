@@ -34,7 +34,7 @@ func Module() runtime.Module {
 			return nil
 		},
 		Routes: func(env *runtime.Env, _, internal *http.ServeMux) {
-			srv, err := identityapi.NewServer(&app.Server{Decider: decider}, identityapi.WithPathPrefix("/internal"))
+			srv, err := identityapi.NewServer(&app.Server{Decider: decider}, identityapi.WithPathPrefix("/internal"), identityapi.WithErrorHandler(app.WriteProtocolError))
 			if err != nil {
 				panic(err)
 			}

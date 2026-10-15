@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -38,10 +40,13 @@ var ErrNotFound = errors.New("operations: 探针不存在")
 func (p *Probes) Trigger(ctx context.Context) (*api.Probe, error) {
 	if err := authz.Require(ctx, p.Authz, api.ProbeRelation, platformObject); err != nil {
 		if errors.Is(err, authz.ErrForbidden) {
-			_ = p.DB.Tx(ctx, func(tx pgx.Tx) error {
+			auditErr := p.DB.Tx(ctx, func(tx pgx.Tx) error {
 				return recorder.Record(ctx, tx, audit.Entry{Action: "operations.probe.trigger", Resource: platformObject,
 					Result: "denied", Basis: api.ProbeRelation})
 			})
+			if auditErr != nil {
+				return nil, fmt.Errorf("denial audit failed: %w", auditErr)
+			}
 		}
 		return nil, err
 	}
@@ -96,6 +101,9 @@ func (p *Probes) Complete(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) 
 	}
 	if err := json.Unmarshal(env.Data, &d); err != nil {
 		return err
+	}
+	if env.Source != "miaoqia/evidence" || env.Subject != d.ProbeID || strings.Join(d.Hops, ",") != "operations,acquisition,evidence" {
+		return fmt.Errorf("probe lineage invalid")
 	}
 	hops := append(d.Hops, api.Name)
 	tag, err := tx.Exec(ctx, `UPDATE probes SET status = 'completed', hops = $2, completed_at = now() WHERE id = $1 AND status = 'requested'`,

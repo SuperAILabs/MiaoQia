@@ -4,9 +4,14 @@ package auth
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -17,23 +22,45 @@ import (
 // Claims 是平台使用的令牌声明。
 type Claims struct {
 	jwt.RegisteredClaims
-	Tenant string `json:"miaoqia_tenant,omitempty"` // 租户成员的令牌带租户；平台运营人员不带
-	Cell   string `json:"miaoqia_cell,omitempty"`
+	Tenant    string `json:"miaoqia_tenant,omitempty"` // 租户成员的令牌带租户；平台运营人员不带
+	Cell      string `json:"miaoqia_cell,omitempty"`
+	TokenType string `json:"typ"`
 }
 
 // Verifier 校验令牌。
 type Verifier struct {
-	issuer string
-	keys   keyfunc.Keyfunc
+	issuer   string
+	audience string
+	keys     keyfunc.Keyfunc
 }
 
 // NewVerifier 从签发方的 JWKS 加载公钥（后台定期刷新）。
-func NewVerifier(ctx context.Context, issuer string) (*Verifier, error) {
-	k, err := keyfunc.NewDefaultCtx(ctx, []string{strings.TrimSuffix(issuer, "/") + "/protocol/openid-connect/certs"})
+func NewVerifier(ctx context.Context, issuer, audience string) (*Verifier, error) {
+	u, err := url.Parse(issuer)
+	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || audience == "" || (u.Scheme != "https" && !(os.Getenv("MIAOQIA_ENV") == "development" && u.Scheme == "http")) {
+		return nil, errors.New("gateway: issuer/audience配置无效或生产签发方未使用HTTPS")
+	}
+	client := &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if file := os.Getenv("MIAOQIA_GATEWAY_CA_FILE"); file != "" {
+		pem, err := os.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+		roots, err := x509.SystemCertPool()
+		if err != nil {
+			roots = x509.NewCertPool()
+		}
+		if !roots.AppendCertsFromPEM(pem) {
+			return nil, errors.New("invalid issuer CA")
+		}
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots}}
+	}
+	failOpen := false
+	k, err := keyfunc.NewDefaultOverrideCtx(ctx, []string{strings.TrimSuffix(issuer, "/") + "/protocol/openid-connect/certs"}, keyfunc.Override{Client: client, HTTPTimeout: 5 * time.Second, RateLimitWaitMax: time.Second, NoErrorReturnFirstHTTPReq: &failOpen})
 	if err != nil {
 		return nil, err
 	}
-	return &Verifier{issuer: issuer, keys: k}, nil
+	return &Verifier{issuer: issuer, audience: audience, keys: k}, nil
 }
 
 // ErrUnauthenticated 表示令牌缺失或无效。
@@ -47,10 +74,13 @@ func (v *Verifier) Context(r *http.Request) (reqctx.Context, error) {
 	}
 	var c Claims
 	_, err := jwt.ParseWithClaims(raw, &c, v.keys.Keyfunc, jwt.WithIssuer(v.issuer), jwt.WithValidMethods([]string{"RS256"}),
-		jwt.WithExpirationRequired())
-	if err != nil || c.Subject == "" {
+		jwt.WithExpirationRequired(), jwt.WithAudience(v.audience), jwt.WithIssuedAt())
+	if err != nil || c.Subject == "" || c.TokenType != "Bearer" || c.IssuedAt == nil {
 		return reqctx.Context{}, ErrUnauthenticated
 	}
-	return reqctx.Context{Tenant: c.Tenant, Cell: c.Cell, Purpose: "interactive",
-		Principal: reqctx.Principal{ID: c.Subject, Kind: "user"}}, nil
+	rc := reqctx.Context{Tenant: c.Tenant, Cell: c.Cell, Purpose: "interactive", Principal: reqctx.Principal{ID: c.Subject, Kind: "user"}}
+	if err := rc.Validate(); err != nil {
+		return reqctx.Context{}, ErrUnauthenticated
+	}
+	return rc, nil
 }

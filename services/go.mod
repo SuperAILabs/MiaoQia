@@ -14,6 +14,7 @@ require (
 	github.com/openfga/go-sdk v0.8.3
 	github.com/openfga/language/pkg/go v0.3.2
 	github.com/pressly/goose/v3 v3.29.0
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/twmb/franz-go v1.22.2
 	github.com/twmb/franz-go/pkg/kadm v1.19.0
 	go.opentelemetry.io/otel v1.47.0
