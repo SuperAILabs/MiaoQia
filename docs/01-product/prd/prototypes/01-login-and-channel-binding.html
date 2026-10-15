@@ -152,7 +152,7 @@ const PAGES=[
  na:{"无权限":"每个成员都能管理自己的绑定","过期":"本页不发起绑定，链接过期在绑定确认页","失败":"绑定失败在绑定确认页","部分成功":"单个渠道操作"},
  rules:["绑定只能在企业微信中发起，本页不提供绑定二维码","一个渠道账号只能绑定一个成员","解绑立即生效，已有的免登会话随后撤销"],
  s:{
- "正常":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="tbl"><table><tr><th>渠道</th><th>账号</th><th>状态</th><th></th></tr><tr><td>企业微信</td><td>王磊（华东建材管业）</td><td><span class="pill ok">已绑定</span></td><td><u>解绑</u></td></tr><tr><td>邮件</td><td>wang.lei@jiancai-example.cn</td><td><span class="pill ok">已验证</span></td><td></td></tr></table></div>`),
+ "正常":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="tbl"><table><tr><th>渠道</th><th>账号</th><th>状态</th><th></th></tr><tr><td>企业微信</td><td>王磊（华东建材管业）</td><td><span class="pill ok">已绑定</span></td><td><u>解绑</u></td></tr><tr><td>邮件</td><td>wang.lei@jiancai-example.cn</td><td><span class="pill ok">已验证</span></td><td></td></tr><tr><td>飞书</td><td>王磊（华东建材管业）</td><td><span class="pill warn">解绑处理中</span></td><td class="note">已停止在飞书中免登和投递，正在撤销已登录的会话</td></tr></table></div>`),
  "空态":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="empty"><div>还没有绑定企业微信。绑定后，简报、信号和跟进提醒会发到你的企业微信。</div><div class="note">在企业微信“工作台 / 妙洽”中给妙洽发任意消息，按提示在企业微信里完成绑定。</div></div>`),
  "加载":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2>${L(3)}`),
  "来源中断":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="msg warn">企业微信目前投递异常，消息暂时发到站内“通知”。你的绑定不受影响。</div>`),

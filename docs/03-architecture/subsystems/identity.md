@@ -48,7 +48,7 @@
 | 成员、角色、组织管理 | 命令/查询 | 管理控制台 |
 | `CreateInvitation` / `ResendInvitation` / `RevokeInvitation` / `ListInvitations` | 命令/查询 | 管理员邀请成员，需 `can_manage_members` 与强认证；邀请不授予任何权限，重发使旧链接失效 |
 | `AcceptInvitation` | 命令 | 受邀人接受邀请。独立授权路径，不经成员管理接口：核验链接与邀请状态、已验证邮箱一致、账号不属于其他租户、受邀管理员已完成 TOTP；在一个事务中按邀请限定的角色与单元写入成员资格并消费邀请（复用成员写入的内部逻辑），状态变化按邀请版本串行；之后写入 IdP 中账号的租户与 cell 归属，写入前访问失败关闭。见 [PRD 第1段 F2](../../01-product/prd/01-login-and-channel-binding.md#f2-邀请与接受) |
-| `IssueChannelSession` / `RevokeChannelSessions` | 命令 | 仅 `channels` 可调用。签发：在 channels 核对权威绑定有效后，为对应成员签发不带强认证的免登会话，记录绑定标识与版本；版本低于该绑定撤销水位时拒绝。撤销：绑定失效后由 channels 同步调用（失败时经 `channels.binding.changed.v1` 重试），先记录撤销水位（无对应会话也记录），再撤销版本不高于水位的会话；并定时与 channels 对账。IdP 不保存长期渠道身份关联。并发顺序见 [PRD 第1段 F6](../../01-product/prd/01-login-and-channel-binding.md#f6-解绑与失效) |
+| `IssueChannelSession` / `RevokeChannelSessions` | 命令 | 仅 `channels` 可调用。签发：凭 channels 签发的 30 秒有效签发凭据（绑定标识、版本、成员），在一个事务中锁定该绑定的撤销水位行，核验凭据未过期且版本高于水位后写入不带强认证的免登会话。撤销：绑定失效后由 channels 同步调用（失败时经 `channels.binding.changed.v1` 重试），在同一行上抬高水位（无对应会话也记录）并作废版本不高于水位的会话，确认后 channels 才把失效标为已完成；并定时与 channels 对账。IdP 不保存长期渠道身份关联。并发顺序见 [PRD 第1段 F6](../../01-product/prd/01-login-and-channel-binding.md#f6-解绑与失效) |
 | `RecoverAdminAccount` | 命令 | 唯一管理员无法认证时的账号恢复：平台运营双人控制且均 MFA；只清除 TOTP、要求重设密码、撤销会话，不授予租户数据访问，全程审计并通知。见 [PRD 第1段 F8](../../01-product/prd/01-login-and-channel-binding.md#f8-唯一管理员账号恢复) |
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
 
