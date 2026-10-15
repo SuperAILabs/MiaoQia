@@ -1,0 +1,188 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>妙洽客户档案与目标原型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：左侧页面目录 + 顶部状态切换 + 中间线框画面（桌面/手机两种框） */
+:root{
+  --bg:#f4f5f3; --panel:#ffffff; --ink:#1d2320; --muted:#5d6862; --line:#cfd5d1;
+  --accent:#1f6f5c; --accent-soft:#e1efe9; --warn:#a2610b; --warn-soft:#fbf0dc;
+  --bad:#b03a2e; --bad-soft:#f8e3e0; --off:#9aa39e;
+  --f-ui:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+header.top{max-width:1180px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+header.top h1{font-size:1.25rem;margin:0;text-wrap:balance}
+header.top p{margin:0;color:var(--muted);font-size:.85rem}
+nav.pages{display:flex;flex-direction:column;gap:4px}
+@media (max-width:760px){nav.pages{flex-direction:row;overflow-x:auto;padding-bottom:4px}}
+nav.pages button{all:unset;cursor:pointer;padding:8px 10px;border-radius:6px;font-size:.9rem;white-space:nowrap}
+nav.pages button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.pages button:focus-visible,.states button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.states button{font:inherit;font-size:.82rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.states button:disabled{color:var(--off);cursor:not-allowed;border-style:dashed}
+.note{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.stage{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.desk{flex:1 1 420px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.desk .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.phone{flex:0 0 300px;max-width:100%;background:var(--panel);border:2px solid var(--line);border-radius:22px;overflow:hidden}
+.phone .bar{padding:8px 14px;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.scr{padding:18px;display:flex;flex-direction:column;gap:12px}
+.scr h2{font-size:1.05rem;margin:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
+.box{border:1px solid var(--line);border-radius:6px;padding:8px 10px;color:var(--muted);background:var(--bg)}
+.btn{display:inline-block;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer;text-align:center}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.msg{border-radius:6px;padding:10px 12px;font-size:.88rem}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--accent)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.off{color:var(--off)}
+.skel{height:12px;border-radius:4px;background:var(--line);opacity:.6}
+.qr{width:120px;height:120px;border:1px dashed var(--muted);display:grid;place-items:center;font-size:.75rem;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:22px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.rules{margin-top:18px;font-size:.84rem;color:var(--muted)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+@media (prefers-reduced-motion:no-preference){.skel{animation:p 1.2s ease-in-out infinite}@keyframes p{50%{opacity:.25}}}
+</style>
+
+<header class="top">
+  <h1>第2段原型：客户档案、角色与目标</h1>
+  <p>低保真线框 · 对应 docs/01-product/prd/02-profile-and-objectives.md · 示例数据</p>
+</header>
+<div class="wrap">
+  <nav class="pages" id="pages" aria-label="页面"></nav>
+  <main style="min-width:0">
+    <div class="label">状态</div>
+    <div class="states" id="states" role="group" aria-label="状态"></div>
+    <p class="note" id="note"></p>
+    <div class="stage" id="stage"></div>
+    <div class="rules" id="rules"></div>
+  </main>
+</div>
+
+<script>
+const ALL=["正常","空态","加载","无权限","过期","失败","部分成功","来源中断","数据未知"];
+const L=n=>Array.from({length:n},()=>'<div class="skel"></div>').join('');
+const desk=(url,body)=>`<div class="desk"><div class="bar">${url}</div><div class="scr">${body}</div></div>`;
+const phone=(t,body)=>`<div class="phone"><div class="bar">${t}</div><div class="scr">${body}</div></div>`;
+const loginForm=(extra="",dis="")=>`<h2>登录妙洽</h2>${extra}
+  <div class="field">邮箱<div class="box">wang.lei@jiancai-example.cn</div></div>
+  <div class="field">密码<div class="box">••••••••</div></div>
+  <div class="field">验证码（TOTP）<div class="box">6 位数字</div></div>
+  <button class="btn" ${dis}>登录</button>`;
+
+const tree=`<div class="card"><div>☑ 管材（含全部下级）</div><div style="padding-left:18px">☑ PE 管　☑ PVC 管　☑ 球墨铸铁管</div></div>`;
+const PAGES=[
+{id:"profile",name:"客户档案总览",
+ na:{"部分成功":"单次保存没有部分结果","来源中断":"档案是本租户数据，不依赖外部来源"},
+ rules:["每次保存一个版本，并发编辑以版本冲突返回","未录入的资质视为未知，不默认满足","会影响判断的字段保存前列出受影响的目标与规则"],
+ s:{
+ "正常":()=>desk("设置 / 客户档案",`<div class="row" style="justify-content:space-between"><h2>华东建材管业有限公司</h2><span class="note">版本 7 · 李敏 10-15 14:02 保存</span></div>
+ <div class="tbl"><table><tr><th>项</th><th>内容</th><th>用于</th></tr>
+ <tr><td>本企业</td><td>华东建材管业有限公司 · 9133…7X</td><td>A02 排除“我方即中标方”</td></tr>
+ <tr><td>价值链角色</td><td>材料设备厂商</td><td>可启用 A01、A02、B03</td></tr>
+ <tr><td>行业</td><td>建材管材</td><td>品类、词表、资质模板</td></tr>
+ <tr><td>品类</td><td>管材 › PE 管、PVC 管</td><td>A02 硬条件 R-CAT</td></tr>
+ <tr><td>品牌</td><td>华管、HG-Pipe</td><td>识别品牌使用</td></tr>
+ <tr><td>服务区域</td><td>浙江省、江苏省苏州市</td><td>A02 硬条件 R-REGION</td></tr>
+ <tr><td>资质</td><td>2 项有效</td><td>A01 资格条件</td></tr>
+ <tr><td>企业清单</td><td>客户 48 · 竞争对手 10 · 禁合作 2</td><td>A02 加分、减分、排除</td></tr></table></div>`),
+ "空态":()=>desk("设置 / 客户档案",`<h2>客户档案</h2><div class="empty"><div>档案还是空的。妙洽根据档案判断哪些项目和你有关：先关联本企业，再选择角色、品类和服务区域。</div><button class="btn">开始填写</button></div>`),
+ "加载":()=>desk("设置 / 客户档案",`<h2>客户档案</h2>${L(7)}`),
+ "无权限":()=>desk("设置 / 客户档案（只读）",`<div class="msg warn">你可以查看档案，但只有业务专家和管理员可以修改。需要修改时请联系 李敏。</div>${L(4)}`),
+ "过期":()=>desk("设置 / 客户档案",`<div class="msg warn">你编辑期间，周航 已保存了版本 8（修改了服务区域）。你的修改没有保存。查看差异后，基于版本 8 重新编辑。</div><button class="btn">查看差异</button>`)+desk("资质",`<div class="msg warn">“建筑业企业资质·市政公用工程施工总承包三级”将于 11-12 到期（还剩 28 天）。到期后它在判断中按“已过期”处理。</div>`),
+ "失败":()=>desk("设置 / 客户档案",`<div class="msg bad">保存没有成功，网络中断。你的修改仍在页面上，可以直接重试；重复提交不会生成两个版本。</div><button class="btn">重试保存</button>`),
+ "数据未知":()=>desk("设置 / 客户档案",`<div class="msg warn">还没有关联本企业。A02 无法排除“我方自己中标”的项目，这类项目会进入待复核。</div><div class="msg warn">尚未录入资质。依赖资质的条件（A01 直接投标）会判为“未知”，不会默认你满足。</div>`)}},
+{id:"org",name:"关联本企业",
+ na:{"过期":"检索是即时操作","部分成功":"一次只关联一家"},
+ rules:["统一社会信用代码精确命中时直接给出唯一候选","只按名称检索时最多列 10 个候选，不自动选中","更换关联形成新档案版本并审计"],
+ s:{
+ "正常":()=>desk("客户档案 / 关联本企业",`<h2>关联本企业</h2><div class="field">统一社会信用代码或企业名称<div class="box">华东建材管业</div></div><div class="tbl"><table><tr><th>候选</th><th>代码</th><th>注册地</th><th>匹配</th><th></th></tr><tr><td>华东建材管业有限公司</td><td>9133…7X</td><td>杭州市</td><td>0.96</td><td><u>选择</u></td></tr><tr><td>华东建材管业（苏州）有限公司</td><td>9132…2K</td><td>苏州市</td><td>0.88</td><td><u>选择</u></td></tr></table></div><p class="note">按名称检索不会自动选中，请核对代码后选择。</p>`),
+ "空态":()=>desk("客户档案 / 关联本企业",`<h2>关联本企业</h2><div class="empty"><div>没有找到“华东建才管业”。试试统一社会信用代码，或检查名称是否有错字。</div></div>`),
+ "加载":()=>desk("客户档案 / 关联本企业",`<h2>正在检索</h2>${L(3)}`),
+ "无权限":()=>desk("客户档案 / 关联本企业",`<div class="msg bad">关联或更换本企业需要业务专家或管理员角色。</div>`),
+ "失败":()=>desk("客户档案 / 关联本企业",`<div class="msg bad">检索没有完成，请重试。</div><button class="btn">重试</button>`),
+ "来源中断":()=>desk("客户档案 / 关联本企业",`<div class="msg warn">企业库暂时不可用，暂时不能检索。档案其他部分可以继续填写。</div>`),
+ "数据未知":()=>desk("客户档案 / 关联本企业",`<div class="msg warn">只找到置信度较低的候选，无法确认是否为你的企业。请改用统一社会信用代码检索。</div><div class="tbl"><table><tr><td>华东建材有限公司</td><td>0.61</td></tr></table></div>`)}},
+{id:"cat",name:"品类与区域",
+ na:{"部分成功":"一次保存","来源中断":"品类与区划是本地数据","数据未知":"选项来自行业包与行政区划"},
+ rules:["勾选上级包含全部下级","保存前列出受影响的目标与规则","保存后新到达的公告按新档案判断，已有信号按原快照解释"],
+ s:{
+ "正常":()=>desk("客户档案 / 品类",`<h2>产品品类（建材管材）</h2>${tree}`)+desk("保存前确认",`<h2>这次修改会影响判断</h2><div class="card"><div>新增品类：球墨铸铁管</div><div>受影响：A02 进入供货 · 硬条件“项目标的包含我方产品品类”</div><div class="note">保存后，新到达的公告按新品类判断；已经发现的信号仍按发现时的档案解释。</div></div><div class="row"><button class="btn">保存</button><button class="btn ghost">返回修改</button></div>`),
+ "空态":()=>desk("客户档案 / 品类",`<h2>产品品类</h2><div class="empty"><div>还没有选择品类。A02 会因“品类未知”把所有项目送入待复核。</div><button class="btn">选择品类</button></div>`),
+ "加载":()=>desk("客户档案 / 品类",`<h2>产品品类</h2>${L(4)}`),
+ "无权限":()=>desk("客户档案 / 品类（只读）",`${tree}<p class="note">只读：修改需要业务专家或管理员。</p>`),
+ "过期":()=>desk("客户档案 / 品类",`<div class="msg warn">周航 刚保存了新的品类（版本 8），你的修改没有保存。</div><button class="btn">查看差异</button>`),
+ "失败":()=>desk("客户档案 / 品类",`<div class="msg bad">保存没有成功，修改仍在页面上，可以重试。</div>`)}},
+{id:"lists",name:"企业清单与导入",
+ na:{"过期":"导入作业没有时效状态"},
+ rules:["只有统一社会信用代码精确命中可自动匹配","名称匹配需人工确认后才生效","未匹配的行保留原文，不进入规则","单次最多 5000 行，文件无效时整体拒绝"],
+ s:{
+ "正常":()=>desk("客户档案 / 企业清单",`<div class="row" style="justify-content:space-between"><h2>企业清单</h2><button class="btn">导入表格</button></div><div class="tbl"><table><tr><th>清单</th><th>数量</th><th>在 A02 中的作用</th></tr><tr><td>客户</td><td>48</td><td>中标方是已有客户 +15</td></tr><tr><td>竞争对手</td><td>10</td><td>中标方用过竞争对手品牌 −5</td></tr><tr><td>禁合作</td><td>2</td><td>直接排除</td></tr></table></div>`),
+ "空态":()=>desk("客户档案 / 企业清单",`<h2>企业清单</h2><div class="empty"><div>还没有客户和竞争对手清单。导入后，中标方是你已有客户的项目会排得更靠前。</div><div class="row"><button class="btn">导入表格</button><button class="btn ghost">下载模板</button></div></div>`),
+ "加载":()=>desk("导入 / 客户清单",`<h2>正在匹配 312 / 520 行</h2>${L(3)}<p class="note">可以离开本页，完成后会通知你。</p>`),
+ "无权限":()=>desk("客户档案 / 企业清单（只读）",`<p class="note">只读：维护清单需要业务专家或管理员。</p>${L(3)}`),
+ "失败":()=>desk("导入 / 客户清单",`<div class="msg bad">文件有 6200 行，超过单次 5000 行上限，整个文件未导入。请拆分后重新上传。</div><button class="btn ghost">下载模板</button>`),
+ "部分成功":()=>desk("导入结果 / 客户清单（520 行）",`<div class="tbl"><table><tr><th>结果</th><th>行数</th><th></th></tr><tr><td><span class="pill ok">已匹配</span>（代码命中）</td><td>402</td><td>已生效</td></tr><tr><td><span class="pill warn">待确认</span>（名称唯一高置信）</td><td>86</td><td><button class="btn">确认 86 行</button></td></tr><tr><td><span class="pill warn">需选择</span></td><td>21</td><td><u>逐条选择</u></td></tr><tr><td><span class="pill off">未匹配</span></td><td>11</td><td><u>下载结果表</u></td></tr></table></div><p class="note">待确认、需选择、未匹配的行在确认前不参与判断。</p>`),
+ "来源中断":()=>desk("导入 / 客户清单",`<div class="msg warn">企业库暂时不可用，导入已暂停在第 312 行。恢复后自动继续，已上传的文件不会丢失。</div>`),
+ "数据未知":()=>desk("导入 / 需选择（21 行）",`<div class="card"><div>原文：<b>中建某局</b></div><div>候选：中国建筑第八工程局有限公司（0.72） · 中国建筑第三工程局有限公司（0.70）</div><div class="row"><button class="btn ghost">选第一个</button><button class="btn ghost">选第二个</button><button class="btn ghost">都不是</button></div></div>`)}},
+{id:"objs",name:"目标列表",
+ na:{"过期":"列表无时效对象","失败":"只读列表","部分成功":"只读列表","来源中断":"只读本租户数据","数据未知":"数据可用性在目标页展示"},
+ rules:["按角色模板列出可启用目标","非参与人看不到目标","M3 目标显示开放阶段，不可启用"],
+ s:{
+ "正常":()=>desk("目标",`<h2>目标</h2><div class="tbl"><table><tr><th>目标</th><th>找什么</th><th>状态</th><th></th></tr><tr><td>A02 进入供货</td><td>中标总包的项目里有没有我方品类，可去供货</td><td><span class="pill warn">未激活</span></td><td><u>提交首次激活</u></td></tr><tr><td>A01 直接投标</td><td>可以直接参与的招标</td><td><span class="pill off">未启用</span></td><td><u>启用</u></td></tr><tr><td>B03 竞争情报</td><td>竞争对手的中标与动向</td><td><span class="pill off">未启用</span></td><td><u>启用</u></td></tr><tr><td>C01 交易对手风险</td><td>—</td><td><span class="pill off">M3 开放</span></td><td></td></tr></table></div>`),
+ "空态":()=>desk("目标",`<h2>目标</h2><div class="empty"><div>还没有可启用的目标。先在客户档案中选择价值链角色，系统会列出适合你的目标。</div><button class="btn ghost">去选择角色</button></div>`),
+ "加载":()=>desk("目标",`<h2>目标</h2>${L(4)}`),
+ "无权限":()=>desk("目标（陈晨 · 业务开拓者）",`<h2>目标</h2><div class="empty"><div>你还不是任何目标的参与人。目标负责人把你加入后，你会在这里看到目标并收到它的信号。</div></div>`)}},
+{id:"enable",name:"启用 A02 向导与目标页",
+ na:{"空态":"向导总有模板内容","部分成功":"一次创建","来源中断":"数据可用性按状态展示，不阻塞启用"},
+ rules:["启用后为“未激活”，首次激活经仿真与审批（第7段），激活前不产生信号","数据未接入的规则逐条标出，不显示为已生效","同一单元同一模板只启用一次"],
+ s:{
+ "正常":()=>desk("启用 A02 进入供货 · 第 3 步，共 4 步",`<h2>确认参数</h2><div class="tbl"><table><tr><th>参数</th><th>值</th></tr><tr><td>组织单元</td><td>华东销售部</td></tr><tr><td>负责人</td><td>王磊</td></tr><tr><td>参与人</td><td>陈晨、孙浩</td></tr><tr><td>品类</td><td>随档案（PE 管、PVC 管）</td></tr><tr><td>区域</td><td>随档案（浙江省、苏州市）</td></tr><tr><td>最低金额</td><td>0 元</td></tr><tr><td>大额阈值</td><td>500 万元</td></tr></table></div><div class="row"><button class="btn">下一步：规则预览</button></div>`)+desk("A02 进入供货 · 目标页",`<div class="row" style="justify-content:space-between"><h2>A02 进入供货</h2><span class="pill warn">未激活</span></div><div class="msg ok">配置已保存。下一步：提交首次激活，系统会先用近期公告仿真，再由审批人批准。激活前不会产生信号。</div><button class="btn">提交首次激活</button>`),
+ "加载":()=>desk("启用 A02 进入供货",`<h2>正在创建目标</h2>${L(4)}`),
+ "无权限":()=>desk("目标",`<div class="msg bad">只有决策者可以启用目标。你可以请 王磊 启用，并把你加为参与人。</div>`),
+ "过期":()=>desk("A02 进入供货 · 目标页",`<div class="msg warn">A02 模板有新版本 0.3.0（新增“合同公告”规则）。当前生效策略仍按 0.2.0 运行，可在策略页仿真后升级。</div>`),
+ "失败":()=>desk("启用 A02 进入供货",`<div class="msg bad">华东销售部已经启用了 A02 进入供货（负责人 王磊）。需要不同参数时，请在该目标的策略中调整。</div><button class="btn ghost">打开已有目标</button>`),
+ "数据未知":()=>desk("启用 A02 · 第 4 步 规则预览",`<h2>规则预览</h2><div class="tbl"><table><tr><th>规则</th><th>用到</th><th>数据</th></tr><tr><td>硬条件 · 项目标的包含我方品类</td><td>档案 · 品类</td><td><span class="pill ok">可用</span></td></tr><tr><td>硬条件 · 项目位于服务区域</td><td>档案 · 区域</td><td><span class="pill ok">可用</span></td></tr><tr><td>排除 · 我方即中标方</td><td>档案 · 本企业</td><td><span class="pill warn">未关联本企业</span></td></tr><tr><td>加分 · 施工许可已发放</td><td>投资项目</td><td><span class="pill off">数据未接入，暂不生效</span></td></tr><tr><td>减分 · 中标方有较重信用风险</td><td>企业信用</td><td><span class="pill off">数据未接入，暂不生效</span></td></tr><tr><td>加分 · 中标方是已有客户</td><td>客户清单 48 家</td><td><span class="pill ok">可用</span></td></tr></table></div><p class="note">“数据未接入”的规则在对应数据上线前按未知处理；上线后需形成新策略版本并重新审批才会生效。</p>`)}}
+];
+
+
+let page=PAGES[0], state="正常";
+const $=id=>document.getElementById(id);
+function render(){
+  $("pages").innerHTML=PAGES.map(p=>`<button data-p="${p.id}" aria-current="${p===page}">${p.name}</button>`).join("");
+  $("states").innerHTML=ALL.map(s=>{const na=page.na[s];return `<button data-s="${s}" aria-pressed="${s===state}" ${na?`disabled title="${na}"`:""}>${s}</button>`}).join("");
+  const nas=Object.entries(page.na).map(([k,v])=>`${k}：${v}`).join("；");
+  $("note").textContent=nas?`不适用的状态：${nas}`:"";
+  $("stage").innerHTML=(page.s[state]||page.s["正常"])();
+  $("rules").innerHTML=`<div class="label">本页规则</div><ul>${page.rules.map(r=>`<li>${r}</li>`).join("")}</ul>`;
+}
+$("pages").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;page=PAGES.find(p=>p.id===b.dataset.p);state="正常";render()});
+$("states").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;state=b.dataset.s;render()});
+render();
+</script>
