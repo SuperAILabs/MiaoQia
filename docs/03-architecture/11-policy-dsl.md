@@ -238,7 +238,7 @@ policy:
 
 | 函数 | 说明 |
 |---|---|
-| `category.any_match(items, categories)` | 标的品目是否命中品类集合（含下级：代码按“-”分级，如 `CAT-PIPE` 含 `CAT-PIPE-PE`） |
+| `category.any_match(items, categories)` | 标的品类是否命中品类集合（含下级：代码按“-”分级，如 `CAT-PIPE` 含 `CAT-PIPE-PE`）；只比较行业包分类体系（`scheme` 以 `industry:` 开头）的代码，政府采购品目等其他体系不参与 |
 | `region.within(location, regions)` | 地点是否在行政区划集合内（含下级：`XX0000` 含全省，`XXXX00` 含全市，`000000` 为全国） |
 | `text.contains_any(text, vocab_terms)` | 文本是否包含词表中任一词（含同义词） |
 | `money.cny(amount)` | 金额归一为人民币元；非人民币金额在汇率视图就绪前为未知 |
