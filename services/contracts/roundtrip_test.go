@@ -25,6 +25,7 @@ func TestRoundTrip(t *testing.T) {
 		"OrgAbnormal":        func() any { return &OrgAbnormal{} },
 		"CreditRecord":       func() any { return &CreditRecord{} },
 		"Signal":             func() any { return &Signal{} },
+		"ContextSnapshot":    func() any { return &ContextSnapshot{} },
 		"InvestmentRecord":   func() any { return &InvestmentRecord{} },
 		"NormalizedDocument": func() any { return &NormalizedDocument{} },
 		"EvidenceRef":        func() any { return &EvidenceRef{} },

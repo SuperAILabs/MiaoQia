@@ -39,17 +39,20 @@ var (
 	defaultListBound   uint64 = 100
 	defaultStringBound uint64 = 2000
 	pathBounds                = map[string]uint64{
-		"fact.items":                        500,
-		"fact.requirements":                 200,
-		"fact.candidates":                   100,
-		"fact.org_ids":                      200,
-		"fact.winner.credit_flags":          200,
-		"fact.winner.history_categories":    500,
-		"fact.winner.supplied_brand_owners": 500,
-		"fact.winner.past_buyer_ids":        2000,
-		"lists":                             20000,
-		"vocab":                             1000,
-		"params":                            500,
+		"fact.items":                              500,
+		"fact.requirements":                       200,
+		"fact.candidates":                         100,
+		"fact.org_ids":                            200,
+		"fact.winner.credit_flags":                200,
+		"fact.winner.history_categories":          500,
+		"fact.winner.supplied_brand_owners":       500,
+		"fact.winner.past_buyer_ids":              2000,
+		"profile.org_ids":                         50,
+		"profile.entities":                        10,
+		"profile.entities.qualifications_pending": 20,
+		"lists":  20000,
+		"vocab":  1000,
+		"params": 500,
 	}
 )
 

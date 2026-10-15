@@ -1,0 +1,40 @@
+schema: intelligence/context-snapshot.schema.json
+base:
+  tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  org_unit_id: unit-gas-pipe
+  context_version: 12
+  unit_chain: [unit-gas-pipe, unit-root]
+  policy_view:
+    org_ids: [org_01JA8ZXXXXXXXXXXXXXXXXXXX1, org_01JA8ZXXXXXXXXXXXXXXXXXXX2]
+    offering_categories: [CAT-PIPE-PE]
+    service_regions: ["330000"]
+    brands: []
+    entities:
+      - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        qualifications: { Q-A: valid, Q-C: expired }
+        qualifications_pending: [Q-B]
+        qualifications_complete: true
+cases:
+  - name: 未关联本企业时不出现资质状态表
+    valid: true
+    patch:
+      - { op: replace, path: /policy_view/org_ids, value: [] }
+      - { op: remove, path: /policy_view/entities }
+  - name: 待核对不能作为已判定状态
+    valid: false
+    patch: [{ op: add, path: /policy_view/entities/0/qualifications/Q-B, value: pending }]
+  - name: 主体缺录全声明
+    valid: false
+    patch: [{ op: remove, path: /policy_view/entities/0/qualifications_complete }]
+  - name: 主体标识须为组织
+    valid: false
+    patch: [{ op: replace, path: /policy_view/entities/0/org_id, value: prj_01JA8ZXXXXXXXXXXXXXXXXXXX1 }]
+  - name: 资质状态表不能为空列表
+    valid: false
+    patch: [{ op: replace, path: /policy_view/entities, value: [] }]
+  - name: 未登记字段
+    valid: false
+    patch: [{ op: add, path: /policy_view/qualification_codes, value: [] }]
+  - name: 缺上下文版本
+    valid: false
+    patch: [{ op: remove, path: /context_version }]

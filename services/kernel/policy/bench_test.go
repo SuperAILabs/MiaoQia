@@ -52,9 +52,18 @@ func worstCase(factType string) Input {
 	for _, k := range []string{"blocked", "customers", "competitors", "tracked", "partners", "counterparties"} {
 		lists[k] = ids("org_"+k[:2], 20000)
 	}
+	quals := map[string]any{}
+	for _, q := range ids("QQ", 100) {
+		quals[q.(string)] = "valid"
+	}
+	entities := make([]any, 10)
+	for i := range entities {
+		entities[i] = map[string]any{"org_id": fmt.Sprintf("org_me%d", i), "qualifications": quals,
+			"qualifications_pending": ids("QP", 20), "qualifications_complete": true}
+	}
 	profile := map[string]any{
-		"org_id": "org_me", "offering_categories": ids("CAT-P-", 500), "service_regions": ids("44", 500),
-		"qualification_codes": ids("QQ", 100), "brands": ids("brand", 100),
+		"org_ids": ids("org_me", 50), "offering_categories": ids("CAT-P-", 500), "service_regions": ids("44", 500),
+		"entities": entities, "brands": ids("brand", 100),
 	}
 	vocab := map[string]any{"exclude_terms": ids("排除词", 1000)}
 	return Input{FactType: factType, Fact: fact, Event: map[string]any{"type": "tendering.result.published.v1"},

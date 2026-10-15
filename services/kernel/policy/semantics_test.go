@@ -284,3 +284,66 @@ func TestLowConfidenceCategoryNeedsReview(t *testing.T) {
 		t.Errorf("增强品类置信度达标应与样例一致：%s", r.Disposition)
 	}
 }
+
+// 资质缺口按我方主体三值判断（PRD 第2段 F3“求值输入与未知传播”、用例 22）：
+// 有效为满足、过期为不具备、待核对为未知；未录入时声明录全为不具备，否则为未知；不跨主体拼凑。
+func TestQualificationGapByEntity(t *testing.T) {
+	pack := loadTendering(t)
+	tpl := pack.Templates["TPL-TENDER-A01-BID"]
+	c, issues := Compile(tpl, pack.Features, DefaultLimits())
+	if issues != nil {
+		t.Fatalf("编译失败：%v", issues)
+	}
+	ent := func(org string, quals map[string]any, pending []any, complete bool) map[string]any {
+		return map[string]any{"org_id": org, "qualifications": quals, "qualifications_pending": pending, "qualifications_complete": complete}
+	}
+	fact := map[string]any{
+		"stage": "announced", "method": "open_tender", "title": "管材采购", "location": "330106",
+		"categories":   []any{map[string]any{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE"}},
+		"requirements": []any{map[string]any{"kind": "qualification", "code": "Q-A"}, map[string]any{"kind": "qualification", "code": "Q-B"}},
+		"bid_deadline": "2026-11-20T09:30:00+08:00", "buyer": map[string]any{"org_id": "org_b1"},
+	}
+	cases := []struct {
+		name     string
+		entities []any // nil 表示快照没有 entities（未关联本企业）
+		want     Truth
+	}{
+		{"A 有效、B 待核对为未知", []any{ent("org_me", map[string]any{"Q-A": "valid"}, []any{"Q-B"}, true)}, Unknown},
+		{"B 确认过期为缺口", []any{ent("org_me", map[string]any{"Q-A": "valid", "Q-B": "expired"}, []any{}, true)}, True},
+		{"B 未录入、未声明录全为未知", []any{ent("org_me", map[string]any{"Q-A": "valid"}, []any{}, false)}, Unknown},
+		{"B 未录入、已声明录全为缺口", []any{ent("org_me", map[string]any{"Q-A": "valid"}, []any{}, true)}, True},
+		{"A、B 均有效无缺口", []any{ent("org_me", map[string]any{"Q-A": "valid", "Q-B": "valid"}, []any{}, true)}, False},
+		{"已知缺口与待核对并存仍为缺口", []any{ent("org_me", map[string]any{"Q-A": "expired"}, []any{"Q-B"}, true)}, True},
+		{"两主体各有一项不能拼凑", []any{ent("org_me", map[string]any{"Q-A": "valid"}, []any{}, true), ent("org_me2", map[string]any{"Q-B": "valid"}, []any{}, true)}, True},
+		{"一主体有缺口、另一主体可能满足为未知", []any{ent("org_me", map[string]any{"Q-A": "valid", "Q-B": "expired"}, []any{}, true), ent("org_me2", map[string]any{"Q-A": "valid"}, []any{"Q-B"}, true)}, Unknown},
+		{"一主体全部有效即无缺口", []any{ent("org_me", map[string]any{"Q-A": "expired"}, []any{}, true), ent("org_me2", map[string]any{"Q-A": "valid", "Q-B": "valid"}, []any{}, true)}, False},
+		{"未关联本企业为未知", nil, Unknown},
+	}
+	for _, tc := range cases {
+		profile := map[string]any{"org_ids": []any{"org_me", "org_me2"}, "offering_categories": []any{"CAT-PIPE-PE"}, "service_regions": []any{"330000"}, "brands": []any{}}
+		if tc.entities != nil {
+			profile["entities"] = tc.entities
+		}
+		r, err := c.Evaluate(Input{FactType: "tendering.lot_opportunity", Fact: fact, Profile: profile,
+			Lists: map[string]any{"customers": []any{}, "blocked": []any{}}, Now: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)})
+		if err != nil {
+			t.Fatalf("%s：%v", tc.name, err)
+		}
+		var got *RuleTrace
+		for i := range r.Trace {
+			if r.Trace[i].ID == "P-QUAL-GAP" {
+				got = &r.Trace[i]
+			}
+		}
+		if got == nil || got.Result != tc.want {
+			t.Errorf("%s：P-QUAL-GAP 期望 %s，得到 %v\n%s", tc.name, tc.want, got, traceText(r))
+			continue
+		}
+		if wantScore := map[Truth]int{True: 35, False: 50, Unknown: 50}[tc.want]; r.Score != wantScore {
+			t.Errorf("%s：得分期望 %d，得到 %d", tc.name, wantScore, r.Score)
+		}
+		if len(r.Alerts) > 0 {
+			t.Errorf("%s：出现告警 %v", tc.name, r.Alerts)
+		}
+	}
+}

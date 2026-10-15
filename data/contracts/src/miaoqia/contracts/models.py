@@ -113,6 +113,26 @@ class Role(Enum):
     supervisor = "supervisor"
 
 
+class OrgId(RootModel[constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")]):
+    root: constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+class OfferingCategory(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
+class ServiceRegion(RootModel[constr(pattern=r"^[0-9]{6}$")]):
+    root: constr(pattern=r"^[0-9]{6}$")
+
+
+class Brand(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
+class UnitChainItem(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
 class AmountKind(Enum):
     total = "total"
     ceiling = "ceiling"
@@ -183,6 +203,10 @@ class EndingType(Enum):
     terminated = "terminated"
     failed_bid = "failed_bid"
     voided = "voided"
+
+
+class QualificationsPendingItem(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
 
 
 class EvaluationMethod(Enum):
@@ -551,6 +575,11 @@ class Classification(Enum):
     personal = "personal"
 
 
+class QualificationStatus(Enum):
+    valid = "valid"
+    expired = "expired"
+
+
 class Status1(Enum):
     ok = "ok"
     warning = "warning"
@@ -770,6 +799,24 @@ class EndingSection(BaseModel):
     reason: Text | None = None
 
 
+class EntityQualifications(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    org_id: constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")
+    qualifications: dict[str, QualificationStatus] = Field(
+        ..., description="资质代码（行业包资质模板）→ 状态"
+    )
+    qualifications_pending: list[QualificationsPendingItem] = Field(
+        ...,
+        description="待核对的资质代码（来源观察冲突，等待 can_edit_profile 成员确认）",
+        max_length=20,
+    )
+    qualifications_complete: bool = Field(
+        ..., description="该主体已声明“资质已录全”（写入档案版本与审计）"
+    )
+
+
 class EvidenceRef(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -985,6 +1032,51 @@ class Contact(BaseModel):
     name_prov: Provenance | None = None
     phone_prov: Provenance | None = None
     email_prov: Provenance | None = None
+
+
+class ContextPolicyView(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    org_ids: list[OrgId] = Field(
+        ...,
+        description="我方主体（集团客户的多个法人）；空列表表示尚未关联本企业，依赖它的条件按未知或不命中处理",
+        max_length=50,
+    )
+    offering_categories: list[OfferingCategory] = Field(
+        ..., description="行业包分类体系的品类代码"
+    )
+    service_regions: list[ServiceRegion] = Field(
+        ..., description="GB/T 2260 行政区划代码；上级包含全部下级"
+    )
+    brands: list[Brand] = Field(..., description="自有或授权的品牌")
+    entities: list[EntityQualifications] | None = Field(
+        None,
+        description="按主体的资质状态表；未关联本企业时不出现，资质条件为未知",
+        max_length=10,
+        min_length=1,
+    )
+
+
+class ContextSnapshot(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tenant_id: constr(pattern=r"^tnt_[0-9A-HJKMNP-TV-Z]{26}$")
+    org_unit_id: constr(min_length=1) = Field(
+        ...,
+        description="目标所在的组织单元（identity 的 OrgUnit；标识前缀随 identity 契约登记）",
+    )
+    context_version: conint(ge=1) = Field(
+        ...,
+        description="租户上下文版本；档案、清单与单元覆盖的每次提交在同一事务中递增",
+    )
+    unit_chain: list[UnitChainItem] = Field(
+        ...,
+        description="合成所用的单元链，从目标所在单元到根单元；逐项取值时未覆盖继承上级，显式空集合不继承",
+        min_length=1,
+    )
+    policy_view: ContextPolicyView
 
 
 class ContractSection(BaseModel):

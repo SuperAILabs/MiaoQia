@@ -5,6 +5,10 @@
  */
 export type Decimal = string;
 /**
+ * 已判定的资质状态：有效或过期（含双方一致或已确认）。待核对不在此列，单列于 qualifications_pending
+ */
+export type QualificationStatus = "valid" | "expired";
+/**
  * 以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人进入 persons。
  */
 export type CreditRecord = PublicFactMeta & {
@@ -642,6 +646,266 @@ export interface Contact {
   name_prov?: Provenance;
   phone_prov?: Provenance;
   email_prov?: Provenance;
+}
+/**
+ * 策略表达式的 profile 变量。规模上界与 contracts/policy/cel-environment.yaml 的 size_bounds 一致。带资质的主体超过 10 个或某主体待核对超过 20 项时不截断（截断会把可满足的主体丢掉而误判缺口）：省略 entities，资质条件为未知，并告警
+ */
+export interface ContextPolicyView {
+  /**
+   * 我方主体（集团客户的多个法人）；空列表表示尚未关联本企业，依赖它的条件按未知或不命中处理
+   *
+   * @maxItems 50
+   */
+  org_ids: string[];
+  /**
+   * 行业包分类体系的品类代码
+   */
+  offering_categories: string[];
+  /**
+   * GB/T 2260 行政区划代码；上级包含全部下级
+   */
+  service_regions: string[];
+  /**
+   * 自有或授权的品牌
+   */
+  brands: string[];
+  /**
+   * 按主体的资质状态表；未关联本企业时不出现，资质条件为未知
+   *
+   * @minItems 1
+   * @maxItems 10
+   */
+  entities?:
+    | [EntityQualifications]
+    | [EntityQualifications, EntityQualifications]
+    | [EntityQualifications, EntityQualifications, EntityQualifications]
+    | [EntityQualifications, EntityQualifications, EntityQualifications, EntityQualifications]
+    | [EntityQualifications, EntityQualifications, EntityQualifications, EntityQualifications, EntityQualifications]
+    | [
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications
+      ]
+    | [
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications
+      ]
+    | [
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications
+      ]
+    | [
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications
+      ]
+    | [
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications,
+        EntityQualifications
+      ];
+}
+/**
+ * 一个我方主体的资质状态表。某项资质要求对本主体的判定：在 qualifications 中有效为满足、过期为不具备；在 qualifications_pending 中为未知；都不在时，qualifications_complete 为真则不具备，否则未知。同一代码不同时出现在 qualifications 与 qualifications_pending 中
+ */
+export interface EntityQualifications {
+  org_id: string;
+  /**
+   * 资质代码（行业包资质模板）→ 状态
+   */
+  qualifications: {
+    [k: string]: QualificationStatus;
+  };
+  /**
+   * 待核对的资质代码（来源观察冲突，等待 can_edit_profile 成员确认）
+   *
+   * @maxItems 20
+   */
+  qualifications_pending:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  /**
+   * 该主体已声明“资质已录全”（写入档案版本与审计）
+   */
+  qualifications_complete: boolean;
+}
+/**
+ * customer-context.GetContextSnapshot 按（租户、组织单元、上下文版本）返回的合成结果中供策略求值读取的部分（草案；规则见 docs/01-product/prd/02-profile-and-objectives.md F3 与 docs/03-architecture/subsystems/customer-context.md）。policy_view 即策略表达式中的 profile 变量。字段缺失表示未知，不使用 null。
+ */
+export interface ContextSnapshot {
+  tenant_id: string;
+  /**
+   * 目标所在的组织单元（identity 的 OrgUnit；标识前缀随 identity 契约登记）
+   */
+  org_unit_id: string;
+  /**
+   * 租户上下文版本；档案、清单与单元覆盖的每次提交在同一事务中递增
+   */
+  context_version: number;
+  /**
+   * 合成所用的单元链，从目标所在单元到根单元；逐项取值时未覆盖继承上级，显式空集合不继承
+   *
+   * @minItems 1
+   */
+  unit_chain: [string, ...string[]];
+  policy_view: ContextPolicyView;
 }
 export interface ContractSection {
   id: string;
