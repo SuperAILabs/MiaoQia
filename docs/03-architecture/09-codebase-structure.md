@@ -127,8 +127,9 @@ contracts/apis/<子系统>/openapi.yaml
 | `uv run --project tools/contracts mqc generate --check` | 生成物一致性检查 |
 | `uv run --project tools/contracts mqc fixtures --export DIR` | 导出正例，供往返测试 |
 | `uv run --project tools/contracts mqc compat --base origin/main -v` | 与目标分支比较的兼容性检查（合并请求必过） |
+| `uv run --project tools/contracts mqc freeze-check` | 冻结记录哈希核对：受约束段落变化须升版本，佐证材料只报告 |
 
-**版本与兼容性**：每个 Schema 文件带 `x-version`。变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。OpenAPI组件引用展开后参与兼容比较；稳定API破坏性变更须新路径主版本并保留旧路径。SQL变化须升版本并提供可审查迁移文件，CREATE IF NOT EXISTS不能代替已有表升级；标识登记还检查对象/所有者/领域归属及代码字面量前缀。冻结按具体清单记录Schema x-version、API/AsyncAPI info.version、标识/存储/集成配置version与文件哈希；事件类型版本独立于文档版本。
+**版本与兼容性**：每个 Schema 文件带 `x-version`。变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。OpenAPI组件引用展开后参与兼容比较；稳定API破坏性变更须新路径主版本并保留旧路径。SQL变化须升版本并提供可审查迁移文件，CREATE IF NOT EXISTS不能代替已有表升级；标识登记还检查对象/所有者/领域归属及代码字面量前缀。冻结按具体清单记录Schema x-version、API/AsyncAPI info.version、标识/存储/集成配置version与文件哈希；事件类型版本独立于文档版本。`mqc freeze-check` 核对 `contracts/reviews/` 下全部记录：同一路径以最晚记录为准；`files`、`version_owners`、`reused_frozen_dependencies` 中的文件内容变化须高于冻结版本，或另立修订记录（原记录不改）；其余段落是冻结时的证据快照，偏离只报告。
 
 ## 6. 命名约定
 
