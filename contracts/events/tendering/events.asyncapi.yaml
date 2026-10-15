@@ -78,7 +78,7 @@ components:
               $ref: ../../schemas/domains/procurement/defs.schema.json#/$defs/notice_type
     noticeAmended:
       name: tendering.notice.amended.v1
-      summary: 更正、澄清导致被更正公告的字段变化
+      summary: 更正、澄清应用到采购项目后，项目或标包当前状态的字段变化（被更正公告本身不改写）
       payload:
         allOf:
         - $ref: '#/components/schemas/base'
@@ -96,7 +96,7 @@ components:
               type: array
               items:
                 type: string
-              description: JSON Pointer 列表
+              description: JSON Pointer 列表，相对 ProcurementProject（如 /lots/0/deadlines）
     deadlineChanged:
       name: tendering.deadline.changed.v1
       summary: 任一截止时间变化（含首次确定）
