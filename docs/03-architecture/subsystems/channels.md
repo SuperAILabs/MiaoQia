@@ -104,7 +104,8 @@
 | 实体 | 说明 |
 |---|---|
 | `ChannelInstallation` | 租户在某渠道的应用安装与配置：所属企业标识、状态（待验证 / 已启用 / 异常 / 已停用）、健康状态（凭证存放于密钥管理系统） |
-| `ChannelBinding` | 渠道账号与平台成员的绑定：渠道账号、所属安装、成员、状态、失效原因；一个渠道账号只绑定一个成员，一个成员在同一渠道只绑定一个账号 |
+| `BindingRequest` | 绑定请求：发起的渠道账号、固定的 Web 会话、过期时间、状态；一次性 |
+| `ChannelBinding` | 渠道账号与平台成员的绑定：渠道账号、所属安装、成员、状态、版本、失效原因；一个渠道账号只绑定一个成员，一个成员在同一渠道只绑定一个账号 |
 | `Conversation` | 渠道会话：渠道、线程标识、参与者、关联的研究案例 |
 | `NotificationRule` / `Preference` | 通知规则与个人偏好 |
 | `Notification` / `Delivery` | 通知与投递记录（幂等键：`notification_id + channel + recipient`） |
@@ -116,7 +117,7 @@
 | 接口 | 类型 | 说明 |
 |---|---|---|
 | `InstallChannel` / `VerifyInstallation` / `UninstallChannel` | 命令 | 租户管理员安装、以测试消息验证、停用渠道应用；停用使该安装下全部绑定失效 |
-| `StartBinding` / `BindAccount` / `UnbindAccount` / `ListBindings` | 命令/查询 | 渠道账号绑定：`StartBinding` 签发一次性绑定链接，`BindAccount` 在 Web 会话中确认；绑定、解绑与失效同步调用 identity 的 `LinkFederatedIdentity` / `UnlinkFederatedIdentity`。流程见 [PRD 第1段](../../01-product/prd/01-login-and-channel-binding.md) |
+| `StartBinding` / `BindAccount` / `UnbindAccount` / `ListBindings` | 命令/查询 | 渠道账号绑定：`StartBinding` 为发起的渠道账号签发一次性绑定链接；`BindAccount` 只在渠道内置浏览器中、经渠道网页授权取得的当前渠道账号与链接一致且已登录妙洽时确认，请求与首次登录的会话固定。绑定的权威在本子系统；免登时先核对绑定有效，再调用 identity 的 `IssueChannelSession`。流程见 [PRD 第1段](../../01-product/prd/01-login-and-channel-binding.md) |
 | `ReceiveInbound` | 命令 | 适配器回调入口（经 `gateway` 暴露，验签） |
 | `ExecuteAction` | 命令 | 动作令牌触发，转调对应子系统命令并再次授权 |
 | `GetPreferences` / `UpdatePreferences` | 查询/命令 | 偏好 |
