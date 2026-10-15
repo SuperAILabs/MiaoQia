@@ -8,7 +8,7 @@
   P3  视图投影的来源 Schema 存在
   P4  模板引用的事实类型、视图项、特征、参数、档案字段、原因代码都已声明
   P5  规则编号前缀与子句一致且不重复；排除规则必须有原因代码
-  P6  表达式中出现的事件类型已在 contracts/events 中定义
+  P6  表达式与视图 triggers 中出现的事件类型已在 contracts/events 中定义
   P7  样例的期望处置取值合法
 """
 from __future__ import annotations
@@ -132,6 +132,9 @@ def check_application_pack(repo: Repo, pack_dir: Path) -> Report:
             r.error(where_v, f"P3 {ft} 的来源 Schema 不存在：{src}")
         elif not src.startswith("contracts/"):
             r.error(where_v, f"P3 {ft} 没有正式来源 Schema：{src}")
+        for ev in d.get("triggers", []):
+            if ev not in events:
+                r.error(where_v, f"P6 {ft} 的触发事件 {ev} 未在 contracts/events 中定义")
 
     def fact_field_ok(fld: str, fts) -> bool:
         return fld in item_roots or any(fld in fact_types[t]["fields"] for t in fts if t in fact_types)

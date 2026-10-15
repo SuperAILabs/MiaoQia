@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/intelligence/signal.schema.json",
+  "x-version": "0.1.0",
+  "title": "Signal 信号",
+  "description": "detection 对一个求值单位按租户策略求值得到的结果（草案；语义见 docs/03-architecture/11-policy-dsl.md 第 4 节与 subsystems/detection.md）。同一策略对同一求值单位（subject 的 type、id 与 part_id）只有一条信号；求值单位状态变化导致的处置变化以 SignalUpdate 追加记录，并更新本对象的当前处置。no_signal 不产生信号。",
+  "type": "object",
+  "allOf": [
+    { "$ref": "defs.schema.json#/$defs/tenant_meta" },
+    {
+      "if": { "properties": { "disposition": { "const": "excluded" } } },
+      "then": { "required": ["reason_code"] }
+    }
+  ],
+  "required": ["id", "objective_id", "objective_code", "policy", "subject", "disposition", "score", "trace", "view_snapshot_hash", "context_snapshot_version", "evaluated_at", "trigger_event_id", "status", "update_count"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "objective_id": { "type": "string", "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$", "description": "租户启用的商业目标 TenantObjective" },
+    "objective_code": { "type": "string", "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$", "description": "应用领域包中的目标编号，如 APP-TENDER.A01" },
+    "policy": { "$ref": "defs.schema.json#/$defs/policy_ref" },
+    "subject": { "$ref": "defs.schema.json#/$defs/subject_ref", "description": "求值单位；version 为本次求值读取的版本" },
+    "disposition": { "enum": ["pursue_candidate", "review_candidate", "watch_signal", "excluded"] },
+    "needs_review": { "type": "boolean", "description": "存在按 missing: review 处理的未知硬条件" },
+    "score": { "type": "integer", "description": "同一策略下的排序分，不代表成交概率" },
+    "reason_code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$", "description": "excluded 时的原因代码（应用领域包 reason_codes 登记）" },
+    "trace": { "type": "array", "items": { "$ref": "#/$defs/rule_trace" } },
+    "features": { "type": "object", "description": "特征快照：特征名 → 值；未知的特征不出现，不含其他租户的信息" },
+    "view_snapshot_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "context_snapshot_version": { "type": "integer", "minimum": 1 },
+    "evaluated_at": { "type": "string", "format": "date-time", "description": "逻辑求值时间，即触发事件的时间（表达式中的 now）" },
+    "trigger_event_id": { "type": "string", "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "status": {
+      "enum": ["open", "triaged", "converted", "dismissed", "closed"],
+      "description": "open 待处理；triaged 已由用户调整处置；converted 已发起研究或推进；dismissed 用户忽略；closed 求值单位进入终态（如截止、终止）后关闭"
+    },
+    "update_count": { "type": "integer", "minimum": 0, "description": "已追加的 SignalUpdate 数" }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "rule_trace": {
+      "x-type-name": "RuleTrace",
+      "type": "object",
+      "required": ["id", "clause", "result"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[RXWBP]-[A-Z0-9-]+$" },
+        "clause": { "enum": ["require", "exclude", "watch", "boost", "penalize"] },
+        "result": { "enum": ["true", "false", "unknown"] },
+        "unknown_fields": { "type": "array", "items": { "type": "string" }, "description": "导致未知的字段（缺失或证据不达标）" },
+        "say": { "type": "string", "description": "渲染后的业务说明" }
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: INF-PROC 领域事件
-  version: 1.0.0
+  version: 1.0.1
   description: '由 domain-intelligence 依据 INF-PROC 的变化检测规则发布。信封为 CloudEvents 1.0， 约定见
     docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。 公共域事件：miaoqiazone
     = public，租户与单元为空。
@@ -78,7 +78,7 @@ components:
               $ref: ../../schemas/domains/procurement/defs.schema.json#/$defs/notice_type
     noticeAmended:
       name: tendering.notice.amended.v1
-      summary: 更正、澄清导致被更正公告的字段变化
+      summary: 更正、澄清应用到采购项目后，项目或标包当前状态的字段变化（被更正公告本身不改写）
       payload:
         allOf:
         - $ref: '#/components/schemas/base'
@@ -96,7 +96,7 @@ components:
               type: array
               items:
                 type: string
-              description: JSON Pointer 列表
+              description: JSON Pointer 列表，相对 ProcurementProject（如 /lots/0/deadlines）
     deadlineChanged:
       name: tendering.deadline.changed.v1
       summary: 任一截止时间变化（含首次确定）

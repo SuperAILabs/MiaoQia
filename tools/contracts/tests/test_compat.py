@@ -225,7 +225,8 @@ def test_new_identifier_requires_minor_version(sandbox):
     d['prefixes']['new'] = {'object':'NewObject','owner':'kernel'}
     p.write_text(yaml.safe_dump(d))
     assert any('新增前缀' in e for e in run(sandbox).errors)
-    d['version'] = '1.1.0'
+    major, minor, _ = map(int, d['version'].split('.'))
+    d['version'] = f'{major}.{minor + 1}.0'
     p.write_text(yaml.safe_dump(d))
     assert run(sandbox).errors == []
 

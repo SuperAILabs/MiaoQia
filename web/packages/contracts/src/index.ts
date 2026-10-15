@@ -383,6 +383,62 @@ export type ProcurementProject = PublicFactMeta & {
   lots: [ProjectLot, ...ProjectLot[]];
   [k: string]: unknown;
 };
+/**
+ * detection 对一个求值单位按租户策略求值得到的结果（草案；语义见 docs/03-architecture/11-policy-dsl.md 第 4 节与 subsystems/detection.md）。同一策略对同一求值单位（subject 的 type、id 与 part_id）只有一条信号；求值单位状态变化导致的处置变化以 SignalUpdate 追加记录，并更新本对象的当前处置。no_signal 不产生信号。
+ */
+export type Signal = TenantMeta & {
+  id: string;
+  /**
+   * 租户启用的商业目标 TenantObjective
+   */
+  objective_id: string;
+  /**
+   * 应用领域包中的目标编号，如 APP-TENDER.A01
+   */
+  objective_code: string;
+  policy: PolicyRef;
+  subject: SubjectRef;
+  disposition: "pursue_candidate" | "review_candidate" | "watch_signal" | "excluded";
+  /**
+   * 存在按 missing: review 处理的未知硬条件
+   */
+  needs_review?: boolean;
+  /**
+   * 同一策略下的排序分，不代表成交概率
+   */
+  score: number;
+  /**
+   * excluded 时的原因代码（应用领域包 reason_codes 登记）
+   */
+  reason_code?: string;
+  trace: RuleTrace[];
+  /**
+   * 特征快照：特征名 → 值；未知的特征不出现，不含其他租户的信息
+   */
+  features?: {
+    [k: string]: unknown;
+  };
+  view_snapshot_hash: string;
+  context_snapshot_version: number;
+  /**
+   * 逻辑求值时间，即触发事件的时间（表达式中的 now）
+   */
+  evaluated_at: string;
+  trigger_event_id: string;
+  /**
+   * open 待处理；triaged 已由用户调整处置；converted 已发起研究或推进；dismissed 用户忽略；closed 求值单位进入终态（如截止、终止）后关闭
+   */
+  status: "open" | "triaged" | "converted" | "dismissed" | "closed";
+  /**
+   * 已追加的 SignalUpdate 数
+   */
+  update_count: number;
+  [k: string]: unknown;
+};
+/**
+ * 目标对象类型（业务架构第 3 节）
+ */
+export type SubjectType = "project" | "domain_fact" | "organization" | "market" | "relationship" | "program";
 
 export interface AcceptanceSection {
   id: string;
@@ -879,6 +935,15 @@ export interface OrgShareholder {
   subscribed_capital?: Money;
   share_ratio_prov?: Provenance;
 }
+/**
+ * 产生结果的策略版本：租户策略及其所基于的应用领域包模板
+ */
+export interface PolicyRef {
+  policy_id: string;
+  policy_version: number;
+  template_id: string;
+  template_version: string;
+}
 export interface ProjectLot {
   id: string;
   lot_key: string;
@@ -937,4 +1002,37 @@ export interface RequestContext {
   tenant?: string;
   cell?: string;
   purpose?: string;
+}
+export interface RuleTrace {
+  id: string;
+  clause: "require" | "exclude" | "watch" | "boost" | "penalize";
+  result: "true" | "false" | "unknown";
+  /**
+   * 导致未知的字段（缺失或证据不达标）
+   */
+  unknown_fields?: string[];
+  /**
+   * 渲染后的业务说明
+   */
+  say?: string;
+}
+/**
+ * 租户域对象的通用字段
+ */
+export interface TenantMeta {
+  id: UlidId;
+  tenant_id: string;
+  schema_version: string;
+  created_at: string;
+  updated_at: string;
+  [k: string]: unknown;
+}
+/**
+ * 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱 prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_ 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为 prg_。version 为被引用对象在求值或判断时的版本，domain_fact 必填；实体图谱对象的版本语义尚未定义，暂为可选。part_id 指向对象内部的求值单位（如采购项目的标包 lot_）。
+ */
+export interface SubjectRef {
+  type: SubjectType;
+  id: UlidId;
+  version?: number;
+  part_id?: UlidId;
 }
