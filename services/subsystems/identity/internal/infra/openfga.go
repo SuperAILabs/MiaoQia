@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	fga "github.com/openfga/go-sdk"
 	"github.com/openfga/go-sdk/client"
@@ -103,7 +104,9 @@ func sameModel(a, b []fga.TypeDefinition) bool {
 
 // Check 是授权决策。
 func (o *OpenFGA) Check(ctx context.Context, req authz.Request) (bool, error) {
-	res, err := o.c.Check(ctx).Body(client.ClientCheckRequest{User: req.Subject, Relation: req.Relation, Object: req.Object}).Execute()
+	// 带到期时间的关系（not_expired 条件）以决策时刻判断
+	now := map[string]any{"current_time": time.Now().UTC().Format(time.RFC3339Nano)}
+	res, err := o.c.Check(ctx).Body(client.ClientCheckRequest{User: req.Subject, Relation: req.Relation, Object: req.Object, Context: &now}).Execute()
 	if err != nil {
 		return false, err
 	}
@@ -130,5 +133,13 @@ func (o *OpenFGA) GrantAll(ctx context.Context, tuples [][3]string) error {
 func (o *OpenFGA) Grant(ctx context.Context, subject, relation, object string) error {
 	_, err := o.c.WriteTuples(ctx).Body(client.ClientWriteTuplesBody{{User: subject, Relation: relation, Object: object}}).
 		Options(client.ClientWriteOptions{Conflict: client.ClientWriteConflictOptions{OnDuplicateWrites: client.CLIENT_WRITE_REQUEST_ON_DUPLICATE_WRITES_IGNORE}}).Execute()
+	return err
+}
+
+// GrantUntil 写入一条到期自动失效的关系（外部协作者等；关系须在模型中声明 with not_expired）。
+func (o *OpenFGA) GrantUntil(ctx context.Context, subject, relation, object string, expiresAt time.Time) error {
+	cond := map[string]any{"expires_at": expiresAt.UTC().Format(time.RFC3339Nano)}
+	_, err := o.c.WriteTuples(ctx).Body(client.ClientWriteTuplesBody{{User: subject, Relation: relation, Object: object,
+		Condition: &fga.RelationshipCondition{Name: "not_expired", Context: &cond}}}).Execute()
 	return err
 }

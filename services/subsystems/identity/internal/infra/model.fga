@@ -1,8 +1,12 @@
 # 授权模型（OpenFGA）。权限矩阵与语义见 docs/03-architecture/subsystems/identity.md 第 7 节；
-# 测试逐格校验本模型与矩阵一致（contract_test.go）。
+# 测试逐格校验本模型与矩阵一致（matrix_test.go），角色绑定在租户上与绑定在组织单元上各校验一遍。
 #
-# 角色绑定在租户或组织单元上，组织单元继承上级的角色；租户域资源归属某个组织单元（unit）。
-# 外部协作者不是租户成员，只经资源上的直接关系（推进协作者、研究共享）获得访问。
+# 成员资格：租户的用户与服务账号都有 tenant#member（directory 维护，停用即删除）。角色关系与参与关系都与成员资格
+# 取交集，成员停用后残留的角色或参与元组自动失效。
+# 范围：租户管理员只绑定在租户上；其余角色可绑定在租户或组织单元上，组织单元继承上级的角色，不作用于兄弟单元。
+# 每个租户有一个根组织单元；租户域资源归属某个组织单元（unit），在资源所在单元判断，创建类动作在目标单元上判断。
+# 资源为 tenant 的动作作用于整个租户：查看档案与检索公共数据对全体成员开放，其余只认绑定在租户上的角色。
+# 外部协作者不是租户成员，只经推进上的 external_collaborator 关系（带到期时间）获得受限视图。
 # 审批（策略激活、批量导出等）的“申请人不能批准自己”由 identity 的审批服务保证，不在本模型中表达。
 model
   schema 1.1
@@ -18,20 +22,17 @@ type platform
 
 type tenant
   relations
-    define admin: [user]
-    define decision_maker: [user]
-    define business_developer: [user]
-    define pursuit_lead: [user]
-    define research_analyst: [user]
-    define domain_expert: [user]
-    define member: [user, service_account] or admin or decision_maker or business_developer or pursuit_lead or research_analyst or domain_expert
+    define member: [user, service_account]
+    define tenant_member: member
+    define admin: [user] and member
+    define decision_maker: [user, service_account] and member
+    define business_developer: [user, service_account] and member
+    define pursuit_lead: [user, service_account] and member
+    define research_analyst: [user, service_account] and member
+    define domain_expert: [user, service_account] and member
     define can_view_profile: member
-    define can_edit_profile: domain_expert or admin
-    define can_manage_knowledge: domain_expert or admin
-    define can_create_objective: decision_maker or admin
     define can_search_public: member
-    define can_start_research: decision_maker or business_developer or pursuit_lead or research_analyst
-    define can_request_export: decision_maker or business_developer or pursuit_lead or research_analyst or admin
+    define can_edit_profile: domain_expert or admin
     define can_approve_export: admin
     define can_view_usage: decision_maker or admin
     define can_manage_members: admin
@@ -43,55 +44,73 @@ type tenant
 type org_unit
   relations
     define parent: [tenant, org_unit]
-    define admin: [user] or admin from parent
-    define decision_maker: [user] or decision_maker from parent
-    define business_developer: [user] or business_developer from parent
-    define pursuit_lead: [user] or pursuit_lead from parent
-    define research_analyst: [user] or research_analyst from parent
-    define domain_expert: [user] or domain_expert from parent
-    define member: [user, service_account] or member from parent or admin or decision_maker or business_developer or pursuit_lead or research_analyst or domain_expert
+    define tenant_member: tenant_member from parent
+    define admin: admin from parent
+    define decision_maker: ([user, service_account] and tenant_member) or decision_maker from parent
+    define business_developer: ([user, service_account] and tenant_member) or business_developer from parent
+    define pursuit_lead: ([user, service_account] and tenant_member) or pursuit_lead from parent
+    define research_analyst: ([user, service_account] and tenant_member) or research_analyst from parent
+    define domain_expert: ([user, service_account] and tenant_member) or domain_expert from parent
+    define scope_member: admin or decision_maker or business_developer or pursuit_lead or research_analyst or domain_expert
+    define can_create_objective: decision_maker
+    define can_start_research: decision_maker or business_developer or pursuit_lead or research_analyst
+    define can_manage_knowledge: domain_expert or admin
+    define can_request_export: decision_maker or business_developer or pursuit_lead or research_analyst or admin
 
 # 租户启用的商业目标：策略、信号、判断与决策都归属目标
 type objective
   relations
-    define unit: [org_unit, tenant]
+    define unit: [org_unit]
     define owner: [user]
-    define participant: ([user] or owner) and member from unit
+    define participant: ([user] or owner) and scope_member from unit
     define can_view: participant or decision_maker from unit or research_analyst from unit or admin from unit
-    define can_draft_policy: decision_maker from unit or admin from unit or (participant and business_developer from unit)
+    define can_edit: decision_maker from unit
+    define can_manage_participants: decision_maker from unit
+    define can_draft_policy: decision_maker from unit or (participant and business_developer from unit)
     define can_request_activation: can_draft_policy
     define can_approve_activation: decision_maker from unit or admin from unit
-    define can_view_signals: can_view
+    define can_view_signals: participant or decision_maker from unit or research_analyst from unit
     define can_feedback: decision_maker from unit or research_analyst from unit or (participant and pursuit_lead from unit) or (participant and business_developer from unit)
     define can_assign: decision_maker from unit or (participant and business_developer from unit)
     define can_draft_decision: decision_maker from unit or (participant and business_developer from unit) or (participant and pursuit_lead from unit)
     define can_approve_decision: decision_maker from unit
 
+# 研究只在租户内共享：发起人与共享对象须为租户成员
 type research_case
   relations
-    define unit: [org_unit, tenant]
-    define owner: [user]
+    define unit: [org_unit]
+    define owner: [user, service_account]
     define shared_with: [user]
-    define reader: owner or shared_with
-    define can_view: reader or decision_maker from unit or research_analyst from unit or admin from unit
-    define can_export: decision_maker from unit or research_analyst from unit or admin from unit or (reader and business_developer from unit) or (reader and pursuit_lead from unit)
+    define reader: (owner or shared_with) and tenant_member from unit
+    define can_view: reader or decision_maker from unit or research_analyst from unit
+    define can_export: decision_maker from unit or research_analyst from unit or (reader and business_developer from unit) or (reader and pursuit_lead from unit)
+    define can_share: can_export
 
 type pursuit
   relations
-    define unit: [org_unit, tenant]
+    define unit: [org_unit]
     define owner: [user]
     define collaborator: [user]
-    define involved: owner or collaborator
-    define can_view: involved or member from unit
-    define can_collaborate: involved or decision_maker from unit
+    define external_collaborator: [user with not_expired]
+    define involved: (owner or collaborator) and tenant_member from unit
+    define can_view: involved or decision_maker from unit or business_developer from unit or pursuit_lead from unit or research_analyst from unit or domain_expert from unit
+    define can_view_limited: can_view or external_collaborator
+    define can_collaborate: involved or external_collaborator or decision_maker from unit
     define can_edit: decision_maker from unit or (involved and business_developer from unit) or (involved and pursuit_lead from unit)
+    define can_manage_team: can_edit
     define can_invite_external: can_edit
 
-# 知识资产：一般资产挂在 unit 上，成员可见；受限资产挂在 restricted_unit 上，只有业务专家、管理员与被授予的成员可见
+# 知识资产：一般资产挂在 unit 上，范围内的成员可见；受限资产挂在 restricted_unit 上，只有业务专家与被授予的成员可见
 type knowledge_asset
   relations
-    define unit: [org_unit, tenant]
-    define restricted_unit: [org_unit, tenant]
+    define unit: [org_unit]
+    define restricted_unit: [org_unit]
     define viewer: [user]
-    define can_view: member from unit or (viewer and member from restricted_unit) or domain_expert from restricted_unit or admin from restricted_unit
+    define can_view: scope_member from unit or (viewer and scope_member from restricted_unit) or domain_expert from restricted_unit
+    define can_grant: domain_expert from restricted_unit or admin from restricted_unit
     define can_downgrade: admin from unit or admin from restricted_unit
+
+# 到期时间由关系携带，当前时间由授权决策点注入（infra.OpenFGA.Check）
+condition not_expired(current_time: timestamp, expires_at: timestamp) {
+  current_time < expires_at
+}
