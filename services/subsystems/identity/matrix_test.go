@@ -65,7 +65,16 @@ func matrix(t *testing.T) []row {
 // 资源为 tenant 的动作中对全体成员开放的关系（identity.md 第 7.1 节“范围”）；其余 tenant 动作只认绑定在租户上的角色。
 var memberWide = map[string]bool{"can_view_profile": true, "can_search_public": true}
 
-// fixture 是一个独立 store 中的租户 T 与其根单元 U；角色按 binding 绑定在租户或单元上（租户管理员总在租户上）。
+// subject 是该列在给定绑定方式下的主体：service_account 方式下，除租户管理员与外部协作者外的角色由服务账号承担。
+func subject(binding string, c struct{ title, relation, user string }) string {
+	if binding == "service_account" && c.relation != "" && c.relation != "admin" {
+		return "service_account:" + strings.TrimPrefix(c.user, "user:")
+	}
+	return c.user
+}
+
+// fixture 是一个独立 store 中的租户 T 与其根单元 U；角色按 binding 绑定在租户或单元上（租户管理员总在租户上）；
+// binding 为 service_account 时角色绑定在单元上、由服务账号承担。
 // 每类资源两个实例：…1 上全部用户都有参与关系（◐ 的“本人参与”），…2 上没有。
 func fixture(t *testing.T, binding string) (check func(user, relation, object string) bool, grant func(...[3]string), fga *infra.OpenFGA) {
 	t.Helper()
@@ -101,10 +110,10 @@ func fixture(t *testing.T, binding string) (check func(user, relation, object st
 			continue
 		}
 		scope := "tenant:t"
-		if binding == "org_unit" && c.relation != "admin" {
+		if binding != "tenant" && c.relation != "admin" {
 			scope = "org_unit:u"
 		}
-		tuples = append(tuples, [3]string{c.user, "member", "tenant:t"}, [3]string{c.user, c.relation, scope})
+		tuples = append(tuples, [3]string{subject(binding, c), "member", "tenant:t"}, [3]string{subject(binding, c), c.relation, scope})
 	}
 	for _, obj := range []string{"objective:o1", "objective:o2", "research_case:r1", "research_case:r2", "pursuit:p1", "pursuit:p2",
 		"knowledge_asset:k1", "knowledge_asset:k2"} {
@@ -113,12 +122,13 @@ func fixture(t *testing.T, binding string) (check func(user, relation, object st
 	tuples = append(tuples, [3]string{"org_unit:u", "restricted_unit", "knowledge_asset:kr1"}, [3]string{"org_unit:u", "restricted_unit", "knowledge_asset:kr2"})
 	// 外部协作者也写入全部成员式参与关系：它们必须因不是租户成员而不生效
 	for _, c := range roleColumns {
+		u := subject(binding, c)
 		tuples = append(tuples,
-			[3]string{c.user, "participant", "objective:o1"},
-			[3]string{c.user, "shared_with", "research_case:r1"},
-			[3]string{c.user, "collaborator", "pursuit:p1"},
-			[3]string{c.user, "viewer", "knowledge_asset:k1"},
-			[3]string{c.user, "viewer", "knowledge_asset:kr1"})
+			[3]string{u, "participant", "objective:o1"},
+			[3]string{u, "shared_with", "research_case:r1"},
+			[3]string{u, "collaborator", "pursuit:p1"},
+			[3]string{u, "viewer", "knowledge_asset:k1"},
+			[3]string{u, "viewer", "knowledge_asset:kr1"})
 	}
 	grant(tuples...)
 	if err := fga.GrantUntil(ctx, "user:ex", "external_collaborator", "pursuit:p1", time.Now().Add(time.Hour)); err != nil {
@@ -127,9 +137,9 @@ func fixture(t *testing.T, binding string) (check func(user, relation, object st
 	return check, grant, fga
 }
 
-// 授权模型与权限矩阵逐格一致（真实 OpenFGA，每次使用独立的 store），角色绑定在租户上与绑定在单元上各一遍。
+// 授权模型与权限矩阵逐格一致（真实 OpenFGA，每次使用独立的 store）：角色绑定在租户上、绑定在单元上、由服务账号承担各一遍。
 func TestPermissionMatrix(t *testing.T) {
-	for _, binding := range []string{"tenant", "org_unit"} {
+	for _, binding := range []string{"tenant", "org_unit", "service_account"} {
 		t.Run("绑定在"+binding, func(t *testing.T) {
 			check, _, _ := fixture(t, binding)
 			instances := map[string][2]string{
@@ -164,10 +174,11 @@ func TestPermissionMatrix(t *testing.T) {
 						continue
 					}
 					// 绑定在单元上的角色不作用于租户整体的动作（对全体成员开放的除外）
-					if binding == "org_unit" && r.resource == "tenant" && c.relation != "admin" && !memberWide[r.relation] {
+					if binding != "tenant" && r.resource == "tenant" && c.relation != "admin" && !memberWide[r.relation] {
 						want = [2]bool{}
 					}
-					got := [2]bool{check(c.user, r.relation, inst[0]), check(c.user, r.relation, inst[1])}
+					u := subject(binding, c)
+					got := [2]bool{check(u, r.relation, inst[0]), check(u, r.relation, inst[1])}
 					if got != want {
 						t.Errorf("「%s」%s：期望在参与/未参与的资源上为 %v/%v，模型为 %v/%v", r.action, c.title, want[0], want[1], got[0], got[1])
 					}

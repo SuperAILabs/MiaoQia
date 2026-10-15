@@ -1,5 +1,5 @@
 # 授权模型（OpenFGA）。权限矩阵与语义见 docs/03-architecture/subsystems/identity.md 第 7 节；
-# 测试逐格校验本模型与矩阵一致（matrix_test.go），角色绑定在租户上与绑定在组织单元上各校验一遍。
+# 测试逐格校验本模型与矩阵一致（matrix_test.go），角色绑定在租户上、绑定在组织单元上、由服务账号承担各校验一遍。
 #
 # 成员资格：租户的用户与服务账号都有 tenant#member（directory 维护，停用即删除）。角色关系与参与关系都与成员资格
 # 取交集，成员停用后残留的角色或参与元组自动失效。
@@ -61,8 +61,8 @@ type org_unit
 type objective
   relations
     define unit: [org_unit]
-    define owner: [user]
-    define participant: ([user] or owner) and scope_member from unit
+    define owner: [user, service_account]
+    define participant: ([user, service_account] or owner) and scope_member from unit
     define can_view: participant or decision_maker from unit or research_analyst from unit or admin from unit
     define can_edit: decision_maker from unit
     define can_manage_participants: decision_maker from unit
@@ -80,7 +80,7 @@ type research_case
   relations
     define unit: [org_unit]
     define owner: [user, service_account]
-    define shared_with: [user]
+    define shared_with: [user, service_account]
     define reader: (owner or shared_with) and tenant_member from unit
     define can_view: reader or decision_maker from unit or research_analyst from unit
     define can_export: decision_maker from unit or research_analyst from unit or (reader and business_developer from unit) or (reader and pursuit_lead from unit)
@@ -89,8 +89,8 @@ type research_case
 type pursuit
   relations
     define unit: [org_unit]
-    define owner: [user]
-    define collaborator: [user]
+    define owner: [user, service_account]
+    define collaborator: [user, service_account]
     define external_collaborator: [user with not_expired]
     define involved: (owner or collaborator) and tenant_member from unit
     define can_view: involved or decision_maker from unit or business_developer from unit or pursuit_lead from unit or research_analyst from unit or domain_expert from unit
@@ -105,7 +105,7 @@ type knowledge_asset
   relations
     define unit: [org_unit]
     define restricted_unit: [org_unit]
-    define viewer: [user]
+    define viewer: [user, service_account]
     define can_view: scope_member from unit or (viewer and scope_member from restricted_unit) or domain_expert from restricted_unit
     define can_grant: domain_expert from restricted_unit or admin from restricted_unit
     define can_downgrade: admin from unit or admin from restricted_unit
