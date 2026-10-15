@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.2 · 更新：2026-10-15 · 平面：平台
+> 状态：评审中 · 版本：1.3 · 更新：2026-10-15 · 平面：平台
 
 ## 1. 使命
 
@@ -35,7 +35,7 @@
 
 ## 4. 拥有的数据
 
-`Tenant`、`OrgUnit`、`Workspace`、`Member`、`ServiceAccount`、`RoleBinding`、`RelationTuple`（授权关系）、`ApprovalType`、`ApprovalRequest`、`ApprovalDecision`、`SupportAccessGrant`、`OAuthClient`。
+`Tenant`、`OrgUnit`、`Workspace`、`Invitation`（待接受的成员资格：邮箱、组织单元、角色、状态、版本、过期时间）、`ChannelSession`（免登会话记录：成员、渠道绑定标识与版本、签发与到期时间）、`ChannelBindingRevocation`（每个渠道绑定的撤销水位）、`Member`、`ServiceAccount`、`RoleBinding`、`RelationTuple`（授权关系）、`ApprovalType`、`ApprovalRequest`、`ApprovalDecision`、`SupportAccessGrant`、`OAuthClient`。
 
 ## 5. 接口
 
@@ -46,6 +46,10 @@
 | `RequestApproval` | 命令 | 提交审批（类型、对象、申请人、依据） |
 | `DecideApproval` | 命令 | 审批人决定 |
 | 成员、角色、组织管理 | 命令/查询 | 管理控制台 |
+| `CreateInvitation` / `ResendInvitation` / `RevokeInvitation` / `ListInvitations` | 命令/查询 | 管理员邀请成员，需 `can_manage_members` 与强认证；邀请不授予任何权限，重发使旧链接失效 |
+| `AcceptInvitation` | 命令 | 受邀人接受邀请。独立授权路径，不经成员管理接口：核验链接与邀请状态、已验证邮箱一致、账号不属于其他租户、受邀管理员已完成 TOTP；在一个事务中按邀请限定的角色与单元写入成员资格并消费邀请（复用成员写入的内部逻辑），状态变化按邀请版本串行；之后写入 IdP 中账号的租户与 cell 归属，写入前访问失败关闭。见 [PRD 第1段 F2](../../01-product/prd/01-login-and-channel-binding.md#f2-邀请与接受) |
+| `IssueChannelSession` / `RevokeChannelSessions` | 命令 | 仅 `channels` 可调用。签发：凭 channels 签发的 30 秒有效签发凭据（绑定标识、版本、成员），在一个事务中锁定该绑定的撤销水位行，核验凭据未过期且版本高于水位后写入不带强认证的免登会话。撤销：绑定失效后由 channels 同步调用（失败时经 `channels.binding.changed.v1` 重试），在同一行上抬高水位（无对应会话也记录）并作废版本不高于水位的会话，确认后 channels 才把失效标为已完成；并定时与 channels 对账。IdP 不保存长期渠道身份关联。并发顺序见 [PRD 第1段 F6](../../01-product/prd/01-login-and-channel-binding.md#f6-解绑与失效) |
+| `RecoverAdminAccount` | 命令 | 唯一管理员无法认证时的账号恢复：平台运营双人控制且均 MFA；只清除 TOTP、要求重设密码、撤销会话，不授予租户数据访问，全程审计并通知。见 [PRD 第1段 F8](../../01-product/prd/01-login-and-channel-binding.md#f8-唯一管理员账号恢复) |
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
 
 最小租户/成员/角色生命周期、权威目录核验与cell-01路由已实现，具体接口、MFA边界及真实组件证据见[M0身份验收](../../05-delivery/07-m0-identity-acceptance.md)。目录数据在iam中，角色权限复用OpenFGA模型；当前M0托管租户Check仅支持当前主体对tenant根资源，其他业务资源与协作者按其首次启用阶段补齐，不以权限矩阵代证全部接口。
@@ -54,7 +58,7 @@
 
 ## 6. 事件
 
-**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批与支持访问事件随对应功能实现。
+**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批与支持访问事件随对应功能实现；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。随免登实现消费 `channels.binding.changed.v1`。
 
 ## 7. 授权模型
 
@@ -146,6 +150,7 @@
 | 知识资产分级下调 | 业务专家 | 租户管理员 | — |
 | API 凭证、MCP 客户端与 Webhook 创建 | 租户管理员 | — | 多因素认证；凭证限作用域与有效期 |
 | 内部支持访问 | 妙洽内部人员 | 租户管理员 | 限时、默认只读、全程审计，租户管理员可见 |
+| 唯一管理员账号恢复 | 平台运营（核验申请人有权代表该租户后发起，核验方式不固定，记录入审计） | 另一名平台运营 | 双人控制、均需 MFA；只重置认证因素与会话，不授予租户数据访问；通知管理员与签约联系人 |
 
 审批由本子系统的 `approvals` 执行：申请与批准分别留审计，申请人不能批准自己的申请（授权模型只表达“谁有资格批准”）。
 

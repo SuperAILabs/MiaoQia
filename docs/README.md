@@ -14,7 +14,8 @@ docs/
 │   ├── 02-business-model.md
 │   ├── 03-capability-map.md
 │   ├── 04-product-experience.md  产品体验
-│   └── 05-product-requirements.md 产品需求落地规格
+│   ├── 05-product-requirements.md 产品需求落地规格
+│   └── prd/                      首条客户旅程的功能 PRD 与原型（按旅程分段交接）
 │
 ├── 02-business/                  业务层：客户要完成什么、业务如何运转
 │   ├── 01-business-architecture.md
