@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.2 · 更新：2026-10-15 · 平面：平台
+> 状态：评审中 · 版本：1.3 · 更新：2026-10-15 · 平面：平台
 
 ## 1. 使命
 
@@ -35,7 +35,7 @@
 
 ## 4. 拥有的数据
 
-`Tenant`、`OrgUnit`、`Workspace`、`Member`、`ServiceAccount`、`RoleBinding`、`RelationTuple`（授权关系）、`ApprovalType`、`ApprovalRequest`、`ApprovalDecision`、`SupportAccessGrant`、`OAuthClient`。
+`Tenant`、`OrgUnit`、`Workspace`、`Invitation`（待接受的成员资格：邮箱、组织单元、角色、状态、过期时间）、`Member`、`ServiceAccount`、`RoleBinding`、`RelationTuple`（授权关系）、`ApprovalType`、`ApprovalRequest`、`ApprovalDecision`、`SupportAccessGrant`、`OAuthClient`。
 
 ## 5. 接口
 
@@ -46,6 +46,8 @@
 | `RequestApproval` | 命令 | 提交审批（类型、对象、申请人、依据） |
 | `DecideApproval` | 命令 | 审批人决定 |
 | 成员、角色、组织管理 | 命令/查询 | 管理控制台 |
+| `CreateInvitation` / `ResendInvitation` / `RevokeInvitation` / `AcceptInvitation` / `ListInvitations` | 命令/查询 | 邀请成员：邀请不授予任何权限，接受时经成员命令写入成员与角色；重发使旧链接失效。流程见 [PRD 第1段](../../01-product/prd/01-login-and-channel-binding.md) |
+| `LinkFederatedIdentity` / `UnlinkFederatedIdentity` | 命令 | 由 `channels` 在渠道账号绑定、解绑或失效时调用，同步 IdP 中的渠道身份关联，用于渠道内置浏览器免登；绑定关系的权威仍在 `channels` |
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
 
 最小租户/成员/角色生命周期、权威目录核验与cell-01路由已实现，具体接口、MFA边界及真实组件证据见[M0身份验收](../../05-delivery/07-m0-identity-acceptance.md)。目录数据在iam中，角色权限复用OpenFGA模型；当前M0托管租户Check仅支持当前主体对tenant根资源，其他业务资源与协作者按其首次启用阶段补齐，不以权限矩阵代证全部接口。
@@ -54,7 +56,7 @@
 
 ## 6. 事件
 
-**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批与支持访问事件随对应功能实现。
+**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批与支持访问事件随对应功能实现；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。
 
 ## 7. 授权模型
 

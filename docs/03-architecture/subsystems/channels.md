@@ -1,6 +1,6 @@
 # 渠道与会话子系统（channels）
 
-> 状态：评审中 · 版本：3.1 · 更新：2026-10-15 · 平面：交互
+> 状态：评审中 · 版本：3.2 · 更新：2026-10-15 · 平面：交互
 
 ## 1. 使命
 
@@ -103,8 +103,8 @@
 
 | 实体 | 说明 |
 |---|---|
-| `ChannelInstallation` | 租户在某渠道的应用安装与配置（凭证存放于密钥管理系统） |
-| `ChannelBinding` | 渠道账号与平台用户的绑定 |
+| `ChannelInstallation` | 租户在某渠道的应用安装与配置：所属企业标识、状态（待验证 / 已启用 / 异常 / 已停用）、健康状态（凭证存放于密钥管理系统） |
+| `ChannelBinding` | 渠道账号与平台成员的绑定：渠道账号、所属安装、成员、状态、失效原因；一个渠道账号只绑定一个成员，一个成员在同一渠道只绑定一个账号 |
 | `Conversation` | 渠道会话：渠道、线程标识、参与者、关联的研究案例 |
 | `NotificationRule` / `Preference` | 通知规则与个人偏好 |
 | `Notification` / `Delivery` | 通知与投递记录（幂等键：`notification_id + channel + recipient`） |
@@ -115,8 +115,8 @@
 
 | 接口 | 类型 | 说明 |
 |---|---|---|
-| `InstallChannel` / `UninstallChannel` | 命令 | 租户管理员安装或移除渠道应用 |
-| `BindAccount` / `UnbindAccount` | 命令 | 渠道账号绑定 |
+| `InstallChannel` / `VerifyInstallation` / `UninstallChannel` | 命令 | 租户管理员安装、以测试消息验证、停用渠道应用；停用使该安装下全部绑定失效 |
+| `StartBinding` / `BindAccount` / `UnbindAccount` / `ListBindings` | 命令/查询 | 渠道账号绑定：`StartBinding` 签发一次性绑定链接，`BindAccount` 在 Web 会话中确认；绑定、解绑与失效同步调用 identity 的 `LinkFederatedIdentity` / `UnlinkFederatedIdentity`。流程见 [PRD 第1段](../../01-product/prd/01-login-and-channel-binding.md) |
 | `ReceiveInbound` | 命令 | 适配器回调入口（经 `gateway` 暴露，验签） |
 | `ExecuteAction` | 命令 | 动作令牌触发，转调对应子系统命令并再次授权 |
 | `GetPreferences` / `UpdatePreferences` | 查询/命令 | 偏好 |
@@ -126,9 +126,9 @@
 
 ## 7. 事件
 
-**消费**：`detection.signal.detected.v1`、`assessment.assessment.created.v1`、`assessment.decision.drafted.v1`、`identity.approval.requested.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`、`research.case.awaiting_input.v1`。
+**消费**：`identity.member.changed.v1`（成员停用或退出时使其绑定失效）、`detection.signal.detected.v1`、`assessment.assessment.created.v1`、`assessment.decision.drafted.v1`、`identity.approval.requested.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`、`research.case.awaiting_input.v1`。
 
-**发布**：`channels.delivery.sent.v1`、`channels.delivery.failed.v1`、`channels.action.executed.v1`、`channels.conversation.message_received.v1`。
+**发布**：`channels.binding.changed.v1`、`channels.delivery.sent.v1`、`channels.delivery.failed.v1`、`channels.action.executed.v1`、`channels.conversation.message_received.v1`。
 
 ## 8. 扩展点
 

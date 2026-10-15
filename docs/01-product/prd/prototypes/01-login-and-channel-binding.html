@@ -1,0 +1,194 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>妙洽登录与渠道绑定原型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：左侧页面目录 + 顶部状态切换 + 中间线框画面（桌面/手机两种框） */
+:root{
+  --bg:#f4f5f3; --panel:#ffffff; --ink:#1d2320; --muted:#5d6862; --line:#cfd5d1;
+  --accent:#1f6f5c; --accent-soft:#e1efe9; --warn:#a2610b; --warn-soft:#fbf0dc;
+  --bad:#b03a2e; --bad-soft:#f8e3e0; --off:#9aa39e;
+  --f-ui:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+header.top{max-width:1180px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+header.top h1{font-size:1.25rem;margin:0;text-wrap:balance}
+header.top p{margin:0;color:var(--muted);font-size:.85rem}
+nav.pages{display:flex;flex-direction:column;gap:4px}
+@media (max-width:760px){nav.pages{flex-direction:row;overflow-x:auto;padding-bottom:4px}}
+nav.pages button{all:unset;cursor:pointer;padding:8px 10px;border-radius:6px;font-size:.9rem;white-space:nowrap}
+nav.pages button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.pages button:focus-visible,.states button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.states button{font:inherit;font-size:.82rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.states button:disabled{color:var(--off);cursor:not-allowed;border-style:dashed}
+.note{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.stage{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.desk{flex:1 1 420px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.desk .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.phone{flex:0 0 300px;max-width:100%;background:var(--panel);border:2px solid var(--line);border-radius:22px;overflow:hidden}
+.phone .bar{padding:8px 14px;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.scr{padding:18px;display:flex;flex-direction:column;gap:12px}
+.scr h2{font-size:1.05rem;margin:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
+.box{border:1px solid var(--line);border-radius:6px;padding:8px 10px;color:var(--muted);background:var(--bg)}
+.btn{display:inline-block;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer;text-align:center}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.msg{border-radius:6px;padding:10px 12px;font-size:.88rem}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--accent)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.off{color:var(--off)}
+.skel{height:12px;border-radius:4px;background:var(--line);opacity:.6}
+.qr{width:120px;height:120px;border:1px dashed var(--muted);display:grid;place-items:center;font-size:.75rem;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:22px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.rules{margin-top:18px;font-size:.84rem;color:var(--muted)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+@media (prefers-reduced-motion:no-preference){.skel{animation:p 1.2s ease-in-out infinite}@keyframes p{50%{opacity:.25}}}
+</style>
+
+<header class="top">
+  <h1>第1段原型：登录与渠道绑定</h1>
+  <p>低保真线框 · 对应 docs/01-product/prd/01-login-and-channel-binding.md · 示例数据</p>
+</header>
+<div class="wrap">
+  <nav class="pages" id="pages" aria-label="页面"></nav>
+  <main style="min-width:0">
+    <div class="label">状态</div>
+    <div class="states" id="states" role="group" aria-label="状态"></div>
+    <p class="note" id="note"></p>
+    <div class="stage" id="stage"></div>
+    <div class="rules" id="rules"></div>
+  </main>
+</div>
+
+<script>
+const ALL=["正常","空态","加载","无权限","过期","失败","部分成功","来源中断","数据未知"];
+const L=n=>Array.from({length:n},()=>'<div class="skel"></div>').join('');
+const desk=(url,body)=>`<div class="desk"><div class="bar">${url}</div><div class="scr">${body}</div></div>`;
+const phone=(t,body)=>`<div class="phone"><div class="bar">${t}</div><div class="scr">${body}</div></div>`;
+const loginForm=(extra="",dis="")=>`<h2>登录妙洽</h2>${extra}
+  <div class="field">邮箱<div class="box">wang.lei@jiancai-example.cn</div></div>
+  <div class="field">密码<div class="box">••••••••</div></div>
+  <div class="field">验证码（TOTP）<div class="box">6 位数字</div></div>
+  <button class="btn" ${dis}>登录</button>`;
+
+const PAGES=[
+{id:"login",name:"登录 / 强认证",
+ na:{"空态":"登录页没有列表内容","部分成功":"登录没有批量结果","数据未知":"登录页不展示业务数据"},
+ rules:["已登记 TOTP 的账号登录时验证 TOTP","强认证动作要求 15 分钟内验证过 TOTP，完成后继续原动作，不丢已填内容","连续失败 5 次锁定 15 分钟"],
+ s:{
+ "正常":()=>desk("app.miaoqia.cn/login",loginForm())+desk("设置 / 成员 · 强认证弹窗",`<h2>需要验证身份</h2><p class="note">邀请成员是管理操作，需要在 15 分钟内验证过验证码。验证后会继续发送邀请，已填写的内容不会丢失。</p><div class="field">验证码（TOTP）<div class="box">6 位数字</div></div><div class="row"><button class="btn">验证并继续</button><button class="btn ghost">取消</button></div>`),
+ "加载":()=>desk("app.miaoqia.cn/login",`<h2>登录妙洽</h2>${L(4)}`),
+ "无权限":()=>desk("app.miaoqia.cn/login",loginForm('<div class="msg bad">该账号已被管理员停用，无法登录。如需恢复，请联系你所在企业的妙洽管理员。</div>')),
+ "过期":()=>desk("app.miaoqia.cn/login",loginForm('<div class="msg warn">登录已过期（空闲超过 12 小时）。重新登录后会回到你刚才打开的页面。</div>')),
+ "失败":()=>desk("app.miaoqia.cn/login",loginForm('<div class="msg bad">密码或验证码不正确，还可以尝试 2 次。连续失败 5 次后账号锁定 15 分钟。</div>')),
+ "来源中断":()=>desk("app.miaoqia.cn/login",loginForm('<div class="msg warn">登录服务暂时不可用，请稍后再试。已经打开的页面可以继续查看，提交操作会在恢复后可用。</div>','disabled'))}},
+{id:"invite",name:"激活 / 接受邀请",
+ na:{"空态":"无列表","部分成功":"单人操作","来源中断":"不依赖渠道","数据未知":"邀请信息必然完整"},
+ rules:["邀请 7 天有效，激活链接 72 小时有效，均一次性使用","确认页展示租户、组织单元与角色","管理员激活时必须登记 TOTP"],
+ s:{
+ "正常":()=>desk("app.miaoqia.cn/invite/…",`<h2>加入 华东建材管业有限公司</h2><p class="note">管理员 李敏 邀请你加入妙洽。</p><div class="field">组织单元<div class="box">华东销售部</div></div><div class="field">角色<div class="box">业务开拓者</div></div><div class="field">设置密码<div class="box">至少 10 位</div></div><button class="btn">接受邀请</button><p class="note">已有妙洽账号？<u>登录后接受</u></p>`)+desk("激活（管理员）· 登记验证码",`<h2>登记验证码</h2><p class="note">管理员执行管理操作需要验证码。用身份验证器扫描下方二维码。</p><div class="qr">TOTP 二维码</div><div class="field">输入 6 位验证码<div class="box">______</div></div><button class="btn">完成激活</button>`),
+ "加载":()=>desk("app.miaoqia.cn/invite/…",`<h2>正在读取邀请</h2>${L(5)}`),
+ "无权限":()=>desk("app.miaoqia.cn/invite/…",`<div class="msg bad">这份邀请已被管理员撤回，不能再使用。如有疑问，请联系 李敏。</div>`),
+ "过期":()=>desk("app.miaoqia.cn/invite/…",`<div class="msg warn">邀请链接已过期（发出后 7 天有效）。请联系管理员 李敏 重新发送。</div>`),
+ "失败":()=>desk("app.miaoqia.cn/invite/…",`<div class="msg bad">接受邀请没有成功，网络中断。你的输入已保留，可以直接重试；重复提交不会重复加入。</div><button class="btn">重试</button>`)}},
+{id:"members",name:"设置 / 成员与邀请",
+ na:{"过期":"管理页没有时效对象","数据未知":"成员信息必然完整"},
+ rules:["只有租户管理员可见，操作需 15 分钟内 TOTP","批量邀请逐行返回结果，失败行可单独重试","同一邮箱只能有一个有效邀请"],
+ s:{
+ "正常":()=>desk("设置 / 成员",`<div class="row" style="justify-content:space-between"><h2>成员与邀请</h2><button class="btn">邀请成员</button></div><div class="tbl"><table><tr><th>姓名</th><th>邮箱</th><th>组织单元</th><th>角色</th><th>状态</th><th>渠道</th></tr>
+ <tr><td>李敏</td><td>li.min@…</td><td>租户</td><td>租户管理员</td><td><span class="pill ok">在职</span></td><td>企业微信 · 邮件</td></tr>
+ <tr><td>王磊</td><td>wang.lei@…</td><td>华东销售部</td><td>决策者</td><td><span class="pill ok">在职</span></td><td>企业微信 · 邮件</td></tr>
+ <tr><td>陈晨</td><td>chen.chen@…</td><td>华东销售部</td><td>业务开拓者</td><td><span class="pill warn">待接受 · 剩 5 天</span></td><td>—</td></tr>
+ <tr><td>赵一</td><td>zhao.yi@…</td><td>华南销售部</td><td>业务开拓者</td><td><span class="pill off">已过期</span> <u>重发</u></td><td>—</td></tr></table></div>`),
+ "空态":()=>desk("设置 / 成员",`<h2>成员与邀请</h2><div class="empty"><div>还没有其他成员。邀请销售和负责人加入后，他们才能收到简报和信号。</div><button class="btn">邀请成员</button></div>`),
+ "加载":()=>desk("设置 / 成员",`<h2>成员与邀请</h2>${L(6)}`),
+ "无权限":()=>desk("设置 / 成员",`<div class="msg bad">只有租户管理员可以管理成员。你可以在“个人设置”中查看自己的角色。</div>`),
+ "失败":()=>desk("设置 / 成员",`<h2>成员与邀请</h2><div class="msg bad">发给 chen.chen@… 的邀请邮件没有送达（收件服务器拒收）。邀请已创建，可以重发或复制链接自行发送。</div><div class="row"><button class="btn">重发</button><button class="btn ghost">复制邀请链接</button></div>`),
+ "部分成功":()=>desk("设置 / 成员 · 批量邀请结果",`<h2>批量邀请：3 人成功，1 人失败</h2><div class="tbl"><table><tr><th>行</th><th>邮箱</th><th>结果</th></tr><tr><td>1</td><td>sun.hao@…</td><td><span class="pill ok">已发出</span></td></tr><tr><td>2</td><td>zhou.qi@…</td><td><span class="pill ok">已发出</span></td></tr><tr><td>3</td><td>wu.fan@…</td><td><span class="pill ok">已有有效邀请，已重发</span></td></tr><tr><td>4</td><td>he.jun@…</td><td><span class="pill bad">组织单元“华北部”不存在</span></td></tr></table></div><button class="btn">只重试失败的 1 行</button>`),
+ "来源中断":()=>desk("设置 / 成员",`<h2>成员与邀请</h2><div class="msg warn">邮件发送服务从 09:12 起异常，新邀请会创建但暂时发不出去。可以复制邀请链接，通过企业微信发给同事。</div><button class="btn ghost">复制邀请链接</button>`)}},
+{id:"channels",name:"设置 / 渠道",
+ na:{"部分成功":"安装是单个渠道操作","数据未知":"安装状态必然已知"},
+ rules:["未通过渠道验收的渠道不可选","安装后发送测试消息并确认才启用","停用使该渠道全部绑定失效，已投递消息不撤回","异常期间消息改投站内"],
+ s:{
+ "正常":()=>desk("设置 / 渠道",`<h2>渠道</h2><div class="tbl"><table><tr><th>渠道</th><th>状态</th><th>已绑定</th><th></th></tr>
+ <tr><td>企业微信 · 华东建材管业</td><td><span class="pill ok">已启用</span></td><td>12 / 15 人</td><td><u>已绑定成员</u> · <u>停用</u></td></tr>
+ <tr><td>飞书</td><td><span class="pill off">未安装</span></td><td>—</td><td><u>安装</u></td></tr>
+ <tr><td>钉钉</td><td><span class="pill off">暂不可用</span></td><td>—</td><td class="note">该渠道尚未完成上线验收</td></tr>
+ <tr><td>邮件</td><td><span class="pill ok">已启用</span></td><td>15 / 15 人</td><td></td></tr></table></div>
+ <div class="card"><b>安装企业微信：第 3 步，共 3 步</b><div>已完成授权。点“发送测试消息”，在企业微信中点消息里的“确认”后启用。这一步同时绑定你自己的企业微信账号。</div><div><button class="btn">发送测试消息</button></div></div>`),
+ "空态":()=>desk("设置 / 渠道",`<h2>渠道</h2><div class="empty"><div>还没有安装工作渠道。目前成员只能在 Web 站内收到消息。安装企业微信后，销售可以在企业微信里收简报和信号。</div><button class="btn">安装企业微信</button></div>`),
+ "加载":()=>desk("设置 / 渠道",`<h2>渠道</h2>${L(5)}`),
+ "无权限":()=>desk("设置 / 渠道",`<div class="msg bad">只有租户管理员可以安装或停用渠道。你可以在“个人设置 / 渠道”绑定自己的账号。</div>`),
+ "过期":()=>desk("设置 / 渠道",`<h2>渠道</h2><div class="msg warn">企业微信授权已失效（企业管理员可能取消了应用授权）。重新授权前，消息改投站内，成员绑定保留。</div><button class="btn">重新授权</button>`),
+ "失败":()=>desk("设置 / 渠道",`<h2>渠道</h2><div class="msg bad">没有完成企业微信授权：授权页返回时缺少企业确认。请回到企业微信管理后台确认已同意授权，再重试。</div><button class="btn">重新安装</button>`),
+ "来源中断":()=>desk("设置 / 渠道",`<h2>渠道</h2><div class="msg warn">企业微信从 08:40 起投递失败（最近一次 09:05，平台返回频率限制）。期间的消息已改投站内，恢复后自动回到企业微信。</div>`)}},
+{id:"me",name:"个人设置 / 渠道",
+ na:{"无权限":"每个成员都能管理自己的绑定","部分成功":"单个渠道操作"},
+ rules:["一个渠道账号只能绑定一个成员","解绑立即生效，渠道内收到一次通知"],
+ s:{
+ "正常":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="tbl"><table><tr><th>渠道</th><th>账号</th><th>状态</th><th></th></tr><tr><td>企业微信</td><td>王磊（华东建材管业）</td><td><span class="pill ok">已绑定</span></td><td><u>解绑</u></td></tr><tr><td>邮件</td><td>wang.lei@jiancai-example.cn</td><td><span class="pill ok">已验证</span></td><td></td></tr></table></div>`),
+ "空态":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="empty"><div>还没有绑定企业微信。绑定后，简报、信号和跟进提醒会发到你的企业微信。</div><div class="qr">绑定二维码</div><div class="note">用企业微信扫码，或在企业微信“工作台 / 妙洽”中发任意消息</div></div>`),
+ "加载":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2>${L(3)}`),
+ "过期":()=>desk("个人设置 / 渠道",`<div class="msg warn">绑定二维码已过期（10 分钟有效）。</div><button class="btn">刷新二维码</button>`),
+ "失败":()=>desk("个人设置 / 渠道",`<div class="msg bad">这个企业微信账号已经绑定到另一位成员。如果这是你的账号，请联系管理员 李敏 解除原绑定。</div>`),
+ "来源中断":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="msg warn">企业微信目前投递异常，消息暂时发到站内“通知”。你的绑定不受影响。</div>`),
+ "数据未知":()=>desk("个人设置 / 渠道",`<h2>我的渠道</h2><div class="tbl"><table><tr><th>渠道</th><th>账号</th><th>状态</th></tr><tr><td>企业微信</td><td>显示名暂时取不到（账号尾号 3f2）</td><td><span class="pill ok">已绑定</span></td></tr></table></div><p class="note">企业微信未返回显示名，不影响消息投递。</p>`)}},
+{id:"bind",name:"绑定确认",
+ na:{"空态":"单个确认页","部分成功":"单个确认","来源中断":"确认在 Web 完成","数据未知":"确认需要完整身份，取不到则视为失败"},
+ rules:["渠道账号所在企业必须是本租户已安装的企业","Web 会话用户就是被绑定的成员","绑定链接一次性、10 分钟有效"],
+ s:{
+ "正常":()=>phone("企业微信 · 妙洽",`<div class="card"><b>绑定妙洽账号</b><div>你还没有绑定妙洽账号，绑定后才能收到简报和使用快捷操作。</div><button class="btn">绑定账号</button></div>`)+desk("app.miaoqia.cn/bind/…",`<h2>确认绑定</h2><div class="card"><div>企业微信账号：<b>王磊</b>（华东建材管业）</div><div>将绑定到 妙洽账号：<b>王磊</b> · 华东建材管业有限公司</div></div><div class="row"><button class="btn">确认绑定</button><button class="btn ghost">不是我</button></div>`),
+ "加载":()=>desk("app.miaoqia.cn/bind/…",`<h2>确认绑定</h2>${L(3)}`),
+ "无权限":()=>desk("app.miaoqia.cn/bind/…",`<div class="msg bad">这个企业微信账号属于“某某建设集团”，不是华东建材管业有限公司已安装的企业，不能绑定。</div>`),
+ "过期":()=>desk("app.miaoqia.cn/bind/…",`<div class="msg warn">绑定链接已过期（10 分钟有效）。回到企业微信，再给妙洽发一条消息即可获得新链接。</div>`),
+ "失败":()=>desk("app.miaoqia.cn/bind/…",`<div class="msg bad">这个企业微信账号已绑定到另一位成员。如果这是你的账号，请联系管理员 李敏。</div>`)}},
+{id:"jump",name:"卡片跳转",
+ na:{"空态":"打开的是具体对象","部分成功":"单次跳转","来源中断":"渠道异常时卡片不会送达","数据未知":"对象内容的未知项在第4段对象页处理"},
+ rules:["卡片链接只指向对象，不携带身份","在已绑定渠道的内置浏览器中免登","已登录的是别人时不切换账号","免登会话执行强认证动作仍需 TOTP"],
+ s:{
+ "正常":()=>phone("企业微信 · 妙洽",`<div class="card"><b>A02 进入供货 · 新信号</b><div>某市政管网改造工程 中标结果，总包：某某建设集团，含 PE 管材</div><u>查看详情</u></div>`)+phone("企业微信内置浏览器 · 已免登",`<div class="msg ok">已以 王磊 身份打开</div><h2>某市政管网改造工程</h2>${L(4)}<p class="note">对象页内容见第4段</p>`),
+ "加载":()=>phone("企业微信内置浏览器",`<h2>正在打开</h2>${L(4)}`),
+ "无权限":()=>phone("企业微信内置浏览器",`<h2>某市政管网改造工程</h2><div class="msg bad">你没有查看这条信号的权限（它属于华南销售部的目标）。如需查看，请联系目标负责人。</div>`),
+ "过期":()=>phone("普通浏览器",`<div class="msg warn">这个链接已过期。回到企业微信重新打开卡片，或登录妙洽在“信号”中查找。</div><button class="btn">登录妙洽</button>`),
+ "失败":()=>phone("普通浏览器",`<div class="msg warn">这个链接是发给 王磊 的，当前登录的是 陈晨。</div><button class="btn">退出并以 王磊 登录</button><button class="btn ghost">留在 陈晨 的账号</button>`)}}
+];
+
+let page=PAGES[0], state="正常";
+const $=id=>document.getElementById(id);
+function render(){
+  $("pages").innerHTML=PAGES.map(p=>`<button data-p="${p.id}" aria-current="${p===page}">${p.name}</button>`).join("");
+  $("states").innerHTML=ALL.map(s=>{const na=page.na[s];return `<button data-s="${s}" aria-pressed="${s===state}" ${na?`disabled title="${na}"`:""}>${s}</button>`}).join("");
+  const nas=Object.entries(page.na).map(([k,v])=>`${k}：${v}`).join("；");
+  $("note").textContent=nas?`不适用的状态：${nas}`:"";
+  $("stage").innerHTML=(page.s[state]||page.s["正常"])();
+  $("rules").innerHTML=`<div class="label">本页规则</div><ul>${page.rules.map(r=>`<li>${r}</li>`).join("")}</ul>`;
+}
+$("pages").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;page=PAGES.find(p=>p.id===b.dataset.p);state="正常";render()});
+$("states").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;state=b.dataset.s;render()});
+render();
+</script>
