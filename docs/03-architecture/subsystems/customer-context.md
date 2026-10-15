@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.2 · 更新：2026-10-15 · 平面：客户智能
+> 状态：评审中 · 版本：1.3 · 更新：2026-10-15 · 平面：客户智能
 
 ## 1. 使命
 
@@ -41,7 +41,7 @@
 | `CustomerProfile` / `ProfileVersion` | 档案与版本：主体类型（M2 仅企业，后续支持个人）、本企业在公共实体中的 `org_id`、价值链角色、行业包、品类、品牌、服务区域；每次保存一个版本，带乐观并发版本号 |
 | `Offering` / `Capability` / `Qualification` / `PastPerformance` | 产品、能力、资质、业绩，均带证据文件引用与有效期 |
 | `TenantObjective` | 启用的目标：模板与版本、所属组织单元、负责人、参与人、参数（随档案或本目标值）、状态（未激活 / 生效 / 已停用）、关联的策略；同一单元同一模板只启用一次 |
-| `EntityListImport` | 企业清单导入作业：文件、逐行匹配结果（已匹配 / 待确认 / 需选择 / 未匹配）、状态；只有已匹配并确认的行写入清单 |
+| `EntityListImport` | 企业清单导入作业：文件、逐行匹配结果（已匹配 / 待确认 / 需选择 / 未匹配）、状态；匹配完成不写入，操作人看过影响提示并提交后，已匹配与已确认的行才写入清单 |
 | `Policy` / `PolicyVersion` / `PolicyRollout` | 策略、版本、发布状态 |
 | `KnowledgeAsset` | 知识资产：分级、可用于哪些工作流与模型 |
 | `TenantEntityList` | 租户私有实体清单，种类：`customers` 客户、`partners` 伙伴、`competitors` 竞争对手、`blocked` 禁合作、`tracked` 跟踪对象、`counterparties` 交易对手；策略中以 `lists.<种类>` 引用 |
@@ -54,7 +54,8 @@
 
 | 接口 | 类型 | 说明 |
 |---|---|---|
-| `GetContextSnapshot` | 查询 | 给定时点的客户上下文快照（研究与判断固定引用） |
+| `GetContextSnapshot` | 查询 | 给定时点或上下文版本的客户上下文快照（研究与判断固定引用） |
+| `GetContextVersion` | 查询 | 租户当前上下文版本（读主库）；档案与清单的每次提交在同一事务中递增该版本，detection 每批求值前读取，保证提交返回后开始的求值使用新版本 |
 | `Get/Update Profile`、`LinkOrganization`、`Manage Offerings/Qualifications/...` | 查询/命令 | 档案维护；`UpdateProfile` 带 `expected_version`，冲突时拒绝 |
 | `PreviewProfileImpact` | 查询 | 保存档案或清单前，列出受影响的目标与规则 |
 | `ImportEntityList` / `ConfirmEntityListRows` / `ManageEntityList` | 命令 | 企业清单导入（`202` 异步作业，单次 5000 行，经 `entity-graph.ResolveEntity` 匹配；只有统一社会信用代码精确命中可自动匹配）与维护。流程见 [PRD 第2段](../../01-product/prd/02-profile-and-objectives.md) |
@@ -81,6 +82,7 @@
 ## 9. 伸缩与可靠性
 
 - 读多写少；`detection` 通过本地缓存加载激活策略，策略版本变化以事件驱动缓存失效；
+- 档案与清单快照缓存以上下文版本为键：`profile.updated`、`entity_list.changed` 事件带版本，只用于提前刷新；正确性靠 detection 求值前读取 `GetContextVersion`，事件丢失或迟到不影响结果；
 - 策略编译失败不影响当前生效版本。
 
 ## 10. 安全要点
