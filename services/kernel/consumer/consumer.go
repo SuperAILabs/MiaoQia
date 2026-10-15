@@ -137,7 +137,7 @@ func (c *Consumer) handle(ctx context.Context, r *kgo.Record) error {
 	if err := events.Validate(c.validators[env.Type], env.Data); err != nil {
 		return c.deadLetter(ctx, r, err)
 	}
-	ectx := reqctx.Service(reqctx.With(ctx, reqctx.Context{Tenant: env.Tenant, Cell: env.Cell, Purpose: "event"}), c.Subsystem)
+	ectx := reqctx.Service(reqctx.With(ctx, eventContext(&env)), c.Subsystem)
 	ectx, span := tracing.Tracer(c.Subsystem).Start(tracing.WithTraceparent(ectx, env.Traceparent), "consume "+env.Type,
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(attribute.String("messaging.destination.name", r.Topic), attribute.String("cloudevents.event_id", env.ID),
@@ -173,6 +173,15 @@ func (c *Consumer) handle(ctx context.Context, r *kgo.Record) error {
 	}
 	span.SetStatus(codes.Error, last.Error())
 	return c.deadLetter(ectx, r, last)
+}
+
+// eventContext 是事件处理的请求上下文。请求上下文要求租户与单元成对；平台域事件可只带租户（信封契约允许），
+// 此时以平台身份处理、不带租户，租户仍可从 env.Tenant 读取。
+func eventContext(env *outbox.Envelope) reqctx.Context {
+	if env.Cell == "" {
+		return reqctx.Context{Purpose: "event"}
+	}
+	return reqctx.Context{Tenant: env.Tenant, Cell: env.Cell, Purpose: "event"}
 }
 
 // checkEnvelope 校验信封与主题一致：单元主题只接受该单元的租户事件，公共主题只接受公共域事件。

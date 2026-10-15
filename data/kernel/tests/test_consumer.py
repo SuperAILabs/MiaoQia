@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import contextlib
+import json
 from unittest.mock import Mock
 
 import pytest
 
-from miaoqia.kernel import consumer, outbox
+from miaoqia.kernel import consumer, outbox, reqctx
 
 
 @pytest.fixture
@@ -65,3 +67,35 @@ def test_invalid_envelope_goes_to_dead_letter(message, payload):
     c._dead_letter.assert_called_once()
     assert isinstance(c._dead_letter.call_args.args[-1], outbox.InvalidEnvelope)
     c.db.tx.assert_not_called()
+
+
+def test_platform_event_with_tenant_without_cell_is_handled(message):
+    """信封契约允许平台域事件只带租户；消费路径须正常处理，以平台身份（不带租户）进入处理器。"""
+    env = {"specversion": "1.0", "id": "evt_01JA8ZXXXXXXXXXXXXXXXXXXX1", "source": "miaoqia/operations",
+           "type": "audit.entry.recorded.v1", "time": "2026-10-14T08:00:00Z", "datacontenttype": "application/json",
+           "miaoqiazone": "platform", "miaoqiatenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+           "data": {"actor": "svc:operations", "actor_kind": "service", "subsystem": "operations",
+                    "action": "operations.probe.trigger", "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+                    "result": "succeeded", "occurred_at": "2026-10-14T08:00:00Z"}}
+    message.value.return_value = json.dumps(env).encode()
+    message.topic.return_value = "platform.audit"
+    seen = []
+    db = Mock()
+
+    @contextlib.contextmanager
+    def tx():
+        reqctx.current().validate()  # 与 Database.tx 相同的上下文检查
+        conn = Mock()
+        conn.execute.return_value.rowcount = 1
+        yield conn
+
+    db.tx = tx
+    c = consumer.Consumer(name="test.consumer", subsystem="test", brokers="unused", topics=["platform.audit"],
+                          handlers={env["type"]: lambda _conn, e: seen.append((reqctx.current(), e))}, db=db)
+    c._dead_letter = Mock()
+    c._handle(message, Mock(), "dlq.test")
+    c._dead_letter.assert_not_called()
+    (ctx, handled), = seen
+    assert (ctx.tenant, ctx.cell, ctx.principal.id) == ("", "", "svc:test")
+    assert handled["miaoqiatenant"] == env["miaoqiatenant"]
+    outbox.validate(env)
