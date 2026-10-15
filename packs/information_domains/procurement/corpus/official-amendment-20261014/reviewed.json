@@ -1,0 +1,154 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "amendment",
+      "title": {
+        "value": "产品质量国家监督抽查（二次）中标更正公告",
+        "prov": {
+          "evidence_ref": "ev_WB4V5BNZ2ECXZ47JZVS0BSJJRR",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "project_code": {
+        "value": "TF20260063",
+        "prov": {
+          "evidence_ref": "ev_HG3C0ESTNB6A35Q7JNTED63MCX",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "amendment": {
+        "amends_notice_ids": [],
+        "original_reference": {
+          "value": "https://www.ccgp.gov.cn/cggg/zygg/zbgg/202606/t20260617_26763266.htm",
+          "prov": {
+            "evidence_ref": "ev_CJ1S2JPP2XN94C9F1232YJAPKT",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "summary": {
+          "value": "更正“中标（成交）金额：284.8630000（万元）”为“（286.5430万元）”",
+          "prov": {
+            "evidence_ref": "ev_SS5648RM2435TKFGPVBWCVBQ4S",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "changes": [
+          {
+            "id": "amd_KTSE2N9NMCPPV4CBN3870EQR9D",
+            "field_path": "/award_amount",
+            "before": {
+              "value": "2848630",
+              "currency": "CNY",
+              "raw": "284.8630000（万元）",
+              "prov": {
+                "evidence_ref": "ev_Q75MQT8GYGQ3BHXRDXATM5Y6GE",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "proc.manual-review@0.1.0"
+              }
+            },
+            "after": {
+              "value": "2865430",
+              "currency": "CNY",
+              "raw": "286.5430万元",
+              "prov": {
+                "evidence_ref": "ev_BDJ33K08W5BRHJMBAG6GTDYQ3D",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "proc.manual-review@0.1.0"
+              }
+            },
+            "prov": {
+              "evidence_ref": "ev_SS5648RM2435TKFGPVBWCVBQ4S",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "proc.manual-review@0.1.0"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_WB4V5BNZ2ECXZ47JZVS0BSJJRR": {
+      "id": "ev_WB4V5BNZ2ECXZ47JZVS0BSJJRR",
+      "snapshot_ref": "snp_R74FKXX05C1NKMCYEX3VVEY9QN",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 20
+      },
+      "quote_hash": "sha256:6a0e30283dac17f7c68db04fc27bf0bbd5ef8e181c04b3970b3a6d0c9821a950"
+    },
+    "ev_HG3C0ESTNB6A35Q7JNTED63MCX": {
+      "id": "ev_HG3C0ESTNB6A35Q7JNTED63MCX",
+      "snapshot_ref": "snp_R74FKXX05C1NKMCYEX3VVEY9QN",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 11,
+        "char_end": 21
+      },
+      "quote_hash": "sha256:0f0c4fd36d8ebe7d3755e28eada391ddd01ffe667463fd5812c51ca71039724e"
+    },
+    "ev_CJ1S2JPP2XN94C9F1232YJAPKT": {
+      "id": "ev_CJ1S2JPP2XN94C9F1232YJAPKT",
+      "snapshot_ref": "snp_R74FKXX05C1NKMCYEX3VVEY9QN",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 8,
+        "char_start": 37,
+        "char_end": 105
+      },
+      "quote_hash": "sha256:e3b6778d67c020997cacf8a2848ce065af6b30f644660ec12889eb4b1c95f4cd"
+    },
+    "ev_SS5648RM2435TKFGPVBWCVBQ4S": {
+      "id": "ev_SS5648RM2435TKFGPVBWCVBQ4S",
+      "snapshot_ref": "snp_R74FKXX05C1NKMCYEX3VVEY9QN",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 9,
+        "char_start": 2,
+        "char_end": 45
+      },
+      "quote_hash": "sha256:1a12926899ba3a4343f4fb00064ce4e4b5459972cecbec056e5bec53f967f992"
+    },
+    "ev_Q75MQT8GYGQ3BHXRDXATM5Y6GE": {
+      "id": "ev_Q75MQT8GYGQ3BHXRDXATM5Y6GE",
+      "snapshot_ref": "snp_R74FKXX05C1NKMCYEX3VVEY9QN",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 9,
+        "char_start": 14,
+        "char_end": 29
+      },
+      "quote_hash": "sha256:8140d5113512212be384154c8e6e69f9cb6c8472a028a091da57597a20831a68"
+    },
+    "ev_BDJ33K08W5BRHJMBAG6GTDYQ3D": {
+      "id": "ev_BDJ33K08W5BRHJMBAG6GTDYQ3D",
+      "snapshot_ref": "snp_R74FKXX05C1NKMCYEX3VVEY9QN",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 9,
+        "char_start": 33,
+        "char_end": 43
+      },
+      "quote_hash": "sha256:95adfa6284b922f11fb5f0b1e85e03d829b79dff4a73b81d982bc999e44763b6"
+    }
+  }
+}

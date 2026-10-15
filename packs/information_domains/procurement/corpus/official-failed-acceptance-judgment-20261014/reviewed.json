@@ -1,0 +1,200 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "无锡金沃机床有限公司、山田机械（江苏）有限公司买卖合同纠纷二审民事案件_广东法院网",
+        "prov": {
+          "evidence_ref": "ev_VT4AT365T4N3BWRQM1G091261V",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "buyer": {
+        "name_raw": "江苏设计谷科技有限公司",
+        "prov": {
+          "evidence_ref": "ev_1Y7PYF4WWF1QNV9PD1T0RT07BD",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_1641XMP5HZJ9BA6KEZ0VSWVVCY",
+        "contract_name": {
+          "value": "LCM冲压车间自动冲压线压力机采购项目",
+          "prov": {
+            "evidence_ref": "ev_YHX06HTWV41W8C37A27W51PB2D",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "无锡金沃机床有限公司",
+          "prov": {
+            "evidence_ref": "ev_903N4BTQBWJMX65T651D1M3828",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "manual-review@0.1.0"
+          }
+        },
+        "result": "failed",
+        "result_prov": {
+          "evidence_ref": "ev_SCMDT758AJW8PY5CZ91RAPQKVE",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "检验标准、精度及多个零部件品牌/规格不合格或者不符合约定",
+          "prov": {
+            "evidence_ref": "ev_SCMDT758AJW8PY5CZ91RAPQKVE",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "manual-review@0.1.0"
+          }
+        },
+        "dispute": {
+          "value": "（四）设计谷公司提交的《检验报告》不能作为认定本案货物不合格的证据。",
+          "prov": {
+            "evidence_ref": "ev_MAD4F7E8HJCQARH50SQVQ03YXJ",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "manual-review@0.1.0"
+          }
+        },
+        "judicial_outcome": [
+          {
+            "value": "设计谷公司主张依据《采购合同》第十条及《中华人民共和国合同法》第一百四十八条的规定应解除双方之间的买卖合同，理由不成立。",
+            "prov": {
+              "evidence_ref": "ev_M69SBYMKHE45Y7327Q4W7N32AE",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "manual-review@0.1.0"
+            }
+          },
+          {
+            "value": "关于焦点三，设计谷公司是否应向金沃公司支付剩余款项及逾期付款的违约金的问题。根据《采购合同》的约定，设计谷公司应在货物安装完毕并验收合格且收到金沃公司开具的增值税专用发票后付30%验收款，剩余10%为质保金在验收款支付完毕一年后一周内支付。虽然本案货物经鉴定存在质量问题，但是设计谷公司已使用了本案货物。设计谷公司对本案货物最终验收的时间为2013年12月25至26日，金沃公司在此之前已开具了相应的增值税专用发票，故设计谷公司应依约于2013年12月27日向金沃公司支付30%验收款，即人民币3611400元。因此，设计谷公司应向金沃公司支付人民币3611400元及自2013年12月28日起按中国人民银行同期同类人民币贷款利率计至付清之日止的利息。剩余10%质保金是金沃公司作为卖方为保证其货物质量而作出的保证。虽然设计谷公司已使用本案货物，但经鉴定本案货物确实存在质量问题，尤其是精度不符合约定标准、部分零部件不符合约定品牌等，对设计谷公司使用本案货物确会造成一定影响。《最高人民法院关于审理买卖合同纠纷案件适用法律问题的解释》第十九条规定：“买受人在合理期间内提出异议，出卖人以买受人已经支付价款、确认欠款数额、使用标的物等为由，主张买受人放弃异议的，人民法院不予支持，但当事人另有约定的除外。”第二十一条规定：“买受人依约保留部分价款作为质量保证金，出卖人在质量保证期间未及时解决质量问题而影响标的物的价值或者使用效果，出卖人主张支付该部分价款的，人民法院不予支持。”基于上述理由，并根据上述法律规定，金沃公司反诉请求设计谷公司支付10%质保金理由不成立，本院予以驳回。但金沃公司可在对本案货物重新维修调整并更换符合合同约定的零部件后再行请求设计谷公司支付10%质保金。",
+            "prov": {
+              "evidence_ref": "ev_DKNCZWJX71X1VFHASGH0TSHM8Z",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "manual-review@0.1.0"
+            }
+          }
+        ]
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "JUDICIAL_SOURCE_HISTORICAL_ACCEPTANCE",
+            "message": "仅表达一手判决记载的历史技术验收，不当成验收公告或当前项目阶段"
+          },
+          {
+            "code": "FAILED_ACCEPTANCE_NOT_TERMINATION",
+            "message": "二审未解除合同并判令部分付款；技术不合格与法律合同效果分开，禁止自动推断终止"
+          }
+        ]
+      },
+      "lots": [
+        {
+          "lot_key": "unpartitioned"
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "ev_VT4AT365T4N3BWRQM1G091261V": {
+      "id": "ev_VT4AT365T4N3BWRQM1G091261V",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 41
+      },
+      "quote_hash": "sha256:c67bc1c9abde7e21bc3923d563060daf03044a46fd49b807872fa7339950e8e2"
+    },
+    "ev_1Y7PYF4WWF1QNV9PD1T0RT07BD": {
+      "id": "ev_1Y7PYF4WWF1QNV9PD1T0RT07BD",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 24,
+        "char_start": 54,
+        "char_end": 65
+      },
+      "quote_hash": "sha256:b84c5006c612c81fe4d063403f52ac163553537f6e490010b9736f8eeec5bfa5"
+    },
+    "ev_YHX06HTWV41W8C37A27W51PB2D": {
+      "id": "ev_YHX06HTWV41W8C37A27W51PB2D",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 31,
+        "char_start": 24,
+        "char_end": 43
+      },
+      "quote_hash": "sha256:52c436c45314994c9593d6c76e5a9cd60c9a62362fd001c43d13902909bf3fed"
+    },
+    "ev_903N4BTQBWJMX65T651D1M3828": {
+      "id": "ev_903N4BTQBWJMX65T651D1M3828",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 10
+      },
+      "quote_hash": "sha256:8ff61493550394e773adb1c56c5e73d119611eeed42d22085e17997e3c95a161"
+    },
+    "ev_SCMDT758AJW8PY5CZ91RAPQKVE": {
+      "id": "ev_SCMDT758AJW8PY5CZ91RAPQKVE",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 35,
+        "char_start": 333,
+        "char_end": 361
+      },
+      "quote_hash": "sha256:05916b9e693d04b3b468a70c9bea79fefc6a741dbb5246f8e4272f3f1397edfb"
+    },
+    "ev_MAD4F7E8HJCQARH50SQVQ03YXJ": {
+      "id": "ev_MAD4F7E8HJCQARH50SQVQ03YXJ",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 500,
+        "char_end": 534
+      },
+      "quote_hash": "sha256:524cb33fb61b213e41706d7afe6431a4da04dac8309ad5b02929b6d6234f3e5b"
+    },
+    "ev_DKNCZWJX71X1VFHASGH0TSHM8Z": {
+      "id": "ev_DKNCZWJX71X1VFHASGH0TSHM8Z",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 57,
+        "char_start": 0,
+        "char_end": 740
+      },
+      "quote_hash": "sha256:3863201c9f153a7bb0aa560c644c398bff8edd7584868115eadbeba578d9835f"
+    },
+    "ev_M69SBYMKHE45Y7327Q4W7N32AE": {
+      "id": "ev_M69SBYMKHE45Y7327Q4W7N32AE",
+      "snapshot_ref": "snp_HNWHYYB9341KR8SA4C438JM6MK",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 56,
+        "char_start": 330,
+        "char_end": 390
+      },
+      "quote_hash": "sha256:0b944853c79a9d858c818d1fb12b222656e8b3f5ea7b7e7205aba678ff2c33a6"
+    }
+  }
+}

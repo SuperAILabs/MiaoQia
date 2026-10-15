@@ -1,0 +1,87 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "award",
+      "title": {
+        "value": "产品质量国家监督抽查（二次）中标公告",
+        "prov": {
+          "evidence_ref": "ev_S6VSFH9CSR93T2CAB9X5QJPMEB",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "project_code": {
+        "value": "TF20260063",
+        "prov": {
+          "evidence_ref": "ev_5V2RKEEM9ZTET7KA0TQ4VAKJDZ",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "award_amount": {
+        "value": "2848630",
+        "currency": "CNY",
+        "raw": "284.8630000（万元）",
+        "prov": {
+          "evidence_ref": "ev_YGJ0Q7G1R6HS1E9SETE3T9A67T",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "result_details_pending": true,
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "RESULT_DETAILS_PENDING",
+            "message": "各包中标人仅在下载地址为空的附件中；不将详见附件当作组织"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_S6VSFH9CSR93T2CAB9X5QJPMEB": {
+      "id": "ev_S6VSFH9CSR93T2CAB9X5QJPMEB",
+      "snapshot_ref": "snp_4DJE1Q78AT3VZG3AYNRQA393TJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:b54de339114cb8006b2d40b1e49478a0cb2ad305a1bd87f861dbb2093404b2ce"
+    },
+    "ev_5V2RKEEM9ZTET7KA0TQ4VAKJDZ": {
+      "id": "ev_5V2RKEEM9ZTET7KA0TQ4VAKJDZ",
+      "snapshot_ref": "snp_4DJE1Q78AT3VZG3AYNRQA393TJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 7,
+        "char_end": 17
+      },
+      "quote_hash": "sha256:0f0c4fd36d8ebe7d3755e28eada391ddd01ffe667463fd5812c51ca71039724e"
+    },
+    "ev_YGJ0Q7G1R6HS1E9SETE3T9A67T": {
+      "id": "ev_YGJ0Q7G1R6HS1E9SETE3T9A67T",
+      "snapshot_ref": "snp_4DJE1Q78AT3VZG3AYNRQA393TJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 9,
+        "char_end": 24
+      },
+      "quote_hash": "sha256:8140d5113512212be384154c8e6e69f9cb6c8472a028a091da57597a20831a68"
+    }
+  }
+}

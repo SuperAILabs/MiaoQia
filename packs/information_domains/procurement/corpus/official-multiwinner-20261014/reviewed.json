@@ -1,0 +1,589 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "award",
+      "method": "framework",
+      "title": {
+        "value": "北京市市级行政事业单位A4彩色打印机框架协议采购项目（2025年度）入围结果公告",
+        "prov": {
+          "evidence_ref": "ev_ME0RG2G2T1GF10RPBFJ3JQMHH1",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "BGPC-Z25007-04",
+        "prov": {
+          "evidence_ref": "ev_EEQ51ZMB9NA1FCKC87M36465XE",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1",
+          "bid_results": [
+            {
+              "id": "bdr_52XSJT0DJ03K7NC3B8RG1XFM6Z",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "国合星科（深圳）技术有限公司",
+                "prov": {
+                  "evidence_ref": "ev_CKEM1SPR226NV874SBRY8JKW5J",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 1,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_NP6YBE7QR8SZA091Z6MF5SHNCA",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "北京立思辰计算机技术有限公司",
+                "prov": {
+                  "evidence_ref": "ev_RNWBTGAQSFS9D343TX98DV21QC",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 2,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_KK500A2S8KRE3EZPHVR334PGQM",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "佳能（中国）有限公司",
+                "prov": {
+                  "evidence_ref": "ev_91V1TD0F517MCNCDS4Y04V4WTG",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 3,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_B3YM0HW83915ZEWCD8DATAJ16E",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "珠海奔图电子有限公司",
+                "prov": {
+                  "evidence_ref": "ev_RE6HZT1K9PXDYC2K6A01NMJXJJ",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 4,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_QX951XM386MX1VJ94DAGE12YJZ",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "安领信（北京）科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_BHYQ3SJ3P4G0F2A7FA4CQ8DV8B",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 5,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_ENBGH4BHVZ9SP1K0QQ8NDRB7ZX",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "北京市德佑应用技术有限公司",
+                "prov": {
+                  "evidence_ref": "ev_FY9WTP3SD6KSDRCJMT85HG9XVV",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 6,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_YERG1MCCJBT4MR49N0V3GF3D95",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "兄弟(中国)商业有限公司",
+                "prov": {
+                  "evidence_ref": "ev_K69Y9VTM42WK7QHWC5WFWND3GT",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 7,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_S8RREX2NDFHWS0EVHXS12N8X33",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "珠海纳思达信息技术有限公司",
+                "prov": {
+                  "evidence_ref": "ev_MM7KZ1HZ1Z118TJEFSC8SM4SPF",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 8,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_S2KZ58DZFWXQ6A8TBQ57S1NM5S",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "至像科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_264V6GNYVJ8JZ3HTC1XHV1NX9D",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 9,
+              "is_winner": false
+            }
+          ],
+          "conditions": {
+            "contract_pricing": {
+              "value": "包1最高入围价格：2875元",
+              "prov": {
+                "evidence_ref": "ev_YQN16PP2K8MBTV236Z9BXAXTCA",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            }
+          }
+        },
+        {
+          "lot_key": "2",
+          "bid_results": [
+            {
+              "id": "bdr_CN4CEMV0QCEN5QXWYTXCRGZMKA",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "紫光股份有限公司",
+                "prov": {
+                  "evidence_ref": "ev_YNC9F39TB8ZW08C207QYG3GXH9",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 1,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_KWJWMZ0ZDXJ4QKDSD7ZDM053DG",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "国合星科（深圳）技术有限公司",
+                "prov": {
+                  "evidence_ref": "ev_CKEM1SPR226NV874SBRY8JKW5J",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 2,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_VMDPCZCD4G7HFCJJ3CV8ED2T8B",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "至像科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_264V6GNYVJ8JZ3HTC1XHV1NX9D",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 3,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_AHJWF39KTWWEPSRZV1AN3GA5RX",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "安领信（北京）科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_BHYQ3SJ3P4G0F2A7FA4CQ8DV8B",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 4,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_88JKPRQJEWYSW4TJEAQJVK1GZK",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "浙江沧田智能信息科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_52ADM9ZSD42RJ1VQ716RD6SY7W",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 5,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_HN8QJCDZFCP7FW27D8KTAA8VKP",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "中矗集团有限公司",
+                "prov": {
+                  "evidence_ref": "ev_9YHD2TXB5ESS432GD17NEQ14HH",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 5,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_S3WDCXY48T4SP0X7X2YTNT8SH6",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "兄弟(中国)商业有限公司",
+                "prov": {
+                  "evidence_ref": "ev_K69Y9VTM42WK7QHWC5WFWND3GT",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 7,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_AD5HKJ2QQR4WAHTGTNJM44T4M7",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "卓翼达（北京）科技发展有限公司",
+                "prov": {
+                  "evidence_ref": "ev_AMATP2QV361VJQM4F4A0SGG0M5",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 8,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_XFDGNXSYRNFP31N0QCE58CCQ0M",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "理光（中国）投资有限公司",
+                "prov": {
+                  "evidence_ref": "ev_75643NT03ZCVDAF828EYJ9PVZE",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 9,
+              "is_winner": false
+            },
+            {
+              "id": "bdr_4HGYTPDS71BMQXH5MZ14V85R5V",
+              "stage": "award",
+              "result_kind": "framework_shortlist",
+              "bidder": {
+                "name_raw": "恒科科技产业有限公司",
+                "prov": {
+                  "evidence_ref": "ev_AK9D7T74YXSG3780KA05YZ0A8B",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "rank": 10,
+              "is_winner": false
+            }
+          ],
+          "conditions": {
+            "contract_pricing": {
+              "value": "包2最高入围价格：2970元",
+              "prov": {
+                "evidence_ref": "ev_E2C0GAMRKB7GPFSFFC0QDDXQS2",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            }
+          }
+        }
+      ],
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "SUPPLIER_PRICES_ATTACHMENT_PENDING",
+            "message": "各供应商价格详见未审阅附件；正文仅给最高入围单价，不能当总成交价"
+          },
+          {
+            "code": "SOURCE_RANK_TIE",
+            "message": "包2原文两家均排序5，原样保留"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_ME0RG2G2T1GF10RPBFJ3JQMHH1": {
+      "id": "ev_ME0RG2G2T1GF10RPBFJ3JQMHH1",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 40
+      },
+      "quote_hash": "sha256:7d93a2439ab5cc7c1dd2fa539bcc3e145ffebad791174c677bb12c3d1c455adf"
+    },
+    "ev_EEQ51ZMB9NA1FCKC87M36465XE": {
+      "id": "ev_EEQ51ZMB9NA1FCKC87M36465XE",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 7,
+        "char_end": 21
+      },
+      "quote_hash": "sha256:7081c90e3482919cfb54b11a1f35a5070c6764d18ac73d77b70595152db8518f"
+    },
+    "ev_CKEM1SPR226NV874SBRY8JKW5J": {
+      "id": "ev_CKEM1SPR226NV874SBRY8JKW5J",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 22,
+        "char_start": 2,
+        "char_end": 16
+      },
+      "quote_hash": "sha256:4475d39798b750d326acfb4abb4f0910c9e99e3fe9601fa25f79cdadf2323eb8"
+    },
+    "ev_RNWBTGAQSFS9D343TX98DV21QC": {
+      "id": "ev_RNWBTGAQSFS9D343TX98DV21QC",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 23,
+        "char_start": 2,
+        "char_end": 16
+      },
+      "quote_hash": "sha256:c8b9a6d8501f7f4dc0526febf32e436f462d1b6299357eca7fea25f7e48f4f78"
+    },
+    "ev_91V1TD0F517MCNCDS4Y04V4WTG": {
+      "id": "ev_91V1TD0F517MCNCDS4Y04V4WTG",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 24,
+        "char_start": 2,
+        "char_end": 12
+      },
+      "quote_hash": "sha256:44389dbab17eb84a050f695b1bb2ce7b3e5fc1eb148279adfbd1e77fb7116bae"
+    },
+    "ev_RE6HZT1K9PXDYC2K6A01NMJXJJ": {
+      "id": "ev_RE6HZT1K9PXDYC2K6A01NMJXJJ",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 25,
+        "char_start": 2,
+        "char_end": 12
+      },
+      "quote_hash": "sha256:f281d7060b3d2ea2c752cd4f65a8db579ffa6c300ff818d6935cde813724049f"
+    },
+    "ev_BHYQ3SJ3P4G0F2A7FA4CQ8DV8B": {
+      "id": "ev_BHYQ3SJ3P4G0F2A7FA4CQ8DV8B",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 26,
+        "char_start": 2,
+        "char_end": 15
+      },
+      "quote_hash": "sha256:b3c48ed54301dbab76bc1245c55c23cd619bdd94c295b8b9c79eea2240f7cdfe"
+    },
+    "ev_FY9WTP3SD6KSDRCJMT85HG9XVV": {
+      "id": "ev_FY9WTP3SD6KSDRCJMT85HG9XVV",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 27,
+        "char_start": 2,
+        "char_end": 15
+      },
+      "quote_hash": "sha256:240630aabaa39ffd956d8955af4a41e654e4c2a1a3e04a8b8966bc4d6ba0546b"
+    },
+    "ev_K69Y9VTM42WK7QHWC5WFWND3GT": {
+      "id": "ev_K69Y9VTM42WK7QHWC5WFWND3GT",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 28,
+        "char_start": 2,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:116a4c9a02e678cba6865afaedeedf7b8eff6de38229f63208f3d6b45ad8348c"
+    },
+    "ev_MM7KZ1HZ1Z118TJEFSC8SM4SPF": {
+      "id": "ev_MM7KZ1HZ1Z118TJEFSC8SM4SPF",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 29,
+        "char_start": 2,
+        "char_end": 15
+      },
+      "quote_hash": "sha256:01239d6c95f6d1a0edeb7146de5c885b7c19c94b05e91e2ae20d8eb666c6787f"
+    },
+    "ev_264V6GNYVJ8JZ3HTC1XHV1NX9D": {
+      "id": "ev_264V6GNYVJ8JZ3HTC1XHV1NX9D",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 30,
+        "char_start": 2,
+        "char_end": 10
+      },
+      "quote_hash": "sha256:2029d0b3a993691bef096f08051f18f2ae3d4fed42b9c84f8364e83c1227e294"
+    },
+    "ev_YQN16PP2K8MBTV236Z9BXAXTCA": {
+      "id": "ev_YQN16PP2K8MBTV236Z9BXAXTCA",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 31,
+        "char_start": 0,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:773317b0c3d6c661372b4d35796c8a5d645169cfdd20bfac62d81e4881a8cc8b"
+    },
+    "ev_YNC9F39TB8ZW08C207QYG3GXH9": {
+      "id": "ev_YNC9F39TB8ZW08C207QYG3GXH9",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 33,
+        "char_start": 2,
+        "char_end": 10
+      },
+      "quote_hash": "sha256:020e3ff9e0e07b3985d474e3852df9b1268e59c00a4ea178de3a31f68ad8bd2a"
+    },
+    "ev_52ADM9ZSD42RJ1VQ716RD6SY7W": {
+      "id": "ev_52ADM9ZSD42RJ1VQ716RD6SY7W",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 37,
+        "char_start": 2,
+        "char_end": 16
+      },
+      "quote_hash": "sha256:58e4c034a61bef3ddd5ffe8241208d3297bd32000008714cad21ac316e26207b"
+    },
+    "ev_9YHD2TXB5ESS432GD17NEQ14HH": {
+      "id": "ev_9YHD2TXB5ESS432GD17NEQ14HH",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 38,
+        "char_start": 2,
+        "char_end": 10
+      },
+      "quote_hash": "sha256:64f062076d24db671709891d8804afb1d1540acfa6700fd7c84a628518e1166c"
+    },
+    "ev_AMATP2QV361VJQM4F4A0SGG0M5": {
+      "id": "ev_AMATP2QV361VJQM4F4A0SGG0M5",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 40,
+        "char_start": 2,
+        "char_end": 17
+      },
+      "quote_hash": "sha256:b7eaa70c72ab29d0365450ea2a1949f7acadc2b1bab8e7863dfc873560bbfb0e"
+    },
+    "ev_75643NT03ZCVDAF828EYJ9PVZE": {
+      "id": "ev_75643NT03ZCVDAF828EYJ9PVZE",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 41,
+        "char_start": 2,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:4b8a78ffbdfa47e20fc0d3beb44724ce552c168e323fdecb5672a4261780cc9e"
+    },
+    "ev_AK9D7T74YXSG3780KA05YZ0A8B": {
+      "id": "ev_AK9D7T74YXSG3780KA05YZ0A8B",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 42,
+        "char_start": 3,
+        "char_end": 13
+      },
+      "quote_hash": "sha256:0e0987273eb4657fd907f8d4c2f883c829b0a90fff9d09484ae04af4105136d4"
+    },
+    "ev_E2C0GAMRKB7GPFSFFC0QDDXQS2": {
+      "id": "ev_E2C0GAMRKB7GPFSFFC0QDDXQS2",
+      "snapshot_ref": "snp_07K89YAA9J0GHD58YWZMFAGWY6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 43,
+        "char_start": 0,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:96f0575f40b80ac96c53d0c06802641d6b45311bff7d707e070084e0443ba271"
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "snapshot_ref": "snp_PCM522F2GQDT7382635JCBK67K",
+  "pipeline_version": "doc.manual-review@0.1.0",
+  "media_type": "image_scan",
+  "source_url": "https://www.forestry.gov.cn/u/cms/www/202601/19110921528j.pdf",
+  "blocks": [
+    {
+      "index": 0,
+      "kind": "heading",
+      "level": 1,
+      "text": "合同书",
+      "page": 2
+    },
+    {
+      "index": 1,
+      "kind": "paragraph",
+      "text": "甲方 中国林业科学研究院华北林业实验中心 承担的华林中心基础设施灾后重建项目-科研监测设备购置（二次），以 ZSTX-ZB-2025-33 招标文件在国内公开招标。经评定，乙方 北京天恒昕业科技发展有限公司 为中标供应商。",
+      "page": 2
+    },
+    {
+      "index": 2,
+      "kind": "table",
+      "page": 3,
+      "rows": [
+        [
+          {
+            "text": "序号"
+          },
+          {
+            "text": "设备名称"
+          },
+          {
+            "text": "品牌"
+          },
+          {
+            "text": "型号"
+          },
+          {
+            "text": "单位"
+          },
+          {
+            "text": "数量"
+          },
+          {
+            "text": "单价"
+          },
+          {
+            "text": "小计"
+          }
+        ],
+        [
+          {
+            "text": "1"
+          },
+          {
+            "text": "智能人工气候箱"
+          },
+          {
+            "text": "上海超泓"
+          },
+          {
+            "text": "PRX-450C"
+          },
+          {
+            "text": "个"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "31093.58"
+          },
+          {
+            "text": "31093.58"
+          }
+        ],
+        [
+          {
+            "text": "2"
+          },
+          {
+            "text": "三孔 PCR 仪"
+          },
+          {
+            "text": "朗基"
+          },
+          {
+            "text": "T30"
+          },
+          {
+            "text": "套"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "146715.03"
+          },
+          {
+            "text": "146715.03"
+          }
+        ]
+      ]
+    },
+    {
+      "index": 3,
+      "kind": "paragraph",
+      "text": "本合同总价为（小写：3480560.39 元）。本合同总价为甲方应支付给乙方所有的费用。",
+      "page": 6
+    },
+    {
+      "index": 4,
+      "kind": "paragraph",
+      "text": "交货时间：签订合同首付款到账后15个工作日内将货物发送至甲方指定地点。",
+      "page": 6
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "amendment",
+      "title": {
+        "value": "广东省人工影响天气水资源保障工程-机动集成作业系统建设采购更正公告（第二次）",
+        "prov": {
+          "evidence_ref": "ev_Y6Y5WC6NA3VYPSM1BX57S0EMPW",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "amendment": {
+        "amends_notice_ids": [],
+        "original_reference": {
+          "value": ".GPCGD261203HG096F",
+          "prov": {
+            "evidence_ref": "ev_1HN93MCDBV8J3ADWTFW37YZ46T",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "summary": {
+          "value": "原公告的投标文件提交截止时间：2026-06-08 09:30:00，更正为：2026-06-10 09:30:00。",
+          "prov": {
+            "evidence_ref": "ev_E9MEQBGMWCYDHZQ98W9MG0GCJX",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "changes": [
+          {
+            "id": "amd_D32V045C2A6Q11DK659YE70NZD",
+            "field_path": "/lots/0/deadlines/0/at",
+            "before": {
+              "value": "2026-06-08T01:30:00Z",
+              "precision": "second",
+              "tz_raw": "+08:00",
+              "prov": {
+                "evidence_ref": "ev_8D0SWGD1NJC414X2J83RV5NEQH",
+                "method": "manual",
+                "confidence": 0.95,
+                "extractor": "proc.manual-review@0.1.0"
+              }
+            },
+            "after": {
+              "value": "2026-06-10T01:30:00Z",
+              "precision": "second",
+              "tz_raw": "+08:00",
+              "prov": {
+                "evidence_ref": "ev_YMMDKP7SHYVDJ5RWYEJZAZ9ST3",
+                "method": "manual",
+                "confidence": 0.95,
+                "extractor": "proc.manual-review@0.1.0"
+              }
+            },
+            "prov": {
+              "evidence_ref": "ev_E9MEQBGMWCYDHZQ98W9MG0GCJX",
+              "method": "manual",
+              "confidence": 1,
+              "extractor": "proc.manual-review@0.1.0"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_Y6Y5WC6NA3VYPSM1BX57S0EMPW": {
+      "id": "ev_Y6Y5WC6NA3VYPSM1BX57S0EMPW",
+      "snapshot_ref": "snp_A8S7FEK15Q6TBPD6924ZMN7WD6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 38
+      },
+      "quote_hash": "sha256:9d194a22725240fdcf1948fb7c6b6350300ece762b7d403a4a23c20ba38b0b66"
+    },
+    "ev_1HN93MCDBV8J3ADWTFW37YZ46T": {
+      "id": "ev_1HN93MCDBV8J3ADWTFW37YZ46T",
+      "snapshot_ref": "snp_A8S7FEK15Q6TBPD6924ZMN7WD6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 11,
+        "char_end": 29
+      },
+      "quote_hash": "sha256:d82a1efec005041e3d173eee4f842fb4b3f956f5f0cab2e57e45722fb4d58f05"
+    },
+    "ev_E9MEQBGMWCYDHZQ98W9MG0GCJX": {
+      "id": "ev_E9MEQBGMWCYDHZQ98W9MG0GCJX",
+      "snapshot_ref": "snp_A8S7FEK15Q6TBPD6924ZMN7WD6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 10,
+        "char_start": 0,
+        "char_end": 59
+      },
+      "quote_hash": "sha256:d4401b3f25a2d2c230da30dcedd8d02ffe0524304ada644d2df031ac62500b09"
+    },
+    "ev_8D0SWGD1NJC414X2J83RV5NEQH": {
+      "id": "ev_8D0SWGD1NJC414X2J83RV5NEQH",
+      "snapshot_ref": "snp_A8S7FEK15Q6TBPD6924ZMN7WD6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 10,
+        "char_start": 15,
+        "char_end": 34
+      },
+      "quote_hash": "sha256:5fe3602b1d27583bb4cb04be783f8b204d702ae618e8ff3fb7d92447d172c9be"
+    },
+    "ev_YMMDKP7SHYVDJ5RWYEJZAZ9ST3": {
+      "id": "ev_YMMDKP7SHYVDJ5RWYEJZAZ9ST3",
+      "snapshot_ref": "snp_A8S7FEK15Q6TBPD6924ZMN7WD6",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 10,
+        "char_start": 39,
+        "char_end": 58
+      },
+      "quote_hash": "sha256:6461f703bc71e7983c4f1e4b3f914405d40109f19c623707580ff921f7552e5d"
+    }
+  }
+}

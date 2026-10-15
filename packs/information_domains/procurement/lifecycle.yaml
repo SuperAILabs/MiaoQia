@@ -1,24 +1,326 @@
-# 采购项目生命周期状态机：domain-intelligence 的 lifecycle_engine 执行。
-# 非法转换不强行修正，记为质量警告 LIFECYCLE_ILLEGAL_TRANSITION 并进入复核。
 lifecycle:
   object: ProcurementProject
-  schema: domains/procurement/procurement-project.schema.json     # 相对 contracts/schemas
+  schema: domains/procurement/procurement-project.schema.json
   field: stage
-  trigger_source: { schema: domains/procurement/notice.schema.json, field: notice_type }
+  trigger_source:
+    schema: domains/procurement/notice.schema.json
+    field: notice_type
   initial:
-    - { to: intent,    trigger: [intent, plan] }
-    - { to: announced, trigger: [prequalification, tender, negotiation, consultation, inquiry, single_source, framework] }
+  - to: intent
+    trigger:
+    - intent
+    - plan
+    - supplier_enrollment
+  - to: announced
+    trigger:
+    - prequalification
+    - tender
+    - negotiation
+    - consultation
+    - inquiry
+    - single_source
+    - framework
+  - to: candidate_published
+    trigger:
+    - candidate
+  - to: awarded
+    trigger: &id001
+    - award
+    when:
+      not: &id002
+        required:
+        - lots
+        properties:
+          lots:
+            minItems: 1
+            items:
+              required:
+              - bid_results
+              properties:
+                bid_results:
+                  minItems: 1
+                  items:
+                    required:
+                    - result_kind
+                    properties:
+                      result_kind:
+                        const: framework_shortlist
+  - to: shortlisted
+    trigger: *id001
+    when: *id002
+  - to: contracted
+    trigger:
+    - contract
+  - to: accepted
+    trigger: &id003
+    - acceptance
+    when:
+      required:
+      - acceptance
+      properties:
+        acceptance:
+          required:
+          - result
+          properties:
+            result:
+              const: passed
+  - to: acceptance_failed
+    trigger: *id003
+    when:
+      required:
+      - acceptance
+      properties:
+        acceptance:
+          required:
+          - result
+          properties:
+            result:
+              const: failed
+  - to: partially_accepted
+    trigger: *id003
+    when:
+      required:
+      - acceptance
+      properties:
+        acceptance:
+          required:
+          - result
+          properties:
+            result:
+              const: partial
+  - to: acceptance_pending
+    trigger: *id003
+    when:
+      not:
+        anyOf:
+        - required:
+          - acceptance
+          properties:
+            acceptance:
+              required:
+              - result
+              properties:
+                result:
+                  const: passed
+        - required:
+          - acceptance
+          properties:
+            acceptance:
+              required:
+              - result
+              properties:
+                result:
+                  const: failed
+        - required:
+          - acceptance
+          properties:
+            acceptance:
+              required:
+              - result
+              properties:
+                result:
+                  const: partial
+  - to: failed
+    trigger:
+    - failure
+  - to: terminated
+    trigger:
+    - termination
+  - to: amended
+    trigger:
+    - amendment
+    - clarification
+  - to: announced
+    trigger:
+    - price_limit
   transitions:
-    - { from: intent,              to: announced,           trigger: [prequalification, tender, negotiation, consultation, inquiry, single_source, framework] }
-    - { from: announced,           to: amended,             trigger: [amendment, clarification] }
-    - { from: amended,             to: announced,           trigger: [tender, negotiation, consultation, inquiry] }  # 重新发布
-    - { from: [announced, amended], to: evaluating,         trigger_time: bid_opening }                          # 到达开标时间
-    - { from: evaluating,          to: candidate_published, trigger: [candidate] }
-    - { from: [evaluating, candidate_published], to: awarded, trigger: [award] }
-    - { from: [evaluating, candidate_published], to: failed,  trigger: [failure] }
-    - { from: [intent, announced, amended, evaluating], to: terminated, trigger: [termination] }
-    - { from: awarded,             to: contracted,          trigger: [contract] }
-    - { from: contracted,          to: accepted,            trigger: [acceptance] }
-    - { from: failed,              to: announced,           trigger: [tender, negotiation, consultation, inquiry] }  # 重新采购
-  terminal: [accepted, terminated]
-  # 多标包项目：项目阶段取各标包中最靠前的未结束状态；各标包状态见 lots[].status。
+  - from: intent
+    to: announced
+    trigger:
+    - prequalification
+    - tender
+    - negotiation
+    - consultation
+    - inquiry
+    - single_source
+    - framework
+  - from: announced
+    to: amended
+    trigger:
+    - amendment
+    - clarification
+    - price_limit
+  - from: amended
+    to: announced
+    trigger:
+    - tender
+    - negotiation
+    - consultation
+    - inquiry
+  - from:
+    - announced
+    - amended
+    to: evaluating
+    trigger_time: bid_opening
+  - from:
+    - announced
+    - amended
+    - evaluating
+    to: candidate_published
+    trigger:
+    - candidate
+  - from: &id004
+    - announced
+    - amended
+    - evaluating
+    - candidate_published
+    to: awarded
+    trigger: &id005
+    - award
+    when:
+      not: *id002
+  - from: *id004
+    to: shortlisted
+    trigger: *id005
+    when: *id002
+  - from:
+    - announced
+    - amended
+    - evaluating
+    - candidate_published
+    to: failed
+    trigger:
+    - failure
+  - from:
+    - intent
+    - announced
+    - amended
+    - evaluating
+    to: terminated
+    trigger:
+    - termination
+  - from:
+    - awarded
+    - shortlisted
+    to: contracted
+    trigger:
+    - contract
+  - from:
+    - contracted
+    - acceptance_failed
+    - partially_accepted
+    - acceptance_pending
+    - accepted
+    to: accepted
+    trigger: &id006
+    - acceptance
+    when:
+      required:
+      - acceptance
+      properties:
+        acceptance:
+          required:
+          - result
+          properties:
+            result:
+              const: passed
+  - from:
+    - contracted
+    - acceptance_failed
+    - partially_accepted
+    - acceptance_pending
+    - accepted
+    to: acceptance_failed
+    trigger: *id006
+    when:
+      required:
+      - acceptance
+      properties:
+        acceptance:
+          required:
+          - result
+          properties:
+            result:
+              const: failed
+  - from:
+    - contracted
+    - acceptance_failed
+    - partially_accepted
+    - acceptance_pending
+    - accepted
+    to: partially_accepted
+    trigger: *id006
+    when:
+      required:
+      - acceptance
+      properties:
+        acceptance:
+          required:
+          - result
+          properties:
+            result:
+              const: partial
+  - from:
+    - contracted
+    - acceptance_failed
+    - partially_accepted
+    - acceptance_pending
+    - accepted
+    to: acceptance_pending
+    trigger: *id006
+    when:
+      not:
+        anyOf:
+        - required:
+          - acceptance
+          properties:
+            acceptance:
+              required:
+              - result
+              properties:
+                result:
+                  const: passed
+        - required:
+          - acceptance
+          properties:
+            acceptance:
+              required:
+              - result
+              properties:
+                result:
+                  const: failed
+        - required:
+          - acceptance
+          properties:
+            acceptance:
+              required:
+              - result
+              properties:
+                result:
+                  const: partial
+  - from: failed
+    to: announced
+    trigger:
+    - tender
+    - negotiation
+    - consultation
+    - inquiry
+  terminal:
+  - terminated
+  when_semantics: when是对完整Notice事实求值的JSON Schema；条件不匹配不转换。验收失败不是采购流标，可复验；入围不是第二阶段成交。
+  current_projection_filter:
+    not:
+      required:
+      - quality
+      properties:
+        quality:
+          required:
+          - warnings
+          properties:
+            warnings:
+              contains:
+                required:
+                - code
+                properties:
+                  code:
+                    const: JUDICIAL_SOURCE_HISTORICAL_ACCEPTANCE

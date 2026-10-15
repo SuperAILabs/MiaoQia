@@ -24,7 +24,7 @@ DATE_ONLY = re.compile(r"^\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日$")
 
 class TenderNoticeExtractor:
     id = "proc.tender-notice"
-    version = "0.1.0"
+    version = "0.2.0"
     fact_types = ("tendering.notice",)
 
     def applies(self, doc: Document, source: dict) -> bool:
@@ -53,7 +53,7 @@ class TenderNoticeExtractor:
         if (s := self._signature_date(doc)) and (t := ctx.instant(s)):
             fact["published_at"] = t
         fact["lots"] = self._lots(doc, ctx, res)
-        contacts = self._contacts(doc)
+        contacts = self._contacts(doc, ctx)
         if contacts:
             fact["contacts"] = contacts
         if "title" not in fact or "buyer" not in fact:
@@ -185,7 +185,7 @@ class TenderNoticeExtractor:
                 lot["requirements"] = rq
         return list(lots.values())
 
-    def _contacts(self, doc: Document) -> list[dict]:
+    def _contacts(self, doc: Document, ctx: ExtractionContext) -> list[dict]:
         """“招标人……联系方式”与“招标组织单位/代理……联系方式”小节中的联系人、电话、邮箱。"""
         out: list[dict] = []
         role = None
@@ -204,11 +204,13 @@ class TenderNoticeExtractor:
             if role is None:
                 continue
             if (m := re.search(r"联系人[：:]\s*([一-龥·]{2,4})", text)):
-                cur = {"role": role, "name": m.group(1)}
+                cur = {"role": role, "name": m.group(1), "name_prov": ctx.prov(Span(m.group(1), b["index"], m.start(1), m.end(1)), 0.95)}
                 out.append(cur)
             if cur is not None:
                 if (m := MOBILE.search(text)) and "phone" not in cur and "技术支持" not in text:
                     cur["phone"] = m.group(0)
+                    cur["phone_prov"] = ctx.prov(Span(m.group(0), b["index"], m.start(), m.end()), 0.95)
                 if (m := EMAIL.search(text)) and "email" not in cur:
                     cur["email"] = m.group(0)
+                    cur["email_prov"] = ctx.prov(Span(m.group(0), b["index"], m.start(), m.end()), 0.95)
         return out

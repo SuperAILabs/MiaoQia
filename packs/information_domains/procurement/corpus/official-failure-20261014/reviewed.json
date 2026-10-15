@@ -1,0 +1,81 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "failure",
+      "title": {
+        "value": "2026年中央财政转移支付资金支持农业经营主体提升农产品质量安全水平项目第三包（三次）终止公告",
+        "prov": {
+          "evidence_ref": "ev_NJYMM8E682V2F2R8RAZFQ4SJ2J",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "EP-SZCG2026068C-重2",
+        "prov": {
+          "evidence_ref": "ev_QNYB96TQQKQQ66P0T8CTJ0ZNXY",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "3"
+        }
+      ],
+      "ending": {
+        "ending_type": "failed_bid",
+        "lot_keys": [
+          "3"
+        ],
+        "reason": {
+          "value": "实质性响应磋商文件的供应商家数不足法定数量，本项目依法择期重新采购。",
+          "prov": {
+            "evidence_ref": "ev_06S03ENBWDE6743H1K9ZVEYS2D",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      }
+    }
+  ],
+  "evidence": {
+    "ev_NJYMM8E682V2F2R8RAZFQ4SJ2J": {
+      "id": "ev_NJYMM8E682V2F2R8RAZFQ4SJ2J",
+      "snapshot_ref": "snp_58SKHBC1X52MC7SREZZRFAXSFF",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 47
+      },
+      "quote_hash": "sha256:d584722a1650cac0d87dd649fac346fb2cfa9b6c96a6442dedeefed151fe7e4e"
+    },
+    "ev_QNYB96TQQKQQ66P0T8CTJ0ZNXY": {
+      "id": "ev_QNYB96TQQKQQ66P0T8CTJ0ZNXY",
+      "snapshot_ref": "snp_58SKHBC1X52MC7SREZZRFAXSFF",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 3,
+        "char_start": 7,
+        "char_end": 25
+      },
+      "quote_hash": "sha256:ed0818f0adb1b316d7a156f8aa5d8964c3816d471281f6211f3f4e7525aa6f3f"
+    },
+    "ev_06S03ENBWDE6743H1K9ZVEYS2D": {
+      "id": "ev_06S03ENBWDE6743H1K9ZVEYS2D",
+      "snapshot_ref": "snp_58SKHBC1X52MC7SREZZRFAXSFF",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 34
+      },
+      "quote_hash": "sha256:af77a1b32bb5d25356a9ff0f0e4a50b437f9649088e605f4b237c0fb38a694f0"
+    }
+  }
+}

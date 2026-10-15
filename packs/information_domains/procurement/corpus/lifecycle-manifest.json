@@ -1,0 +1,106 @@
+{
+  "version": "0.4.0",
+  "scope": "真实官方原件与人工契约映射，不能证明来源解析准确率或全国覆盖",
+  "samples": [
+    {
+      "sample": "official-award-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/zygg/zbgg/202606/t20260611_26734245.htm",
+      "response_sha256": "273e9d3b4b708166aad46ed758bced95a3c20460050b2ed4f9235d354085b0dc",
+      "raw_sha256": "1a80eb40ea54ad3e399daaf3db008846afb87aea21dcb64173048b3e595065ed"
+    },
+    {
+      "sample": "official-amendment-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/zygg/gzgg/202606/t20260623_26792369.htm",
+      "response_sha256": "5592ef41bbc4575d80950bc21a4646aa776af75f512933697267303ae14c4aff",
+      "raw_sha256": "c658fcff6845d6d1fc550f7297fd8ba3109567e00075c8ca469e39ee6805b87d"
+    },
+    {
+      "sample": "official-award-amended-original-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/zygg/zbgg/202606/t20260617_26763266.htm",
+      "response_sha256": "22861a17ce4adcc1e5bf5c6e4965e9795d1740caada728c7ef4cfb513868695c",
+      "raw_sha256": "46cbd3a81668f13fa1e9709e48db4641072afc79ee2ce81716cefa64c52bd54e"
+    },
+    {
+      "sample": "official-amendment-deadline-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/dfgg/gzgg/202605/t20260526_26635894.htm",
+      "response_sha256": "beabd2a9f3cf2084988e7d5fbf132ee0ce17d80079862f8f309b9bd82daa6670",
+      "raw_sha256": "343461aace4e95e83874977e2694324490d34b53ca8a1364ab9e25718312d01f"
+    },
+    {
+      "sample": "official-contract-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/zygg/qtgg/202604/t20260421_26437210.htm",
+      "response_sha256": "2eb5d73fa563430309b2aa1f6a4047951161bd7385e70b116200f733b530933c",
+      "raw_sha256": "6cd51c160d4b7a89dead34f8fe6951e59e284efff1dabc9742ceb0b957292330"
+    },
+    {
+      "sample": "official-contract-forestry-20261014",
+      "source_url": "https://www.forestry.gov.cn/c/www/htgk/657330.jhtml",
+      "response_sha256": "81be12bdd3bfc4210fb083fcb910d9c6bc202ed89e28d6d9218fab4b095739a7",
+      "raw_sha256": "7621bd22d1169702e7f5bc01ee8ced3810abfbd8e40453c5d572ce6a69dd8a59"
+    },
+    {
+      "sample": "official-acceptance-20261014",
+      "source_url": "https://www.songjiang.gov.cn/xwzx/001004/001004002/20261012/149be4ab-c685-4b43-adb1-0d3d677c076d.html",
+      "response_sha256": "f867b78ff07c9e5f84d43d5c3353dd5afe3373814958a92118b1f2fb373039e5",
+      "raw_sha256": "0bd870713c5059e38cba25f2b948f8bcb58d8b0827791fd5f1beb36215a330cd"
+    },
+    {
+      "sample": "official-acceptance-yantai-20261014",
+      "source_url": "https://scjgj.yantai.gov.cn/art/2025/1/24/art_49660_2902718.html",
+      "response_sha256": "298d8434117042d15b2dd3cda3640836ea520ae77881e1cb49dfb56fbddc61a0",
+      "raw_sha256": "4ced9103fa7a4e57893f6e2058d54cd5dad72175a629d7dfae7b48e1e133037b"
+    },
+    {
+      "sample": "official-candidate-20261014",
+      "source_url": "https://ggzy.sc.yichang.gov.cn/jyxx/003001/003001004/20260423/a8b40b24-319a-4322-aa3f-3e924b0ae8cf.html",
+      "response_sha256": "fdeb01e3e28525fa7e5dd3d95f7db2082efbea6b165af4c4dd6ea4853188148b",
+      "raw_sha256": "34edac24d7df29d67702c89ba4d30a1d018848f230c1177032d4d88ee5be065a"
+    },
+    {
+      "sample": "official-contract-attachment-20261014",
+      "source_url": "https://www.forestry.gov.cn/u/cms/www/202601/19110921528j.pdf",
+      "raw_sha256": "5c1714431905b2838e5ebc3c9050db1930985dcf45844da1e913c13c7720869b",
+      "pages": 22,
+      "reviewed_pages": [
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "sample": "official-failure-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/dfgg/fblbgg/202609/t20260910_27308201.htm",
+      "response_sha256": "6759e6e33ffef7d528426ab40f9850a904466f46b1e9777cffeb80e4fd93f2a0",
+      "raw_sha256": "291c8c4837424e910333cdc9bcd814787bf9d94e9fca34d6d55f247accd25775"
+    },
+    {
+      "sample": "official-consortium-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/dfgg/zbgg/202606/t20260609_26717301.htm",
+      "response_sha256": "7847e7cd88bc6f0b1ebd37010727de6489ff77a4123a1ed6088b6746c06d38a3",
+      "raw_sha256": "8fb01ef4d8e40456ee4343eaa141bae2475a378c54af8c1e4e17e6aa0c077554"
+    },
+    {
+      "sample": "official-multiwinner-20261014",
+      "source_url": "https://www.ccgp.gov.cn/cggg/dfgg/zbgg/202506/t20250624_24839822.htm",
+      "response_sha256": "88709fc25edf2913d42b6b05da2c1aabaff2b29daf5ddcb501b386ced362fd0a",
+      "raw_sha256": "45a404a7e1b68c677c4fee2d573215e23998c3da060691e7cbd5781ffd6b128d"
+    },
+    {
+      "sample": "official-ordinary-multiwinner-20261014",
+      "source_url": "https://njggzy.nanjing.gov.cn/njweb/uploadfile/9455c8ad-5fb9-483a-bae3-6cd6d4193526/【中标结果公示】二次供水设备采购及相关服务成交结果公告.pdf",
+      "raw_sha256": "ae469167163fac41d7a4876d3862cac3e7d24fe4dd67345d259665cc659a45be",
+      "reviewed_pages": [
+        1,
+        2
+      ]
+    },
+    {
+      "sample": "official-failed-acceptance-judgment-20261014",
+      "source_url": "https://www.gdcourts.gov.cn/caipanwenshuxuandeng/caipanwenshuxuandeng/content/post_1045953.html",
+      "response_sha256": "bfe9ba66cc4aaa176dbd59292581bedfb7317627042a2590ad56b5931b0042b8",
+      "raw_sha256": "1fb7231b39eda09498f942f9a055696d7e1887bdddedf9771e77b5ecf3ae3807",
+      "source_kind": "court_original_judgment",
+      "gate_scope": "accepted_first_party_judicial_edge_case"
+    }
+  ]
+}

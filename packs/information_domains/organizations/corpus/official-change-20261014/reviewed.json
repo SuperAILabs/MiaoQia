@@ -1,0 +1,127 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "subject": {
+        "name_raw": "乌鲁木齐泰昆食品有限公司",
+        "prov": {
+          "evidence_ref": "ev_Q3T93N0N8Y3G548ZK1HWXWG1AB",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91650100792287504J",
+        "uscc_prov": {
+          "evidence_ref": "ev_F2CFT6QZKZPFE6CY00EB1VYXDR",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "change_type": "name",
+      "change_item_raw": {
+        "value": "企业名称变更",
+        "prov": {
+          "evidence_ref": "ev_V2BW8AKT4SY4SBGNG57FGT9SHZ",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "before": {
+        "value": "新疆帕戈郎食品有限公司",
+        "prov": {
+          "evidence_ref": "ev_C9JWZ863YXWW7KK010QF515FHK",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "after": {
+        "value": "乌鲁木齐泰昆食品有限公司",
+        "prov": {
+          "evidence_ref": "ev_Q3T93N0N8Y3G548ZK1HWXWG1AB",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "CHANGE_DATE_UNKNOWN",
+            "message": "正文只公示名单调整，未披露实际登记变更日期；changed_on省略"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_Q3T93N0N8Y3G548ZK1HWXWG1AB": {
+      "id": "ev_Q3T93N0N8Y3G548ZK1HWXWG1AB",
+      "snapshot_ref": "snp_DYVB8E22RW1V9N6XWNW7D6G4JJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 14,
+        "char_start": 0,
+        "char_end": 12,
+        "row": 4,
+        "col": 8
+      },
+      "quote_hash": "sha256:b97ada70f391f064ad2978a7dfa16d13d8e80d42c0f598d44b0f40015363034f"
+    },
+    "ev_F2CFT6QZKZPFE6CY00EB1VYXDR": {
+      "id": "ev_F2CFT6QZKZPFE6CY00EB1VYXDR",
+      "snapshot_ref": "snp_DYVB8E22RW1V9N6XWNW7D6G4JJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 14,
+        "char_start": 0,
+        "char_end": 18,
+        "row": 4,
+        "col": 2
+      },
+      "quote_hash": "sha256:ca4da6753a625adfcdf071a16eda6fd1d1306b81c0568f2a74d24d8c08bef159"
+    },
+    "ev_TTE51S54DK4DJJVKD4R28EBPCW": {
+      "id": "ev_TTE51S54DK4DJJVKD4R28EBPCW",
+      "snapshot_ref": "snp_DYVB8E22RW1V9N6XWNW7D6G4JJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 14,
+        "char_start": 0,
+        "char_end": 6,
+        "row": 3,
+        "col": 7
+      },
+      "quote_hash": "sha256:4727c912ad99db8e0d03522b64701be03a9abeabcf0d92913da16f02a8bd5e48"
+    },
+    "ev_C9JWZ863YXWW7KK010QF515FHK": {
+      "id": "ev_C9JWZ863YXWW7KK010QF515FHK",
+      "snapshot_ref": "snp_DYVB8E22RW1V9N6XWNW7D6G4JJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 14,
+        "char_start": 0,
+        "char_end": 11,
+        "row": 4,
+        "col": 1
+      },
+      "quote_hash": "sha256:0c57bb71b01818813ef42cdd31de5a4d5f27219efe309c6688c7cabde3e10486"
+    },
+    "ev_V2BW8AKT4SY4SBGNG57FGT9SHZ": {
+      "id": "ev_V2BW8AKT4SY4SBGNG57FGT9SHZ",
+      "snapshot_ref": "snp_DYVB8E22RW1V9N6XWNW7D6G4JJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 14,
+        "char_start": 0,
+        "char_end": 6,
+        "row": 4,
+        "col": 7
+      },
+      "quote_hash": "sha256:4727c912ad99db8e0d03522b64701be03a9abeabcf0d92913da16f02a8bd5e48"
+    }
+  }
+}

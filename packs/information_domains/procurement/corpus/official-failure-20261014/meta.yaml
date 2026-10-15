@@ -1,0 +1,9 @@
+source_id: official-failure
+source_url: https://www.ccgp.gov.cn/cggg/dfgg/fblbgg/202609/t20260910_27308201.htm
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: div.vF_detail_content
+response_sha256: 6759e6e33ffef7d528426ab40f9850a904466f46b1e9777cffeb80e4fd93f2a0
+raw_sha256: 291c8c4837424e910333cdc9bcd814787bf9d94e9fca34d6d55f247accd25775
+notes: 标题为终止，正文明确不足法定供应商数量并重新采购；规范化为可重采的failure/failed_bid，不能视为项目永久终止。

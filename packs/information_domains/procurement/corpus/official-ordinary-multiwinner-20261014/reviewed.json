@@ -1,0 +1,438 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "award",
+      "project_code": {
+        "value": "XZP2024121600042",
+        "prov": {
+          "evidence_ref": "ev_6CAQEPTZZEWQH8TAVR85N2P9ET",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "title": {
+        "value": "二次供水设备采购及相关服务中标结果公示",
+        "prov": {
+          "evidence_ref": "ev_SNZSXRQNNZ47YW72CVG12AGTHZ",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "buyer": {
+        "name_raw": "南京远古水业股份有限公司",
+        "prov": {
+          "evidence_ref": "ev_ZKF9GYPZ9Q9ACPCKNDTPT0BMWB",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "unpartitioned",
+          "bid_results": [
+            {
+              "id": "bdr_D6R241YTEGYEJ6NBMHSNZV5E3P",
+              "stage": "award",
+              "result_kind": "contract_award",
+              "bidder": {
+                "name_raw": "上海上源泵业制造有限公司",
+                "prov": {
+                  "evidence_ref": "ev_F6DFHSTWY6SPCZFS8WXBQW6293",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "2995118",
+                "currency": "CNY",
+                "raw": "299.5118万元",
+                "prov": {
+                  "evidence_ref": "ev_XR9FBK4FRTZSMBKAB2JQ63YH9P",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "price_kind": "annual_unit_sum",
+              "price_kind_prov": {
+                "evidence_ref": "ev_RXS914MF1YA7VT0QMCBAAB856K",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            },
+            {
+              "id": "bdr_39KC6XJT9WFFNZNX7400MVGF0K",
+              "stage": "award",
+              "result_kind": "contract_award",
+              "bidder": {
+                "name_raw": "上海熊猫机械（集团）有限公司",
+                "prov": {
+                  "evidence_ref": "ev_1PC92FV0Q9KT781BN1GVRE0A0Y",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "2993784",
+                "currency": "CNY",
+                "raw": "299.3784万元",
+                "prov": {
+                  "evidence_ref": "ev_SSMAYZNN5YQDXBXAZGCB5NJWFN",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "price_kind": "annual_unit_sum",
+              "price_kind_prov": {
+                "evidence_ref": "ev_ZFF9Y4C2ZC2KMRS9BN18NY5PJ1",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            },
+            {
+              "id": "bdr_MQ6F5VQZDSQFH3MANT7MXDWEG8",
+              "stage": "award",
+              "result_kind": "contract_award",
+              "bidder": {
+                "name_raw": "山东华立供水设备有限公司",
+                "prov": {
+                  "evidence_ref": "ev_RD85SY6JPNTABVVVAEW0S75MK6",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "2858738.75",
+                "currency": "CNY",
+                "raw": "285.873875万元",
+                "prov": {
+                  "evidence_ref": "ev_20X67Q2MZ09DF71A62Q6CW6R37",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "price_kind": "annual_unit_sum",
+              "price_kind_prov": {
+                "evidence_ref": "ev_QX33GVZ4T9SGNQDXRE6T3S00FY",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            },
+            {
+              "id": "bdr_K5NCRR4PTEJQ2E14V1P0R51X4Z",
+              "stage": "award",
+              "result_kind": "contract_award",
+              "bidder": {
+                "name_raw": "上海泰普克科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_C0R0V4347AGYRVJAQNMY4TJPTJ",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "2872795",
+                "currency": "CNY",
+                "raw": "287.2795万元",
+                "prov": {
+                  "evidence_ref": "ev_FS1Q8ABDJMYQNH83HH26C9ABAH",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "price_kind": "annual_unit_sum",
+              "price_kind_prov": {
+                "evidence_ref": "ev_VFQZZJSRHGXQ7K5ZEH78XEFYDA",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            },
+            {
+              "id": "bdr_Y8TEKEMDMEQPTB05BAPKJ263PB",
+              "stage": "award",
+              "result_kind": "contract_award",
+              "bidder": {
+                "name_raw": "奥利机械（集团）有限公司",
+                "prov": {
+                  "evidence_ref": "ev_F2NTYNYN591KFN7J1PMA7BM21R",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "2993368",
+                "currency": "CNY",
+                "raw": "299.3368万元",
+                "prov": {
+                  "evidence_ref": "ev_2JX8MQKQEYX01TTNPF4V344KJM",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              },
+              "price_kind": "annual_unit_sum",
+              "price_kind_prov": {
+                "evidence_ref": "ev_35GHSX6GBBM1DQWP71QY7NEYG3",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            }
+          ],
+          "conditions": {
+            "contract_pricing": {
+              "value": "中标签约价：年单价合计294.2766万元。",
+              "prov": {
+                "evidence_ref": "ev_7NRTG555E4SY4M104A2SPKQH3M",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            }
+          }
+        }
+      ],
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "UNIT_SUM_NOT_TOTAL",
+            "message": "各报价及签约价均为年单价合计，不能当项目总额或累加为总成交额"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_F6DFHSTWY6SPCZFS8WXBQW6293": {
+      "id": "ev_F6DFHSTWY6SPCZFS8WXBQW6293",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 72,
+        "char_end": 84
+      },
+      "quote_hash": "sha256:25be7b208739fd0af421120e493e0c460260e1a7eae2720df565f862a6831f39"
+    },
+    "ev_XR9FBK4FRTZSMBKAB2JQ63YH9P": {
+      "id": "ev_XR9FBK4FRTZSMBKAB2JQ63YH9P",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 166,
+        "char_end": 176
+      },
+      "quote_hash": "sha256:681dfb9fd5976d9b150a54c5b649d1ebba63e61fa8a942e386e749c50329dba7"
+    },
+    "ev_RXS914MF1YA7VT0QMCBAAB856K": {
+      "id": "ev_RXS914MF1YA7VT0QMCBAAB856K",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 161,
+        "char_end": 176
+      },
+      "quote_hash": "sha256:d6c99727274894c15520dab07cd6336959254a6b581252384906f8d8e11d1a85"
+    },
+    "ev_1PC92FV0Q9KT781BN1GVRE0A0Y": {
+      "id": "ev_1PC92FV0Q9KT781BN1GVRE0A0Y",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 193,
+        "char_end": 207
+      },
+      "quote_hash": "sha256:527c8ec5346d261b459588e548b6da9dbafcab7e0d13ee44af4966ab8982998b"
+    },
+    "ev_SSMAYZNN5YQDXBXAZGCB5NJWFN": {
+      "id": "ev_SSMAYZNN5YQDXBXAZGCB5NJWFN",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 218,
+        "char_end": 228
+      },
+      "quote_hash": "sha256:b3e32df65866e17a7aae3edf414d50575db73f795640bc639b747f99edb54488"
+    },
+    "ev_ZFF9Y4C2ZC2KMRS9BN18NY5PJ1": {
+      "id": "ev_ZFF9Y4C2ZC2KMRS9BN18NY5PJ1",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 213,
+        "char_end": 228
+      },
+      "quote_hash": "sha256:0100b44b7541bea1f8fc4579c1adb278e5c4f324e2592ecc1f01e5092c03fa1b"
+    },
+    "ev_RD85SY6JPNTABVVVAEW0S75MK6": {
+      "id": "ev_RD85SY6JPNTABVVVAEW0S75MK6",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 246,
+        "char_end": 258
+      },
+      "quote_hash": "sha256:29047c42f5acf51452dcbb788127db6e9ccc534e931a75a33ae4868e3fdecf66"
+    },
+    "ev_20X67Q2MZ09DF71A62Q6CW6R37": {
+      "id": "ev_20X67Q2MZ09DF71A62Q6CW6R37",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 269,
+        "char_end": 281
+      },
+      "quote_hash": "sha256:e386369dcf27db90377f1e5436e33db10a0baae654a1dada5e3acc1114a59b65"
+    },
+    "ev_QX33GVZ4T9SGNQDXRE6T3S00FY": {
+      "id": "ev_QX33GVZ4T9SGNQDXRE6T3S00FY",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 264,
+        "char_end": 281
+      },
+      "quote_hash": "sha256:7ee1dcc984560b97e8c48801f97552efb54affd169bfdf91124c7da51458c1df"
+    },
+    "ev_C0R0V4347AGYRVJAQNMY4TJPTJ": {
+      "id": "ev_C0R0V4347AGYRVJAQNMY4TJPTJ",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 299,
+        "char_end": 310
+      },
+      "quote_hash": "sha256:ccaa9d52e75a19ef91ed0913f3e25381153c0f95bd2d71682e0e0c528fdae2cd"
+    },
+    "ev_FS1Q8ABDJMYQNH83HH26C9ABAH": {
+      "id": "ev_FS1Q8ABDJMYQNH83HH26C9ABAH",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 321,
+        "char_end": 331
+      },
+      "quote_hash": "sha256:67eeada1da16bf13515478f2ee743da5c013a608b50dcdbf2c2c2d1c770c4390"
+    },
+    "ev_VFQZZJSRHGXQ7K5ZEH78XEFYDA": {
+      "id": "ev_VFQZZJSRHGXQ7K5ZEH78XEFYDA",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 316,
+        "char_end": 331
+      },
+      "quote_hash": "sha256:a38127592fc583c29ae228e7c2c1b3b5d3f88eb80ca55e02e926242e46a5d096"
+    },
+    "ev_F2NTYNYN591KFN7J1PMA7BM21R": {
+      "id": "ev_F2NTYNYN591KFN7J1PMA7BM21R",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 349,
+        "char_end": 361
+      },
+      "quote_hash": "sha256:5b5440b86a82440a3bdcc67d6ece2daa4596a95c6b36ed67b96aa2a6329675bc"
+    },
+    "ev_2JX8MQKQEYX01TTNPF4V344KJM": {
+      "id": "ev_2JX8MQKQEYX01TTNPF4V344KJM",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 372,
+        "char_end": 382
+      },
+      "quote_hash": "sha256:8ae52c5835783b95e26ec70d8c5b41a70ad3b80410d9437179d5173be7d270c8"
+    },
+    "ev_35GHSX6GBBM1DQWP71QY7NEYG3": {
+      "id": "ev_35GHSX6GBBM1DQWP71QY7NEYG3",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 367,
+        "char_end": 382
+      },
+      "quote_hash": "sha256:dd5c517df009e759f4695e8e727320f344edc6f47b6d6879d6ca92dc135f0ad8"
+    },
+    "ev_6CAQEPTZZEWQH8TAVR85N2P9ET": {
+      "id": "ev_6CAQEPTZZEWQH8TAVR85N2P9ET",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 26,
+        "char_end": 42
+      },
+      "quote_hash": "sha256:2a82fd343627d4b832a01791a1d0a30b70c056f9ed568f9914e5997233fb0620"
+    },
+    "ev_SNZSXRQNNZ47YW72CVG12AGTHZ": {
+      "id": "ev_SNZSXRQNNZ47YW72CVG12AGTHZ",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 19
+      },
+      "quote_hash": "sha256:6df756eb21d3dea41915a8c9ad70799419df4927921912987465b3388d0c4652"
+    },
+    "ev_ZKF9GYPZ9Q9ACPCKNDTPT0BMWB": {
+      "id": "ev_ZKF9GYPZ9Q9ACPCKNDTPT0BMWB",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 521,
+        "char_end": 533
+      },
+      "quote_hash": "sha256:f0341a04f3200cdcba2f8b4a14749e895eb45de71f52c016f1548e5cc3f8e741"
+    },
+    "ev_7NRTG555E4SY4M104A2SPKQH3M": {
+      "id": "ev_7NRTG555E4SY4M104A2SPKQH3M",
+      "snapshot_ref": "snp_3XJVJR46YD0KAJZA0DAV1M2Y57",
+      "pipeline_version": "doc.pdf-text-reviewed@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 405,
+        "char_end": 427
+      },
+      "quote_hash": "sha256:4c6f8e558e0cf75f5b1ac01d263290515f0a0805f29ee347561ae800c075dc88"
+    }
+  }
+}

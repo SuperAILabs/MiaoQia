@@ -1,0 +1,10 @@
+source_id: official-amendment-deadline
+source_url: https://www.ccgp.gov.cn/cggg/dfgg/gzgg/202605/t20260526_26635894.htm
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: div.vF_detail_content
+response_sha256: beabd2a9f3cf2084988e7d5fbf132ee0ce17d80079862f8f309b9bd82daa6670
+raw_sha256: 343461aace4e95e83874977e2694324490d34b53ca8a1364ab9e25718312d01f
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。

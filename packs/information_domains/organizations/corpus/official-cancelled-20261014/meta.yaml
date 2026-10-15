@@ -1,0 +1,11 @@
+source_id: official-cancelled-20261014
+source_url: https://amr.sz.gov.cn/xyjggs.webui/xyjggs/CancelNoticeDetail.aspx?task=F02A221E28C1DAFB507DC48CD071B50EB55D92EAAD0323A3967AB945F5BCECE3C0F7F0EFB2D12455
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //div[@id="body"]/div[@class="content"]
+response_charset: gb18030
+notes: 正文明确已核准注销；原响应GB18030，UTF-8正文为开发规范化制品。
+response_sha256: 34996622e099b3a17e3dd6257311548cca14c34ed9506b92872e709b965983a1
+raw_sha256: 0de6cc314cd2a7e0330c37a57757dc303dff27adc7885a22c04edf595bf0f42a
+schema: domains/organization/registration.schema.json

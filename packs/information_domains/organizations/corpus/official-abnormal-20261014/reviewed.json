@@ -1,0 +1,263 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "subject": {
+        "name_raw": "铜陵鑫锐财务代理咨询有限公司",
+        "prov": {
+          "evidence_ref": "ev_NCSNG55YBJXEMAKEFDPCK6R27W",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "9134070056895195XA",
+        "uscc_prov": {
+          "evidence_ref": "ev_THGJZ2DYBWH4FDJZ566AHJY5BK",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "list_type": "abnormal_operation",
+      "reason": {
+        "value": "通过登记的住所或经营场所无法联系的",
+        "prov": {
+          "evidence_ref": "ev_SMGD1H62GXVV98DQ295TWKYFWM",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "reason_code": "unreachable_address",
+      "listed_on": {
+        "value": "2025-07-31T16:00:00Z",
+        "precision": "day",
+        "tz_raw": "+08:00",
+        "prov": {
+          "evidence_ref": "ev_75KNT3WYCC6QQS04EEA5970XY3",
+          "method": "manual",
+          "confidence": 0.95,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "decision_authority": {
+        "value": "铜官区市场监督管理局",
+        "prov": {
+          "evidence_ref": "ev_JBHRWWCPTX6FNG3AK1NJ0NY9HN",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      }
+    },
+    {
+      "subject": {
+        "name_raw": "铜陵一阑网络科技有限公司",
+        "prov": {
+          "evidence_ref": "ev_T7K42MHQZ8RQMKHA0CDS4B4N5H",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "91340705MA2UF40B06",
+        "uscc_prov": {
+          "evidence_ref": "ev_C35ANY785ZY4SCJSYQC19PS474",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "list_type": "abnormal_operation",
+      "reason": {
+        "value": "通过登记的住所或经营场所无法联系的",
+        "prov": {
+          "evidence_ref": "ev_SMGD1H62GXVV98DQ295TWKYFWM",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "reason_code": "unreachable_address",
+      "listed_on": {
+        "value": "2025-07-31T16:00:00Z",
+        "precision": "day",
+        "tz_raw": "+08:00",
+        "prov": {
+          "evidence_ref": "ev_75KNT3WYCC6QQS04EEA5970XY3",
+          "method": "manual",
+          "confidence": 0.95,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "decision_authority": {
+        "value": "铜官区市场监督管理局",
+        "prov": {
+          "evidence_ref": "ev_JBHRWWCPTX6FNG3AK1NJ0NY9HN",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      }
+    },
+    {
+      "subject": {
+        "name_raw": "铜陵市百宝发建材有限责任公司",
+        "prov": {
+          "evidence_ref": "ev_BXEPABQ14M28VWEW0XM67XY65H",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        },
+        "uscc": "9134070075299700XU",
+        "uscc_prov": {
+          "evidence_ref": "ev_C67530Y13S2T1BJWEDD6GF9GNZ",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "list_type": "abnormal_operation",
+      "reason": {
+        "value": "通过登记的住所或经营场所无法联系的",
+        "prov": {
+          "evidence_ref": "ev_SMGD1H62GXVV98DQ295TWKYFWM",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "reason_code": "unreachable_address",
+      "listed_on": {
+        "value": "2025-07-31T16:00:00Z",
+        "precision": "day",
+        "tz_raw": "+08:00",
+        "prov": {
+          "evidence_ref": "ev_75KNT3WYCC6QQS04EEA5970XY3",
+          "method": "manual",
+          "confidence": 0.95,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "decision_authority": {
+        "value": "铜官区市场监督管理局",
+        "prov": {
+          "evidence_ref": "ev_JBHRWWCPTX6FNG3AK1NJ0NY9HN",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      }
+    }
+  ],
+  "evidence": {
+    "ev_NCSNG55YBJXEMAKEFDPCK6R27W": {
+      "id": "ev_NCSNG55YBJXEMAKEFDPCK6R27W",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 0,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:91da7ae55d9e08ca0d651ef91cc5c8ec3b1a6498617a13ff7e6145542a34ed48"
+    },
+    "ev_THGJZ2DYBWH4FDJZ566AHJY5BK": {
+      "id": "ev_THGJZ2DYBWH4FDJZ566AHJY5BK",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 18,
+        "row": 1,
+        "col": 2
+      },
+      "quote_hash": "sha256:e1909e9dfb0ef971a00f62a5532117030cc96dbd6627288bc18fae0d6a1ffdca"
+    },
+    "ev_SMGD1H62GXVV98DQ295TWKYFWM": {
+      "id": "ev_SMGD1H62GXVV98DQ295TWKYFWM",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 8,
+        "char_end": 25
+      },
+      "quote_hash": "sha256:33a43dc3f9b1ff806b834fa54112a53eaef16d16dc026d9b014d1d15abfc6535"
+    },
+    "ev_75KNT3WYCC6QQS04EEA5970XY3": {
+      "id": "ev_75KNT3WYCC6QQS04EEA5970XY3",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 8,
+        "char_start": 0,
+        "char_end": 11
+      },
+      "quote_hash": "sha256:5e5c8abf78b7c3c9ca688d3be61c00579c66f27d468d51901aac79da2346ae42"
+    },
+    "ev_JBHRWWCPTX6FNG3AK1NJ0NY9HN": {
+      "id": "ev_JBHRWWCPTX6FNG3AK1NJ0NY9HN",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 10
+      },
+      "quote_hash": "sha256:f0686768f30be6797d744fd491666bc5e72c786fb68848b81158fb13344af966"
+    },
+    "ev_T7K42MHQZ8RQMKHA0CDS4B4N5H": {
+      "id": "ev_T7K42MHQZ8RQMKHA0CDS4B4N5H",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 12,
+        "row": 2,
+        "col": 1
+      },
+      "quote_hash": "sha256:2f44cd499dfae908b10e7b8bed0a37e820886cf6e0ebe3bc2a7c39dcc08a9d19"
+    },
+    "ev_C35ANY785ZY4SCJSYQC19PS474": {
+      "id": "ev_C35ANY785ZY4SCJSYQC19PS474",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 18,
+        "row": 2,
+        "col": 2
+      },
+      "quote_hash": "sha256:f9ccd703284a3defd98572268dd33eace7716215c692fd0572a582d6ae9bfa12"
+    },
+    "ev_BXEPABQ14M28VWEW0XM67XY65H": {
+      "id": "ev_BXEPABQ14M28VWEW0XM67XY65H",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 14,
+        "row": 3,
+        "col": 1
+      },
+      "quote_hash": "sha256:0e6cac5afdd718ccf2b945f23389416d31f76a5e6f930a8efbc7b0b58ce0a89b"
+    },
+    "ev_C67530Y13S2T1BJWEDD6GF9GNZ": {
+      "id": "ev_C67530Y13S2T1BJWEDD6GF9GNZ",
+      "snapshot_ref": "snp_XDMT1F2SC7RCC7PTMVA7EG00GJ",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 18,
+        "row": 3,
+        "col": 2
+      },
+      "quote_hash": "sha256:072bbdaf8771dafb7f44a74e6756067c6ae03d2b8b7b85c5ecc1aee1729eb4f1"
+    }
+  }
+}

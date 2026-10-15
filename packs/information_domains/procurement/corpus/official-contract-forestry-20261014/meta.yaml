@@ -1,0 +1,10 @@
+source_id: official-contract-forestry
+source_url: https://www.forestry.gov.cn/c/www/htgk/657330.jhtml
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: div.xp_text
+response_sha256: 81be12bdd3bfc4210fb083fcb910d9c6bc202ed89e28d6d9218fab4b095739a7
+raw_sha256: 7621bd22d1169702e7f5bc01ee8ced3810abfbd8e40453c5d572ce6a69dd8a59
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。

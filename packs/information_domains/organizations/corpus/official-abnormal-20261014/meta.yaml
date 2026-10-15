@@ -1,0 +1,11 @@
+source_id: official-abnormal-20261014
+source_url: https://scjgj.tl.gov.cn/tlsscjdglj/c00029/pc/content/content_1951203674006806528.html
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //div[@id="zoomcon"]
+response_charset: utf-8
+notes: ''
+response_sha256: 29d4d4175f884e0b79a7f8c6a4e5c8f583debf006b1898a8dc5fb4ca554719a9
+raw_sha256: 77dd746f461b398dab046ae88eb7e5bbfcf3deda34a3bf6cd73c32105f1e7420
+schema: domains/organization/abnormal.schema.json

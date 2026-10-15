@@ -1,0 +1,155 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "涉及农业生产资料、建筑和装饰装修材料、机械及安防产品、电工及材料等工业产品质量监督抽查抽检服务验收公告",
+        "prov": {
+          "evidence_ref": "ev_M9N56C33X75VEPWZZ5BMNGQMC9",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "烟台市市场监督管理局",
+        "prov": {
+          "evidence_ref": "ev_VH2290JM5CE2W0NS66BBDC0C6Z",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "SDGP370600000202402000195",
+        "prov": {
+          "evidence_ref": "ev_5S1296E894MMQ2Z8JEE5NZ281Y",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_MK6CGDRXW6DG924VVD1GGVP1CK",
+        "contract_code": {
+          "value": "SDGP370600000202402000195A_001",
+          "prov": {
+            "evidence_ref": "ev_4J63X8T7SPSWPEVTQ29AYSW7AK",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "烟台市标准计量检验检测中心",
+          "prov": {
+            "evidence_ref": "ev_685BDWDBSC7HCDAS6S9F5ZANHV",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "result": "passed",
+        "result_prov": {
+          "evidence_ref": "ev_8TZZM00J4B67FVXS0Q0X4E1QNA",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "验收合格",
+          "prov": {
+            "evidence_ref": "ev_8TZZM00J4B67FVXS0Q0X4E1QNA",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      },
+      "quality": {
+        "status": "warning",
+        "warnings": [
+          {
+            "code": "ATTACHMENT_UNAVAILABLE",
+            "field_path": "/acceptance/accepted_at",
+            "message": "日期为详见附件；当前公告无可下载附件地址，不以发布日期替代"
+          }
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "ev_M9N56C33X75VEPWZZ5BMNGQMC9": {
+      "id": "ev_M9N56C33X75VEPWZZ5BMNGQMC9",
+      "snapshot_ref": "snp_271MVWXSWV6M4Q2YXJK5G8S77V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 51
+      },
+      "quote_hash": "sha256:766aebda761db8841aa2e8f0aa307f4a67fced28df78bf0ebc466cd46a3bce6c"
+    },
+    "ev_VH2290JM5CE2W0NS66BBDC0C6Z": {
+      "id": "ev_VH2290JM5CE2W0NS66BBDC0C6Z",
+      "snapshot_ref": "snp_271MVWXSWV6M4Q2YXJK5G8S77V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 4,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:4f0aadbbabccb8dd275119d675ac910413834d855c186cda42ba1cec88fa6be9"
+    },
+    "ev_5S1296E894MMQ2Z8JEE5NZ281Y": {
+      "id": "ev_5S1296E894MMQ2Z8JEE5NZ281Y",
+      "snapshot_ref": "snp_271MVWXSWV6M4Q2YXJK5G8S77V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 7,
+        "char_end": 32
+      },
+      "quote_hash": "sha256:615030929892e3309a05a6ff5f5560d9108424d759211861148a52da3a7d7110"
+    },
+    "ev_4J63X8T7SPSWPEVTQ29AYSW7AK": {
+      "id": "ev_4J63X8T7SPSWPEVTQ29AYSW7AK",
+      "snapshot_ref": "snp_271MVWXSWV6M4Q2YXJK5G8S77V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 7,
+        "char_end": 37
+      },
+      "quote_hash": "sha256:beebb90f26af752d4b81c98300f169a25e355dda66d91e583b36842444c79a1a"
+    },
+    "ev_685BDWDBSC7HCDAS6S9F5ZANHV": {
+      "id": "ev_685BDWDBSC7HCDAS6S9F5ZANHV",
+      "snapshot_ref": "snp_271MVWXSWV6M4Q2YXJK5G8S77V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 9,
+        "char_start": 8,
+        "char_end": 21
+      },
+      "quote_hash": "sha256:65e2dfe63fec14b9d767a646e384604b5c49a118b237694858ae5be327e7e846"
+    },
+    "ev_8TZZM00J4B67FVXS0Q0X4E1QNA": {
+      "id": "ev_8TZZM00J4B67FVXS0Q0X4E1QNA",
+      "snapshot_ref": "snp_271MVWXSWV6M4Q2YXJK5G8S77V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 19,
+        "char_start": 7,
+        "char_end": 11
+      },
+      "quote_hash": "sha256:28eccf9a55b846e7e7fb3fb499b0431d68dbb085d27f40344b09ad8090a7a891"
+    }
+  }
+}

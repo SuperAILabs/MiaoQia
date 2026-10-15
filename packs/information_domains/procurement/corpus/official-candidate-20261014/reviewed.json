@@ -1,0 +1,210 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "candidate",
+      "title": {
+        "value": "宜昌公共资源交易电子服务系统",
+        "prov": {
+          "evidence_ref": "ev_RH2GHSDJG0FJGEJ924FZ3VMA65",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1",
+          "bid_results": [
+            {
+              "id": "bdr_WYJVQXBNHZFBDQC0RW0FSSK9ZZ",
+              "stage": "candidate",
+              "rank": 1,
+              "bidder": {
+                "name_raw": "国泰新点软件股份有限公司",
+                "prov": {
+                  "evidence_ref": "ev_8ZCGR2VV23TCSVC9KQ1N58924S",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "price": {
+                "value": "3480000.00",
+                "currency": "CNY",
+                "raw": "3480000.00",
+                "prov": {
+                  "evidence_ref": "ev_Z76RXYZ3A53137DH90861A5PZE",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            },
+            {
+              "id": "bdr_0E0WJSNNPTWQTSF9DH842FSFT5",
+              "stage": "candidate",
+              "rank": 2,
+              "bidder": {
+                "name_raw": "北京久其软件股份有限公司",
+                "prov": {
+                  "evidence_ref": "ev_BYV76X8ECRHKTPJTXWDA6MS62S",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "price": {
+                "value": "3512000.00",
+                "currency": "CNY",
+                "raw": "3512000.00",
+                "prov": {
+                  "evidence_ref": "ev_M10Q83T6TGSDEGGJBEQTTR1JD2",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            },
+            {
+              "id": "bdr_92WNJQGYTFB0BY50THAQG3V658",
+              "stage": "candidate",
+              "rank": 3,
+              "bidder": {
+                "name_raw": "讯飞智元信息科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_CCFRJP4X8Z0WR3YBXYH91GJYF3",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "price": {
+                "value": "3560000.00",
+                "currency": "CNY",
+                "raw": "3560000.00",
+                "prov": {
+                  "evidence_ref": "ev_MJ1ZR12Z1CA3MSRH2QBS1NJ077",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "buyer": {
+        "name_raw": "宜昌大数据集团有限公司",
+        "prov": {
+          "evidence_ref": "ev_6MMQ2ASEZFMRXRM1FQ16NHCSDP",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      }
+    }
+  ],
+  "evidence": {
+    "ev_RH2GHSDJG0FJGEJ924FZ3VMA65": {
+      "id": "ev_RH2GHSDJG0FJGEJ924FZ3VMA65",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:b950fad7c5f36a8d2c2ed53123a8ef1bbc741ff345ee8d09eff0b0c4fa7197e5"
+    },
+    "ev_6MMQ2ASEZFMRXRM1FQ16NHCSDP": {
+      "id": "ev_6MMQ2ASEZFMRXRM1FQ16NHCSDP",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 15,
+        "char_start": 6,
+        "char_end": 17
+      },
+      "quote_hash": "sha256:0a9b498def67ebed4c34ac95ff5a9074c8491b2ee7f7a3b9c732dde9aaac1f0b"
+    },
+    "ev_8ZCGR2VV23TCSVC9KQ1N58924S": {
+      "id": "ev_8ZCGR2VV23TCSVC9KQ1N58924S",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 12,
+        "row": 1,
+        "col": 2
+      },
+      "quote_hash": "sha256:93d431d5286c32f0b2a6ba6204535ba0e0939c0d55b20537867d9c3b65e1f37d"
+    },
+    "ev_Z76RXYZ3A53137DH90861A5PZE": {
+      "id": "ev_Z76RXYZ3A53137DH90861A5PZE",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 10,
+        "row": 2,
+        "col": 2
+      },
+      "quote_hash": "sha256:ba7f830c29b139309c01563f281b690e431cb6db6d1111cf63eee53de741dd96"
+    },
+    "ev_BYV76X8ECRHKTPJTXWDA6MS62S": {
+      "id": "ev_BYV76X8ECRHKTPJTXWDA6MS62S",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 12,
+        "row": 1,
+        "col": 3
+      },
+      "quote_hash": "sha256:fa4b5075f5b42312e956b4370818e6c2b3e69c9cb29acb9825fef254c6d0219f"
+    },
+    "ev_M10Q83T6TGSDEGGJBEQTTR1JD2": {
+      "id": "ev_M10Q83T6TGSDEGGJBEQTTR1JD2",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 10,
+        "row": 2,
+        "col": 3
+      },
+      "quote_hash": "sha256:52b982c74d0aa46ac2e54c969cb81ff266cb31f9bb60989b09df775555774b0c"
+    },
+    "ev_CCFRJP4X8Z0WR3YBXYH91GJYF3": {
+      "id": "ev_CCFRJP4X8Z0WR3YBXYH91GJYF3",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 12,
+        "row": 1,
+        "col": 4
+      },
+      "quote_hash": "sha256:35da9cd0e1f45ffc328c4e99f1f2564367d5df71e2046429315fb3959dc7e3c8"
+    },
+    "ev_MJ1ZR12Z1CA3MSRH2QBS1NJ077": {
+      "id": "ev_MJ1ZR12Z1CA3MSRH2QBS1NJ077",
+      "snapshot_ref": "snp_30WG2NQDVD12PSJ1Y1Q15M7DMA",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 0,
+        "char_end": 10,
+        "row": 2,
+        "col": 4
+      },
+      "quote_hash": "sha256:ee131edde4e9373217552afd1c6550f5b85f9ecf733052f3d7eb1d2cced3d196"
+    }
+  }
+}

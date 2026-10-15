@@ -1,0 +1,10 @@
+source_id: official-contract
+source_url: https://www.ccgp.gov.cn/cggg/zygg/qtgg/202604/t20260421_26437210.htm
+fetched_at: '2026-10-14'
+rights_tag: public-official-review
+purpose: 真实样本用于契约人工映射与验证；不代表来源商业授权或解析器质量验收
+body_selector: div.vF_detail_content
+response_sha256: 2eb5d73fa563430309b2aa1f6a4047951161bd7385e70b116200f733b530933c
+raw_sha256: 6cd51c160d4b7a89dead34f8fe6951e59e284efff1dabc9742ceb0b957292330
+review_mode: manual
+notes: 保留响应原件，正文只移除脚本/样式等非公告内容；标题来自官方title。

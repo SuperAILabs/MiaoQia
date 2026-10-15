@@ -95,3 +95,117 @@ def html_to_document(html: str, snapshot_ref: str, source_url: str | None = None
     if title:
         doc["title"] = title.strip()
     return doc
+
+
+def archive_reviewed_html(path, response, source_url, selector, *, fetched_at, schema=None, charset="utf-8", notes=""):
+    """归档公开原件并保留正文选取/编码；仅用于契约人工审查语料。"""
+    import hashlib
+    import html
+    import yaml
+
+    root = lxml_html.fromstring(response.decode(charset))
+    selected = root.xpath(selector)
+    if len(selected) != 1:
+        raise ValueError("正文选择器必须准确命中一个元素")
+    body = selected[0]
+    for element in body.xpath(".//script|.//style|.//noscript"):
+        element.drop_tree()
+    title = (root.findtext(".//title") or "").strip()
+    raw = "<html><body><h1>" + html.escape(title) + "</h1>" + lxml_html.tostring(body, encoding="unicode") + "</body></html>"
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "response.html").write_bytes(response)
+    (path / "raw.html").write_text(raw)
+    meta = {"source_id": path.name, "source_url": source_url, "fetched_at": fetched_at,
+            "rights_tag": "public-official-review", "review_mode": "manual", "body_selector": selector,
+            "response_charset": charset, "notes": notes,
+            "response_sha256": hashlib.sha256(response).hexdigest(), "raw_sha256": hashlib.sha256(raw.encode()).hexdigest()}
+    if schema:
+        meta["schema"] = schema
+    (path / "meta.yaml").write_text(yaml.safe_dump(meta, allow_unicode=True, sort_keys=False))
+    return ReviewedSample(path)
+
+
+class ReviewedSample:
+    """人工语料标注辅助；复用与检查器相同的文档加载、Span和证据生成。"""
+
+    def __init__(self, path):
+        import yaml
+        from .corpus import _load_document
+        from .extraction import ExtractionContext
+
+        self.path = path
+        self.meta = yaml.safe_load((path / "meta.yaml").read_text())
+        self.doc = _load_document(path, self.meta)
+        self.ctx = ExtractionContext(self.doc, "manual-review@0.1.0")
+
+    def span(self, quote, occurrence=0):
+        matches = []
+        for unit in self.doc.units():
+            start = 0
+            while (pos := unit.text.find(quote, start)) >= 0:
+                matches.append(unit.span(pos, pos + len(quote)))
+                start = pos + max(1, len(quote))
+        if not quote or occurrence < 0 or occurrence >= len(matches):
+            raise ValueError(f"{self.path.name}: 找不到原文 {quote!r} 第{occurrence}处")
+        return matches[occurrence]
+
+    def prov(self, quote, occurrence=0):
+        return self.ctx.prov(self.span(quote, occurrence), 1, "manual")
+
+    def table_prov(self, row_label, quote):
+        """限定到同一表格行，避免比例/金额在标题或其他行命中。"""
+        for block in self.doc.blocks:
+            if block.get("kind") != "table":
+                continue
+            for ri, row in enumerate(block["rows"]):
+                if not any(cell["text"].strip() == row_label for cell in row):
+                    continue
+                for unit in self.doc.units():
+                    if unit.block == block["index"] and unit.row == ri and unit.text.strip() == quote:
+                        start = unit.text.index(quote)
+                        return self.ctx.prov(unit.span(start, start + len(quote)), 1, "manual")
+        raise ValueError(f"{self.path.name}: 找不到表格行 {row_label!r} 的值 {quote!r}")
+
+    def text(self, quote):
+        return {"value": quote, "prov": self.prov(quote)}
+
+    def org(self, name, uscc=None, address=None):
+        value = {"name_raw": name, "prov": self.prov(name)}
+        if uscc:
+            value.update(uscc=uscc, uscc_prov=self.prov(uscc))
+        if address:
+            value["address"] = self.text(address)
+        return value
+
+    def money(self, quote, value):
+        return {"value": value, "currency": "CNY", "raw": quote, "prov": self.prov(quote)}
+
+    def save(self, facts):
+        import json
+        (self.path / "reviewed.json").write_text(json.dumps(
+            {"annotation_method": "manual", "facts": facts, "evidence": self.ctx.evidence},
+            ensure_ascii=False, indent=2) + "\n")
+
+
+def lifecycle_stage(config, fact, current=None):
+    """本地契约评测：对JSON Schema条件求值；不执行聚合、持久化或重放。"""
+    from jsonschema import Draft202012Validator
+
+    if not Draft202012Validator(config.get("current_projection_filter", {})).is_valid(fact):
+        return current
+    rules = config["initial"] if current is None else config["transitions"]
+    matches = []
+    for rule in rules:
+        if current is not None:
+            origins = rule["from"] if isinstance(rule["from"], list) else [rule["from"]]
+            if current not in origins:
+                continue
+        if fact.get(config["trigger_source"]["field"]) not in rule.get("trigger", []):
+            continue
+        condition = rule.get("when", {})
+        Draft202012Validator.check_schema(condition)
+        if Draft202012Validator(condition).is_valid(fact):
+            matches.append(rule["to"])
+    if len(matches) > 1:
+        raise ValueError("生命周期条件重叠，不能隐式按顺序选取")
+    return matches[0] if matches else current

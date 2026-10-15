@@ -1,0 +1,311 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "award",
+      "title": {
+        "value": "中央国家机关2026年便携式计算机批量集中采购项目-6月中标公告",
+        "prov": {
+          "evidence_ref": "ev_HXAW9XHB8R373B23D6VVWQEGHH",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1",
+          "bid_results": [
+            {
+              "id": "bdr_VRGT1NPMPFSPPHATSEPRPYVQ3E",
+              "stage": "award",
+              "bidder": {
+                "name_raw": "软通计算机有限公司",
+                "prov": {
+                  "evidence_ref": "ev_QP84659B7QA6RH8MMAZ69XXM24",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "695890",
+                "currency": "CNY",
+                "raw": "69.589000 万元",
+                "prov": {
+                  "evidence_ref": "ev_VMP27Q9T6HBB8K0KRTTYH4JZJ9",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "lot_key": "2",
+          "bid_results": [
+            {
+              "id": "bdr_WDXPW063YJ3W8PP426TCRJFFHF",
+              "stage": "award",
+              "bidder": {
+                "name_raw": "紫光计算机科技有限公司",
+                "prov": {
+                  "evidence_ref": "ev_WXPD8Y77QGTA8GA2MF9Q5GCNJB",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "2879880",
+                "currency": "CNY",
+                "raw": "287.988000 万元",
+                "prov": {
+                  "evidence_ref": "ev_PWYBA8VHASVWPJSEQ4DRHQ2QB9",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "lot_key": "3",
+          "bid_results": [
+            {
+              "id": "bdr_PM4A5A44GRJTFR58ANGZQ7RFAE",
+              "stage": "award",
+              "bidder": {
+                "name_raw": "联硕电脑（重庆）有限公司",
+                "prov": {
+                  "evidence_ref": "ev_SE874N2BG2YEZ89QBVEM1GKEPX",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "3658400",
+                "currency": "CNY",
+                "raw": "365.840000 万元",
+                "prov": {
+                  "evidence_ref": "ev_PYXQWK06PG52X9YVYQ5SKRC1BZ",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "lot_key": "4",
+          "bid_results": [
+            {
+              "id": "bdr_PBSAMTBSSH5HN5BCJ3M5VS7K37",
+              "stage": "award",
+              "bidder": {
+                "name_raw": "华为终端有限公司",
+                "prov": {
+                  "evidence_ref": "ev_DPAEAB8XPFE2ZKETSX81QN2XSZ",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              },
+              "is_winner": true,
+              "price": {
+                "value": "4878600",
+                "currency": "CNY",
+                "raw": "487.860000 万元",
+                "prov": {
+                  "evidence_ref": "ev_2KXXW5MGZCRQVVKS0FBBGKK4X5",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "proc.manual-review@0.1.0"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "lot_key": "5",
+          "ending": {
+            "ending_type": "voided",
+            "lot_keys": [
+              "5"
+            ],
+            "reason": {
+              "value": "由于本项目第五包没有供应商通过符合性审查，经评审小组一致认定，该包废标。",
+              "prov": {
+                "evidence_ref": "ev_GD3A8FAMEE0TQ9QY5XTTJE9A1C",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "proc.manual-review@0.1.0"
+              }
+            }
+          }
+        }
+      ],
+      "project_code": {
+        "value": "GC-HCD260445",
+        "prov": {
+          "evidence_ref": "ev_46PG56HJA9YXV6RYSRQ3EZ1C7X",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "budget": {
+        "value": "12845000",
+        "currency": "CNY",
+        "raw": "1284.500000万元",
+        "prov": {
+          "evidence_ref": "ev_HKPG462GQM938BQWHS1YQECV16",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      }
+    }
+  ],
+  "evidence": {
+    "ev_HXAW9XHB8R373B23D6VVWQEGHH": {
+      "id": "ev_HXAW9XHB8R373B23D6VVWQEGHH",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 0,
+        "char_start": 0,
+        "char_end": 32
+      },
+      "quote_hash": "sha256:cb77b44176aac20708c12b97c83201b54656c17336f1069788444f5ee3344824"
+    },
+    "ev_46PG56HJA9YXV6RYSRQ3EZ1C7X": {
+      "id": "ev_46PG56HJA9YXV6RYSRQ3EZ1C7X",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 3,
+        "char_start": 7,
+        "char_end": 19
+      },
+      "quote_hash": "sha256:ebfbd6439a4b26a87c947192a93589796c20342ee9a665fb92e6049c31c01111"
+    },
+    "ev_HKPG462GQM938BQWHS1YQECV16": {
+      "id": "ev_HKPG462GQM938BQWHS1YQECV16",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 7,
+        "char_end": 20
+      },
+      "quote_hash": "sha256:8af97c8be8c706f2d898cdeff04773159bccde1844658cc7f71720136ec3e9fd"
+    },
+    "ev_QP84659B7QA6RH8MMAZ69XXM24": {
+      "id": "ev_QP84659B7QA6RH8MMAZ69XXM24",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 20,
+        "char_start": 7,
+        "char_end": 16
+      },
+      "quote_hash": "sha256:375cdfb2c3ea2447d41efe6c60ab34e3c4c7c051edf1971df6a9241e5e427545"
+    },
+    "ev_VMP27Q9T6HBB8K0KRTTYH4JZJ9": {
+      "id": "ev_VMP27Q9T6HBB8K0KRTTYH4JZJ9",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 22,
+        "char_start": 13,
+        "char_end": 25
+      },
+      "quote_hash": "sha256:3f588f87197fef6b6e0380b561939f327ddf78e484aea68a02e668def39f5f36"
+    },
+    "ev_WXPD8Y77QGTA8GA2MF9Q5GCNJB": {
+      "id": "ev_WXPD8Y77QGTA8GA2MF9Q5GCNJB",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 24,
+        "char_start": 7,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:438f6340cef2a5732cf2ce24f3c1bce34f7419566030c32a19b11a19975b41a9"
+    },
+    "ev_PWYBA8VHASVWPJSEQ4DRHQ2QB9": {
+      "id": "ev_PWYBA8VHASVWPJSEQ4DRHQ2QB9",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 26,
+        "char_start": 13,
+        "char_end": 26
+      },
+      "quote_hash": "sha256:6ff2529a7017dd5e4576383f76b91187097ebf8623f3e919b330a014a2c3017c"
+    },
+    "ev_SE874N2BG2YEZ89QBVEM1GKEPX": {
+      "id": "ev_SE874N2BG2YEZ89QBVEM1GKEPX",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 28,
+        "char_start": 7,
+        "char_end": 19
+      },
+      "quote_hash": "sha256:23e24918308e6b2d28c6828f3ace44bfbe99be8dab1fde1d17a1ec05e92c97c2"
+    },
+    "ev_PYXQWK06PG52X9YVYQ5SKRC1BZ": {
+      "id": "ev_PYXQWK06PG52X9YVYQ5SKRC1BZ",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 30,
+        "char_start": 13,
+        "char_end": 26
+      },
+      "quote_hash": "sha256:be6ce39d9dc49305927d83f88f9a48e97276194650fdd59aaa850d7f2fcf542e"
+    },
+    "ev_DPAEAB8XPFE2ZKETSX81QN2XSZ": {
+      "id": "ev_DPAEAB8XPFE2ZKETSX81QN2XSZ",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 32,
+        "char_start": 7,
+        "char_end": 15
+      },
+      "quote_hash": "sha256:98d2b9de2c8375952cf68fbef5f315af6333b585b968d2eafda03460e38c1209"
+    },
+    "ev_2KXXW5MGZCRQVVKS0FBBGKK4X5": {
+      "id": "ev_2KXXW5MGZCRQVVKS0FBBGKK4X5",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 34,
+        "char_start": 13,
+        "char_end": 26
+      },
+      "quote_hash": "sha256:f931fc9a337ffce43b430717e9eefdbb1586681f37e5345609a0046e73b404aa"
+    },
+    "ev_GD3A8FAMEE0TQ9QY5XTTJE9A1C": {
+      "id": "ev_GD3A8FAMEE0TQ9QY5XTTJE9A1C",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 35,
+        "char_start": 8,
+        "char_end": 44
+      },
+      "quote_hash": "sha256:59cd3f16ea1117859c4c31ea47045d833705be9233ab543a510fb6f5080d63e5"
+    }
+  }
+}

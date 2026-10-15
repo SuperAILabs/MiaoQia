@@ -1,0 +1,847 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "松江区2024年度泗泾塘航道养护疏浚工程设计项目",
+        "prov": {
+          "evidence_ref": "ev_T1ZN60ADFEREKVY7V4WTZ2SRGM",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "上海市松江区交通运输管理中心",
+        "prov": {
+          "evidence_ref": "ev_0E1CBFAE9SYHHVH51CJS3J7Q4B",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_NMH239A54R7M9E7AJZJ4KW2J3C",
+        "contract_name": {
+          "value": "松江区2024年度泗泾塘航道养护疏浚工程设计合同",
+          "prov": {
+            "evidence_ref": "ev_F3DBB40490WN2JGPGNAVYXBDKD",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "河海大学设计研究院有限公司",
+          "prov": {
+            "evidence_ref": "ev_01C0F00WDDJ0WJ2AEMFR8CCWQ9",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "result": "passed",
+        "result_prov": {
+          "evidence_ref": "ev_CVP3EYX2QRENCG94F5JYKRMR42",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "合格，验收通过",
+          "prov": {
+            "evidence_ref": "ev_CVP3EYX2QRENCG94F5JYKRMR42",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "accepted_at": {
+          "value": "2026-10-11T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_MZE9XFKEBHCD4WZW63WWPJWV19",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      }
+    },
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "松江区2024年度泗泾塘航道养护疏浚工程勘测项目",
+        "prov": {
+          "evidence_ref": "ev_M3YT57MZGK90MKBMBY0P4VXTHA",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "上海市松江区交通运输管理中心",
+        "prov": {
+          "evidence_ref": "ev_2GAHJTMC81DRKYN68P43JK6WAJ",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_65YCMMMQF1XN4MVWE94C2BYFMZ",
+        "contract_name": {
+          "value": "松江区2024年度泗泾塘航道养护疏浚工程勘测合同",
+          "prov": {
+            "evidence_ref": "ev_4V46K4CG4AM2DFX4HKNQJ94KXA",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "江苏科信岩土工程勘察有限公司",
+          "prov": {
+            "evidence_ref": "ev_JNQ76YJKP1VKRMT2RBXDNC6V9K",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "result": "passed",
+        "result_prov": {
+          "evidence_ref": "ev_FR9F5GT2JFXEWV9PHX2FCV8NVV",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "合格，验收通过",
+          "prov": {
+            "evidence_ref": "ev_FR9F5GT2JFXEWV9PHX2FCV8NVV",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "accepted_at": {
+          "value": "2026-10-11T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_B1TW70WFR860WDPJRHMN0SN3TH",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      }
+    },
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "松江区2024年度泗泾塘航道养护疏浚工程物探项目",
+        "prov": {
+          "evidence_ref": "ev_2NBYZ2QNG5BW23D6299A79R6Z3",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "上海市松江区交通运输管理中心",
+        "prov": {
+          "evidence_ref": "ev_RGCSPJHAT36K2HK09P32NR7JDM",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_0MSB8CCP9B8J6E7EPEKW0EQ6X8",
+        "contract_name": {
+          "value": "松江区2024年度泗泾塘航道养护疏浚工程物探合同",
+          "prov": {
+            "evidence_ref": "ev_D65C2TCVTQGFADP2F4V61SH6ZP",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "上海隽誉勘察设计有限公司",
+          "prov": {
+            "evidence_ref": "ev_385S8C172DPKE3ZWNXQDNKYAT1",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "result": "passed",
+        "result_prov": {
+          "evidence_ref": "ev_YZNTHWSV5VZ28PJ2RBY5WD4RB9",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "合格，验收通过",
+          "prov": {
+            "evidence_ref": "ev_YZNTHWSV5VZ28PJ2RBY5WD4RB9",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "accepted_at": {
+          "value": "2026-10-11T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_M91GZC536E5A9EPK71QWKA6T2H",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      }
+    },
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "松江区2024年度泗泾塘航道养护疏浚工程施工监理项目",
+        "prov": {
+          "evidence_ref": "ev_16KRRW5FNXDYT7TMKH8KF4S4JS",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "上海市松江区交通运输管理中心",
+        "prov": {
+          "evidence_ref": "ev_B88J87C35VH1MEW83YCRGFHWVJ",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_PPZNQRR4G7WM3JMRK7ZA40AXXQ",
+        "contract_name": {
+          "value": "松江区2024年度泗泾塘航道养护疏浚工程施工监理合同",
+          "prov": {
+            "evidence_ref": "ev_XD3ASHS1VSHTBGC97HPFQDCM08",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "上海振南工程咨询监理有限责任公司",
+          "prov": {
+            "evidence_ref": "ev_BMCDTC11DVG6KC5BRQZ8MACK12",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "result": "passed",
+        "result_prov": {
+          "evidence_ref": "ev_6403GKH8M7JSJ8SADZB8JZF3MS",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "合格，验收通过",
+          "prov": {
+            "evidence_ref": "ev_6403GKH8M7JSJ8SADZB8JZF3MS",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "accepted_at": {
+          "value": "2026-10-11T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_7JP280DH26JT0WQR247YCWYDC3",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      }
+    },
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "松江区2024年度泗泾塘航道养护疏浚工程招标代理项目",
+        "prov": {
+          "evidence_ref": "ev_QE24TDKMY4FYM71C7DQFEGHB64",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "上海市松江区交通运输管理中心",
+        "prov": {
+          "evidence_ref": "ev_3M271ZHY894B45C9NMS314BWA0",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_CJ06C1B5XKGD9PXKNWMTKWSB4S",
+        "contract_name": {
+          "value": "松江区2024年度泗泾塘航道养护疏浚工程招标代理合同",
+          "prov": {
+            "evidence_ref": "ev_3DYECVE6KFGMZYV19TVJ5SE9WY",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "上海佰程建设项目管理有限公司",
+          "prov": {
+            "evidence_ref": "ev_NVSXPYA3N1H2R3DNF44H79SREQ",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "result": "passed",
+        "result_prov": {
+          "evidence_ref": "ev_SCKTMME0TE8A51D8A7WZP88DY2",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "合格，验收通过",
+          "prov": {
+            "evidence_ref": "ev_SCKTMME0TE8A51D8A7WZP88DY2",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "accepted_at": {
+          "value": "2026-10-11T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_18B0TH1TQR22JAJ2X0W9VJ4WQZ",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      }
+    },
+    {
+      "notice_type": "acceptance",
+      "title": {
+        "value": "松江区2024年度泗泾塘航道养护疏浚工程第三方测量项目",
+        "prov": {
+          "evidence_ref": "ev_1WQNG7JF2R57NXC2DAZ78PAQEM",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ],
+      "buyer": {
+        "name_raw": "上海市松江区交通运输管理中心",
+        "prov": {
+          "evidence_ref": "ev_P0JDJYE37NZEJJ1195K4DQYTHP",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        }
+      },
+      "acceptance": {
+        "id": "acc_4HWF39T85HCF2C0JP3100FSXAV",
+        "contract_name": {
+          "value": "松江区2024年度泗泾塘航道养护疏浚工程第三方测量合同",
+          "prov": {
+            "evidence_ref": "ev_D79FY3TN40P09GDJM2N44Q71JW",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "supplier": {
+          "name_raw": "上海淀山勘测有限公司",
+          "prov": {
+            "evidence_ref": "ev_73MGJ5KBQ54DY4VVS7ET3N95R6",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "result": "passed",
+        "result_prov": {
+          "evidence_ref": "ev_0WJ2SKW5APDYC80C1NJQFRDTS3",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "proc.manual-review@0.1.0"
+        },
+        "opinion": {
+          "value": "合格，验收通过",
+          "prov": {
+            "evidence_ref": "ev_0WJ2SKW5APDYC80C1NJQFRDTS3",
+            "method": "manual",
+            "confidence": 1,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        },
+        "accepted_at": {
+          "value": "2026-10-11T16:00:00Z",
+          "precision": "day",
+          "tz_raw": "+08:00",
+          "prov": {
+            "evidence_ref": "ev_ZP0XEY07QYAPR4KWSCERJJ4HE1",
+            "method": "manual",
+            "confidence": 0.95,
+            "extractor": "proc.manual-review@0.1.0"
+          }
+        }
+      }
+    }
+  ],
+  "evidence": {
+    "ev_T1ZN60ADFEREKVY7V4WTZ2SRGM": {
+      "id": "ev_T1ZN60ADFEREKVY7V4WTZ2SRGM",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 3,
+        "char_start": 7,
+        "char_end": 31
+      },
+      "quote_hash": "sha256:27c191b9eb47f45542e189c40e7f25ccc5b2edc3af9395ca21dfdf6e26b8904b"
+    },
+    "ev_0E1CBFAE9SYHHVH51CJS3J7Q4B": {
+      "id": "ev_0E1CBFAE9SYHHVH51CJS3J7Q4B",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 6,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:c09df7395e54f8cf45dbe65c06a37964f22364ba470a30d36b8d85b351cce445"
+    },
+    "ev_F3DBB40490WN2JGPGNAVYXBDKD": {
+      "id": "ev_F3DBB40490WN2JGPGNAVYXBDKD",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 4,
+        "char_start": 7,
+        "char_end": 31
+      },
+      "quote_hash": "sha256:2d58d232ea3e581fb4cffcfb03dc3e1db133e5bb2a7ff4b56e8af42bbfd6a6d4"
+    },
+    "ev_01C0F00WDDJ0WJ2AEMFR8CCWQ9": {
+      "id": "ev_01C0F00WDDJ0WJ2AEMFR8CCWQ9",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 9,
+        "char_start": 8,
+        "char_end": 21
+      },
+      "quote_hash": "sha256:5a467dc9848efe3d4aa01dc2f0c077ce63d5a0ae35d40a07ebe6b1931a2f73fc"
+    },
+    "ev_CVP3EYX2QRENCG94F5JYKRMR42": {
+      "id": "ev_CVP3EYX2QRENCG94F5JYKRMR42",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 15,
+        "char_start": 7,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:86f3d809611a5838ee492cb911e1c773a9c6ad85f1b8fd12f048635839211661"
+    },
+    "ev_MZE9XFKEBHCD4WZW63WWPJWV19": {
+      "id": "ev_MZE9XFKEBHCD4WZW63WWPJWV19",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 16,
+        "char_start": 7,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:9b6321abb178555ed1b7f65faaf037859cfb1db0469793af620b82481e42de45"
+    },
+    "ev_M3YT57MZGK90MKBMBY0P4VXTHA": {
+      "id": "ev_M3YT57MZGK90MKBMBY0P4VXTHA",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 20,
+        "char_start": 7,
+        "char_end": 31
+      },
+      "quote_hash": "sha256:5c1a029e5f3410ea5beaf8bcefae64319c63a80682c5b2a8c437a62b545dcd10"
+    },
+    "ev_2GAHJTMC81DRKYN68P43JK6WAJ": {
+      "id": "ev_2GAHJTMC81DRKYN68P43JK6WAJ",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 23,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:c09df7395e54f8cf45dbe65c06a37964f22364ba470a30d36b8d85b351cce445"
+    },
+    "ev_4V46K4CG4AM2DFX4HKNQJ94KXA": {
+      "id": "ev_4V46K4CG4AM2DFX4HKNQJ94KXA",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 21,
+        "char_start": 7,
+        "char_end": 31
+      },
+      "quote_hash": "sha256:54626ae86a02f3f4953479dedc03a5bfadb560fe2f0eaee40116459618b69f49"
+    },
+    "ev_JNQ76YJKP1VKRMT2RBXDNC6V9K": {
+      "id": "ev_JNQ76YJKP1VKRMT2RBXDNC6V9K",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 26,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:111357923c14690dae52e78d57070b5af543f2f364ef4f97d820e450a3559419"
+    },
+    "ev_FR9F5GT2JFXEWV9PHX2FCV8NVV": {
+      "id": "ev_FR9F5GT2JFXEWV9PHX2FCV8NVV",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 32,
+        "char_start": 7,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:86f3d809611a5838ee492cb911e1c773a9c6ad85f1b8fd12f048635839211661"
+    },
+    "ev_B1TW70WFR860WDPJRHMN0SN3TH": {
+      "id": "ev_B1TW70WFR860WDPJRHMN0SN3TH",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 33,
+        "char_start": 7,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:9b6321abb178555ed1b7f65faaf037859cfb1db0469793af620b82481e42de45"
+    },
+    "ev_2NBYZ2QNG5BW23D6299A79R6Z3": {
+      "id": "ev_2NBYZ2QNG5BW23D6299A79R6Z3",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 37,
+        "char_start": 7,
+        "char_end": 31
+      },
+      "quote_hash": "sha256:55a60bff01d48abff58c1a8421a6bfd0d08a6e2aac5129e6581592061e4a0d0c"
+    },
+    "ev_RGCSPJHAT36K2HK09P32NR7JDM": {
+      "id": "ev_RGCSPJHAT36K2HK09P32NR7JDM",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 40,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:c09df7395e54f8cf45dbe65c06a37964f22364ba470a30d36b8d85b351cce445"
+    },
+    "ev_D65C2TCVTQGFADP2F4V61SH6ZP": {
+      "id": "ev_D65C2TCVTQGFADP2F4V61SH6ZP",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 38,
+        "char_start": 7,
+        "char_end": 31
+      },
+      "quote_hash": "sha256:009d0634c803ccfde8aa0beeed8f58ad1d1de31850937ff0c05108d338e44449"
+    },
+    "ev_385S8C172DPKE3ZWNXQDNKYAT1": {
+      "id": "ev_385S8C172DPKE3ZWNXQDNKYAT1",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 43,
+        "char_start": 8,
+        "char_end": 20
+      },
+      "quote_hash": "sha256:190160517b8705145aa7bc974e21e8aad17d71357901bbaa96537bcb0aeaeb13"
+    },
+    "ev_YZNTHWSV5VZ28PJ2RBY5WD4RB9": {
+      "id": "ev_YZNTHWSV5VZ28PJ2RBY5WD4RB9",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 49,
+        "char_start": 7,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:86f3d809611a5838ee492cb911e1c773a9c6ad85f1b8fd12f048635839211661"
+    },
+    "ev_M91GZC536E5A9EPK71QWKA6T2H": {
+      "id": "ev_M91GZC536E5A9EPK71QWKA6T2H",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 50,
+        "char_start": 7,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:9b6321abb178555ed1b7f65faaf037859cfb1db0469793af620b82481e42de45"
+    },
+    "ev_16KRRW5FNXDYT7TMKH8KF4S4JS": {
+      "id": "ev_16KRRW5FNXDYT7TMKH8KF4S4JS",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 54,
+        "char_start": 7,
+        "char_end": 33
+      },
+      "quote_hash": "sha256:ec3e83c85e16b6550cfdd3494c37c03e2ad9144e06397f6d3317ee5c128763a7"
+    },
+    "ev_B88J87C35VH1MEW83YCRGFHWVJ": {
+      "id": "ev_B88J87C35VH1MEW83YCRGFHWVJ",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 57,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:c09df7395e54f8cf45dbe65c06a37964f22364ba470a30d36b8d85b351cce445"
+    },
+    "ev_XD3ASHS1VSHTBGC97HPFQDCM08": {
+      "id": "ev_XD3ASHS1VSHTBGC97HPFQDCM08",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 55,
+        "char_start": 7,
+        "char_end": 33
+      },
+      "quote_hash": "sha256:c3137bb3b42d18092b7c7d42beb2d2f0e9e96d85b9de392c7bcca17dee503eca"
+    },
+    "ev_BMCDTC11DVG6KC5BRQZ8MACK12": {
+      "id": "ev_BMCDTC11DVG6KC5BRQZ8MACK12",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 60,
+        "char_start": 8,
+        "char_end": 24
+      },
+      "quote_hash": "sha256:f26d2b36d399d8f5b6c62f27104f7d26ada7552825ca71a14c36532471fc1a91"
+    },
+    "ev_6403GKH8M7JSJ8SADZB8JZF3MS": {
+      "id": "ev_6403GKH8M7JSJ8SADZB8JZF3MS",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 66,
+        "char_start": 7,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:86f3d809611a5838ee492cb911e1c773a9c6ad85f1b8fd12f048635839211661"
+    },
+    "ev_7JP280DH26JT0WQR247YCWYDC3": {
+      "id": "ev_7JP280DH26JT0WQR247YCWYDC3",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 67,
+        "char_start": 7,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:9b6321abb178555ed1b7f65faaf037859cfb1db0469793af620b82481e42de45"
+    },
+    "ev_QE24TDKMY4FYM71C7DQFEGHB64": {
+      "id": "ev_QE24TDKMY4FYM71C7DQFEGHB64",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 71,
+        "char_start": 7,
+        "char_end": 33
+      },
+      "quote_hash": "sha256:44e3b760c8084d71b5144f390e8f2127b2ee939b75a4a938e1136126e3007517"
+    },
+    "ev_3M271ZHY894B45C9NMS314BWA0": {
+      "id": "ev_3M271ZHY894B45C9NMS314BWA0",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 74,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:c09df7395e54f8cf45dbe65c06a37964f22364ba470a30d36b8d85b351cce445"
+    },
+    "ev_3DYECVE6KFGMZYV19TVJ5SE9WY": {
+      "id": "ev_3DYECVE6KFGMZYV19TVJ5SE9WY",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 72,
+        "char_start": 7,
+        "char_end": 33
+      },
+      "quote_hash": "sha256:4c9bd433ff5e7ffb32637c542eeae02af03e3f9ed1997bc0cf2decd0e918cfae"
+    },
+    "ev_NVSXPYA3N1H2R3DNF44H79SREQ": {
+      "id": "ev_NVSXPYA3N1H2R3DNF44H79SREQ",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 77,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:f1a051f8e9febc28bb81c67aeafb0540de9db2cbb1b186d03167170921cadefa"
+    },
+    "ev_SCKTMME0TE8A51D8A7WZP88DY2": {
+      "id": "ev_SCKTMME0TE8A51D8A7WZP88DY2",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 83,
+        "char_start": 7,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:86f3d809611a5838ee492cb911e1c773a9c6ad85f1b8fd12f048635839211661"
+    },
+    "ev_18B0TH1TQR22JAJ2X0W9VJ4WQZ": {
+      "id": "ev_18B0TH1TQR22JAJ2X0W9VJ4WQZ",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 84,
+        "char_start": 7,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:9b6321abb178555ed1b7f65faaf037859cfb1db0469793af620b82481e42de45"
+    },
+    "ev_1WQNG7JF2R57NXC2DAZ78PAQEM": {
+      "id": "ev_1WQNG7JF2R57NXC2DAZ78PAQEM",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 88,
+        "char_start": 7,
+        "char_end": 34
+      },
+      "quote_hash": "sha256:16fdec88b1db8779560dadbf14516440c1dfb7865ba5ee178dde76fad8df6df0"
+    },
+    "ev_P0JDJYE37NZEJJ1195K4DQYTHP": {
+      "id": "ev_P0JDJYE37NZEJJ1195K4DQYTHP",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 91,
+        "char_start": 8,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:c09df7395e54f8cf45dbe65c06a37964f22364ba470a30d36b8d85b351cce445"
+    },
+    "ev_D79FY3TN40P09GDJM2N44Q71JW": {
+      "id": "ev_D79FY3TN40P09GDJM2N44Q71JW",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 89,
+        "char_start": 7,
+        "char_end": 34
+      },
+      "quote_hash": "sha256:521931247fd0a2f26253d73fa039b2549e4453de83e36351f2a6a9c56ece9247"
+    },
+    "ev_73MGJ5KBQ54DY4VVS7ET3N95R6": {
+      "id": "ev_73MGJ5KBQ54DY4VVS7ET3N95R6",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 94,
+        "char_start": 8,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:b4c0f13559802156944ce09eac8b7ed925a94890a84f9bc7d7e1a723025e2d0d"
+    },
+    "ev_0WJ2SKW5APDYC80C1NJQFRDTS3": {
+      "id": "ev_0WJ2SKW5APDYC80C1NJQFRDTS3",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 100,
+        "char_start": 7,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:86f3d809611a5838ee492cb911e1c773a9c6ad85f1b8fd12f048635839211661"
+    },
+    "ev_ZP0XEY07QYAPR4KWSCERJJ4HE1": {
+      "id": "ev_ZP0XEY07QYAPR4KWSCERJJ4HE1",
+      "snapshot_ref": "snp_SFDM5ET3W85Q39G0F4D5KH5Q6R",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 101,
+        "char_start": 7,
+        "char_end": 18
+      },
+      "quote_hash": "sha256:9b6321abb178555ed1b7f65faaf037859cfb1db0469793af620b82481e42de45"
+    }
+  }
+}
