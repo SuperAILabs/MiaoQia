@@ -12,8 +12,9 @@
 | 子系统接口 | OpenAPI 3.1 | `contracts/apis/<subsystem>/` | 命令与查询接口 |
 | 事件 | AsyncAPI 3 + JSON Schema | `contracts/events/<namespace>/` | 领域事件与集成事件 |
 | 策略 DSL | JSON Schema + CEL 环境与函数声明 | `contracts/policy/` | 策略结构、可用变量与函数，见 [策略 DSL](11-policy-dsl.md) |
-| 扩展包清单 | JSON Schema | `contracts/packs/` | 扩展包 manifest 与定义文件 |
 | 标识前缀 | YAML | `contracts/identifiers.yaml` | 前缀登记 |
+
+扩展包清单（`packs/<种类>/<包>/pack.yaml`）与定义文件不是 `contracts/` 中的契约，没有独立 Schema；它们必须与上表契约一致，由 `mqc check` 的扩展包一致性规则 P0–P7（`tools/contracts/src/mqc/packs.py`）校验，其中应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验。规则与适用范围见 [可扩展性设计](04-extensibility.md#21-通用-manifest)。
 
 ## 2. 子系统接口
 

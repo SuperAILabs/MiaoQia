@@ -31,7 +31,7 @@ def check_integration(repo):
         if not (repo.contracts / profile[group]["schema"]).exists():
             r.error("integration.yaml", f"I2 {group} Schema不存在")
     sql = (repo.contracts / "storage" / storage["definition"]).read_bytes()
-    # 兼容测试沙箱只复制contracts/packs；实际工作区核验两语言SQL副本。
+    # 兼容测试沙箱只复制contracts/与packs/；实际工作区核验两语言SQL副本。
     for copy in storage["copies"]:
         if (repo.root / copy).exists() and (repo.root / copy).read_bytes() != sql:
             r.error(copy, "I3 内核SQL与契约不一致")

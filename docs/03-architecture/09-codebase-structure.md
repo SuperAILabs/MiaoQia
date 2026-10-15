@@ -13,10 +13,11 @@ miaoqia/
 │   ├── apis/<subsystem>/          子系统接口 OpenAPI
 │   ├── events/<namespace>/        事件 AsyncAPI + Schema
 │   ├── policy/                    策略 DSL Schema 与 CEL 环境声明
-│   ├── packs/                     扩展包定义 Schema
 │   ├── storage/                   内核表（发件箱、消费去重），Go 与 Python 内核共用
 │   ├── tests/                     契约样例（正例与反例）
-│   └── identifiers.yaml           标识前缀登记
+│   ├── reviews/                   契约冻结与验收记录（文件版本与哈希，按审计用途保留）
+│   ├── identifiers.yaml           标识前缀登记
+│   └── integration.yaml           工程集成契约：请求上下文、事件信封与路由、身份、认证、载荷校验
 │
 ├── services/                      Go 模块：平台服务
 │   ├── contracts/                 生成的领域类型（请勿手改）

@@ -32,7 +32,7 @@ pack:
   provides: { … }                    # 按 kind 列出提供的扩展点
 ```
 
-扩展包由声明式定义文件（YAML/JSON，受 `contracts/packs/` Schema 校验）组成，按种类允许的形式不同（ADR-0006）：
+扩展包由声明式定义文件（YAML/JSON）组成。清单与定义文件没有独立的 manifest Schema，由 `mqc check` 的扩展包一致性规则（`tools/contracts/src/mqc/packs.py`，P0–P7）对照 `contracts/` 校验：信息领域包检查 `pack.yaml` 引用的 Schema、事件文件与领域校验入口存在且合规，生命周期状态与触发值取自所引用 Schema 的枚举；应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验，并检查视图来源、引用声明、规则编号、事件类型与样例处置。行业包尚未纳入检查。扩展包按种类允许的形式不同（ADR-0006）：
 
 | 种类 | 形式 | 运行位置 |
 |---|---|---|
