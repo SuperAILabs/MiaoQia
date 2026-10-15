@@ -109,7 +109,7 @@
 | `NotificationRule` / `Preference` | 通知规则与个人偏好 |
 | `Notification` / `Delivery` | 通知与投递记录（幂等键：`notification_id + channel + recipient`） |
 | `ActionToken` | 一次性动作令牌：租户、用户、对象、动作、过期时间 |
-| `Briefing` | 一期简报：受众、周期、各区条目引用与排序列表版本、数据截至时间、规则版本、投递记录 |
+| `Briefing` | 一期简报：租户、受众、简报来源（日常简报定义或持续型推进 ID）、周期起止时间、各区条目引用与排序列表版本、数据截至时间、规则版本、投递记录 |
 
 ## 6. 接口
 
@@ -122,7 +122,7 @@
 | `GetPreferences` / `UpdatePreferences` | 查询/命令 | 偏好 |
 | `ListNotifications` / `ListConversations` | 查询 | 工作台中的通知与会话列表 |
 | `ListBriefings` / `GetBriefing` | 查询 | 简报历史与详情 |
-| `ComposeBriefing` | 命令 | 由定时任务或持续型推进的周期触发，按 4.4 组装并投递（幂等键：受众 + 周期） |
+| `ComposeBriefing` | 命令 | 由定时任务或持续型推进的周期触发，按 4.4 组装并投递。幂等键：租户 + 受众 + 简报来源（日常简报定义 ID，或持续型推进 ID）+ 周期起止时间；同一期重试复用已生成的简报，不同推进或不同简报定义各自生成一期 |
 
 ## 7. 事件
 
