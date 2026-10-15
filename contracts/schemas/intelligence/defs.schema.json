@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/intelligence/defs.schema.json",
+  "x-version": "0.1.0",
+  "title": "客户智能平面公共定义",
+  "description": "租户域对象共用的类型（草案）。租户域只通过 subject_ref 引用公共域对象，不复制公共数据（数据架构第 1 节、业务架构第 3 节）。",
+  "$defs": {
+    "subject_type": {
+      "x-type-name": "SubjectType",
+      "enum": ["project", "domain_fact", "organization", "market", "relationship", "program"],
+      "description": "目标对象类型（业务架构第 3 节）"
+    },
+    "subject_ref": {
+      "x-type-name": "SubjectRef",
+      "type": "object",
+      "description": "目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱 prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_ 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为 prg_。version 为被引用对象在求值或判断时的版本，domain_fact 必填；实体图谱对象的版本语义尚未定义，暂为可选。part_id 指向对象内部的求值单位（如采购项目的标包 lot_）。",
+      "required": ["type", "id"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "$ref": "#/$defs/subject_type" },
+        "id": { "$ref": "../common/types.schema.json#/$defs/ulid_id" },
+        "version": { "type": "integer", "minimum": 1 },
+        "part_id": { "$ref": "../common/types.schema.json#/$defs/ulid_id" }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "domain_fact" } } }, "then": { "required": ["version"] } },
+        { "if": { "properties": { "type": { "const": "project" } } }, "then": { "properties": { "id": { "pattern": "^prj_" } } } },
+        { "if": { "properties": { "type": { "const": "organization" } } }, "then": { "properties": { "id": { "pattern": "^org_" } } } },
+        { "if": { "properties": { "type": { "const": "market" } } }, "then": { "properties": { "id": { "pattern": "^mkt_" } } } },
+        { "if": { "properties": { "type": { "const": "relationship" } } }, "then": { "properties": { "id": { "pattern": "^rel_" } } } },
+        { "if": { "properties": { "type": { "const": "program" } } }, "then": { "properties": { "id": { "pattern": "^prg_" } } } }
+      ]
+    },
+    "policy_ref": {
+      "x-type-name": "PolicyRef",
+      "type": "object",
+      "description": "产生结果的策略版本：租户策略及其所基于的应用领域包模板",
+      "required": ["policy_id", "policy_version", "template_id", "template_version"],
+      "additionalProperties": false,
+      "properties": {
+        "policy_id": { "type": "string", "pattern": "^pol_[0-9A-HJKMNP-TV-Z]{26}$" },
+        "policy_version": { "type": "integer", "minimum": 1 },
+        "template_id": { "type": "string", "pattern": "^TPL-[A-Z0-9]+(-[A-Z0-9]+)+$" },
+        "template_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+      }
+    },
+    "tenant_meta": {
+      "x-type-name": "TenantMeta",
+      "type": "object",
+      "x-mixin": true,
+      "description": "租户域对象的通用字段",
+      "required": ["id", "tenant_id", "schema_version", "created_at", "updated_at"],
+      "properties": {
+        "id": { "$ref": "../common/types.schema.json#/$defs/ulid_id" },
+        "tenant_id": { "type": "string", "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$" },
+        "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

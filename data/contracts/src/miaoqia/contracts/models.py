@@ -457,6 +457,16 @@ class Person(BaseModel):
     role: str | None = Field(None, description="原文职务，如 董事长、执行董事、经理")
 
 
+class PolicyRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    policy_id: constr(pattern=r"^pol_[0-9A-HJKMNP-TV-Z]{26}$")
+    policy_version: conint(ge=1)
+    template_id: constr(pattern=r"^TPL-[A-Z0-9]+(-[A-Z0-9]+)+$")
+    template_version: constr(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
+
+
 class ProcurementCategory(Enum):
     goods = "goods"
     works = "works"
@@ -623,6 +633,57 @@ class Kind3(Enum):
     consortium = "consortium"
     technical = "technical"
     other = "other"
+
+
+class Clause(Enum):
+    require = "require"
+    exclude = "exclude"
+    watch = "watch"
+    boost = "boost"
+    penalize = "penalize"
+
+
+class Result1(Enum):
+    true = "true"
+    false = "false"
+    unknown = "unknown"
+
+
+class RuleTrace(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^[RXWBP]-[A-Z0-9-]+$")
+    clause: Clause
+    result: Result1
+    unknown_fields: list[str] | None = Field(
+        None, description="导致未知的字段（缺失或证据不达标）"
+    )
+    say: str | None = Field(None, description="渲染后的业务说明")
+
+
+class Disposition(Enum):
+    pursue_candidate = "pursue_candidate"
+    review_candidate = "review_candidate"
+    watch_signal = "watch_signal"
+    excluded = "excluded"
+
+
+class Status2(Enum):
+    open = "open"
+    triaged = "triaged"
+    converted = "converted"
+    dismissed = "dismissed"
+    closed = "closed"
+
+
+class SubjectType(Enum):
+    project = "project"
+    domain_fact = "domain_fact"
+    organization = "organization"
+    market = "market"
+    relationship = "relationship"
+    program = "program"
 
 
 class Text(BaseModel):
@@ -847,6 +908,24 @@ class Requirement(BaseModel):
         None, description="归一的资质或要求代码；无法归一时省略，不使用 null"
     )
     text: Text
+
+
+class SubjectRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: SubjectType
+    id: UlidId
+    version: conint(ge=1) | None = None
+    part_id: UlidId | None = None
+
+
+class TenantMeta(BaseModel):
+    id: UlidId
+    tenant_id: constr(pattern=r"^tnt_[0-9A-HJKMNP-TV-Z]{26}$")
+    schema_version: constr(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
 
 
 class AcceptanceSection(BaseModel):
@@ -1197,6 +1276,41 @@ class ProjectLot(BaseModel):
     estimated_contract_amount: Money | None = None
     ending: EndingSection | None = None
     shortlisted_suppliers: list[BidResult] | None = None
+
+
+class Signal(TenantMeta):
+    id: constr(pattern=r"^sig_[0-9A-HJKMNP-TV-Z]{26}$") | None = None
+    objective_id: constr(pattern=r"^obj_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
+        ..., description="租户启用的商业目标 TenantObjective"
+    )
+    objective_code: constr(pattern=r"^APP-[A-Z]+\.[A-Z][0-9]{2}$") = Field(
+        ..., description="应用领域包中的目标编号，如 APP-TENDER.A01"
+    )
+    policy: PolicyRef
+    subject: SubjectRef
+    disposition: Disposition
+    needs_review: bool | None = Field(
+        None, description="存在按 missing: review 处理的未知硬条件"
+    )
+    score: int = Field(..., description="同一策略下的排序分，不代表成交概率")
+    reason_code: constr(pattern=r"^[A-Z][A-Z0-9_]*$") | None = Field(
+        None, description="excluded 时的原因代码（应用领域包 reason_codes 登记）"
+    )
+    trace: list[RuleTrace]
+    features: dict[str, Any] | None = Field(
+        None, description="特征快照：特征名 → 值；未知的特征不出现，不含其他租户的信息"
+    )
+    view_snapshot_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$")
+    context_snapshot_version: conint(ge=1)
+    evaluated_at: AwareDatetime = Field(
+        ..., description="逻辑求值时间，即触发事件的时间（表达式中的 now）"
+    )
+    trigger_event_id: constr(pattern=r"^evt_[0-9A-HJKMNP-TV-Z]{26}$")
+    status: Status2 = Field(
+        ...,
+        description="open 待处理；triaged 已由用户调整处置；converted 已发起研究或推进；dismissed 用户忽略；closed 求值单位进入终态（如截止、终止）后关闭",
+    )
+    update_count: conint(ge=0) = Field(..., description="已追加的 SignalUpdate 数")
 
 
 class Rating(BaseModel):

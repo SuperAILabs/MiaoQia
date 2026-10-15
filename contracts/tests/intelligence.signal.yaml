@@ -1,0 +1,49 @@
+schema: intelligence/signal.schema.json
+base:
+  id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  schema_version: 0.1.0
+  created_at: "2026-11-01T00:00:05Z"
+  updated_at: "2026-11-15T00:00:05Z"
+  objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  objective_code: APP-TENDER.A01
+  policy: { policy_id: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1, policy_version: 3, template_id: TPL-TENDER-A01-BID, template_version: 0.2.0 }
+  subject: { type: domain_fact, id: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1, version: 4, part_id: lot_01JA8ZXXXXXXXXXXXXXXXXXXX1 }
+  disposition: pursue_candidate
+  needs_review: false
+  score: 50
+  trace:
+    - { id: R-CAT, clause: require, result: "true", say: 采购标的属于我方产品品类 }
+    - { id: R-DEADLINE, clause: require, result: "true", say: 距投标截止不少于 7 天 }
+    - { id: P-QUAL-GAP, clause: penalize, result: unknown, unknown_fields: [fact.requirements] }
+  features: { deadline_days: 10 }
+  view_snapshot_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  context_snapshot_version: 12
+  evaluated_at: "2026-11-15T00:00:00Z"
+  trigger_event_id: evt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  status: open
+  update_count: 1
+cases:
+  - name: 排除缺原因代码
+    valid: false
+    patch: [{ op: replace, path: /disposition, value: excluded }]
+  - name: 带原因代码的排除
+    valid: true
+    patch:
+      - { op: replace, path: /disposition, value: excluded }
+      - { op: add, path: /reason_code, value: BLOCKED_BUYER }
+  - name: no_signal 不产生信号
+    valid: false
+    patch: [{ op: replace, path: /disposition, value: no_signal }]
+  - name: 领域事实引用缺版本
+    valid: false
+    patch: [{ op: remove, path: /subject/version }]
+  - name: 项目目标对象须为实体图谱标识
+    valid: false
+    patch: [{ op: replace, path: /subject, value: { type: project, id: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1 } }]
+  - name: 项目目标对象
+    valid: true
+    patch: [{ op: replace, path: /subject, value: { type: project, id: prj_01JA8ZXXXXXXXXXXXXXXXXXXX1 } }]
+  - name: 未登记字段
+    valid: false
+    patch: [{ op: add, path: /notice_snapshot, value: {} }]
