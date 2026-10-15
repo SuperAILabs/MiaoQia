@@ -74,7 +74,7 @@ pack:
 | 研究模板与类型化产物 Schema | `research.template_registry` |
 | 判断框架 | `assessment.framework_registry` |
 | 机会路径与衔接规则 | `pursuit.playbook_registry` |
-| 反馈原因标签、指标、基线评估集 | `learning` |
+| 反馈原因标签、效果指标与基线引用 | `learning`；专业基线与发布门禁归对应能力所有者 |
 | 通知卡片模板 | `channels` |
 | API 视图、MCP 工具、Skills | `gateway` |
 | Web 视图描述 | Web 前端（视图注册表） |
@@ -163,3 +163,9 @@ CEL 是非图灵完备的表达式语言：求值确定、无副作用、可静�
 - 扩展包直接访问其他子系统数据库；
 - 为某个领域新建一套平行的证据、实体、权限或通知体系；
 - 通过“通用超级表”或无约束 JSON 字段绕过领域 Schema。
+
+## 7. 领域校验扩展
+
+SDK 是平台通用能力（见代码库结构），扩展包依赖 SDK，SDK 不反向静态依赖领域包或包含其业务分支。信息领域包在 `pack.yaml` 的 `provides.semantic_validator` 登记 `模块:函数`，函数签名为 `validate(document, facts, evidence) -> list[str]`。语料组装工具按 Schema 所有权加载包的 src 入口，先校验通用证据完整性，再执行领域规则；登记错误、来源不属于登记包、签名不兼容或规则失败必须失败退出；entrypoints 共享模块先做不执行领域代码的静态登记校验，corpus 导入后再调用同一模块校验实际函数的来源、同步性与签名（不跟随装饰器的 __wrapped__）；装饰器与入口重绑定不能免除加载后校验。mqc 只证明静态登记合规，不代证导入后的实际函数合规。入口必须为同步函数并返回 list[str]，空列表才表示通过，None 不表示通过。领域 Schema 缺少所有者登记也必须失败。纯声明包只执行 Schema 校验，代码型包必须显式登记。采购/企业语义规则分别位于对应 packs，新增规则扩展既有校验器，不复制语料工具。
+
+这是当前 corpus 校验路径；生产 evidence 的 extensions 注册与数据管线接入需另行实现并验收，不能把语料通过当作运行时执行证明。

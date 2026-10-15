@@ -9,7 +9,7 @@
 ## 决策
 
 1. 公共域数据处理子系统（`acquisition`、`evidence`、`domain-intelligence`、`entity-graph`）使用 **Python**；其余子系统使用 **Go**；前端使用 **TypeScript**，服务端不使用 TypeScript（BFF 由 Go 的 `gateway` 实现）。子系统与语言、部署单元的对应以 [子系统索引](../03-architecture/subsystems/README.md) 为准。
-2. 语言边界与“公共域 / 租户域”边界一致：Python 部署单元不处理租户数据。`evidence` 解析客户授权文档时，以租户单元为范围单独部署实例。
+2. 语言与数据域是独立维度：Python 公共实例不处理租户数据，`evidence` 解析客户授权文档时，以租户单元为范围单独部署实例；Go 的 `search` 分别运行公共检索与单元级租户知识/订阅实例。
 3. 应用领域包与行业包为**纯声明 + CEL 表达式**，不含可执行代码；策略 DSL 的表达式语言为 CEL。信息领域包保留 Python 代码型 SPI。
 4. 跨语言调用一律经远程接口（由 OpenAPI 生成的客户端）；同语言内保留本地 / 远程两种绑定。发件箱中继只实现一份（Go）。
 
@@ -20,7 +20,7 @@
 | `search` | Go | 全平台在线检索与订阅反查热路径；持有租户订阅查询与租户私有索引；映射与词表均为声明式 |
 | `entity-graph` | Python | 实体解析依赖相似度、规则与模型候选排序；领域包提供 `RelationExtractor` 代码 |
 | `domain-intelligence` | Python | 领域包提供 `Aggregator` 代码、领域 Schema 与迁移 |
-| `learning` | Go | 处理租户反馈；策略仿真复用 `detection` 的同一份 CEL 求值，避免双实现 |
+| `learning` | Go | 处理租户反馈；策略仿真直接调用 `kernel/policy` 的共享 CEL 求值，不跨子系统调用 `detection`，避免双实现 |
 | `operations` | Go | 内部人员访问租户数据的工作台；数据维护动作调用 Python 子系统的命令接口完成 |
 | `research` | Go | Agent 运行时自研并构建在 Temporal 上，Go SDK 是参考实现 |
 

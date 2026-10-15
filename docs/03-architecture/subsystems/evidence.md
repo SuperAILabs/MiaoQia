@@ -1,6 +1,6 @@
 # 证据与内容理解子系统（evidence）
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 平面：数据供应
+> 状态：评审中 · 版本：3.0 · 更新：2026-10-14 · 平面：数据供应
 
 ## 1. 使命
 
@@ -25,6 +25,8 @@
 - 不定义领域语义和生命周期（属于 `domain-intelligence`）；
 - 不做实体解析（属于 `entity-graph`）；
 - 不修改原始制品或已发布的快照。
+
+M0探针消费者先验证acquisition载荷，再核对来源、subject和前序hops；真实跨语言链路及非法载荷死信见[运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)。其他文档/抽取事件的生产实现另行验收。
 
 ## 3. 内部组件
 
@@ -72,9 +74,11 @@
 
 ## 6. 事件
 
+载荷唯一定义见[`contracts/events/evidence/events.asyncapi.yaml`](../../../contracts/events/evidence/events.asyncapi.yaml)。复用公共事件原语，稳定制品引用不含签名URL或凭据；事件正反例及引用兼容检查通过不代表生产发布/消费、事务发件箱或重放已实现。
+
 **发布**：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`（载荷含快照、修订、领域包标识、质量状态）、`evidence.quality.flagged.v1`、`evidence.artifact.refetch_requested.v1`、`evidence.enrichment.completed.v1`（单个快照的增强完成）、`evidence.enricher.promoted.v1`（增强器新版本生效）。
 
-**消费**：`acquisition.fetch.completed.v1`、`acquisition.source.rights_changed.v1`（更新证据的可见性标签）。
+**公共实例消费**：`acquisition.fetch.completed.v1`、`acquisition.source.rights_changed.v1`（更新公共证据的可见性标签）。本节发布清单属于公共实例；租户文档的命令/事件契约和消费者随知识资产管线实现，不能套用公共主题。
 
 ## 7. 扩展点
 
@@ -99,5 +103,14 @@
 
 ## 10. 开放问题
 
-1. OCR 与版面分析模型的选型与私有化部署；
-2. 规范化文档表示的格式标准（自定义 JSON 或采用现有开源文档模型）。
+1. OCR与版面API供应商按M1真实文档评测选定，前期不建设私有推理。
+
+SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人工规范化扫描样本标记方法与范围，不充当生产OCR成绩。
+
+规范化文档的格式已确定，唯一定义为 `contracts/schemas/evidence/normalized-document.schema.json`；解析器与证据引用以该坐标系工作，不另行选择平行格式。
+
+## 11. 数据域实例与领域校验
+
+公共实例只处理公共来源；租户实例随 Cell 部署，只处理客户授权文档，不发布公共 evidence 事件，不共享公共缓存、语料、凭证或重放范围。租户知识资产的业务所有权属于 customer-context，evidence 租户实例拥有对应处理制品与修订；两者通过接口/事件协作。
+
+通用 SDK 校验规范化文档、定位、哈希及证据引用完整性；字段语义和领域一致性由信息领域包 `semantic_validator` 提供，扩展注册属于本子系统的 extensions 层。当前接入是 corpus 语料校验路径，不表示生产文档管线已执行这些规则。evidence 负责增强器专业指标、评估执行与版本生效门禁；公共语料与公共评估快照由本子系统维护，不回查租户 learning 数据。

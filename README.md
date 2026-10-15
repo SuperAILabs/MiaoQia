@@ -26,7 +26,7 @@
 
 ## 项目状态
 
-立项设计阶段，事项状态见 [立项准入清单](docs/05-delivery/00-initiation-readiness.md)。
+立项设计与 M0 工程准备阶段。HTTP 认证、完整跨语言探针及现有消费者载荷校验已通过[真实组件验收](docs/05-delivery/05-m0-runtime-acceptance.md)，生产部署另行验收；各事项状态见[立项准入清单](docs/05-delivery/00-initiation-readiness.md)。
 
 ## Tender Intel
 

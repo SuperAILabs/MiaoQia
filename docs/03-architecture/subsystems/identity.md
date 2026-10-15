@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.1 · 更新：2026-10-14 · 平面：平台
+> 状态：评审中 · 版本：1.1 · 更新：2026-10-15 · 平面：平台
 
 ## 1. 使命
 
@@ -47,6 +47,8 @@
 | `DecideApproval` | 命令 | 审批人决定 |
 | 成员、角色、组织管理 | 命令/查询 | 管理控制台 |
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
+
+内部授权Check契约见[`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。租户资源访问由OpenFGA关系模型判断；上下文提供租户不等于已获得该租户所有资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
 
 ## 6. 事件
 
