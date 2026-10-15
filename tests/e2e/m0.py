@@ -62,7 +62,10 @@ def base_env() -> dict[str, str]:
         "MIAOQIA_DEPLOY_DIR": str(ROOT / "deploy"),
         "MIAOQIA_KAFKA_BROKERS": "localhost:9092",
         "MIAOQIA_IDENTITY_OPENFGA_URL": OPENFGA,
+        # 本地环境的 Keycloak 与内部接口均为明文，须显式进入开发策略；HTTPS 与 mTLS 由运行时验收覆盖。
+        "MIAOQIA_ENV": "development",
         "MIAOQIA_GATEWAY_ISSUER": ISSUER,
+        "MIAOQIA_GATEWAY_AUDIENCE": "miaoqia-api",
         "MIAOQIA_RELAY_DSN_TEMPLATE": f"postgres://outbox_relay:outbox_relay@{PG}/{{db}}",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
         "OTEL_BSP_SCHEDULE_DELAY": "500",
