@@ -1,0 +1,9 @@
+# 建材行业品类分类。代码按“-”分级，上级代码包含全部下级（category.any_match 的语义）。
+# 品类增强器以本体系输出 {scheme, scheme_version, code, confidence}；政府采购品目等其他体系的映射待补。
+scheme: industry:building-materials
+scheme_version: 0.1.0
+categories:
+  - { code: CAT-PIPE, name: 管材 }
+  - { code: CAT-PIPE-PE, name: PE 管 }
+  - { code: CAT-PIPE-PVC, name: PVC 管 }
+  - { code: CAT-PIPE-DI, name: 球墨铸铁管 }

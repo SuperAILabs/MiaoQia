@@ -1,11 +1,12 @@
 # A01 直接投标：从采购意向与采购公告中找出值得投标的机会。
+# 求值单位是采购项目标包的当前状态（应用全部更正后），不是单条公告。
 # 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 2.1。
 template:
   id: TPL-TENDER-A01-BID
-  version: 0.1.0
+  version: 0.2.0
   objective: APP-TENDER.A01
   roles: [ROLE-BIDDER, ROLE-MFR, ROLE-PRIME, ROLE-DEALER]
-  fact_types: [tendering.notice]
+  fact_types: [tendering.lot_opportunity]
   rollout_key: fact.project_id
   view: [buyer.profile]
 
@@ -17,16 +18,15 @@ template:
     large_budget_cny: { type: int, default: 5000000, min: 0 }
 
   scope:
-    fact_types: [tendering.notice]
-    when: >
-      fact.notice_type in ["intent", "plan", "prequalification", "tender",
-                           "negotiation", "consultation", "inquiry", "single_source", "framework"]
-    # 更正与澄清更新已有公告事实的版本，按新版本重新求值，不单独进入范围。
+    fact_types: [tendering.lot_opportunity]
+    when: fact.stage in ["intent", "announced", "amended"]
+    # 更正与澄清是独立公告，由投影器应用到项目标包的当前状态；视图声明的事件（含 tendering.notice.amended.v1、
+    # tendering.deadline.changed.v1）触发按当前状态重新求值，处置变化更新同一标包的信号，不新建信号。
 
   require:
     - id: R-CAT
       say: 采购标的属于我方产品品类
-      when: category.any_match(fact.items, params.categories)
+      when: category.any_match(fact.categories, params.categories)
       missing: review
     - id: R-REGION
       say: 项目位于服务区域
@@ -44,7 +44,7 @@ template:
   exclude:
     - id: X-SINGLE-SOURCE
       say: 单一来源采购且拟定供应商不是我方
-      when: fact.notice_type == "single_source" && fact.single_source_supplier.org_id != profile.org_id
+      when: fact.method == "single_source" && fact.single_source_supplier.org_id != profile.org_id
       reason: SINGLE_SOURCE_OTHER
     - id: X-BUYER-BLOCKED
       say: 采购人在禁合作名单
@@ -58,7 +58,7 @@ template:
   watch:
     - id: W-INTENT
       say: 采购意向或采购计划，尚未发布公告
-      when: fact.notice_type in ["intent", "plan"]
+      when: fact.stage == "intent"
 
   boost:
     - id: B-KNOWN-BUYER
@@ -88,6 +88,7 @@ template:
     default: { min_confidence: 0.8, methods: [rule, model, manual] }
     fields:
       fact.bid_deadline: { min_confidence: 0.95 }
+      fact.categories: { min_confidence: 0.7, methods: [rule, model] }   # 来自增强层品类分类；低于门槛按未知处理，R-CAT 转人工复核
 
   thresholds: { base_score: 50, pursue_at: 50, drop_below: 20 }   # 硬条件全满足且无减分即建议投标
 
@@ -103,9 +104,9 @@ template:
   examples:
     - name: 品类区域时限均满足的公开招标
       given:
-        fact: { notice_type: tender, method: open_tender, title: 市政给水管网改造工程管材采购,
+        fact: { stage: announced, method: open_tender, title: 市政给水管网改造工程管材采购,
                 location: "330106", budget: { value: "3200000", currency: CNY },
-                items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }], requirements: [],
+                categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }], requirements: [],
                 bid_deadline: "2026-11-20T09:30:00+08:00", buyer: { org_id: org_b1 } }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"],
                    qualification_codes: [], brands: [] }
@@ -114,17 +115,28 @@ template:
       expect: pursue_candidate
     - name: 采购意向进入观察
       given:
-        fact: { notice_type: intent, title: 2027 年供水管网更新采购意向, location: "330106",
-                items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }], buyer: { org_id: org_b1 } }
+        fact: { stage: intent, title: 2027 年供水管网更新采购意向, location: "330106",
+                categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }], buyer: { org_id: org_b1 } }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { customers: [], blocked: [] }
         now: "2026-11-01T08:00:00+08:00"
       expect: watch_signal
     - name: 服务区域外
       given:
-        fact: { notice_type: tender, location: "440300", items: [{ categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }] }],
+        fact: { stage: announced, method: open_tender, location: "440300", categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }],
                 bid_deadline: "2026-11-20T09:30:00+08:00", buyer: { org_id: org_b2 } }
         profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { customers: [], blocked: [] }
         now: "2026-11-01T08:00:00+08:00"
       expect: no_signal
+    - name: 更正延长截止后按标包当前状态满足时限
+      given:
+        fact: { stage: amended, method: open_tender, title: 市政给水管网改造工程管材采购, location: "330106",
+                budget: { value: "3200000", currency: CNY },
+                categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }], requirements: [],
+                bid_deadline: "2026-11-25T09:30:00+08:00", buyer: { org_id: org_b1 } }
+        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"],
+                   qualification_codes: [], brands: [] }
+        lists: { customers: [], blocked: [] }
+        now: "2026-11-15T08:00:00+08:00"
+      expect: pursue_candidate

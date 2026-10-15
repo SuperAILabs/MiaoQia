@@ -3177,7 +3177,7 @@
               "type": "array"
             },
             "changed_fields": {
-              "description": "JSON Pointer 列表",
+              "description": "JSON Pointer 列表，相对 ProcurementProject（如 /lots/0/deadlines）",
               "items": {
                 "type": "string"
               },

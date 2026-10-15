@@ -170,17 +170,23 @@ func TestRuntimeCostLimit(t *testing.T) {
 
 func TestPlatformFunctions(t *testing.T) {
 	cases := map[string]bool{
-		`region.within("330106", ["330000"])`:                                               true,
-		`region.within("330106", ["330100"])`:                                               true,
-		`region.within("330106", ["330200"])`:                                               false,
-		`region.within("440300", ["000000"])`:                                               true,
-		`category.any_match([{"categories": [{"code": "CAT-PIPE-PE-100"}]}], ["CAT-PIPE"])`: true,
-		`category.any_match([{"categories": [{"code": "CAT-PIPELINE"}]}], ["CAT-PIPE"])`:    false,
-		`text.contains_any("市政管网改造", ["管网", "道路"])`:                                         true,
-		`time.days_between("2026-11-02T00:00:00Z", "2026-11-01T12:00:00Z") == -1`:           true,
-		`time.days_between(now, "2026-11-20T09:30:00+08:00") == 19`:                         true,
-		`money.cny({"value": "120.5", "currency": "CNY"}) == 120.5`:                         true,
-		`sets.overlaps(["a", "b"], ["c", "b"])`:                                             true,
+		`region.within("330106", ["330000"])`: true,
+		`region.within("330106", ["330100"])`: true,
+		`region.within("330106", ["330200"])`: false,
+		`region.within("440300", ["000000"])`: true,
+		`category.any_match([{"categories": [{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE-100"}]}], ["CAT-PIPE"])`: true,
+		`category.any_match([{"categories": [{"scheme": "industry:building-materials", "code": "CAT-PIPELINE"}]}], ["CAT-PIPE"])`:    false,
+		`category.any_match([{"categories": [{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`:     true,
+		`category.any_match([{"categories": [{"scheme": "gov-procurement-catalog", "code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`:         false,
+		`category.any_match([{"scheme": "industry:building-materials", "code": "CAT-PIPE-PE"}], ["CAT-PIPE"])`:                       true,
+		`category.any_match([{"scheme": "industry:it", "code": "CAT-IT-SW"}], ["CAT-PIPE"])`:                                         false,
+		`category.any_match([{"categories": [{"code": "CAT-PIPE-PE"}]}], ["CAT-PIPE"])`:                                              false,
+		`category.any_match([{"code": "CAT-PIPE-PE"}], ["CAT-PIPE"])`:                                                                false,
+		`text.contains_any("市政管网改造", ["管网", "道路"])`:                                                                                  true,
+		`time.days_between("2026-11-02T00:00:00Z", "2026-11-01T12:00:00Z") == -1`:                                                    true,
+		`time.days_between(now, "2026-11-20T09:30:00+08:00") == 19`:                                                                  true,
+		`money.cny({"value": "120.5", "currency": "CNY"}) == 120.5`:                                                                  true,
+		`sets.overlaps(["a", "b"], ["c", "b"])`:                                                                                      true,
 	}
 	for expr, want := range cases {
 		p := basePolicy()
@@ -257,5 +263,24 @@ func TestParamValues(t *testing.T) {
 	r, _ := c.Evaluate(in)
 	if r.Disposition != NoSignal || r.Trace[2].Say != "距投标截止不少于 25 天" {
 		t.Errorf("租户参数应覆盖默认值：%s / %q", r.Disposition, r.Trace[2].Say)
+	}
+}
+
+func TestLowConfidenceCategoryNeedsReview(t *testing.T) {
+	pack := loadTendering(t)
+	tpl := pack.Templates["TPL-TENDER-A01-BID"]
+	c, issues := Compile(tpl, pack.Features, DefaultLimits())
+	if issues != nil {
+		t.Fatal(issues)
+	}
+	in, _ := tpl.ExampleInput(tpl.Examples[0])
+	in.Evidence = map[string]Evidence{"fact.categories": {Confidence: 0.6, Method: "model"}}
+	r, _ := c.Evaluate(in)
+	if r.Disposition != ReviewCandidate || r.Trace[0].ID != "R-CAT" || r.Trace[0].Result != Unknown {
+		t.Errorf("增强品类置信度不足应转人工复核：%s / %s=%s", r.Disposition, r.Trace[0].ID, r.Trace[0].Result)
+	}
+	in.Evidence = map[string]Evidence{"fact.categories": {Confidence: 0.9, Method: "model"}}
+	if r, _ := c.Evaluate(in); r.Disposition != tpl.Examples[0].Expect {
+		t.Errorf("增强品类置信度达标应与样例一致：%s", r.Disposition)
 	}
 }

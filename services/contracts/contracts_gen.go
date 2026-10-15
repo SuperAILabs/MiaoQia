@@ -1505,6 +1505,21 @@ type Person struct {
 	Role *string `json:"role,omitempty,omitzero"`
 }
 
+// 产生结果的策略版本：租户策略及其所基于的应用领域包模板
+type PolicyRef struct {
+	// PolicyId corresponds to the JSON schema field "policy_id".
+	PolicyId string `json:"policy_id"`
+
+	// PolicyVersion corresponds to the JSON schema field "policy_version".
+	PolicyVersion int `json:"policy_version"`
+
+	// TemplateId corresponds to the JSON schema field "template_id".
+	TemplateId string `json:"template_id"`
+
+	// TemplateVersion corresponds to the JSON schema field "template_version".
+	TemplateVersion string `json:"template_version"`
+}
+
 type ProcurementCategory string
 
 const ProcurementCategoryGoods ProcurementCategory = "goods"
@@ -1955,6 +1970,171 @@ const RequirementKindPersonnel RequirementKind = "personnel"
 const RequirementKindQualification RequirementKind = "qualification"
 const RequirementKindQuality RequirementKind = "quality"
 const RequirementKindTechnical RequirementKind = "technical"
+
+type RuleTrace struct {
+	// Clause corresponds to the JSON schema field "clause".
+	Clause RuleTraceClause `json:"clause"`
+
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// Result corresponds to the JSON schema field "result".
+	Result RuleTraceResult `json:"result"`
+
+	// 渲染后的业务说明
+	Say *string `json:"say,omitempty,omitzero"`
+
+	// 导致未知的字段（缺失或证据不达标）
+	UnknownFields []string `json:"unknown_fields,omitempty,omitzero"`
+}
+
+type RuleTraceClause string
+
+const RuleTraceClauseBoost RuleTraceClause = "boost"
+const RuleTraceClauseExclude RuleTraceClause = "exclude"
+const RuleTraceClausePenalize RuleTraceClause = "penalize"
+const RuleTraceClauseRequire RuleTraceClause = "require"
+const RuleTraceClauseWatch RuleTraceClause = "watch"
+
+type RuleTraceResult string
+
+const RuleTraceResultFalse RuleTraceResult = "false"
+const RuleTraceResultTrue RuleTraceResult = "true"
+const RuleTraceResultUnknown RuleTraceResult = "unknown"
+
+// detection 对一个求值单位按租户策略求值得到的结果（草案；语义见 docs/03-architecture/11-policy-dsl.md 第 4
+// 节与 subsystems/detection.md）。同一策略对同一求值单位（subject 的 type、id 与
+// part_id）只有一条信号；求值单位状态变化导致的处置变化以 SignalUpdate 追加记录，并更新本对象的当前处置。no_signal 不产生信号。
+type Signal struct {
+	// ContextSnapshotVersion corresponds to the JSON schema field
+	// "context_snapshot_version".
+	ContextSnapshotVersion int `json:"context_snapshot_version"`
+
+	// CreatedAt corresponds to the JSON schema field "created_at".
+	CreatedAt time.Time `json:"created_at"`
+
+	// Disposition corresponds to the JSON schema field "disposition".
+	Disposition SignalDisposition `json:"disposition"`
+
+	// 逻辑求值时间，即触发事件的时间（表达式中的 now）
+	EvaluatedAt time.Time `json:"evaluated_at"`
+
+	// 特征快照：特征名 → 值；未知的特征不出现，不含其他租户的信息
+	Features SignalFeatures `json:"features,omitempty,omitzero"`
+
+	// Id corresponds to the JSON schema field "id".
+	Id UlidId `json:"id"`
+
+	// 存在按 missing: review 处理的未知硬条件
+	NeedsReview *bool `json:"needs_review,omitempty,omitzero"`
+
+	// 应用领域包中的目标编号，如 APP-TENDER.A01
+	ObjectiveCode string `json:"objective_code"`
+
+	// 租户启用的商业目标 TenantObjective
+	ObjectiveId string `json:"objective_id"`
+
+	// Policy corresponds to the JSON schema field "policy".
+	Policy PolicyRef `json:"policy"`
+
+	// excluded 时的原因代码（应用领域包 reason_codes 登记）
+	ReasonCode *string `json:"reason_code,omitempty,omitzero"`
+
+	// SchemaVersion corresponds to the JSON schema field "schema_version".
+	SchemaVersion string `json:"schema_version"`
+
+	// 同一策略下的排序分，不代表成交概率
+	Score int `json:"score"`
+
+	// open 待处理；triaged 已由用户调整处置；converted 已发起研究或推进；dismissed 用户忽略；closed
+	// 求值单位进入终态（如截止、终止）后关闭
+	Status SignalStatus `json:"status"`
+
+	// Subject corresponds to the JSON schema field "subject".
+	Subject SubjectRef `json:"subject"`
+
+	// TenantId corresponds to the JSON schema field "tenant_id".
+	TenantId string `json:"tenant_id"`
+
+	// Trace corresponds to the JSON schema field "trace".
+	Trace []RuleTrace `json:"trace"`
+
+	// TriggerEventId corresponds to the JSON schema field "trigger_event_id".
+	TriggerEventId string `json:"trigger_event_id"`
+
+	// 已追加的 SignalUpdate 数
+	UpdateCount int `json:"update_count"`
+
+	// UpdatedAt corresponds to the JSON schema field "updated_at".
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// ViewSnapshotHash corresponds to the JSON schema field "view_snapshot_hash".
+	ViewSnapshotHash string `json:"view_snapshot_hash"`
+}
+
+type SignalDisposition string
+
+const SignalDispositionExcluded SignalDisposition = "excluded"
+const SignalDispositionPursueCandidate SignalDisposition = "pursue_candidate"
+const SignalDispositionReviewCandidate SignalDisposition = "review_candidate"
+const SignalDispositionWatchSignal SignalDisposition = "watch_signal"
+
+// 特征快照：特征名 → 值；未知的特征不出现，不含其他租户的信息
+type SignalFeatures map[string]interface{}
+
+type SignalStatus string
+
+const SignalStatusClosed SignalStatus = "closed"
+const SignalStatusConverted SignalStatus = "converted"
+const SignalStatusDismissed SignalStatus = "dismissed"
+const SignalStatusOpen SignalStatus = "open"
+const SignalStatusTriaged SignalStatus = "triaged"
+
+// 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱
+// prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_
+// 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为
+// prg_。version 为被引用对象在求值或判断时的版本，domain_fact 必填；实体图谱对象的版本语义尚未定义，暂为可选。part_id
+// 指向对象内部的求值单位（如采购项目的标包 lot_）。
+type SubjectRef struct {
+	// Id corresponds to the JSON schema field "id".
+	Id UlidId `json:"id"`
+
+	// PartId corresponds to the JSON schema field "part_id".
+	PartId *UlidId `json:"part_id,omitempty,omitzero"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type SubjectType `json:"type"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version *int `json:"version,omitempty,omitzero"`
+}
+
+type SubjectType string
+
+const SubjectTypeDomainFact SubjectType = "domain_fact"
+const SubjectTypeMarket SubjectType = "market"
+const SubjectTypeOrganization SubjectType = "organization"
+const SubjectTypeProgram SubjectType = "program"
+const SubjectTypeProject SubjectType = "project"
+const SubjectTypeRelationship SubjectType = "relationship"
+
+// 租户域对象的通用字段
+type TenantMeta struct {
+	// CreatedAt corresponds to the JSON schema field "created_at".
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id corresponds to the JSON schema field "id".
+	Id UlidId `json:"id"`
+
+	// SchemaVersion corresponds to the JSON schema field "schema_version".
+	SchemaVersion string `json:"schema_version"`
+
+	// TenantId corresponds to the JSON schema field "tenant_id".
+	TenantId string `json:"tenant_id"`
+
+	// UpdatedAt corresponds to the JSON schema field "updated_at".
+	UpdatedAt time.Time `json:"updated_at"`
+}
 
 type Text struct {
 	// Prov corresponds to the JSON schema field "prov".
