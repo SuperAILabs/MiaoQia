@@ -162,9 +162,13 @@ func categoryAnyMatch(items, cats ref.Val) ref.Val {
 	}
 	matched := false
 	each(il, func(item ref.Val) bool {
+		// 元素可以是品类本身（视图 fact.categories），也可以是带 categories 的标的
 		cs, ok := field(item, "categories")
 		if !ok {
-			return false
+			if _, isCat := field(item, "code"); !isCat {
+				return false
+			}
+			cs = types.DefaultTypeAdapter.NativeToValue([]ref.Val{item})
 		}
 		csl, ok := listOf(cs)
 		if !ok {

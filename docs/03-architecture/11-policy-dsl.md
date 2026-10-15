@@ -54,7 +54,7 @@ policy:
   require:
     - id: R-CAT
       say: 标的或项目包含我方产品品类
-      when: category.any_match(fact.items, params.categories)
+      when: category.any_match(fact.categories, params.categories)
       missing: review
     - id: R-REGION
       say: 项目位于服务区域
@@ -238,7 +238,7 @@ policy:
 
 | 函数 | 说明 |
 |---|---|
-| `category.any_match(items, categories)` | 标的品类是否命中品类集合（含下级：代码按“-”分级，如 `CAT-PIPE` 含 `CAT-PIPE-PE`）；只比较行业包分类体系（`scheme` 以 `industry:` 开头）的代码，政府采购品目等其他体系不参与 |
+| `category.any_match(categories, codes)` | 品类列表（视图 `fact.categories`，来自增强层品类分类；也接受带 `categories` 的标的列表）是否命中品类代码集合（含下级：代码按“-”分级，如 `CAT-PIPE` 含 `CAT-PIPE-PE`）；只比较行业包分类体系（`scheme` 以 `industry:` 开头）的代码，政府采购品目等其他体系不参与。品类置信度经视图证据受 `evidence_policy` 约束，不达标时为未知 |
 | `region.within(location, regions)` | 地点是否在行政区划集合内（含下级：`XX0000` 含全省，`XXXX00` 含全市，`000000` 为全国） |
 | `text.contains_any(text, vocab_terms)` | 文本是否包含词表中任一词（含同义词） |
 | `money.cny(amount)` | 金额归一为人民币元；非人民币金额在汇率视图就绪前为未知 |

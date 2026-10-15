@@ -5,6 +5,9 @@
 #   triggers 触发重新求值的领域事件（缺省为来源事实首次发布的事件）；
 #   fields  视图字段 → 来源路径（路径相对 source；project. 前缀表示所属采购项目；lot. 表示当前标包；latest_notice. 表示项目最新一条非更正采购公告；[*] 表示展开；min()/any() 为聚合）。
 #   来源字段为空或 null 时，视图中不出现该字段（表达式中 has() 为假，读取为未知）。
+#   enrichment.category(标的) 读取 L3 品类分类增强结果（数据架构 3.3）：只保留行业包分类体系、达到增强器发布门槛的品类，
+#   展开为品类列表；该字段的证据置信度取所保留品类的最低值、方法记为 model 或 rule，受模板 evidence_policy 约束，
+#   不达标时读取为未知。没有可用品类时视图中不出现该字段。
 #
 # view_items：可按名称引用的关联视图项，声明提供方、类型与新鲜度；组装后挂在 fact.<名称> 路径下，
 # 例如 winner.credit_flags 在表达式中为 fact.winner.credit_flags。
@@ -38,6 +41,7 @@ fact_types:
       budget: "has(lot.budget) ? lot.budget : budget"
       max_price: lot.max_price
       items: lot.items[*]
+      categories: enrichment.category(lot.items[*])
       requirements: lot.requirements[*]
       bid_deadline: min(lot.deadlines[type=bid_submission].at.value)
       consortium_allowed: lot.consortium_allowed
@@ -58,6 +62,7 @@ fact_types:
       result_type: "notice_type == candidate ? candidate_published : awarded"
       location: location.code
       items: project.lots[lot_id].items[*]     # 结果公告常不重复标的，取项目标包的当前标的
+      categories: enrichment.category(project.lots[lot_id].items[*])
       amount: result.price[price_kind == total] # 年单价合计/单价/未知含义不当项目成交总额
       buyer: buyer
       winner: result.bidder
@@ -83,6 +88,7 @@ fact_types:
       project_id: project_id
       location: location.code
       items: project.lots[contract.lot_id].items[*]
+      categories: enrichment.category(project.lots[contract.lot_id].items[*])
       amount: contract.amount
       buyer: buyer
       winner: contract.supplier
@@ -97,6 +103,7 @@ fact_types:
       investment_project_id: investment_project_id
       location: location.code
       items: project.lots[*].items[*]    # 经 procurement_project_id 关联的采购项目标的；未关联时不出现
+      categories: enrichment.category(project.lots[*].items[*])
       amount: construction_permit.contract_amount
       winner: construction_permit.contractor
       org_ids: "[owner, construction_permit.contractor, construction_permit.designer, construction_permit.supervisor].org_id"
