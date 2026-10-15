@@ -14,6 +14,9 @@ MIGRATIONS = str(Path(__file__).resolve().parents[3] / "migrations")
 
 def module() -> Module:
     def consumers(env: Env) -> list[Consumer]:
+        # 租户文档业务管线尚未实现；不能复用公共探针主题/发件箱。
+        if env.data_scope == "tenant":
+            return []
         return [Consumer(name=f"{NAME}.probe", subsystem=NAME, brokers=env.brokers, topics=["public.acquisition"],
                          handlers={probe.EMITTED: probe.on_emitted}, db=env.db)]
 
