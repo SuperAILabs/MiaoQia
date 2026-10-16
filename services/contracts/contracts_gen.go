@@ -644,7 +644,7 @@ type DerivationEvidenceRef struct {
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`
 
-	// 按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本
+	// 按转换参数顺序排列。上界是单条派生证据的资源上限，不决定语义：字段派生与统计按计算目的区分，不按输入个数区分。超出上界时登记被拒绝，不截断；字段派生拆成多级，中间结果各自登记派生证据
 	Inputs []DerivationInput `json:"inputs"`
 
 	// Kind corresponds to the JSON schema field "kind".
@@ -653,7 +653,7 @@ type DerivationEvidenceRef struct {
 	// 转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）
 	ReferenceData []ReferenceDataVersion `json:"reference_data,omitempty,omitzero"`
 
-	// 转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果
+	// 转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果。版本固定全部影响结果的依赖：转换参数、时区、舍入与精度规则等，任一变化都发布新版本
 	Transform string `json:"transform"`
 
 	// 派生取值按 RFC 8785 规范化后的哈希
@@ -2167,7 +2167,7 @@ type ReferenceDataVersion struct {
 	// 参考数据标识，例如 gb2260、cn-holidays
 	Name string `json:"name"`
 
-	// Version corresponds to the JSON schema field "version".
+	// 必须对应不可变且可取得的内容；同一版本不得重新发布为不同内容
 	Version string `json:"version"`
 }
 

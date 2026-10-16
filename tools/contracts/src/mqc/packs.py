@@ -344,6 +344,7 @@ def check_definitions(repo: Repo, pack_dir: Path) -> Report:
     pack = load_yaml(pack_dir / "pack.yaml")["pack"]
     prov = pack.get("provides", {})
     if "coverage" not in prov:
+        r.error(str((pack_dir / "pack.yaml").relative_to(repo.root)), "P9 应用领域包必须在 provides.coverage 登记覆盖矩阵")
         return r
     v = _definition_validator(repo)
     rel = lambda f: str((pack_dir / f).relative_to(repo.root))
@@ -384,8 +385,11 @@ def check_definitions(repo: Repo, pack_dir: Path) -> Report:
     tasks = set(re.findall(r"^\| (M[0-9]-P[0-9]+) ", baseline.read_text(encoding="utf-8"), re.M)) if baseline.exists() else None
 
     def cell(label: str, c: dict, own: dict, reuse_pool: set[str]):
-        if "pending" in c and c["pending"].get("task") and tasks is not None and c["pending"]["task"] not in tasks:
-            r.error(where, f"P9 {label} 的待定任务 {c['pending']['task']} 不在阶段基线中")
+        task = c.get("pending", {}).get("task")
+        if task and tasks is not None and task not in tasks:
+            r.error(where, f"P9 {label} 的待定任务 {task} 不在阶段基线中")
+        if task and not task.startswith(c["pending"]["stage"] + "-"):
+            r.error(where, f"P9 {label} 的待定任务 {task} 与交付阶段 {c['pending']['stage']} 不一致")
         for x in c.get("defined", []):
             if x not in own:
                 r.error(where, f"P9 {label} 标为已定义的 {x} 没有登记在 pack.yaml")
