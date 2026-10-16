@@ -12,6 +12,10 @@
   P5  规则编号前缀与子句一致且不重复；排除规则必须有原因代码
   P6  表达式与视图 triggers 中出现的事件类型已在 contracts/events 中定义
   P7  样例的期望处置取值合法
+应用领域包（其他定义，格式见 contracts/packs/application-domain.schema.json）：
+  P9  覆盖矩阵与定义文件符合格式；路径与目标代码一致；已定义/复用的引用存在，策略模板的目标与路径一致、
+      每个模板都进入矩阵；框架与研究模板目录无未登记引用、无孤儿；待定项引用的阶段基线任务存在；
+      定义文件之间的引用（目标→路径、阶段→框架/研究、衔接→路径、挂钩→事件）可解析
 """
 from __future__ import annotations
 
@@ -289,6 +293,153 @@ def check_application_pack(repo: Repo, pack_dir: Path) -> Report:
     return r
 
 
+DEF_KINDS = {"roles": "role", "objectives": "objective", "playbooks": "playbook",
+             "frameworks": "framework", "research_templates": "research_template"}
+STAGE_BASELINE = "docs/05-delivery/06-stage-baseline.md"
+
+
+def _definition_validator(repo: Repo) -> Draft202012Validator:
+    from referencing import Registry, Resource
+    defs = json.loads((repo.contracts / "packs" / "application-domain.schema.json").read_text(encoding="utf-8"))
+    pol = json.loads((repo.contracts / "policy" / "policy.schema.json").read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(defs)
+    reg = Registry().with_resources([(d["$id"], Resource.from_contents(d)) for d in (defs, pol)])
+    return Draft202012Validator(defs, registry=reg, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
+def check_definitions(repo: Repo, pack_dir: Path) -> Report:
+    r = Report()
+    pack = load_yaml(pack_dir / "pack.yaml")["pack"]
+    prov = pack.get("provides", {})
+    if "coverage" not in prov:
+        return r
+    v = _definition_validator(repo)
+    rel = lambda f: str((pack_dir / f).relative_to(repo.root))
+
+    def load(f: str, key: str):
+        if not (pack_dir / f).exists():
+            r.error(rel(f), "P9 定义文件不存在")
+            return None
+        doc = load_yaml(pack_dir / f)
+        errs = sorted(v.iter_errors(doc), key=lambda e: list(e.absolute_path))
+        for e in errs:
+            r.error(rel(f), f"P9 /{'/'.join(map(str, e.absolute_path))}：{e.message}")
+        if not errs and key not in doc:
+            r.error(rel(f), f"P9 顶层键应为 {key}")
+            return None
+        return None if errs else doc[key]
+
+    cov = load(prov["coverage"], "coverage")
+    if cov is None:
+        return r
+    where = rel(prov["coverage"])
+    defined = {k: {} for k in DEF_KINDS}
+    for k, kind in DEF_KINDS.items():
+        for f in prov.get(k, []):
+            d = load(f, kind)
+            if d is not None:
+                if d["id"] in defined[k]:
+                    r.error(rel(f), f"P9 {d['id']} 重复定义")
+                defined[k][d["id"]] = (f, d)
+    templates = {}
+    for tf in prov.get("policy", {}).get("templates", []):
+        t = load_yaml(pack_dir / tf)["template"]
+        templates[t["id"]] = t
+    if cov["pack"] != pack["id"]:
+        r.error(where, f"P9 覆盖矩阵的包 {cov['pack']} 与 pack.yaml 的 {pack['id']} 不一致")
+    domain = pack["id"].removeprefix("APP-")
+    baseline = repo.root / STAGE_BASELINE
+    tasks = set(re.findall(r"^\| (M[0-9]-P[0-9]+) ", baseline.read_text(encoding="utf-8"), re.M)) if baseline.exists() else None
+
+    def cell(label: str, c: dict, own: dict, reuse_pool: set[str]):
+        if "pending" in c and c["pending"].get("task") and tasks is not None and c["pending"]["task"] not in tasks:
+            r.error(where, f"P9 {label} 的待定任务 {c['pending']['task']} 不在阶段基线中")
+        for x in c.get("defined", []):
+            if x not in own:
+                r.error(where, f"P9 {label} 标为已定义的 {x} 没有登记在 pack.yaml")
+        if "reuse" in c and c["reuse"] not in reuse_pool:
+            r.error(where, f"P9 {label} 复用的 {c['reuse']} 不存在")
+
+    for cat in ("frameworks", "research_templates"):
+        used = {x for p in cov["paths"].values() for x in p[cat]}
+        for x, c in cov[cat].items():
+            cell(x, c, {x: 1} if x in defined[cat] else {}, set(cov[cat]) - {x})
+            if x not in used:
+                r.error(where, f"P9 目录中的 {x} 没有任何路径使用")
+            if "defined" not in c and x in defined[cat]:
+                r.error(where, f"P9 {x} 已有定义文件，矩阵应标为已定义")
+        for x in defined[cat]:
+            if x not in cov[cat]:
+                r.error(where, f"P9 定义 {x} 未登记在覆盖矩阵目录中")
+        for pb, p in cov["paths"].items():
+            for x in p[cat]:
+                if x not in cov[cat]:
+                    r.error(where, f"P9 {pb} 引用未登记的 {x}")
+    entered = set()
+    for pb, p in cov["paths"].items():
+        code = pb.removeprefix(f"PB-{domain}-")
+        if pb == code or p["objective"] != f"{pack['id']}.{code}":
+            r.error(where, f"P9 路径 {pb} 与目标 {p['objective']} 不一致")
+        cell(f"{pb} entry", p["entry"], templates, set(templates))
+        for x in p["entry"].get("defined", []):
+            entered.add(x)
+            if x in templates and templates[x]["objective"] != p["objective"]:
+                r.error(where, f"P9 {pb} 的策略模板 {x} 属于目标 {templates[x]['objective']}")
+        cell(f"{pb} playbook", p["playbook"], defined["playbooks"],
+             {k for k, q in cov["paths"].items() if k != pb and "reuse" not in q["playbook"]})
+        if "defined" in p["playbook"] and p["playbook"]["defined"] != [pb]:
+            r.error(where, f"P9 {pb} 的机会路径定义应为 {pb}")
+    for x in templates:
+        if x not in entered:
+            r.error(where, f"P9 策略模板 {x} 没有进入覆盖矩阵")
+    for x in defined["playbooks"]:
+        if x not in cov["paths"]:
+            r.error(where, f"P9 机会路径 {x} 未登记在覆盖矩阵中")
+
+    events = event_names(repo)
+    known = {"frameworks": set(cov["frameworks"]), "research_templates": set(cov["research_templates"]),
+             "paths": set(cov["paths"])}
+    for f, d in defined["roles"].values():
+        objs = {cov["paths"][x]["objective"] for x in cov["paths"]}
+        for o in d["default_objectives"] + d.get("optional_objectives", []):
+            if o not in objs:
+                r.error(rel(f), f"P9 角色 {d['id']} 引用未覆盖的目标 {o}")
+    for f, d in defined["objectives"].values():
+        if d["playbook"] not in known["paths"]:
+            r.error(rel(f), f"P9 目标 {d['id']} 的机会路径 {d['playbook']} 未登记")
+        for t in d.get("policy_templates", []):
+            if t not in templates or templates[t]["objective"] != d["id"]:
+                r.error(rel(f), f"P9 目标 {d['id']} 的策略模板 {t} 不存在或属于其他目标")
+    for f, d in defined["playbooks"].values():
+        if d["objective"] != cov["paths"].get(d["id"], {}).get("objective"):
+            r.error(rel(f), f"P9 机会路径 {d['id']} 的目标与覆盖矩阵不一致")
+        for e in d["entry"]:
+            if e["kind"] == "signal" and e["template"] not in templates:
+                r.error(rel(f), f"P9 进入条件的策略模板 {e['template']} 不存在")
+            if e["kind"] == "transition" and e["from"] not in known["paths"]:
+                r.error(rel(f), f"P9 衔接来源 {e['from']} 未登记")
+        for st in d["stages"]:
+            for x in st.get("research", []):
+                if x not in known["research_templates"]:
+                    r.error(rel(f), f"P9 阶段 {st['id']} 的研究模板 {x} 未登记")
+            if st.get("assessment") and st["assessment"] not in known["frameworks"]:
+                r.error(rel(f), f"P9 阶段 {st['id']} 的判断框架 {st['assessment']} 未登记")
+        for t in d.get("transitions", []):
+            if t["to"] not in known["paths"]:
+                r.error(rel(f), f"P9 衔接目标 {t['to']} 未登记")
+        for h in d.get("domain_event_hooks", []):
+            if h["event"] not in events:
+                r.error(rel(f), f"P9 挂钩事件 {h['event']} 未在 contracts/events 中定义")
+    for f, d in defined["frameworks"].values():
+        for x in d.get("research", []):
+            if x not in known["research_templates"]:
+                r.error(rel(f), f"P9 框架 {d['id']} 的研究模板 {x} 未登记")
+    for f, d in defined["research_templates"].values():
+        if not (repo.root / d["output_schema"]).exists():
+            r.error(rel(f), f"P9 研究模板 {d['id']} 的输出 Schema 不存在：{d['output_schema']}")
+    return r
+
+
 def check_packs(repo: Repo) -> Report:
     r = Report()
     n = 0
@@ -299,5 +450,6 @@ def check_packs(repo: Repo) -> Report:
             r.extend(check_information_pack(repo, pack_file.parent))
         elif kind == "application_domain":
             r.extend(check_application_pack(repo, pack_file.parent))
+            r.extend(check_definitions(repo, pack_file.parent))
     r.note(f"扩展包一致性检查：{n} 个包")
     return r

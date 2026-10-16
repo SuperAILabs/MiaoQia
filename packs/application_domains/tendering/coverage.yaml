@@ -1,0 +1,141 @@
+# 覆盖矩阵（格式：contracts/packs/application-domain.schema.json 的 coverage；mqc P9 校验）。
+# 本包十六条机会路径（docs/02-business/application-domains/tendering/03-business-processes.md）各自用到的定义：
+#   defined 已在本包定义；reuse 复用另一条路径或另一项定义；none 无需及理由；pending 待定义，
+#   stage 为路线图阶段（批次见 05-release-plan.md 第2节），task 只引用阶段基线已有任务，不另立任务。
+# 路径不必各有一套策略模板、判断框架或研究模板：共用的在这里显式标出。
+coverage:
+  pack: APP-TENDER
+
+  frameworks:                        # 判断框架目录（03-business-processes.md 第7节）
+    AF-TENDER-ELIG:    { pending: { stage: M2, task: M2-P2, note: A01 规则型资格判断 } }
+    AF-TENDER-BID:     { pending: { stage: M3, note: 结合研究的投标决策（路线图 M3 assessment） } }
+    AF-TENDER-SUPPLY:  { pending: { stage: M2, task: M2-P2, note: M2 规则型版本，M3 起结合研究 } }
+    AF-TENDER-SPECIN:  { pending: { stage: M4, note: R2 } }
+    AF-TENDER-PARTNER: { pending: { stage: M4, note: R2，随 INF-QUAL } }
+    AF-TENDER-RISK:    { pending: { stage: M3, note: 随 C01 与 INF-CRED } }
+
+  research_templates:                # 研究模板目录（第8节）；研究运行时随 M3
+    RT-TENDER-ELIG:     { pending: { stage: M3 } }
+    RT-TENDER-BUYER:    { pending: { stage: M3 } }
+    RT-TENDER-COMPETE:  { pending: { stage: M3 } }
+    RT-TENDER-PROJECT:  { pending: { stage: M3 } }
+    RT-TENDER-WINNER:   { pending: { stage: M3 } }
+    RT-TENDER-RISK:     { pending: { stage: M3 } }
+    RT-TENDER-ORGTRACK: { pending: { stage: M3 } }
+    RT-TENDER-PRICE:    { pending: { stage: M4, note: R2，需标的与单价抽取质量达标 } }
+    RT-TENDER-PARTNER:  { pending: { stage: M4, note: R2 } }
+    RT-TENDER-MARKET:   { pending: { stage: M4, note: R2，需统计汇总能力 } }
+
+  paths:
+    PB-TENDER-A01:
+      objective: APP-TENDER.A01
+      form: transactional
+      entry: { defined: [TPL-TENDER-A01-BID] }
+      playbook: { pending: { stage: M2, task: M2-P4, note: M2 最小跟进切片；阶段、决策门与衔接随 M4 路径引擎 } }
+      frameworks: [AF-TENDER-ELIG, AF-TENDER-BID, AF-TENDER-RISK]
+      research_templates: [RT-TENDER-ELIG, RT-TENDER-BUYER, RT-TENDER-COMPETE, RT-TENDER-PRICE]
+    PB-TENDER-A02:
+      objective: APP-TENDER.A02
+      form: transactional
+      entry: { defined: [TPL-TENDER-A02-SUPPLY] }
+      playbook: { pending: { stage: M2, task: M2-P4, note: 首条验证旅程；完整路径随 M4 } }
+      frameworks: [AF-TENDER-SUPPLY, AF-TENDER-RISK]
+      research_templates: [RT-TENDER-PROJECT, RT-TENDER-WINNER]
+    PB-TENDER-A03:
+      objective: APP-TENDER.A03
+      form: transactional
+      entry: { reuse: TPL-TENDER-A02-SUPPLY, note: 该模板已含 ROLE-SUBCON，按专业工程品类参数启用，不另建模板 }
+      playbook: { reuse: PB-TENDER-A02, note: 结构相同；研究侧重专业工程与总包分包体系，框架补专业资质匹配，R3 定义差异版本 }
+      frameworks: [AF-TENDER-SUPPLY]
+      research_templates: [RT-TENDER-PROJECT, RT-TENDER-WINNER]
+    PB-TENDER-A04:
+      objective: APP-TENDER.A04
+      form: transactional
+      entry: { pending: { stage: M4, note: 立项、可研、设计中标、品牌库与框架征集等前置信号的新模板（R2） } }
+      playbook: { pending: { stage: M4 } }
+      frameworks: [AF-TENDER-SPECIN]
+      research_templates: [RT-TENDER-PROJECT]
+    PB-TENDER-A05:
+      objective: APP-TENDER.A05
+      form: transactional
+      entry: { none: 由 A01 资格缺口衔接或用户发起，不由信号直接进入 }
+      playbook: { pending: { stage: M4 } }
+      frameworks: [AF-TENDER-PARTNER, AF-TENDER-RISK]
+      research_templates: [RT-TENDER-PARTNER]
+    PB-TENDER-A06:
+      objective: APP-TENDER.A06
+      form: transactional
+      entry: { pending: { stage: M4, note: 原厂授权要求或中标明细出现本品牌的新模板（R2）；中标明细已在 bid_result.awarded_items } }
+      playbook: { pending: { stage: M4, note: 渠道冲突评估是否单独成框架随 R2 定义 } }
+      frameworks: []
+      research_templates: []
+    PB-TENDER-B01:
+      objective: APP-TENDER.B01
+      form: continuous
+      entry: { pending: { stage: M4, note: 评估复用 TPL-TENDER-B05-ORGTRACK 的清单机制；预算与项目储备视图随 INF-FISC } }
+      playbook: { pending: { stage: M4 } }
+      frameworks: []
+      research_templates: [RT-TENDER-BUYER]
+    PB-TENDER-B02:
+      objective: APP-TENDER.B02
+      form: continuous
+      entry: { none: 研究驱动，目标对象为租户市场 mkt_，不由信号进入 }
+      playbook: { pending: { stage: M4 } }
+      frameworks: []
+      research_templates: [RT-TENDER-MARKET]
+    PB-TENDER-B03:
+      objective: APP-TENDER.B03
+      form: continuous
+      entry: { defined: [TPL-TENDER-B03-COMPETE] }
+      playbook: { pending: { stage: M2, task: M2-P4, note: M2 变化监测与简报，周期研究随 M3 } }
+      frameworks: []
+      research_templates: [RT-TENDER-COMPETE]
+    PB-TENDER-B04:
+      objective: APP-TENDER.B04
+      form: embedded
+      entry: { none: 统计查询，作为 A01 投标决策的输入，也可独立查询 }
+      playbook: { none: 不建推进；由 RT-TENDER-PRICE 与统计查询提供 }
+      frameworks: []
+      research_templates: [RT-TENDER-PRICE]
+    PB-TENDER-B05:
+      objective: APP-TENDER.B05
+      form: continuous
+      entry: { defined: [TPL-TENDER-B05-ORGTRACK] }
+      playbook: { pending: { stage: M3 } }
+      frameworks: []
+      research_templates: [RT-TENDER-ORGTRACK, RT-TENDER-WINNER, RT-TENDER-COMPETE, RT-TENDER-RISK]
+    PB-TENDER-C01:
+      objective: APP-TENDER.C01
+      form: embedded
+      entry: { defined: [TPL-TENDER-C01-RISK] }
+      playbook: { pending: { stage: M3, note: 嵌入其他推进；独立发起时为单阶段推进 } }
+      frameworks: [AF-TENDER-RISK]
+      research_templates: [RT-TENDER-RISK]
+    PB-TENDER-C02:
+      objective: APP-TENDER.C02
+      form: continuous
+      entry: { pending: { stage: M5, note: 监测对象为我方主体（profile.org_ids）的资质有效期与信用记录（R3） } }
+      playbook: { pending: { stage: M5 } }
+      frameworks: []
+      research_templates: []
+    PB-TENDER-C03:
+      objective: APP-TENDER.C03
+      form: transactional
+      entry: { none: 由 A01、A02 成交衔接；合同、验收、付款节点由推进的领域事件挂钩接收 }
+      playbook: { pending: { stage: M5 } }
+      frameworks: []
+      research_templates: [RT-TENDER-PROJECT]
+    PB-TENDER-D01:
+      objective: APP-TENDER.D01
+      form: transactional
+      entry: { pending: { stage: M5, note: 保证金与保函要求、中标结果、合同金额（R3） } }
+      playbook: { pending: { stage: M5, note: 含获客用途声明与联系人使用限制 } }
+      frameworks: [AF-TENDER-RISK]
+      research_templates: [RT-TENDER-WINNER, RT-TENDER-RISK]
+    PB-TENDER-D02:
+      objective: APP-TENDER.D02
+      form: transactional
+      entry: { pending: { stage: M5, note: 项目审批、代理机构选聘、投诉与争议（R3） } }
+      playbook: { pending: { stage: M5 } }
+      frameworks: []
+      research_templates: [RT-TENDER-PROJECT]

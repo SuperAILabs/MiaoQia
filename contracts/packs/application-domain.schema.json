@@ -1,0 +1,824 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/packs/application-domain.schema.json",
+  "x-version": "0.1.0",
+  "title": "ApplicationDomainDefinitions 应用领域包定义格式",
+  "description": "应用领域包除策略模板（contracts/policy/policy.schema.json）以外的定义格式草案：角色模板、目标模板、机会路径、判断框架、研究模板，以及包的覆盖矩阵。每个定义文件的顶层键为对应种类名，按 pack.yaml provides 的同名键登记；引用与校验规则由 mqc P9 执行（docs/03-architecture/04-extensibility.md 2.3）。条件一律为 CEL 表达式，包内不含可执行代码。",
+  "type": "object",
+  "minProperties": 1,
+  "maxProperties": 1,
+  "additionalProperties": false,
+  "properties": {
+    "role": {
+      "$ref": "#/$defs/role_template"
+    },
+    "objective": {
+      "$ref": "#/$defs/objective_template"
+    },
+    "playbook": {
+      "$ref": "#/$defs/playbook"
+    },
+    "framework": {
+      "$ref": "#/$defs/framework"
+    },
+    "research_template": {
+      "$ref": "#/$defs/research_template"
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    }
+  },
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "role_template": {
+      "type": "object",
+      "description": "价值链角色模板（客户细分）：角色与默认可启用的目标",
+      "required": [
+        "id",
+        "version",
+        "name",
+        "default_objectives"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ROLE-[A-Z]+$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_objectives": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+          },
+          "minItems": 1
+        },
+        "optional_objectives": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+          }
+        }
+      }
+    },
+    "objective_template": {
+      "type": "object",
+      "description": "目标模板：把平台商业目标（OBJ-）实例化到本领域，说明用哪条机会路径、哪些策略模板、框架与研究模板，以及启用依赖的信息领域",
+      "required": [
+        "id",
+        "version",
+        "catalog_objective",
+        "form",
+        "subject_types",
+        "playbook",
+        "requires_domains"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "catalog_objective": {
+          "type": "string",
+          "pattern": "^OBJ-[A-Z][0-9]{2}$"
+        },
+        "form": {
+          "enum": [
+            "transactional",
+            "continuous",
+            "embedded"
+          ],
+          "description": "推进形态：交易型有终点；持续型按周期运行（业务架构 4.2）；嵌入型只在其他推进中调用，不单独建推进"
+        },
+        "subject_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "organization",
+              "procurement_project",
+              "investment_project",
+              "market",
+              "relationship",
+              "tenant_self",
+              "transaction_event"
+            ]
+          },
+          "description": "目标对象类型（商业目标目录的目标对象）"
+        },
+        "playbook": {
+          "type": "string",
+          "pattern": "^PB-[A-Z]+-[A-Z][0-9]{2}$"
+        },
+        "policy_templates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^TPL-[A-Z0-9]+(-[A-Z0-9]+)+$"
+          },
+          "description": "进入推进的信号来源；研究或查询驱动的目标可以没有"
+        },
+        "requires_domains": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^INF-[A-Z]+$"
+          },
+          "description": "启用依赖：数据可用性按信息领域服务状态判断，不是安装依赖（可扩展性 4）"
+        }
+      }
+    },
+    "playbook": {
+      "type": "object",
+      "description": "机会路径（业务流程与机会路径第 1 节的统一结构）",
+      "required": [
+        "id",
+        "version",
+        "objective",
+        "form",
+        "subject_types",
+        "entry",
+        "stages"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^PB-[A-Z]+-[A-Z][0-9]{2}$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "objective": {
+          "type": "string",
+          "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+        },
+        "form": {
+          "enum": [
+            "transactional",
+            "continuous",
+            "embedded"
+          ],
+          "description": "推进形态：交易型有终点；持续型按周期运行（业务架构 4.2）；嵌入型只在其他推进中调用，不单独建推进"
+        },
+        "subject_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "organization",
+              "procurement_project",
+              "investment_project",
+              "market",
+              "relationship",
+              "tenant_self",
+              "transaction_event"
+            ]
+          },
+          "description": "目标对象类型（商业目标目录的目标对象）"
+        },
+        "entry": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/entry_trigger"
+          }
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        },
+        "domain_event_hooks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/event_hook"
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transition"
+          }
+        },
+        "outcome_reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "description": "结果原因代码"
+        }
+      }
+    },
+    "entry_trigger": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "signal",
+            "transition",
+            "manual"
+          ]
+        },
+        "template": {
+          "type": "string",
+          "pattern": "^TPL-[A-Z0-9]+(-[A-Z0-9]+)+$",
+          "description": "kind=signal 时的策略模板"
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^PB-[A-Z]+-[A-Z][0-9]{2}$",
+          "description": "kind=transition 时的来源路径"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "signal"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "template"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "transition"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "from"
+            ]
+          }
+        }
+      ]
+    },
+    "stage": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "research": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^RT-[A-Z]+-[A-Z]+$"
+          },
+          "description": "阶段进入时默认触发的研究模板"
+        },
+        "assessment": {
+          "type": "string",
+          "pattern": "^AF-[A-Z]+-[A-Z]+$"
+        },
+        "decision_gate": {
+          "type": "object",
+          "required": [
+            "decision_type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "decision_type": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "description": "决策类型，审批权限与额度按 identity 权限矩阵"
+            }
+          }
+        },
+        "task_templates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          }
+        },
+        "exit_when": {
+          "$ref": "../policy/policy.schema.json#/$defs/expr"
+        }
+      }
+    },
+    "event_hook": {
+      "type": "object",
+      "required": [
+        "event",
+        "effect"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "type": "string",
+          "pattern": "^[a-z_]+\\.[a-z_]+\\.[a-z_]+\\.v[0-9]+$"
+        },
+        "effect": {
+          "enum": [
+            "notify_owner",
+            "recheck_deadlines",
+            "close_external",
+            "suggest_transition",
+            "attach_fact"
+          ]
+        },
+        "when": {
+          "$ref": "../policy/policy.schema.json#/$defs/expr"
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": [
+        "to",
+        "when"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "to": {
+          "type": "string",
+          "pattern": "^PB-[A-Z]+-[A-Z][0-9]{2}$"
+        },
+        "when": {
+          "$ref": "../policy/policy.schema.json#/$defs/expr"
+        },
+        "mode": {
+          "const": "suggest",
+          "description": "衔接只建议，用户确认后才分派负责人"
+        }
+      }
+    },
+    "framework": {
+      "type": "object",
+      "description": "判断框架：确定性硬门槛、规则特征、模型评分、AI 归纳分别声明并分别记录",
+      "required": [
+        "id",
+        "version",
+        "subject_types",
+        "dimensions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^AF-[A-Z]+-[A-Z]+$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "subject_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "organization",
+              "procurement_project",
+              "investment_project",
+              "market",
+              "relationship",
+              "tenant_self",
+              "transaction_event"
+            ]
+          },
+          "description": "目标对象类型（商业目标目录的目标对象）"
+        },
+        "research": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^RT-[A-Z]+-[A-Z]+$"
+          },
+          "description": "框架所需的研究模板"
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/dimension"
+          }
+        }
+      }
+    },
+    "dimension": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "say"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "kind": {
+          "enum": [
+            "hard_gate",
+            "rule_feature",
+            "model_score",
+            "ai_summary"
+          ]
+        },
+        "say": {
+          "type": "string",
+          "minLength": 1
+        },
+        "when": {
+          "$ref": "../policy/policy.schema.json#/$defs/expr"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "description": "model_score 的评分提供者（版本与门禁归 assessment，基础模型版本归 ai-platform）"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "hard_gate",
+                  "rule_feature"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "when"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "model_score"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "provider"
+            ]
+          }
+        }
+      ]
+    },
+    "research_template": {
+      "type": "object",
+      "description": "研究模板（AI 与 Agent 架构第 2 节）",
+      "required": [
+        "id",
+        "version",
+        "question",
+        "subject_types",
+        "tools",
+        "budget",
+        "output_schema"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^RT-[A-Z]+-[A-Z]+$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "organization",
+              "procurement_project",
+              "investment_project",
+              "market",
+              "relationship",
+              "tenant_self",
+              "transaction_event"
+            ]
+          },
+          "description": "目标对象类型（商业目标目录的目标对象）"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "type": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "tools": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "工具白名单（research.tool_registry 登记）"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "budget": {
+          "type": "object",
+          "required": [
+            "max_tool_calls",
+            "max_model_cost",
+            "timeout"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "max_tool_calls": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_model_cost": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "timeout": {
+              "type": "string",
+              "pattern": "^[0-9]+[smh]$"
+            }
+          }
+        },
+        "model_profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_schema": {
+          "type": "string",
+          "pattern": "^contracts/schemas/.+\\.schema\\.json$"
+        },
+        "report_rules": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "cell": {
+      "description": "覆盖矩阵单元：已定义、复用、无需或待定。待定须指向阶段基线已有任务或路线图阶段，不另立任务",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "defined"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "defined": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "reuse"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "reuse": {
+              "type": "string",
+              "minLength": 1
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "none"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "none": {
+              "type": "string",
+              "minLength": 1,
+              "description": "无需的理由"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "pending"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "pending": {
+              "type": "object",
+              "required": [
+                "stage"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "stage": {
+                  "enum": [
+                    "M2",
+                    "M3",
+                    "M4",
+                    "M5"
+                  ]
+                },
+                "task": {
+                  "type": "string",
+                  "pattern": "^M[0-9]-P[0-9]+$"
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "description": "覆盖矩阵：本包的每条机会路径用到哪些定义，各自是已定义、复用、无需还是待定。路径不必各有一套策略或框架",
+      "required": [
+        "pack",
+        "paths",
+        "frameworks",
+        "research_templates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pack": {
+          "type": "string",
+          "pattern": "^APP-[A-Z]+$"
+        },
+        "frameworks": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^AF-[A-Z]+-[A-Z]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/cell"
+          }
+        },
+        "research_templates": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^RT-[A-Z]+-[A-Z]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/cell"
+          }
+        },
+        "paths": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^PB-[A-Z]+-[A-Z][0-9]{2}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/path_coverage"
+          }
+        }
+      }
+    },
+    "path_coverage": {
+      "type": "object",
+      "required": [
+        "objective",
+        "form",
+        "entry",
+        "playbook",
+        "frameworks",
+        "research_templates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objective": {
+          "type": "string",
+          "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+        },
+        "form": {
+          "enum": [
+            "transactional",
+            "continuous",
+            "embedded"
+          ],
+          "description": "推进形态：交易型有终点；持续型按周期运行（业务架构 4.2）；嵌入型只在其他推进中调用，不单独建推进"
+        },
+        "entry": {
+          "$ref": "#/$defs/cell",
+          "description": "进入推进的策略模板（defined/reuse 填模板 id）"
+        },
+        "playbook": {
+          "$ref": "#/$defs/cell"
+        },
+        "frameworks": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^AF-[A-Z]+-[A-Z]+$"
+          },
+          "description": "用到的判断框架（状态在 frameworks 目录中）"
+        },
+        "research_templates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^RT-[A-Z]+-[A-Z]+$"
+          }
+        }
+      }
+    }
+  }
+}

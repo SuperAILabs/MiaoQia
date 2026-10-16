@@ -1,6 +1,6 @@
 # 可扩展性设计
 
-> 状态：评审中 · 版本：2.2 · 更新：2026-10-16 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.3 · 更新：2026-10-16 · 负责人：首席架构师
 
 ## 1. 设计目标
 
@@ -32,7 +32,7 @@ pack:
   provides: { … }                    # 按 kind 列出提供的扩展点
 ```
 
-扩展包由声明式定义文件（YAML/JSON）组成。清单与定义文件没有独立的 manifest Schema，由 `mqc check` 的扩展包一致性规则（`tools/contracts/src/mqc/packs.py`，P0–P7）对照 `contracts/` 校验：信息领域包检查 `pack.yaml` 引用的 Schema、事件文件与领域校验入口存在且合规，生命周期状态与触发值取自所引用 Schema 的枚举；应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验，并检查视图来源、引用声明、规则编号、事件类型与样例处置。行业包尚未纳入检查。扩展包按种类允许的形式不同（ADR-0006）：
+扩展包由声明式定义文件（YAML/JSON）组成。清单没有独立的 manifest Schema，由 `mqc check` 的扩展包一致性规则（`tools/contracts/src/mqc/packs.py`，P0–P9）对照 `contracts/` 校验：信息领域包检查 `pack.yaml` 引用的 Schema、事件文件与领域校验入口存在且合规，生命周期状态与触发值取自所引用 Schema 的枚举；应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验，并检查视图来源、引用声明、规则编号、事件类型与样例处置；其他定义（角色模板、目标模板、机会路径、判断框架、研究模板）与覆盖矩阵按 `contracts/packs/application-domain.schema.json`（0.1.0 草案）校验，P9 检查引用可解析（见 2.3）。行业包尚未纳入检查。扩展包按种类允许的形式不同（ADR-0006）：
 
 | 种类 | 形式 | 运行位置 |
 |---|---|---|
@@ -78,6 +78,10 @@ pack:
 | 通知卡片模板 | `channels` |
 | API 视图、MCP 工具、Skills | `gateway` |
 | Web 视图描述 | Web 前端（视图注册表） |
+
+**登记与覆盖矩阵**：`pack.yaml` 的 `provides` 以同名键登记定义文件：`policy`（策略模板及其视图、特征、原因代码）、`roles`、`objectives`、`playbooks`、`frameworks`、`research_templates`，格式见 `contracts/packs/application-domain.schema.json`。`provides.coverage` 登记覆盖矩阵：包内每条机会路径的进入策略、路径定义、判断框架与研究模板分别标为已定义、复用（另一条路径或另一项定义）、无需（附理由）或待定（路线图阶段，只引用阶段基线已有任务）。路径不必各有一套策略或框架，共用关系在矩阵中显式写出。`mqc` P9 校验：路径与目标代码一致；已定义项有登记文件、复用项存在；每个策略模板都进入矩阵且目标一致；框架与研究模板目录没有未登记引用和孤儿；待定任务在阶段基线中存在；定义之间的引用（目标 → 路径、阶段 → 框架与研究、衔接 → 路径、挂钩 → 事件、研究输出 Schema）可解析。卡片模板、简报分区、反馈原因标签、效果指标、API/MCP 与 Web 视图的格式随各自首次交付由所有者补入同一份格式文件（阶段基线 M2-P2、M2-P5）。
+
+APP-TENDER 的矩阵见 `packs/application_domains/tendering/coverage.yaml`：十六条路径中，A01、A02、B03、B05、C01 已有进入策略；A03 复用 A02 的策略与路径结构；A05、B02、B04、C03 不由信号直接进入；B04 不建推进。判断框架与研究模板全部待定，阶段按[首发范围](../02-business/application-domains/tendering/05-release-plan.md#2-商业目标分批)与路线图。
 
 ### 2.4 行业包
 
