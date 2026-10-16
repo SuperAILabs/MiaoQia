@@ -2,7 +2,7 @@
 pack:
   id: APP-TENDER
   kind: application_domain
-  version: 0.4.0                 # 草案：R1 策略模板评审中
+  version: 0.6.0                 # 草案：R1 策略模板评审中
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-PROC@^1.0
@@ -11,6 +11,10 @@ pack:
     - INF-CRED@^1.0
   owners: [tendering-domain-team]
   provides:
+    # 覆盖矩阵：十六条机会路径的策略、路径、框架与研究模板各自已定义、复用、无需或待定。
+    # 角色、目标、机会路径、判断框架与研究模板按矩阵交付后以 roles/objectives/playbooks/
+    # frameworks/research_templates 列出定义文件（格式 contracts/packs/application-domain.schema.json，mqc P9）
+    coverage: coverage.yaml
     policy:
       views: policy/views.yaml
       features: policy/features.yaml

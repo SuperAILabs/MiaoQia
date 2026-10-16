@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: entity公共数据事件
-  version: 1.0.0
+  version: 1.2.0
   description: CloudEvents 1.0公共域信封，miaoqiazone=public；只定义data载荷。
 channels:
   public.entity:
@@ -17,6 +17,8 @@ channels:
         $ref: '#/components/messages/mergeReverted'
       relationshipChanged:
         $ref: '#/components/messages/relationshipChanged'
+      projectLinkChanged:
+        $ref: '#/components/messages/projectLinkChanged'
 operations:
   publishEntityEvents:
     action: send
@@ -150,6 +152,39 @@ components:
             enum:
             - upsert
             - remove
+          qualifiers:
+            type: array
+            minItems: 1
+            description: 约束（不是端点）：限定这条边成立的上下文，如采购项目、结果与标包；类型定义见各信息领域包的 relationships.yaml
+            items:
+              type: object
+              additionalProperties: false
+              properties:
+                kind:
+                  enum:
+                  - project
+                  - domain_fact
+                  - lot
+                  - region
+                  - period
+                ref:
+                  type: string
+                  minLength: 1
+                  description: 标识（如 pp_、bdr_、lot_）、区划代码或期间（ISO 8601 区间）
+              required:
+              - kind
+              - ref
+          remove_reason:
+            enum:
+            - source_revised
+            - source_withdrawn
+            - rights_revoked
+            - merge_reverted
+            - superseded
+            description: action 为 remove 时的原因；来源更正为 source_revised，并以新边的 upsert 代替（entity-graph 4.1）
+          superseded_by:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/relationship_id
+            description: 修订后的新边
         required:
         - relationship_id
         - rights_tags
@@ -158,4 +193,71 @@ components:
         - relationship_type
         - relationship_version
         - action
+      x-fixtures-required: true
+    projectLinkChanged:
+      name: entity.project_link.changed.v1
+      summary: 采购项目归属项目的归属边变化
+      description: 归属边 part_of 的起点是采购项目 pp_（领域事实），不是实体图谱实体，因此不走 entity.relationship.changed.v1，后者的端点保持只接受实体标识（entity-graph 4.1）。一个采购项目或其中的标包可以归属多个项目。
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          relationship_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/relationship_id
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          procurement_project_id:
+            type: string
+            pattern: ^pp_[0-9A-HJKMNP-TV-Z]{26}$
+          lot_id:
+            type: string
+            pattern: ^lot_[0-9A-HJKMNP-TV-Z]{26}$
+            description: 只归属其中一个标包时给出；缺省表示整个采购项目
+          project_id:
+            type: string
+            pattern: ^prj_[0-9A-HJKMNP-TV-Z]{26}$
+          relationship_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          action:
+            enum:
+            - upsert
+            - remove
+          method:
+            enum:
+            - project_code
+            - approval_code
+            - explicit_reference
+            - attribute_match
+            - semantic
+            - manual
+          confidence:
+            type: number
+            minimum: 0
+            maximum: 1
+          status:
+            enum:
+            - auto
+            - candidate
+            - confirmed
+            description: 显式标识建边为 auto；属性或语义匹配为 candidate，复核后为 confirmed
+          remove_reason:
+            enum:
+            - source_revised
+            - source_withdrawn
+            - rights_revoked
+            - merge_reverted
+            - superseded
+            - review_rejected
+          superseded_by:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/relationship_id
+        required:
+        - relationship_id
+        - rights_tags
+        - procurement_project_id
+        - project_id
+        - relationship_version
+        - action
+        - method
+        - confidence
+        - status
       x-fixtures-required: true

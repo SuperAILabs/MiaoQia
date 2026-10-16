@@ -64,3 +64,63 @@ cases:
     value:
       value: '95.5'
       prov: *id001
+- name: 中标标的明细与要求标的分开记录
+  valid: true
+  patch:
+  - op: add
+    path: /lots/0/winners/0/awarded_items
+    value:
+    - name:
+        value: 便携式计算机配置1
+        prov: *id001
+      brand:
+        value: 清华同方
+        prov: *id001
+      model:
+        value: 超锐L60P-11000
+        prov: *id001
+      quantity:
+        value: '101'
+        unit_raw: 台
+        prov: *id001
+      unit_price:
+        value: '6890'
+        currency: CNY
+        prov: *id001
+      unit_price_unit:
+        value: 台
+        prov: *id001
+- name: 中标标的单价缺计价单位
+  valid: false
+  patch:
+  - op: add
+    path: /lots/0/winners/0/awarded_items
+    value:
+    - name:
+        value: 商品混凝土
+        prov: *id001
+      unit_price:
+        value: '420'
+        currency: CNY
+        prov: *id001
+- name: 中标标的不复用要求侧品牌字段
+  valid: false
+  patch:
+  - op: add
+    path: /lots/0/winners/0/awarded_items
+    value:
+    - name:
+        value: 商品混凝土
+        prov: *id001
+      brand_required:
+        value: 某品牌
+        prov: *id001
+- name: 项目地点带区划代码表版本
+  valid: true
+  patch:
+  - op: add
+    path: /location
+    value:
+      code: '330106'
+      scheme_version: '2024'
+      prov: *id001

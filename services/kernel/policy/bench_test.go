@@ -24,7 +24,7 @@ func worstCase(factType string) Input {
 		for j := range cats {
 			cats[j] = map[string]any{"scheme": "industry:x", "code": fmt.Sprintf("CAT-OTHER-%d-%d", i, j)}
 		}
-		items[i] = map[string]any{"categories": cats, "brand_required": "brand-x"}
+		items[i] = map[string]any{"categories": cats, "brand_required": map[string]any{"value": "brand-x"}}
 	}
 	reqs := make([]any, 200)
 	for i := range reqs {
@@ -52,9 +52,19 @@ func worstCase(factType string) Input {
 	for _, k := range []string{"blocked", "customers", "competitors", "tracked", "partners", "counterparties"} {
 		lists[k] = ids("org_"+k[:2], 20000)
 	}
+	quals := map[string]any{}
+	for _, q := range ids("QQ", 100) {
+		quals[q.(string)] = "valid"
+	}
+	orgIDs := ids("org_me", 10)
+	entities := map[string]any{}
+	for _, o := range orgIDs {
+		entities[o.(string)] = map[string]any{"qualifications": quals,
+			"qualifications_pending": ids("QP", 20), "qualifications_complete": true}
+	}
 	profile := map[string]any{
-		"org_id": "org_me", "offering_categories": ids("CAT-P-", 500), "service_regions": ids("44", 500),
-		"qualification_codes": ids("QQ", 100), "brands": ids("brand", 100),
+		"org_ids": orgIDs, "offering_categories": ids("CAT-P-", 500), "service_regions": ids("44", 500),
+		"entities": entities, "brands": ids("brand", 100),
 	}
 	vocab := map[string]any{"exclude_terms": ids("排除词", 1000)}
 	return Input{FactType: factType, Fact: fact, Event: map[string]any{"type": "tendering.result.published.v1"},

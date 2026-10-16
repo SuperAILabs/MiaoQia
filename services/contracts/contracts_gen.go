@@ -91,6 +91,40 @@ type Attachment struct {
 	SnapshotRef *string `json:"snapshot_ref,omitempty,omitzero"`
 }
 
+// 结果或合同公告中实际中标/成交的标的明细（中标方投标的产品），与公告要求侧的 item 分开：brand/model 是中标产品，不是 item 的
+// brand_required/model_required。可能无法与要求标的一一对应
+type AwardedItem struct {
+	// Brand corresponds to the JSON schema field "brand".
+	Brand *Text `json:"brand,omitempty,omitzero"`
+
+	// Categories corresponds to the JSON schema field "categories".
+	Categories []Category `json:"categories,omitempty,omitzero"`
+
+	// 能一一对应时引用要求侧标的；无法对应或原文未列要求标的时省略
+	ItemId *string `json:"item_id,omitempty,omitzero"`
+
+	// Manufacturer corresponds to the JSON schema field "manufacturer".
+	Manufacturer *OrgRef `json:"manufacturer,omitempty,omitzero"`
+
+	// Model corresponds to the JSON schema field "model".
+	Model *Text `json:"model,omitempty,omitzero"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name Text `json:"name"`
+
+	// Quantity corresponds to the JSON schema field "quantity".
+	Quantity *Quantity `json:"quantity,omitempty,omitzero"`
+
+	// Spec corresponds to the JSON schema field "spec".
+	Spec *Text `json:"spec,omitempty,omitzero"`
+
+	// UnitPrice corresponds to the JSON schema field "unit_price".
+	UnitPrice *Money `json:"unit_price,omitempty,omitzero"`
+
+	// UnitPriceUnit corresponds to the JSON schema field "unit_price_unit".
+	UnitPriceUnit *Text `json:"unit_price_unit,omitempty,omitzero"`
+}
+
 // 页面坐标（左上角为原点，单位为点），用于界面高亮
 type Bbox struct {
 	// H corresponds to the JSON schema field "h".
@@ -108,6 +142,9 @@ type Bbox struct {
 
 // 开标记录、候选人或中标结果中的一名投标人
 type BidResult struct {
+	// 该投标人中标或成交的标的明细（原文列出时）；缺失表示原文未列或未标注，不推断为与要求标的相同
+	AwardedItems []AwardedItem `json:"awarded_items,omitempty,omitzero"`
+
 	// Bidder corresponds to the JSON schema field "bidder".
 	Bidder OrgRef `json:"bidder"`
 
@@ -240,6 +277,27 @@ type CellCoveredBy struct {
 	Row int `json:"row"`
 }
 
+// 期间对比的基准。基准期与本期使用同一统计口径与成员取值规则；口径或成员版本不同时须在产物中说明，不直接相减
+type Comparison struct {
+	// Baseline corresponds to the JSON schema field "baseline".
+	Baseline Period `json:"baseline"`
+
+	// BaselineMembers corresponds to the JSON schema field "baseline_members".
+	BaselineMembers *MembershipSnapshot `json:"baseline_members,omitempty,omitzero"`
+
+	// BaselineRef corresponds to the JSON schema field "baseline_ref".
+	BaselineRef *UlidId `json:"baseline_ref,omitempty,omitzero"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind ComparisonKind `json:"kind"`
+}
+
+type ComparisonKind string
+
+const ComparisonKindCustom ComparisonKind = "custom"
+const ComparisonKindPreviousPeriod ComparisonKind = "previous_period"
+const ComparisonKindSamePeriodLastYear ComparisonKind = "same_period_last_year"
+
 // 公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略
 type Contact struct {
 	// Email corresponds to the JSON schema field "email".
@@ -276,6 +334,54 @@ const ContactRoleProjectOwner ContactRole = "project_owner"
 const ContactRoleSupervisor ContactRole = "supervisor"
 const ContactRoleTechnicalSupport ContactRole = "technical_support"
 
+// 策略表达式的 profile 变量。规模上界与 contracts/policy/cel-environment.yaml 的 size_bounds
+// 一致。超出上界时不截断（截断会丢掉我方主体或可满足的主体而误判）：我方主体超过 10 个时省略 org_ids 与
+// entities，依赖它们的条件为未知；某主体待核对超过 20 项时省略 entities，资质条件为未知；两种情况都告警
+type ContextPolicyView struct {
+	// 自有或授权的品牌
+	Brands []string `json:"brands"`
+
+	// 我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids
+	// 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部
+	// org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现
+	Entities ContextPolicyViewEntities `json:"entities,omitempty,omitzero"`
+
+	// 行业包分类体系的品类代码
+	OfferingCategories []string `json:"offering_categories"`
+
+	// 我方主体（集团客户的多个法人）。尚未关联本企业时不出现（不用空列表）：依赖它的条件读取不存在的字段为未知，例如“拟定供应商不是我方”不能成立
+	OrgIds []string `json:"org_ids,omitempty,omitzero"`
+
+	// GB/T 2260 行政区划代码；上级包含全部下级
+	ServiceRegions []string `json:"service_regions"`
+}
+
+// 我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids
+// 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部
+// org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现
+type ContextPolicyViewEntities map[string]EntityQualifications
+
+// customer-context.GetContextSnapshot 按（租户、组织单元、上下文版本）返回的合成结果中供策略求值读取的部分（草案；规则见
+// docs/01-product/prd/02-profile-and-objectives.md F3 与
+// docs/03-architecture/subsystems/customer-context.md）。policy_view 即策略表达式中的
+// profile 变量。字段缺失表示未知，不使用 null。
+type ContextSnapshot struct {
+	// 租户上下文版本；档案、清单与单元覆盖的每次提交在同一事务中递增
+	ContextVersion int `json:"context_version"`
+
+	// 目标所在的组织单元（identity 的 OrgUnit；标识前缀随 identity 契约登记）
+	OrgUnitId string `json:"org_unit_id"`
+
+	// PolicyView corresponds to the JSON schema field "policy_view".
+	PolicyView ContextPolicyView `json:"policy_view"`
+
+	// TenantId corresponds to the JSON schema field "tenant_id".
+	TenantId string `json:"tenant_id"`
+
+	// 合成所用的单元链，从目标所在单元到根单元；逐项取值时未覆盖继承上级，显式空集合不继承
+	UnitChain []string `json:"unit_chain"`
+}
+
 type ContractSection struct {
 	// Amount corresponds to the JSON schema field "amount".
 	Amount Money `json:"amount"`
@@ -294,6 +400,9 @@ type ContractSection struct {
 
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`
+
+	// 合同标的明细（原文列出时）
+	Items []AwardedItem `json:"items,omitempty,omitzero"`
 
 	// LotId corresponds to the JSON schema field "lot_id".
 	LotId *string `json:"lot_id,omitempty,omitzero"`
@@ -528,6 +637,41 @@ const DeadlineTypeSiteVisit DeadlineType = "site_visit"
 // 十进制字符串，避免浮点误差
 type Decimal string
 
+// 派生证据：一个由确定性转换计算出的取值（例如按“自公告发布之日起 20
+// 日”推算的截止时间、按区划新旧版本对照转换的代码、单位换算后的金额），记录全部输入的版本与证据、转换的标识与版本及所用参考数据的版本，使取值可按版本重放。与文档证据、记录证据共用
+// ev_ 标识空间，由 evidence 分配（草案）。模型推断不属于派生，走解析或增强并带各自的证据。
+type DerivationEvidenceRef struct {
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// 按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本
+	Inputs []DerivationInput `json:"inputs"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// 转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）
+	ReferenceData []ReferenceDataVersion `json:"reference_data,omitempty,omitzero"`
+
+	// 转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果
+	Transform string `json:"transform"`
+
+	// 派生取值按 RFC 8785 规范化后的哈希
+	ValueHash string `json:"value_hash"`
+}
+
+type DerivationInput struct {
+	// 该输入取值的证据；输入来自领域事实字段时为该版本中该字段的
+	// provenance.evidence_ref。证据链沿派生证据向下必须无环，末端都是文档证据或记录证据
+	EvidenceRef string `json:"evidence_ref"`
+
+	// FactRef corresponds to the JSON schema field "fact_ref".
+	FactRef *FactVersionRef `json:"fact_ref,omitempty,omitzero"`
+
+	// fact_ref 所指事实内的 JSON Pointer
+	FieldPath *string `json:"field_path,omitempty,omitzero"`
+}
+
 // 终止、流标或废标
 type EndingSection struct {
 	// EndingType corresponds to the JSON schema field "ending_type".
@@ -545,6 +689,23 @@ type EndingSectionEndingType string
 const EndingSectionEndingTypeFailedBid EndingSectionEndingType = "failed_bid"
 const EndingSectionEndingTypeTerminated EndingSectionEndingType = "terminated"
 const EndingSectionEndingTypeVoided EndingSectionEndingType = "voided"
+
+// 一个我方主体的资质状态表（以 org_id 为键放在 entities 中）。某项资质要求对本主体的判定：在 qualifications
+// 中有效为满足、过期为不具备；在 qualifications_pending 中为未知；都不在时，qualifications_complete
+// 为真则不具备，否则未知。同一代码不同时出现在 qualifications 与 qualifications_pending 中
+type EntityQualifications struct {
+	// 资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系
+	Qualifications EntityQualificationsQualifications `json:"qualifications"`
+
+	// 该主体已声明“资质已录全”（写入档案版本与审计）
+	QualificationsComplete bool `json:"qualifications_complete"`
+
+	// 待核对的资质代码（来源观察冲突，等待 can_edit_profile 成员确认）
+	QualificationsPending []string `json:"qualifications_pending"`
+}
+
+// 资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系
+type EntityQualificationsQualifications map[string]QualificationStatus
 
 type EvaluationMethod string
 
@@ -656,6 +817,14 @@ type EvidenceRef struct {
 
 	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
 	SnapshotRef string `json:"snapshot_ref"`
+}
+
+type FactVersionRef struct {
+	// Id corresponds to the JSON schema field "id".
+	Id UlidId `json:"id"`
+
+	// 领域事实版本号（public_fact_meta.version），固定引用，不随当前版本指针变化
+	Version int `json:"version"`
 }
 
 type Instant struct {
@@ -835,6 +1004,9 @@ type Item struct {
 
 	// UnitPrice corresponds to the JSON schema field "unit_price".
 	UnitPrice *Money `json:"unit_price,omitempty,omitzero"`
+
+	// UnitPriceUnit corresponds to the JSON schema field "unit_price_unit".
+	UnitPriceUnit *Text `json:"unit_price_unit,omitempty,omitzero"`
 }
 
 // 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)；跨多个连续块时用
@@ -931,6 +1103,28 @@ type LotSection struct {
 
 	// Requirements corresponds to the JSON schema field "requirements".
 	Requirements []Requirement `json:"requirements,omitempty,omitzero"`
+}
+
+// 集合在取值时点的实际成员。成员不多于 200 个时内联 members；更多时存对象存储并以 members_object 引用，两者都以
+// members_hash 校验
+type MembershipSnapshot struct {
+	// 成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系
+	AsOf time.Time `json:"as_of"`
+
+	// MemberCount corresponds to the JSON schema field "member_count".
+	MemberCount int `json:"member_count"`
+
+	// Members corresponds to the JSON schema field "members".
+	Members []SubjectRef `json:"members,omitempty,omitzero"`
+
+	// 按成员标识排序后的清单哈希
+	MembersHash string `json:"members_hash"`
+
+	// 成员清单的对象存储键（不含签名地址）
+	MembersObject *string `json:"members_object,omitempty,omitzero"`
+
+	// 成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本
+	SourceVersion string `json:"source_version"`
 }
 
 type Money struct {
@@ -1496,6 +1690,33 @@ const OrgStatusMovedOut OrgStatus = "moved_out"
 const OrgStatusRevoked OrgStatus = "revoked"
 const OrgStatusSuspended OrgStatus = "suspended"
 
+// 统计或研究的实际期间，左闭右开。滚动窗口（如近 12 个月）在使用时换算为实际起止并记录在此，不只记窗口长度
+type Period struct {
+	// End corresponds to the JSON schema field "end".
+	End time.Time `json:"end"`
+
+	// Granularity corresponds to the JSON schema field "granularity".
+	Granularity *PeriodGranularity `json:"granularity,omitempty,omitzero"`
+
+	// Start corresponds to the JSON schema field "start".
+	Start time.Time `json:"start"`
+
+	// 归入期间所依据的事实时间字段（例如结果公告的 published_at、合同的 signed_on），由统计口径声明；不用记录或采集时间代替
+	TimeBasis string `json:"time_basis"`
+
+	// TimeZone corresponds to the JSON schema field "time_zone".
+	TimeZone string `json:"time_zone,omitempty,omitzero"`
+}
+
+type PeriodGranularity string
+
+const PeriodGranularityCustom PeriodGranularity = "custom"
+const PeriodGranularityDay PeriodGranularity = "day"
+const PeriodGranularityMonth PeriodGranularity = "month"
+const PeriodGranularityQuarter PeriodGranularity = "quarter"
+const PeriodGranularityWeek PeriodGranularity = "week"
+const PeriodGranularityYear PeriodGranularity = "year"
+
 // 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理
 type Person struct {
 	// Name corresponds to the JSON schema field "name".
@@ -1542,6 +1763,9 @@ type ProcurementConditions struct {
 
 	// DeliveryPeriod corresponds to the JSON schema field "delivery_period".
 	DeliveryPeriod *Text `json:"delivery_period,omitempty,omitzero"`
+
+	// DeliveryRegion corresponds to the JSON schema field "delivery_region".
+	DeliveryRegion *Region `json:"delivery_region,omitempty,omitzero"`
 
 	// DocumentAccess corresponds to the JSON schema field "document_access".
 	DocumentAccess *Text `json:"document_access,omitempty,omitzero"`
@@ -1610,7 +1834,8 @@ type ProcurementProject struct {
 	// InfoDomain corresponds to the JSON schema field "info_domain".
 	InfoDomain string `json:"info_domain"`
 
-	// 所属投资项目（entity-graph 的 Project 实体）
+	// 所属投资项目（entity-graph 的 Project 实体）的便捷字段：仅在整个采购项目归属唯一、已确认的投资项目时出现。归属以
+	// entity-graph 的 part_of 归属边为准（可按标包、可归属多个项目、可修订撤销），时间线与项目链按归属边查询，不以本字段为不变量
 	InvestmentProjectId *string `json:"investment_project_id,omitempty,omitzero"`
 
 	// Location corresponds to the JSON schema field "location".
@@ -1849,6 +2074,11 @@ const PublicFactMetaClassificationPersonal PublicFactMetaClassification = "perso
 const PublicFactMetaClassificationPublic PublicFactMetaClassification = "public"
 const PublicFactMetaClassificationSensitive PublicFactMetaClassification = "sensitive"
 
+type QualificationStatus string
+
+const QualificationStatusExpired QualificationStatus = "expired"
+const QualificationStatusValid QualificationStatus = "valid"
+
 type Quality struct {
 	// Status corresponds to the JSON schema field "status".
 	Status QualityStatus `json:"status"`
@@ -1903,6 +2133,44 @@ type Rate struct {
 	Value string `json:"value"`
 }
 
+// 结构化证据：指向某个快照在某个处理管线版本下的结构化记录集中一条记录的一个字段。与文档证据（evidence-ref）共用 ev_ 标识空间，由
+// evidence 分配，字段溯源（provenance.evidence_ref）可直接引用（草案）。
+type RecordEvidenceRef struct {
+	// 记录 data 内的 JSON Pointer（RFC 6901）；空串表示整条记录
+	FieldPath string `json:"field_path"`
+
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// 证据形态；文档证据（evidence-ref 1.0）不带本字段
+	Kind interface{} `json:"kind"`
+
+	// PipelineVersion corresponds to the JSON schema field "pipeline_version".
+	PipelineVersion string `json:"pipeline_version"`
+
+	// structured-record 中记录的 key
+	RecordKey string `json:"record_key"`
+
+	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
+	SnapshotRef string `json:"snapshot_ref"`
+
+	// 被引用取值按 RFC 8785 规范化后的哈希，用于校验定位未漂移
+	ValueHash string `json:"value_hash"`
+}
+
+// 记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53
+// 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 在对象中以省略该字段表示（字段缺失即未知），在数组中保留为
+// null 以保持元素位置（不删除元素）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致
+type RecordValue interface{}
+
+type ReferenceDataVersion struct {
+	// 参考数据标识，例如 gb2260、cn-holidays
+	Name string `json:"name"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version string `json:"version"`
+}
+
 type Region struct {
 	// GB/T 2260 行政区划代码
 	Code string `json:"code"`
@@ -1912,6 +2180,10 @@ type Region struct {
 
 	// Prov corresponds to the JSON schema field "prov".
 	Prov Provenance `json:"prov"`
+
+	// GB/T 2260 代码表版本（如民政部发布年份
+	// 2024）；缺失表示按观察时有效的代码表、版本未知。历史统计保留原代码与版本，跨版本换算是派生数据，另记换算表版本与依据，不改写原值
+	SchemeVersion *string `json:"scheme_version,omitempty,omitzero"`
 }
 
 // 内部可信边界的请求上下文；Base64URL无填充编码JSON；不接受外部请求提供的此头。
@@ -1945,8 +2217,18 @@ const RequestContextPrincipalKindUser RequestContextPrincipalKind = "user"
 
 // 资格与技术要求
 type Requirement struct {
-	// 归一的资质或要求代码；无法归一时省略，不使用 null
+	// 归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme
+	// 的代码按行业包默认资质体系解释，不能跨体系比较
 	Code *string `json:"code,omitempty,omitzero"`
+
+	// 代码所属体系（平台登记，如 qual:mohurd-construction；平台登记体系与映射，不自称拥有外部标准）；只与 code 一起出现
+	CodeScheme *string `json:"code_scheme,omitempty,omitzero"`
+
+	// 体系版本；只与 code_scheme 一起出现
+	CodeSchemeVersion *string `json:"code_scheme_version,omitempty,omitzero"`
+
+	// GradeRequired corresponds to the JSON schema field "grade_required".
+	GradeRequired *Text `json:"grade_required,omitempty,omitzero"`
 
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`
@@ -2090,6 +2372,48 @@ const SignalStatusDismissed SignalStatus = "dismissed"
 const SignalStatusOpen SignalStatus = "open"
 const SignalStatusTriaged SignalStatus = "triaged"
 
+type StructuredRecord struct {
+	// 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value
+	Data StructuredRecordData `json:"data"`
+
+	// 记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）
+	Key string `json:"key"`
+}
+
+// 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value
+type StructuredRecordData map[string]RecordValue
+
+// evidence 把结构化来源制品（接口响应、数据下载的 JSON/CSV/XML 文件）转换后的统一记录表示，与规范化文档并列存放于对象存储（数据分层
+// L1，按 快照 × 处理管线版本
+// 存放）。它是结构化证据的坐标系：解析器读取记录集，字段溯源以记录键加字段路径定位（record-evidence-ref）。网页、PDF、Office
+// 文档及其中的表格仍走规范化文档，不转成记录集（草案，规则见 docs/03-architecture/subsystems/evidence.md 第 4 节与
+// ADR-0011）。
+type StructuredRecordSet struct {
+	// 记录键的生成规则说明（例如“统一社会信用代码+处罚决定书文号”）；同一来源对象在不同快照中按同一规则生成，使字段可跨快照对比
+	KeyRule *string `json:"key_rule,omitempty,omitzero"`
+
+	// 原始制品格式；表格文件以 CSV 形式导出时记为 text_csv
+	MediaType StructuredRecordSetMediaType `json:"media_type"`
+
+	// 结构化处理管线标识与版本（字符集解码、格式转换、记录键规则）
+	PipelineVersion string `json:"pipeline_version"`
+
+	// 记录键在一个记录集内唯一（由 SDK 校验）
+	Records []StructuredRecord `json:"records"`
+
+	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
+	SnapshotRef string `json:"snapshot_ref"`
+
+	// SourceUrl corresponds to the JSON schema field "source_url".
+	SourceUrl *string `json:"source_url,omitempty,omitzero"`
+}
+
+type StructuredRecordSetMediaType string
+
+const StructuredRecordSetMediaTypeApplicationJson StructuredRecordSetMediaType = "application_json"
+const StructuredRecordSetMediaTypeApplicationXml StructuredRecordSetMediaType = "application_xml"
+const StructuredRecordSetMediaTypeTextCsv StructuredRecordSetMediaType = "text_csv"
+
 // 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱
 // prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_
 // 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为
@@ -2108,6 +2432,39 @@ type SubjectRef struct {
 	// Version corresponds to the JSON schema field "version".
 	Version *int `json:"version,omitempty,omitzero"`
 }
+
+// 多对象目标的对象集合（一组跟踪企业、集团的全部成员、一个市场内的组织等）。kind 说明集合如何定义；resolved
+// 记录本次求值、研究或简报实际使用的成员，动态集合据此恢复当次成员，不按当前成员重算
+type SubjectSet struct {
+	// tenant_list 为 customer-context 的租户实体清单；group 为以 ref
+	// 所指组织为根、按实体图谱控制关系展开的集团成员；market 为租户市场 mkt_ 范围内的对象；explicit 为用户逐个指定
+	Kind SubjectSetKind `json:"kind"`
+
+	// kind=tenant_list 时的清单种类
+	ListKind *SubjectSetListKind `json:"list_kind,omitempty,omitzero"`
+
+	// Ref corresponds to the JSON schema field "ref".
+	Ref *SubjectRef `json:"ref,omitempty,omitzero"`
+
+	// Resolved corresponds to the JSON schema field "resolved".
+	Resolved MembershipSnapshot `json:"resolved"`
+}
+
+type SubjectSetKind string
+
+const SubjectSetKindExplicit SubjectSetKind = "explicit"
+const SubjectSetKindGroup SubjectSetKind = "group"
+const SubjectSetKindMarket SubjectSetKind = "market"
+const SubjectSetKindTenantList SubjectSetKind = "tenant_list"
+
+type SubjectSetListKind string
+
+const SubjectSetListKindBlocked SubjectSetListKind = "blocked"
+const SubjectSetListKindCompetitors SubjectSetListKind = "competitors"
+const SubjectSetListKindCounterparties SubjectSetListKind = "counterparties"
+const SubjectSetListKindCustomers SubjectSetListKind = "customers"
+const SubjectSetListKindPartners SubjectSetListKind = "partners"
+const SubjectSetListKindTracked SubjectSetListKind = "tracked"
 
 type SubjectType string
 

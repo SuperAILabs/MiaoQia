@@ -1,0 +1,110 @@
+# INF-PROC 关系类型定义：entity-graph 按此从领域事实抽取并维护关系边（格式与校验见 docs/03-architecture/04-extensibility.md 2.2、mqc P8）。
+#
+# 端点（from/to）是实体图谱实体：organization、project（prj_）、location、category、brand。唯一例外是归属边：
+# 以领域事实（采购项目 pp_）为起点、指向项目 prj_（INF-INVP 的 part_of，entity-graph 4.1）。
+# 约束（qualifiers）限定这条边成立的上下文，不是端点：domain_fact（如 pp_ 采购项目、bdr_ 结果）、lot（标包）、region、period。
+# 一条关系 = 类型 + 端点 + 约束 + 有效区间 + 证据 + 来源事实版本；同一端点在不同约束下是不同的边（例如同一供应商在两个标包供应同一品牌）。
+# 项目端点与 project 约束只接受 prj_。来源只有采购项目 pp_ 时以 resolve: {<键>: part_of} 声明经归属边解析：
+# 该 pp_ 的每条有效归属边各生成一条边（带标包约束的归属边只用于同一标包）；没有归属边时不建边（project 约束则省略），
+# 来源事实仍由 domain_fact 约束可查；归属边修订或撤销时，由它解析出的边随之修订或撤销（entity-graph 4.1）。
+# 路径相对来源 Schema，[*] 表示展开；组织端点经 entity-graph 解析 org_ref，置信度低于自动合并阈值时进入复核，不建边。
+# 有效区间：event 取来源事实的发布时间为成立时点；interval 取来源给出的起止。来源事实更正、撤回或实体合并撤销时，
+# 按 entity-graph 第 4.1 节修订或撤销边并发布 entity.relationship.changed.v1。
+relationships:
+  - type: procures
+    say: 采购人发起采购项目
+    from: organization
+    to: project
+    qualifiers: [domain_fact]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: buyer
+        to_path: project_id
+        qualifier_paths: { domain_fact: "project_id" }
+        resolve: { to_path: part_of }
+
+  - type: agent_of
+    say: 代理机构代理采购项目
+    from: organization
+    to: project
+    qualifiers: [domain_fact]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: agency
+        to_path: project_id
+        qualifier_paths: { domain_fact: "project_id" }
+        resolve: { to_path: part_of }
+
+  - type: bid_on
+    say: 组织参与标包投标（开标记录、候选人）
+    from: organization
+    to: project
+    qualifiers: [domain_fact, lot]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: lots[*].bid_results[*].bidder
+        to_path: project_id
+        qualifier_paths: { domain_fact: "lots[*].bid_results[*].id", lot: "lots[*].lot_id" }
+        resolve: { to_path: part_of }
+
+  - type: won
+    say: 组织实际中标或成交标包（框架入围不算）
+    from: organization
+    to: project
+    qualifiers: [domain_fact, lot]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: lots[*].bid_results[*].bidder      # 仅 is_winner 为真且 result_kind 不是 framework_shortlist
+        to_path: project_id
+        qualifier_paths: { domain_fact: "lots[*].bid_results[*].id", lot: "lots[*].lot_id" }
+        resolve: { to_path: part_of }
+
+  - type: consortium_member
+    say: 组织作为联合体成员参与投标
+    from: organization
+    to: organization                                  # 终点是联合体牵头人；原文未明确牵头人时不建边
+    qualifiers: [domain_fact, lot]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: lots[*].bid_results[*].consortium_members[*]
+        to_path: lots[*].bid_results[*].consortium_lead
+        qualifier_paths: { domain_fact: "lots[*].bid_results[*].id", lot: "lots[*].lot_id" }
+
+  - type: specified_brand
+    say: 采购标的指定了品牌（业主要什么）
+    from: project
+    to: brand
+    qualifiers: [domain_fact, lot]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: project_id
+        to_path: lots[*].items[*].brand_required
+        qualifier_paths: { domain_fact: "project_id", lot: "lots[*].lot_id" }
+        resolve: { from_path: part_of }
+
+  - type: supplied_brand
+    say: 供应商在中标或合同中供应了某品牌的产品（实际供了什么）；不由指定品牌推断
+    from: organization
+    to: brand
+    qualifiers: [project, domain_fact, lot]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: lots[*].bid_results[*].bidder
+        to_path: lots[*].bid_results[*].awarded_items[*].brand
+        qualifier_paths: { project: "project_id", domain_fact: "lots[*].bid_results[*].id", lot: "lots[*].lot_id" }
+        resolve: { project: part_of }
+      - schema: contracts/schemas/domains/procurement/notice.schema.json
+        from_path: contract.supplier
+        to_path: contract.items[*].brand
+        qualifier_paths: { project: "project_id", domain_fact: "contract.id", lot: "contract.lot_id" }
+        resolve: { project: part_of }
+
+# 品牌归属（brand_owned_by）不在本包抽取：中标或合同明细的 manufacturer 只证明产品由谁制造（可能是代工），
+# 不证明品牌归谁。品牌归属是平台级关系，来源为行业包品牌词表中带证据的归属声明与运营复核（entity-graph 4.1）。

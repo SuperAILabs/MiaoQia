@@ -3,6 +3,9 @@
 信息领域包：
   P1  pack.yaml 声明的 Schema、事件文件与领域校验入口存在且合规；含代码的包必须登记领域校验入口
   P2  生命周期状态机的状态与触发值都取自所引用 Schema 的枚举，所有状态可到达
+  P8  关系类型定义（provides.relationships）：类型唯一，端点与约束取自登记的种类（领域事实只能作为
+      指向项目的归属边起点）；项目端点或 project 约束取到 pp_ 时须声明经 part_of 解析，
+      抽取来源的 Schema 存在、端点与约束路径在 Schema 中存在
 应用领域包（策略，语义见 docs/03-architecture/11-policy-dsl.md）：
   P0  模板文件符合 contracts/policy/policy.schema.json
   P3  视图投影的来源 Schema 存在
@@ -10,6 +13,10 @@
   P5  规则编号前缀与子句一致且不重复；排除规则必须有原因代码
   P6  表达式与视图 triggers 中出现的事件类型已在 contracts/events 中定义
   P7  样例的期望处置取值合法
+应用领域包（其他定义，格式见 contracts/packs/application-domain.schema.json）：
+  P9  覆盖矩阵与定义文件符合格式；路径与目标代码一致；已定义/复用的引用存在，策略模板的目标与路径一致、
+      每个模板都进入矩阵；框架与研究模板目录无未登记引用、无孤儿；待定项引用的阶段基线任务存在；
+      定义文件之间的引用（目标→路径、阶段→框架/研究、衔接→路径、挂钩→事件）可解析
 """
 from __future__ import annotations
 
@@ -28,6 +35,112 @@ W = r"([A-Za-z0-9_]+)"
 CLAUSES = {"require": "R-", "exclude": "X-", "watch": "W-", "boost": "B-", "penalize": "P-"}
 DISPOSITIONS = {"pursue_candidate", "review_candidate", "watch_signal", "excluded", "no_signal"}
 EVENT_LITERAL = re.compile(r"([a-z_]+\.[a-z_]+\.[a-z_]+\.v[0-9]+)")
+
+
+ENDPOINT_KINDS = {"organization", "project", "location", "category", "brand"}   # entity-graph 实体
+QUALIFIER_KINDS = ENDPOINT_KINDS | {"domain_fact", "lot", "region", "period"}
+REL_TYPE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _schema_node(repo: Repo, schema_rel: str, path: str):
+    """按 a.b[*].c 路径在 Schema 中逐级查找属性（解析 $ref 与 allOf），找不到返回 None。"""
+    s = repo.schemas.get(Path(schema_rel.removeprefix("contracts/schemas/")))
+    if s is None:
+        return None
+
+    def deref(n, res):
+        while isinstance(n, dict) and "$ref" in n:
+            hit = res.lookup(n["$ref"])
+            n, res = hit.contents, hit.resolver
+        return n, res
+
+    node, res = s, repo.registry.resolver(base_uri=s["$id"])
+    for part in path.split("."):
+        name, many = (part[:-3], True) if part.endswith("[*]") else (part, False)
+        node, res = deref(node, res)
+        props = {k: (v, res) for k, v in node.get("properties", {}).items()}
+        for sub in node.get("allOf", []):
+            sub, sres = deref(sub, res)
+            props.update({k: (v, sres) for k, v in sub.get("properties", {}).items()})
+        if name not in props:
+            return None
+        node, res = deref(*props[name])
+        if many:
+            if node.get("type") != "array":
+                return None
+            node, res = deref(node.get("items", {}), res)
+    return node
+
+
+def check_relationships(repo: Repo, pack_dir: Path, rel_file: str) -> Report:
+    r = Report()
+    where = str((pack_dir / rel_file).relative_to(repo.root))
+    path = pack_dir / rel_file
+    if not path.exists():
+        r.error(where, "P8 关系定义文件不存在")
+        return r
+    seen = set()
+    for d in load_yaml(path).get("relationships", []):
+        t = d.get("type", "")
+        if not REL_TYPE.match(t) or t in seen:
+            r.error(where, f"P8 关系类型 {t!r} 不合法或重复")
+        seen.add(t)
+        for end in ("from", "to"):
+            if d.get(end) not in ENDPOINT_KINDS and not (end == "from" and d.get(end) == "domain_fact"):
+                r.error(where, f"P8 {t} 的端点 {end}={d.get(end)!r} 不是实体图谱实体种类")
+        if d.get("from") == "domain_fact" and d.get("to") != "project":
+            r.error(where, f"P8 {t} 以领域事实为起点时只能指向项目（归属边）")
+        for q in d.get("qualifiers", []):
+            if q not in QUALIFIER_KINDS:
+                r.error(where, f"P8 {t} 的约束 {q!r} 不是登记的约束种类")
+        if not d.get("sources"):
+            r.error(where, f"P8 {t} 缺少抽取来源")
+        for src in d.get("sources", []):
+            schema = src.get("schema", "")
+            if schema and Path(schema.removeprefix("contracts/schemas/")) not in repo.schemas:
+                r.error(where, f"P8 {t} 的来源 Schema 不存在：{schema}")
+                continue
+            for key in ("from_path", "to_path", *(f"qualifier_paths.{q}" for q in src.get("qualifier_paths", {}))):
+                val = src.get(key) if "." not in key else src["qualifier_paths"][key.split(".", 1)[1]]
+                if val is None:
+                    if key in ("from_path", "to_path") and schema:
+                        r.error(where, f"P8 {t} 的来源缺少 {key}")
+                    continue
+                if schema and _schema_node(repo, schema, val) is None:
+                    r.error(where, f"P8 {t} 的路径 {val} 不在 {schema} 中")
+            for q in src.get("qualifier_paths", {}):
+                if q not in d.get("qualifiers", []):
+                    r.error(where, f"P8 {t} 的来源给出了未声明的约束 {q}")
+            if schema:
+                r.extend(_check_project_refs(repo, where, t, d, src, schema))
+    return r
+
+
+def _check_project_refs(repo: Repo, where: str, t: str, d: dict, src: dict, schema: str) -> Report:
+    """项目端点与 project 约束取值须为 prj_；取到采购项目 pp_ 时必须声明经归属边 part_of 解析。"""
+    r = Report()
+    resolve = src.get("resolve", {})
+    slots = [("from_path", d.get("from")), ("to_path", d.get("to"))]
+    slots += [(q, "project") for q in src.get("qualifier_paths", {}) if q == "project"]
+    for key, kind in slots:
+        path = src.get(key) if key.endswith("_path") else src["qualifier_paths"][key]
+        node = _schema_node(repo, schema, path) if path else None
+        pat = (node or {}).get("pattern", "")
+        if kind == "domain_fact" and pat.startswith(("^prj_", "^org_")):
+            r.error(where, f"P8 {t} 的起点 {path} 是实体标识，不是领域事实")
+        if kind != "project" or not pat:
+            continue
+        if pat.startswith("^pp_"):
+            if resolve.get(key) != "part_of":
+                r.error(where, f"P8 {t} 的 {key}={path} 是采购项目 pp_，须声明 resolve: {{{key}: part_of}}")
+        elif not pat.startswith("^prj_"):
+            r.error(where, f"P8 {t} 的 {key}={path} 不是项目标识 prj_")
+        elif key in resolve:
+            r.error(where, f"P8 {t} 的 {key} 已是 prj_，不需要经归属边解析")
+    for key, via in resolve.items():
+        if via != "part_of" or key not in {k for k, _ in slots}:
+            r.error(where, f"P8 {t} 的 resolve.{key}={via!r} 不合法")
+    return r
 
 
 def _enum_at(repo: Repo, schema_rel: str, field: str) -> set[str] | None:
@@ -74,6 +187,8 @@ def check_information_pack(repo: Repo, pack_dir: Path) -> Report:
             r.error(where, f"P1 {exc}")
     elif (pack_dir / "src").exists():
         r.error(where, "P1 代码型领域包必须登记semantic_validator")
+    if "relationships" in prov:
+        r.extend(check_relationships(repo, pack_dir, prov["relationships"]))
     if "lifecycle" in prov:
         lc = load_yaml(pack_dir / prov["lifecycle"])["lifecycle"]
         states = _enum_at(repo, lc["schema"], lc["field"])
@@ -210,6 +325,153 @@ def check_application_pack(repo: Repo, pack_dir: Path) -> Report:
     return r
 
 
+DEF_KINDS = {"roles": "role", "objectives": "objective", "playbooks": "playbook",
+             "frameworks": "framework", "research_templates": "research_template"}
+STAGE_BASELINE = "docs/05-delivery/06-stage-baseline.md"
+
+
+def _definition_validator(repo: Repo) -> Draft202012Validator:
+    from referencing import Registry, Resource
+    defs = json.loads((repo.contracts / "packs" / "application-domain.schema.json").read_text(encoding="utf-8"))
+    pol = json.loads((repo.contracts / "policy" / "policy.schema.json").read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(defs)
+    reg = Registry().with_resources([(d["$id"], Resource.from_contents(d)) for d in (defs, pol)])
+    return Draft202012Validator(defs, registry=reg, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
+def check_definitions(repo: Repo, pack_dir: Path) -> Report:
+    r = Report()
+    pack = load_yaml(pack_dir / "pack.yaml")["pack"]
+    prov = pack.get("provides", {})
+    if "coverage" not in prov:
+        return r
+    v = _definition_validator(repo)
+    rel = lambda f: str((pack_dir / f).relative_to(repo.root))
+
+    def load(f: str, key: str):
+        if not (pack_dir / f).exists():
+            r.error(rel(f), "P9 定义文件不存在")
+            return None
+        doc = load_yaml(pack_dir / f)
+        errs = sorted(v.iter_errors(doc), key=lambda e: list(e.absolute_path))
+        for e in errs:
+            r.error(rel(f), f"P9 /{'/'.join(map(str, e.absolute_path))}：{e.message}")
+        if not errs and key not in doc:
+            r.error(rel(f), f"P9 顶层键应为 {key}")
+            return None
+        return None if errs else doc[key]
+
+    cov = load(prov["coverage"], "coverage")
+    if cov is None:
+        return r
+    where = rel(prov["coverage"])
+    defined = {k: {} for k in DEF_KINDS}
+    for k, kind in DEF_KINDS.items():
+        for f in prov.get(k, []):
+            d = load(f, kind)
+            if d is not None:
+                if d["id"] in defined[k]:
+                    r.error(rel(f), f"P9 {d['id']} 重复定义")
+                defined[k][d["id"]] = (f, d)
+    templates = {}
+    for tf in prov.get("policy", {}).get("templates", []):
+        t = load_yaml(pack_dir / tf)["template"]
+        templates[t["id"]] = t
+    if cov["pack"] != pack["id"]:
+        r.error(where, f"P9 覆盖矩阵的包 {cov['pack']} 与 pack.yaml 的 {pack['id']} 不一致")
+    domain = pack["id"].removeprefix("APP-")
+    baseline = repo.root / STAGE_BASELINE
+    tasks = set(re.findall(r"^\| (M[0-9]-P[0-9]+) ", baseline.read_text(encoding="utf-8"), re.M)) if baseline.exists() else None
+
+    def cell(label: str, c: dict, own: dict, reuse_pool: set[str]):
+        if "pending" in c and c["pending"].get("task") and tasks is not None and c["pending"]["task"] not in tasks:
+            r.error(where, f"P9 {label} 的待定任务 {c['pending']['task']} 不在阶段基线中")
+        for x in c.get("defined", []):
+            if x not in own:
+                r.error(where, f"P9 {label} 标为已定义的 {x} 没有登记在 pack.yaml")
+        if "reuse" in c and c["reuse"] not in reuse_pool:
+            r.error(where, f"P9 {label} 复用的 {c['reuse']} 不存在")
+
+    for cat in ("frameworks", "research_templates"):
+        used = {x for p in cov["paths"].values() for x in p[cat]}
+        for x, c in cov[cat].items():
+            cell(x, c, {x: 1} if x in defined[cat] else {}, set(cov[cat]) - {x})
+            if x not in used:
+                r.error(where, f"P9 目录中的 {x} 没有任何路径使用")
+            if "defined" not in c and x in defined[cat]:
+                r.error(where, f"P9 {x} 已有定义文件，矩阵应标为已定义")
+        for x in defined[cat]:
+            if x not in cov[cat]:
+                r.error(where, f"P9 定义 {x} 未登记在覆盖矩阵目录中")
+        for pb, p in cov["paths"].items():
+            for x in p[cat]:
+                if x not in cov[cat]:
+                    r.error(where, f"P9 {pb} 引用未登记的 {x}")
+    entered = set()
+    for pb, p in cov["paths"].items():
+        code = pb.removeprefix(f"PB-{domain}-")
+        if pb == code or p["objective"] != f"{pack['id']}.{code}":
+            r.error(where, f"P9 路径 {pb} 与目标 {p['objective']} 不一致")
+        cell(f"{pb} entry", p["entry"], templates, set(templates))
+        for x in p["entry"].get("defined", []):
+            entered.add(x)
+            if x in templates and templates[x]["objective"] != p["objective"]:
+                r.error(where, f"P9 {pb} 的策略模板 {x} 属于目标 {templates[x]['objective']}")
+        cell(f"{pb} playbook", p["playbook"], defined["playbooks"],
+             {k for k, q in cov["paths"].items() if k != pb and "reuse" not in q["playbook"]})
+        if "defined" in p["playbook"] and p["playbook"]["defined"] != [pb]:
+            r.error(where, f"P9 {pb} 的机会路径定义应为 {pb}")
+    for x in templates:
+        if x not in entered:
+            r.error(where, f"P9 策略模板 {x} 没有进入覆盖矩阵")
+    for x in defined["playbooks"]:
+        if x not in cov["paths"]:
+            r.error(where, f"P9 机会路径 {x} 未登记在覆盖矩阵中")
+
+    events = event_names(repo)
+    known = {"frameworks": set(cov["frameworks"]), "research_templates": set(cov["research_templates"]),
+             "paths": set(cov["paths"])}
+    for f, d in defined["roles"].values():
+        objs = {cov["paths"][x]["objective"] for x in cov["paths"]}
+        for o in d["default_objectives"] + d.get("optional_objectives", []):
+            if o not in objs:
+                r.error(rel(f), f"P9 角色 {d['id']} 引用未覆盖的目标 {o}")
+    for f, d in defined["objectives"].values():
+        if d["playbook"] not in known["paths"]:
+            r.error(rel(f), f"P9 目标 {d['id']} 的机会路径 {d['playbook']} 未登记")
+        for t in d.get("policy_templates", []):
+            if t not in templates or templates[t]["objective"] != d["id"]:
+                r.error(rel(f), f"P9 目标 {d['id']} 的策略模板 {t} 不存在或属于其他目标")
+    for f, d in defined["playbooks"].values():
+        if d["objective"] != cov["paths"].get(d["id"], {}).get("objective"):
+            r.error(rel(f), f"P9 机会路径 {d['id']} 的目标与覆盖矩阵不一致")
+        for e in d["entry"]:
+            if e["kind"] == "signal" and e["template"] not in templates:
+                r.error(rel(f), f"P9 进入条件的策略模板 {e['template']} 不存在")
+            if e["kind"] == "transition" and e["from"] not in known["paths"]:
+                r.error(rel(f), f"P9 衔接来源 {e['from']} 未登记")
+        for st in d["stages"]:
+            for x in st.get("research", []):
+                if x not in known["research_templates"]:
+                    r.error(rel(f), f"P9 阶段 {st['id']} 的研究模板 {x} 未登记")
+            if st.get("assessment") and st["assessment"] not in known["frameworks"]:
+                r.error(rel(f), f"P9 阶段 {st['id']} 的判断框架 {st['assessment']} 未登记")
+        for t in d.get("transitions", []):
+            if t["to"] not in known["paths"]:
+                r.error(rel(f), f"P9 衔接目标 {t['to']} 未登记")
+        for h in d.get("domain_event_hooks", []):
+            if h["event"] not in events:
+                r.error(rel(f), f"P9 挂钩事件 {h['event']} 未在 contracts/events 中定义")
+    for f, d in defined["frameworks"].values():
+        for x in d.get("research", []):
+            if x not in known["research_templates"]:
+                r.error(rel(f), f"P9 框架 {d['id']} 的研究模板 {x} 未登记")
+    for f, d in defined["research_templates"].values():
+        if not (repo.root / d["output_schema"]).exists():
+            r.error(rel(f), f"P9 研究模板 {d['id']} 的输出 Schema 不存在：{d['output_schema']}")
+    return r
+
+
 def check_packs(repo: Repo) -> Report:
     r = Report()
     n = 0
@@ -220,5 +482,6 @@ def check_packs(repo: Repo) -> Report:
             r.extend(check_information_pack(repo, pack_file.parent))
         elif kind == "application_domain":
             r.extend(check_application_pack(repo, pack_file.parent))
+            r.extend(check_definitions(repo, pack_file.parent))
     r.note(f"扩展包一致性检查：{n} 个包")
     return r

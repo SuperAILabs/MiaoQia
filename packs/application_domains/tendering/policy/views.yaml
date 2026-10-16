@@ -8,6 +8,10 @@
 #   enrichment.category(标的) 读取 L3 品类分类增强结果（数据架构 3.3）：只保留行业包分类体系、达到增强器发布门槛的品类，
 #   展开为品类列表；该字段的证据置信度取所保留品类的最低值、方法记为 model 或 rule，受模板 evidence_policy 约束，
 #   不达标时读取为未知。没有可用品类时视图中不出现该字段。
+#   qualification.comparable(要求) 把资质要求换算到客户档案资质状态表所用的平台登记资质体系：只有 code_scheme 与
+#   code_scheme_version 有版本化映射到该体系时，才输出映射后的 code；缺 code_scheme 的按行业包默认体系解释。
+#   体系不同又无映射、版本不兼容，或带 grade_required（本阶段不比较等级）时，保留该要求但不输出 code，
+#   读取为未知，不按同名代码比较。非资质要求原样投影。映射表随行业包资质模板交付（INF-QUAL 启用门禁）。
 #
 # view_items：可按名称引用的关联视图项，声明提供方、类型与新鲜度；组装后挂在 fact.<名称> 路径下，
 # 例如 winner.credit_flags 在表达式中为 fact.winner.credit_flags。
@@ -42,7 +46,7 @@ fact_types:
       max_price: lot.max_price
       items: lot.items[*]
       categories: enrichment.category(lot.items[*])
-      requirements: lot.requirements[*]
+      requirements: qualification.comparable(lot.requirements[*])
       bid_deadline: min(lot.deadlines[type=bid_submission].at.value)
       consortium_allowed: lot.consortium_allowed
       single_source_supplier: latest_notice.single_source_supplier   # 最新一条非更正采购公告（notice_ids 中最后一条）
@@ -61,7 +65,8 @@ fact_types:
       project_id: project_id
       result_type: "notice_type == candidate ? candidate_published : awarded"
       location: location.code
-      items: project.lots[lot_id].items[*]     # 结果公告常不重复标的，取项目标包的当前标的
+      items: project.lots[lot_id].items[*]     # 要求侧标的：结果公告常不重复标的，取项目标包的当前标的
+      awarded_items: result.awarded_items[*]   # 中标侧明细（中标产品的品牌、型号、单价及计价单位）；原文未列时不出现，不用要求侧标的代替
       categories: enrichment.category(project.lots[lot_id].items[*])
       amount: result.price[price_kind == total] # 年单价合计/单价/未知含义不当项目成交总额
       buyer: buyer
@@ -88,6 +93,7 @@ fact_types:
       project_id: project_id
       location: location.code
       items: project.lots[contract.lot_id].items[*]
+      awarded_items: contract.items[*]         # 合同标的明细；原文未列时不出现
       categories: enrichment.category(project.lots[contract.lot_id].items[*])
       amount: contract.amount
       buyer: buyer
@@ -153,8 +159,8 @@ view_items:
     type: list<category_code>
     freshness: daily
   winner.supplied_brand_owners:
-    provider: entity-graph.GetRelationships(supplied_brand, window=3y)
-    type: list<string>                   # 中标方项目中出现过的品牌所属组织
+    provider: entity-graph.GraphQuery(brand_owners_supplied_by, window=3y)   # 中标方 —supplied_brand→ 品牌 —brand_owned_by→ 厂商，归属取供应时点有效的边
+    type: list<string>                   # 中标方近三年中标/合同明细中出现过的品牌所属组织；不含要求侧指定品牌
     freshness: daily
   winner.trailing_award_total:
     provider: domain-intelligence.GetDomainStatistics(award_total_by_org, window=365d)
@@ -165,9 +171,11 @@ view_items:
     type: list<string>
     freshness: daily
 
-profile_fields:                          # customer-context.GetContextSnapshot [假设]，以其契约为准
-  org_id: string                         # 本租户在公共实体中的组织标识
+profile_fields:                          # customer-context.GetContextSnapshot，契约 contracts/schemas/intelligence/context-snapshot.schema.json 的 policy_view
+  org_ids: list<string>                  # 我方主体（集团客户的多个法人），排除“我方即中标方/拟定供应商”时任一命中即是；未关联本企业时不出现（未知）
   offering_categories: list<category_code>
   service_regions: list<region_code>
-  qualification_codes: list<string>
   brands: list<string>                   # 本租户自有或授权的品牌
+  entities: map<string, entity_qualifications>
+                                         # org_id → 资质状态表（契约 $defs/entity_qualifications）：qualifications 只含有效/过期，
+                                         # 待核对代码单列，qualifications_complete 为“资质已录全”声明；资质条件遍历全部 org_ids，缺表的主体为未知

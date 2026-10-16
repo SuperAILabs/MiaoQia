@@ -1,6 +1,6 @@
 # 实体与关系图谱子系统（entity-graph）
 
-> 状态：评审中 · 版本：2.0 · 更新：2026-10-14 · 平面：数据供应
+> 状态：评审中 · 版本：2.1 · 更新：2026-10-16 · 平面：数据供应
 
 ## 1. 使命
 
@@ -42,10 +42,19 @@
 | `Project` | `prj_`：跨信息领域的项目实体（投资项目、采购项目的上位对象） |
 | `Location` | `loc_`：行政区划与地点 |
 | `Category` | `cat_`：品类（多分类体系的统一节点及映射） |
-| `Brand` | `brd_`：品牌与型号 |
-| `Relationship` | `rel_`：类型、起点、终点、有效时间区间、证据引用、置信度、来源事实 |
+| `Brand` | `brd_`：品牌（名称、别名、行业包词表来源）；型号是品牌下的属性与原文，不单独建实体 |
+| `Relationship` | `rel_`：类型、起点、终点、约束、有效时间区间、证据引用、置信度、来源事实及其版本、状态（有效 / 已修订 / 已撤销），见 4.1 |
 | `ResolutionDecision` | 解析决策记录：输入、候选、得分、结果、方法 |
 | `MergeEvent` | 合并与拆分历史 |
+
+### 4.1 关系的端点、约束与版本
+
+- **类型定义**：关系类型由信息领域包的 `relationships.yaml` 定义（招投标见 [INF-PROC](../../../packs/information_domains/procurement/relationships.yaml)、项目链见 [INF-INVP](../../../packs/information_domains/investment_projects/relationships.yaml)），声明端点、约束、有效区间与抽取来源路径，`mqc` P8 校验路径与种类；平台级类型（如品牌归属的人工维护）在本节登记。
+- **端点与约束**：端点是实体图谱实体（组织、项目、地点、品类、品牌）；约束限定这条边成立的上下文（领域事实如 `pp_`/`bdr_`、标包、区域、期间），不是端点。同一端点在不同约束下是不同的边，例如同一供应商在两个标包供应同一品牌是两条边。
+- **品牌路径**：采购标的指定品牌（`specified_brand`，项目 → 品牌）回答“业主要什么”；中标或合同明细中的品牌（`supplied_brand`，供应商 → 品牌，约束为项目、结果与标包）回答“实际供了什么”，两者分开统计、不互相推断。品牌归属（`brand_owned_by`，品牌 → 组织）是本节登记的平台级关系，只有两种来源：行业包品牌词表中带证据的归属声明、运营复核。中标或合同明细中的制造商（`manufacturer`）只证明产品由谁制造，代工时与品牌所有者不同，不作为归属依据，制造信息保留在领域事实中；每条带证据与有效区间（品牌转让、授权变化按区间区分），同一时点多个归属并存时保留并标为冲突，不按供应商推断归属。“中标方供过哪些厂商的产品”按供应时点沿 `supplied_brand` → `brand_owned_by` 查询。
+- **修订与撤销**：来源事实更正时按新版本重新抽取，旧边标为已修订并指向新边；来源事实撤回、权利撤销或实体合并撤销时边标为已撤销，保留历史；两者都发布 `entity.relationship.changed.v1`（`action: remove` 附原因）。
+- **项目归属与时间线**：采购项目 `pp_`（可带标包约束）到项目 `prj_` 的 `part_of` 是归属边，是唯一允许以领域事实为起点的关系，终点只能是项目。合并采购的一个采购项目或其中的标包可以归属多个项目，“同一采购项目只属于一个 `prj_`”不是不变量；显式标识直接建边，属性或语义匹配产生带置信度的候选边，可复核、修订与撤销。信号与推进的求值单位保持 `pp_` 与标包，不保存归属快照；对象页的跨目标时间线（事实、信号、推进）按归属边组装：默认取当前有效的边，需要说明“当时为什么这样判断”时按记录时点取当时已记录的边。归属边的新增、修订与撤销发布 `entity.project_link.changed.v1`（载荷含方式、置信度与复核状态），不走 `entity.relationship.changed.v1`，后者的端点仍只接受实体标识。归属边修订或撤销后时间线随之变化，已有信号与推进不改写。
+- **版本语义**：实体事件的 `entity_version` 是实体主数据（名称、别名、属性、合并状态）的版本；关系有独立的 `relationship_version`，关系变化不递增端点实体的版本。`subject_ref.version` 指向实体时取引用时的 `entity_version`；合并后旧标识的引用经合并历史解析到存续实体，合并撤销后恢复原实体，已固定版本的引用保持可解释。
 
 ## 5. 接口
 
@@ -53,7 +62,7 @@
 |---|---|---|
 | `ResolveEntity` | 查询 | 名称/标识 → 实体候选及置信度 |
 | `GetEntity` / `GetEntityProfile` | 查询 | 实体与画像 |
-| `GetRelationships` | 查询 | 按实体、类型、时间区间查询关系 |
+| `GetRelationships` | 查询 | 按实体、类型、约束、时间区间查询关系；默认只返回有效边，可按时点返回当时有效的边，也可按记录时点返回当时已记录的边（还原历史判断所见的归属） |
 | `GraphQuery` | 查询 | 受限的图查询（预定义查询模板 + 参数，不开放任意查询语言） |
 | `ConfirmResolution` / `MergeEntities` / `SplitEntity` | 命令 | 运营人员复核 |
 
@@ -61,7 +70,7 @@
 
 载荷唯一定义见[`contracts/events/entity/events.asyncapi.yaml`](../../../contracts/events/entity/events.asyncapi.yaml)。复用公共事件原语，稳定制品引用不含签名URL或凭据；事件正反例及引用兼容检查通过不代表生产发布/消费、事务发件箱或重放已实现。
 
-**发布**：`entity.entity.created.v1`、`entity.entity.updated.v1`、`entity.merge.applied.v1`、`entity.merge.reverted.v1`、`entity.relationship.changed.v1`。
+**发布**：`entity.entity.created.v1`、`entity.entity.updated.v1`、`entity.merge.applied.v1`、`entity.merge.reverted.v1`、`entity.relationship.changed.v1`、`entity.project_link.changed.v1`（归属边）。
 
 **消费**：`domain.fact.upserted.v1`（抽取实体提及与关系）、`domain.aggregation.changed.v1`。
 

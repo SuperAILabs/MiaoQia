@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/procurement/procurement-project.schema.json",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "title": "ProcurementProject 采购项目",
   "description": "同一采购项目的多条公告归并后的当前状态（领域项目聚合）。每个字段的 prov 指向其最新依据所在公告的证据；更正按 amendment.changes 应用后得到当前值。阶段由 packs/information_domains/procurement/lifecycle.yaml 的状态机维护。",
   "type": "object",
@@ -66,7 +66,7 @@
     "investment_project_id": {
       "type": "string",
       "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
-      "description": "所属投资项目（entity-graph 的 Project 实体）"
+      "description": "所属投资项目（entity-graph 的 Project 实体）的便捷字段：仅在整个采购项目归属唯一、已确认的投资项目时出现。归属以 entity-graph 的 part_of 归属边为准（可按标包、可归属多个项目、可修订撤销），时间线与项目链按归属边查询，不以本字段为不变量"
     },
     "buyer": {
       "$ref": "../../common/types.schema.json#/$defs/org_ref"
@@ -79,7 +79,8 @@
       "description": "建设单位或项目业主"
     },
     "location": {
-      "$ref": "../../common/types.schema.json#/$defs/region"
+      "$ref": "../../common/types.schema.json#/$defs/region",
+      "description": "项目实施地（建设、服务或采购标的使用地）所在行政区划；采购人所在地取采购人登记信息，交付地见 conditions.delivery_region。地点角色不同的统计不混用"
     },
     "budget": {
       "$ref": "../../common/types.schema.json#/$defs/money"

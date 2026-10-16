@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/evidence/derivation-evidence-ref.schema.json",
+  "x-version": "0.1.0",
+  "title": "DerivationEvidenceRef 派生证据引用",
+  "description": "派生证据：一个由确定性转换计算出的取值（例如按“自公告发布之日起 20 日”推算的截止时间、按区划新旧版本对照转换的代码、单位换算后的金额），记录全部输入的版本与证据、转换的标识与版本及所用参考数据的版本，使取值可按版本重放。与文档证据、记录证据共用 ev_ 标识空间，由 evidence 分配（草案）。模型推断不属于派生，走解析或增强并带各自的证据。",
+  "type": "object",
+  "required": [
+    "id",
+    "kind",
+    "transform",
+    "inputs",
+    "value_hash"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "kind": {
+      "const": "derivation"
+    },
+    "transform": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+@[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果"
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/derivation_input"
+      },
+      "description": "按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本"
+    },
+    "reference_data": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/reference_data_version"
+      },
+      "description": "转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）"
+    },
+    "value_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "派生取值按 RFC 8785 规范化后的哈希"
+    }
+  },
+  "$defs": {
+    "derivation_input": {
+      "x-type-name": "DerivationInput",
+      "type": "object",
+      "required": [
+        "evidence_ref"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "fact_ref": [
+          "field_path"
+        ]
+      },
+      "properties": {
+        "evidence_ref": {
+          "type": "string",
+          "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$",
+          "description": "该输入取值的证据；输入来自领域事实字段时为该版本中该字段的 provenance.evidence_ref。证据链沿派生证据向下必须无环，末端都是文档证据或记录证据"
+        },
+        "fact_ref": {
+          "$ref": "#/$defs/fact_version_ref"
+        },
+        "field_path": {
+          "type": "string",
+          "pattern": "^(/([^/~]|~[01])*)*$",
+          "description": "fact_ref 所指事实内的 JSON Pointer"
+        }
+      }
+    },
+    "fact_version_ref": {
+      "x-type-name": "FactVersionRef",
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "../common/types.schema.json#/$defs/ulid_id"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "领域事实版本号（public_fact_meta.version），固定引用，不随当前版本指针变化"
+        }
+      }
+    },
+    "reference_data_version": {
+      "x-type-name": "ReferenceDataVersion",
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$",
+          "description": "参考数据标识，例如 gb2260、cn-holidays"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

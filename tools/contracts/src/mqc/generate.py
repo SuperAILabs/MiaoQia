@@ -50,6 +50,13 @@ def _gen_go(repo: Repo, bundle: Path, out: Path) -> None:
     _run(["gofmt", "-w", str(out)], repo.root)
 
 
+def _quote_self_ref(m: re.Match) -> str:
+    name, args = m[1], " ".join(m[2].split())
+    if not re.search(r"\b" + name + r"\b", args):
+        return m[0]
+    return f'class {name}(RootModel["{args}"]):'
+
+
 def _gen_python(repo: Repo, bundle: Path, out: Path) -> None:
     _run([sys.executable, "-m", "datamodel_code_generator",
           "--input", str(bundle), "--input-file-type", "jsonschema",
@@ -59,6 +66,8 @@ def _gen_python(repo: Repo, bundle: Path, out: Path) -> None:
     text = out.read_text(encoding="utf-8")
     # 去掉打包根节点产生的占位模型
     text = re.sub(rf"\n\nclass {ROOT_TYPE}\(RootModel\[Any\]\):\n(?:    .*\n)+", "\n", text)
+    # 递归的根模型（如 RecordValue）在基类泛型参数中引用自身，类定义时尚不存在：整个参数改为字符串前向引用，由文件末尾的 model_rebuild 解析
+    text = re.sub(r"^class (\w+)\(\s*RootModel\[(.*?)\]\s*\):$", _quote_self_ref, text, flags=re.M | re.S)
     out.write_text(text, encoding="utf-8")
 
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/investment/record.schema.json",
-  "x-version": "0.2.0",
+  "x-version": "0.3.0",
   "title": "InvestmentRecord 投资项目审批与建设记录",
   "description": "投资项目从备案核准到竣工的一条审批或许可记录。跨信息领域的投资项目实体（Project）由 entity-graph 拥有，本记录以 investment_project_id 引用。",
   "type": "object",

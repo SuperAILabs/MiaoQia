@@ -125,3 +125,99 @@ fixtures:
     - op: replace
       path: /relationship_id
       value: bad_00000000000000000000000000
+  - name: 带约束的品牌供应关系
+    valid: true
+    patch:
+    - op: replace
+      path: /to_entity_id
+      value: brd_00000000000000000000000000
+    - op: replace
+      path: /relationship_type
+      value: supplied_brand
+    - op: add
+      path: /qualifiers
+      value:
+      - kind: domain_fact
+        ref: bdr_00000000000000000000000000
+      - kind: lot
+        ref: lot_00000000000000000000000000
+  - name: 来源更正后撤销旧边
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: remove
+    - op: add
+      path: /remove_reason
+      value: source_revised
+    - op: add
+      path: /superseded_by
+      value: rel_00000000000000000000000001
+  - name: 约束种类未登记
+    valid: false
+    patch:
+    - op: add
+      path: /qualifiers
+      value:
+      - kind: tenant
+        ref: tnt_00000000000000000000000000
+- event: entity.project_link.changed.v1
+  base:
+    relationship_id: rel_00000000000000000000000000
+    rights_tags:
+    - fixture-value
+    procurement_project_id: pp_00000000000000000000000000
+    project_id: prj_00000000000000000000000000
+    relationship_version: 1
+    action: upsert
+    method: project_code
+    confidence: 1
+    status: auto
+  cases:
+  - name: 缺少必填字段
+    valid: false
+    patch:
+    - op: remove
+      path: /project_id
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+  - name: 起点必须是采购项目
+    valid: false
+    patch:
+    - op: replace
+      path: /procurement_project_id
+      value: prj_00000000000000000000000000
+  - name: 终点必须是项目
+    valid: false
+    patch:
+    - op: replace
+      path: /project_id
+      value: org_00000000000000000000000000
+  - name: 只归属其中一个标包的候选边
+    valid: true
+    patch:
+    - op: add
+      path: /lot_id
+      value: lot_00000000000000000000000000
+    - op: replace
+      path: /method
+      value: attribute_match
+    - op: replace
+      path: /confidence
+      value: 0.82
+    - op: replace
+      path: /status
+      value: candidate
+  - name: 复核否决后撤销
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: remove
+    - op: add
+      path: /remove_reason
+      value: review_rejected

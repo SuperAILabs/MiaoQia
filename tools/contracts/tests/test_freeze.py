@@ -2,8 +2,9 @@
 import mqc.cli as cli
 
 ORG_EVENTS = "contracts/events/org/events.asyncapi.yaml"
-LIFECYCLE = "packs/information_domains/procurement/lifecycle.yaml"
-PACK = "packs/information_domains/procurement/pack.yaml"
+# 版本归属对：kernel.sql 的版本由 kernel.yaml 决定（INF-PROC 的 pack.yaml 已升过版本，不能再用来验证“未升版本即失败”）
+OWNED = "contracts/storage/kernel.sql"
+OWNER = "contracts/storage/kernel.yaml"
 
 
 def run(root, monkeypatch, capsys):
@@ -34,11 +35,11 @@ def test_frozen_change_needs_version_bump(sandbox, monkeypatch, capsys):
 
 
 def test_version_owner_decides(sandbox, monkeypatch, capsys):
-    p = sandbox / LIFECYCLE
-    p.write_text(p.read_text(encoding="utf-8") + "\n# 改动\n", encoding="utf-8")
+    p = sandbox / OWNED
+    p.write_text(p.read_text(encoding="utf-8") + "\n-- 改动\n", encoding="utf-8")
     code, out = run(sandbox, monkeypatch, capsys)
-    assert code == 1 and LIFECYCLE in out.err
-    edit(sandbox, PACK, "version: 1.0.0", "version: 1.1.0")
+    assert code == 1 and OWNED in out.err
+    edit(sandbox, OWNER, "version: 1.0.0", "version: 1.1.0")
     code, out = run(sandbox, monkeypatch, capsys)
     assert code == 0, out.err
 

@@ -39,7 +39,67 @@
                   "confidence": 1,
                   "extractor": "proc.manual-review@0.1.0"
                 }
-              }
+              },
+              "awarded_items": [
+                {
+                  "name": {
+                    "value": "便携式计算机配置1",
+                    "prov": {
+                      "evidence_ref": "ev_FF64V1B1ZMB4G5Y7W9JSKYHWH5",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "brand": {
+                    "value": "清华同方",
+                    "prov": {
+                      "evidence_ref": "ev_02HK8EVKR0X495MW2WMRGG2DXG",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "model": {
+                    "value": "超锐L60P-11000",
+                    "prov": {
+                      "evidence_ref": "ev_PTGY4VSW7K9YC8KV7QZ19YH5FG",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "quantity": {
+                    "value": "101",
+                    "unit_raw": "台",
+                    "prov": {
+                      "evidence_ref": "ev_PY4H7YV79WR6STCFGXEXY7K5S0",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price": {
+                    "value": "6890",
+                    "currency": "CNY",
+                    "prov": {
+                      "evidence_ref": "ev_GFZTMFWG1EHNKKQBT7QDWHHDMD",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price_unit": {
+                    "value": "台",
+                    "prov": {
+                      "evidence_ref": "ev_VN520MHK513AK1MG13QSTDVHF5",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  }
+                }
+              ]
             }
           ]
         },
@@ -69,7 +129,67 @@
                   "confidence": 1,
                   "extractor": "proc.manual-review@0.1.0"
                 }
-              }
+              },
+              "awarded_items": [
+                {
+                  "name": {
+                    "value": "便携式计算机配置2",
+                    "prov": {
+                      "evidence_ref": "ev_FPX1R60RF00BA1BG3K870GBGG8",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "brand": {
+                    "value": "紫光（UNIS)",
+                    "prov": {
+                      "evidence_ref": "ev_6G12ZXJ3J196F3AQBHZCXWEYS8",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "model": {
+                    "value": "UNIS L3813 G3 x006",
+                    "prov": {
+                      "evidence_ref": "ev_QA4JRBYE9NR2XNW17S6PD758CZ",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "quantity": {
+                    "value": "466",
+                    "unit_raw": "台",
+                    "prov": {
+                      "evidence_ref": "ev_1M2C3Y5TS92XEX9FG4VJSF21KY",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price": {
+                    "value": "6180",
+                    "currency": "CNY",
+                    "prov": {
+                      "evidence_ref": "ev_6BAC51G94653ZD9ASAPA6SFMZE",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price_unit": {
+                    "value": "台",
+                    "prov": {
+                      "evidence_ref": "ev_6D8JX05RX3N7ZZCZZST53ZZ0EZ",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  }
+                }
+              ]
             }
           ]
         },
@@ -99,7 +219,67 @@
                   "confidence": 1,
                   "extractor": "proc.manual-review@0.1.0"
                 }
-              }
+              },
+              "awarded_items": [
+                {
+                  "name": {
+                    "value": "便携式计算机配置3",
+                    "prov": {
+                      "evidence_ref": "ev_P16ZFT6DZX349S3GG8GRN19PPW",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "brand": {
+                    "value": "联硕弘道",
+                    "prov": {
+                      "evidence_ref": "ev_MKY8VB9RQVQZYXQMAP7E7CRMAJ",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "model": {
+                    "value": "L5 Z10014",
+                    "prov": {
+                      "evidence_ref": "ev_XCX0Q0B81KK3Q55C4YH8YQY48S",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "quantity": {
+                    "value": "538",
+                    "unit_raw": "台",
+                    "prov": {
+                      "evidence_ref": "ev_K1HG0RSJGNM6CFZ7XS9TJBCKCX",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price": {
+                    "value": "6800",
+                    "currency": "CNY",
+                    "prov": {
+                      "evidence_ref": "ev_EXSMZV72F0BQ4AMAXAFB7KQ79B",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price_unit": {
+                    "value": "台",
+                    "prov": {
+                      "evidence_ref": "ev_APY7EJ29E32CJAAZVYGWEYYAJD",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  }
+                }
+              ]
             }
           ]
         },
@@ -129,7 +309,67 @@
                   "confidence": 1,
                   "extractor": "proc.manual-review@0.1.0"
                 }
-              }
+              },
+              "awarded_items": [
+                {
+                  "name": {
+                    "value": "便携式计算机配置4",
+                    "prov": {
+                      "evidence_ref": "ev_Z8Y4J3A314F1M3E81AF1S2VAT3",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "brand": {
+                    "value": "HUAWEI",
+                    "prov": {
+                      "evidence_ref": "ev_9PFGQE3XNQSDG1E01F0PC94RR3",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "model": {
+                    "value": "华为擎云L540x-A101",
+                    "prov": {
+                      "evidence_ref": "ev_77BJ5GVWJCY1M98DTWVVM8H33T",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "quantity": {
+                    "value": "705",
+                    "unit_raw": "台",
+                    "prov": {
+                      "evidence_ref": "ev_Y2SFBSRSMCFRHH3SA4EW3QP79K",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price": {
+                    "value": "6920",
+                    "currency": "CNY",
+                    "prov": {
+                      "evidence_ref": "ev_8EYFAB3WWJCPMHG9W5GYJTF256",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  },
+                  "unit_price_unit": {
+                    "value": "台",
+                    "prov": {
+                      "evidence_ref": "ev_MJAG4DA8GJFZ02X8QZXVPDTMQ2",
+                      "method": "manual",
+                      "confidence": 1,
+                      "extractor": "proc.manual-review@0.1.0"
+                    }
+                  }
+                }
+              ]
             }
           ]
         },
@@ -306,6 +546,318 @@
         "char_end": 44
       },
       "quote_hash": "sha256:59cd3f16ea1117859c4c31ea47045d833705be9233ab543a510fb6f5080d63e5"
+    },
+    "ev_FF64V1B1ZMB4G5Y7W9JSKYHWH5": {
+      "id": "ev_FF64V1B1ZMB4G5Y7W9JSKYHWH5",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 39,
+        "row": 1,
+        "col": 2,
+        "char_start": 0,
+        "char_end": 9
+      },
+      "quote_hash": "sha256:3d375e45e6404d606f87ae55623fb017ecb5bb7178abfff424a020bd1a8046e9"
+    },
+    "ev_02HK8EVKR0X495MW2WMRGG2DXG": {
+      "id": "ev_02HK8EVKR0X495MW2WMRGG2DXG",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 39,
+        "row": 1,
+        "col": 3,
+        "char_start": 0,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:e9b9fe86648c26f2aaf8369681c0f163a887e7cc90b4c177cca0ecc73791e2fd"
+    },
+    "ev_PTGY4VSW7K9YC8KV7QZ19YH5FG": {
+      "id": "ev_PTGY4VSW7K9YC8KV7QZ19YH5FG",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 39,
+        "row": 1,
+        "col": 3,
+        "char_start": 5,
+        "char_end": 17
+      },
+      "quote_hash": "sha256:f5df2a1e9086037513dc6035705b92ccc03a8f6453587d349ebfb2fc91916567"
+    },
+    "ev_GFZTMFWG1EHNKKQBT7QDWHHDMD": {
+      "id": "ev_GFZTMFWG1EHNKKQBT7QDWHHDMD",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 39,
+        "row": 1,
+        "col": 5,
+        "char_start": 0,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:00cc75b3c354bd864d646cc1a790268c33916bd2a32b78b502151640596f7702"
+    },
+    "ev_PY4H7YV79WR6STCFGXEXY7K5S0": {
+      "id": "ev_PY4H7YV79WR6STCFGXEXY7K5S0",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 39,
+        "row": 1,
+        "col": 9,
+        "char_start": 0,
+        "char_end": 3
+      },
+      "quote_hash": "sha256:16dc368a89b428b2485484313ba67a3912ca03f2b2b42429174a4f8b3dc84e44"
+    },
+    "ev_VN520MHK513AK1MG13QSTDVHF5": {
+      "id": "ev_VN520MHK513AK1MG13QSTDVHF5",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 39,
+        "row": 0,
+        "col": 9,
+        "char_start": 3,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:991363a244f032c7c9ea0b515ecc4bcdb5dfd0bfd8eb50fe07d7dcf5617052cd"
+    },
+    "ev_FPX1R60RF00BA1BG3K870GBGG8": {
+      "id": "ev_FPX1R60RF00BA1BG3K870GBGG8",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 42,
+        "row": 1,
+        "col": 2,
+        "char_start": 0,
+        "char_end": 9
+      },
+      "quote_hash": "sha256:ac372153749c1c6a3fa79edde8fa6d50db505f07fe41e336a7155cb0f3e0f106"
+    },
+    "ev_6G12ZXJ3J196F3AQBHZCXWEYS8": {
+      "id": "ev_6G12ZXJ3J196F3AQBHZCXWEYS8",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 42,
+        "row": 1,
+        "col": 3,
+        "char_start": 0,
+        "char_end": 8
+      },
+      "quote_hash": "sha256:62f21a7eebaeb9a3630a0db1b6d642fe45adeec24f510b4605e1883736d3712c"
+    },
+    "ev_QA4JRBYE9NR2XNW17S6PD758CZ": {
+      "id": "ev_QA4JRBYE9NR2XNW17S6PD758CZ",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 42,
+        "row": 1,
+        "col": 3,
+        "char_start": 9,
+        "char_end": 27
+      },
+      "quote_hash": "sha256:db93e1e5abdf965c4bfb395d7b5b8d46b59a2a58cdc19b686655d23622b4d8d1"
+    },
+    "ev_6BAC51G94653ZD9ASAPA6SFMZE": {
+      "id": "ev_6BAC51G94653ZD9ASAPA6SFMZE",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 42,
+        "row": 1,
+        "col": 5,
+        "char_start": 0,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:c4b2398ae8a65e63a92bb4fb6348050851f8886674de0e30d522c323a97044a9"
+    },
+    "ev_1M2C3Y5TS92XEX9FG4VJSF21KY": {
+      "id": "ev_1M2C3Y5TS92XEX9FG4VJSF21KY",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 42,
+        "row": 1,
+        "col": 9,
+        "char_start": 0,
+        "char_end": 3
+      },
+      "quote_hash": "sha256:826e27285307a923759de350de081d6218a04f4cff82b20c5ddaa8c60138c066"
+    },
+    "ev_6D8JX05RX3N7ZZCZZST53ZZ0EZ": {
+      "id": "ev_6D8JX05RX3N7ZZCZZST53ZZ0EZ",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 42,
+        "row": 0,
+        "col": 9,
+        "char_start": 3,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:991363a244f032c7c9ea0b515ecc4bcdb5dfd0bfd8eb50fe07d7dcf5617052cd"
+    },
+    "ev_P16ZFT6DZX349S3GG8GRN19PPW": {
+      "id": "ev_P16ZFT6DZX349S3GG8GRN19PPW",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 45,
+        "row": 1,
+        "col": 2,
+        "char_start": 0,
+        "char_end": 9
+      },
+      "quote_hash": "sha256:61e39c6e481eb76ce56cfd67d4d91584377059272d2f571cbe9c08511664b43b"
+    },
+    "ev_MKY8VB9RQVQZYXQMAP7E7CRMAJ": {
+      "id": "ev_MKY8VB9RQVQZYXQMAP7E7CRMAJ",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 45,
+        "row": 1,
+        "col": 3,
+        "char_start": 0,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:5dafd576986ae53c5a717d616778d866d4ac115904f1ab73d68001257416d0ec"
+    },
+    "ev_XCX0Q0B81KK3Q55C4YH8YQY48S": {
+      "id": "ev_XCX0Q0B81KK3Q55C4YH8YQY48S",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 45,
+        "row": 1,
+        "col": 3,
+        "char_start": 5,
+        "char_end": 14
+      },
+      "quote_hash": "sha256:e6cc7d20a87c0b41b150f3bae04dcac542a1ccfcda1a00c0c5f1b8a96ed2f965"
+    },
+    "ev_EXSMZV72F0BQ4AMAXAFB7KQ79B": {
+      "id": "ev_EXSMZV72F0BQ4AMAXAFB7KQ79B",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 45,
+        "row": 1,
+        "col": 5,
+        "char_start": 0,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:2e56a8020dd31df8ebc207b8aa6f0e25d3cc8f3d10e5203146c880cedd0f9d2a"
+    },
+    "ev_K1HG0RSJGNM6CFZ7XS9TJBCKCX": {
+      "id": "ev_K1HG0RSJGNM6CFZ7XS9TJBCKCX",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 45,
+        "row": 1,
+        "col": 9,
+        "char_start": 0,
+        "char_end": 3
+      },
+      "quote_hash": "sha256:8def3488486c17dfbc2861301b63237c3c3a05b4c23afed03d59829fba57e10c"
+    },
+    "ev_APY7EJ29E32CJAAZVYGWEYYAJD": {
+      "id": "ev_APY7EJ29E32CJAAZVYGWEYYAJD",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 45,
+        "row": 0,
+        "col": 9,
+        "char_start": 3,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:991363a244f032c7c9ea0b515ecc4bcdb5dfd0bfd8eb50fe07d7dcf5617052cd"
+    },
+    "ev_Z8Y4J3A314F1M3E81AF1S2VAT3": {
+      "id": "ev_Z8Y4J3A314F1M3E81AF1S2VAT3",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 48,
+        "row": 1,
+        "col": 2,
+        "char_start": 0,
+        "char_end": 9
+      },
+      "quote_hash": "sha256:8388547911b0bf4ce615733cd04087d648f197d8bc6e0e07b30c04292a4108cc"
+    },
+    "ev_9PFGQE3XNQSDG1E01F0PC94RR3": {
+      "id": "ev_9PFGQE3XNQSDG1E01F0PC94RR3",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 48,
+        "row": 1,
+        "col": 3,
+        "char_start": 0,
+        "char_end": 6
+      },
+      "quote_hash": "sha256:d4c6a5785b57062229039a79c714d3cb3a4dac4e3e63ef38ab31342b0c69f72c"
+    },
+    "ev_77BJ5GVWJCY1M98DTWVVM8H33T": {
+      "id": "ev_77BJ5GVWJCY1M98DTWVVM8H33T",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 48,
+        "row": 1,
+        "col": 3,
+        "char_start": 7,
+        "char_end": 21
+      },
+      "quote_hash": "sha256:1f56bc8a6c85534e09fb570b32cd0b7bbbd13c45a326c665e09f025f49b0c926"
+    },
+    "ev_8EYFAB3WWJCPMHG9W5GYJTF256": {
+      "id": "ev_8EYFAB3WWJCPMHG9W5GYJTF256",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 48,
+        "row": 1,
+        "col": 5,
+        "char_start": 0,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:28c83f4635d193b3cf29a03dcda640e46122af04869854943f7364387164e212"
+    },
+    "ev_Y2SFBSRSMCFRHH3SA4EW3QP79K": {
+      "id": "ev_Y2SFBSRSMCFRHH3SA4EW3QP79K",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 48,
+        "row": 1,
+        "col": 9,
+        "char_start": 0,
+        "char_end": 3
+      },
+      "quote_hash": "sha256:bd94717d91260895035088525e817ea10375454f03aa3bd8b28b355a4cee22c5"
+    },
+    "ev_MJAG4DA8GJFZ02X8QZXVPDTMQ2": {
+      "id": "ev_MJAG4DA8GJFZ02X8QZXVPDTMQ2",
+      "snapshot_ref": "snp_89KTYEGBW1VBZGST5RGT0T2A9V",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 48,
+        "row": 0,
+        "col": 9,
+        "char_start": 3,
+        "char_end": 4
+      },
+      "quote_hash": "sha256:991363a244f032c7c9ea0b515ecc4bcdb5dfd0bfd8eb50fe07d7dcf5617052cd"
     }
   }
 }

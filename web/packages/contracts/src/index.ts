@@ -5,6 +5,47 @@
  */
 export type Decimal = string;
 /**
+ * 集合在取值时点的实际成员。成员不多于 200 个时内联 members；更多时存对象存储并以 members_object 引用，两者都以 members_hash 校验
+ */
+export type MembershipSnapshot = {
+  /**
+   * 成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系
+   */
+  as_of: string;
+  /**
+   * 成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本
+   */
+  source_version: string;
+  member_count: number;
+  /**
+   * @maxItems 200
+   */
+  members?: SubjectRef[];
+  /**
+   * 成员清单的对象存储键（不含签名地址）
+   */
+  members_object?: string;
+  /**
+   * 按成员标识排序后的清单哈希
+   */
+  members_hash: string;
+} & MembershipSnapshot1;
+/**
+ * 目标对象类型（业务架构第 3 节）
+ */
+export type SubjectType = "project" | "domain_fact" | "organization" | "market" | "relationship" | "program";
+/**
+ * 类型化 ULID，前缀登记在 contracts/identifiers.yaml
+ */
+export type UlidId = string;
+export type MembershipSnapshot1 = {
+  [k: string]: unknown;
+};
+/**
+ * 已判定的资质状态：有效或过期（含双方一致或已确认）。待核对不在此列，单列于 qualifications_pending
+ */
+export type QualificationStatus = "valid" | "expired";
+/**
  * 以组织为主体的司法与信用记录：失信被执行人、限制消费、被执行人、行政处罚、裁判文书、信用评价。主体为自然人的记录不进入本信息领域；记录中出现的自然人进入 persons。
  */
 export type CreditRecord = PublicFactMeta & {
@@ -53,10 +94,6 @@ export type CreditRecord = PublicFactMeta & {
   persons?: Person[];
   [k: string]: unknown;
 };
-/**
- * 类型化 ULID，前缀登记在 contracts/identifiers.yaml
- */
-export type UlidId = string;
 export type EvaluationMethod = "lowest_price" | "comprehensive_scoring" | "other";
 /**
  * 原始制品稳定对象键/引用，不是短时签名URL
@@ -362,7 +399,7 @@ export type ProcurementProject = PublicFactMeta & {
   project_code?: Text;
   approval_code?: Text;
   /**
-   * 所属投资项目（entity-graph 的 Project 实体）
+   * 所属投资项目（entity-graph 的 Project 实体）的便捷字段：仅在整个采购项目归属唯一、已确认的投资项目时出现。归属以 entity-graph 的 part_of 归属边为准（可按标包、可归属多个项目、可修订撤销），时间线与项目链按归属边查询，不以本字段为不变量
    */
   investment_project_id?: string;
   buyer: OrgRef;
@@ -383,6 +420,16 @@ export type ProcurementProject = PublicFactMeta & {
   lots: [ProjectLot, ...ProjectLot[]];
   [k: string]: unknown;
 };
+/**
+ * 记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 在对象中以省略该字段表示（字段缺失即未知），在数组中保留为 null 以保持元素位置（不删除元素）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致
+ */
+export type RecordValue =
+  | string
+  | boolean
+  | (RecordValue | null)[]
+  | {
+      [k: string]: RecordValue;
+    };
 /**
  * detection 对一个求值单位按租户策略求值得到的结果（草案；语义见 docs/03-architecture/11-policy-dsl.md 第 4 节与 subsystems/detection.md）。同一策略对同一求值单位（subject 的 type、id 与 part_id）只有一条信号；求值单位状态变化导致的处置变化以 SignalUpdate 追加记录，并更新本对象的当前处置。no_signal 不产生信号。
  */
@@ -435,10 +482,6 @@ export type Signal = TenantMeta & {
   update_count: number;
   [k: string]: unknown;
 };
-/**
- * 目标对象类型（业务架构第 3 节）
- */
-export type SubjectType = "project" | "domain_fact" | "organization" | "market" | "relationship" | "program";
 
 export interface AcceptanceSection {
   id: string;
@@ -526,6 +569,56 @@ export interface Attachment {
   media_type?: string;
 }
 /**
+ * 结果或合同公告中实际中标/成交的标的明细（中标方投标的产品），与公告要求侧的 item 分开：brand/model 是中标产品，不是 item 的 brand_required/model_required。可能无法与要求标的一一对应
+ */
+export interface AwardedItem {
+  /**
+   * 能一一对应时引用要求侧标的；无法对应或原文未列要求标的时省略
+   */
+  item_id?: string;
+  name: Text;
+  categories?: Category[];
+  spec?: Text;
+  brand?: Text;
+  model?: Text;
+  manufacturer?: OrgRef;
+  quantity?: Quantity;
+  unit_price?: Money;
+  unit_price_unit?: Text;
+}
+export interface Category {
+  /**
+   * 分类体系，如 gov-procurement-catalog、industry:building-materials
+   */
+  scheme: string;
+  scheme_version: string;
+  code: string;
+  name_raw?: string;
+  confidence?: number;
+}
+export interface Quantity {
+  value: Decimal;
+  /**
+   * 归一单位
+   */
+  unit?: string;
+  unit_raw?: string;
+  prov: Provenance;
+}
+export interface Money {
+  value: Decimal;
+  currency: string;
+  /**
+   * 原文写法，如“120.5 万元”
+   */
+  raw?: string;
+  /**
+   * 是否含税；原文未说明时不出现
+   */
+  tax_included?: boolean;
+  prov: Provenance;
+}
+/**
  * 页面坐标（左上角为原点，单位为点），用于界面高亮
  */
 export interface Bbox {
@@ -560,19 +653,12 @@ export interface BidResult {
    */
   price_kind?: "total" | "unit" | "annual_unit_sum" | "estimated_total";
   price_kind_prov?: Provenance;
-}
-export interface Money {
-  value: Decimal;
-  currency: string;
   /**
-   * 原文写法，如“120.5 万元”
+   * 该投标人中标或成交的标的明细（原文列出时）；缺失表示原文未列或未标注，不推断为与要求标的相同
+   *
+   * @minItems 1
    */
-  raw?: string;
-  /**
-   * 是否含税；原文未说明时不出现
-   */
-  tax_included?: boolean;
-  prov: Provenance;
+  awarded_items?: [AwardedItem, ...AwardedItem[]];
 }
 /**
  * 百分比报价或限价；100 表示 100%，不得写入 money 或换算为项目总价
@@ -620,15 +706,36 @@ export interface Cell {
     col: number;
   };
 }
-export interface Category {
+/**
+ * 期间对比的基准。基准期与本期使用同一统计口径与成员取值规则；口径或成员版本不同时须在产物中说明，不直接相减
+ */
+export interface Comparison {
+  kind: "previous_period" | "same_period_last_year" | "custom";
+  baseline: Period;
+  baseline_members?: MembershipSnapshot;
+  baseline_ref?: UlidId;
+}
+/**
+ * 统计或研究的实际期间，左闭右开。滚动窗口（如近 12 个月）在使用时换算为实际起止并记录在此，不只记窗口长度
+ */
+export interface Period {
+  start: string;
+  end: string;
+  granularity?: "day" | "week" | "month" | "quarter" | "year" | "custom";
   /**
-   * 分类体系，如 gov-procurement-catalog、industry:building-materials
+   * 归入期间所依据的事实时间字段（例如结果公告的 published_at、合同的 signed_on），由统计口径声明；不用记录或采集时间代替
    */
-  scheme: string;
-  scheme_version: string;
-  code: string;
-  name_raw?: string;
-  confidence?: number;
+  time_basis: string;
+  time_zone?: string;
+}
+/**
+ * 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱 prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_ 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为 prg_。version 为被引用对象在求值或判断时的版本，domain_fact 必填；实体图谱对象的版本语义尚未定义，暂为可选。part_id 指向对象内部的求值单位（如采购项目的标包 lot_）。
+ */
+export interface SubjectRef {
+  type: SubjectType;
+  id: UlidId;
+  version?: number;
+  part_id?: UlidId;
 }
 /**
  * 公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略
@@ -642,6 +749,220 @@ export interface Contact {
   name_prov?: Provenance;
   phone_prov?: Provenance;
   email_prov?: Provenance;
+}
+/**
+ * 策略表达式的 profile 变量。规模上界与 contracts/policy/cel-environment.yaml 的 size_bounds 一致。超出上界时不截断（截断会丢掉我方主体或可满足的主体而误判）：我方主体超过 10 个时省略 org_ids 与 entities，依赖它们的条件为未知；某主体待核对超过 20 项时省略 entities，资质条件为未知；两种情况都告警
+ */
+export interface ContextPolicyView {
+  /**
+   * 我方主体（集团客户的多个法人）。尚未关联本企业时不出现（不用空列表）：依赖它的条件读取不存在的字段为未知，例如“拟定供应商不是我方”不能成立
+   *
+   * @minItems 1
+   * @maxItems 10
+   */
+  org_ids?:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string];
+  /**
+   * 行业包分类体系的品类代码
+   */
+  offering_categories: string[];
+  /**
+   * GB/T 2260 行政区划代码；上级包含全部下级
+   */
+  service_regions: string[];
+  /**
+   * 自有或授权的品牌
+   */
+  brands: string[];
+  /**
+   * 我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部 org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现
+   */
+  entities?: {
+    [k: string]: EntityQualifications;
+  };
+}
+/**
+ * 一个我方主体的资质状态表（以 org_id 为键放在 entities 中）。某项资质要求对本主体的判定：在 qualifications 中有效为满足、过期为不具备；在 qualifications_pending 中为未知；都不在时，qualifications_complete 为真则不具备，否则未知。同一代码不同时出现在 qualifications 与 qualifications_pending 中
+ */
+export interface EntityQualifications {
+  /**
+   * 资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系
+   */
+  qualifications: {
+    [k: string]: QualificationStatus;
+  };
+  /**
+   * 待核对的资质代码（来源观察冲突，等待 can_edit_profile 成员确认）
+   *
+   * @maxItems 20
+   */
+  qualifications_pending:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  /**
+   * 该主体已声明“资质已录全”（写入档案版本与审计）
+   */
+  qualifications_complete: boolean;
+}
+/**
+ * customer-context.GetContextSnapshot 按（租户、组织单元、上下文版本）返回的合成结果中供策略求值读取的部分（草案；规则见 docs/01-product/prd/02-profile-and-objectives.md F3 与 docs/03-architecture/subsystems/customer-context.md）。policy_view 即策略表达式中的 profile 变量。字段缺失表示未知，不使用 null。
+ */
+export interface ContextSnapshot {
+  tenant_id: string;
+  /**
+   * 目标所在的组织单元（identity 的 OrgUnit；标识前缀随 identity 契约登记）
+   */
+  org_unit_id: string;
+  /**
+   * 租户上下文版本；档案、清单与单元覆盖的每次提交在同一事务中递增
+   */
+  context_version: number;
+  /**
+   * 合成所用的单元链，从目标所在单元到根单元；逐项取值时未覆盖继承上级，显式空集合不继承
+   *
+   * @minItems 1
+   */
+  unit_chain: [string, ...string[]];
+  policy_view: ContextPolicyView;
 }
 export interface ContractSection {
   id: string;
@@ -659,6 +980,12 @@ export interface ContractSection {
   amount_kind?: "total" | "ceiling" | "estimated";
   conditions?: ProcurementConditions;
   amount_kind_prov?: Provenance;
+  /**
+   * 合同标的明细（原文列出时）
+   *
+   * @minItems 1
+   */
+  items?: [AwardedItem, ...AwardedItem[]];
 }
 /**
  * 公告与项目标包共用的带证据采购条件；只记录已确认的原文，不把模板未选项当成事实
@@ -677,6 +1004,19 @@ export interface ProcurementConditions {
   agent_participation?: Text;
   contract_pricing?: Text;
   planned_publication?: Text;
+  delivery_region?: Region;
+}
+export interface Region {
+  /**
+   * GB/T 2260 行政区划代码
+   */
+  code: string;
+  name_raw?: string;
+  prov: Provenance;
+  /**
+   * GB/T 2260 代码表版本（如民政部发布年份 2024）；缺失表示按观察时有效的代码表、版本未知。历史统计保留原代码与版本，跨版本换算是派生数据，另记换算表版本与依据，不改写原值
+   */
+  scheme_version?: string;
 }
 /**
  * 公共域领域事实的通用字段（数据架构第 5、7 节）
@@ -744,6 +1084,57 @@ export interface Deadline {
   at: Instant;
 }
 /**
+ * 派生证据：一个由确定性转换计算出的取值（例如按“自公告发布之日起 20 日”推算的截止时间、按区划新旧版本对照转换的代码、单位换算后的金额），记录全部输入的版本与证据、转换的标识与版本及所用参考数据的版本，使取值可按版本重放。与文档证据、记录证据共用 ev_ 标识空间，由 evidence 分配（草案）。模型推断不属于派生，走解析或增强并带各自的证据。
+ */
+export interface DerivationEvidenceRef {
+  id: string;
+  kind: "derivation";
+  /**
+   * 转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果
+   */
+  transform: string;
+  /**
+   * 按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本
+   *
+   * @minItems 1
+   * @maxItems 64
+   */
+  inputs: [DerivationInput, ...DerivationInput[]];
+  /**
+   * 转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）
+   */
+  reference_data?: ReferenceDataVersion[];
+  /**
+   * 派生取值按 RFC 8785 规范化后的哈希
+   */
+  value_hash: string;
+}
+export interface DerivationInput {
+  /**
+   * 该输入取值的证据；输入来自领域事实字段时为该版本中该字段的 provenance.evidence_ref。证据链沿派生证据向下必须无环，末端都是文档证据或记录证据
+   */
+  evidence_ref: string;
+  fact_ref?: FactVersionRef;
+  /**
+   * fact_ref 所指事实内的 JSON Pointer
+   */
+  field_path?: string;
+}
+export interface FactVersionRef {
+  id: UlidId;
+  /**
+   * 领域事实版本号（public_fact_meta.version），固定引用，不随当前版本指针变化
+   */
+  version: number;
+}
+export interface ReferenceDataVersion {
+  /**
+   * 参考数据标识，例如 gb2260、cn-holidays
+   */
+  name: string;
+  version: string;
+}
+/**
  * 终止、流标或废标
  */
 export interface EndingSection {
@@ -807,14 +1198,6 @@ export interface Locator {
    */
   block_end?: number;
 }
-export interface Region {
-  /**
-   * GB/T 2260 行政区划代码
-   */
-  code: string;
-  name_raw?: string;
-  prov: Provenance;
-}
 /**
  * 采购标的
  */
@@ -827,15 +1210,7 @@ export interface Item {
   brand_required?: Text;
   model_required?: Text;
   unit_price?: Money;
-}
-export interface Quantity {
-  value: Decimal;
-  /**
-   * 归一单位
-   */
-  unit?: string;
-  unit_raw?: string;
-  prov: Provenance;
+  unit_price_unit?: Text;
 }
 /**
  * 本公告中出现的一个标包
@@ -894,10 +1269,19 @@ export interface Requirement {
     | "technical"
     | "other";
   /**
-   * 归一的资质或要求代码；无法归一时省略，不使用 null
+   * 归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme 的代码按行业包默认资质体系解释，不能跨体系比较
    */
   code?: string;
   text: Text;
+  /**
+   * 代码所属体系（平台登记，如 qual:mohurd-construction；平台登记体系与映射，不自称拥有外部标准）；只与 code 一起出现
+   */
+  code_scheme?: string;
+  /**
+   * 体系版本；只与 code_scheme 一起出现
+   */
+  code_scheme_version?: string;
+  grade_required?: Text;
 }
 /**
  * evidence 把原始制品（HTML、PDF、Office、扫描件）转换后的统一文档表示，存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是证据定位的坐标系：解析器只读取规范化文档，字段溯源以块序号与字符区间定位。
@@ -989,6 +1373,30 @@ export interface ProjectLot {
   shortlisted_suppliers?: BidResult[];
 }
 /**
+ * 结构化证据：指向某个快照在某个处理管线版本下的结构化记录集中一条记录的一个字段。与文档证据（evidence-ref）共用 ev_ 标识空间，由 evidence 分配，字段溯源（provenance.evidence_ref）可直接引用（草案）。
+ */
+export interface RecordEvidenceRef {
+  id: string;
+  /**
+   * 证据形态；文档证据（evidence-ref 1.0）不带本字段
+   */
+  kind: "record";
+  snapshot_ref: string;
+  pipeline_version: string;
+  /**
+   * structured-record 中记录的 key
+   */
+  record_key: string;
+  /**
+   * 记录 data 内的 JSON Pointer（RFC 6901）；空串表示整条记录
+   */
+  field_path: string;
+  /**
+   * 被引用取值按 RFC 8785 规范化后的哈希，用于校验定位未漂移
+   */
+  value_hash: string;
+}
+/**
  * 内部可信边界的请求上下文；Base64URL无填充编码JSON；不接受外部请求提供的此头。
  */
 export interface RequestContext {
@@ -1027,12 +1435,53 @@ export interface TenantMeta {
   updated_at: string;
   [k: string]: unknown;
 }
+export interface StructuredRecord {
+  /**
+   * 记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）
+   */
+  key: string;
+  /**
+   * 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value
+   */
+  data: {
+    [k: string]: RecordValue;
+  };
+}
 /**
- * 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱 prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_ 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为 prg_。version 为被引用对象在求值或判断时的版本，domain_fact 必填；实体图谱对象的版本语义尚未定义，暂为可选。part_id 指向对象内部的求值单位（如采购项目的标包 lot_）。
+ * evidence 把结构化来源制品（接口响应、数据下载的 JSON/CSV/XML 文件）转换后的统一记录表示，与规范化文档并列存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是结构化证据的坐标系：解析器读取记录集，字段溯源以记录键加字段路径定位（record-evidence-ref）。网页、PDF、Office 文档及其中的表格仍走规范化文档，不转成记录集（草案，规则见 docs/03-architecture/subsystems/evidence.md 第 4 节与 ADR-0011）。
  */
-export interface SubjectRef {
-  type: SubjectType;
-  id: UlidId;
-  version?: number;
-  part_id?: UlidId;
+export interface StructuredRecordSet {
+  snapshot_ref: string;
+  /**
+   * 结构化处理管线标识与版本（字符集解码、格式转换、记录键规则）
+   */
+  pipeline_version: string;
+  /**
+   * 原始制品格式；表格文件以 CSV 形式导出时记为 text_csv
+   */
+  media_type: "application_json" | "text_csv" | "application_xml";
+  source_url?: string;
+  /**
+   * 记录键的生成规则说明（例如“统一社会信用代码+处罚决定书文号”）；同一来源对象在不同快照中按同一规则生成，使字段可跨快照对比
+   */
+  key_rule?: string;
+  /**
+   * 记录键在一个记录集内唯一（由 SDK 校验）
+   */
+  records: StructuredRecord[];
+}
+/**
+ * 多对象目标的对象集合（一组跟踪企业、集团的全部成员、一个市场内的组织等）。kind 说明集合如何定义；resolved 记录本次求值、研究或简报实际使用的成员，动态集合据此恢复当次成员，不按当前成员重算
+ */
+export interface SubjectSet {
+  /**
+   * tenant_list 为 customer-context 的租户实体清单；group 为以 ref 所指组织为根、按实体图谱控制关系展开的集团成员；market 为租户市场 mkt_ 范围内的对象；explicit 为用户逐个指定
+   */
+  kind: "tenant_list" | "group" | "market" | "explicit";
+  /**
+   * kind=tenant_list 时的清单种类
+   */
+  list_kind?: "customers" | "partners" | "competitors" | "blocked" | "tracked" | "counterparties";
+  ref?: SubjectRef;
+  resolved: MembershipSnapshot;
 }

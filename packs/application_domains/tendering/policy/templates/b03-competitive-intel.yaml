@@ -3,7 +3,7 @@
 # 竞争对手名单是租户私有实体清单 lists.competitors。
 template:
   id: TPL-TENDER-B03-COMPETE
-  version: 0.2.0
+  version: 0.2.1
   objective: APP-TENDER.B03
   roles: [ROLE-BIDDER, ROLE-MFR, ROLE-PRIME, ROLE-INVESTOR]
   fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change]
@@ -75,7 +75,7 @@ template:
         fact: { result_type: awarded, location: "330106", categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }],
                 amount: { value: "6000000", currency: CNY }, buyer: { org_id: org_b1 },
                 winner: { org_id: org_c1 }, org_ids: [org_b1, org_c1] }
-        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        profile: { org_ids: [org_me], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { competitors: [org_c1], customers: [org_b1] }
       expect: pursue_candidate
     - name: 竞争对手在其他区域、其他品类中标
@@ -83,6 +83,6 @@ template:
         fact: { result_type: awarded, location: "440300", categories: [{ scheme: "industry:it", code: CAT-IT-SW }],
                 amount: { value: "800000", currency: CNY }, buyer: { org_id: org_b9 },
                 winner: { org_id: org_c1 }, org_ids: [org_b9, org_c1] }
-        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        profile: { org_ids: [org_me], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { competitors: [org_c1], customers: [] }
       expect: review_candidate

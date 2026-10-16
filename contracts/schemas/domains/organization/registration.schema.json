@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/organization/registration.schema.json",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "title": "OrgRegistration 企业登记信息",
   "description": "一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。",
   "type": "object",

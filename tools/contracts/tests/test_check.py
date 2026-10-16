@@ -43,6 +43,19 @@ def test_schema_rules(sandbox, monkeypatch, capsys, rule, mutate):
     ("P4", "packs/application_domains/tendering/policy/templates/a01-direct-bid.yaml", "reason: BLOCKED_BUYER", "reason: NOT_A_CODE"),
     ("P6", "packs/application_domains/tendering/policy/views.yaml", "- tendering.deadline.changed.v1", "- tendering.deadline.moved.v1"),
     ("E2", "contracts/events/org/events.asyncapi.yaml", "name: org.change.recorded.v1", "name: credit.change.recorded.v1"),
+    ("P8", "packs/information_domains/procurement/relationships.yaml", "to_path: lots[*].bid_results[*].awarded_items[*].brand", "to_path: lots[*].bid_results[*].awarded_items[*].brand_required"),
+    ("P8", "packs/information_domains/procurement/relationships.yaml", "    to: brand\n", "    to: lot\n"),
+    ("P8", "packs/information_domains/procurement/relationships.yaml", "        resolve: { from_path: part_of }\n", ""),
+    ("P8", "packs/information_domains/investment_projects/relationships.yaml", "        to_path: investment_project_id\n\n", "        to_path: investment_project_id\n        resolve: { to_path: part_of }\n\n"),
+    ("P8", "packs/information_domains/procurement/relationships.yaml", "qualifiers: [domain_fact, lot]\n    validity: event\n    sources:\n      - schema: contracts/schemas/domains/procurement/notice.schema.json\n        from_path: project_id", "qualifiers: [domain_fact]\n    validity: event\n    sources:\n      - schema: contracts/schemas/domains/procurement/notice.schema.json\n        from_path: project_id"),
+    ("P8", "packs/information_domains/investment_projects/relationships.yaml", "- type: constructed_by", "- type: designed_by"),
+    ("P8", "packs/information_domains/investment_projects/relationships.yaml", "    from: project\n    to: organization\n    qualifiers: [domain_fact]\n    validity: event\n    sources:\n      - schema: contracts/schemas/domains/investment/record.schema.json\n        from_path: investment_project_id\n        to_path: construction_permit.designer", "    from: domain_fact\n    to: organization\n    qualifiers: [domain_fact]\n    validity: event\n    sources:\n      - schema: contracts/schemas/domains/investment/record.schema.json\n        from_path: investment_project_id\n        to_path: construction_permit.designer"),
+    ("P9", "packs/application_domains/tendering/coverage.yaml", "stage: M2, task: M2-P4, note: 首条验证旅程", "stage: M2, task: M2-P99, note: 首条验证旅程"),
+    ("P9", "packs/application_domains/tendering/coverage.yaml", "frameworks: [AF-TENDER-SUPPLY]\n", "frameworks: [AF-TENDER-NOPE]\n"),
+    ("P9", "packs/application_domains/tendering/coverage.yaml", "entry: { defined: [TPL-TENDER-A02-SUPPLY] }", "entry: { defined: [TPL-TENDER-B03-COMPETE] }"),
+    ("P9", "packs/application_domains/tendering/coverage.yaml", "research_templates: [RT-TENDER-MARKET]", "research_templates: []"),
+    ("P9", "packs/application_domains/tendering/coverage.yaml", "objective: APP-TENDER.D02", "objective: APP-TENDER.D01"),
+    ("P9", "packs/application_domains/tendering/coverage.yaml", "entry: { none: 由 A01 资格缺口衔接或用户发起，不由信号直接进入 }", "entry: { none: '' }"),
 ])
 def test_text_rules(sandbox, monkeypatch, capsys, rule, rel, old, new):
     p = sandbox / rel
@@ -90,3 +103,50 @@ def test_replace_missing_fixture_path_is_not_a_negative_control():
     from mqc.fixtures import _apply
     with pytest.raises(ValueError, match='目标不存在'):
         _apply({}, {'op':'replace','path':'/missing','value':1})
+
+
+ELIG = """framework:
+  id: AF-TENDER-ELIG
+  version: 0.1.0
+  subject_types: [procurement_project]
+  research: [RT-TENDER-ELIG]
+  dimensions:
+    - id: qualification
+      kind: hard_gate
+      say: 资质要求全部满足
+      when: '!features.qualification_gap'
+    - id: summary
+      kind: ai_summary
+      say: 资格缺口与可补方式
+"""
+
+
+def _define_elig(sandbox, body):
+    pack_dir = sandbox / "packs/application_domains/tendering"
+    (pack_dir / "frameworks").mkdir()
+    (pack_dir / "frameworks/af-elig.yaml").write_text(body, encoding="utf-8")
+    p = pack_dir / "pack.yaml"
+    p.write_text(p.read_text(encoding="utf-8").replace(
+        "    coverage: coverage.yaml\n", "    coverage: coverage.yaml\n    frameworks: [frameworks/af-elig.yaml]\n"), encoding="utf-8")
+    c = pack_dir / "coverage.yaml"
+    c.write_text(c.read_text(encoding="utf-8").replace(
+        "AF-TENDER-ELIG:    { pending: { stage: M2, task: M2-P2, note: A01 规则型资格判断 } }",
+        "AF-TENDER-ELIG:    { defined: [AF-TENDER-ELIG] }"), encoding="utf-8")
+
+
+def test_definition_file_accepted(sandbox, monkeypatch, capsys):
+    _define_elig(sandbox, ELIG)
+    code, out = run_check(sandbox, monkeypatch, capsys)
+    assert code == 0, out.err
+
+
+@pytest.mark.parametrize("old,new", [
+    ("      when: '!features.qualification_gap'\n", ""),          # 硬门槛缺条件
+    ("research: [RT-TENDER-ELIG]", "research: [RT-TENDER-NOPE]"),  # 未登记的研究模板
+    ("id: AF-TENDER-ELIG", "id: AF-TENDER-BID"),                    # 矩阵标为已定义的框架没有定义文件
+])
+def test_definition_file_rules(sandbox, monkeypatch, capsys, old, new):
+    assert old in ELIG
+    _define_elig(sandbox, ELIG.replace(old, new, 1))
+    code, out = run_check(sandbox, monkeypatch, capsys)
+    assert code == 1 and " P9 " in out.err

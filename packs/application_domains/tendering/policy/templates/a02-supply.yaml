@@ -2,7 +2,7 @@
 # 业务流程见 docs/02-business/application-domains/tendering/03-business-processes.md 2.2。
 template:
   id: TPL-TENDER-A02-SUPPLY
-  version: 0.2.0
+  version: 0.3.0
   objective: APP-TENDER.A02
   roles: [ROLE-MFR, ROLE-DEALER, ROLE-SUBCON]
   fact_types: [tendering.bid_result, tendering.contract_record, investment.construction_permit]
@@ -38,8 +38,8 @@ template:
 
   exclude:
     - id: X-SELF
-      say: 我方即中标方（由履约跟踪处理）
-      when: fact.winner.org_id == profile.org_id
+      say: 我方任一主体即中标方（由履约跟踪处理）
+      when: fact.winner.org_id in profile.org_ids
       reason: SELF_IS_WINNER
     - id: X-BLOCKED
       say: 中标方在禁合作名单
@@ -102,7 +102,7 @@ template:
                 amount: { value: "18000000", currency: CNY }, winner: { org_id: org_p1, credit_flags: [],
                 history_categories: [], supplied_brand_owners: [] } }
         event: { type: tendering.result.published.v1 }
-        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        profile: { org_ids: [org_me], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { customers: [org_p1], blocked: [], competitors: [] }
       expect: pursue_candidate
     - name: 中标方有失信记录
@@ -112,7 +112,7 @@ template:
                 winner: { org_id: org_p2, credit_flags: [{ record_type: dishonest, resolved: false }],
                           history_categories: [], supplied_brand_owners: [] } }
         event: { type: tendering.result.published.v1 }
-        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        profile: { org_ids: [org_me], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { customers: [], blocked: [], competitors: [] }
       expect: review_candidate
     - name: 候选人公示进入观察
@@ -120,6 +120,15 @@ template:
         fact: { result_type: candidate_published, location: "330106", categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }],
                 winner: { org_id: org_p1 } }
         event: { type: tendering.result.published.v1 }
-        profile: { org_id: org_me, offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        profile: { org_ids: [org_me], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
         lists: { customers: [], blocked: [], competitors: [] }
       expect: watch_signal
+    - name: 中标方是我方另一主体
+      given:
+        fact: { result_type: awarded, location: "330106", categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }],
+                amount: { value: "18000000", currency: CNY }, winner: { org_id: org_me2, credit_flags: [],
+                history_categories: [], supplied_brand_owners: [] } }
+        event: { type: tendering.result.published.v1 }
+        profile: { org_ids: [org_me, org_me2], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"] }
+        lists: { customers: [], blocked: [], competitors: [] }
+      expect: excluded

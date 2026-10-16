@@ -1,0 +1,32 @@
+schema: evidence/derivation-evidence-ref.schema.json
+base:
+  id: ev_01JA8ZXXXXXXXXXXXXXXXXXXX3
+  kind: derivation
+  transform: "procurement.deadline-from-duration@0.1.0"
+  inputs:
+    - evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX4
+      fact_ref: { id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1, version: 2 }
+      field_path: /published_at
+    - evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX5
+  reference_data:
+    - { name: cn-holidays, version: "2026" }
+  value_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+cases:
+  - name: 无输入
+    valid: false
+    patch: [{ op: replace, path: /inputs, value: [] }]
+  - name: 输入缺证据
+    valid: false
+    patch: [{ op: remove, path: /inputs/1/evidence_ref }]
+  - name: 固定事实版本须指明字段
+    valid: false
+    patch: [{ op: remove, path: /inputs/0/field_path }]
+  - name: 事实版本须为正整数
+    valid: false
+    patch: [{ op: replace, path: /inputs/0/fact_ref/version, value: 0 }]
+  - name: 转换缺版本
+    valid: false
+    patch: [{ op: replace, path: /transform, value: procurement.deadline-from-duration }]
+  - name: 不带参考数据
+    valid: true
+    patch: [{ op: remove, path: /reference_data }]

@@ -454,3 +454,75 @@ cases:
         prov: *id007
       judicial_outcome:
       - value: 法院未解除合同并判部分付款
+- name: 资质要求带代码体系、版本与等级
+  valid: true
+  patch:
+  - op: add
+    path: /lots/0/requirements
+    value:
+    - id: req_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      kind: qualification
+      code: MUNI-GEN-CONTRACT
+      code_scheme: qual:mohurd-construction
+      code_scheme_version: '2024'
+      grade_required:
+        value: 二级及以上
+        prov: *id001
+      text:
+        value: 具备市政公用工程施工总承包二级及以上资质
+        prov: *id001
+- name: 资质代码体系格式错误
+  valid: false
+  patch:
+  - op: add
+    path: /lots/0/requirements
+    value:
+    - id: req_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      kind: qualification
+      code: MUNI-GEN-CONTRACT
+      code_scheme: 住建部资质
+      text:
+        value: 具备市政公用工程施工总承包资质
+        prov: *id001
+- name: 合同标的明细
+  valid: true
+  patch:
+  - op: replace
+    path: /notice_type
+    value: contract
+  - op: add
+    path: /contract
+    value:
+      id: ctr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      supplier: *id002
+      amount:
+        value: '3100000'
+        currency: CNY
+        prov: *id001
+      items:
+      - name:
+          value: PE 给水管 DN200
+          prov: *id001
+        item_id: itm_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        brand:
+          value: 某牌
+          prov: *id001
+        unit_price:
+          value: '185'
+          currency: CNY
+          prov: *id001
+        unit_price_unit:
+          value: 米
+          prov: *id001
+- name: 交付地区划
+  valid: true
+  patch:
+  - op: add
+    path: /lots/0/conditions
+    value:
+      delivery_location:
+        value: 杭州市西湖区指定地点
+        prov: *id001
+      delivery_region:
+        code: '330106'
+        prov: *id001

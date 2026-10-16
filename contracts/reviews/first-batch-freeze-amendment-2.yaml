@@ -1,0 +1,43 @@
+status: amended
+amends: contracts/reviews/first-batch-freeze.yaml
+amended_at: '2026-10-16T07:30:00+00:00'
+approval:
+  authority: 项目负责人 2026-10-16 在决策卡选择“第二批结束时登记”；本记录随 PR #11 提交，经项目负责人确认合并后生效
+reason: >-
+  任务书 v0.3 第二批（PR #11）对 C4b 冻结契约做了追加式修改：中标标的明细、资质代码体系与等级、区划版本与地点角色、
+  归属边事件等，全部为可选字段或新增消息，mqc compat 对基线 3fb7cbb 判定 breaking 0，并已按规则升小版本。
+  这里把第二批结束时的内容登记为新基线；原冻结记录不改。更早已升版本但不属于第二批的文件
+  （contracts/identifiers.yaml 1.1.0、contracts/events/tendering/events.asyncapi.yaml 1.0.1）不在本次登记范围，
+  仍按原记录与版本号核对。
+files:
+- path: contracts/schemas/common/types.schema.json
+  current_version: 1.1.0
+  sha256: 3de07526cfc9cebecff3bbc3cd383e46f83c9d1291394059f1b53d598af3a54d
+- path: contracts/schemas/domains/procurement/defs.schema.json
+  current_version: 1.1.0
+  sha256: 9418c59283d4a4329e7c1bb55a04feef3f3e0cb663d878bc58fab2ea16edbfc8
+- path: contracts/schemas/domains/procurement/notice.schema.json
+  current_version: 1.1.0
+  sha256: 487b99b166573387bc78de4fab2473f5119822dcbc19f8bbc06f1704112ba8c7
+- path: contracts/schemas/domains/procurement/procurement-project.schema.json
+  current_version: 1.1.0
+  sha256: 22c7129e21d781ccc010113a180fd52498cb561d13e220dd8ff057db54c95936
+- path: contracts/schemas/domains/organization/registration.schema.json
+  current_version: 1.1.0
+  sha256: e6c0e27a50ebf70be9990f81a6560f4d603d0a8b925fc50aa3d9b5e083742692
+- path: contracts/events/entity/events.asyncapi.yaml
+  current_version: 1.2.0
+  sha256: 6f02e8715a76205cb79fe913a48634537c05be30a94f34e1da9d96952c427938
+version_owners:
+- path: packs/information_domains/procurement/pack.yaml
+  version: 1.1.0
+  sha256: b8d77ee7cc279fbebe3a18ad5b9bd594a14c53e8d2469d2d22e0ecb5f7bfbd68
+verification:
+  base: 3fb7cbb
+  commands:
+  - mqc check
+  - mqc compat --base origin/main（breaking 0）
+  - mqc freeze-check
+  - mqc generate --check
+  - Go/Python 契约往返与 TypeScript 类型检查
+  review: newcodebook 对 d00a184 复审通过（PR #11 评论 6207003505）

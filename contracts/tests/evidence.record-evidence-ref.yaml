@@ -1,0 +1,25 @@
+schema: evidence/record-evidence-ref.schema.json
+base:
+  id: ev_01JA8ZXXXXXXXXXXXXXXXXXXX2
+  kind: record
+  snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX2
+  pipeline_version: "rec.json@0.1.0"
+  record_key: "91110000000000000X|某市监罚〔2026〕12号"
+  field_path: /amount
+  value_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+cases:
+  - name: 缺形态
+    valid: false
+    patch: [{ op: remove, path: /kind }]
+  - name: 形态与结构不符
+    valid: false
+    patch: [{ op: replace, path: /kind, value: derivation }]
+  - name: 整条记录
+    valid: true
+    patch: [{ op: replace, path: /field_path, value: "" }]
+  - name: 字段路径不是 JSON Pointer
+    valid: false
+    patch: [{ op: replace, path: /field_path, value: amount }]
+  - name: 字段名含转义
+    valid: true
+    patch: [{ op: replace, path: /field_path, value: "/a~1b/0" }]

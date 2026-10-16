@@ -104,6 +104,12 @@ class Cell(BaseModel):
     )
 
 
+class Kind1(Enum):
+    previous_period = "previous_period"
+    same_period_last_year = "same_period_last_year"
+    custom = "custom"
+
+
 class Role(Enum):
     buyer = "buyer"
     agency = "agency"
@@ -111,6 +117,26 @@ class Role(Enum):
     project_owner = "project_owner"
     technical_support = "technical_support"
     supervisor = "supervisor"
+
+
+class OrgId(RootModel[constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")]):
+    root: constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+class OfferingCategory(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
+class ServiceRegion(RootModel[constr(pattern=r"^[0-9]{6}$")]):
+    root: constr(pattern=r"^[0-9]{6}$")
+
+
+class Brand(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
+
+
+class UnitChainItem(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
 
 
 class AmountKind(Enum):
@@ -183,6 +209,10 @@ class EndingType(Enum):
     terminated = "terminated"
     failed_bid = "failed_bid"
     voided = "voided"
+
+
+class QualificationsPendingItem(RootModel[constr(min_length=1)]):
+    root: constr(min_length=1)
 
 
 class EvaluationMethod(Enum):
@@ -436,7 +466,7 @@ class OrgEnterpriseType(Enum):
     other = "other"
 
 
-class Kind1(Enum):
+class Kind2(Enum):
     organization = "organization"
     natural_person = "natural_person"
 
@@ -447,6 +477,29 @@ class OrgStatus(Enum):
     revoked = "revoked"
     cancelled = "cancelled"
     moved_out = "moved_out"
+
+
+class Granularity(Enum):
+    day = "day"
+    week = "week"
+    month = "month"
+    quarter = "quarter"
+    year = "year"
+    custom = "custom"
+
+
+class Period(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    start: AwareDatetime
+    end: AwareDatetime
+    granularity: Granularity | None = None
+    time_basis: constr(pattern=r"^[a-z][a-z0-9_.]*$") = Field(
+        ...,
+        description="归入期间所依据的事实时间字段（例如结果公告的 published_at、合同的 signed_on），由统计口径声明；不用记录或采集时间代替",
+    )
+    time_zone: str | None = "Asia/Shanghai"
 
 
 class Person(BaseModel):
@@ -551,6 +604,11 @@ class Classification(Enum):
     personal = "personal"
 
 
+class QualificationStatus(Enum):
+    valid = "valid"
+    expired = "expired"
+
+
 class Status1(Enum):
     ok = "ok"
     warning = "warning"
@@ -584,6 +642,44 @@ class Quantity(BaseModel):
     prov: Provenance
 
 
+class RecordEvidenceRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$")
+    kind: Literal["record"] = Field(
+        ..., description="证据形态；文档证据（evidence-ref 1.0）不带本字段"
+    )
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$")
+    record_key: constr(min_length=1) = Field(
+        ..., description="structured-record 中记录的 key"
+    )
+    field_path: constr(pattern=r"^(/([^/~]|~[01])*)*$") = Field(
+        ..., description="记录 data 内的 JSON Pointer（RFC 6901）；空串表示整条记录"
+    )
+    value_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="被引用取值按 RFC 8785 规范化后的哈希，用于校验定位未漂移"
+    )
+
+
+class RecordValue(RootModel["str | bool | list[RecordValue | None] | dict[str, RecordValue]"]):
+    root: str | bool | list[RecordValue | None] | dict[str, RecordValue] = Field(
+        ...,
+        description="记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 在对象中以省略该字段表示（字段缺失即未知），在数组中保留为 null 以保持元素位置（不删除元素）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致",
+    )
+
+
+class ReferenceDataVersion(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: constr(pattern=r"^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$") = Field(
+        ..., description="参考数据标识，例如 gb2260、cn-holidays"
+    )
+    version: constr(min_length=1)
+
+
 class Region(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -593,9 +689,13 @@ class Region(BaseModel):
     )
     name_raw: str | None = None
     prov: Provenance
+    scheme_version: constr(min_length=1) | None = Field(
+        None,
+        description="GB/T 2260 代码表版本（如民政部发布年份 2024）；缺失表示按观察时有效的代码表、版本未知。历史统计保留原代码与版本，跨版本换算是派生数据，另记换算表版本与依据，不改写原值",
+    )
 
 
-class Kind2(Enum):
+class Kind3(Enum):
     user = "user"
     service = "service"
     service_account = "service_account"
@@ -606,7 +706,7 @@ class Principal(BaseModel):
         extra="forbid",
     )
     id: constr(min_length=1)
-    kind: Kind2
+    kind: Kind3
 
 
 class RequestContext(BaseModel):
@@ -622,7 +722,7 @@ class RequestContext(BaseModel):
     purpose: constr(min_length=1) | None = None
 
 
-class Kind3(Enum):
+class Kind4(Enum):
     qualification = "qualification"
     performance = "performance"
     personnel = "personnel"
@@ -675,6 +775,63 @@ class Status2(Enum):
     converted = "converted"
     dismissed = "dismissed"
     closed = "closed"
+
+
+class StructuredRecord(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    key: constr(min_length=1) = Field(
+        ...,
+        description="记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）",
+    )
+    data: dict[str, RecordValue] = Field(
+        ...,
+        description="记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value",
+    )
+
+
+class MediaType1(Enum):
+    application_json = "application_json"
+    text_csv = "text_csv"
+    application_xml = "application_xml"
+
+
+class StructuredRecordSet(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
+        ..., description="结构化处理管线标识与版本（字符集解码、格式转换、记录键规则）"
+    )
+    media_type: MediaType1 = Field(
+        ..., description="原始制品格式；表格文件以 CSV 形式导出时记为 text_csv"
+    )
+    source_url: str | None = None
+    key_rule: constr(min_length=1) | None = Field(
+        None,
+        description="记录键的生成规则说明（例如“统一社会信用代码+处罚决定书文号”）；同一来源对象在不同快照中按同一规则生成，使字段可跨快照对比",
+    )
+    records: list[StructuredRecord] = Field(
+        ..., description="记录键在一个记录集内唯一（由 SDK 校验）"
+    )
+
+
+class Kind5(Enum):
+    tenant_list = "tenant_list"
+    group = "group"
+    market = "market"
+    explicit = "explicit"
+
+
+class ListKind(Enum):
+    customers = "customers"
+    partners = "partners"
+    competitors = "competitors"
+    blocked = "blocked"
+    tracked = "tracked"
+    counterparties = "counterparties"
 
 
 class SubjectType(Enum):
@@ -770,6 +927,24 @@ class EndingSection(BaseModel):
     reason: Text | None = None
 
 
+class EntityQualifications(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    qualifications: dict[str, QualificationStatus] = Field(
+        ...,
+        description="资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系",
+    )
+    qualifications_pending: list[QualificationsPendingItem] = Field(
+        ...,
+        description="待核对的资质代码（来源观察冲突，等待 can_edit_profile 成员确认）",
+        max_length=20,
+    )
+    qualifications_complete: bool = Field(
+        ..., description="该主体已声明“资质已录全”（写入档案版本与审计）"
+    )
+
+
 class EvidenceRef(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -780,6 +955,17 @@ class EvidenceRef(BaseModel):
     locator: Locator
     quote_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
         ..., description="被引用原文片段的哈希，用于校验定位未漂移"
+    )
+
+
+class FactVersionRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: UlidId
+    version: conint(ge=1) = Field(
+        ...,
+        description="领域事实版本号（public_fact_meta.version），固定引用，不随当前版本指针变化",
     )
 
 
@@ -844,7 +1030,7 @@ class OrgShareholder(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    kind: Kind1
+    kind: Kind2
     org: OrgRef | None = None
     person: Person | None = None
     share_ratio: constr(pattern=r"^(0(\.[0-9]+)?|1(\.0+)?)$") | None = Field(
@@ -871,6 +1057,7 @@ class ProcurementConditions(BaseModel):
     agent_participation: Text | None = None
     contract_pricing: Text | None = None
     planned_publication: Text | None = None
+    delivery_region: Region | None = None
 
 
 class PublicFactMeta(BaseModel):
@@ -903,11 +1090,20 @@ class Requirement(BaseModel):
         extra="forbid",
     )
     id: constr(pattern=r"^req_[0-9A-HJKMNP-TV-Z]{26}$")
-    kind: Kind3
+    kind: Kind4
     code: str | None = Field(
-        None, description="归一的资质或要求代码；无法归一时省略，不使用 null"
+        None,
+        description="归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme 的代码按行业包默认资质体系解释，不能跨体系比较",
     )
     text: Text
+    code_scheme: constr(pattern=r"^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$") | None = Field(
+        None,
+        description="代码所属体系（平台登记，如 qual:mohurd-construction；平台登记体系与映射，不自称拥有外部标准）；只与 code 一起出现",
+    )
+    code_scheme_version: constr(min_length=1) | None = Field(
+        None, description="体系版本；只与 code_scheme 一起出现"
+    )
+    grade_required: Text | None = None
 
 
 class SubjectRef(BaseModel):
@@ -950,6 +1146,24 @@ class AcceptanceSection(BaseModel):
     )
 
 
+class AwardedItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    item_id: constr(pattern=r"^itm_[0-9A-HJKMNP-TV-Z]{26}$") | None = Field(
+        None, description="能一一对应时引用要求侧标的；无法对应或原文未列要求标的时省略"
+    )
+    name: Text
+    categories: list[Category] | None = None
+    spec: Text | None = None
+    brand: Text | None = None
+    model: Text | None = None
+    manufacturer: OrgRef | None = None
+    quantity: Quantity | None = None
+    unit_price: Money | None = None
+    unit_price_unit: Text | None = None
+
+
 class BidResult(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -971,6 +1185,11 @@ class BidResult(BaseModel):
         None, description="报价金额含义；年单价合计、单价和估算额不得当项目总成交额"
     )
     price_kind_prov: Provenance | None = None
+    awarded_items: list[AwardedItem] | None = Field(
+        None,
+        description="该投标人中标或成交的标的明细（原文列出时）；缺失表示原文未列或未标注，不推断为与要求标的相同",
+        min_length=1,
+    )
 
 
 class Contact(BaseModel):
@@ -985,6 +1204,50 @@ class Contact(BaseModel):
     name_prov: Provenance | None = None
     phone_prov: Provenance | None = None
     email_prov: Provenance | None = None
+
+
+class ContextPolicyView(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    org_ids: list[OrgId] | None = Field(
+        None,
+        description="我方主体（集团客户的多个法人）。尚未关联本企业时不出现（不用空列表）：依赖它的条件读取不存在的字段为未知，例如“拟定供应商不是我方”不能成立",
+        max_length=10,
+        min_length=1,
+    )
+    offering_categories: list[OfferingCategory] = Field(
+        ..., description="行业包分类体系的品类代码"
+    )
+    service_regions: list[ServiceRegion] = Field(
+        ..., description="GB/T 2260 行政区划代码；上级包含全部下级"
+    )
+    brands: list[Brand] = Field(..., description="自有或授权的品牌")
+    entities: dict[str, EntityQualifications] | None = Field(
+        None,
+        description="我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部 org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现",
+    )
+
+
+class ContextSnapshot(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tenant_id: constr(pattern=r"^tnt_[0-9A-HJKMNP-TV-Z]{26}$")
+    org_unit_id: constr(min_length=1) = Field(
+        ...,
+        description="目标所在的组织单元（identity 的 OrgUnit；标识前缀随 identity 契约登记）",
+    )
+    context_version: conint(ge=1) = Field(
+        ...,
+        description="租户上下文版本；档案、清单与单元覆盖的每次提交在同一事务中递增",
+    )
+    unit_chain: list[UnitChainItem] = Field(
+        ...,
+        description="合成所用的单元链，从目标所在单元到根单元；逐项取值时未覆盖继承上级，显式空集合不继承",
+        min_length=1,
+    )
+    policy_view: ContextPolicyView
 
 
 class ContractSection(BaseModel):
@@ -1005,6 +1268,9 @@ class ContractSection(BaseModel):
     )
     conditions: ProcurementConditions | None = None
     amount_kind_prov: Provenance | None = None
+    items: list[AwardedItem] | None = Field(
+        None, description="合同标的明细（原文列出时）", min_length=1
+    )
 
 
 class Enforcement(BaseModel):
@@ -1043,6 +1309,20 @@ class Deadline(BaseModel):
     id: constr(pattern=r"^ddl_[0-9A-HJKMNP-TV-Z]{26}$")
     type: Type
     at: Instant
+
+
+class DerivationInput(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    evidence_ref: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
+        ...,
+        description="该输入取值的证据；输入来自领域事实字段时为该版本中该字段的 provenance.evidence_ref。证据链沿派生证据向下必须无环，末端都是文档证据或记录证据",
+    )
+    fact_ref: FactVersionRef | None = None
+    field_path: constr(pattern=r"^(/([^/~]|~[01])*)*$") | None = Field(
+        None, description="fact_ref 所指事实内的 JSON Pointer"
+    )
 
 
 class ConstructionPermit(BaseModel):
@@ -1109,6 +1389,7 @@ class Item(BaseModel):
     brand_required: Text | None = None
     model_required: Text | None = None
     unit_price: Money | None = None
+    unit_price_unit: Text | None = None
 
 
 class LotSection(BaseModel):
@@ -1140,6 +1421,57 @@ class LotSection(BaseModel):
     project_owner: OrgRef | None = None
     estimated_contract_amount: Money | None = None
     ending: EndingSection | None = None
+
+
+class MembershipSnapshot1(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    as_of: AwareDatetime = Field(
+        ...,
+        description="成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系",
+    )
+    source_version: constr(min_length=1) = Field(
+        ...,
+        description="成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本",
+    )
+    member_count: conint(ge=0)
+    members: list[SubjectRef] = Field(..., max_length=200)
+    members_object: constr(min_length=1) | None = Field(
+        None, description="成员清单的对象存储键（不含签名地址）"
+    )
+    members_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="按成员标识排序后的清单哈希"
+    )
+
+
+class MembershipSnapshot2(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    as_of: AwareDatetime = Field(
+        ...,
+        description="成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系",
+    )
+    source_version: constr(min_length=1) = Field(
+        ...,
+        description="成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本",
+    )
+    member_count: conint(ge=0)
+    members: list[SubjectRef] | None = Field(None, max_length=200)
+    members_object: constr(min_length=1) = Field(
+        ..., description="成员清单的对象存储键（不含签名地址）"
+    )
+    members_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="按成员标识排序后的清单哈希"
+    )
+
+
+class MembershipSnapshot(RootModel[MembershipSnapshot1 | MembershipSnapshot2]):
+    root: MembershipSnapshot1 | MembershipSnapshot2 = Field(
+        ...,
+        description="集合在取值时点的实际成员。成员不多于 200 个时内联 members；更多时存对象存储并以 members_object 引用，两者都以 members_hash 校验",
+    )
 
 
 class Notice(PublicFactMeta):
@@ -1313,6 +1645,31 @@ class Signal(TenantMeta):
     update_count: conint(ge=0) = Field(..., description="已追加的 SignalUpdate 数")
 
 
+class SubjectSet(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    kind: Kind5 = Field(
+        ...,
+        description="tenant_list 为 customer-context 的租户实体清单；group 为以 ref 所指组织为根、按实体图谱控制关系展开的集团成员；market 为租户市场 mkt_ 范围内的对象；explicit 为用户逐个指定",
+    )
+    list_kind: ListKind | None = Field(
+        None, description="kind=tenant_list 时的清单种类"
+    )
+    ref: SubjectRef | None = None
+    resolved: MembershipSnapshot
+
+
+class Comparison(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    kind: Kind1
+    baseline: Period
+    baseline_members: MembershipSnapshot | None = None
+    baseline_ref: UlidId | None = None
+
+
 class Rating(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1342,6 +1699,30 @@ class CreditRecord(PublicFactMeta):
     persons: list[Person] | None = None
 
 
+class DerivationEvidenceRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$")
+    kind: Literal["derivation"]
+    transform: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
+        ...,
+        description="转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果",
+    )
+    inputs: list[DerivationInput] = Field(
+        ...,
+        description="按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本",
+        max_length=64,
+        min_length=1,
+    )
+    reference_data: list[ReferenceDataVersion] | None = Field(
+        None, description="转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）"
+    )
+    value_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="派生取值按 RFC 8785 规范化后的哈希"
+    )
+
+
 class ProcurementProject(PublicFactMeta):
     id: constr(pattern=r"^pp_[0-9A-HJKMNP-TV-Z]{26}$")
     info_domain: Literal["INF-PROC"]
@@ -1353,7 +1734,10 @@ class ProcurementProject(PublicFactMeta):
     project_code: Text | None = None
     approval_code: Text | None = None
     investment_project_id: constr(pattern=r"^prj_[0-9A-HJKMNP-TV-Z]{26}$") | None = (
-        Field(None, description="所属投资项目（entity-graph 的 Project 实体）")
+        Field(
+            None,
+            description="所属投资项目（entity-graph 的 Project 实体）的便捷字段：仅在整个采购项目归属唯一、已确认的投资项目时出现。归属以 entity-graph 的 part_of 归属边为准（可按标包、可归属多个项目、可修订撤销），时间线与项目链按归属边查询，不以本字段为不变量",
+        )
     )
     buyer: OrgRef
     agency: OrgRef | None = None
@@ -1363,3 +1747,6 @@ class ProcurementProject(PublicFactMeta):
     notice_ids: list[NoticeId] = Field(..., description="按发布时间排序", min_length=1)
     first_published_at: Instant | None = None
     lots: list[ProjectLot] = Field(..., min_length=1)
+
+
+RecordValue.model_rebuild()

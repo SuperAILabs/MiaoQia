@@ -1,6 +1,6 @@
 # 业务架构
 
-> 状态：评审中 · 版本：1.1 · 更新：2026-10-15 · 负责人：产品负责人
+> 状态：评审中 · 版本：1.2 · 更新：2026-10-16 · 负责人：产品负责人
 
 本文定义妙洽的业务层级、通用业务旅程、目标对象、角色、决策产物和业务不变量。它是所有应用领域、子系统和数据模型的业务基准。
 
@@ -107,7 +107,7 @@ flowchart TB
 | 关系 | `relationship` | 两个实体间的关系，如采购人与供应商 | 渠道、合作伙伴、竞争格局 |
 | 计划与资金 | `program` | 政策、规划、预算、专项资金 | 前置布局、资金申报 |
 
-目标对象以 `subject_ref = {type, id, version}` 引用，所有租户侧对象都通过它关联到公共域，绝不复制公共数据。结构见 [`intelligence/defs.schema.json`](../../contracts/schemas/intelligence/defs.schema.json)（草案）：`project` 指实体图谱的跨领域项目 `prj_`，采购项目 `pp_`、公告等领域事实一律以 `domain_fact` 引用；`market`、`program` 分别使用 `mkt_`、`prg_`；需要指向对象内部求值单位（如标包）时用 `part_id`。
+目标对象以 `subject_ref = {type, id, version}` 引用。被引用对象的所有者按标识前缀登记（[`identifiers.yaml`](../../contracts/identifiers.yaml)）：项目、组织、关系、计划等公共对象归公共域，引用时不复制公共数据；市场 `mkt_` 是租户定义的对象，归 `customer-context`，由区域、品类、时间窗与主体类型组成，统计时再按这些维度查询公共域的版本化统计。结构见 [`intelligence/defs.schema.json`](../../contracts/schemas/intelligence/defs.schema.json)（草案）：`project` 指实体图谱的跨领域项目 `prj_`，采购项目 `pp_`、公告等领域事实一律以 `domain_fact` 引用；`market`、`program` 分别使用 `mkt_`、`prg_`；需要指向对象内部求值单位（如标包）时用 `part_id`。
 
 ## 4. 两类生命周期
 
@@ -141,7 +141,7 @@ flowchart TB
           └→ 已停止 → 已归档
 ```
 
-持续型路径的职责分工：`pursuit` 管理跟踪计划及其节奏（周期、负责人、暂停/恢复/停止），`detection` 的关注（`Watch`）负责对象变化的监测，`research` 负责每一次具体的研究运行。每期产物（变化简报或研究报告）都是独立记录，引用上一期以支持期间对比；停止跟踪不删除已有产物。持续型路径中的单个事项（例如跟踪中发现的一次投资判断）按交易型状态另行推进。
+持续型路径的职责分工：`pursuit` 管理跟踪计划及其节奏（周期、负责人、暂停/恢复/停止），`detection` 的关注（`Watch`）负责对象变化的监测，`research` 负责每一次具体的研究运行。每期产物（变化简报或研究报告）都是独立记录，引用上一期以支持期间对比；停止跟踪不删除已有产物。每期产物记录三件事：实际期间（左闭右开，滚动窗口换算为实际起止，并写明按哪个事实时间归入期间）、本期实际成员（对象集合在本期结束时点的成员与来源版本，集团成员按该时点有效的控制关系）、对比基准（基准期、基准期成员与所引用的上一期产物）。成员变化后重看旧一期，看到的仍是当期成员，不按当前名单重算；契约类型见 `contracts/schemas/intelligence/defs.schema.json` 的 `subject_set`、`membership_snapshot`、`period`、`comparison`（草案）。持续型路径中的单个事项（例如跟踪中发现的一次投资判断）按交易型状态另行推进。
 
 ### 4.3 两者的关系
 

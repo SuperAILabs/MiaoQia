@@ -1,6 +1,6 @@
 # 策略 DSL
 
-> 状态：评审中 · 版本：1.3 · 更新：2026-10-15 · 负责人：首席架构师、招投标领域负责人
+> 状态：评审中 · 版本：1.4 · 更新：2026-10-15 · 负责人：首席架构师、招投标领域负责人
 
 策略决定“一条领域事实对某个租户的某个商业目标意味着什么”。本文是策略 DSL 的唯一规范：结构、求值语义、CEL 环境、编译与下推、生命周期和限制。机器可读定义放在 `contracts/policy/`（`policy.schema.json` 文档结构、`cel-environment.yaml` 变量、函数、规模上界与限制），与本文一致；编译与求值实现在 `services/kernel/policy`，`customer-context`、`detection`、`learning` 共用。
 
@@ -224,8 +224,8 @@ policy:
 |---|---|---|
 | `fact` | 事实视图：领域事实字段，以及模板声明需要的关联实体属性（如 `fact.winner.org_id`、`fact.buyer.type`） | 信息领域包的领域 Schema + 模板的视图声明 |
 | `event` | 触发事件：`type`、`changed_fields` 等 | 领域事件 |
-| `profile` | 客户上下文快照：产品品类、服务区域、资质、业绩摘要 | `customer-context.GetContextSnapshot` |
-| `lists` | 租户私有实体清单，按种类（见 [customer-context](subsystems/customer-context.md#4-拥有的数据租户域)）为组织标识集合，如 `lists.competitors` | `customer-context` |
+| `profile` | 客户上下文快照（按目标所在组织单元合成）：我方主体 `org_ids`、产品品类、服务区域、品牌，以及按主体的资质状态表 `entities`；字段以[上下文快照契约](../../contracts/schemas/intelligence/context-snapshot.schema.json)为准 | `customer-context.GetContextSnapshot` |
+| `lists` | 租户私有实体清单，按种类（见 [customer-context](subsystems/customer-context.md#4-拥有的数据租户域)）为组织标识集合，如 `lists.competitors`。租户私有关系（`TenantRelationship`，如经销授权的品牌、区域与期限）尚未进入表达式环境；进入时须同时定义其快照（随上下文版本固定）、规模上界与重放语义，不预留变量名 | `customer-context` |
 | `vocab` | 行业包词表与同义词 | 行业包 |
 | `features` | 应用领域包特征函数的计算结果 | 应用领域包 |
 | `params` | 模板参数 | 策略 |
@@ -240,7 +240,7 @@ policy:
 | 函数 | 说明 |
 |---|---|
 | `category.any_match(categories, codes)` | 品类列表（视图 `fact.categories`，来自增强层品类分类；也接受带 `categories` 的标的列表）是否命中品类代码集合（含下级：代码按“-”分级，如 `CAT-PIPE` 含 `CAT-PIPE-PE`）；只比较行业包分类体系（`scheme` 以 `industry:` 开头）的代码，未标明体系或政府采购品目等其他体系不参与。品类置信度经视图证据受 `evidence_policy` 约束，不达标时为未知 |
-| `region.within(location, regions)` | 地点是否在行政区划集合内（含下级：`XX0000` 含全省，`XXXX00` 含全市，`000000` 为全国） |
+| `region.within(location, regions)` | 地点是否在行政区划集合内（含下级：`XX0000` 含全省，`XXXX00` 含全市，`000000` 为全国）。只比较同一代码表版本：事实地点与租户区域的版本不同时，视图组装按版本化换算表换算到租户区域所用版本，无法换算（撤并、拆分无唯一对应）时地点读取为未知；`fact.location` 是项目实施地，交付地、采购人所在地按各自字段与角色另行声明 |
 | `text.contains_any(text, vocab_terms)` | 文本是否包含词表中任一词（含同义词） |
 | `money.cny(amount)` | 金额归一为人民币元；非人民币金额在汇率视图就绪前为未知 |
 | `time.days_between(a, b)` | 从 a 到 b 的整天数（向下取整，可为负） |
@@ -309,7 +309,7 @@ policy:
 | 单次事实求值的运行时成本 | 1 000 000；超出时中止该事实的求值，不产生信号，记录并告警 |
 | 每个租户的激活策略数 | 等于启用的目标数 |
 
-成本单位为 cel-go 成本单位，平台函数的成本模型见 `services/kernel/policy`。初值依据 R1 模板的基准测试：在规模上界下（标的 500 项、清单每种 2 万个组织、词表 1 000 词等），最大静态成本 200 005（`X-TERM`，标题匹配排除词表），最坏运行时成本 207 728，单次求值最坏约 13 ms；样例规模的单次求值为 25–55 µs。静态上限约为 R1 最大值的 2.5 倍，运行时上限约为 5 倍。CI 校验 R1 模板在上限之内。
+成本单位为 cel-go 成本单位，平台函数的成本模型见 `services/kernel/policy`。初值依据 R1 模板的基准测试：在规模上界下（标的 500 项、清单每种 2 万个组织、词表 1 000 词等），最大静态成本 296 074（A01 `features.qualification_gap`，我方主体 10 个 × 资质要求 200 项按主体逐项判断；此前最大为 `X-TERM` 标题匹配排除词表的 200 005），最坏运行时成本 207 728，单次求值最坏约 13 ms；样例规模的单次求值为 25–55 µs。静态上限约为 R1 最大值的 1.7 倍，运行时上限约为 5 倍。CI 校验 R1 模板在上限之内。
 
 安全要求：
 

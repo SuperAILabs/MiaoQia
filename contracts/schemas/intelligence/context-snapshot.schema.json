@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/intelligence/context-snapshot.schema.json",
+  "x-version": "0.1.0",
+  "title": "ContextSnapshot 客户上下文快照",
+  "description": "customer-context.GetContextSnapshot 按（租户、组织单元、上下文版本）返回的合成结果中供策略求值读取的部分（草案；规则见 docs/01-product/prd/02-profile-and-objectives.md F3 与 docs/03-architecture/subsystems/customer-context.md）。policy_view 即策略表达式中的 profile 变量。字段缺失表示未知，不使用 null。",
+  "type": "object",
+  "required": ["tenant_id", "org_unit_id", "context_version", "unit_chain", "policy_view"],
+  "additionalProperties": false,
+  "properties": {
+    "tenant_id": { "type": "string", "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "org_unit_id": { "type": "string", "minLength": 1, "description": "目标所在的组织单元（identity 的 OrgUnit；标识前缀随 identity 契约登记）" },
+    "context_version": { "type": "integer", "minimum": 1, "description": "租户上下文版本；档案、清单与单元覆盖的每次提交在同一事务中递增" },
+    "unit_chain": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "合成所用的单元链，从目标所在单元到根单元；逐项取值时未覆盖继承上级，显式空集合不继承"
+    },
+    "policy_view": { "$ref": "#/$defs/policy_view" }
+  },
+  "$defs": {
+    "qualification_status": {
+      "x-type-name": "QualificationStatus",
+      "enum": ["valid", "expired"],
+      "description": "已判定的资质状态：有效或过期（含双方一致或已确认）。待核对不在此列，单列于 qualifications_pending"
+    },
+    "entity_qualifications": {
+      "x-type-name": "EntityQualifications",
+      "type": "object",
+      "description": "一个我方主体的资质状态表（以 org_id 为键放在 entities 中）。某项资质要求对本主体的判定：在 qualifications 中有效为满足、过期为不具备；在 qualifications_pending 中为未知；都不在时，qualifications_complete 为真则不具备，否则未知。同一代码不同时出现在 qualifications 与 qualifications_pending 中",
+      "required": ["qualifications", "qualifications_pending", "qualifications_complete"],
+      "additionalProperties": false,
+      "properties": {
+        "qualifications": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/qualification_status" },
+          "description": "资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系"
+        },
+        "qualifications_pending": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 20,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "待核对的资质代码（来源观察冲突，等待 can_edit_profile 成员确认）"
+        },
+        "qualifications_complete": { "type": "boolean", "description": "该主体已声明“资质已录全”（写入档案版本与审计）" }
+      }
+    },
+    "policy_view": {
+      "x-type-name": "ContextPolicyView",
+      "type": "object",
+      "description": "策略表达式的 profile 变量。规模上界与 contracts/policy/cel-environment.yaml 的 size_bounds 一致。超出上界时不截断（截断会丢掉我方主体或可满足的主体而误判）：我方主体超过 10 个时省略 org_ids 与 entities，依赖它们的条件为未知；某主体待核对超过 20 项时省略 entities，资质条件为未知；两种情况都告警",
+      "required": ["offering_categories", "service_regions", "brands"],
+      "additionalProperties": false,
+      "properties": {
+        "org_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "type": "string", "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$" },
+          "description": "我方主体（集团客户的多个法人）。尚未关联本企业时不出现（不用空列表）：依赖它的条件读取不存在的字段为未知，例如“拟定供应商不是我方”不能成立"
+        },
+        "offering_categories": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "行业包分类体系的品类代码" },
+        "service_regions": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[0-9]{6}$" }, "description": "GB/T 2260 行政区划代码；上级包含全部下级" },
+        "brands": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "自有或授权的品牌" },
+        "entities": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 10,
+          "propertyNames": { "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$" },
+          "additionalProperties": { "$ref": "#/$defs/entity_qualifications" },
+          "description": "我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部 org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现"
+        }
+      }
+    }
+  }
+}
