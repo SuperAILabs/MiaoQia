@@ -677,7 +677,9 @@ class ReferenceDataVersion(BaseModel):
     name: constr(pattern=r"^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$") = Field(
         ..., description="参考数据标识，例如 gb2260、cn-holidays"
     )
-    version: constr(min_length=1)
+    version: constr(min_length=1) = Field(
+        ..., description="必须对应不可变且可取得的内容；同一版本不得重新发布为不同内容"
+    )
 
 
 class Region(BaseModel):
@@ -1707,11 +1709,11 @@ class DerivationEvidenceRef(BaseModel):
     kind: Literal["derivation"]
     transform: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
         ...,
-        description="转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果",
+        description="转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果。版本固定全部影响结果的依赖：转换参数、时区、舍入与精度规则等，任一变化都发布新版本",
     )
     inputs: list[DerivationInput] = Field(
         ...,
-        description="按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本",
+        description="按转换参数顺序排列。上界是单条派生证据的资源上限，不决定语义：字段派生与统计按计算目的区分，不按输入个数区分。超出上界时登记被拒绝，不截断；字段派生拆成多级，中间结果各自登记派生证据",
         max_length=64,
         min_length=1,
     )

@@ -51,6 +51,8 @@ def test_schema_rules(sandbox, monkeypatch, capsys, rule, mutate):
     ("P8", "packs/information_domains/investment_projects/relationships.yaml", "- type: constructed_by", "- type: designed_by"),
     ("P8", "packs/information_domains/investment_projects/relationships.yaml", "    from: project\n    to: organization\n    qualifiers: [domain_fact]\n    validity: event\n    sources:\n      - schema: contracts/schemas/domains/investment/record.schema.json\n        from_path: investment_project_id\n        to_path: construction_permit.designer", "    from: domain_fact\n    to: organization\n    qualifiers: [domain_fact]\n    validity: event\n    sources:\n      - schema: contracts/schemas/domains/investment/record.schema.json\n        from_path: investment_project_id\n        to_path: construction_permit.designer"),
     ("P9", "packs/application_domains/tendering/coverage.yaml", "stage: M2, task: M2-P4, note: 首条验证旅程", "stage: M2, task: M2-P99, note: 首条验证旅程"),
+    ("P9", "packs/application_domains/tendering/coverage.yaml", "stage: M2, task: M2-P4, note: 首条验证旅程", "stage: M3, task: M2-P4, note: 首条验证旅程"),
+    ("P9", "packs/application_domains/tendering/pack.yaml", "    coverage: coverage.yaml\n", ""),
     ("P9", "packs/application_domains/tendering/coverage.yaml", "frameworks: [AF-TENDER-SUPPLY]\n", "frameworks: [AF-TENDER-NOPE]\n"),
     ("P9", "packs/application_domains/tendering/coverage.yaml", "entry: { defined: [TPL-TENDER-A02-SUPPLY] }", "entry: { defined: [TPL-TENDER-B03-COMPETE] }"),
     ("P9", "packs/application_domains/tendering/coverage.yaml", "research_templates: [RT-TENDER-MARKET]", "research_templates: []"),
