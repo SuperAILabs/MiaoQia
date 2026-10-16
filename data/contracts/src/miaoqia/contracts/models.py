@@ -803,7 +803,6 @@ class EntityQualifications(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    org_id: constr(pattern=r"^org_[0-9A-HJKMNP-TV-Z]{26}$")
     qualifications: dict[str, QualificationStatus] = Field(
         ..., description="资质代码（行业包资质模板）→ 状态"
     )
@@ -1038,10 +1037,11 @@ class ContextPolicyView(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    org_ids: list[OrgId] = Field(
-        ...,
-        description="我方主体（集团客户的多个法人）；空列表表示尚未关联本企业，依赖它的条件按未知或不命中处理",
-        max_length=50,
+    org_ids: list[OrgId] | None = Field(
+        None,
+        description="我方主体（集团客户的多个法人）。尚未关联本企业时不出现（不用空列表）：依赖它的条件读取不存在的字段为未知，例如“拟定供应商不是我方”不能成立",
+        max_length=10,
+        min_length=1,
     )
     offering_categories: list[OfferingCategory] = Field(
         ..., description="行业包分类体系的品类代码"
@@ -1050,11 +1050,9 @@ class ContextPolicyView(BaseModel):
         ..., description="GB/T 2260 行政区划代码；上级包含全部下级"
     )
     brands: list[Brand] = Field(..., description="自有或授权的品牌")
-    entities: list[EntityQualifications] | None = Field(
+    entities: dict[str, EntityQualifications] | None = Field(
         None,
-        description="按主体的资质状态表；未关联本企业时不出现，资质条件为未知",
-        max_length=10,
-        min_length=1,
+        description="我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部 org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现",
     )
 
 

@@ -47,7 +47,7 @@ var (
 		"fact.winner.history_categories":          500,
 		"fact.winner.supplied_brand_owners":       500,
 		"fact.winner.past_buyer_ids":              2000,
-		"profile.org_ids":                         50,
+		"profile.org_ids":                         10,
 		"profile.entities":                        10,
 		"profile.entities.qualifications_pending": 20,
 		"lists":  20000,

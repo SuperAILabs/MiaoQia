@@ -277,23 +277,31 @@ const ContactRoleSupervisor ContactRole = "supervisor"
 const ContactRoleTechnicalSupport ContactRole = "technical_support"
 
 // 策略表达式的 profile 变量。规模上界与 contracts/policy/cel-environment.yaml 的 size_bounds
-// 一致。带资质的主体超过 10 个或某主体待核对超过 20 项时不截断（截断会把可满足的主体丢掉而误判缺口）：省略 entities，资质条件为未知，并告警
+// 一致。超出上界时不截断（截断会丢掉我方主体或可满足的主体而误判）：我方主体超过 10 个时省略 org_ids 与
+// entities，依赖它们的条件为未知；某主体待核对超过 20 项时省略 entities，资质条件为未知；两种情况都告警
 type ContextPolicyView struct {
 	// 自有或授权的品牌
 	Brands []string `json:"brands"`
 
-	// 按主体的资质状态表；未关联本企业时不出现，资质条件为未知
-	Entities []EntityQualifications `json:"entities,omitempty,omitzero"`
+	// 我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids
+	// 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部
+	// org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现
+	Entities ContextPolicyViewEntities `json:"entities,omitempty,omitzero"`
 
 	// 行业包分类体系的品类代码
 	OfferingCategories []string `json:"offering_categories"`
 
-	// 我方主体（集团客户的多个法人）；空列表表示尚未关联本企业，依赖它的条件按未知或不命中处理
-	OrgIds []string `json:"org_ids"`
+	// 我方主体（集团客户的多个法人）。尚未关联本企业时不出现（不用空列表）：依赖它的条件读取不存在的字段为未知，例如“拟定供应商不是我方”不能成立
+	OrgIds []string `json:"org_ids,omitempty,omitzero"`
 
 	// GB/T 2260 行政区划代码；上级包含全部下级
 	ServiceRegions []string `json:"service_regions"`
 }
+
+// 我方主体 org_id → 资质状态表。键是 org_ids 的子集；GetContextSnapshot 为 org_ids
+// 中每个主体都给出状态表（没有任何资质记录的主体给空表，未声明录全）。资质条件遍历全部
+// org_ids，缺状态表的主体按未知参与，不按不具备处理；未关联本企业时不出现
+type ContextPolicyViewEntities map[string]EntityQualifications
 
 // customer-context.GetContextSnapshot 按（租户、组织单元、上下文版本）返回的合成结果中供策略求值读取的部分（草案；规则见
 // docs/01-product/prd/02-profile-and-objectives.md F3 与
@@ -586,13 +594,10 @@ const EndingSectionEndingTypeFailedBid EndingSectionEndingType = "failed_bid"
 const EndingSectionEndingTypeTerminated EndingSectionEndingType = "terminated"
 const EndingSectionEndingTypeVoided EndingSectionEndingType = "voided"
 
-// 一个我方主体的资质状态表。某项资质要求对本主体的判定：在 qualifications 中有效为满足、过期为不具备；在
-// qualifications_pending 中为未知；都不在时，qualifications_complete 为真则不具备，否则未知。同一代码不同时出现在
-// qualifications 与 qualifications_pending 中
+// 一个我方主体的资质状态表（以 org_id 为键放在 entities 中）。某项资质要求对本主体的判定：在 qualifications
+// 中有效为满足、过期为不具备；在 qualifications_pending 中为未知；都不在时，qualifications_complete
+// 为真则不具备，否则未知。同一代码不同时出现在 qualifications 与 qualifications_pending 中
 type EntityQualifications struct {
-	// OrgId corresponds to the JSON schema field "org_id".
-	OrgId string `json:"org_id"`
-
 	// 资质代码（行业包资质模板）→ 状态
 	Qualifications EntityQualificationsQualifications `json:"qualifications"`
 

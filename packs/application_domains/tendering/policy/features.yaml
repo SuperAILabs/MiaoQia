@@ -9,15 +9,16 @@ features:
   qualification_gap:
     type: bool
     say: 没有一个我方主体单独具备公告要求的全部资质（解析不确定，只用于减分，不用于排除）
-    # 资质按主体判断，不跨主体拼凑（PRD 第2段 F3“求值输入与未知传播”）。某项要求对某主体的判定：
-    # 状态表中有效为满足、过期为不具备；未在状态表中时，该主体已声明录全且不在待核对列表为不具备，
-    # 否则读取不存在的键，按策略 DSL 4.1 为未知。exists/all 按三值吸收：任一主体全部满足为假（无缺口），
-    # 每个主体都有已知缺口为真，其余为未知。未关联本企业时 profile.entities 不存在，结果为未知。
+    # 资质按主体判断，不跨主体拼凑（PRD 第2段 F3“求值输入与未知传播”）。遍历全部我方主体 org_ids，
+    # 按 org_id 取 entities 中的资质状态表；某项要求对某主体的判定：状态表中有效为满足、过期为不具备；
+    # 未在状态表中时，该主体已声明录全且不在待核对列表为不具备，否则读取不存在的键为未知（策略 DSL 4.1）。
+    # 缺少某主体的资质状态表时读取不存在的键，该主体为未知。exists/all 按三值吸收：任一主体全部满足为假（无缺口），
+    # 每个主体都有已知缺口为真，其余为未知。未关联本企业时 org_ids 不存在，结果为未知。
     expr: >
-      !profile.entities.exists(e, fact.requirements.all(r, r.kind != "qualification" ||
-        (r.code in e.qualifications ? e.qualifications[r.code] == "valid" :
-          (e.qualifications_complete && !(r.code in e.qualifications_pending) ? false :
-            e.qualifications[r.code] == "valid"))))
+      !profile.org_ids.exists(o, fact.requirements.all(r, r.kind != "qualification" ||
+        (r.code in profile.entities[o].qualifications ? profile.entities[o].qualifications[r.code] == "valid" :
+          (profile.entities[o].qualifications_complete && !(r.code in profile.entities[o].qualifications_pending) ? false :
+            profile.entities[o].qualifications[r.code] == "valid"))))
 
   brand_locked_to_others:
     type: bool

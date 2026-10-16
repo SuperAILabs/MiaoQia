@@ -56,13 +56,14 @@ func worstCase(factType string) Input {
 	for _, q := range ids("QQ", 100) {
 		quals[q.(string)] = "valid"
 	}
-	entities := make([]any, 10)
-	for i := range entities {
-		entities[i] = map[string]any{"org_id": fmt.Sprintf("org_me%d", i), "qualifications": quals,
+	orgIDs := ids("org_me", 10)
+	entities := map[string]any{}
+	for _, o := range orgIDs {
+		entities[o.(string)] = map[string]any{"qualifications": quals,
 			"qualifications_pending": ids("QP", 20), "qualifications_complete": true}
 	}
 	profile := map[string]any{
-		"org_ids": ids("org_me", 50), "offering_categories": ids("CAT-P-", 500), "service_regions": ids("44", 500),
+		"org_ids": orgIDs, "offering_categories": ids("CAT-P-", 500), "service_regions": ids("44", 500),
 		"entities": entities, "brands": ids("brand", 100),
 	}
 	vocab := map[string]any{"exclude_terms": ids("排除词", 1000)}

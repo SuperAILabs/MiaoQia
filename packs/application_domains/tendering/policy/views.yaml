@@ -166,9 +166,10 @@ view_items:
     freshness: daily
 
 profile_fields:                          # customer-context.GetContextSnapshot，契约 contracts/schemas/intelligence/context-snapshot.schema.json 的 policy_view
-  org_ids: list<string>                  # 我方主体（集团客户的多个法人），排除“我方即中标方/拟定供应商”时任一命中即是
+  org_ids: list<string>                  # 我方主体（集团客户的多个法人），排除“我方即中标方/拟定供应商”时任一命中即是；未关联本企业时不出现（未知）
   offering_categories: list<category_code>
   service_regions: list<region_code>
   brands: list<string>                   # 本租户自有或授权的品牌
-  entities: list<entity_qualifications> # 按主体的资质状态表（契约 $defs/entity_qualifications）：qualifications 只含有效/过期，
-                                         # 待核对代码单列，qualifications_complete 为“资质已录全”声明；未关联本企业时不出现
+  entities: map<string, entity_qualifications>
+                                         # org_id → 资质状态表（契约 $defs/entity_qualifications）：qualifications 只含有效/过期，
+                                         # 待核对代码单列，qualifications_complete 为“资质已录全”声明；资质条件遍历全部 org_ids，缺表的主体为未知

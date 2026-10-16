@@ -54,7 +54,7 @@
 
 | 接口 | 类型 | 说明 |
 |---|---|---|
-| `GetContextSnapshot` | 查询 | 按（租户、组织单元、上下文版本）或时点返回合成后的客户上下文快照（研究与判断固定引用）：单元覆盖逐项沿单元链向上继承，未覆盖继承、显式空集合不继承；资质按主体给出状态表（代码 → 有效 / 过期 / 待核对）与“资质已录全”声明，供规则区分满足、不具备与未知；供策略求值的部分见[上下文快照契约](../../../contracts/schemas/intelligence/context-snapshot.schema.json)；资质按主体判断、不跨主体拼凑；真实快照组装通过用例 22 是 `INF-QUAL` 启用门禁（[PRD 第2段 F3](../../01-product/prd/02-profile-and-objectives.md#f3-产品品牌区域与资质)） |
+| `GetContextSnapshot` | 查询 | 按（租户、组织单元、上下文版本）或时点返回合成后的客户上下文快照（研究与判断固定引用）：单元覆盖逐项沿单元链向上继承，未覆盖继承、显式空集合不继承；资质按主体给出状态表（代码 → 有效 / 过期 / 待核对）与“资质已录全”声明，供规则区分满足、不具备与未知；供策略求值的部分见[上下文快照契约](../../../contracts/schemas/intelligence/context-snapshot.schema.json)；资质按主体判断、不跨主体拼凑，遍历全部我方主体，缺状态表的主体为未知；未关联本企业时不含我方主体列表；真实快照组装通过用例 22 是 `INF-QUAL` 启用门禁（[PRD 第2段 F3](../../01-product/prd/02-profile-and-objectives.md#f3-产品品牌区域与资质)） |
 | `GetContextVersion` | 查询 | 租户当前上下文版本（读主库）；档案与清单的每次提交在同一事务中递增该版本，detection 每批求值前读取，保证提交返回后开始的求值使用新版本 |
 | `Get/Update Profile`、`LinkOrganization`、`Manage Offerings/Qualifications/...` | 查询/命令 | 档案维护；`UpdateProfile` 带 `expected_version`，冲突时拒绝 |
 | `PreviewProfileImpact` | 查询 | 保存档案或清单前，列出受影响的目标与规则 |

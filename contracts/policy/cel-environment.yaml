@@ -51,17 +51,17 @@ size_bounds:
     fact.winner.history_categories: 500
     fact.winner.supplied_brand_owners: 500
     fact.winner.past_buyer_ids: 2000
-    profile.org_ids: 50                          # 我方主体（集团客户的多个法人）
-    profile.entities: 10                         # 带资质状态表的我方主体
+    profile.org_ids: 10                          # 我方主体（集团客户的多个法人）；超出时快照省略 org_ids 与 entities 并告警，不截断
+    profile.entities: 10                         # 按 org_id 的资质状态表
     profile.entities.qualifications_pending: 20  # 每个主体待核对的资质代码
     lists: 20000          # 每种清单
     vocab: 1000           # 每个词表
     params: 500           # 列表参数
 
 # 限制（第 8 节）。成本单位为 cel-go 成本单位。初值依据 R1 模板在上述规模上界下的基准测试
-# （services/kernel/policy：go test -run TestCostReport -v -report）：最大静态成本 272 074（A01 资质缺口特征，按主体判断后），最坏运行时成本 207 728。
+# （services/kernel/policy：go test -run TestCostReport -v -report）：最大静态成本 296 074（A01 资质缺口特征，按主体判断后），最坏运行时成本 207 728。
 limits:
   rules_per_policy: 200
   expression_length: 2000
-  expression_static_cost: 500000      # 约为 R1 最大值的 1.8 倍
+  expression_static_cost: 500000      # 约为 R1 最大值的 1.7 倍
   evaluation_runtime_cost: 1000000    # 约为 R1 最坏值的 5 倍
