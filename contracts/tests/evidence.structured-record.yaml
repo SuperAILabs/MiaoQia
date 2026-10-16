@@ -15,6 +15,18 @@ cases:
   - name: 记录内容不是对象
     valid: false
     patch: [{ op: replace, path: /records/0/data, value: [1, 2] }]
+  - name: 数字不得以 JSON 数值存放
+    valid: false
+    patch: [{ op: add, path: /records/0/data/source_id, value: 9007199254740993 }]
+  - name: 大整数以原文字符串保留
+    valid: true
+    patch: [{ op: add, path: /records/0/data/source_id, value: "9007199254740993" }]
+  - name: 嵌套对象与数组中的数字同样不得为数值
+    valid: false
+    patch: [{ op: add, path: /records/0/data/items, value: [{ qty: 1.10 }] }]
+  - name: 嵌套取值为原文字符串
+    valid: true
+    patch: [{ op: add, path: /records/0/data/items, value: [{ qty: "1.10", ok: true }] }]
   - name: CSV 导出
     valid: true
     patch: [{ op: replace, path: /media_type, value: text_csv }]

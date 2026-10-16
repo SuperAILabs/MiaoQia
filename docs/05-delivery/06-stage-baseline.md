@@ -70,7 +70,7 @@ M2 的验收单位是**首条客户旅程逐环节可运行、可解释、可验
 | M2-P10 监测层阶段退出 | D3；阈值待校准 | 质量/领域：冻结 Top-K 的 K、分母、反馈率与未反馈处理；目标相关性标注集按目标/行业包分层；用于模板调试的样本不得充当盲测 |
 | M2-P11 试点所用来源与企业数据 | 依赖第3节 M1-P1～P5 | 数据/AI：试点区域与来源完成首次启用门禁；INF-ORG 就绪；A01 品类条件所需的增强器结果（置信度 ≥ 0.7，否则转复核）依赖模型供应商验收。冻结原件上的模型评测只证明初步可行，不代替 OCR、嵌入与结构化生成验收 |
 | M2-P12 对应功能实现前 | Web 浏览器端流程、BFF 契约与批量导入契约待设计 | 架构/客户智能：Web 专项设计（引用已有分页、认证与授权规则，补浏览器端流程、具体 BFF 契约与保存视图所有者）；customer-context 的资质、业绩、跟踪企业清单批量导入契约，复用 evidence 文档处理 |
-| M2-P13 A02 品牌与项目链视图首次启用前 | 关系类型已在 INF-PROC、INF-INVP 包内定义并经 `mqc` P8 校验；抽取、品牌词表与归属维护未实现 | 数据/领域：entity-graph 按包定义抽取 `supplied_brand`、`brand_owned_by`、`part_of`、`designed_by`、`constructed_by`，支持修订、撤销与合并撤销（[entity-graph 4.1](../03-architecture/subsystems/entity-graph.md#41-关系的端点约束与版本)）；建材行业包交付品牌词表与带证据的归属声明；`brand_owners_supplied_by` 查询模板；未就绪时相关视图读取为未知并按 `missing` 处理 |
+| M2-P13 A02 品牌与项目链视图首次启用前 | 关系类型已在 INF-PROC、INF-INVP 包内定义并经 `mqc` P8 校验；抽取、品牌词表与归属维护未实现 | 数据/领域：entity-graph 按包定义抽取 `supplied_brand`、`part_of`、`designed_by`、`constructed_by`（项目端点经归属边解析），支持修订、撤销与合并撤销；平台级 `brand_owned_by` 只取词表归属声明与运营复核（[entity-graph 4.1](../03-architecture/subsystems/entity-graph.md#41-关系的端点约束与版本)）；建材行业包交付品牌词表与带证据的归属声明；`brand_owners_supplied_by` 查询模板；未就绪时相关视图读取为未知并按 `missing` 处理 |
 
 ## 5. 阶段依赖交接
 

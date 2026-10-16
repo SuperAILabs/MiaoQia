@@ -4,7 +4,7 @@
   P1  pack.yaml 声明的 Schema、事件文件与领域校验入口存在且合规；含代码的包必须登记领域校验入口
   P2  生命周期状态机的状态与触发值都取自所引用 Schema 的枚举，所有状态可到达
   P8  关系类型定义（provides.relationships）：类型唯一，端点与约束取自登记的种类（领域事实只能作为
-      指向项目的归属边起点），
+      指向项目的归属边起点）；项目端点或 project 约束取到 pp_ 时须声明经 part_of 解析，
       抽取来源的 Schema 存在、端点与约束路径在 Schema 中存在
 应用领域包（策略，语义见 docs/03-architecture/11-policy-dsl.md）：
   P0  模板文件符合 contracts/policy/policy.schema.json
@@ -111,6 +111,35 @@ def check_relationships(repo: Repo, pack_dir: Path, rel_file: str) -> Report:
             for q in src.get("qualifier_paths", {}):
                 if q not in d.get("qualifiers", []):
                     r.error(where, f"P8 {t} 的来源给出了未声明的约束 {q}")
+            if schema:
+                r.extend(_check_project_refs(repo, where, t, d, src, schema))
+    return r
+
+
+def _check_project_refs(repo: Repo, where: str, t: str, d: dict, src: dict, schema: str) -> Report:
+    """项目端点与 project 约束取值须为 prj_；取到采购项目 pp_ 时必须声明经归属边 part_of 解析。"""
+    r = Report()
+    resolve = src.get("resolve", {})
+    slots = [("from_path", d.get("from")), ("to_path", d.get("to"))]
+    slots += [(q, "project") for q in src.get("qualifier_paths", {}) if q == "project"]
+    for key, kind in slots:
+        path = src.get(key) if key.endswith("_path") else src["qualifier_paths"][key]
+        node = _schema_node(repo, schema, path) if path else None
+        pat = (node or {}).get("pattern", "")
+        if kind == "domain_fact" and pat.startswith(("^prj_", "^org_")):
+            r.error(where, f"P8 {t} 的起点 {path} 是实体标识，不是领域事实")
+        if kind != "project" or not pat:
+            continue
+        if pat.startswith("^pp_"):
+            if resolve.get(key) != "part_of":
+                r.error(where, f"P8 {t} 的 {key}={path} 是采购项目 pp_，须声明 resolve: {{{key}: part_of}}")
+        elif not pat.startswith("^prj_"):
+            r.error(where, f"P8 {t} 的 {key}={path} 不是项目标识 prj_")
+        elif key in resolve:
+            r.error(where, f"P8 {t} 的 {key} 已是 prj_，不需要经归属边解析")
+    for key, via in resolve.items():
+        if via != "part_of" or key not in {k for k, _ in slots}:
+            r.error(where, f"P8 {t} 的 resolve.{key}={via!r} 不合法")
     return r
 
 

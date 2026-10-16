@@ -694,7 +694,7 @@ const EndingSectionEndingTypeVoided EndingSectionEndingType = "voided"
 // 中有效为满足、过期为不具备；在 qualifications_pending 中为未知；都不在时，qualifications_complete
 // 为真则不具备，否则未知。同一代码不同时出现在 qualifications 与 qualifications_pending 中
 type EntityQualifications struct {
-	// 资质代码（行业包资质模板）→ 状态
+	// 资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系
 	Qualifications EntityQualificationsQualifications `json:"qualifications"`
 
 	// 该主体已声明“资质已录全”（写入档案版本与审计）
@@ -704,7 +704,7 @@ type EntityQualifications struct {
 	QualificationsPending []string `json:"qualifications_pending"`
 }
 
-// 资质代码（行业包资质模板）→ 状态
+// 资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系
 type EntityQualificationsQualifications map[string]QualificationStatus
 
 type EvaluationMethod string
@@ -2158,6 +2158,11 @@ type RecordEvidenceRef struct {
 	ValueHash string `json:"value_hash"`
 }
 
+// 记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53
+// 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 以省略该字段表示（字段缺失即未知）。CSV、XML
+// 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致
+type RecordValue interface{}
+
 type ReferenceDataVersion struct {
 	// 参考数据标识，例如 gb2260、cn-holidays
 	Name string `json:"name"`
@@ -2368,15 +2373,15 @@ const SignalStatusOpen SignalStatus = "open"
 const SignalStatusTriaged SignalStatus = "triaged"
 
 type StructuredRecord struct {
-	// 记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）
+	// 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value
 	Data StructuredRecordData `json:"data"`
 
 	// 记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）
 	Key string `json:"key"`
 }
 
-// 记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）
-type StructuredRecordData map[string]interface{}
+// 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value
+type StructuredRecordData map[string]RecordValue
 
 // evidence 把结构化来源制品（接口响应、数据下载的 JSON/CSV/XML 文件）转换后的统一记录表示，与规范化文档并列存放于对象存储（数据分层
 // L1，按 快照 × 处理管线版本

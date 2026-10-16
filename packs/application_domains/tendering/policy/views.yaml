@@ -8,6 +8,10 @@
 #   enrichment.category(标的) 读取 L3 品类分类增强结果（数据架构 3.3）：只保留行业包分类体系、达到增强器发布门槛的品类，
 #   展开为品类列表；该字段的证据置信度取所保留品类的最低值、方法记为 model 或 rule，受模板 evidence_policy 约束，
 #   不达标时读取为未知。没有可用品类时视图中不出现该字段。
+#   qualification.comparable(要求) 把资质要求换算到客户档案资质状态表所用的平台登记资质体系：只有 code_scheme 与
+#   code_scheme_version 有版本化映射到该体系时，才输出映射后的 code；缺 code_scheme 的按行业包默认体系解释。
+#   体系不同又无映射、版本不兼容，或带 grade_required（本阶段不比较等级）时，保留该要求但不输出 code，
+#   读取为未知，不按同名代码比较。非资质要求原样投影。映射表随行业包资质模板交付（INF-QUAL 启用门禁）。
 #
 # view_items：可按名称引用的关联视图项，声明提供方、类型与新鲜度；组装后挂在 fact.<名称> 路径下，
 # 例如 winner.credit_flags 在表达式中为 fact.winner.credit_flags。
@@ -42,7 +46,7 @@ fact_types:
       max_price: lot.max_price
       items: lot.items[*]
       categories: enrichment.category(lot.items[*])
-      requirements: lot.requirements[*]
+      requirements: qualification.comparable(lot.requirements[*])
       bid_deadline: min(lot.deadlines[type=bid_submission].at.value)
       consortium_allowed: lot.consortium_allowed
       single_source_supplier: latest_notice.single_source_supplier   # 最新一条非更正采购公告（notice_ids 中最后一条）

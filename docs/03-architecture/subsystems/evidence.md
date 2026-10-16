@@ -51,7 +51,7 @@ M0探针消费者先验证acquisition载荷，再核对来源、subject和前序
 | `NormalizedDocument` | 规范化文档与分块：正文存对象存储（`normalized/…`），数据库只存元数据与对象键；结构见 `contracts/schemas/evidence/normalized-document.schema.json` |
 | `ExtractionRevision` | 一次解析：快照、解析器标识与版本、结果、质量、创建时间 |
 | `FieldEvidence` | 字段 → 证据定位、方法（规则/模型/人工）、置信度 |
-| `StructuredRecordSet` | 结构化记录集：同样存对象存储（`normalized/…`），数据库只存元数据与对象键；结构见 `contracts/schemas/evidence/structured-record.schema.json`（草案） |
+| `StructuredRecordSet` | 结构化记录集：同样存对象存储（`normalized/…`），数据库只存元数据与对象键；取值无损表示：数字保留来源十进制原文为字符串、不经浮点，来源 null 以省略字段表示，`value_hash` 按此表示计算；结构见 `contracts/schemas/evidence/structured-record.schema.json`（草案） |
 | `EvidenceRef` | 可被引用的证据（`ev_` 前缀），三种形态：文档证据（定位器与快照版本，`evidence-ref.schema.json`）、记录证据（记录键与字段路径，`record-evidence-ref.schema.json`）、派生证据（转换版本、参考数据版本与输入证据，`derivation-evidence-ref.schema.json`）；后两种为草案 |
 | `QualityAssessment` | 质量状态与警告 |
 | `Enricher` / `EnricherVersion` | 增强器定义、版本、标签体系版本、评估结果、状态（候选/生效/退役） |

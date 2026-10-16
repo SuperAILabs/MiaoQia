@@ -36,7 +36,7 @@
           "type": "object",
           "propertyNames": { "minLength": 1 },
           "additionalProperties": { "$ref": "#/$defs/qualification_status" },
-          "description": "资质代码（行业包资质模板）→ 状态"
+          "description": "资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系"
         },
         "qualifications_pending": {
           "type": "array",

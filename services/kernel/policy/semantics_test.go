@@ -335,6 +335,35 @@ func TestQualificationGapByEntity(t *testing.T) {
 	}
 }
 
+// 资质要求无法换算到档案的资质体系（异体系无映射、版本不兼容、等级不比较）时，视图不输出 code：该要求为未知，
+// 不按同名代码判为满足；已知缺口仍优先。
+func TestQualificationRequirementWithoutComparableCode(t *testing.T) {
+	c := compileA01(t)
+	full := map[string]any{"org_me": map[string]any{
+		"qualifications": map[string]any{"Q-A": "valid", "Q-B": "valid"}, "qualifications_pending": []any{}, "qualifications_complete": true}}
+	expired := map[string]any{"org_me": map[string]any{
+		"qualifications": map[string]any{"Q-A": "expired"}, "qualifications_pending": []any{}, "qualifications_complete": true}}
+	unmapped := map[string]any{"kind": "qualification", "code_scheme": "qual:system-b"}
+	cases := []struct {
+		name     string
+		reqs     []any
+		entities map[string]any
+		want     Truth
+	}{
+		{"已换算的代码按状态表判断", []any{map[string]any{"kind": "qualification", "code": "Q-A"}}, full, False},
+		{"无法换算的要求为未知，不按同名判满足", []any{map[string]any{"kind": "qualification", "code": "Q-A"}, unmapped}, full, Unknown},
+		{"无法换算与已知缺口并存仍为缺口", []any{map[string]any{"kind": "qualification", "code": "Q-A"}, unmapped}, expired, True},
+	}
+	for _, tc := range cases {
+		profile := baseProfile([]any{"org_me"})
+		profile["entities"] = tc.entities
+		r := evalA01(t, c, a01Fact(map[string]any{"requirements": tc.reqs}), profile)
+		if got := traceOf(r, "P-QUAL-GAP"); got == nil || got.Result != tc.want {
+			t.Errorf("%s：P-QUAL-GAP 期望 %s，得到 %v\n%s", tc.name, tc.want, got, traceText(r))
+		}
+	}
+}
+
 // 单一来源排除只在拟定供应商确定不是我方任一主体时成立；未关联本企业时为未知，不排除。
 func TestSingleSourceExclusionByEntity(t *testing.T) {
 	c := compileA01(t)

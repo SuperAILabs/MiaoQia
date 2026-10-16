@@ -14,6 +14,7 @@ features:
     # 未在状态表中时，该主体已声明录全且不在待核对列表为不具备，否则读取不存在的键为未知（策略 DSL 4.1）。
     # 缺少某主体的资质状态表时读取不存在的键，该主体为未知。exists/all 按三值吸收：任一主体全部满足为假（无缺口），
     # 每个主体都有已知缺口为真，其余为未知。未关联本企业时 org_ids 不存在，结果为未知。
+    # 要求代码已在视图中换算到同一资质体系；无法换算的要求没有 code，读取为未知（views.yaml qualification.comparable）。
     expr: >
       !profile.org_ids.exists(o, fact.requirements.all(r, r.kind != "qualification" ||
         (r.code in profile.entities[o].qualifications ? profile.entities[o].qualifications[r.code] == "valid" :

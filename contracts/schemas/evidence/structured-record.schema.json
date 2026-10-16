@@ -63,9 +63,36 @@
         },
         "data": {
           "type": "object",
-          "description": "记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）"
+          "additionalProperties": {
+            "$ref": "#/$defs/record_value"
+          },
+          "description": "记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value"
         }
       }
+    },
+    "record_value": {
+      "x-type-name": "RecordValue",
+      "description": "记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 以省略该字段表示（字段缺失即未知）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/record_value"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/record_value"
+          }
+        }
+      ]
     }
   }
 }

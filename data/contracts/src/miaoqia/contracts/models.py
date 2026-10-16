@@ -663,6 +663,13 @@ class RecordEvidenceRef(BaseModel):
     )
 
 
+class RecordValue(RootModel[str | bool | list["RecordValue"] | dict[str, "RecordValue"]]):
+    root: str | bool | list[RecordValue] | dict[str, RecordValue] = Field(
+        ...,
+        description="记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 以省略该字段表示（字段缺失即未知）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致",
+    )
+
+
 class ReferenceDataVersion(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -778,9 +785,9 @@ class StructuredRecord(BaseModel):
         ...,
         description="记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）",
     )
-    data: dict[str, Any] = Field(
+    data: dict[str, RecordValue] = Field(
         ...,
-        description="记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）",
+        description="记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value",
     )
 
 
@@ -925,7 +932,8 @@ class EntityQualifications(BaseModel):
         extra="forbid",
     )
     qualifications: dict[str, QualificationStatus] = Field(
-        ..., description="资质代码（行业包资质模板）→ 状态"
+        ...,
+        description="资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系",
     )
     qualifications_pending: list[QualificationsPendingItem] = Field(
         ...,
@@ -1739,3 +1747,6 @@ class ProcurementProject(PublicFactMeta):
     notice_ids: list[NoticeId] = Field(..., description="按发布时间排序", min_length=1)
     first_published_at: Instant | None = None
     lots: list[ProjectLot] = Field(..., min_length=1)
+
+
+RecordValue.model_rebuild()

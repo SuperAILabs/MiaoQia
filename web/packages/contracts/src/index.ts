@@ -421,6 +421,16 @@ export type ProcurementProject = PublicFactMeta & {
   [k: string]: unknown;
 };
 /**
+ * 记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 以省略该字段表示（字段缺失即未知）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致
+ */
+export type RecordValue =
+  | string
+  | boolean
+  | RecordValue[]
+  | {
+      [k: string]: RecordValue;
+    };
+/**
  * detection 对一个求值单位按租户策略求值得到的结果（草案；语义见 docs/03-architecture/11-policy-dsl.md 第 4 节与 subsystems/detection.md）。同一策略对同一求值单位（subject 的 type、id 与 part_id）只有一条信号；求值单位状态变化导致的处置变化以 SignalUpdate 追加记录，并更新本对象的当前处置。no_signal 不产生信号。
  */
 export type Signal = TenantMeta & {
@@ -785,7 +795,7 @@ export interface ContextPolicyView {
  */
 export interface EntityQualifications {
   /**
-   * 资质代码（行业包资质模板）→ 状态
+   * 资质代码 → 状态；代码属于平台登记资质体系（行业包资质模板映射），与事实视图中换算后的要求代码同一体系
    */
   qualifications: {
     [k: string]: QualificationStatus;
@@ -1431,10 +1441,10 @@ export interface StructuredRecord {
    */
   key: string;
   /**
-   * 记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）
+   * 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value
    */
   data: {
-    [k: string]: unknown;
+    [k: string]: RecordValue;
   };
 }
 /**
