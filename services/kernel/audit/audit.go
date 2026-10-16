@@ -27,17 +27,25 @@ type Entry struct {
 	Basis    string // 依据，例如授权关系 can_trigger_probe
 }
 
+// Delegation 是妙洽人员代表租户操作所依据的授予记录（identity.md 第 7.8 节）。
+// 只能由委托会话的请求上下文填入，调用方不能自行声明；委托会话随服务委托功能实现，此前载荷不带该字段。
+type Delegation struct {
+	Kind  string `json:"kind"`  // support_access / service_delegation
+	Grant string `json:"grant"` // 授予记录标识
+}
+
 // Data 是审计事件载荷。
 type Data struct {
-	Actor      string    `json:"actor"`
-	ActorKind  string    `json:"actor_kind"`
-	Tenant     string    `json:"tenant,omitempty"`
-	Subsystem  string    `json:"subsystem"`
-	Action     string    `json:"action"`
-	Resource   string    `json:"resource"`
-	Result     string    `json:"result"`
-	Basis      string    `json:"basis,omitempty"`
-	OccurredAt time.Time `json:"occurred_at"`
+	Actor      string      `json:"actor"`
+	ActorKind  string      `json:"actor_kind"`
+	Tenant     string      `json:"tenant,omitempty"`
+	Subsystem  string      `json:"subsystem"`
+	Action     string      `json:"action"`
+	Resource   string      `json:"resource"`
+	Result     string      `json:"result"`
+	Basis      string      `json:"basis,omitempty"`
+	Delegation *Delegation `json:"delegation,omitempty"`
+	OccurredAt time.Time   `json:"occurred_at"`
 }
 
 // Recorder 为一个子系统写审计条目。

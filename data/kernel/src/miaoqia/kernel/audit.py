@@ -12,6 +12,7 @@ TOPIC = "platform.audit"
 
 
 def record(conn: Connection, subsystem: str, action: str, resource: str, result: str, basis: str = "") -> None:
+    """载荷的可选 delegation 只由委托会话的请求上下文填入（identity.md 第 7.8 节），调用方不能自行声明；随服务委托功能实现。"""
     c = reqctx.current()
     data = {"actor": c.principal.id, "actor_kind": c.principal.kind, "subsystem": subsystem, "action": action,
             "resource": resource, "result": result,

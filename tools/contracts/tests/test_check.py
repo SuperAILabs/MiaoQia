@@ -117,9 +117,11 @@ ELIG = """framework:
       kind: hard_gate
       say: 资质要求全部满足
       when: '!features.qualification_gap'
+      manual: [input]
     - id: summary
       kind: ai_summary
       say: 资格缺口与可补方式
+      manual: [override]
 """
 
 
@@ -146,6 +148,7 @@ def test_definition_file_accepted(sandbox, monkeypatch, capsys):
     ("      when: '!features.qualification_gap'\n", ""),          # 硬门槛缺条件
     ("research: [RT-TENDER-ELIG]", "research: [RT-TENDER-NOPE]"),  # 未登记的研究模板
     ("id: AF-TENDER-ELIG", "id: AF-TENDER-BID"),                    # 矩阵标为已定义的框架没有定义文件
+    ("manual: [input]", "manual: [input, override]"),                # 硬门槛不能人工覆盖
 ])
 def test_definition_file_rules(sandbox, monkeypatch, capsys, old, new):
     assert old in ELIG

@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.3 · 更新：2026-10-15 · 平面：平台
+> 状态：评审中 · 版本：1.4 · 更新：2026-10-16 · 平面：平台
 
 ## 1. 使命
 
@@ -13,10 +13,12 @@
 - 租户与组织：租户、子组织（事业部、区域）、工作空间、租户单元归属；
 - 成员与账号：用户、服务账号、外部协作者、邀请、停用；
 - 认证集成：对接身份提供者（OIDC/OAuth 2.1），支持企业 SSO（企业微信、钉钉、飞书、SAML/OIDC 企业身份源）；
+- 通讯录与成员同步：从企业目录同步成员与组织，由 `directory` 直接对接，不经 `acquisition` 的租户集成实例；同步结果仍经成员写入的授权与审计；
 - 授权：角色（RBAC）+ 关系与属性（ReBAC/ABAC），统一授权决策点；
 - 动作授权与审批：高影响动作的审批请求、审批链、结果；
 - 令牌与客户端：OAuth 客户端注册（含 MCP 客户端）、作用域、令牌受众；
-- 内部支持访问：妙洽人员访问租户数据的申请、批准、限时与审计（break-glass）。
+- 内部支持访问：妙洽人员访问租户数据的申请、批准、限时与审计（break-glass）；
+- 服务委托：租户把托管服务所需的有限操作委托给指定妙洽人员（第 7.8 节）。
 
 **非职责**
 
@@ -32,10 +34,11 @@
 | `authz` | 授权决策点：基于关系的授权模型 + 属性条件；所有子系统通过 SDK 调用 |
 | `approvals` | 审批：审批类型注册、审批链、委托、超时 |
 | `support_access` | 内部支持访问 |
+| `service_delegation` | 服务委托：授予、到期、撤销与随合同或人员状态终止 |
 
 ## 4. 拥有的数据
 
-`Tenant`、`OrgUnit`、`Workspace`、`Invitation`（待接受的成员资格：邮箱、组织单元、角色、状态、版本、过期时间）、`ChannelSession`（免登会话记录：成员、渠道绑定标识与版本、签发与到期时间）、`ChannelBindingRevocation`（每个渠道绑定的撤销水位）、`Member`、`ServiceAccount`、`RoleBinding`、`RelationTuple`（授权关系）、`ApprovalType`、`ApprovalRequest`、`ApprovalDecision`、`SupportAccessGrant`、`OAuthClient`。
+`Tenant`、`OrgUnit`、`Workspace`、`Invitation`（待接受的成员资格：邮箱、组织单元、角色、状态、版本、过期时间）、`ChannelSession`（免登会话记录：成员、渠道绑定标识与版本、签发与到期时间）、`ChannelBindingRevocation`（每个渠道绑定的撤销水位）、`Member`、`ServiceAccount`、`RoleBinding`、`RelationTuple`（授权关系）、`ApprovalType`、`ApprovalRequest`、`ApprovalDecision`、`SupportAccessGrant`、`ServiceDelegation`（受托人员、代表的租户、范围、动作集、授权依据、批准人、生效与到期时间、撤销时间与原因、关联的托管服务合同）、`OAuthClient`。
 
 ## 5. 接口
 
@@ -51,6 +54,7 @@
 | `IssueChannelSession` / `RevokeChannelSessions` | 命令 | 仅 `channels` 可调用。签发：凭 channels 签发的 30 秒有效签发凭据（绑定标识、版本、成员），在一个事务中锁定该绑定的撤销水位行，核验凭据未过期且版本高于水位后写入不带强认证的免登会话。撤销：绑定失效后由 channels 同步调用（失败时经 `channels.binding.changed.v1` 重试），在同一行上抬高水位（无对应会话也记录）并作废版本不高于水位的会话，确认后 channels 才把失效标为已完成；并定时与 channels 对账。IdP 不保存长期渠道身份关联。并发顺序见 [PRD 第1段 F6](../../01-product/prd/01-login-and-channel-binding.md#f6-解绑与失效) |
 | `RecoverAdminAccount` | 命令 | 唯一管理员无法认证时的账号恢复：平台运营双人控制且均 MFA；只清除 TOTP、要求重设密码、撤销会话，不授予租户数据访问，全程审计并通知。见 [PRD 第1段 F8](../../01-product/prd/01-login-and-channel-binding.md#f8-唯一管理员账号恢复) |
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
+| `GrantServiceDelegation` / `RevokeServiceDelegation` / `ListServiceDelegations` | 命令/查询 | 服务委托，需 `can_grant_service_delegation` 与强认证；授予前核对 `commerce` 中有效的托管服务合同，撤销立即生效（第 7.8 节） |
 
 最小租户/成员/角色生命周期、权威目录核验与cell-01路由已实现，具体接口、MFA边界及真实组件证据见[M0身份验收](../../05-delivery/07-m0-identity-acceptance.md)。目录数据在iam中，角色权限复用OpenFGA模型；当前M0托管租户Check仅支持当前主体对tenant根资源，其他业务资源与协作者按其首次启用阶段补齐，不以权限矩阵代证全部接口。
 
@@ -58,7 +62,7 @@
 
 ## 6. 事件
 
-**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批与支持访问事件随对应功能实现；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。随免登实现消费 `channels.binding.changed.v1`。
+**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批、支持访问与服务委托事件随对应功能实现（服务委托发布 `identity.service_delegation.changed.v1`：授予、到期、撤销、终止）；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。随免登实现消费 `channels.binding.changed.v1`。
 
 ## 7. 授权模型
 
@@ -69,7 +73,7 @@
 | 成员 | 租户的用户，通过角色绑定获得权限；一人可兼任多个角色 |
 | 外部协作者 | 受邀参与特定推进的合作方用户，不是租户成员，只经推进上带到期时间的外部协作关系获得受限视图 |
 | 服务账号 | 租户的 API / MCP 客户端，可以绑定除租户管理员外的角色，权限为角色绑定与令牌作用域的交集 |
-| 妙洽内部人员 | 平台运营与支持人员，访问租户数据只能经内部支持访问（第 7.6 节） |
+| 妙洽内部人员 | 平台运营与支持人员，访问租户数据只能经内部支持访问或服务委托（第 7.6、7.8 节），不成为租户成员 |
 
 角色即 [业务架构](../../02-business/01-business-architecture.md#51-客户角色) 中的客户角色，在授权模型中的关系名为：决策者 `decision_maker`、业务开拓者 `business_developer`、项目推进者 `pursuit_lead`、研究分析者 `research_analyst`、业务专家 `domain_expert`、租户管理员 `admin`。
 
@@ -127,6 +131,7 @@
 | 管理数据政策与暴露配置 | tenant | can_manage_data_policy | — | — | — | — | — | ✓ | — |
 | 创建 API 凭证、MCP 客户端与 Webhook | tenant | can_manage_credentials | — | — | — | — | — | ✓ | — |
 | 批准内部支持访问 | tenant | can_approve_support_access | — | — | — | — | — | ✓ | — |
+| 授予与撤销服务委托 | tenant | can_grant_service_delegation | — | — | — | — | — | ✓ | — |
 
 说明：
 
@@ -163,7 +168,7 @@
 | 条件 | 适用 | 规则 | 状态 |
 |---|---|---|---|
 | 有效期 `not_expired` | 外部协作者 | 关系携带到期时间，授权决策点注入当前时间，到期自动失效 | 已实现 |
-| 有效期 | 内部支持访问、服务账号 | 同上 | 随所属功能实现 |
+| 有效期 | 内部支持访问、服务委托、服务账号 | 同上 | 随所属功能实现 |
 | 审批额度 | 决策批准 | 决策金额不超过批准人角色绑定上的额度 | 随决策功能实现 |
 | 数据分级 | 知识资产进入模型上下文 | 按 [安全与租户](../06-security-and-tenancy.md#5-数据分级与处理约束) 的分级与租户授权决定，不由角色决定 | 随所属功能实现 |
 
@@ -179,7 +184,7 @@
 |---|---|---|
 | 平台运营 | `platform:miaoqia` 的 `operator`：链路探针、运行状态；MFA下开通/停用租户及读取目录元数据 | 无 |
 | 数据运营 | 公共域数据维护（来源、解析复核、实体复核），经 `operations` 调用数据供应平面的命令接口 | 无 |
-| 研究分析师、客户成功 | 托管研究、策略调优 | 仅经内部支持访问，按租户逐次批准 |
+| 研究分析师、客户成功 | 托管研究、策略调优 | 托管服务经服务委托（第 7.8 节）；排障经内部支持访问；均按租户逐次授予 |
 | 领域专家 | 应用领域包与行业包的设计与验收 | 无 |
 
 ### 7.7 列表与过滤
@@ -190,9 +195,24 @@
 - **本人参与**（矩阵中的 ◐）：参与关系（负责人、协作者、共享对象、被授予者）由业务子系统在本库同步保存一份，用于列表查询；授权的权威仍是 OpenFGA，详情与写操作逐个 `Check`；
 - 列表结果与详情不一致时，以详情的 `Check` 为准；列表接口的负向测试须覆盖兄弟单元与停用成员。
 
+### 7.8 服务委托
+
+托管研究服务（[商业模式](../../01-product/02-business-model.md#3-交付模式)）需要妙洽人员在租户内起草策略、发起研究、整理简报，这些是写操作，不适合用默认只读、用于排障的内部支持访问。服务委托是为此单设的授权，复用同一套授权模型、审计与有效期条件：
+
+- **合同不等于权限**：`commerce` 中有效的托管服务合同只是授予的前提。授权来自租户管理员逐人、逐范围的授予；合同终止、受托人员离岗或调岗时委托随之终止，不必等到期；
+- **授予内容**：受托人员（妙洽平台身份，须 MFA）、代表的租户、范围（组织单元或具体目标）、动作集、授权依据（合同与授予记录）、生效与到期时间。到期必填，续期是新的授予；
+- **动作集**：只能从研究分析者与业务开拓者可做的起草类动作中选取（发起研究、起草与仿真策略、提交激活申请、反馈信号、整理简报草稿、查看所需的目标、信号与研究）；第 7.3 节需要批准的动作（策略激活、决策批准、批量导出、联系人使用、自动提交）、对外发送、邀请外部协作者、成员与凭证管理都不能委托。受托人员提交的申请由租户内的批准人批准；
+- **授权实现**：在 OpenFGA 中以带 `not_expired` 条件的委托关系表达，只并入上述动作对应的授权关系；受托人员不写入 `tenant#member`，也不获得角色绑定，委托撤销或到期后立即失去访问；
+- **委托会话**：受托人员不是成员，普通成员的会话解析（核对成员状态）会拒绝他们，委托不通过放宽成员检查或租户请求头进入租户。受托人员先以已验证的妙洽平台身份登录（须 MFA），再由 `identity` 为其选定的一条委托签发委托会话：核对实际主体与委托的受托人一致、MFA 有效、委托在有效期内且未撤销、托管服务合同有效、租户状态与 cell 归属正确；会话绑定实际主体、代表的租户、cell 与委托标识，到期取委托到期与会话上限的较早者。此后每个请求由 `gateway` 按会话类型走委托解析路径，逐次核对委托当前状态（取代成员状态核对），请求上下文携带委托标识；动作授权仍逐次经 `Check` 判断委托关系。审计 SDK 从请求上下文填入 `delegation`，调用方不能自行声明；
+- **记录与可见**：每次操作的审计条目记录实际操作者（受托人员）、代表的租户、委托标识与授权依据（[审计事件](../../../contracts/events/audit/events.asyncapi.yaml) 的 `delegation`）；`operations` 的服务工单引用委托标识；租户管理员可随时查看委托清单与服务记录，并可撤销。
+
+服务委托与内部支持访问并存：前者用于托管服务的日常工作，后者只用于排障，两者不互相替代。
+
+委托会话的接口、令牌形态与机器契约随功能交付。启用门禁至少覆盖：本地与远程会话解析结果一致；非成员持有效委托可完成委托范围内的动作；错租户、超范围动作、撤销后、到期后、合同终止后与缺少 MFA 的请求均被拒绝；普通成员会话的解析与成员状态核对不受影响；审计条目的 `delegation` 只来自委托会话。
+
 ## 8. 安全要点
 
-- 租户上下文来自已验证令牌，identity目录每次核对当前租户、成员状态与cell归属；错误上下文拒绝而不静默改写；
+- 租户上下文来自已验证令牌，identity目录每次核对当前租户、成员状态与cell归属；委托会话以委托当前状态取代成员状态核对（第 7.8 节）；错误上下文拒绝而不静默改写；
 - 服务账号最小权限、可轮换、可吊销；
 - 授权决策可审计（谁、何时、对什么、结果、依据）；
 - 管理员操作需要多因素认证。

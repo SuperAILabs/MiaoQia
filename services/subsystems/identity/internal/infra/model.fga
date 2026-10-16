@@ -40,6 +40,7 @@ type tenant
     define can_manage_data_policy: admin
     define can_manage_credentials: admin
     define can_approve_support_access: admin
+    define can_grant_service_delegation: admin
 
 type org_unit
   relations

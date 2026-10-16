@@ -1,6 +1,6 @@
 # 可扩展性设计
 
-> 状态：评审中 · 版本：2.4 · 更新：2026-10-16 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.5 · 更新：2026-10-16 · 负责人：首席架构师
 
 ## 1. 设计目标
 
@@ -32,7 +32,7 @@ pack:
   provides: { … }                    # 按 kind 列出提供的扩展点
 ```
 
-扩展包由声明式定义文件（YAML/JSON）组成。清单没有独立的 manifest Schema，由 `mqc check` 的扩展包一致性规则（`tools/contracts/src/mqc/packs.py`，P0–P9）对照 `contracts/` 校验：信息领域包检查 `pack.yaml` 引用的 Schema、事件文件与领域校验入口存在且合规，生命周期状态与触发值取自所引用 Schema 的枚举；应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验，并检查视图来源、引用声明、规则编号、事件类型与样例处置；其他定义（角色模板、目标模板、机会路径、判断框架、研究模板）与覆盖矩阵按 `contracts/packs/application-domain.schema.json`（0.1.0 草案）校验，P9 检查引用可解析（见 2.3）。行业包尚未纳入检查。扩展包按种类允许的形式不同（ADR-0006）：
+扩展包由声明式定义文件（YAML/JSON）组成。清单没有独立的 manifest Schema，由 `mqc check` 的扩展包一致性规则（`tools/contracts/src/mqc/packs.py`，P0–P9）对照 `contracts/` 校验：信息领域包检查 `pack.yaml` 引用的 Schema、事件文件与领域校验入口存在且合规，生命周期状态与触发值取自所引用 Schema 的枚举；应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验，并检查视图来源、引用声明、规则编号、事件类型与样例处置；其他定义（角色模板、目标模板、机会路径、判断框架、研究模板）与覆盖矩阵按 `contracts/packs/application-domain.schema.json`（草案）校验，P9 检查引用可解析（见 2.3）。行业包尚未纳入检查。扩展包按种类允许的形式不同（ADR-0006）：
 
 | 种类 | 形式 | 运行位置 |
 |---|---|---|
@@ -108,7 +108,7 @@ APP-TENDER 的矩阵见 `packs/application_domains/tendering/coverage.yaml`：�
 | SPI | 子系统 | 方法要点 |
 |---|---|---|
 | `SourceHandler` | acquisition | `discover(plan) → refs`、`fetch(ref) → artifacts` |
-| `Connector` | acquisition | 新访问方式（授权 API、文件投递、客户系统） |
+| `Connector` | acquisition | 新访问方式（授权 API、文件投递、客户系统）；客户系统连接器只在单元级租户集成实例中加载 |
 | `Extractor` | evidence | `extract(document, ctx) → fields + provenance` |
 | `Enricher` | evidence | `enrich(document_or_chunks, ctx) → tags/classes/mentions/vectors + confidence`；声明成本等级与适用范围 |
 | `Aggregator` | domain-intelligence | `candidates(fact) → keys`、`decide(fact, candidate) → link` |

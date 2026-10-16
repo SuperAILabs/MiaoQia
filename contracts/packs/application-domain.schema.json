@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/packs/application-domain.schema.json",
-  "x-version": "0.1.0",
+  "x-version": "0.2.0",
   "title": "ApplicationDomainDefinitions 应用领域包定义格式",
   "description": "应用领域包除策略模板（contracts/policy/policy.schema.json）以外的定义格式草案：角色模板、目标模板、机会路径、判断框架、研究模板，以及包的覆盖矩阵。每个定义文件的顶层键为对应种类名，按 pack.yaml provides 的同名键登记；引用与校验规则由 mqc P9 执行（docs/03-architecture/04-extensibility.md 2.3）。条件一律为 CEL 表达式，包内不含可执行代码。",
   "type": "object",
@@ -479,6 +479,18 @@
           "type": "string",
           "minLength": 1,
           "description": "model_score 的评分提供者（版本与门禁归 assessment，基础模型版本归 ai-platform）"
+        },
+        "manual": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "input",
+              "override"
+            ]
+          },
+          "description": "允许的人工判断类别：input 人工输入，override 保留原值后覆盖；未声明即不允许。硬门槛不能覆盖（assessment 第 12 节）"
         }
       },
       "allOf": [
@@ -511,6 +523,26 @@
             "required": [
               "provider"
             ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "hard_gate"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "manual": {
+                "not": {
+                  "contains": {
+                    "const": "override"
+                  }
+                }
+              }
+            }
           }
         }
       ]
