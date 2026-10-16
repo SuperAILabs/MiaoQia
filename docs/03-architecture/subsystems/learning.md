@@ -1,6 +1,6 @@
 # 反馈学习与评估子系统（learning）
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 平面：客户智能
+> 状态：评审中 · 版本：1.1 · 更新：2026-10-16 · 平面：客户智能
 
 ## 1. 使命
 
@@ -11,6 +11,7 @@
 **职责**
 
 - 反馈采集：用户对信号、判断、研究报告的反馈及原因标签（来自所有渠道）；
+- 漏报反馈：用户报告某个公共对象本应在某个时点对某个目标出现而没有出现，编排诊断并给出原因（第 11 节）；
 - 标注任务：为评估集安排标注（客户或妙洽分析师），管理一致性；
 - 评估集：租户级反馈集及租户使用的应用领域基线引用；公共基线随扩展包分发，由对应能力所有者维护；
 - 策略仿真：给定策略草案，在历史数据上回放，输出新增、移除、处置变化、代表样本和分层指标；
@@ -39,13 +40,14 @@
 
 ## 4. 拥有的数据（租户域；公共基线由对应能力所有者维护）
 
-`Feedback`、`LabelTask`、`EvaluationDataset` / `DatasetVersion`、`EvaluationRun`、`SimulationRun`、`QualityReport`、`Proposal`。
+`Feedback`、`MissReport`（漏报：公共对象引用或外部链接、目标、用户认为应出现的时点、说明、诊断结果与各环节证据）、`LabelTask`、`EvaluationDataset` / `DatasetVersion`、`EvaluationRun`、`SimulationRun`、`QualityReport`、`Proposal`。
 
 ## 5. 接口
 
 | 接口 | 类型 | 说明 |
 |---|---|---|
 | `RecordFeedback` | 命令 | 反馈（幂等、有限枚举） |
+| `ReportMiss` / `GetMissDiagnosis` | 命令/查询 | 漏报反馈与诊断结果（异步），需对该目标的 `can_feedback` |
 | `SimulatePolicy` | 命令 | 对策略草案仿真（异步） |
 | `GetSimulationReport` | 查询 | 仿真结果 |
 | `RunEvaluation` | 命令 | 编排所有者的专业回归并汇总；不发布模型/模板/框架 |
@@ -53,7 +55,7 @@
 
 ## 6. 事件
 
-**发布**：`learning.feedback.recorded.v1`、`learning.simulation.completed.v1`、`learning.evaluation.completed.v1`、`learning.drift.detected.v1`、`learning.policy.proposal_created.v1`。
+**发布**：`learning.feedback.recorded.v1`、`learning.miss.diagnosed.v1`（随漏报功能实现）、`learning.simulation.completed.v1`、`learning.evaluation.completed.v1`、`learning.drift.detected.v1`、`learning.policy.proposal_created.v1`。
 
 **消费**：`detection.signal.triaged.v1`、`assessment.assessment.created.v1`、`assessment.decision.recorded.v1`、`pursuit.outcome.recorded.v1`、`customer_context.policy.drafted.v1`（自动触发仿真）。
 
@@ -93,3 +95,26 @@
 | 研究模板/判断框架 | 领域包基线及 learning 授权租户反馈集 | research / assessment | research / assessment 各自版本门禁 |
 
 learning 的 RunEvaluation 负责调度对应所有者的公开接口并汇总，不获得其发布权限。报告固定样本版本、数据域、授权/治理依据、被评估版本、指标定义与执行器版本。公共快照只包含获批的公共对象引用、去标识化标注或聚合指标，不导出租户原始文档、策略、上下文或身份；原始反馈仍归租户域。公共 evidence/search 只接收已发布公共评估快照；公共实例不得同步依赖 learning。撤回授权时，governance 编排各所有者删除或撤回受影响快照与派生制品。
+
+## 11. 漏报反馈与诊断
+
+漏报反馈的入口固定三个要素：**公共对象**（平台中的领域事实或实体引用；平台里找不到时给外部链接与说明）、**目标**（报告人可反馈的目标）、**当时时点**（用户认为本应出现的时间，默认对象的发布时间）。入口在信号收件箱、对象页与手动创建的推进上（从没有信号的对象创建推进时提示可报告漏报），首次交付范围随信号收件箱的功能 PRD 确定。
+
+诊断按链路顺序逐环节查询各所有者在该时点的状态，停在第一个不成立的环节：
+
+| 原因 | 判定 | 证据来自 | 去向 |
+|---|---|---|---|
+| 未采集 | 平台在该时点之前没有该对象的来源快照 | `acquisition` 来源登记与 `evidence` 快照 | 公共采集缺口建议（只含公共对象与来源，不含租户与目标）交 `operations` |
+| 未归并 | 有快照或事实，但没有归并到可被策略求值的项目、标包或实体 | `domain-intelligence` 聚合与 `entity-graph` 解析记录 | 同上，作为归并复核任务 |
+| 未入候选 | 事实在时点可用，但订阅反查没有为该目标生成候选 | `detection.DiagnoseMiss` 的候选记录 | 平台缺陷或下推规则问题，交 `operations`（召回不丢失是不变量） |
+| 规则排除 | 进入了匹配，处置为 `excluded` 或 `no_signal` | `detection.DiagnoseMiss` 的命中与排除规则、特征 | 本租户策略调优建议（`proposals`） |
+| 无权益 | 对象所属信息领域、区域或品类不在该时点租户的订阅权益或暴露范围内 | `commerce` 权益与 `customer-context` 目标配置的版本 | 告知用户原因；不显示权益外对象的内容 |
+| 未送达 | 生成了信号，但通知或简报没有送达或被截断 | `detection` 信号记录与 `channels` 投递记录 | 本租户通知配置或渠道问题 |
+
+诊断规则：
+
+- 各环节都按时点取版本（第 8.1 节），用当时可得的数据判断当时是否该出现；对象后来才被采集或更正的，如实报告时间差；
+- 诊断只读取所有者的查询接口，不改写任何数据；某环节暂时无法查询时标为“暂不能诊断”，不跳到下一环节下结论；
+- 诊断结果给用户看原因与下一步（调整规则、扩展权益、等待补采），公共环节的细节只展示与该对象相关的部分；
+- 确认的漏报进入本租户评估集，作为召回评估的正例；交给公共环节的只有公共对象引用与原因，不带租户、目标或用户信息。
+
