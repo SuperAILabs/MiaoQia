@@ -225,7 +225,7 @@ policy:
 | `fact` | 事实视图：领域事实字段，以及模板声明需要的关联实体属性（如 `fact.winner.org_id`、`fact.buyer.type`） | 信息领域包的领域 Schema + 模板的视图声明 |
 | `event` | 触发事件：`type`、`changed_fields` 等 | 领域事件 |
 | `profile` | 客户上下文快照（按目标所在组织单元合成）：我方主体 `org_ids`、产品品类、服务区域、品牌，以及按主体的资质状态表 `entities`；字段以[上下文快照契约](../../contracts/schemas/intelligence/context-snapshot.schema.json)为准 | `customer-context.GetContextSnapshot` |
-| `lists` | 租户私有实体清单，按种类（见 [customer-context](subsystems/customer-context.md#4-拥有的数据租户域)）为组织标识集合，如 `lists.competitors` | `customer-context` |
+| `lists` | 租户私有实体清单，按种类（见 [customer-context](subsystems/customer-context.md#4-拥有的数据租户域)）为组织标识集合，如 `lists.competitors`。租户私有关系（`TenantRelationship`，如经销授权的品牌、区域与期限）尚未进入表达式环境；进入时须同时定义其快照（随上下文版本固定）、规模上界与重放语义，不预留变量名 | `customer-context` |
 | `vocab` | 行业包词表与同义词 | 行业包 |
 | `features` | 应用领域包特征函数的计算结果 | 应用领域包 |
 | `params` | 模板参数 | 策略 |
