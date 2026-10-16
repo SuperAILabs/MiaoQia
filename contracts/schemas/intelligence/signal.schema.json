@@ -18,7 +18,7 @@
     "objective_id": { "type": "string", "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$", "description": "租户启用的商业目标 TenantObjective" },
     "objective_code": { "type": "string", "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$", "description": "应用领域包中的目标编号，如 APP-TENDER.A01" },
     "policy": { "$ref": "defs.schema.json#/$defs/policy_ref" },
-    "subject": { "$ref": "defs.schema.json#/$defs/subject_ref", "description": "求值单位；version 为本次求值读取的版本" },
+    "subject": { "$ref": "defs.schema.json#/$defs/subject_ref", "description": "求值单位；version 为本次求值读取的版本。采购类信号为采购项目 pp_（domain_fact）及标包 part_id，不改为项目 prj_；信号不保存项目归属快照，对象页时间线按 entity-graph 的归属边查询，需要还原求值当时的归属时按 evaluated_at 查询当时记录的边" },
     "disposition": { "enum": ["pursue_candidate", "review_candidate", "watch_signal", "excluded"] },
     "needs_review": { "type": "boolean", "description": "存在按 missing: review 处理的未知硬条件" },
     "score": { "type": "integer", "description": "同一策略下的排序分，不代表成交概率" },

@@ -3,7 +3,8 @@
 信息领域包：
   P1  pack.yaml 声明的 Schema、事件文件与领域校验入口存在且合规；含代码的包必须登记领域校验入口
   P2  生命周期状态机的状态与触发值都取自所引用 Schema 的枚举，所有状态可到达
-  P8  关系类型定义（provides.relationships）：类型唯一，端点与约束取自登记的种类，
+  P8  关系类型定义（provides.relationships）：类型唯一，端点与约束取自登记的种类（领域事实只能作为
+      指向项目的归属边起点），
       抽取来源的 Schema 存在、端点与约束路径在 Schema 中存在
 应用领域包（策略，语义见 docs/03-architecture/11-policy-dsl.md）：
   P0  模板文件符合 contracts/policy/policy.schema.json
@@ -85,8 +86,10 @@ def check_relationships(repo: Repo, pack_dir: Path, rel_file: str) -> Report:
             r.error(where, f"P8 关系类型 {t!r} 不合法或重复")
         seen.add(t)
         for end in ("from", "to"):
-            if d.get(end) not in ENDPOINT_KINDS:
+            if d.get(end) not in ENDPOINT_KINDS and not (end == "from" and d.get(end) == "domain_fact"):
                 r.error(where, f"P8 {t} 的端点 {end}={d.get(end)!r} 不是实体图谱实体种类")
+        if d.get("from") == "domain_fact" and d.get("to") != "project":
+            r.error(where, f"P8 {t} 以领域事实为起点时只能指向项目（归属边）")
         for q in d.get("qualifiers", []):
             if q not in QUALIFIER_KINDS:
                 r.error(where, f"P8 {t} 的约束 {q!r} 不是登记的约束种类")

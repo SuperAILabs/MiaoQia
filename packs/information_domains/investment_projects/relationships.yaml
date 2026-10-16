@@ -1,16 +1,18 @@
 # INF-INVP 关系类型定义（格式见 packs/information_domains/procurement/relationships.yaml 文件头）。
 relationships:
   - type: part_of
-    say: 采购项目属于投资项目（项目链：立项 → 设计 → 采购 → 施工 → 验收）
-    from: project
+    say: 采购项目（或其中的标包）归属投资项目（项目链：立项 → 设计 → 采购 → 施工 → 验收）
+    from: domain_fact                        # 归属边：起点是采购项目 pp_，终点是实体图谱项目 prj_
     to: project
-    qualifiers: [domain_fact]
+    qualifiers: [lot]                        # 合并采购的不同标包可归属不同项目；不带标包表示整个采购项目
     validity: event
-    sources:
+    sources:                                 # 显式标识直接建边；属性或语义匹配由聚合规则产生候选边，带置信度并可复核
       - schema: contracts/schemas/domains/investment/record.schema.json
-        from_path: procurement_project_id      # 关联由 domain-intelligence 聚合规则维护，带置信度
+        from_path: procurement_project_id
         to_path: investment_project_id
-        qualifier_paths: { domain_fact: "id" }
+      - schema: contracts/schemas/domains/procurement/procurement-project.schema.json
+        from_path: id
+        to_path: investment_project_id
 
   - type: designed_by
     say: 投资项目的设计单位（品牌入库与样品推荐的关键角色）

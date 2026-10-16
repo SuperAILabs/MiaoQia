@@ -1,6 +1,7 @@
 # INF-PROC 关系类型定义：entity-graph 按此从领域事实抽取并维护关系边（格式与校验见 docs/03-architecture/04-extensibility.md 2.2、mqc P8）。
 #
-# 端点（from/to）是实体图谱实体：organization、project（prj_）、location、category、brand。
+# 端点（from/to）是实体图谱实体：organization、project（prj_）、location、category、brand。唯一例外是归属边：
+# 以领域事实（采购项目 pp_）为起点、指向项目 prj_（INF-INVP 的 part_of，entity-graph 4.1）。
 # 约束（qualifiers）限定这条边成立的上下文，不是端点：domain_fact（如 pp_ 采购项目、bdr_ 结果）、lot（标包）、region、period。
 # 一条关系 = 类型 + 端点 + 约束 + 有效区间 + 证据 + 来源事实版本；同一端点在不同约束下是不同的边（例如同一供应商在两个标包供应同一品牌）。
 # 路径相对来源 Schema，[*] 表示展开；组织端点经 entity-graph 解析 org_ref，置信度低于自动合并阈值时进入复核，不建边。

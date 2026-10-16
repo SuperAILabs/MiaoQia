@@ -1834,7 +1834,8 @@ type ProcurementProject struct {
 	// InfoDomain corresponds to the JSON schema field "info_domain".
 	InfoDomain string `json:"info_domain"`
 
-	// 所属投资项目（entity-graph 的 Project 实体）
+	// 所属投资项目（entity-graph 的 Project 实体）的便捷字段：仅在整个采购项目归属唯一、已确认的投资项目时出现。归属以
+	// entity-graph 的 part_of 归属边为准（可按标包、可归属多个项目、可修订撤销），时间线与项目链按归属边查询，不以本字段为不变量
 	InvestmentProjectId *string `json:"investment_project_id,omitempty,omitzero"`
 
 	// Location corresponds to the JSON schema field "location".

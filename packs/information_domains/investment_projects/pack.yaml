@@ -3,7 +3,7 @@ pack:
   id: INF-INVP
   kind: information_domain
   namespace: investment
-  version: 0.2.0                       # 草案：领域 Schema 评审中
+  version: 0.3.0                       # 草案：领域 Schema 评审中
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-ORG@^1.0                     # 建设单位、施工单位等解析为组织
