@@ -1,6 +1,6 @@
 # 判断与决策子系统（assessment）
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-12 · 平面：客户智能
+> 状态：评审中 · 版本：1.1 · 更新：2026-10-16 · 平面：客户智能
 
 ## 1. 使命
 
@@ -19,7 +19,8 @@
 - 研究请求：框架判定信息不足时请求 `research` 发起研究；
 - 决策草案：如 bid/no-bid、是否跟进供货、是否投入前期资源；
 - 决策记录：审批通过后形成不可变决策，记录批准人与理由；
-- 重新判断：领域事实变化、策略变化或新研究完成时生成新的判断版本。
+- 重新判断：领域事实变化、策略变化或新研究完成时生成新的判断版本；
+- 人工判断：记录用户的人工输入与覆盖，保留原值并生成新的判断版本（第 12 节）。
 
 **非职责**
 
@@ -42,7 +43,8 @@
 | `Assessment` | `asm_`：目标对象引用、目标、框架版本、策略版本、上下文快照、研究报告引用、`hard_gates[]`、`dimensions{}`、`facts[]`、`inferences[]`、`missing_information[]`、`risk_factors[]`、`recommended_actions[]`、`rank_score`、模型版本 |
 | `FeatureSnapshot` | 特征值与来源 |
 | `DecisionDraft` | 决策草案与审批请求引用 |
-| `Decision` | `dec_`：结论、理由、批准人、时间、依据的判断版本 |
+| `Decision` | `dec_`：结论、理由、批准人、时间、依据的判断版本；在硬门槛未通过时决定推进的，另记所知晓的门槛与理由（第 12 节） |
+| `ManualJudgment` | 追加式人工判断记录：类别（输入或覆盖）、作用对象（判断版本与维度或建议）、原值、新值、原因代码与说明、操作者、依据、时间；修订与撤回也追加记录 |
 
 `rank_score` 只用于同一策略下的排序，不代表事实正确率、可信度或成交概率。
 
@@ -55,10 +57,11 @@
 | `DraftDecision` | 命令 | 生成决策草案 |
 | `SubmitDecision` | 命令 | 提交审批 |
 | `GetDecision` | 查询 | 决策记录 |
+| `RecordManualJudgment` | 命令 | 记录人工输入或覆盖并生成新判断版本；框架未允许的维度、硬门槛覆盖与缺少原因的请求拒绝 |
 
 ## 7. 事件
 
-**发布**：`assessment.assessment.created.v1`、`assessment.research.requested.v1`、`assessment.decision.drafted.v1`、`assessment.decision.recorded.v1`。
+**发布**：`assessment.assessment.created.v1`、`assessment.research.requested.v1`、`assessment.decision.drafted.v1`、`assessment.decision.recorded.v1`；人工判断随功能实现发布 `assessment.manual_judgment.recorded.v1`（learning 作为反馈样本消费）。
 
 **消费**：`detection.signal.detected.v1`、`detection.signal.updated.v1`、`research.case.completed.v1`、`identity.approval.decided.v1`、`customer_context.policy.activated.v1`。
 
@@ -82,3 +85,21 @@
 信号触发判断默认复用信号的固定输入与特征；更新数据或研究后重评生成新版本，禁止静默替换旧输入。`input_mode`、差异解释、决策/审批刷新约束以 [策略 DSL 的判断输入与版本解释权](../11-policy-dsl.md#9-判断输入与版本解释权) 为准。
 
 assessment 拥有判断框架/评分模型的专业指标、回归执行与启用门禁；learning 提供授权范围内的反馈数据集、编排评估及汇总效果，不替代 assessment 的发布决定。
+
+## 12. 人工判断
+
+用户可以补充系统不知道的信息，也可以不同意系统的计算结果；两种情况都追加记录，不改写已有判断：
+
+| 类别 | 作用对象 | 规则 |
+|---|---|---|
+| 人工输入 | 框架声明允许人工输入的维度，或判断中的缺失信息项 | 写明依据（研究报告、知识资产、客户文件、口头来源等）；客户提供的事实只属于本租户，标为客户提供，与公共事实并存展示，不回写公共事实 |
+| 人工覆盖 | 框架声明允许覆盖的规则特征、模型评分、AI 归纳或推荐动作 | 保留系统原值，记录新值、原因代码与说明；排序与简报按覆盖后的值并显示“人工调整” |
+
+每条人工判断生成新的判断版本（`input_mode` 为 `manual`，引用原判断版本与人工判断记录），原判断保留，审计记录操作者与依据。以下内容不能人工覆盖：
+
+- **硬门槛**：未通过的硬门槛结果保持原样。门槛依据的资质或业绩有误时，到客户档案中更正，由更正触发重新判断；公共事实有误时提交事实更正（[evidence](evidence.md) 的人工修正，经数据运营复核）。用户仍决定推进的，在决策中记录所知晓的门槛与理由，由有权批准的决策者批准，门槛结果不变；
+- **来源事实**：人工判断不改写领域事实或其证据，只在本租户的判断中并列显示；
+- **旧判断与已批准决策**：人工判断产生新版本，不修改旧版本；已批准的决策不因新判断自动变更，按第 11 节处理。
+
+人工判断进入 learning 的租户反馈集（人工否决率与覆盖原因分布），不改进其他租户的策略。框架以维度的 `manual` 声明允许的人工判断类别（[应用领域包定义格式](../../../contracts/packs/application-domain.schema.json)），未声明即不允许。
+
