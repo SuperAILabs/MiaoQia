@@ -11,9 +11,8 @@ EVENT_TYPE = "audit.entry.recorded.v1"
 TOPIC = "platform.audit"
 
 
-def record(conn: Connection, subsystem: str, action: str, resource: str, result: str, basis: str = "",
-           delegation: dict[str, str] | None = None) -> None:
-    """delegation：妙洽人员代表租户操作时的授予记录 {kind, grant}（identity.md 第 7.8 节）。"""
+def record(conn: Connection, subsystem: str, action: str, resource: str, result: str, basis: str = "") -> None:
+    """载荷的可选 delegation 只由委托会话的请求上下文填入（identity.md 第 7.8 节），调用方不能自行声明；随服务委托功能实现。"""
     c = reqctx.current()
     data = {"actor": c.principal.id, "actor_kind": c.principal.kind, "subsystem": subsystem, "action": action,
             "resource": resource, "result": result,
@@ -22,8 +21,6 @@ def record(conn: Connection, subsystem: str, action: str, resource: str, result:
         data["tenant"] = c.tenant
     if basis:
         data["basis"] = basis
-    if delegation:
-        data["delegation"] = delegation
     outbox.Writer(subsystem=subsystem, namespace="audit", zone=reqctx.PLATFORM).append(
         conn, outbox.Event(type=EVENT_TYPE, subject=resource, data=data, topic=TOPIC,
                            partition_key=f"{c.tenant}/{resource}"))
