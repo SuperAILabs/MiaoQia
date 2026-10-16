@@ -125,3 +125,39 @@ fixtures:
     - op: replace
       path: /relationship_id
       value: bad_00000000000000000000000000
+  - name: 带约束的品牌供应关系
+    valid: true
+    patch:
+    - op: replace
+      path: /to_entity_id
+      value: brd_00000000000000000000000000
+    - op: replace
+      path: /relationship_type
+      value: supplied_brand
+    - op: add
+      path: /qualifiers
+      value:
+      - kind: domain_fact
+        ref: bdr_00000000000000000000000000
+      - kind: lot
+        ref: lot_00000000000000000000000000
+  - name: 来源更正后撤销旧边
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: remove
+    - op: add
+      path: /remove_reason
+      value: source_revised
+    - op: add
+      path: /superseded_by
+      value: rel_00000000000000000000000001
+  - name: 约束种类未登记
+    valid: false
+    patch:
+    - op: add
+      path: /qualifiers
+      value:
+      - kind: tenant
+        ref: tnt_00000000000000000000000000

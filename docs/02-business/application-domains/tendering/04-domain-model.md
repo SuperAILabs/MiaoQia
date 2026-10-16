@@ -72,18 +72,21 @@ erDiagram
 
 ## 2. 共享实体（由实体图谱子系统拥有）
 
-招投标领域引用但不拥有以下实体：`Organization`、`Project`（跨信息领域的项目实体，如投资项目）、`Location`、`Category`。关系类型示例：
+招投标领域引用但不拥有以下实体：`Organization`、`Project`（跨信息领域的项目实体，如投资项目）、`Location`、`Category`、`Brand`。关系类型的权威定义在 [INF-PROC](../../../../packs/information_domains/procurement/relationships.yaml) 与 [INF-INVP](../../../../packs/information_domains/investment_projects/relationships.yaml) 的 `relationships.yaml`，端点、约束与版本语义见 [entity-graph 4.1](../../../03-architecture/subsystems/entity-graph.md#41-关系的端点约束与版本)。摘要：
 
 | 关系 | 起点 → 终点 | 来源 |
 |---|---|---|
 | `procures` | 采购人 → 采购项目 | 公告 |
 | `agent_of` | 代理机构 → 采购项目 | 公告 |
-| `bid_on` | 组织 → 标包 | 开标记录、候选人公示 |
-| `won` | 组织 → 标包 | 中标结果 |
-| `consortium_member` | 组织 → 联合体 | 结果公告 |
+| `bid_on` | 组织 → 项目（约束：结果、标包） | 开标记录、候选人公示 |
+| `won` | 组织 → 项目（约束：结果、标包） | 中标结果（框架入围不算） |
+| `consortium_member` | 成员 → 牵头人（约束：结果、标包） | 结果公告（原文未明确牵头人时不建边） |
 | `part_of` | 采购项目 → 投资项目 | 项目编号、审批编号、匹配 |
-| `designed_by` | 投资项目 → 设计单位 | 设计中标结果 |
-| `supplied_brand` | 标包 → 品牌 | 结果公告中的品牌型号 |
+| `designed_by` | 投资项目 → 设计单位 | 施工许可、设计中标结果 |
+| `constructed_by` | 投资项目 → 施工单位 | 施工许可 |
+| `specified_brand` | 项目 → 品牌（约束：标包） | 采购标的指定品牌 |
+| `supplied_brand` | 供应商 → 品牌（约束：项目、结果、标包） | 中标或合同标的明细中的品牌 |
+| `brand_owned_by` | 品牌 → 厂商 | 原文载明的制造商、行业包品牌词表、运营复核 |
 
 ## 3. 租户域：应用领域对象
 

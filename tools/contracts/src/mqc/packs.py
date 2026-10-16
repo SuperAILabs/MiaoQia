@@ -3,6 +3,8 @@
 信息领域包：
   P1  pack.yaml 声明的 Schema、事件文件与领域校验入口存在且合规；含代码的包必须登记领域校验入口
   P2  生命周期状态机的状态与触发值都取自所引用 Schema 的枚举，所有状态可到达
+  P8  关系类型定义（provides.relationships）：类型唯一，端点与约束取自登记的种类，
+      抽取来源的 Schema 存在、端点与约束路径在 Schema 中存在
 应用领域包（策略，语义见 docs/03-architecture/11-policy-dsl.md）：
   P0  模板文件符合 contracts/policy/policy.schema.json
   P3  视图投影的来源 Schema 存在
@@ -28,6 +30,81 @@ W = r"([A-Za-z0-9_]+)"
 CLAUSES = {"require": "R-", "exclude": "X-", "watch": "W-", "boost": "B-", "penalize": "P-"}
 DISPOSITIONS = {"pursue_candidate", "review_candidate", "watch_signal", "excluded", "no_signal"}
 EVENT_LITERAL = re.compile(r"([a-z_]+\.[a-z_]+\.[a-z_]+\.v[0-9]+)")
+
+
+ENDPOINT_KINDS = {"organization", "project", "location", "category", "brand"}   # entity-graph 实体
+QUALIFIER_KINDS = ENDPOINT_KINDS | {"domain_fact", "lot", "region", "period"}
+REL_TYPE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _schema_node(repo: Repo, schema_rel: str, path: str):
+    """按 a.b[*].c 路径在 Schema 中逐级查找属性（解析 $ref 与 allOf），找不到返回 None。"""
+    s = repo.schemas.get(Path(schema_rel.removeprefix("contracts/schemas/")))
+    if s is None:
+        return None
+
+    def deref(n, res):
+        while isinstance(n, dict) and "$ref" in n:
+            hit = res.lookup(n["$ref"])
+            n, res = hit.contents, hit.resolver
+        return n, res
+
+    node, res = s, repo.registry.resolver(base_uri=s["$id"])
+    for part in path.split("."):
+        name, many = (part[:-3], True) if part.endswith("[*]") else (part, False)
+        node, res = deref(node, res)
+        props = {k: (v, res) for k, v in node.get("properties", {}).items()}
+        for sub in node.get("allOf", []):
+            sub, sres = deref(sub, res)
+            props.update({k: (v, sres) for k, v in sub.get("properties", {}).items()})
+        if name not in props:
+            return None
+        node, res = deref(*props[name])
+        if many:
+            if node.get("type") != "array":
+                return None
+            node, res = deref(node.get("items", {}), res)
+    return node
+
+
+def check_relationships(repo: Repo, pack_dir: Path, rel_file: str) -> Report:
+    r = Report()
+    where = str((pack_dir / rel_file).relative_to(repo.root))
+    path = pack_dir / rel_file
+    if not path.exists():
+        r.error(where, "P8 关系定义文件不存在")
+        return r
+    seen = set()
+    for d in load_yaml(path).get("relationships", []):
+        t = d.get("type", "")
+        if not REL_TYPE.match(t) or t in seen:
+            r.error(where, f"P8 关系类型 {t!r} 不合法或重复")
+        seen.add(t)
+        for end in ("from", "to"):
+            if d.get(end) not in ENDPOINT_KINDS:
+                r.error(where, f"P8 {t} 的端点 {end}={d.get(end)!r} 不是实体图谱实体种类")
+        for q in d.get("qualifiers", []):
+            if q not in QUALIFIER_KINDS:
+                r.error(where, f"P8 {t} 的约束 {q!r} 不是登记的约束种类")
+        if not d.get("sources"):
+            r.error(where, f"P8 {t} 缺少抽取来源")
+        for src in d.get("sources", []):
+            schema = src.get("schema", "")
+            if schema and Path(schema.removeprefix("contracts/schemas/")) not in repo.schemas:
+                r.error(where, f"P8 {t} 的来源 Schema 不存在：{schema}")
+                continue
+            for key in ("from_path", "to_path", *(f"qualifier_paths.{q}" for q in src.get("qualifier_paths", {}))):
+                val = src.get(key) if "." not in key else src["qualifier_paths"][key.split(".", 1)[1]]
+                if val is None:
+                    if key in ("from_path", "to_path") and schema:
+                        r.error(where, f"P8 {t} 的来源缺少 {key}")
+                    continue
+                if schema and _schema_node(repo, schema, val) is None:
+                    r.error(where, f"P8 {t} 的路径 {val} 不在 {schema} 中")
+            for q in src.get("qualifier_paths", {}):
+                if q not in d.get("qualifiers", []):
+                    r.error(where, f"P8 {t} 的来源给出了未声明的约束 {q}")
+    return r
 
 
 def _enum_at(repo: Repo, schema_rel: str, field: str) -> set[str] | None:
@@ -74,6 +151,8 @@ def check_information_pack(repo: Repo, pack_dir: Path) -> Report:
             r.error(where, f"P1 {exc}")
     elif (pack_dir / "src").exists():
         r.error(where, "P1 代码型领域包必须登记semantic_validator")
+    if "relationships" in prov:
+        r.extend(check_relationships(repo, pack_dir, prov["relationships"]))
     if "lifecycle" in prov:
         lc = load_yaml(pack_dir / prov["lifecycle"])["lifecycle"]
         states = _enum_at(repo, lc["schema"], lc["field"])

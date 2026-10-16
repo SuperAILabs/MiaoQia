@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: entity公共数据事件
-  version: 1.0.0
+  version: 1.1.0
   description: CloudEvents 1.0公共域信封，miaoqiazone=public；只定义data载荷。
 channels:
   public.entity:
@@ -150,6 +150,39 @@ components:
             enum:
             - upsert
             - remove
+          qualifiers:
+            type: array
+            minItems: 1
+            description: 约束（不是端点）：限定这条边成立的上下文，如采购项目、结果与标包；类型定义见各信息领域包的 relationships.yaml
+            items:
+              type: object
+              additionalProperties: false
+              properties:
+                kind:
+                  enum:
+                  - project
+                  - domain_fact
+                  - lot
+                  - region
+                  - period
+                ref:
+                  type: string
+                  minLength: 1
+                  description: 标识（如 pp_、bdr_、lot_）、区划代码或期间（ISO 8601 区间）
+              required:
+              - kind
+              - ref
+          remove_reason:
+            enum:
+            - source_revised
+            - source_withdrawn
+            - rights_revoked
+            - merge_reverted
+            - superseded
+            description: action 为 remove 时的原因；来源更正为 source_revised，并以新边的 upsert 代替（entity-graph 4.1）
+          superseded_by:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/relationship_id
+            description: 修订后的新边
         required:
         - relationship_id
         - rights_tags

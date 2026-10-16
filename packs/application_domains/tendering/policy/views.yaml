@@ -155,8 +155,8 @@ view_items:
     type: list<category_code>
     freshness: daily
   winner.supplied_brand_owners:
-    provider: entity-graph.GetRelationships(supplied_brand, window=3y)
-    type: list<string>                   # 中标方项目中出现过的品牌所属组织
+    provider: entity-graph.GraphQuery(brand_owners_supplied_by, window=3y)   # 中标方 —supplied_brand→ 品牌 —brand_owned_by→ 厂商，归属取供应时点有效的边
+    type: list<string>                   # 中标方近三年中标/合同明细中出现过的品牌所属组织；不含要求侧指定品牌
     freshness: daily
   winner.trailing_award_total:
     provider: domain-intelligence.GetDomainStatistics(award_total_by_org, window=365d)

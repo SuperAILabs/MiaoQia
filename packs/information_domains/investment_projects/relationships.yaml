@@ -1,0 +1,37 @@
+# INF-INVP 关系类型定义（格式见 packs/information_domains/procurement/relationships.yaml 文件头）。
+relationships:
+  - type: part_of
+    say: 采购项目属于投资项目（项目链：立项 → 设计 → 采购 → 施工 → 验收）
+    from: project
+    to: project
+    qualifiers: [domain_fact]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/investment/record.schema.json
+        from_path: procurement_project_id      # 关联由 domain-intelligence 聚合规则维护，带置信度
+        to_path: investment_project_id
+        qualifier_paths: { domain_fact: "id" }
+
+  - type: designed_by
+    say: 投资项目的设计单位（品牌入库与样品推荐的关键角色）
+    from: project
+    to: organization
+    qualifiers: [domain_fact]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/investment/record.schema.json
+        from_path: investment_project_id
+        to_path: construction_permit.designer
+        qualifier_paths: { domain_fact: "id" }
+
+  - type: constructed_by
+    say: 投资项目的施工单位（进入供货的对接对象）
+    from: project
+    to: organization
+    qualifiers: [domain_fact]
+    validity: event
+    sources:
+      - schema: contracts/schemas/domains/investment/record.schema.json
+        from_path: investment_project_id
+        to_path: construction_permit.contractor
+        qualifier_paths: { domain_fact: "id" }

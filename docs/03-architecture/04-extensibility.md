@@ -1,6 +1,6 @@
 # 可扩展性设计
 
-> 状态：评审中 · 版本：2.1 · 更新：2026-10-15 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.2 · 更新：2026-10-16 · 负责人：首席架构师
 
 ## 1. 设计目标
 
@@ -55,7 +55,7 @@ pack:
 | 聚合规则 | `domain-intelligence.aggregator` | 声明 + 代码 |
 | 生命周期状态机 | `domain-intelligence.lifecycle_engine` | 声明 |
 | 变化检测与领域事件 | `domain-intelligence.change_detector` | 声明 + 事件 Schema |
-| 实体提及与关系抽取 | `entity-graph` | 声明 + 代码 |
+| 实体提及与关系抽取 | `entity-graph` | 声明 + 代码。关系类型以 `provides.relationships` 登记 `relationships.yaml`：每类声明端点（实体图谱实体种类）、约束（领域事实、标包、区域、期间）、有效区间与抽取来源（Schema 与路径）；`mqc` P8 校验种类与路径存在，语义见 [entity-graph 4.1](subsystems/entity-graph.md#41-关系的端点约束与版本) |
 | 检索映射 | `search.mappings` | 声明 |
 | 统计与查询模板 | `domain-intelligence` | 声明（SQL 模板受审查） |
 | 研究工具 | `research.tool_registry` | 声明（基于平台接口组合） |
