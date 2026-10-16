@@ -1,6 +1,6 @@
 # 可扩展性设计
 
-> 状态：评审中 · 版本：2.4 · 更新：2026-10-16 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.5 · 更新：2026-10-16 · 负责人：首席架构师
 
 ## 1. 设计目标
 
@@ -108,7 +108,7 @@ APP-TENDER 的矩阵见 `packs/application_domains/tendering/coverage.yaml`：�
 | SPI | 子系统 | 方法要点 |
 |---|---|---|
 | `SourceHandler` | acquisition | `discover(plan) → refs`、`fetch(ref) → artifacts` |
-| `Connector` | acquisition | 新访问方式（授权 API、文件投递、客户系统） |
+| `Connector` | acquisition | 新访问方式（授权 API、文件投递、客户系统）；客户系统连接器只在单元级租户集成实例中加载 |
 | `Extractor` | evidence | `extract(document, ctx) → fields + provenance` |
 | `Enricher` | evidence | `enrich(document_or_chunks, ctx) → tags/classes/mentions/vectors + confidence`；声明成本等级与适用范围 |
 | `Aggregator` | domain-intelligence | `candidates(fact) → keys`、`decide(fact, candidate) → link` |

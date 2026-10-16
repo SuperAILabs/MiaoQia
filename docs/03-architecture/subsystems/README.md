@@ -1,6 +1,6 @@
 # 子系统规格
 
-> 状态：评审中 · 版本：1.2 · 更新：2026-10-15 · 负责人：首席架构师
+> 状态：评审中 · 版本：1.3 · 更新：2026-10-16 · 负责人：首席架构师
 
 每个子系统是一个拥有独立职责、数据所有权和接口契约的业务能力单元，也是将来独立部署的最小粒度。
 
@@ -79,5 +79,7 @@
 |---|---|---|
 | `evidence` | `public,tenant` | 公共文档与租户文档分别部署；租户实例随 Cell |
 | `search` | `public,tenant` | 公共索引与租户知识/订阅索引分别部署；租户实例随 Cell |
+
+`acquisition` 的租户集成实例（[acquisition 第 10 节](acquisition.md#10-租户集成)）在首个租户集成启用时加入上表，届时同步生成清单与单元级角色。
 
 上表与默认规则生成 `deploy/subsystems.yaml` 的 `data_scopes`。进程角色对这两个子系统必须声明 `data_scopes`；取值为 `tenant` 时必须声明 `cell`，取值为 `public` 时不得绑定 `cell`，同一进程不能同时加载同一子系统的两个数据域实例。Python 启动、迁移与 `tools/dev/gen_local.py --check` 共用纯角色校验；Go 启动与迁移使用同一 RoleScopes，三者执行同一份 tests/contract/instance-scopes.json 正反例，检查登记、角色、重复模块、多余scope与单元归属，实例仍需独立凭证与存储，不能以清单校验代替运行时隔离验收。
