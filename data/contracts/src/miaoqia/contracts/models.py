@@ -104,6 +104,12 @@ class Cell(BaseModel):
     )
 
 
+class Kind1(Enum):
+    previous_period = "previous_period"
+    same_period_last_year = "same_period_last_year"
+    custom = "custom"
+
+
 class Role(Enum):
     buyer = "buyer"
     agency = "agency"
@@ -460,7 +466,7 @@ class OrgEnterpriseType(Enum):
     other = "other"
 
 
-class Kind1(Enum):
+class Kind2(Enum):
     organization = "organization"
     natural_person = "natural_person"
 
@@ -471,6 +477,29 @@ class OrgStatus(Enum):
     revoked = "revoked"
     cancelled = "cancelled"
     moved_out = "moved_out"
+
+
+class Granularity(Enum):
+    day = "day"
+    week = "week"
+    month = "month"
+    quarter = "quarter"
+    year = "year"
+    custom = "custom"
+
+
+class Period(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    start: AwareDatetime
+    end: AwareDatetime
+    granularity: Granularity | None = None
+    time_basis: constr(pattern=r"^[a-z][a-z0-9_.]*$") = Field(
+        ...,
+        description="归入期间所依据的事实时间字段（例如结果公告的 published_at、合同的 signed_on），由统计口径声明；不用记录或采集时间代替",
+    )
+    time_zone: str | None = "Asia/Shanghai"
 
 
 class Person(BaseModel):
@@ -659,7 +688,7 @@ class Region(BaseModel):
     )
 
 
-class Kind2(Enum):
+class Kind3(Enum):
     user = "user"
     service = "service"
     service_account = "service_account"
@@ -670,7 +699,7 @@ class Principal(BaseModel):
         extra="forbid",
     )
     id: constr(min_length=1)
-    kind: Kind2
+    kind: Kind3
 
 
 class RequestContext(BaseModel):
@@ -686,7 +715,7 @@ class RequestContext(BaseModel):
     purpose: constr(min_length=1) | None = None
 
 
-class Kind3(Enum):
+class Kind4(Enum):
     qualification = "qualification"
     performance = "performance"
     personnel = "personnel"
@@ -780,6 +809,22 @@ class StructuredRecordSet(BaseModel):
     records: list[StructuredRecord] = Field(
         ..., description="记录键在一个记录集内唯一（由 SDK 校验）"
     )
+
+
+class Kind5(Enum):
+    tenant_list = "tenant_list"
+    group = "group"
+    market = "market"
+    explicit = "explicit"
+
+
+class ListKind(Enum):
+    customers = "customers"
+    partners = "partners"
+    competitors = "competitors"
+    blocked = "blocked"
+    tracked = "tracked"
+    counterparties = "counterparties"
 
 
 class SubjectType(Enum):
@@ -977,7 +1022,7 @@ class OrgShareholder(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    kind: Kind1
+    kind: Kind2
     org: OrgRef | None = None
     person: Person | None = None
     share_ratio: constr(pattern=r"^(0(\.[0-9]+)?|1(\.0+)?)$") | None = Field(
@@ -1037,7 +1082,7 @@ class Requirement(BaseModel):
         extra="forbid",
     )
     id: constr(pattern=r"^req_[0-9A-HJKMNP-TV-Z]{26}$")
-    kind: Kind3
+    kind: Kind4
     code: str | None = Field(
         None,
         description="归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme 的代码按行业包默认资质体系解释，不能跨体系比较",
@@ -1370,6 +1415,57 @@ class LotSection(BaseModel):
     ending: EndingSection | None = None
 
 
+class MembershipSnapshot1(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    as_of: AwareDatetime = Field(
+        ...,
+        description="成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系",
+    )
+    source_version: constr(min_length=1) = Field(
+        ...,
+        description="成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本",
+    )
+    member_count: conint(ge=0)
+    members: list[SubjectRef] = Field(..., max_length=200)
+    members_object: constr(min_length=1) | None = Field(
+        None, description="成员清单的对象存储键（不含签名地址）"
+    )
+    members_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="按成员标识排序后的清单哈希"
+    )
+
+
+class MembershipSnapshot2(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    as_of: AwareDatetime = Field(
+        ...,
+        description="成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系",
+    )
+    source_version: constr(min_length=1) = Field(
+        ...,
+        description="成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本",
+    )
+    member_count: conint(ge=0)
+    members: list[SubjectRef] | None = Field(None, max_length=200)
+    members_object: constr(min_length=1) = Field(
+        ..., description="成员清单的对象存储键（不含签名地址）"
+    )
+    members_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="按成员标识排序后的清单哈希"
+    )
+
+
+class MembershipSnapshot(RootModel[MembershipSnapshot1 | MembershipSnapshot2]):
+    root: MembershipSnapshot1 | MembershipSnapshot2 = Field(
+        ...,
+        description="集合在取值时点的实际成员。成员不多于 200 个时内联 members；更多时存对象存储并以 members_object 引用，两者都以 members_hash 校验",
+    )
+
+
 class Notice(PublicFactMeta):
     id: constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
     info_domain: Literal["INF-PROC"]
@@ -1539,6 +1635,31 @@ class Signal(TenantMeta):
         description="open 待处理；triaged 已由用户调整处置；converted 已发起研究或推进；dismissed 用户忽略；closed 求值单位进入终态（如截止、终止）后关闭",
     )
     update_count: conint(ge=0) = Field(..., description="已追加的 SignalUpdate 数")
+
+
+class SubjectSet(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    kind: Kind5 = Field(
+        ...,
+        description="tenant_list 为 customer-context 的租户实体清单；group 为以 ref 所指组织为根、按实体图谱控制关系展开的集团成员；market 为租户市场 mkt_ 范围内的对象；explicit 为用户逐个指定",
+    )
+    list_kind: ListKind | None = Field(
+        None, description="kind=tenant_list 时的清单种类"
+    )
+    ref: SubjectRef | None = None
+    resolved: MembershipSnapshot
+
+
+class Comparison(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    kind: Kind1
+    baseline: Period
+    baseline_members: MembershipSnapshot | None = None
+    baseline_ref: UlidId | None = None
 
 
 class Rating(BaseModel):

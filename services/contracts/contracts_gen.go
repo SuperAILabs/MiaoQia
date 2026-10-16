@@ -277,6 +277,27 @@ type CellCoveredBy struct {
 	Row int `json:"row"`
 }
 
+// 期间对比的基准。基准期与本期使用同一统计口径与成员取值规则；口径或成员版本不同时须在产物中说明，不直接相减
+type Comparison struct {
+	// Baseline corresponds to the JSON schema field "baseline".
+	Baseline Period `json:"baseline"`
+
+	// BaselineMembers corresponds to the JSON schema field "baseline_members".
+	BaselineMembers *MembershipSnapshot `json:"baseline_members,omitempty,omitzero"`
+
+	// BaselineRef corresponds to the JSON schema field "baseline_ref".
+	BaselineRef *UlidId `json:"baseline_ref,omitempty,omitzero"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind ComparisonKind `json:"kind"`
+}
+
+type ComparisonKind string
+
+const ComparisonKindCustom ComparisonKind = "custom"
+const ComparisonKindPreviousPeriod ComparisonKind = "previous_period"
+const ComparisonKindSamePeriodLastYear ComparisonKind = "same_period_last_year"
+
 // 公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略
 type Contact struct {
 	// Email corresponds to the JSON schema field "email".
@@ -1084,6 +1105,28 @@ type LotSection struct {
 	Requirements []Requirement `json:"requirements,omitempty,omitzero"`
 }
 
+// 集合在取值时点的实际成员。成员不多于 200 个时内联 members；更多时存对象存储并以 members_object 引用，两者都以
+// members_hash 校验
+type MembershipSnapshot struct {
+	// 成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系
+	AsOf time.Time `json:"as_of"`
+
+	// MemberCount corresponds to the JSON schema field "member_count".
+	MemberCount int `json:"member_count"`
+
+	// Members corresponds to the JSON schema field "members".
+	Members []SubjectRef `json:"members,omitempty,omitzero"`
+
+	// 按成员标识排序后的清单哈希
+	MembersHash string `json:"members_hash"`
+
+	// 成员清单的对象存储键（不含签名地址）
+	MembersObject *string `json:"members_object,omitempty,omitzero"`
+
+	// 成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本
+	SourceVersion string `json:"source_version"`
+}
+
 type Money struct {
 	// Currency corresponds to the JSON schema field "currency".
 	Currency string `json:"currency"`
@@ -1646,6 +1689,33 @@ const OrgStatusCancelled OrgStatus = "cancelled"
 const OrgStatusMovedOut OrgStatus = "moved_out"
 const OrgStatusRevoked OrgStatus = "revoked"
 const OrgStatusSuspended OrgStatus = "suspended"
+
+// 统计或研究的实际期间，左闭右开。滚动窗口（如近 12 个月）在使用时换算为实际起止并记录在此，不只记窗口长度
+type Period struct {
+	// End corresponds to the JSON schema field "end".
+	End time.Time `json:"end"`
+
+	// Granularity corresponds to the JSON schema field "granularity".
+	Granularity *PeriodGranularity `json:"granularity,omitempty,omitzero"`
+
+	// Start corresponds to the JSON schema field "start".
+	Start time.Time `json:"start"`
+
+	// 归入期间所依据的事实时间字段（例如结果公告的 published_at、合同的 signed_on），由统计口径声明；不用记录或采集时间代替
+	TimeBasis string `json:"time_basis"`
+
+	// TimeZone corresponds to the JSON schema field "time_zone".
+	TimeZone string `json:"time_zone,omitempty,omitzero"`
+}
+
+type PeriodGranularity string
+
+const PeriodGranularityCustom PeriodGranularity = "custom"
+const PeriodGranularityDay PeriodGranularity = "day"
+const PeriodGranularityMonth PeriodGranularity = "month"
+const PeriodGranularityQuarter PeriodGranularity = "quarter"
+const PeriodGranularityWeek PeriodGranularity = "week"
+const PeriodGranularityYear PeriodGranularity = "year"
 
 // 自然人（法定代表人、自然人股东、高管、联系人等）。公开来源的个人业务信息按公开数据处理
 type Person struct {
@@ -2356,6 +2426,39 @@ type SubjectRef struct {
 	// Version corresponds to the JSON schema field "version".
 	Version *int `json:"version,omitempty,omitzero"`
 }
+
+// 多对象目标的对象集合（一组跟踪企业、集团的全部成员、一个市场内的组织等）。kind 说明集合如何定义；resolved
+// 记录本次求值、研究或简报实际使用的成员，动态集合据此恢复当次成员，不按当前成员重算
+type SubjectSet struct {
+	// tenant_list 为 customer-context 的租户实体清单；group 为以 ref
+	// 所指组织为根、按实体图谱控制关系展开的集团成员；market 为租户市场 mkt_ 范围内的对象；explicit 为用户逐个指定
+	Kind SubjectSetKind `json:"kind"`
+
+	// kind=tenant_list 时的清单种类
+	ListKind *SubjectSetListKind `json:"list_kind,omitempty,omitzero"`
+
+	// Ref corresponds to the JSON schema field "ref".
+	Ref *SubjectRef `json:"ref,omitempty,omitzero"`
+
+	// Resolved corresponds to the JSON schema field "resolved".
+	Resolved MembershipSnapshot `json:"resolved"`
+}
+
+type SubjectSetKind string
+
+const SubjectSetKindExplicit SubjectSetKind = "explicit"
+const SubjectSetKindGroup SubjectSetKind = "group"
+const SubjectSetKindMarket SubjectSetKind = "market"
+const SubjectSetKindTenantList SubjectSetKind = "tenant_list"
+
+type SubjectSetListKind string
+
+const SubjectSetListKindBlocked SubjectSetListKind = "blocked"
+const SubjectSetListKindCompetitors SubjectSetListKind = "competitors"
+const SubjectSetListKindCounterparties SubjectSetListKind = "counterparties"
+const SubjectSetListKindCustomers SubjectSetListKind = "customers"
+const SubjectSetListKindPartners SubjectSetListKind = "partners"
+const SubjectSetListKindTracked SubjectSetListKind = "tracked"
 
 type SubjectType string
 

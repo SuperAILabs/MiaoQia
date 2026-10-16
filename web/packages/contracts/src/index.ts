@@ -5,6 +5,43 @@
  */
 export type Decimal = string;
 /**
+ * 集合在取值时点的实际成员。成员不多于 200 个时内联 members；更多时存对象存储并以 members_object 引用，两者都以 members_hash 校验
+ */
+export type MembershipSnapshot = {
+  /**
+   * 成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系
+   */
+  as_of: string;
+  /**
+   * 成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本
+   */
+  source_version: string;
+  member_count: number;
+  /**
+   * @maxItems 200
+   */
+  members?: SubjectRef[];
+  /**
+   * 成员清单的对象存储键（不含签名地址）
+   */
+  members_object?: string;
+  /**
+   * 按成员标识排序后的清单哈希
+   */
+  members_hash: string;
+} & MembershipSnapshot1;
+/**
+ * 目标对象类型（业务架构第 3 节）
+ */
+export type SubjectType = "project" | "domain_fact" | "organization" | "market" | "relationship" | "program";
+/**
+ * 类型化 ULID，前缀登记在 contracts/identifiers.yaml
+ */
+export type UlidId = string;
+export type MembershipSnapshot1 = {
+  [k: string]: unknown;
+};
+/**
  * 已判定的资质状态：有效或过期（含双方一致或已确认）。待核对不在此列，单列于 qualifications_pending
  */
 export type QualificationStatus = "valid" | "expired";
@@ -57,10 +94,6 @@ export type CreditRecord = PublicFactMeta & {
   persons?: Person[];
   [k: string]: unknown;
 };
-/**
- * 类型化 ULID，前缀登记在 contracts/identifiers.yaml
- */
-export type UlidId = string;
 export type EvaluationMethod = "lowest_price" | "comprehensive_scoring" | "other";
 /**
  * 原始制品稳定对象键/引用，不是短时签名URL
@@ -439,10 +472,6 @@ export type Signal = TenantMeta & {
   update_count: number;
   [k: string]: unknown;
 };
-/**
- * 目标对象类型（业务架构第 3 节）
- */
-export type SubjectType = "project" | "domain_fact" | "organization" | "market" | "relationship" | "program";
 
 export interface AcceptanceSection {
   id: string;
@@ -666,6 +695,37 @@ export interface Cell {
     row: number;
     col: number;
   };
+}
+/**
+ * 期间对比的基准。基准期与本期使用同一统计口径与成员取值规则；口径或成员版本不同时须在产物中说明，不直接相减
+ */
+export interface Comparison {
+  kind: "previous_period" | "same_period_last_year" | "custom";
+  baseline: Period;
+  baseline_members?: MembershipSnapshot;
+  baseline_ref?: UlidId;
+}
+/**
+ * 统计或研究的实际期间，左闭右开。滚动窗口（如近 12 个月）在使用时换算为实际起止并记录在此，不只记窗口长度
+ */
+export interface Period {
+  start: string;
+  end: string;
+  granularity?: "day" | "week" | "month" | "quarter" | "year" | "custom";
+  /**
+   * 归入期间所依据的事实时间字段（例如结果公告的 published_at、合同的 signed_on），由统计口径声明；不用记录或采集时间代替
+   */
+  time_basis: string;
+  time_zone?: string;
+}
+/**
+ * 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱 prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_ 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为 prg_。version 为被引用对象在求值或判断时的版本，domain_fact 必填；实体图谱对象的版本语义尚未定义，暂为可选。part_id 指向对象内部的求值单位（如采购项目的标包 lot_）。
+ */
+export interface SubjectRef {
+  type: SubjectType;
+  id: UlidId;
+  version?: number;
+  part_id?: UlidId;
 }
 /**
  * 公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略
@@ -1365,15 +1425,6 @@ export interface TenantMeta {
   updated_at: string;
   [k: string]: unknown;
 }
-/**
- * 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱 prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_ 信用记录）；organization 为 org_；market 为 mkt_；relationship 为 rel_；program 为 prg_。version 为被引用对象在求值或判断时的版本，domain_fact 必填；实体图谱对象的版本语义尚未定义，暂为可选。part_id 指向对象内部的求值单位（如采购项目的标包 lot_）。
- */
-export interface SubjectRef {
-  type: SubjectType;
-  id: UlidId;
-  version?: number;
-  part_id?: UlidId;
-}
 export interface StructuredRecord {
   /**
    * 记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）
@@ -1408,4 +1459,19 @@ export interface StructuredRecordSet {
    * 记录键在一个记录集内唯一（由 SDK 校验）
    */
   records: StructuredRecord[];
+}
+/**
+ * 多对象目标的对象集合（一组跟踪企业、集团的全部成员、一个市场内的组织等）。kind 说明集合如何定义；resolved 记录本次求值、研究或简报实际使用的成员，动态集合据此恢复当次成员，不按当前成员重算
+ */
+export interface SubjectSet {
+  /**
+   * tenant_list 为 customer-context 的租户实体清单；group 为以 ref 所指组织为根、按实体图谱控制关系展开的集团成员；market 为租户市场 mkt_ 范围内的对象；explicit 为用户逐个指定
+   */
+  kind: "tenant_list" | "group" | "market" | "explicit";
+  /**
+   * kind=tenant_list 时的清单种类
+   */
+  list_kind?: "customers" | "partners" | "competitors" | "blocked" | "tracked" | "counterparties";
+  ref?: SubjectRef;
+  resolved: MembershipSnapshot;
 }

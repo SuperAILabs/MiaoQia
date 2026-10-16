@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/intelligence/defs.schema.json",
-  "x-version": "0.1.0",
+  "x-version": "0.2.0",
   "title": "客户智能平面公共定义",
-  "description": "租户域对象共用的类型（草案）。subject_ref 引用公共域对象时不复制公共数据（数据架构第 1 节、业务架构第 3 节）；也可引用租户自有对象（如 customer-context 拥有的市场 mkt_），所有者以 identifiers.yaml 登记为准。",
+  "description": "租户域对象共用的类型（草案）。多对象与期间：subject_set、membership_snapshot、period、comparison 供持续型推进、简报与研究产物引用，各产物随自身契约接入。subject_ref 引用公共域对象时不复制公共数据（数据架构第 1 节、业务架构第 3 节）；也可引用租户自有对象（如 customer-context 拥有的市场 mkt_），所有者以 identifiers.yaml 登记为准。",
   "$defs": {
     "subject_type": {
       "x-type-name": "SubjectType",
@@ -42,6 +42,66 @@
         "policy_version": { "type": "integer", "minimum": 1 },
         "template_id": { "type": "string", "pattern": "^TPL-[A-Z0-9]+(-[A-Z0-9]+)+$" },
         "template_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+      }
+    },
+    "subject_set": {
+      "x-type-name": "SubjectSet",
+      "type": "object",
+      "description": "多对象目标的对象集合（一组跟踪企业、集团的全部成员、一个市场内的组织等）。kind 说明集合如何定义；resolved 记录本次求值、研究或简报实际使用的成员，动态集合据此恢复当次成员，不按当前成员重算",
+      "required": ["kind", "resolved"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["tenant_list", "group", "market", "explicit"], "description": "tenant_list 为 customer-context 的租户实体清单；group 为以 ref 所指组织为根、按实体图谱控制关系展开的集团成员；market 为租户市场 mkt_ 范围内的对象；explicit 为用户逐个指定" },
+        "list_kind": { "enum": ["customers", "partners", "competitors", "blocked", "tracked", "counterparties"], "description": "kind=tenant_list 时的清单种类" },
+        "ref": { "$ref": "#/$defs/subject_ref", "description": "kind=group 时为集团根组织 org_，kind=market 时为 mkt_" },
+        "resolved": { "$ref": "#/$defs/membership_snapshot" }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "tenant_list" } } }, "then": { "required": ["list_kind"] } },
+        { "if": { "properties": { "kind": { "enum": ["group", "market"] } } }, "then": { "required": ["ref"] } }
+      ]
+    },
+    "membership_snapshot": {
+      "x-type-name": "MembershipSnapshot",
+      "type": "object",
+      "description": "集合在取值时点的实际成员。成员不多于 200 个时内联 members；更多时存对象存储并以 members_object 引用，两者都以 members_hash 校验",
+      "required": ["as_of", "source_version", "member_count", "members_hash"],
+      "additionalProperties": false,
+      "properties": {
+        "as_of": { "type": "string", "format": "date-time", "description": "成员关系的取值时点：持续型推进取本期结束时间，事件触发的求值取逻辑求值时间；集团成员按该时点有效的控制关系，不用之后才生效或撤销的关系" },
+        "source_version": { "type": "string", "minLength": 1, "description": "成员来源的版本：租户清单为 context_version，集团为实体图谱关系版本，市场为所用统计版本" },
+        "member_count": { "type": "integer", "minimum": 0 },
+        "members": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/subject_ref" } },
+        "members_object": { "type": "string", "minLength": 1, "description": "成员清单的对象存储键（不含签名地址）" },
+        "members_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "按成员标识排序后的清单哈希" }
+      },
+      "oneOf": [ { "required": ["members"] }, { "required": ["members_object"] } ]
+    },
+    "period": {
+      "x-type-name": "Period",
+      "type": "object",
+      "description": "统计或研究的实际期间，左闭右开。滚动窗口（如近 12 个月）在使用时换算为实际起止并记录在此，不只记窗口长度",
+      "required": ["start", "end", "time_basis"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" },
+        "granularity": { "enum": ["day", "week", "month", "quarter", "year", "custom"] },
+        "time_basis": { "type": "string", "pattern": "^[a-z][a-z0-9_.]*$", "description": "归入期间所依据的事实时间字段（例如结果公告的 published_at、合同的 signed_on），由统计口径声明；不用记录或采集时间代替" },
+        "time_zone": { "type": "string", "default": "Asia/Shanghai" }
+      }
+    },
+    "comparison": {
+      "x-type-name": "Comparison",
+      "type": "object",
+      "description": "期间对比的基准。基准期与本期使用同一统计口径与成员取值规则；口径或成员版本不同时须在产物中说明，不直接相减",
+      "required": ["kind", "baseline"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["previous_period", "same_period_last_year", "custom"] },
+        "baseline": { "$ref": "#/$defs/period" },
+        "baseline_members": { "$ref": "#/$defs/membership_snapshot", "description": "基准期成员；缺省表示与本期相同" },
+        "baseline_ref": { "$ref": "../common/types.schema.json#/$defs/ulid_id", "description": "基准期已生成的产物（如上一期研究案例 rsc_），引用其固定版本" }
       }
     },
     "tenant_meta": {
