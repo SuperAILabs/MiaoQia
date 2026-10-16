@@ -663,10 +663,10 @@ class RecordEvidenceRef(BaseModel):
     )
 
 
-class RecordValue(RootModel[str | bool | list["RecordValue"] | dict[str, "RecordValue"]]):
-    root: str | bool | list[RecordValue] | dict[str, RecordValue] = Field(
+class RecordValue(RootModel["str | bool | list[RecordValue | None] | dict[str, RecordValue]"]):
+    root: str | bool | list[RecordValue | None] | dict[str, RecordValue] = Field(
         ...,
-        description="记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 以省略该字段表示（字段缺失即未知）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致",
+        description="记录取值的无损表示：数字一律保留来源的十进制原文为字符串（不经浮点，避免 2^53 以上整数和小数在各语言中改值），文本为字符串，布尔保留布尔，数组与对象逐层同样表示；来源的 null 在对象中以省略该字段表示（字段缺失即未知），在数组中保留为 null 以保持元素位置（不删除元素）。CSV、XML 的取值本来就是文本。value_hash 按此表示做 RFC 8785 规范化后计算，各语言一致",
     )
 
 

@@ -27,6 +27,12 @@ cases:
   - name: 嵌套取值为原文字符串
     valid: true
     patch: [{ op: add, path: /records/0/data/items, value: [{ qty: "1.10", ok: true }] }]
+  - name: 数组空位按位置保留（前置、中间、嵌套）
+    valid: true
+    patch: [{ op: add, path: /records/0/data/items, value: [null, { qty: "1.10" }, null, [null, "x"]] }]
+  - name: 对象字段为 null 时应省略而不是写 null
+    valid: false
+    patch: [{ op: add, path: /records/0/data/remark, value: null }]
   - name: CSV 导出
     valid: true
     patch: [{ op: replace, path: /media_type, value: text_csv }]

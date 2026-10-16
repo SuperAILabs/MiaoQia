@@ -3,7 +3,7 @@
 规则（编号用于报错）：
   S1  $schema 为 2020-12，$id 与文件路径一致
   S2  顶层 Schema 有 title（首个词为 ASCII PascalCase，作为生成类型名）与 description
-  S3  不使用 null 类型：字段缺失即未知
+  S3  不使用 null 类型：字段缺失即未知；唯一例外是以 x-allow-null 写明理由的节点（原样记录中数组空位须保留位置）
   S4  有 properties 的对象必须声明 additionalProperties: false 或 unevaluatedProperties: false
       （以 allOf 混入的公共字段组标 x-mixin: true 豁免）
   S5  标识 pattern 的前缀必须登记在 contracts/identifiers.yaml
@@ -28,6 +28,16 @@ ID_GROUP_PATTERN = re.compile(r"^\^(?:([a-z]{2,4})|([a-z]+)\[([a-z]+)\])_\[0-9A-
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 SNAKE = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 TITLE = re.compile(r"^[A-Z][A-Za-z0-9]*(\s|$)")
+
+
+def _null_allowed(schema: dict, path: str) -> bool:
+    """S3 的例外：上级节点以 x-allow-null 写明理由（如原样记录中数组空位须保留位置）。"""
+    parts = [p for p in path.split("/") if p and p != "#"]
+    node, chain = schema, [schema]
+    for p in parts:
+        node = node[int(p)] if isinstance(node, list) else node.get(p, {})
+        chain.append(node)
+    return any(isinstance(n, dict) and isinstance(n.get("x-allow-null"), str) and n["x-allow-null"] for n in chain)
 
 
 def _walk(node, path="#"):
@@ -74,7 +84,7 @@ def lint_schemas(repo: Repo) -> Report:
         resolver = repo.registry.resolver(base_uri=s["$id"])
         for path, node in _walk(s):
             t = node.get("type")
-            if t == "null" or (isinstance(t, list) and "null" in t):
+            if (t == "null" or (isinstance(t, list) and "null" in t)) and not _null_allowed(s, path):
                 r.error(where, f"S3 {path} 使用了 null 类型")
             if "properties" in node and node.get("type") == "object" and not node.get("x-mixin"):
                 if node.get("additionalProperties") is not False and node.get("unevaluatedProperties") is not False:
