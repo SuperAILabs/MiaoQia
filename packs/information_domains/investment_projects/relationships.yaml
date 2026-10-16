@@ -2,7 +2,7 @@
 relationships:
   - type: part_of
     say: 采购项目（或其中的标包）归属投资项目（项目链：立项 → 设计 → 采购 → 施工 → 验收）
-    from: domain_fact                        # 归属边：起点是采购项目 pp_，终点是实体图谱项目 prj_
+    from: domain_fact                        # 归属边：起点是采购项目 pp_，终点是实体图谱项目 prj_；变化发布 entity.project_link.changed.v1
     to: project
     qualifiers: [lot]                        # 合并采购的不同标包可归属不同项目；不带标包表示整个采购项目
     validity: event

@@ -837,6 +837,134 @@
       }
     },
     {
+      "event": "entity.project_link.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "action": "upsert",
+        "confidence": 1,
+        "method": "project_code",
+        "procurement_project_id": "pp_00000000000000000000000000",
+        "project_id": "prj_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "status": "auto"
+      }
+    },
+    {
+      "event": "entity.project_link.changed.v1",
+      "name": "缺少必填字段",
+      "valid": false,
+      "value": {
+        "action": "upsert",
+        "confidence": 1,
+        "method": "project_code",
+        "procurement_project_id": "pp_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "status": "auto"
+      }
+    },
+    {
+      "event": "entity.project_link.changed.v1",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "action": "upsert",
+        "confidence": 1,
+        "method": "project_code",
+        "procurement_project_id": "pp_00000000000000000000000000",
+        "project_id": "prj_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "status": "auto",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "entity.project_link.changed.v1",
+      "name": "起点必须是采购项目",
+      "valid": false,
+      "value": {
+        "action": "upsert",
+        "confidence": 1,
+        "method": "project_code",
+        "procurement_project_id": "prj_00000000000000000000000000",
+        "project_id": "prj_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "status": "auto"
+      }
+    },
+    {
+      "event": "entity.project_link.changed.v1",
+      "name": "终点必须是项目",
+      "valid": false,
+      "value": {
+        "action": "upsert",
+        "confidence": 1,
+        "method": "project_code",
+        "procurement_project_id": "pp_00000000000000000000000000",
+        "project_id": "org_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "status": "auto"
+      }
+    },
+    {
+      "event": "entity.project_link.changed.v1",
+      "name": "只归属其中一个标包的候选边",
+      "valid": true,
+      "value": {
+        "action": "upsert",
+        "confidence": 0.82,
+        "lot_id": "lot_00000000000000000000000000",
+        "method": "attribute_match",
+        "procurement_project_id": "pp_00000000000000000000000000",
+        "project_id": "prj_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_version": 1,
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "status": "candidate"
+      }
+    },
+    {
+      "event": "entity.project_link.changed.v1",
+      "name": "复核否决后撤销",
+      "valid": true,
+      "value": {
+        "action": "remove",
+        "confidence": 1,
+        "method": "project_code",
+        "procurement_project_id": "pp_00000000000000000000000000",
+        "project_id": "prj_00000000000000000000000000",
+        "relationship_id": "rel_00000000000000000000000000",
+        "relationship_version": 1,
+        "remove_reason": "review_rejected",
+        "rights_tags": [
+          "fixture-value"
+        ],
+        "status": "auto"
+      }
+    },
+    {
       "event": "evidence.probe.forwarded.v1",
       "name": "base",
       "valid": true,
@@ -2370,6 +2498,100 @@
         "restored_ids",
         "entity_version",
         "rights_tags"
+      ],
+      "type": "object"
+    },
+    "entity.project_link.changed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "upsert",
+            "remove"
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "lot_id": {
+          "description": "只归属其中一个标包时给出；缺省表示整个采购项目",
+          "pattern": "^lot_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "project_code",
+            "approval_code",
+            "explicit_reference",
+            "attribute_match",
+            "semantic",
+            "manual"
+          ]
+        },
+        "procurement_project_id": {
+          "pattern": "^pp_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "relationship_id": {
+          "pattern": "^rel_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventRelationshipId"
+        },
+        "relationship_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "remove_reason": {
+          "enum": [
+            "source_revised",
+            "source_withdrawn",
+            "rights_revoked",
+            "merge_reverted",
+            "superseded",
+            "review_rejected"
+          ]
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "status": {
+          "description": "显式标识建边为 auto；属性或语义匹配为 candidate，复核后为 confirmed",
+          "enum": [
+            "auto",
+            "candidate",
+            "confirmed"
+          ]
+        },
+        "superseded_by": {
+          "pattern": "^rel_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string",
+          "x-type-name": "EventRelationshipId"
+        }
+      },
+      "required": [
+        "relationship_id",
+        "rights_tags",
+        "procurement_project_id",
+        "project_id",
+        "relationship_version",
+        "action",
+        "method",
+        "confidence",
+        "status"
       ],
       "type": "object"
     },
