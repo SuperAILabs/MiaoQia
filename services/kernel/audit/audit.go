@@ -25,19 +25,28 @@ type Entry struct {
 	Resource string // 资源引用，例如 prb_…
 	Result   string // succeeded / denied / failed
 	Basis    string // 依据，例如授权关系 can_trigger_probe
+	// Delegation 在妙洽人员代表租户操作时填写（identity.md 第 7.8 节）；普通成员与服务的操作为 nil。
+	Delegation *Delegation
+}
+
+// Delegation 是代表租户操作所依据的授予记录。
+type Delegation struct {
+	Kind  string `json:"kind"`  // support_access / service_delegation
+	Grant string `json:"grant"` // 授予记录标识
 }
 
 // Data 是审计事件载荷。
 type Data struct {
-	Actor      string    `json:"actor"`
-	ActorKind  string    `json:"actor_kind"`
-	Tenant     string    `json:"tenant,omitempty"`
-	Subsystem  string    `json:"subsystem"`
-	Action     string    `json:"action"`
-	Resource   string    `json:"resource"`
-	Result     string    `json:"result"`
-	Basis      string    `json:"basis,omitempty"`
-	OccurredAt time.Time `json:"occurred_at"`
+	Actor      string      `json:"actor"`
+	ActorKind  string      `json:"actor_kind"`
+	Tenant     string      `json:"tenant,omitempty"`
+	Subsystem  string      `json:"subsystem"`
+	Action     string      `json:"action"`
+	Resource   string      `json:"resource"`
+	Result     string      `json:"result"`
+	Basis      string      `json:"basis,omitempty"`
+	Delegation *Delegation `json:"delegation,omitempty"`
+	OccurredAt time.Time   `json:"occurred_at"`
 }
 
 // Recorder 为一个子系统写审计条目。
@@ -53,7 +62,7 @@ func (r Recorder) Record(ctx context.Context, tx pgx.Tx, e Entry) error {
 		Type: EventType, Subject: e.Resource, Topic: Topic,
 		PartitionKey: rc.Tenant + "/" + e.Resource,
 		Data: Data{Actor: rc.Principal.ID, ActorKind: rc.Principal.Kind, Tenant: rc.Tenant, Subsystem: r.Subsystem,
-			Action: e.Action, Resource: e.Resource, Result: e.Result, Basis: e.Basis, OccurredAt: time.Now().UTC()},
+			Action: e.Action, Resource: e.Resource, Result: e.Result, Basis: e.Basis, Delegation: e.Delegation, OccurredAt: time.Now().UTC()},
 	})
 	return err
 }

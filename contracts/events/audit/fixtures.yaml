@@ -9,6 +9,24 @@ fixtures:
     result: succeeded
     occurred_at: '2026-10-14T08:00:00Z'
   cases:
+  - name: 服务委托下的操作
+    valid: true
+    patch:
+    - op: add
+      path: /delegation
+      value: { kind: service_delegation, grant: sdg-01JA8ZXXXXXXXXXXXXXXXXXXX1 }
+  - name: 委托缺少授予记录
+    valid: false
+    patch:
+    - op: add
+      path: /delegation
+      value: { kind: service_delegation }
+  - name: 非法委托类别
+    valid: false
+    patch:
+    - op: add
+      path: /delegation
+      value: { kind: contract, grant: sdg-01JA8ZXXXXXXXXXXXXXXXXXXX1 }
   - name: 缺少必填字段
     valid: false
     patch:

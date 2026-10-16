@@ -240,6 +240,59 @@
     },
     {
       "event": "audit.entry.recorded.v1",
+      "name": "服务委托下的操作",
+      "valid": true,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "service",
+        "delegation": {
+          "grant": "sdg-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "kind": "service_delegation"
+        },
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "委托缺少授予记录",
+      "valid": false,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "service",
+        "delegation": {
+          "kind": "service_delegation"
+        },
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
+      "name": "非法委托类别",
+      "valid": false,
+      "value": {
+        "action": "operations.probe.trigger",
+        "actor": "svc:operations",
+        "actor_kind": "service",
+        "delegation": {
+          "grant": "sdg-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "kind": "contract"
+        },
+        "occurred_at": "2026-10-14T08:00:00Z",
+        "resource": "prb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "subsystem": "operations"
+      }
+    },
+    {
+      "event": "audit.entry.recorded.v1",
       "name": "缺少必填字段",
       "valid": false,
       "value": {
@@ -1889,6 +1942,30 @@
         "basis": {
           "description": "依据，例如授权关系",
           "type": "string"
+        },
+        "delegation": {
+          "additionalProperties": false,
+          "description": "妙洽人员代表租户操作时的授权记录（identity 第 7.8 节）：actor 为实际操作者，tenant 为代表的租户； 普通成员与服务的操作不带此字段\n",
+          "properties": {
+            "grant": {
+              "description": "授予记录标识（前缀随对应功能登记）",
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "description": "内部支持访问或服务委托",
+              "enum": [
+                "support_access",
+                "service_delegation"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "grant"
+          ],
+          "type": "object"
         },
         "occurred_at": {
           "format": "date-time",

@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: 审计事件流
-  version: 1.0.0
+  version: 1.1.0
   description: >
     全部子系统经审计 SDK 发布（与业务写入同事务进入发件箱），由 governance 消费并不可篡改地存储
     （docs/03-architecture/subsystems/governance.md）。审计条目只含引用与摘要，不含敏感内容。
@@ -36,4 +36,14 @@ components:
           resource: { type: string, description: 资源引用 }
           result: { type: string, enum: [succeeded, denied, failed] }
           basis: { type: string, description: 依据，例如授权关系 }
+          delegation:
+            type: object
+            description: >
+              妙洽人员代表租户操作时的授权记录（identity 第 7.8 节）：actor 为实际操作者，tenant 为代表的租户；
+              普通成员与服务的操作不带此字段
+            additionalProperties: false
+            required: [kind, grant]
+            properties:
+              kind: { type: string, enum: [support_access, service_delegation], description: 内部支持访问或服务委托 }
+              grant: { type: string, minLength: 1, description: 授予记录标识（前缀随对应功能登记） }
           occurred_at: { type: string, format: date-time }
