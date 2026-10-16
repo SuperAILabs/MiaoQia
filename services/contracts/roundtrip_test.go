@@ -18,19 +18,22 @@ func TestRoundTrip(t *testing.T) {
 		t.Skip("MQC_FIXTURES 未设置")
 	}
 	factories := map[string]func() any{
-		"Notice":             func() any { return &Notice{} },
-		"ProcurementProject": func() any { return &ProcurementProject{} },
-		"OrgRegistration":    func() any { return &OrgRegistration{} },
-		"OrgChange":          func() any { return &OrgChange{} },
-		"OrgAbnormal":        func() any { return &OrgAbnormal{} },
-		"CreditRecord":       func() any { return &CreditRecord{} },
-		"Signal":             func() any { return &Signal{} },
-		"ContextSnapshot":    func() any { return &ContextSnapshot{} },
-		"InvestmentRecord":   func() any { return &InvestmentRecord{} },
-		"NormalizedDocument": func() any { return &NormalizedDocument{} },
-		"EvidenceRef":        func() any { return &EvidenceRef{} },
-		"EventEnvelope":      func() any { return &EventEnvelope{} },
-		"RequestContext":     func() any { return &RequestContext{} },
+		"Notice":                func() any { return &Notice{} },
+		"ProcurementProject":    func() any { return &ProcurementProject{} },
+		"OrgRegistration":       func() any { return &OrgRegistration{} },
+		"OrgChange":             func() any { return &OrgChange{} },
+		"OrgAbnormal":           func() any { return &OrgAbnormal{} },
+		"CreditRecord":          func() any { return &CreditRecord{} },
+		"Signal":                func() any { return &Signal{} },
+		"ContextSnapshot":       func() any { return &ContextSnapshot{} },
+		"InvestmentRecord":      func() any { return &InvestmentRecord{} },
+		"NormalizedDocument":    func() any { return &NormalizedDocument{} },
+		"EvidenceRef":           func() any { return &EvidenceRef{} },
+		"StructuredRecordSet":   func() any { return &StructuredRecordSet{} },
+		"RecordEvidenceRef":     func() any { return &RecordEvidenceRef{} },
+		"DerivationEvidenceRef": func() any { return &DerivationEvidenceRef{} },
+		"EventEnvelope":         func() any { return &EventEnvelope{} },
+		"RequestContext":        func() any { return &RequestContext{} },
 	}
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil || len(files) == 0 {

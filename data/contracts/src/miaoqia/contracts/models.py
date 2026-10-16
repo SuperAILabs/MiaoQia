@@ -613,6 +613,37 @@ class Quantity(BaseModel):
     prov: Provenance
 
 
+class RecordEvidenceRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$")
+    kind: Literal["record"] = Field(
+        ..., description="证据形态；文档证据（evidence-ref 1.0）不带本字段"
+    )
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$")
+    record_key: constr(min_length=1) = Field(
+        ..., description="structured-record 中记录的 key"
+    )
+    field_path: constr(pattern=r"^(/([^/~]|~[01])*)*$") = Field(
+        ..., description="记录 data 内的 JSON Pointer（RFC 6901）；空串表示整条记录"
+    )
+    value_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="被引用取值按 RFC 8785 规范化后的哈希，用于校验定位未漂移"
+    )
+
+
+class ReferenceDataVersion(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: constr(pattern=r"^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$") = Field(
+        ..., description="参考数据标识，例如 gb2260、cn-holidays"
+    )
+    version: constr(min_length=1)
+
+
 class Region(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -708,6 +739,47 @@ class Status2(Enum):
     converted = "converted"
     dismissed = "dismissed"
     closed = "closed"
+
+
+class StructuredRecord(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    key: constr(min_length=1) = Field(
+        ...,
+        description="记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）",
+    )
+    data: dict[str, Any] = Field(
+        ...,
+        description="记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）",
+    )
+
+
+class MediaType1(Enum):
+    application_json = "application_json"
+    text_csv = "text_csv"
+    application_xml = "application_xml"
+
+
+class StructuredRecordSet(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    snapshot_ref: constr(pattern=r"^snp_[0-9A-HJKMNP-TV-Z]{26}$")
+    pipeline_version: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
+        ..., description="结构化处理管线标识与版本（字符集解码、格式转换、记录键规则）"
+    )
+    media_type: MediaType1 = Field(
+        ..., description="原始制品格式；表格文件以 CSV 形式导出时记为 text_csv"
+    )
+    source_url: str | None = None
+    key_rule: constr(min_length=1) | None = Field(
+        None,
+        description="记录键的生成规则说明（例如“统一社会信用代码+处罚决定书文号”）；同一来源对象在不同快照中按同一规则生成，使字段可跨快照对比",
+    )
+    records: list[StructuredRecord] = Field(
+        ..., description="记录键在一个记录集内唯一（由 SDK 校验）"
+    )
 
 
 class SubjectType(Enum):
@@ -830,6 +902,17 @@ class EvidenceRef(BaseModel):
     locator: Locator
     quote_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
         ..., description="被引用原文片段的哈希，用于校验定位未漂移"
+    )
+
+
+class FactVersionRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: UlidId
+    version: conint(ge=1) = Field(
+        ...,
+        description="领域事实版本号（public_fact_meta.version），固定引用，不随当前版本指针变化",
     )
 
 
@@ -1175,6 +1258,20 @@ class Deadline(BaseModel):
     at: Instant
 
 
+class DerivationInput(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    evidence_ref: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$") = Field(
+        ...,
+        description="该输入取值的证据；输入来自领域事实字段时为该版本中该字段的 provenance.evidence_ref。证据链沿派生证据向下必须无环，末端都是文档证据或记录证据",
+    )
+    fact_ref: FactVersionRef | None = None
+    field_path: constr(pattern=r"^(/([^/~]|~[01])*)*$") | None = Field(
+        None, description="fact_ref 所指事实内的 JSON Pointer"
+    )
+
+
 class ConstructionPermit(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1471,6 +1568,30 @@ class CreditRecord(PublicFactMeta):
     judgment: Judgment | None = None
     rating: Rating | None = None
     persons: list[Person] | None = None
+
+
+class DerivationEvidenceRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ev_[0-9A-HJKMNP-TV-Z]{26}$")
+    kind: Literal["derivation"]
+    transform: constr(pattern=r"^[a-z0-9_.-]+@[0-9]+\.[0-9]+\.[0-9]+$") = Field(
+        ...,
+        description="转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果",
+    )
+    inputs: list[DerivationInput] = Field(
+        ...,
+        description="按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本",
+        max_length=64,
+        min_length=1,
+    )
+    reference_data: list[ReferenceDataVersion] | None = Field(
+        None, description="转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）"
+    )
+    value_hash: constr(pattern=r"^sha256:[0-9a-f]{64}$") = Field(
+        ..., description="派生取值按 RFC 8785 规范化后的哈希"
+    )
 
 
 class ProcurementProject(PublicFactMeta):

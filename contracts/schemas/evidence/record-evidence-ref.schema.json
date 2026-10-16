@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/evidence/record-evidence-ref.schema.json",
+  "x-version": "0.1.0",
+  "title": "RecordEvidenceRef 记录证据引用",
+  "description": "结构化证据：指向某个快照在某个处理管线版本下的结构化记录集中一条记录的一个字段。与文档证据（evidence-ref）共用 ev_ 标识空间，由 evidence 分配，字段溯源（provenance.evidence_ref）可直接引用（草案）。",
+  "type": "object",
+  "required": [
+    "id",
+    "kind",
+    "snapshot_ref",
+    "pipeline_version",
+    "record_key",
+    "field_path",
+    "value_hash"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "kind": {
+      "const": "record",
+      "description": "证据形态；文档证据（evidence-ref 1.0）不带本字段"
+    },
+    "snapshot_ref": {
+      "type": "string",
+      "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "pipeline_version": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+@[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "record_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "structured-record 中记录的 key"
+    },
+    "field_path": {
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)*$",
+      "description": "记录 data 内的 JSON Pointer（RFC 6901）；空串表示整条记录"
+    },
+    "value_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "被引用取值按 RFC 8785 规范化后的哈希，用于校验定位未漂移"
+    }
+  }
+}

@@ -1014,6 +1014,57 @@ export interface Deadline {
   at: Instant;
 }
 /**
+ * 派生证据：一个由确定性转换计算出的取值（例如按“自公告发布之日起 20 日”推算的截止时间、按区划新旧版本对照转换的代码、单位换算后的金额），记录全部输入的版本与证据、转换的标识与版本及所用参考数据的版本，使取值可按版本重放。与文档证据、记录证据共用 ev_ 标识空间，由 evidence 分配（草案）。模型推断不属于派生，走解析或增强并带各自的证据。
+ */
+export interface DerivationEvidenceRef {
+  id: string;
+  kind: "derivation";
+  /**
+   * 转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果
+   */
+  transform: string;
+  /**
+   * 按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本
+   *
+   * @minItems 1
+   * @maxItems 64
+   */
+  inputs: [DerivationInput, ...DerivationInput[]];
+  /**
+   * 转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）
+   */
+  reference_data?: ReferenceDataVersion[];
+  /**
+   * 派生取值按 RFC 8785 规范化后的哈希
+   */
+  value_hash: string;
+}
+export interface DerivationInput {
+  /**
+   * 该输入取值的证据；输入来自领域事实字段时为该版本中该字段的 provenance.evidence_ref。证据链沿派生证据向下必须无环，末端都是文档证据或记录证据
+   */
+  evidence_ref: string;
+  fact_ref?: FactVersionRef;
+  /**
+   * fact_ref 所指事实内的 JSON Pointer
+   */
+  field_path?: string;
+}
+export interface FactVersionRef {
+  id: UlidId;
+  /**
+   * 领域事实版本号（public_fact_meta.version），固定引用，不随当前版本指针变化
+   */
+  version: number;
+}
+export interface ReferenceDataVersion {
+  /**
+   * 参考数据标识，例如 gb2260、cn-holidays
+   */
+  name: string;
+  version: string;
+}
+/**
  * 终止、流标或废标
  */
 export interface EndingSection {
@@ -1252,6 +1303,30 @@ export interface ProjectLot {
   shortlisted_suppliers?: BidResult[];
 }
 /**
+ * 结构化证据：指向某个快照在某个处理管线版本下的结构化记录集中一条记录的一个字段。与文档证据（evidence-ref）共用 ev_ 标识空间，由 evidence 分配，字段溯源（provenance.evidence_ref）可直接引用（草案）。
+ */
+export interface RecordEvidenceRef {
+  id: string;
+  /**
+   * 证据形态；文档证据（evidence-ref 1.0）不带本字段
+   */
+  kind: "record";
+  snapshot_ref: string;
+  pipeline_version: string;
+  /**
+   * structured-record 中记录的 key
+   */
+  record_key: string;
+  /**
+   * 记录 data 内的 JSON Pointer（RFC 6901）；空串表示整条记录
+   */
+  field_path: string;
+  /**
+   * 被引用取值按 RFC 8785 规范化后的哈希，用于校验定位未漂移
+   */
+  value_hash: string;
+}
+/**
  * 内部可信边界的请求上下文；Base64URL无填充编码JSON；不接受外部请求提供的此头。
  */
 export interface RequestContext {
@@ -1298,4 +1373,39 @@ export interface SubjectRef {
   id: UlidId;
   version?: number;
   part_id?: UlidId;
+}
+export interface StructuredRecord {
+  /**
+   * 记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）
+   */
+  key: string;
+  /**
+   * 记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）
+   */
+  data: {
+    [k: string]: unknown;
+  };
+}
+/**
+ * evidence 把结构化来源制品（接口响应、数据下载的 JSON/CSV/XML 文件）转换后的统一记录表示，与规范化文档并列存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是结构化证据的坐标系：解析器读取记录集，字段溯源以记录键加字段路径定位（record-evidence-ref）。网页、PDF、Office 文档及其中的表格仍走规范化文档，不转成记录集（草案，规则见 docs/03-architecture/subsystems/evidence.md 第 4 节与 ADR-0011）。
+ */
+export interface StructuredRecordSet {
+  snapshot_ref: string;
+  /**
+   * 结构化处理管线标识与版本（字符集解码、格式转换、记录键规则）
+   */
+  pipeline_version: string;
+  /**
+   * 原始制品格式；表格文件以 CSV 形式导出时记为 text_csv
+   */
+  media_type: "application_json" | "text_csv" | "application_xml";
+  source_url?: string;
+  /**
+   * 记录键的生成规则说明（例如“统一社会信用代码+处罚决定书文号”）；同一来源对象在不同快照中按同一规则生成，使字段可跨快照对比
+   */
+  key_rule?: string;
+  /**
+   * 记录键在一个记录集内唯一（由 SDK 校验）
+   */
+  records: StructuredRecord[];
 }

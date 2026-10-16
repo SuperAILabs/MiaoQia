@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/evidence/structured-record.schema.json",
+  "x-version": "0.1.0",
+  "title": "StructuredRecordSet 结构化记录集",
+  "description": "evidence 把结构化来源制品（接口响应、数据下载的 JSON/CSV/XML 文件）转换后的统一记录表示，与规范化文档并列存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是结构化证据的坐标系：解析器读取记录集，字段溯源以记录键加字段路径定位（record-evidence-ref）。网页、PDF、Office 文档及其中的表格仍走规范化文档，不转成记录集（草案，规则见 docs/03-architecture/subsystems/evidence.md 第 4 节与 ADR-0011）。",
+  "type": "object",
+  "required": [
+    "snapshot_ref",
+    "pipeline_version",
+    "media_type",
+    "records"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "snapshot_ref": {
+      "type": "string",
+      "pattern": "^snp_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "pipeline_version": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+@[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "结构化处理管线标识与版本（字符集解码、格式转换、记录键规则）"
+    },
+    "media_type": {
+      "enum": [
+        "application_json",
+        "text_csv",
+        "application_xml"
+      ],
+      "description": "原始制品格式；表格文件以 CSV 形式导出时记为 text_csv"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "key_rule": {
+      "type": "string",
+      "minLength": 1,
+      "description": "记录键的生成规则说明（例如“统一社会信用代码+处罚决定书文号”）；同一来源对象在不同快照中按同一规则生成，使字段可跨快照对比"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/record"
+      },
+      "description": "记录键在一个记录集内唯一（由 SDK 校验）"
+    }
+  },
+  "$defs": {
+    "record": {
+      "x-type-name": "StructuredRecord",
+      "type": "object",
+      "required": [
+        "key",
+        "data"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）"
+        },
+        "data": {
+          "type": "object",
+          "description": "记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）"
+        }
+      }
+    }
+  }
+}

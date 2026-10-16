@@ -616,6 +616,41 @@ const DeadlineTypeSiteVisit DeadlineType = "site_visit"
 // 十进制字符串，避免浮点误差
 type Decimal string
 
+// 派生证据：一个由确定性转换计算出的取值（例如按“自公告发布之日起 20
+// 日”推算的截止时间、按区划新旧版本对照转换的代码、单位换算后的金额），记录全部输入的版本与证据、转换的标识与版本及所用参考数据的版本，使取值可按版本重放。与文档证据、记录证据共用
+// ev_ 标识空间，由 evidence 分配（草案）。模型推断不属于派生，走解析或增强并带各自的证据。
+type DerivationEvidenceRef struct {
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// 按转换参数顺序排列；输入多于上界的汇总（统计）不作为字段证据，走统计口径与版本
+	Inputs []DerivationInput `json:"inputs"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// 转换所用参考数据的版本（区划代码表、节假日表、计量单位表等）
+	ReferenceData []ReferenceDataVersion `json:"reference_data,omitempty,omitzero"`
+
+	// 转换标识与版本，由信息领域包或平台登记；同一版本对同样输入必须给出同样结果
+	Transform string `json:"transform"`
+
+	// 派生取值按 RFC 8785 规范化后的哈希
+	ValueHash string `json:"value_hash"`
+}
+
+type DerivationInput struct {
+	// 该输入取值的证据；输入来自领域事实字段时为该版本中该字段的
+	// provenance.evidence_ref。证据链沿派生证据向下必须无环，末端都是文档证据或记录证据
+	EvidenceRef string `json:"evidence_ref"`
+
+	// FactRef corresponds to the JSON schema field "fact_ref".
+	FactRef *FactVersionRef `json:"fact_ref,omitempty,omitzero"`
+
+	// fact_ref 所指事实内的 JSON Pointer
+	FieldPath *string `json:"field_path,omitempty,omitzero"`
+}
+
 // 终止、流标或废标
 type EndingSection struct {
 	// EndingType corresponds to the JSON schema field "ending_type".
@@ -761,6 +796,14 @@ type EvidenceRef struct {
 
 	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
 	SnapshotRef string `json:"snapshot_ref"`
+}
+
+type FactVersionRef struct {
+	// Id corresponds to the JSON schema field "id".
+	Id UlidId `json:"id"`
+
+	// 领域事实版本号（public_fact_meta.version），固定引用，不随当前版本指针变化
+	Version int `json:"version"`
 }
 
 type Instant struct {
@@ -2019,6 +2062,39 @@ type Rate struct {
 	Value string `json:"value"`
 }
 
+// 结构化证据：指向某个快照在某个处理管线版本下的结构化记录集中一条记录的一个字段。与文档证据（evidence-ref）共用 ev_ 标识空间，由
+// evidence 分配，字段溯源（provenance.evidence_ref）可直接引用（草案）。
+type RecordEvidenceRef struct {
+	// 记录 data 内的 JSON Pointer（RFC 6901）；空串表示整条记录
+	FieldPath string `json:"field_path"`
+
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// 证据形态；文档证据（evidence-ref 1.0）不带本字段
+	Kind interface{} `json:"kind"`
+
+	// PipelineVersion corresponds to the JSON schema field "pipeline_version".
+	PipelineVersion string `json:"pipeline_version"`
+
+	// structured-record 中记录的 key
+	RecordKey string `json:"record_key"`
+
+	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
+	SnapshotRef string `json:"snapshot_ref"`
+
+	// 被引用取值按 RFC 8785 规范化后的哈希，用于校验定位未漂移
+	ValueHash string `json:"value_hash"`
+}
+
+type ReferenceDataVersion struct {
+	// 参考数据标识，例如 gb2260、cn-holidays
+	Name string `json:"name"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version string `json:"version"`
+}
+
 type Region struct {
 	// GB/T 2260 行政区划代码
 	Code string `json:"code"`
@@ -2219,6 +2295,48 @@ const SignalStatusConverted SignalStatus = "converted"
 const SignalStatusDismissed SignalStatus = "dismissed"
 const SignalStatusOpen SignalStatus = "open"
 const SignalStatusTriaged SignalStatus = "triaged"
+
+type StructuredRecord struct {
+	// 记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）
+	Data StructuredRecordData `json:"data"`
+
+	// 记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）
+	Key string `json:"key"`
+}
+
+// 记录内容，保留来源字段名与取值，只做字符集与格式解码，不做语义归一（归一属于解析器）
+type StructuredRecordData map[string]interface{}
+
+// evidence 把结构化来源制品（接口响应、数据下载的 JSON/CSV/XML 文件）转换后的统一记录表示，与规范化文档并列存放于对象存储（数据分层
+// L1，按 快照 × 处理管线版本
+// 存放）。它是结构化证据的坐标系：解析器读取记录集，字段溯源以记录键加字段路径定位（record-evidence-ref）。网页、PDF、Office
+// 文档及其中的表格仍走规范化文档，不转成记录集（草案，规则见 docs/03-architecture/subsystems/evidence.md 第 4 节与
+// ADR-0011）。
+type StructuredRecordSet struct {
+	// 记录键的生成规则说明（例如“统一社会信用代码+处罚决定书文号”）；同一来源对象在不同快照中按同一规则生成，使字段可跨快照对比
+	KeyRule *string `json:"key_rule,omitempty,omitzero"`
+
+	// 原始制品格式；表格文件以 CSV 形式导出时记为 text_csv
+	MediaType StructuredRecordSetMediaType `json:"media_type"`
+
+	// 结构化处理管线标识与版本（字符集解码、格式转换、记录键规则）
+	PipelineVersion string `json:"pipeline_version"`
+
+	// 记录键在一个记录集内唯一（由 SDK 校验）
+	Records []StructuredRecord `json:"records"`
+
+	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
+	SnapshotRef string `json:"snapshot_ref"`
+
+	// SourceUrl corresponds to the JSON schema field "source_url".
+	SourceUrl *string `json:"source_url,omitempty,omitzero"`
+}
+
+type StructuredRecordSetMediaType string
+
+const StructuredRecordSetMediaTypeApplicationJson StructuredRecordSetMediaType = "application_json"
+const StructuredRecordSetMediaTypeApplicationXml StructuredRecordSetMediaType = "application_xml"
+const StructuredRecordSetMediaTypeTextCsv StructuredRecordSetMediaType = "text_csv"
 
 // 目标对象引用 {type, id, version}。id 前缀须与 type 匹配：project 为实体图谱
 // prj_（跨公告、跨信息领域的业务项目）；domain_fact 为领域事实标识（如 pp_ 采购项目、ntc_ 公告、crd_
