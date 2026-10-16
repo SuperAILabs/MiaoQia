@@ -86,7 +86,7 @@ pack:
 | 品类分类与跨分类映射 | `entity-graph`（`Category`） |
 | 产品、规格、品牌词表与同义词 | `search`、`entity-graph` |
 | 行业标签体系与品类分类规则（声明） | `evidence.enrichment` |
-| 能力与资质模板 | `customer-context.profile` |
+| 能力与资质模板（行业包资质代码到平台登记资质体系的映射；体系与版本由平台登记） | `customer-context.profile` |
 | 默认排除与关注规则 | `customer-context.policy_engine` |
 
 ## 3. 扩展点规范

@@ -61,7 +61,8 @@ fact_types:
       project_id: project_id
       result_type: "notice_type == candidate ? candidate_published : awarded"
       location: location.code
-      items: project.lots[lot_id].items[*]     # 结果公告常不重复标的，取项目标包的当前标的
+      items: project.lots[lot_id].items[*]     # 要求侧标的：结果公告常不重复标的，取项目标包的当前标的
+      awarded_items: result.awarded_items[*]   # 中标侧明细（中标产品的品牌、型号、单价及计价单位）；原文未列时不出现，不用要求侧标的代替
       categories: enrichment.category(project.lots[lot_id].items[*])
       amount: result.price[price_kind == total] # 年单价合计/单价/未知含义不当项目成交总额
       buyer: buyer
@@ -88,6 +89,7 @@ fact_types:
       project_id: project_id
       location: location.code
       items: project.lots[contract.lot_id].items[*]
+      awarded_items: contract.items[*]         # 合同标的明细；原文未列时不出现
       categories: enrichment.category(project.lots[contract.lot_id].items[*])
       amount: contract.amount
       buyer: buyer

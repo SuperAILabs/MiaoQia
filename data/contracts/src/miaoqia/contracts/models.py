@@ -622,6 +622,10 @@ class Region(BaseModel):
     )
     name_raw: str | None = None
     prov: Provenance
+    scheme_version: constr(min_length=1) | None = Field(
+        None,
+        description="GB/T 2260 代码表版本（如民政部发布年份 2024）；缺失表示按观察时有效的代码表、版本未知。历史统计保留原代码与版本，跨版本换算是派生数据，另记换算表版本与依据，不改写原值",
+    )
 
 
 class Kind2(Enum):
@@ -917,6 +921,7 @@ class ProcurementConditions(BaseModel):
     agent_participation: Text | None = None
     contract_pricing: Text | None = None
     planned_publication: Text | None = None
+    delivery_region: Region | None = None
 
 
 class PublicFactMeta(BaseModel):
@@ -951,9 +956,18 @@ class Requirement(BaseModel):
     id: constr(pattern=r"^req_[0-9A-HJKMNP-TV-Z]{26}$")
     kind: Kind3
     code: str | None = Field(
-        None, description="归一的资质或要求代码；无法归一时省略，不使用 null"
+        None,
+        description="归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme 的代码按行业包默认资质体系解释，不能跨体系比较",
     )
     text: Text
+    code_scheme: constr(pattern=r"^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$") | None = Field(
+        None,
+        description="代码所属体系（平台登记，如 qual:mohurd-construction；平台登记体系与映射，不自称拥有外部标准）；只与 code 一起出现",
+    )
+    code_scheme_version: constr(min_length=1) | None = Field(
+        None, description="体系版本；只与 code_scheme 一起出现"
+    )
+    grade_required: Text | None = None
 
 
 class SubjectRef(BaseModel):
@@ -996,6 +1010,24 @@ class AcceptanceSection(BaseModel):
     )
 
 
+class AwardedItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    item_id: constr(pattern=r"^itm_[0-9A-HJKMNP-TV-Z]{26}$") | None = Field(
+        None, description="能一一对应时引用要求侧标的；无法对应或原文未列要求标的时省略"
+    )
+    name: Text
+    categories: list[Category] | None = None
+    spec: Text | None = None
+    brand: Text | None = None
+    model: Text | None = None
+    manufacturer: OrgRef | None = None
+    quantity: Quantity | None = None
+    unit_price: Money | None = None
+    unit_price_unit: Text | None = None
+
+
 class BidResult(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1017,6 +1049,11 @@ class BidResult(BaseModel):
         None, description="报价金额含义；年单价合计、单价和估算额不得当项目总成交额"
     )
     price_kind_prov: Provenance | None = None
+    awarded_items: list[AwardedItem] | None = Field(
+        None,
+        description="该投标人中标或成交的标的明细（原文列出时）；缺失表示原文未列或未标注，不推断为与要求标的相同",
+        min_length=1,
+    )
 
 
 class Contact(BaseModel):
@@ -1095,6 +1132,9 @@ class ContractSection(BaseModel):
     )
     conditions: ProcurementConditions | None = None
     amount_kind_prov: Provenance | None = None
+    items: list[AwardedItem] | None = Field(
+        None, description="合同标的明细（原文列出时）", min_length=1
+    )
 
 
 class Enforcement(BaseModel):
@@ -1199,6 +1239,7 @@ class Item(BaseModel):
     brand_required: Text | None = None
     model_required: Text | None = None
     unit_price: Money | None = None
+    unit_price_unit: Text | None = None
 
 
 class LotSection(BaseModel):

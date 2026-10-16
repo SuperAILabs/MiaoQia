@@ -91,6 +91,40 @@ type Attachment struct {
 	SnapshotRef *string `json:"snapshot_ref,omitempty,omitzero"`
 }
 
+// 结果或合同公告中实际中标/成交的标的明细（中标方投标的产品），与公告要求侧的 item 分开：brand/model 是中标产品，不是 item 的
+// brand_required/model_required。可能无法与要求标的一一对应
+type AwardedItem struct {
+	// Brand corresponds to the JSON schema field "brand".
+	Brand *Text `json:"brand,omitempty,omitzero"`
+
+	// Categories corresponds to the JSON schema field "categories".
+	Categories []Category `json:"categories,omitempty,omitzero"`
+
+	// 能一一对应时引用要求侧标的；无法对应或原文未列要求标的时省略
+	ItemId *string `json:"item_id,omitempty,omitzero"`
+
+	// Manufacturer corresponds to the JSON schema field "manufacturer".
+	Manufacturer *OrgRef `json:"manufacturer,omitempty,omitzero"`
+
+	// Model corresponds to the JSON schema field "model".
+	Model *Text `json:"model,omitempty,omitzero"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name Text `json:"name"`
+
+	// Quantity corresponds to the JSON schema field "quantity".
+	Quantity *Quantity `json:"quantity,omitempty,omitzero"`
+
+	// Spec corresponds to the JSON schema field "spec".
+	Spec *Text `json:"spec,omitempty,omitzero"`
+
+	// UnitPrice corresponds to the JSON schema field "unit_price".
+	UnitPrice *Money `json:"unit_price,omitempty,omitzero"`
+
+	// UnitPriceUnit corresponds to the JSON schema field "unit_price_unit".
+	UnitPriceUnit *Text `json:"unit_price_unit,omitempty,omitzero"`
+}
+
 // 页面坐标（左上角为原点，单位为点），用于界面高亮
 type Bbox struct {
 	// H corresponds to the JSON schema field "h".
@@ -108,6 +142,9 @@ type Bbox struct {
 
 // 开标记录、候选人或中标结果中的一名投标人
 type BidResult struct {
+	// 该投标人中标或成交的标的明细（原文列出时）；缺失表示原文未列或未标注，不推断为与要求标的相同
+	AwardedItems []AwardedItem `json:"awarded_items,omitempty,omitzero"`
+
 	// Bidder corresponds to the JSON schema field "bidder".
 	Bidder OrgRef `json:"bidder"`
 
@@ -342,6 +379,9 @@ type ContractSection struct {
 
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`
+
+	// 合同标的明细（原文列出时）
+	Items []AwardedItem `json:"items,omitempty,omitzero"`
 
 	// LotId corresponds to the JSON schema field "lot_id".
 	LotId *string `json:"lot_id,omitempty,omitzero"`
@@ -900,6 +940,9 @@ type Item struct {
 
 	// UnitPrice corresponds to the JSON schema field "unit_price".
 	UnitPrice *Money `json:"unit_price,omitempty,omitzero"`
+
+	// UnitPriceUnit corresponds to the JSON schema field "unit_price_unit".
+	UnitPriceUnit *Text `json:"unit_price_unit,omitempty,omitzero"`
 }
 
 // 证据定位：块序号 + 可选的表格单元 + 字符区间 [char_start, char_end)；跨多个连续块时用
@@ -1608,6 +1651,9 @@ type ProcurementConditions struct {
 	// DeliveryPeriod corresponds to the JSON schema field "delivery_period".
 	DeliveryPeriod *Text `json:"delivery_period,omitempty,omitzero"`
 
+	// DeliveryRegion corresponds to the JSON schema field "delivery_region".
+	DeliveryRegion *Region `json:"delivery_region,omitempty,omitzero"`
+
 	// DocumentAccess corresponds to the JSON schema field "document_access".
 	DocumentAccess *Text `json:"document_access,omitempty,omitzero"`
 
@@ -1982,6 +2028,10 @@ type Region struct {
 
 	// Prov corresponds to the JSON schema field "prov".
 	Prov Provenance `json:"prov"`
+
+	// GB/T 2260 代码表版本（如民政部发布年份
+	// 2024）；缺失表示按观察时有效的代码表、版本未知。历史统计保留原代码与版本，跨版本换算是派生数据，另记换算表版本与依据，不改写原值
+	SchemeVersion *string `json:"scheme_version,omitempty,omitzero"`
 }
 
 // 内部可信边界的请求上下文；Base64URL无填充编码JSON；不接受外部请求提供的此头。
@@ -2015,8 +2065,18 @@ const RequestContextPrincipalKindUser RequestContextPrincipalKind = "user"
 
 // 资格与技术要求
 type Requirement struct {
-	// 归一的资质或要求代码；无法归一时省略，不使用 null
+	// 归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme
+	// 的代码按行业包默认资质体系解释，不能跨体系比较
 	Code *string `json:"code,omitempty,omitzero"`
+
+	// 代码所属体系（平台登记，如 qual:mohurd-construction；平台登记体系与映射，不自称拥有外部标准）；只与 code 一起出现
+	CodeScheme *string `json:"code_scheme,omitempty,omitzero"`
+
+	// 体系版本；只与 code_scheme 一起出现
+	CodeSchemeVersion *string `json:"code_scheme_version,omitempty,omitzero"`
+
+	// GradeRequired corresponds to the JSON schema field "grade_required".
+	GradeRequired *Text `json:"grade_required,omitempty,omitzero"`
 
 	// Id corresponds to the JSON schema field "id".
 	Id string `json:"id"`

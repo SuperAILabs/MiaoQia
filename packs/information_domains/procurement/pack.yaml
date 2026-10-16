@@ -3,7 +3,7 @@ pack:
   id: INF-PROC
   kind: information_domain
   namespace: tendering                 # 领域事件与事实类型的命名空间（tendering.*）
-  version: 1.0.0                       # C4b 冻结基线，见 contracts/reviews/first-batch-freeze.yaml
+  version: 1.0.1                       # C4b 冻结基线 1.0.0（contracts/reviews/first-batch-freeze.yaml）；1.0.1 补中标标的明细的人工映射
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-ORG@^1.0                     # 采购人、代理、投标人解析为组织

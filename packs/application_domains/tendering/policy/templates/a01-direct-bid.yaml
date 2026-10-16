@@ -188,3 +188,27 @@ template:
         lists: { customers: [], blocked: [] }
         now: "2026-11-01T08:00:00+08:00"
       expect: pursue_candidate
+    - name: 标的指定了其他品牌时减分
+      given:
+        fact: { stage: announced, method: open_tender, title: 市政给水管网改造工程管材采购, location: "330106",
+                budget: { value: "3200000", currency: CNY },
+                categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }], requirements: [],
+                items: [{ name: { value: PE 给水管 }, brand_required: { value: 某竞品 } }],
+                bid_deadline: "2026-11-20T09:30:00+08:00", buyer: { org_id: org_b1 } }
+        profile: { org_ids: [org_me], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"], brands: [我方牌],
+                   entities: { org_me: { qualifications: {}, qualifications_pending: [], qualifications_complete: false } } }
+        lists: { customers: [], blocked: [] }
+        now: "2026-11-01T08:00:00+08:00"
+      expect: review_candidate
+    - name: 标的指定我方品牌不减分
+      given:
+        fact: { stage: announced, method: open_tender, title: 市政给水管网改造工程管材采购, location: "330106",
+                budget: { value: "3200000", currency: CNY },
+                categories: [{ scheme: "industry:building-materials", code: CAT-PIPE-PE }], requirements: [],
+                items: [{ name: { value: PE 给水管 }, brand_required: { value: 我方牌 } }],
+                bid_deadline: "2026-11-20T09:30:00+08:00", buyer: { org_id: org_b1 } }
+        profile: { org_ids: [org_me], offering_categories: [CAT-PIPE-PE], service_regions: ["330000"], brands: [我方牌],
+                   entities: { org_me: { qualifications: {}, qualifications_pending: [], qualifications_complete: false } } }
+        lists: { customers: [], blocked: [] }
+        now: "2026-11-01T08:00:00+08:00"
+      expect: pursue_candidate

@@ -3,7 +3,7 @@
   "$id": "https://schemas.miaoqia.com/intelligence/defs.schema.json",
   "x-version": "0.1.0",
   "title": "客户智能平面公共定义",
-  "description": "租户域对象共用的类型（草案）。租户域只通过 subject_ref 引用公共域对象，不复制公共数据（数据架构第 1 节、业务架构第 3 节）。",
+  "description": "租户域对象共用的类型（草案）。subject_ref 引用公共域对象时不复制公共数据（数据架构第 1 节、业务架构第 3 节）；也可引用租户自有对象（如 customer-context 拥有的市场 mkt_），所有者以 identifiers.yaml 登记为准。",
   "$defs": {
     "subject_type": {
       "x-type-name": "SubjectType",

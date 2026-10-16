@@ -24,7 +24,7 @@ func worstCase(factType string) Input {
 		for j := range cats {
 			cats[j] = map[string]any{"scheme": "industry:x", "code": fmt.Sprintf("CAT-OTHER-%d-%d", i, j)}
 		}
-		items[i] = map[string]any{"categories": cats, "brand_required": "brand-x"}
+		items[i] = map[string]any{"categories": cats, "brand_required": map[string]any{"value": "brand-x"}}
 	}
 	reqs := make([]any, 200)
 	for i := range reqs {

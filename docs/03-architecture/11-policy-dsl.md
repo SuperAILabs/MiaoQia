@@ -240,7 +240,7 @@ policy:
 | 函数 | 说明 |
 |---|---|
 | `category.any_match(categories, codes)` | 品类列表（视图 `fact.categories`，来自增强层品类分类；也接受带 `categories` 的标的列表）是否命中品类代码集合（含下级：代码按“-”分级，如 `CAT-PIPE` 含 `CAT-PIPE-PE`）；只比较行业包分类体系（`scheme` 以 `industry:` 开头）的代码，未标明体系或政府采购品目等其他体系不参与。品类置信度经视图证据受 `evidence_policy` 约束，不达标时为未知 |
-| `region.within(location, regions)` | 地点是否在行政区划集合内（含下级：`XX0000` 含全省，`XXXX00` 含全市，`000000` 为全国） |
+| `region.within(location, regions)` | 地点是否在行政区划集合内（含下级：`XX0000` 含全省，`XXXX00` 含全市，`000000` 为全国）。只比较同一代码表版本：事实地点与租户区域的版本不同时，视图组装按版本化换算表换算到租户区域所用版本，无法换算（撤并、拆分无唯一对应）时地点读取为未知；`fact.location` 是项目实施地，交付地、采购人所在地按各自字段与角色另行声明 |
 | `text.contains_any(text, vocab_terms)` | 文本是否包含词表中任一词（含同义词） |
 | `money.cny(amount)` | 金额归一为人民币元；非人民币金额在汇率视图就绪前为未知 |
 | `time.days_between(a, b)` | 从 a 到 b 的整天数（向下取整，可为负） |

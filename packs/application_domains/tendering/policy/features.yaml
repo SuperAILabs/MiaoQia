@@ -24,7 +24,7 @@ features:
     type: bool
     say: 标的指定了本租户以外的品牌
     expr: >
-      fact.items.exists(i, has(i.brand_required) && !(i.brand_required in profile.brands))
+      fact.items.exists(i, has(i.brand_required) && !(i.brand_required.value in profile.brands))
 
   winner_credit_risk:
     type: int

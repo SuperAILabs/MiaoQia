@@ -530,6 +530,56 @@ export interface Attachment {
   media_type?: string;
 }
 /**
+ * 结果或合同公告中实际中标/成交的标的明细（中标方投标的产品），与公告要求侧的 item 分开：brand/model 是中标产品，不是 item 的 brand_required/model_required。可能无法与要求标的一一对应
+ */
+export interface AwardedItem {
+  /**
+   * 能一一对应时引用要求侧标的；无法对应或原文未列要求标的时省略
+   */
+  item_id?: string;
+  name: Text;
+  categories?: Category[];
+  spec?: Text;
+  brand?: Text;
+  model?: Text;
+  manufacturer?: OrgRef;
+  quantity?: Quantity;
+  unit_price?: Money;
+  unit_price_unit?: Text;
+}
+export interface Category {
+  /**
+   * 分类体系，如 gov-procurement-catalog、industry:building-materials
+   */
+  scheme: string;
+  scheme_version: string;
+  code: string;
+  name_raw?: string;
+  confidence?: number;
+}
+export interface Quantity {
+  value: Decimal;
+  /**
+   * 归一单位
+   */
+  unit?: string;
+  unit_raw?: string;
+  prov: Provenance;
+}
+export interface Money {
+  value: Decimal;
+  currency: string;
+  /**
+   * 原文写法，如“120.5 万元”
+   */
+  raw?: string;
+  /**
+   * 是否含税；原文未说明时不出现
+   */
+  tax_included?: boolean;
+  prov: Provenance;
+}
+/**
  * 页面坐标（左上角为原点，单位为点），用于界面高亮
  */
 export interface Bbox {
@@ -564,19 +614,12 @@ export interface BidResult {
    */
   price_kind?: "total" | "unit" | "annual_unit_sum" | "estimated_total";
   price_kind_prov?: Provenance;
-}
-export interface Money {
-  value: Decimal;
-  currency: string;
   /**
-   * 原文写法，如“120.5 万元”
+   * 该投标人中标或成交的标的明细（原文列出时）；缺失表示原文未列或未标注，不推断为与要求标的相同
+   *
+   * @minItems 1
    */
-  raw?: string;
-  /**
-   * 是否含税；原文未说明时不出现
-   */
-  tax_included?: boolean;
-  prov: Provenance;
+  awarded_items?: [AwardedItem, ...AwardedItem[]];
 }
 /**
  * 百分比报价或限价；100 表示 100%，不得写入 money 或换算为项目总价
@@ -623,16 +666,6 @@ export interface Cell {
     row: number;
     col: number;
   };
-}
-export interface Category {
-  /**
-   * 分类体系，如 gov-procurement-catalog、industry:building-materials
-   */
-  scheme: string;
-  scheme_version: string;
-  code: string;
-  name_raw?: string;
-  confidence?: number;
 }
 /**
  * 公开业务联系人，可明文检索与进入模型；姓名、电话、邮箱分别带证据定位，未知字段省略
@@ -877,6 +910,12 @@ export interface ContractSection {
   amount_kind?: "total" | "ceiling" | "estimated";
   conditions?: ProcurementConditions;
   amount_kind_prov?: Provenance;
+  /**
+   * 合同标的明细（原文列出时）
+   *
+   * @minItems 1
+   */
+  items?: [AwardedItem, ...AwardedItem[]];
 }
 /**
  * 公告与项目标包共用的带证据采购条件；只记录已确认的原文，不把模板未选项当成事实
@@ -895,6 +934,19 @@ export interface ProcurementConditions {
   agent_participation?: Text;
   contract_pricing?: Text;
   planned_publication?: Text;
+  delivery_region?: Region;
+}
+export interface Region {
+  /**
+   * GB/T 2260 行政区划代码
+   */
+  code: string;
+  name_raw?: string;
+  prov: Provenance;
+  /**
+   * GB/T 2260 代码表版本（如民政部发布年份 2024）；缺失表示按观察时有效的代码表、版本未知。历史统计保留原代码与版本，跨版本换算是派生数据，另记换算表版本与依据，不改写原值
+   */
+  scheme_version?: string;
 }
 /**
  * 公共域领域事实的通用字段（数据架构第 5、7 节）
@@ -1025,14 +1077,6 @@ export interface Locator {
    */
   block_end?: number;
 }
-export interface Region {
-  /**
-   * GB/T 2260 行政区划代码
-   */
-  code: string;
-  name_raw?: string;
-  prov: Provenance;
-}
 /**
  * 采购标的
  */
@@ -1045,15 +1089,7 @@ export interface Item {
   brand_required?: Text;
   model_required?: Text;
   unit_price?: Money;
-}
-export interface Quantity {
-  value: Decimal;
-  /**
-   * 归一单位
-   */
-  unit?: string;
-  unit_raw?: string;
-  prov: Provenance;
+  unit_price_unit?: Text;
 }
 /**
  * 本公告中出现的一个标包
@@ -1112,10 +1148,19 @@ export interface Requirement {
     | "technical"
     | "other";
   /**
-   * 归一的资质或要求代码；无法归一时省略，不使用 null
+   * 归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme 的代码按行业包默认资质体系解释，不能跨体系比较
    */
   code?: string;
   text: Text;
+  /**
+   * 代码所属体系（平台登记，如 qual:mohurd-construction；平台登记体系与映射，不自称拥有外部标准）；只与 code 一起出现
+   */
+  code_scheme?: string;
+  /**
+   * 体系版本；只与 code_scheme 一起出现
+   */
+  code_scheme_version?: string;
+  grade_required?: Text;
 }
 /**
  * evidence 把原始制品（HTML、PDF、Office、扫描件）转换后的统一文档表示，存放于对象存储（数据分层 L1，按 快照 × 处理管线版本 存放）。它是证据定位的坐标系：解析器只读取规范化文档，字段溯源以块序号与字符区间定位。

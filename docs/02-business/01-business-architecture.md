@@ -107,7 +107,7 @@ flowchart TB
 | 关系 | `relationship` | 两个实体间的关系，如采购人与供应商 | 渠道、合作伙伴、竞争格局 |
 | 计划与资金 | `program` | 政策、规划、预算、专项资金 | 前置布局、资金申报 |
 
-目标对象以 `subject_ref = {type, id, version}` 引用，所有租户侧对象都通过它关联到公共域，绝不复制公共数据。结构见 [`intelligence/defs.schema.json`](../../contracts/schemas/intelligence/defs.schema.json)（草案）：`project` 指实体图谱的跨领域项目 `prj_`，采购项目 `pp_`、公告等领域事实一律以 `domain_fact` 引用；`market`、`program` 分别使用 `mkt_`、`prg_`；需要指向对象内部求值单位（如标包）时用 `part_id`。
+目标对象以 `subject_ref = {type, id, version}` 引用。被引用对象的所有者按标识前缀登记（[`identifiers.yaml`](../../contracts/identifiers.yaml)）：项目、组织、关系、计划等公共对象归公共域，引用时不复制公共数据；市场 `mkt_` 是租户定义的对象，归 `customer-context`，由区域、品类、时间窗与主体类型组成，统计时再按这些维度查询公共域的版本化统计。结构见 [`intelligence/defs.schema.json`](../../contracts/schemas/intelligence/defs.schema.json)（草案）：`project` 指实体图谱的跨领域项目 `prj_`，采购项目 `pp_`、公告等领域事实一律以 `domain_fact` 引用；`market`、`program` 分别使用 `mkt_`、`prg_`；需要指向对象内部求值单位（如标包）时用 `part_id`。
 
 ## 4. 两类生命周期
 

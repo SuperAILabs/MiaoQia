@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/procurement/defs.schema.json",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "title": "INF-PROC 公共定义",
   "description": "公告与采购项目共用的枚举和嵌套对象。对象含义见 docs/02-business/application-domains/tendering/04-domain-model.md。",
   "$defs": {
@@ -106,6 +106,10 @@
         },
         "unit_price": {
           "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "unit_price_unit": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "单价的计价单位原文，如“台”“m³”；缺失时单价不能与数量相乘或跨标的比较"
         }
       }
     },
@@ -139,10 +143,24 @@
         },
         "code": {
           "type": "string",
-          "description": "归一的资质或要求代码；无法归一时省略，不使用 null"
+          "description": "归一的资质或要求代码；无法归一时省略，不使用 null。体系与版本见 code_scheme；缺 code_scheme 的代码按行业包默认资质体系解释，不能跨体系比较"
         },
         "text": {
           "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "code_scheme": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$",
+          "description": "代码所属体系（平台登记，如 qual:mohurd-construction；平台登记体系与映射，不自称拥有外部标准）；只与 code 一起出现"
+        },
+        "code_scheme_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "体系版本；只与 code_scheme 一起出现"
+        },
+        "grade_required": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "资质等级要求原文，如“二级及以上”"
         }
       }
     },
@@ -248,6 +266,14 @@
         },
         "price_kind_prov": {
           "$ref": "../../common/types.schema.json#/$defs/provenance"
+        },
+        "awarded_items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/awarded_item"
+          },
+          "description": "该投标人中标或成交的标的明细（原文列出时）；缺失表示原文未列或未标注，不推断为与要求标的相同"
         }
       },
       "dependentRequired": {
@@ -365,7 +391,66 @@
         "planned_publication": {
           "$ref": "../../common/types.schema.json#/$defs/text",
           "description": "计划招标发布时间原文，如2026-10；暂定计划不能当成已发布或投标截止时间"
+        },
+        "delivery_region": {
+          "$ref": "../../common/types.schema.json#/$defs/region",
+          "description": "交付地所在行政区划（能从原文确定时）；原文仍记在 delivery_location"
         }
+      }
+    },
+    "awarded_item": {
+      "type": "object",
+      "description": "结果或合同公告中实际中标/成交的标的明细（中标方投标的产品），与公告要求侧的 item 分开：brand/model 是中标产品，不是 item 的 brand_required/model_required。可能无法与要求标的一一对应",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "type": "string",
+          "pattern": "^itm_[0-9A-HJKMNP-TV-Z]{26}$",
+          "description": "能一一对应时引用要求侧标的；无法对应或原文未列要求标的时省略"
+        },
+        "name": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "标的或配置名称原文"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "../../common/types.schema.json#/$defs/category"
+          }
+        },
+        "spec": {
+          "$ref": "../../common/types.schema.json#/$defs/text"
+        },
+        "brand": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "中标产品品牌原文；品牌型号合并书写时按原文拆分，各自引用原文片段"
+        },
+        "model": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "中标产品型号原文"
+        },
+        "manufacturer": {
+          "$ref": "../../common/types.schema.json#/$defs/org_ref",
+          "description": "原文载明的制造商；不由品牌推断（品牌到所属组织的关系由 entity-graph 维护）"
+        },
+        "quantity": {
+          "$ref": "../../common/types.schema.json#/$defs/quantity"
+        },
+        "unit_price": {
+          "$ref": "../../common/types.schema.json#/$defs/money"
+        },
+        "unit_price_unit": {
+          "$ref": "../../common/types.schema.json#/$defs/text",
+          "description": "单价的计价单位原文，如“台”“m³”"
+        }
+      },
+      "dependentRequired": {
+        "unit_price": [
+          "unit_price_unit"
+        ]
       }
     }
   }
