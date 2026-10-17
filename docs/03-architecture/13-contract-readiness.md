@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.8 · 更新：2026-10-16 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.9 · 更新：2026-10-17 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -146,3 +146,20 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 最小身份生命周期、cell-01目录核验及identity.SessionResolver本地/远程绑定见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。identity OpenAPI增量至1.1.0，新增4个生命周期事件；首批冻结记录作为历史审计保留。审计AsyncAPI增量至1.1.0：新增可选`delegation`（内部支持访问或服务委托的授予记录），事件类型仍为v1，Go/Python审计SDK同步；第三批结束时以[冻结修订记录三](../../contracts/reviews/first-batch-freeze-amendment-3.yaml)登记为新基线，原冻结记录保留为历史审计。
 
 生产部署、证书运维、Kafka/数据库身份与ACL、审批、未来子系统接口和全国来源仍有各自门禁。当前四个消费者通过不代证未来处理函数，但新增登记处理函数必须具备可编译载荷Schema，不能静默跳过。
+
+## 9. 随功能追加的契约
+
+设计已经确定、但机器契约要等首个使用它的功能实现时才写入 `contracts/` 的项目，统一登记在本节，避免“随功能追加”被遗忘。功能启动时先核对本表：相关契约随该功能的首个 PR 一起提交，并按兼容规则判断版本（追加式升次版本，破坏性升主版本）；完成后从本表删除该行，改记到对应批次的冻结或修订记录。A02 旅程各段 PRD 中的接口与事件按 [PRD 交接规则](../01-product/prd/README.md#3-交接规则) 在该段实现时写入，不在本表重复登记。
+
+| 契约 | 设计依据 | 触发功能 | 兼容方式 |
+|---|---|---|---|
+| 权利条目 Schema 与引用格式 | [数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 授权数据商接入，或客户授权数据进入研究 | 追加；已冻结的 `rights_tags`、`rights_set` 不变 |
+| 事实撤回领域事件 | [domain-intelligence 第 11 节](subsystems/domain-intelligence.md#11-事实撤回与恢复) | 首个撤回识别能力 | 领域事件契约追加，升次版本 |
+| 导出与迁移的事件和接口 | [governance 第 10 节](subsystems/governance.md#10-数据导出与迁移) | 首个租户导出功能 | 新增 |
+| 私有部署馈送包格式 | [部署拓扑第 10 节](07-deployment-topology.md#10-私有部署的公共数据馈送) | M5 私有部署包 | 新增 |
+| 服务委托会话接口、令牌形态与 `identity.service_delegation.changed.v1` | [identity 第 7.8 节](subsystems/identity.md#78-服务委托) | 托管服务委托 | identity OpenAPI 与事件追加 |
+| `assessment.manual_judgment.recorded.v1` | [assessment](subsystems/assessment.md) | 人工判断 | 新增事件 |
+| `learning.miss.diagnosed.v1` | [learning 第 11 节](subsystems/learning.md#11-漏报反馈与诊断) | 漏报诊断 | 新增事件 |
+| 自然人关系端点的标识前缀与关系端点类型 | [entity-graph 第 4.2 节](subsystems/entity-graph.md#42-自然人关系端点) | 首个需要实际控制链的规则或研究 | 新增前缀经架构评审登记；关系端点类型追加 |
+| 模板参数的个人可调标记 | [策略 DSL 3.3](11-policy-dsl.md#33-模板与租户策略的合成) 第 6 条 | 个人客户进入产品范围 | 模板格式追加可选字段 |
+| 领域历史覆盖起点 | [可扩展性第 4 节](04-extensibility.md#4-加载版本与发布) | 首个声明历史窗口的视图启用 | 覆盖度量追加字段 |
