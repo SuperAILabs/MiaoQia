@@ -28,6 +28,9 @@ jobs:
         with:
           version: "0.11.32"
 
+      - name: 链接检查器自测
+        run: python3 tools/dev/check_doc_links.py --self-test
+
       - name: 相对链接与锚点
         run: python3 tools/dev/check_doc_links.py
 

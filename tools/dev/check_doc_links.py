@@ -1,6 +1,7 @@
 """检查仓库内 Markdown 文档的相对链接与锚点。
 
 用法：python3 tools/dev/check_doc_links.py [文件 ...]
+      python3 tools/dev/check_doc_links.py --self-test
 不带参数时检查 git 跟踪的全部 .md 文件。外部链接（http、mailto）不检查。
 锚点按 GitHub 规则生成：小写，去掉字母、数字、汉字、连字符、下划线和空格以外的字符，空格换成连字符；
 同名标题依次加 -1、-2 后缀。
@@ -19,15 +20,22 @@ HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 FENCE = re.compile(r"^\s*(```|~~~)")
 
 
-def strip_code(text: str) -> list[str]:
-    """返回去掉代码块内容的行（行号保持不变），并去掉行内代码。"""
+def strip_code(text: str, keep_inline: bool = False) -> list[str]:
+    """返回去掉代码块内容的行（行号保持不变）。
+
+    扫描链接时连同行内代码一起去掉，避免把代码示例当作链接；生成标题锚点时传 keep_inline=True，
+    保留行内代码的文字（GitHub 的锚点包含这些文字，只去掉反引号）。
+    """
     lines, in_fence = [], False
     for line in text.splitlines():
         if FENCE.match(line):
             in_fence = not in_fence
             lines.append("")
             continue
-        lines.append("" if in_fence else re.sub(r"`[^`]*`", "", line))
+        if in_fence:
+            lines.append("")
+        else:
+            lines.append(line if keep_inline else re.sub(r"`[^`]*`", "", line))
     return lines
 
 
@@ -44,7 +52,7 @@ def anchors(path: str) -> frozenset[str]:
     seen: dict[str, int] = {}
     result = set()
     with open(path, encoding="utf-8") as f:
-        for line in strip_code(f.read()):
+        for line in strip_code(f.read(), keep_inline=True):
             m = HEADING.match(line)
             if not m:
                 continue
@@ -75,7 +83,37 @@ def check(path: str) -> list[str]:
     return problems
 
 
+def self_test() -> int:
+    """回归用例：标题含行内代码的合法锚点通过；不存在的锚点和目标被拒绝；代码中的链接不检查。"""
+    import tempfile
+
+    cases = [
+        ("# Use `foo`\n\n[ok](#use-foo)\n", 0),
+        ("# 2. 时间模型\n\n[ok](#2-时间模型)\n", 0),
+        ("# A\n# A\n\n[ok](#a-1)\n", 0),
+        ("# Use `foo`\n\n[bad](#use)\n", 1),
+        ("# A\n\n[bad](#missing)\n", 1),
+        ("[bad](missing.md)\n", 1),
+        ("```\n[ignored](missing.md)\n```\n`[ignored](missing.md)`\n", 0),
+    ]
+    failed = 0
+    with tempfile.TemporaryDirectory() as d:
+        for i, (text, expected) in enumerate(cases):
+            path = os.path.join(d, f"case{i}.md")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(text)
+            anchors.cache_clear()
+            got = len(check(path))
+            if got != expected:
+                failed += 1
+                print(f"自测用例 {i} 失败：期望 {expected} 处问题，实际 {got}：{text!r}")
+    print(f"自测 {len(cases)} 个用例，{failed} 个失败")
+    return 1 if failed else 0
+
+
 def main(argv: list[str]) -> int:
+    if argv == ["--self-test"]:
+        return self_test()
     files = argv or subprocess.check_output(["git", "ls-files", "*.md"], text=True).split()
     problems = [p for f in files if os.path.exists(f) for p in check(f)]
     for p in problems:
