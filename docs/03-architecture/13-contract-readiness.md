@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.7 · 更新：2026-10-16 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.8 · 更新：2026-10-16 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -143,6 +143,6 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 
 首批冻结记录保留其审计基线；当前集成安全配置已按强制租户目录核验升至3.0.0。M0 HTTP认证、完整探针、现有四个消费者运行时载荷校验的实现与真实组件门禁已关闭，详见[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)与[验收清单](../../contracts/reviews/m0-runtime-acceptance.yaml)。Go/Python框架在事务前执行离线原Schema校验；业务来源、主体、探针路径及审计租户一致性由应用所有者校验，失败回滚并进入死信。
 
-最小身份生命周期、cell-01目录核验及identity.SessionResolver本地/远程绑定见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。identity OpenAPI增量至1.1.0，新增4个生命周期事件；首批冻结记录作为历史审计保留。审计AsyncAPI增量至1.1.0：新增可选`delegation`（内部支持访问或服务委托的授予记录），事件类型仍为v1，Go/Python审计SDK同步；冻结基线的重新登记待定，变更前的冻结哈希保留为历史审计。
+最小身份生命周期、cell-01目录核验及identity.SessionResolver本地/远程绑定见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。identity OpenAPI增量至1.1.0，新增4个生命周期事件；首批冻结记录作为历史审计保留。审计AsyncAPI增量至1.1.0：新增可选`delegation`（内部支持访问或服务委托的授予记录），事件类型仍为v1，Go/Python审计SDK同步；第三批结束时以[冻结修订记录三](../../contracts/reviews/first-batch-freeze-amendment-3.yaml)登记为新基线，原冻结记录保留为历史审计。
 
 生产部署、证书运维、Kafka/数据库身份与ACL、审批、未来子系统接口和全国来源仍有各自门禁。当前四个消费者通过不代证未来处理函数，但新增登记处理函数必须具备可编译载荷Schema，不能静默跳过。

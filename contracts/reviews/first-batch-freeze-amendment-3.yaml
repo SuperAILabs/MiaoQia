@@ -1,0 +1,26 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-16T18:15:00+00:00'
+approval:
+  authority: 项目负责人 2026-10-16 在决策卡选择“第三批结束时登记”；本记录随所在 PR 提交，经项目负责人确认合并后生效
+reason: >-
+  任务书 v0.3 第三批（PR #13，合并提交 27482d7）为服务委托在审计事件载荷中新增可选的 delegation
+  （kind 为 support_access 或 service_delegation，附委托引用），属于追加式修改：事件类型仍为 v1，
+  mqc compat 判定 breaking 0，AsyncAPI 已升到 1.1.0，并补了正例 1 个、反例 2 个。
+  这里把第三批结束时的审计事件契约与夹具登记为新基线；原冻结记录不改。
+files:
+- path: contracts/events/audit/events.asyncapi.yaml
+  current_version: 1.1.0
+  sha256: a8dd20799ed4447af5c297ec5a16e8a33066febcaca049666fb892050da8e24f
+fixture_artifacts:
+- path: contracts/events/audit/fixtures.yaml
+  sha256: 86061f168f8479029758bcaf241d077277ecc693b98840386fe461446b92d183
+verification:
+  base: 893e33e
+  commands:
+  - mqc check
+  - mqc compat --base 893e33e（breaking 0）
+  - mqc freeze-check
+  - mqc generate --check
+  - Go/Python 审计 SDK 与契约往返测试
+  review: newcodebook 对 6556dac 复审通过（PR #13 评论 6221335095）
