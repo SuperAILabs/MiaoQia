@@ -1,6 +1,6 @@
 # PRD 第1段：登录与渠道绑定
 
-> 状态：评审中 · 版本：1.4 · 更新：2026-10-15 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
+> 状态：设计交接通过 · 版本：1.4 · 更新：2026-10-15 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
 
 本段让一家建材供应商从开通到“销售在企业微信收到妙洽消息、点开卡片在手机上看到同一账号下的内容”。它是首条旅程（A02 进入供货）后续各段的前提：第2段的客户档案由本段激活的管理员录入，第5段的简报与卡片只发给本段绑定的成员。
 
