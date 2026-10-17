@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.7 · 更新：2026-10-17 · 平面：客户智能
+> 状态：评审中 · 版本：1.8 · 更新：2026-10-17 · 平面：客户智能
 
 ## 1. 使命
 
@@ -43,7 +43,8 @@
 | `Market` | 租户定义的市场 `mkt_`：区域集合（区划代码与版本）、品类集合（行业包分类与版本）、主体类型与时间窗（滚动窗口如近 12 个月，或固定区间）；业务键为（租户、归一后的维度组合），同一租户同一维度组合只建一个，唯一约束防重复。公共域不读取本对象，统计时由研究与判断按归一维度查询 domain-intelligence 的版本化统计，并记录所用统计版本与窗口的实际起止 |
 | `TenantObjective` | 启用的目标：模板与版本、所属组织单元、负责人、参与人、参数（随档案或本目标值）、状态（未激活 / 生效 / 已停用）、关联的策略、分派规则（第 11 节）；同一单元同一模板只启用一次 |
 | `EntityListImport` | 企业清单导入作业：文件、逐行匹配结果（已匹配 / 待确认 / 需选择 / 未匹配）、状态；匹配完成不写入，操作人看过影响提示并提交后，已匹配与已确认的行才写入清单 |
-| `Policy` / `PolicyVersion` / `PolicyRollout` | 策略、版本、发布状态 |
+| `Policy` / `PolicyVersion` / `PolicyRollout` | 策略、版本、发布状态。`PolicyVersion` 保存合成文档、模板版本与仿真时固定的启用领域集合，状态为生效或已替代；每个目标有一个策略代次，激活与回滚在同一事务中写入新的生效版本并递增代次。M2 只有全量激活，影子与比例灰度随 M3 |
+| `PolicyDraft` | 每个目标最多一份草案：修订号与乐观并发版本号、编译与样例校验结果、所基于的生效版本；提交申请后锁定，撤回、驳回或失效后解锁（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md)） |
 | `KnowledgeAsset` | 知识资产：分级、可用于哪些工作流与模型 |
 | `TenantEntityList` | 租户私有实体清单，种类：`customers` 客户、`partners` 伙伴、`competitors` 竞争对手、`blocked` 禁合作、`tracked` 跟踪对象、`counterparties` 交易对手；策略中以 `lists.<种类>` 引用。清单只表达“是否在名单中”，是部分关系的简化视图：例如有效的经销授权可派生出 `partners` 成员，但授权范围与期限只在 `TenantRelationship` 中 |
 | `TenantRelationship` | 租户私有关系（与 entity-graph 的公共关系分开，公共域不读取）。种类先登记经销授权 `dealer_authorization`、代理 `agency`、合作伙伴 `partnership`、长期供货 `supply_agreement`，由应用领域包扩展。**端点**：我方主体与对方组织（公共 `org_`，导入时未匹配的行暂存为待核对，不建关系）；**约束**：品牌（`brd_` 或行业包品牌词表代码）、区域（区划代码与版本）、品类，可进一步限定项目或标包；同一端点在不同约束下是不同的关系。**有效期**：起止日期，到期自动失效；**证据**：授权书等文件经 evidence 文档处理保存。**修订与撤销**：每次修改形成新版本并保留旧版本，撤销记录原因与操作人，已有信号按发现时的上下文版本解释；与公共关系冲突（例如授权的品牌归属与 entity-graph 不一致）时并列展示，不自动覆盖任何一方。导入的“备注/属性”列只作补充说明，不能代替结构化的品牌、区域与期限 |
@@ -63,17 +64,19 @@
 | `ImportEntityList` / `ConfirmEntityListRows` / `ManageEntityList` | 命令 | 企业清单导入（`202` 异步作业，单次 5000 行，经 `entity-graph.ResolveEntity` 匹配；只有统一社会信用代码精确命中可自动匹配）与维护。流程见 [PRD 第2段](../../01-product/prd/02-profile-and-objectives.md) |
 | `ListObjectiveTemplates` | 查询 | 按租户的价值链角色列出可启用目标、所需数据及其可用性 |
 | `EnableObjective` / `ConfigureObjective` / `DisableObjective` | 命令 | 目标配置：启用时创建目标（未激活）与首版策略草案，首次激活经仿真与审批；参数变更形成新草案；停用后不再产生新信号 |
-| `DraftPolicyChange` | 命令 | 结构化或自然语言输入 → 策略草案与差异 |
-| `RequestPolicyActivation` | 命令 | 提交审批（审批由 `identity` 执行） |
-| `ActivatePolicy` / `RollbackPolicy` | 命令 | 审批通过后由系统执行 |
-| `GetActivePolicies` | 查询 | `detection` 加载 |
+| `GetPolicy` / `ListPolicyVersions` / `DiffPolicyVersions` | 查询 | 生效版本、草案、版本历史与规则级差异 |
+| `DraftPolicyChange` / `DiscardPolicyDraft` | 命令 | 结构化（M2 表单）或自然语言（M3）输入 → 草案修订与差异，带 `expected_version`；保存即合成、编译并运行模板样例，发布 `policy.drafted` |
+| `RequestPolicyActivation` / `RequestPolicyRollback` | 命令 | 校验仿真报告对应当前草案修订（回滚附目标版本激活时的报告），调用 `identity.RequestApproval` 创建审批，带幂等键；同一目标同时只有一个进行中的申请 |
+| `ActivatePolicy` / `RollbackPolicy` | 命令 | 审批通过后由系统执行：校验申请仍对应草案当前修订、生效版本未变，否则不激活并通知；回滚恢复目标版本原来的合成文档与启用领域集合 |
+| `CreateUpgradeDraft` | 命令 | 模板新版本或信息领域上线后，按规则 `id` 对齐保留租户覆盖创建草案；被删除或改为锁定的覆盖逐条列出待确认 |
+| `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界） |
 | `UploadKnowledgeAsset` | 命令 | 上传与分级 |
 
 ## 7. 事件
 
 **发布**：`customer_context.profile.updated.v1`、`customer_context.objective.changed.v1`、`customer_context.entity_list.changed.v1`、`customer_context.qualification.expiring.v1`、`customer_context.policy.drafted.v1`、`customer_context.policy.activated.v1`、`customer_context.policy.rolled_back.v1`、`customer_context.knowledge.changed.v1`。
 
-**消费**：`identity.approval.decided.v1`（策略激活审批结果）、`learning.policy.proposal_created.v1`（学习子系统提出的策略调整建议，转为草案）、`learning.simulation.completed.v1`（附在草案上）。
+**消费**：`identity.approval.decided.v1`（策略激活与回滚的审批结果）、`identity.approval.closed.v1`（撤回或失效，解锁草案）、`learning.policy.proposal_created.v1`（学习子系统提出的策略调整建议，转为草案）、`learning.simulation.completed.v1`（附在草案上）。
 
 ## 8. 扩展点
 
@@ -83,7 +86,7 @@
 
 ## 9. 伸缩与可靠性
 
-- 读多写少；`detection` 通过本地缓存加载激活策略，策略版本变化以事件驱动缓存失效；
+- 读多写少；`detection` 通过本地缓存加载激活策略，每批求值前读取目标的策略代次判断缓存是否过期，`policy.activated`、`policy.rolled_back` 事件带代次，只用于提前刷新，丢失或迟到不影响正确性；
 - 档案与清单快照缓存键至少包含租户、组织单元与上下文版本，不同单元的合成快照互不复用；单元覆盖与档案、清单共用上下文版本：`profile.updated`、`entity_list.changed` 事件带版本，只用于提前刷新；正确性靠 detection 求值前读取 `GetContextVersion`，事件丢失或迟到不影响结果；
 - 策略编译失败不影响当前生效版本。
 

@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.5 · 更新：2026-10-17 · 平面：平台
+> 状态：评审中 · 版本：1.6 · 更新：2026-10-17 · 平面：平台
 
 ## 1. 使命
 
@@ -46,8 +46,10 @@
 |---|---|---|
 | `Check(subject, action, resource, context)` | 查询 | 授权决策（低延迟，带缓存） |
 | `ListPermitted` | 查询 | 列出主体可访问的资源集合（用于过滤） |
-| `RequestApproval` | 命令 | 提交审批（类型、对象、申请人、依据） |
-| `DecideApproval` | 命令 | 审批人决定 |
+| `RequestApproval` | 命令 | 提交审批（类型、对象、申请人、依据），带幂等键；发布 `identity.approval.requested.v1` |
+| `WithdrawApproval` | 命令 | 申请人在决定前撤回 |
+| `DecideApproval` | 命令 | 审批人批准或驳回（驳回须写原因）；决定时实时检查批准资格，申请人本人被拒绝；策略激活与回滚的申请和决定都要求强认证 |
+| `ListPendingApprovals` | 查询 | 当前主体有资格决定的待审批请求 |
 | 成员、角色、组织管理 | 命令/查询 | 管理控制台 |
 | `CreateInvitation` / `ResendInvitation` / `RevokeInvitation` / `ListInvitations` | 命令/查询 | 管理员邀请成员，需 `can_manage_members` 与强认证；邀请不授予任何权限，重发使旧链接失效 |
 | `AcceptInvitation` | 命令 | 受邀人接受邀请。独立授权路径，不经成员管理接口：核验链接与邀请状态、已验证邮箱一致、账号不属于其他租户、受邀管理员已完成 TOTP；在一个事务中按邀请限定的角色与单元写入成员资格并消费邀请（复用成员写入的内部逻辑），状态变化按邀请版本串行；之后写入 IdP 中账号的租户与 cell 归属，写入前访问失败关闭。见 [PRD 第1段 F2](../../01-product/prd/01-login-and-channel-binding.md#f2-邀请与接受) |
@@ -62,7 +64,7 @@
 
 ## 6. 事件
 
-**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批、支持访问与服务委托事件随对应功能实现（服务委托发布 `identity.service_delegation.changed.v1`：授予、到期、撤销、终止）；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。随免登实现消费 `channels.binding.changed.v1`。
+**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批事件随策略激活审批实现：`identity.approval.requested.v1`（通知有资格的审批人）、`identity.approval.decided.v1`（批准或驳回）、`identity.approval.closed.v1`（撤回或失效）；策略激活申请超过 7 天未决定、申请人失去申请权或目标生效版本变化时失效（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) F5，时限待项目负责人确认）。支持访问与服务委托事件随对应功能实现（服务委托发布 `identity.service_delegation.changed.v1`：授予、到期、撤销、终止）；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。随免登实现消费 `channels.binding.changed.v1`。
 
 ## 7. 授权模型
 
