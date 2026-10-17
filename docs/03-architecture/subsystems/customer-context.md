@@ -44,7 +44,7 @@
 | `TenantObjective` | 启用的目标：模板与版本、所属组织单元、负责人、参与人、参数（随档案或本目标值）、状态（未激活 / 生效 / 已停用）、关联的策略、分派规则（第 11 节）；同一单元同一模板只启用一次 |
 | `EntityListImport` | 企业清单导入作业：文件、逐行匹配结果（已匹配 / 待确认 / 需选择 / 未匹配）、状态；匹配完成不写入，操作人看过影响提示并提交后，已匹配与已确认的行才写入清单 |
 | `Policy` / `PolicyVersion` / `PolicyRollout` | 策略、版本、发布状态。`PolicyVersion` 保存合成文档、模板版本与仿真时固定的启用领域集合，状态为生效或已替代；每个目标有一个策略代次，激活与回滚在同一事务中写入新的生效版本并递增代次。M2 只有全量激活，影子与比例灰度随 M3 |
-| `PolicyDraft` | 每个目标最多一份草案：修订号与乐观并发版本号、编译与样例校验结果、所基于的生效版本；提交申请后锁定，撤回、驳回或失效后解锁（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md)） |
+| `PolicyDraft` | 每个目标最多一份草案：修订号与乐观并发版本号、编译与样例校验结果、所基于的生效版本；提交激活申请后锁定，撤回、驳回或失效后解锁；回滚申请不锁定草案（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md)） |
 | `KnowledgeAsset` | 知识资产：分级、可用于哪些工作流与模型 |
 | `TenantEntityList` | 租户私有实体清单，种类：`customers` 客户、`partners` 伙伴、`competitors` 竞争对手、`blocked` 禁合作、`tracked` 跟踪对象、`counterparties` 交易对手；策略中以 `lists.<种类>` 引用。清单只表达“是否在名单中”，是部分关系的简化视图：例如有效的经销授权可派生出 `partners` 成员，但授权范围与期限只在 `TenantRelationship` 中 |
 | `TenantRelationship` | 租户私有关系（与 entity-graph 的公共关系分开，公共域不读取）。种类先登记经销授权 `dealer_authorization`、代理 `agency`、合作伙伴 `partnership`、长期供货 `supply_agreement`，由应用领域包扩展。**端点**：我方主体与对方组织（公共 `org_`，导入时未匹配的行暂存为待核对，不建关系）；**约束**：品牌（`brd_` 或行业包品牌词表代码）、区域（区划代码与版本）、品类，可进一步限定项目或标包；同一端点在不同约束下是不同的关系。**有效期**：起止日期，到期自动失效；**证据**：授权书等文件经 evidence 文档处理保存。**修订与撤销**：每次修改形成新版本并保留旧版本，撤销记录原因与操作人，已有信号按发现时的上下文版本解释；与公共关系冲突（例如授权的品牌归属与 entity-graph 不一致）时并列展示，不自动覆盖任何一方。导入的“备注/属性”列只作补充说明，不能代替结构化的品牌、区域与期限 |
@@ -66,8 +66,8 @@
 | `EnableObjective` / `ConfigureObjective` / `DisableObjective` | 命令 | 目标配置：启用时创建目标（未激活）与首版策略草案，首次激活经仿真与审批；参数变更形成新草案；停用后不再产生新信号 |
 | `GetPolicy` / `ListPolicyVersions` / `DiffPolicyVersions` | 查询 | 生效版本、草案、版本历史与规则级差异 |
 | `DraftPolicyChange` / `DiscardPolicyDraft` | 命令 | 结构化（M2 表单）或自然语言（M3）输入 → 草案修订与差异，带 `expected_version`；保存即合成、编译并运行模板样例，发布 `policy.drafted` |
-| `RequestPolicyActivation` / `RequestPolicyRollback` | 命令 | 校验仿真报告对应当前草案修订（回滚附目标版本激活时的报告），调用 `identity.RequestApproval` 创建审批，带幂等键；同一目标同时只有一个进行中的申请 |
-| `ActivatePolicy` / `RollbackPolicy` | 命令 | 审批通过后由系统执行：校验申请仍对应草案当前修订、生效版本未变，否则不激活并通知；回滚恢复目标版本原来的合成文档与启用领域集合 |
+| `RequestPolicyActivation` / `RequestPolicyRollback` | 命令 | 按类型绑定后调用 `identity.RequestApproval` 创建审批，带幂等键；同一目标同时只有一个进行中的申请。激活：绑定草案当前修订、该修订未过期的仿真报告（对比版本须为当前生效版本）与申请时的生效版本和策略代次，提交后锁定草案。回滚：绑定目标版本（曾经生效过）、其激活时的报告与申请时的生效版本和策略代次，不绑定、不锁定草案 |
+| `ActivatePolicy` / `RollbackPolicy` | 命令 | 审批通过后由系统执行，执行前核验绑定：激活要求草案仍是申请的修订、生效版本与策略代次仍等于基准；回滚要求目标版本存在且曾经生效、生效版本与策略代次仍等于基准。不满足则不执行并通知。回滚恢复目标版本原来的合成文档与启用领域集合；执行后若有草案，其报告的对比基准失效，标为过期 |
 | `CreateUpgradeDraft` | 命令 | 模板新版本或信息领域上线后，按规则 `id` 对齐保留租户覆盖创建草案；被删除或改为锁定的覆盖逐条列出待确认 |
 | `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界） |
 | `UploadKnowledgeAsset` | 命令 | 上传与分级 |
@@ -76,7 +76,7 @@
 
 **发布**：`customer_context.profile.updated.v1`、`customer_context.objective.changed.v1`、`customer_context.entity_list.changed.v1`、`customer_context.qualification.expiring.v1`、`customer_context.policy.drafted.v1`、`customer_context.policy.activated.v1`、`customer_context.policy.rolled_back.v1`、`customer_context.knowledge.changed.v1`。
 
-**消费**：`identity.approval.decided.v1`（策略激活与回滚的审批结果）、`identity.approval.closed.v1`（撤回或失效，解锁草案）、`learning.policy.proposal_created.v1`（学习子系统提出的策略调整建议，转为草案）、`learning.simulation.completed.v1`（附在草案上）。
+**消费**：`identity.approval.decided.v1`（策略激活与回滚的审批结果）、`identity.approval.closed.v1`（撤回或失效；激活申请的草案解锁）、`learning.policy.proposal_created.v1`（学习子系统提出的策略调整建议，转为草案）、`learning.simulation.completed.v1`（附在草案上）。
 
 ## 8. 扩展点
 

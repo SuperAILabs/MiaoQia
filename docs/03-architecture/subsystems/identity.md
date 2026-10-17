@@ -64,7 +64,7 @@
 
 ## 6. 事件
 
-**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批事件随策略激活审批实现：`identity.approval.requested.v1`（通知有资格的审批人）、`identity.approval.decided.v1`（批准或驳回）、`identity.approval.closed.v1`（撤回或失效）；策略激活申请超过 7 天未决定、申请人失去申请权或目标生效版本变化时失效（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) F5，时限待项目负责人确认）。支持访问与服务委托事件随对应功能实现（服务委托发布 `identity.service_delegation.changed.v1`：授予、到期、撤销、终止）；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。随免登实现消费 `channels.binding.changed.v1`。
+**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批事件随策略激活审批实现：`identity.approval.requested.v1`（通知有资格的审批人）、`identity.approval.decided.v1`（批准或驳回）、`identity.approval.closed.v1`（撤回或失效）；策略激活与回滚申请超过 7 天未决定、申请人失去申请权或目标的生效版本与策略代次不再等于申请时的基准时失效（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) F5，时限待项目负责人确认）。支持访问与服务委托事件随对应功能实现（服务委托发布 `identity.service_delegation.changed.v1`：授予、到期、撤销、终止）；邀请事件 `identity.invitation.changed.v1`（创建、接受、撤回、过期）随邀请功能实现。随免登实现消费 `channels.binding.changed.v1`。
 
 ## 7. 授权模型
 
