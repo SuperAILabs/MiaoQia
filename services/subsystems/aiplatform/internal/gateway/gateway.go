@@ -351,11 +351,11 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 	if len(eligible) == 0 {
 		return reject(&api.Error{Code: api.CodeBudgetExceeded, Detail: "没有在本次输入、上下文与费用上限内的端点"})
 	}
-	var spent int64 // 已发生费用的上界：已知费用加未报告尝试的估算上界
+	var spent int64 // 已发生费用的上界：已知费用加费用未知尝试的估算上界，饱和累加
 	skipped := false
 	for _, c := range eligible {
 		ep := c.ep
-		if spent+c.est > b.MaxCostMicroYuan {
+		if c.est > b.MaxCostMicroYuan-spent { // 两者非负，减法不会溢出
 			skipped = true // 主备切换后剩余上限不足以调用该端点
 			continue
 		}
@@ -371,14 +371,19 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 		out, pu, err := call(cctx, s.providers[ep.Provider], ep)
 		cancel()
 		inv.Latency = time.Since(start)
+		known := false
 		if err == nil || pu.Reported {
-			inv.Usage = ep.usage(pu, err == nil)
-			spent += inv.Usage.CostMicroYuan
-			cc.CostMicroYuan += inv.Usage.CostMicroYuan
+			inv.Usage, known = ep.usage(pu, err == nil)
 		} else {
 			inv.Usage = api.Usage{Unit: ep.Billing}
+		}
+		if known {
+			spent = addSat(spent, inv.Usage.CostMicroYuan)
+			cc.CostMicroYuan = addSat(cc.CostMicroYuan, inv.Usage.CostMicroYuan)
+		} else {
+			// 未报告、为负或超出可表示范围的用量：费用未知，按调用前估算上界扣减。
 			inv.CostUnknown, cc.CostUnknown = true, true
-			spent += c.est
+			spent = addSat(spent, c.est)
 		}
 		if err != nil {
 			inv.Status = StatusFailed

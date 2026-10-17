@@ -5,6 +5,8 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"math"
+	"math/bits"
 	"slices"
 	"time"
 
@@ -178,6 +180,7 @@ func (e Endpoint) ref() api.ModelRef {
 }
 
 // estimate 返回调用前的费用上界。按 token 计费且输出有价格时，调用方必须给出输出上限，否则费用无法限定，端点不参与本次调用。
+// 输入为负或费用超出 int64 可表示范围时同样无法估算，端点不参与。
 func (e Endpoint) estimate(in, maxOut int) (int64, bool) {
 	if in < 0 || maxOut < 0 {
 		return 0, false
@@ -188,29 +191,81 @@ func (e Endpoint) estimate(in, maxOut int) (int64, bool) {
 	if maxOut == 0 && e.OutputPricePer1K > 0 {
 		return 0, false
 	}
-	return e.tokenCost(in, maxOut), true
+	return e.tokenCost(in, maxOut)
 }
 
-// inputUpper 返回本端点的输入 token 上界：请求内容的保守估算加适配器附加量。
-func (e Endpoint) inputUpper(payload int) int { return payload + e.RequestOverheadTokens }
+// inputUpper 返回本端点的输入 token 上界：请求内容的保守估算加适配器附加量，溢出时取最大值（必然超出上限）。
+func (e Endpoint) inputUpper(payload int) int {
+	if payload > math.MaxInt-e.RequestOverheadTokens {
+		return math.MaxInt
+	}
+	return payload + e.RequestOverheadTokens
+}
 
 // usage 把供应商报告的用量换算为费用。按请求计费的成功调用至少计一次请求；失败调用按供应商报告的计费请求数。
-func (e Endpoint) usage(pu ProviderUsage, ok bool) api.Usage {
+// 用量为负或费用超出可表示范围时返回 false：费用未知，由调用方按估算上界扣减预算，不当作免费。
+func (e Endpoint) usage(pu ProviderUsage, ok bool) (api.Usage, bool) {
 	u := api.Usage{Unit: e.Billing, InputTokens: pu.InputTokens, OutputTokens: pu.OutputTokens, Requests: pu.Requests}
+	if pu.InputTokens < 0 || pu.OutputTokens < 0 || pu.Requests < 0 {
+		return api.Usage{Unit: e.Billing}, false
+	}
+	var cost int64
+	var fits bool
 	if e.Billing == api.BillRequest {
 		if ok && u.Requests == 0 {
 			u.Requests = 1
 		}
-		u.CostMicroYuan = int64(u.Requests) * e.RequestPrice
-		return u
+		cost, fits = mulInt64(int64(u.Requests), e.RequestPrice)
+	} else {
+		cost, fits = e.tokenCost(pu.InputTokens, pu.OutputTokens)
 	}
-	u.CostMicroYuan = e.tokenCost(pu.InputTokens, pu.OutputTokens)
-	return u
+	if !fits {
+		u.CostMicroYuan = 0
+		return u, false
+	}
+	u.CostMicroYuan = cost
+	return u, true
 }
 
-// tokenCost 按每千 token 价格向上取整到微元。
-func (e Endpoint) tokenCost(in, out int) int64 {
-	return ceilDiv(int64(in)*e.InputPricePer1K, 1000) + ceilDiv(int64(out)*e.OutputPricePer1K, 1000)
+// tokenCost 按每千 token 价格向上取整到微元；乘法、取整与求和都检查溢出，超出 int64 时返回 false。
+func (e Endpoint) tokenCost(in, out int) (int64, bool) {
+	ci, ok1 := mulCeilDiv(int64(in), e.InputPricePer1K, 1000)
+	co, ok2 := mulCeilDiv(int64(out), e.OutputPricePer1K, 1000)
+	if !ok1 || !ok2 || ci > math.MaxInt64-co {
+		return 0, false
+	}
+	return ci + co, true
 }
 
-func ceilDiv(a, b int64) int64 { return (a + b - 1) / b }
+// mulCeilDiv 计算 ceil(a*b/d)，a、b 非负、d 为正；用 128 位中间结果，不会因乘法或取整加法溢出。
+func mulCeilDiv(a, b, d int64) (int64, bool) {
+	if a < 0 || b < 0 || d <= 0 {
+		return 0, false
+	}
+	hi, lo := bits.Mul64(uint64(a), uint64(b))
+	if hi >= uint64(d) {
+		return 0, false // 商超过 64 位
+	}
+	q, r := bits.Div64(hi, lo, uint64(d))
+	if r != 0 {
+		q++ // q < 2^64/d 时加 1 不回绕；越界由下面的范围检查捕获
+		if q == 0 {
+			return 0, false
+		}
+	}
+	if q > math.MaxInt64 {
+		return 0, false
+	}
+	return int64(q), true
+}
+
+// mulInt64 计算 a*b（a、b 非负），溢出时返回 false。
+func mulInt64(a, b int64) (int64, bool) { return mulCeilDiv(a, b, 1) }
+
+// addSat 是饱和加法（a、b 非负），用于累计已发生费用的上界。
+func addSat(a, b int64) int64 {
+	if a > math.MaxInt64-b {
+		return math.MaxInt64
+	}
+	return a + b
+}

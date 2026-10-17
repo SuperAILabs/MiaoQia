@@ -798,3 +798,71 @@ func TestInputEstimateCoversFullPayload(t *testing.T) {
 		t.Fatalf("inputUpper = %d", got)
 	}
 }
+
+func TestCostArithmeticBoundaries(t *testing.T) {
+	// 复审给出的复现：巨大的正输出上限不能让估算溢出为负而绕过零费用上限。
+	s, stub, _ := setup(t, map[string]StubBehavior{"dec-backup": {Usage: ProviderUsage{InputTokens: 100, OutputTokens: 10}}})
+	r := classifyReq()
+	r.Budget.MaxCostMicroYuan = 0
+	r.Budget.MaxOutputTokens = 92233720368547759
+	if _, err := s.Classify(ctx(), r); code(err) != api.CodeBudgetExceeded || len(stub.Calls()) != 0 {
+		t.Fatalf("err=%v calls=%v", err, stub.Calls())
+	}
+	r.Budget.MaxCostMicroYuan = math.MaxInt64
+	r.Budget.MaxOutputTokens = math.MaxInt
+	if _, err := s.Classify(ctx(), r); err != nil || !slices.Equal(stub.Calls(), []string{"dec-primary"}) {
+		t.Fatalf("最大上限下溢出的备选不参与: err=%v calls=%v", err, stub.Calls())
+	}
+
+	for name, tc := range map[string]struct {
+		a, b, d int64
+		want    int64
+		ok      bool
+	}{
+		"exact":            {3000, 1, 1000, 3, true},
+		"round up":         {1, 1, 1000, 1, true},
+		"product > int64":  {math.MaxInt64, 2, 1000, 18446744073709552, true},
+		"quotient > int64": {math.MaxInt64, math.MaxInt64, 1, 0, false},
+		"rounding at max":  {math.MaxInt64, 1, 1, math.MaxInt64, true},
+		"round past max":   {math.MaxInt64, 3, 2, 0, false},
+		"negative":         {-1, 1, 1, 0, false},
+	} {
+		got, ok := mulCeilDiv(tc.a, tc.b, tc.d)
+		if got != tc.want || ok != tc.ok {
+			t.Fatalf("%s: got %d %v", name, got, ok)
+		}
+	}
+	tok := Endpoint{Billing: api.BillToken, InputPricePer1K: math.MaxInt64, OutputPricePer1K: math.MaxInt64}
+	if _, ok := tok.tokenCost(1000, 1000); ok {
+		t.Fatal("两项之和溢出应失败")
+	}
+	if _, ok := tok.estimate(0, math.MaxInt); ok {
+		t.Fatal("估算溢出应失败")
+	}
+	if got := addSat(math.MaxInt64-1, 5); got != math.MaxInt64 {
+		t.Fatalf("addSat = %d", got)
+	}
+	if got := (Endpoint{RequestOverheadTokens: 10}).inputUpper(math.MaxInt - 5); got != math.MaxInt {
+		t.Fatalf("inputUpper = %d", got)
+	}
+	// 供应商报告的用量为负或换算溢出时费用未知，不当作免费。
+	req := Endpoint{Billing: api.BillRequest, RequestPrice: math.MaxInt64}
+	if _, ok := req.usage(ProviderUsage{Requests: 2, Reported: true}, false); ok {
+		t.Fatal("请求费用溢出应为未知")
+	}
+	if _, ok := tok.usage(ProviderUsage{InputTokens: -1}, true); ok {
+		t.Fatal("负用量应为未知")
+	}
+}
+
+func TestOverflowingReportedUsageIsUnknownCost(t *testing.T) {
+	// 成功调用报告了无法换算的用量：结果与计量标为费用未知，预算按估算上界扣减。
+	s, _, meter := setup(t, map[string]StubBehavior{"dec-primary": {Usage: ProviderUsage{Requests: -1}}})
+	d, err := s.Classify(ctx(), classifyReq())
+	if err != nil || !d.Call.CostUnknown || d.Call.CostMicroYuan != 0 {
+		t.Fatalf("d=%+v err=%v", d, err)
+	}
+	if r := meter.Records(); len(r) != 1 || !r[0].CostUnknown {
+		t.Fatalf("records = %+v", r)
+	}
+}
