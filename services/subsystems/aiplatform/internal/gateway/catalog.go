@@ -16,22 +16,24 @@ import (
 // Endpoint 是模型目录中的一个可调用端点。Region 是登记的处理地域。
 // 价格按 Billing 声明的单位登记：token 计费按每千 token 的微元，按请求计费按每次请求的微元；未登记价格的端点不能通过校验，不按免费处理。
 type Endpoint struct {
-	ID                   string           `yaml:"id"`
-	Provider             string           `yaml:"provider"` // 适配器名，例如 openai_compatible、stub
-	Model                string           `yaml:"model"`
-	Version              string           `yaml:"version"`
-	Capabilities         []api.Capability `yaml:"capabilities"`
-	Filed                bool             `yaml:"filed"` // 已完成模型备案
-	Region               string           `yaml:"region"`
-	Tier                 int              `yaml:"tier"` // 0 主选，1 起为备选，同级内按 ID 排序
-	Billing              api.BillingUnit  `yaml:"billing"`
-	InputPricePer1K      int64            `yaml:"input_price_per_1k"`
-	OutputPricePer1K     int64            `yaml:"output_price_per_1k"`
-	RequestPrice         int64            `yaml:"request_price"`
-	DecisionTasks        []DecisionTask   `yaml:"decision_tasks"` // 声明 classify/score 能力的端点经任务评测准入的任务版本
-	MaxInputTokens       int              `yaml:"max_input_tokens"`
-	Timeout              time.Duration    `yaml:"timeout"`
-	NoTrainingOnCustomer bool             `yaml:"no_training_on_customer"` // 合同与配置禁止用客户数据训练
+	ID               string           `yaml:"id"`
+	Provider         string           `yaml:"provider"` // 适配器名，例如 openai_compatible、stub
+	Model            string           `yaml:"model"`
+	Version          string           `yaml:"version"`
+	Capabilities     []api.Capability `yaml:"capabilities"`
+	Filed            bool             `yaml:"filed"` // 已完成模型备案
+	Region           string           `yaml:"region"`
+	Tier             int              `yaml:"tier"` // 0 主选，1 起为备选，同级内按 ID 排序
+	Billing          api.BillingUnit  `yaml:"billing"`
+	InputPricePer1K  int64            `yaml:"input_price_per_1k"`
+	OutputPricePer1K int64            `yaml:"output_price_per_1k"`
+	RequestPrice     int64            `yaml:"request_price"`
+	DecisionTasks    []DecisionTask   `yaml:"decision_tasks"` // 声明 classify/score 能力的端点经任务评测准入的任务版本
+	MaxInputTokens   int              `yaml:"max_input_tokens"`
+	// RequestOverheadTokens 是适配器在请求内容之外附加的 token 上界（模板、角色与格式标记），计入输入估算。
+	RequestOverheadTokens int           `yaml:"request_overhead_tokens"`
+	Timeout               time.Duration `yaml:"timeout"`
+	NoTrainingOnCustomer  bool          `yaml:"no_training_on_customer"` // 合同与配置禁止用客户数据训练
 }
 
 // DecisionTask 是端点对一个决策任务版本的准入声明。同一任务版本的所有端点必须声明相同的能力与数值含义，
@@ -82,7 +84,7 @@ func (c *Catalog) Validate() error {
 			errs = append(errs, fmt.Errorf("端点 %q 未登记处理地域", e.ID))
 		case !e.NoTrainingOnCustomer:
 			errs = append(errs, fmt.Errorf("端点 %q 未确认禁止用客户数据训练", e.ID))
-		case e.InputPricePer1K < 0 || e.OutputPricePer1K < 0 || e.RequestPrice < 0 || e.Tier < 0 || e.MaxInputTokens < 0 || e.Timeout < 0:
+		case e.InputPricePer1K < 0 || e.OutputPricePer1K < 0 || e.RequestPrice < 0 || e.Tier < 0 || e.MaxInputTokens < 0 || e.RequestOverheadTokens < 0 || e.Timeout < 0:
 			errs = append(errs, fmt.Errorf("端点 %q 的价格、级别、上下文或时限为负", e.ID))
 		default:
 			errs = append(errs, e.validatePricing(), e.validateDecisionTasks())
@@ -177,6 +179,9 @@ func (e Endpoint) ref() api.ModelRef {
 
 // estimate 返回调用前的费用上界。按 token 计费且输出有价格时，调用方必须给出输出上限，否则费用无法限定，端点不参与本次调用。
 func (e Endpoint) estimate(in, maxOut int) (int64, bool) {
+	if in < 0 || maxOut < 0 {
+		return 0, false
+	}
 	if e.Billing == api.BillRequest {
 		return e.RequestPrice, true
 	}
@@ -185,6 +190,9 @@ func (e Endpoint) estimate(in, maxOut int) (int64, bool) {
 	}
 	return e.tokenCost(in, maxOut), true
 }
+
+// inputUpper 返回本端点的输入 token 上界：请求内容的保守估算加适配器附加量。
+func (e Endpoint) inputUpper(payload int) int { return payload + e.RequestOverheadTokens }
 
 // usage 把供应商报告的用量换算为费用。按请求计费的成功调用至少计一次请求；失败调用按供应商报告的计费请求数。
 func (e Endpoint) usage(pu ProviderUsage, ok bool) api.Usage {

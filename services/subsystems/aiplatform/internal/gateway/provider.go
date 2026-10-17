@@ -21,10 +21,12 @@ type ProviderRequest struct {
 }
 
 // ProviderUsage 是供应商报告的用量；费用由网关按目录的计费单位与价格计算。Requests 是供应商计费的请求数，按请求计费的端点使用。
+// 失败的调用只有在 Reported 为真时才按其中的用量计费；否则费用未知，网关按调用前估算上界扣减本次预算。
 type ProviderUsage struct {
 	InputTokens  int
 	OutputTokens int
 	Requests     int
+	Reported     bool
 }
 
 // ProviderClassifyRequest 是交给适配器的分类请求；输入的隔离要求同 ProviderRequest。
@@ -63,7 +65,7 @@ type Provider interface {
 
 // StubBehavior 是故障桩对某个端点的行为。
 type StubBehavior struct {
-	Err    error           // 非空时返回该错误（例如 ErrUnavailable）
+	Err    error           // 非空时返回该错误（例如 ErrUnavailable）与 Usage，用于验证失败但已计费的情形
 	Block  bool            // 阻塞直到上下文取消，用于验证端点时限
 	Output json.RawMessage // 生成输出；为空时返回 {}
 	Usage  ProviderUsage
@@ -106,7 +108,7 @@ func (s *Stub) behave(ctx context.Context, ep Endpoint) (StubBehavior, error) {
 func (s *Stub) Generate(ctx context.Context, ep Endpoint, _ ProviderRequest) (json.RawMessage, ProviderUsage, error) {
 	b, err := s.behave(ctx, ep)
 	if err != nil {
-		return nil, ProviderUsage{}, err
+		return nil, b.Usage, err
 	}
 	if b.Output == nil {
 		return json.RawMessage(`{}`), b.Usage, nil
@@ -117,7 +119,7 @@ func (s *Stub) Generate(ctx context.Context, ep Endpoint, _ ProviderRequest) (js
 func (s *Stub) Embed(ctx context.Context, ep Endpoint, texts []string) ([][]float32, ProviderUsage, error) {
 	b, err := s.behave(ctx, ep)
 	if err != nil {
-		return nil, ProviderUsage{}, err
+		return nil, b.Usage, err
 	}
 	dim := b.Dim
 	if dim == 0 {
@@ -135,7 +137,7 @@ func (s *Stub) Embed(ctx context.Context, ep Endpoint, texts []string) ([][]floa
 func (s *Stub) Rerank(ctx context.Context, ep Endpoint, _ string, candidates []string) ([]float64, ProviderUsage, error) {
 	b, err := s.behave(ctx, ep)
 	if err != nil {
-		return nil, ProviderUsage{}, err
+		return nil, b.Usage, err
 	}
 	out := make([]float64, len(candidates))
 	for i := range candidates {
@@ -147,7 +149,7 @@ func (s *Stub) Rerank(ctx context.Context, ep Endpoint, _ string, candidates []s
 func (s *Stub) Classify(ctx context.Context, ep Endpoint, req ProviderClassifyRequest) (ProviderDecision, ProviderUsage, error) {
 	b, err := s.behave(ctx, ep)
 	if err != nil {
-		return ProviderDecision{}, ProviderUsage{}, err
+		return ProviderDecision{}, b.Usage, err
 	}
 	if b.Decision != nil {
 		return *b.Decision, b.Usage, nil
@@ -158,7 +160,7 @@ func (s *Stub) Classify(ctx context.Context, ep Endpoint, req ProviderClassifyRe
 func (s *Stub) Score(ctx context.Context, ep Endpoint, req ProviderScoreRequest) (ProviderDecision, ProviderUsage, error) {
 	b, err := s.behave(ctx, ep)
 	if err != nil {
-		return ProviderDecision{}, ProviderUsage{}, err
+		return ProviderDecision{}, b.Usage, err
 	}
 	if b.Decision != nil {
 		return *b.Decision, b.Usage, nil

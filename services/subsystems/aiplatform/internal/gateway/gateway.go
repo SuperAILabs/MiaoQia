@@ -54,8 +54,7 @@ type plan struct {
 	call       api.Call
 	promptRef  string
 	inputHash  string
-	estInput   int // 按字符数估算的输入 token 上界
-	maxOutput  int
+	payload    int // 送给供应商的全部内容的输入 token 上界，见 inputTokensUpper
 }
 
 func (s *Service) Generate(ctx context.Context, req api.GenerateRequest) (*api.GenerateResult, error) {
@@ -76,10 +75,10 @@ func (s *Service) Generate(ctx context.Context, req api.GenerateRequest) (*api.G
 			bad = "output_schema 无法编译"
 		}
 	}
-	parts := appendInputs([]string{req.Instructions}, req.Inputs)
-	p := plan{capability: api.CapGenerate, call: req.Call, promptRef: req.PromptRef, inputHash: hash(parts...), estInput: runes(parts...), maxOutput: req.Budget.MaxOutputTokens}
+	parts := append(appendInputs([]string{req.Instructions}, req.Inputs), string(req.OutputSchema))
+	p := plan{capability: api.CapGenerate, call: req.Call, promptRef: req.PromptRef, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
 	preq := ProviderRequest{Instructions: req.Instructions, Inputs: req.Inputs, OutputSchema: req.OutputSchema, MaxOutputTokens: req.Budget.MaxOutputTokens}
-	out, ref, usage, id, err := attempt(ctx, s, p, bad,
+	out, r, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) (json.RawMessage, ProviderUsage, error) {
 			return pr.Generate(ctx, ep, preq)
 		},
@@ -96,7 +95,7 @@ func (s *Service) Generate(ctx context.Context, req api.GenerateRequest) (*api.G
 	if err != nil {
 		return nil, err
 	}
-	return &api.GenerateResult{Output: out, Model: ref, Usage: usage, InvocationID: id}, nil
+	return &api.GenerateResult{Output: out, Model: r.ref, Usage: r.usage, Call: r.call, InvocationID: r.id}, nil
 }
 
 func (s *Service) Embed(ctx context.Context, req api.EmbedRequest) (*api.EmbedResult, error) {
@@ -104,8 +103,8 @@ func (s *Service) Embed(ctx context.Context, req api.EmbedRequest) (*api.EmbedRe
 	if len(req.Texts) == 0 || req.Purpose == "" {
 		bad = "缺少 texts 或 purpose"
 	}
-	p := plan{capability: api.CapEmbed, call: req.Call, inputHash: hash(req.Texts...), estInput: runes(req.Texts...)}
-	out, ref, usage, id, err := attempt(ctx, s, p, bad,
+	p := plan{capability: api.CapEmbed, call: req.Call, inputHash: hash(req.Texts...), payload: inputTokensUpper(req.Texts...)}
+	out, r, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) ([][]float32, ProviderUsage, error) {
 			return pr.Embed(ctx, ep, req.Texts)
 		},
@@ -118,7 +117,7 @@ func (s *Service) Embed(ctx context.Context, req api.EmbedRequest) (*api.EmbedRe
 	if err != nil {
 		return nil, err
 	}
-	return &api.EmbedResult{Vectors: out, Model: ref, Usage: usage, InvocationID: id}, nil
+	return &api.EmbedResult{Vectors: out, Model: r.ref, Usage: r.usage, Call: r.call, InvocationID: r.id}, nil
 }
 
 func (s *Service) Rerank(ctx context.Context, req api.RerankRequest) (*api.RerankResult, error) {
@@ -127,8 +126,8 @@ func (s *Service) Rerank(ctx context.Context, req api.RerankRequest) (*api.Reran
 		bad = "缺少 query 或 candidates"
 	}
 	parts := append([]string{req.Query}, req.Candidates...)
-	p := plan{capability: api.CapRerank, call: req.Call, inputHash: hash(parts...), estInput: runes(parts...)}
-	out, ref, usage, id, err := attempt(ctx, s, p, bad,
+	p := plan{capability: api.CapRerank, call: req.Call, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
+	out, r, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) ([]float64, ProviderUsage, error) {
 			return pr.Rerank(ctx, ep, req.Query, req.Candidates)
 		},
@@ -141,7 +140,7 @@ func (s *Service) Rerank(ctx context.Context, req api.RerankRequest) (*api.Reran
 	if err != nil {
 		return nil, err
 	}
-	return &api.RerankResult{Scores: out, Model: ref, Usage: usage, InvocationID: id}, nil
+	return &api.RerankResult{Scores: out, Model: r.ref, Usage: r.usage, Call: r.call, InvocationID: r.id}, nil
 }
 
 // Classify 在任务给定的候选标签中选择一个。结果只接受供应商的类型化字段；标签不在候选中、数值越界或与目录声明的含义不符时
@@ -165,10 +164,10 @@ func (s *Service) Classify(ctx context.Context, req api.ClassifyRequest) (*api.D
 	}
 	parts = appendInputs(parts, req.Inputs)
 	key := req.Task + "@" + req.TaskVersion
-	p := plan{capability: api.CapClassify, call: req.Call, promptRef: key, inputHash: hash(parts...), estInput: runes(parts...), maxOutput: req.Budget.MaxOutputTokens}
+	p := plan{capability: api.CapClassify, call: req.Call, promptRef: key, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
 	preq := ProviderClassifyRequest{Task: key, Inputs: req.Inputs, Labels: req.Labels, MaxOutputTokens: req.Budget.MaxOutputTokens}
 	var meaning api.ScoreMeaning
-	d, ref, usage, id, err := attempt(ctx, s, p, bad,
+	d, r, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) (ProviderDecision, ProviderUsage, error) {
 			return pr.Classify(ctx, ep, preq)
 		},
@@ -190,7 +189,7 @@ func (s *Service) Classify(ctx context.Context, req api.ClassifyRequest) (*api.D
 	if err != nil {
 		return nil, err
 	}
-	return decision(req.TaskVersion, d, meaning, ref, usage, id), nil
+	return decision(req.TaskVersion, d, meaning, r), nil
 }
 
 // Score 在任务给定的量表上评分，结果约束同 Classify；分数必须落在量表范围内。
@@ -202,9 +201,9 @@ func (s *Service) Score(ctx context.Context, req api.ScoreRequest) (*api.Decisio
 	}
 	parts := appendInputs([]string{req.Task, req.TaskVersion, fmt.Sprint(sc.Min, sc.Max), sc.Definition}, req.Inputs)
 	key := req.Task + "@" + req.TaskVersion
-	p := plan{capability: api.CapScore, call: req.Call, promptRef: key, inputHash: hash(parts...), estInput: runes(parts...), maxOutput: req.Budget.MaxOutputTokens}
+	p := plan{capability: api.CapScore, call: req.Call, promptRef: key, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
 	preq := ProviderScoreRequest{Task: key, Inputs: req.Inputs, Scale: sc, MaxOutputTokens: req.Budget.MaxOutputTokens}
-	d, ref, usage, id, err := attempt(ctx, s, p, bad,
+	d, r, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) (ProviderDecision, ProviderUsage, error) {
 			return pr.Score(ctx, ep, preq)
 		},
@@ -224,7 +223,7 @@ func (s *Service) Score(ctx context.Context, req api.ScoreRequest) (*api.Decisio
 	if err != nil {
 		return nil, err
 	}
-	return decision(req.TaskVersion, d, api.MeaningScale, ref, usage, id), nil
+	return decision(req.TaskVersion, d, api.MeaningScale, r), nil
 }
 
 func decisionBad(version string, inputs []api.Input) string {
@@ -265,13 +264,13 @@ func checkOutcome(d ProviderDecision) (api.Outcome, error) {
 	return d.Outcome, nil
 }
 
-func decision(version string, d ProviderDecision, meaning api.ScoreMeaning, ref api.ModelRef, usage api.Usage, id string) *api.Decision {
+func decision(version string, d ProviderDecision, meaning api.ScoreMeaning, r done) *api.Decision {
 	if d.Outcome == api.OutcomeUnknown && d.UnknownReason == "" {
 		d.UnknownReason = api.UnknownUnspecified
 	}
 	return &api.Decision{
 		TaskVersion: version, Outcome: d.Outcome, Label: d.Label, Score: d.Score, ScoreMeaning: meaning,
-		UnknownReason: d.UnknownReason, Model: ref, Usage: usage, InvocationID: id,
+		UnknownReason: d.UnknownReason, Model: r.ref, Usage: r.usage, Call: r.call, InvocationID: r.id,
 	}
 }
 
@@ -284,30 +283,45 @@ func appendInputs(parts []string, inputs []api.Input) []string {
 	return parts
 }
 
+// done 是成功调用的元数据。
+type done struct {
+	ref   api.ModelRef
+	usage api.Usage
+	call  api.CallCost
+	id    string
+}
+
 // attempt 执行一次网关调用：校验请求与预算、按主备顺序尝试合规端点、校验输出并逐次计量。
 // 只有端点不可用（含端点超时）才切换到下一个端点；输出校验失败或供应商拒绝请求时直接失败，避免重复计费。
+// 每次尝试前按已发生的费用检查剩余上限，费用上限约束整次逻辑调用而不是单个端点。
 // 决策能力的未知与拒答由 check 作为成功结果返回，不触发切换；路由已保证候选端点对该任务版本的输出语义一致。
 func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 	call func(context.Context, Provider, Endpoint) (T, ProviderUsage, error),
 	check func(T, Endpoint) (api.Outcome, error),
-) (T, api.ModelRef, api.Usage, string, error) {
+) (T, done, error) {
 	var zero T
 	rc, ok := reqctx.From(ctx)
 	if !ok {
-		return zero, api.ModelRef{}, api.Usage{}, "", reqctx.ErrMissing
+		return zero, done{}, reqctx.ErrMissing
 	}
+	cc := api.CallCost{CallID: newID()}
 	base := Invocation{
-		Tenant: rc.Tenant, Principal: rc.Principal.ID, Purpose: rc.Purpose, Task: p.call.Task, PromptRef: p.promptRef,
+		CallID: cc.CallID, Tenant: rc.Tenant, Principal: rc.Principal.ID, Purpose: rc.Purpose, Task: p.call.Task, PromptRef: p.promptRef,
 		Capability: p.capability, Classification: p.call.Classification, InputHash: p.inputHash,
 	}
-	reject := func(err *api.Error) (T, api.ModelRef, api.Usage, string, error) {
+	reject := func(err *api.Error) (T, done, error) {
 		inv := base
 		inv.Status, inv.ErrorCode = StatusRejected, err.Code
 		s.record(ctx, inv)
-		return zero, api.ModelRef{}, api.Usage{}, "", err
+		return zero, done{}, err
 	}
-	if bad == "" && p.call.Task == "" {
+	b := p.call.Budget
+	switch {
+	case bad != "":
+	case p.call.Task == "":
 		bad = "缺少 task"
+	case b.MaxInputTokens < 0 || b.MaxOutputTokens < 0 || b.MaxCostMicroYuan < 0:
+		bad = "预算不能为负"
 	}
 	if bad != "" {
 		return reject(&api.Error{Code: api.CodeInvalidRequest, Detail: bad})
@@ -318,26 +332,36 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 		errors.As(err, &ae)
 		return reject(ae)
 	}
-	b := p.call.Budget
-	if b.MaxInputTokens > 0 && p.estInput > b.MaxInputTokens {
-		return reject(&api.Error{Code: api.CodeBudgetExceeded, Detail: "输入超出本次上限"})
+	type candidate struct {
+		ep  Endpoint
+		est int64 // 调用前费用上界
 	}
-	var eligible []Endpoint
+	var eligible []candidate
 	for _, ep := range routed {
-		if ep.MaxInputTokens > 0 && p.estInput > ep.MaxInputTokens {
-			continue // 上下文不足的端点不参与本次调用
+		in := ep.inputUpper(p.payload)
+		if (b.MaxInputTokens > 0 && in > b.MaxInputTokens) || (ep.MaxInputTokens > 0 && in > ep.MaxInputTokens) {
+			continue // 超出本次输入上限或端点上下文的端点不参与本次调用
 		}
-		if est, ok := ep.estimate(p.estInput, p.maxOutput); !ok || est > b.MaxCostMicroYuan {
+		est, ok := ep.estimate(in, b.MaxOutputTokens)
+		if !ok || est > b.MaxCostMicroYuan {
 			continue // 预计费用超出上限或无法限定的端点不参与本次调用
 		}
-		eligible = append(eligible, ep)
+		eligible = append(eligible, candidate{ep, est})
 	}
 	if len(eligible) == 0 {
-		return reject(&api.Error{Code: api.CodeBudgetExceeded, Detail: "没有在本次上下文与费用上限内的端点"})
+		return reject(&api.Error{Code: api.CodeBudgetExceeded, Detail: "没有在本次输入、上下文与费用上限内的端点"})
 	}
-	for i, ep := range eligible {
+	var spent int64 // 已发生费用的上界：已知费用加未报告尝试的估算上界
+	skipped := false
+	for _, c := range eligible {
+		ep := c.ep
+		if spent+c.est > b.MaxCostMicroYuan {
+			skipped = true // 主备切换后剩余上限不足以调用该端点
+			continue
+		}
+		cc.Attempts++
 		inv := base
-		inv.Endpoint, inv.Model, inv.Attempt = ep.ID, ep.ref(), i+1
+		inv.Endpoint, inv.Model, inv.Attempt = ep.ID, ep.ref(), cc.Attempts
 		timeout := ep.Timeout
 		if timeout == 0 {
 			timeout = defaultEndpointTimeout
@@ -347,13 +371,21 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 		out, pu, err := call(cctx, s.providers[ep.Provider], ep)
 		cancel()
 		inv.Latency = time.Since(start)
-		inv.Usage = ep.usage(pu, err == nil)
+		if err == nil || pu.Reported {
+			inv.Usage = ep.usage(pu, err == nil)
+			spent += inv.Usage.CostMicroYuan
+			cc.CostMicroYuan += inv.Usage.CostMicroYuan
+		} else {
+			inv.Usage = api.Usage{Unit: ep.Billing}
+			inv.CostUnknown, cc.CostUnknown = true, true
+			spent += c.est
+		}
 		if err != nil {
 			inv.Status = StatusFailed
 			if ctx.Err() != nil {
 				inv.ErrorCode = api.CodeProviderUnavailable
 				s.record(ctx, inv)
-				return zero, api.ModelRef{}, api.Usage{}, "", ctx.Err()
+				return zero, done{}, ctx.Err()
 			}
 			if errors.Is(err, ErrUnavailable) || errors.Is(err, context.DeadlineExceeded) {
 				inv.ErrorCode = api.CodeProviderUnavailable
@@ -362,7 +394,7 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 			}
 			inv.ErrorCode = api.CodeProviderResponseBad
 			s.record(ctx, inv)
-			return zero, api.ModelRef{}, api.Usage{}, "", &api.Error{Code: api.CodeProviderResponseBad, Detail: ep.ID}
+			return zero, done{}, &api.Error{Code: api.CodeProviderResponseBad, Detail: ep.ID}
 		}
 		outcome, err := check(out, ep)
 		if err != nil {
@@ -370,14 +402,17 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 			errors.As(err, &ae)
 			inv.Status, inv.ErrorCode = StatusFailed, ae.Code
 			s.record(ctx, inv)
-			return zero, api.ModelRef{}, api.Usage{}, "", err
+			return zero, done{}, err
 		}
 		inv.Status, inv.Outcome = StatusOK, outcome
 		inv.ID = newID()
 		s.record(ctx, inv)
-		return out, ep.ref(), inv.Usage, inv.ID, nil
+		return out, done{ref: ep.ref(), usage: inv.Usage, call: cc, id: inv.ID}, nil
 	}
-	return zero, api.ModelRef{}, api.Usage{}, "", &api.Error{Code: api.CodeProviderUnavailable, Detail: "主备端点均不可用"}
+	if skipped {
+		return zero, done{}, &api.Error{Code: api.CodeBudgetExceeded, Detail: "已调用端点不可用，剩余费用上限不足以调用其余端点"}
+	}
+	return zero, done{}, &api.Error{Code: api.CodeProviderUnavailable, Detail: "主备端点均不可用"}
 }
 
 // record 写入计量；失败只记日志，不改变调用结果。
@@ -407,10 +442,14 @@ func hash(parts ...string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func runes(parts ...string) int {
+// inputTokensUpper 是请求内容的输入 token 保守上界：UTF-8 字节数，每段再加 1。
+// 字节级 BPE 与带字节回退的 SentencePiece 分词中每个 token 至少对应 1 个字节，分段时的前缀标记由每段加 1 覆盖；
+// 字符数不是通用上界（一个汉字可能拆成多个 token）。适配器附加的模板与角色标记由端点的 request_overhead_tokens 覆盖。
+// 真实适配器可在接入时换用供应商的精确计数，但不得低于实际发送内容。
+func inputTokensUpper(parts ...string) int {
 	n := 0
 	for _, p := range parts {
-		n += len([]rune(p))
+		n += len(p) + 1
 	}
 	return n
 }

@@ -262,7 +262,7 @@ func TestBudgetStopsBeforeCalling(t *testing.T) {
 func TestBudgetSkipsTooExpensiveEndpoint(t *testing.T) {
 	s, stub, _ := setup(t, map[string]StubBehavior{"gen-backup": {Output: json.RawMessage(`{"category":"管材"}`)}})
 	r := genReq()
-	r.Budget.MaxCostMicroYuan = 100 // 主选预计 27+200，备选 14+50
+	r.Budget.MaxCostMicroYuan = 300 // 输入上界 187（UTF-8 字节，含 Schema）：主选预计 187+200，备选 94+50
 	res, err := s.Generate(ctx(), r)
 	if err != nil || res.Model.Endpoint != "gen-backup" || !slices.Equal(stub.Calls(), []string{"gen-backup"}) {
 		t.Fatalf("res=%+v err=%v calls=%v", res, err, stub.Calls())
@@ -660,5 +660,141 @@ func TestLocalBindingDecision(t *testing.T) {
 	}
 	if d, err := g.Score(ctx(), scoreReq()); err != nil || *d.Score != 1 {
 		t.Fatalf("score: %+v %v", d, err)
+	}
+}
+
+const failoverCatalog = `
+endpoints:
+  - {id: p, provider: stub, model: m, version: "1", capabilities: [classify], filed: true, region: cn, tier: 0, billing: request, request_price: 300, no_training_on_customer: true,
+     decision_tasks: [{task: notice.doc_type, version: "2", capability: classify, score_meaning: probability}]}
+  - {id: b, provider: stub, model: m, version: "2", capabilities: [classify], filed: true, region: cn, tier: 1, billing: request, request_price: 300, no_training_on_customer: true,
+     decision_tasks: [{task: notice.doc_type, version: "2", capability: classify, score_meaning: probability}]}
+`
+
+func setupCatalog(t *testing.T, y string, b map[string]StubBehavior) (*Service, *Stub, *MemoryMeter) {
+	t.Helper()
+	c, err := ParseCatalog([]byte(y))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stub, meter := NewStub(b), &MemoryMeter{}
+	s, err := New(c, map[string]Provider{"stub": stub}, meter, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s, stub, meter
+}
+
+func TestFailoverChargesRemainingBudget(t *testing.T) {
+	billedFailure := StubBehavior{Err: ErrUnavailable, Usage: ProviderUsage{Requests: 1, Reported: true}}
+	silentFailure := StubBehavior{Err: ErrUnavailable}
+	for name, tc := range map[string]struct {
+		primary StubBehavior
+		cap     int64
+		ok      bool
+		known   int64
+		unknown bool
+	}{
+		// 主选失败但已计费：上限只够一次请求时不再调用备选。
+		"billed failure, cap one call":  {billedFailure, 300, false, 300, false},
+		"billed failure, cap two calls": {billedFailure, 600, true, 600, false},
+		// 主选失败且未报告用量：按估算上界扣减，费用标为未知，不当作免费。
+		"silent failure, cap below two": {silentFailure, 599, false, 0, true},
+		"silent failure, cap two calls": {silentFailure, 600, true, 300, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s, stub, meter := setupCatalog(t, failoverCatalog, map[string]StubBehavior{"p": tc.primary})
+			r := classifyReq()
+			r.Budget.MaxCostMicroYuan = tc.cap
+			d, err := s.Classify(ctx(), r)
+			recs := meter.Records()
+			var total int64
+			for _, rec := range recs {
+				total += rec.Usage.CostMicroYuan
+				if rec.CallID == "" || rec.CallID != recs[0].CallID {
+					t.Fatalf("同一逻辑调用的记录应共享 CallID: %+v", recs)
+				}
+			}
+			if recs[0].CostUnknown != tc.unknown || total != tc.known {
+				t.Fatalf("records = %+v", recs)
+			}
+			if !tc.ok {
+				if code(err) != api.CodeBudgetExceeded || !slices.Equal(stub.Calls(), []string{"p"}) {
+					t.Fatalf("err=%v calls=%v", err, stub.Calls())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := api.CallCost{CallID: recs[0].CallID, Attempts: 2, CostMicroYuan: tc.known, CostUnknown: tc.unknown}
+			if d.Model.Endpoint != "b" || d.Usage.CostMicroYuan != 300 || d.Call != want {
+				t.Fatalf("decision = %+v", d)
+			}
+		})
+	}
+}
+
+func TestNegativeBudgetRejected(t *testing.T) {
+	s, stub, _ := setup(t, nil)
+	negs := []func(*api.Budget){
+		func(b *api.Budget) { b.MaxOutputTokens = -1000 },
+		func(b *api.Budget) { b.MaxInputTokens = -1 },
+		func(b *api.Budget) { b.MaxCostMicroYuan = -1 },
+	}
+	for i, neg := range negs {
+		c := classifyReq()
+		c.Budget.MaxCostMicroYuan = 0
+		neg(&c.Budget)
+		if _, err := s.Classify(ctx(), c); code(err) != api.CodeInvalidRequest {
+			t.Fatalf("classify %d: %v", i, err)
+		}
+		sc := scoreReq()
+		neg(&sc.Budget)
+		if _, err := s.Score(ctx(), sc); code(err) != api.CodeInvalidRequest {
+			t.Fatalf("score %d: %v", i, err)
+		}
+		g := genReq()
+		neg(&g.Budget)
+		if _, err := s.Generate(ctx(), g); code(err) != api.CodeInvalidRequest {
+			t.Fatalf("generate %d: %v", i, err)
+		}
+		e := api.EmbedRequest{Call: api.Call{Task: "t", Classification: api.Public}, Purpose: "chunk", Texts: []string{"a"}}
+		neg(&e.Budget)
+		if _, err := s.Embed(ctx(), e); code(err) != api.CodeInvalidRequest {
+			t.Fatalf("embed %d: %v", i, err)
+		}
+	}
+	if len(stub.Calls()) != 0 {
+		t.Fatalf("calls = %v", stub.Calls())
+	}
+	// 估算边界本身也不产生负费用。
+	if _, ok := (Endpoint{Billing: api.BillToken, InputPricePer1K: 1, OutputPricePer1K: 1}).estimate(10, -1); ok {
+		t.Fatal("负输出上限不能估算")
+	}
+}
+
+func TestInputEstimateCoversFullPayload(t *testing.T) {
+	// 输出 Schema 也发送给供应商，计入输入上界。
+	s, stub, _ := setup(t, nil)
+	r := genReq()
+	r.Instructions, r.Inputs = "", nil
+	r.Budget.MaxInputTokens = 1
+	r.OutputSchema = json.RawMessage(`{"type":"object","description":"` + strings.Repeat("x", 10000) + `"}`)
+	if _, err := s.Generate(ctx(), r); code(err) != api.CodeBudgetExceeded || len(stub.Calls()) != 0 {
+		t.Fatalf("schema: err=%v calls=%v", err, stub.Calls())
+	}
+	// 非 ASCII 按 UTF-8 字节计：33 个汉字为 99+1，在 100 的上下文内；34 个为 102+1，超出。
+	call := api.Call{Task: "search.chunk_embed", Classification: api.Public, Budget: api.Budget{MaxCostMicroYuan: 100}}
+	if _, err := s.Embed(ctx(), api.EmbedRequest{Call: call, Purpose: "chunk", Texts: []string{strings.Repeat("长", 33)}}); err != nil {
+		t.Fatalf("33: %v", err)
+	}
+	if _, err := s.Embed(ctx(), api.EmbedRequest{Call: call, Purpose: "chunk", Texts: []string{strings.Repeat("长", 34)}}); code(err) != api.CodeBudgetExceeded {
+		t.Fatalf("34: %v", err)
+	}
+	// 适配器附加量计入端点的输入上界。
+	ep := Endpoint{RequestOverheadTokens: 50}
+	if got := ep.inputUpper(inputTokensUpper("长", "ab")); got != 4+3+50 {
+		t.Fatalf("inputUpper = %d", got)
 	}
 }

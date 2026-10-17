@@ -41,8 +41,9 @@ const (
 	Sensitive Classification = "sensitive"
 )
 
-// Budget 是单次调用的上限；任何一项超出即在调用供应商前停止。零值表示不设该项上限，MaxCostMicroYuan 除外：零值表示不允许产生费用。
-// 费用上限对所有计费单位生效：按请求计费的端点同样先按目录价格估算，不因不计 token 而视为免费。
+// Budget 是一次逻辑调用（含主备切换）的上限；任何一项超出即在调用供应商前停止。零值表示不设该项上限，MaxCostMicroYuan 除外：零值表示不允许产生费用。
+// 负值是非法请求。费用上限对所有计费单位生效：按请求计费的端点同样先按目录价格估算，不因不计 token 而视为免费。
+// 输入 token 按送给供应商的全部内容（指令、输入、输出 Schema、候选标签与量表）的 UTF-8 字节数加端点登记的附加量保守估算。
 type Budget struct {
 	MaxInputTokens   int   `json:"max_input_tokens,omitempty"`
 	MaxOutputTokens  int   `json:"max_output_tokens,omitempty"`
@@ -97,11 +98,22 @@ type Usage struct {
 	CostMicroYuan int64       `json:"cost_micro_yuan"`
 }
 
+// CallCost 是一次逻辑调用的费用，包含主备切换中所有端点尝试；结果中的 Usage 只是成功那次尝试的用量。
+// 网关在每次尝试前按已发生的费用检查剩余上限：失败尝试有供应商报告的用量时按实际费用扣减，
+// 没有报告时按该尝试的调用前估算上界扣减，并把 CostUnknown 置为真，实际费用不当作已知为零。
+type CallCost struct {
+	CallID        string `json:"call_id"`         // 同一逻辑调用的所有计量记录共享此标识
+	Attempts      int    `json:"attempts"`        // 实际调用的端点次数
+	CostMicroYuan int64  `json:"cost_micro_yuan"` // 已知费用合计
+	CostUnknown   bool   `json:"cost_unknown"`    // 有失败尝试的费用未由供应商报告
+}
+
 // GenerateResult 是已通过输出校验的结果。
 type GenerateResult struct {
 	Output       json.RawMessage `json:"output"`
 	Model        ModelRef        `json:"model"`
 	Usage        Usage           `json:"usage"`
+	Call         CallCost        `json:"call"`
 	InvocationID string          `json:"invocation_id"`
 }
 
@@ -117,6 +129,7 @@ type EmbedResult struct {
 	Vectors      [][]float32 `json:"vectors"`
 	Model        ModelRef    `json:"model"`
 	Usage        Usage       `json:"usage"`
+	Call         CallCost    `json:"call"`
 	InvocationID string      `json:"invocation_id"`
 }
 
@@ -132,6 +145,7 @@ type RerankResult struct {
 	Scores       []float64 `json:"scores"`
 	Model        ModelRef  `json:"model"`
 	Usage        Usage     `json:"usage"`
+	Call         CallCost  `json:"call"`
 	InvocationID string    `json:"invocation_id"`
 }
 
@@ -207,6 +221,7 @@ type Decision struct {
 	UnknownReason UnknownReason `json:"unknown_reason,omitempty"` // Outcome 为 unknown 时必有
 	Model         ModelRef      `json:"model"`
 	Usage         Usage         `json:"usage"`
+	Call          CallCost      `json:"call"`
 	InvocationID  string        `json:"invocation_id"`
 }
 
@@ -221,10 +236,10 @@ type Gateway interface {
 
 // 错误码。调用方可据此决定转人工复核或标为未知，不得改用其他途径调用模型。
 const (
-	CodeInvalidRequest      = "invalid_request"       // 请求缺字段或输出 Schema 无法编译
+	CodeInvalidRequest      = "invalid_request"       // 请求缺字段、预算为负或输出 Schema 无法编译
 	CodeSensitiveNotAllowed = "sensitive_not_allowed" // 敏感数据默认不进入模型，租户授权尚未接入
 	CodeNoEligibleModel     = "no_eligible_model"     // 没有满足能力（决策能力还须声明该任务版本）、备案、地域与分级要求的端点
-	CodeBudgetExceeded      = "budget_exceeded"       // 预计用量或费用超出本次上限，未调用供应商
+	CodeBudgetExceeded      = "budget_exceeded"       // 预计用量或费用超出本次上限（含主备切换中已发生的费用），未调用下一个端点
 	CodeProviderUnavailable = "provider_unavailable"  // 主备端点均不可用；不降级到不合规模型
 	CodeOutputInvalid       = "output_invalid"        // 模型输出未通过 Schema 校验，或决策结果的标签不在候选中、分数越界、含义与目录声明不符
 	CodeProviderResponseBad = "provider_response_bad" // 供应商返回与请求不一致（如向量数量不符）
