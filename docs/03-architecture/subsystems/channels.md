@@ -123,7 +123,7 @@
 | `ChannelBinding` | 渠道账号与平台成员的绑定：渠道账号、所属安装、成员、状态（已绑定 / 失效中 / 已失效）、版本、最后一张签发凭据的到期时间、失效原因；一个渠道账号只绑定一个成员，一个成员在同一渠道只绑定一个账号 |
 | `Conversation` | 渠道会话：渠道、线程标识、参与者、关联的研究案例 |
 | `NotificationRule` / `Preference` | 通知规则与个人偏好；规则决定通知受众，发送前逐人检查访问，受众不能超出访问权限（[customer-context 第 11 节](customer-context.md#11-分派配置)） |
-| `Notification` / `Delivery` | 通知与投递记录（幂等键：`notification_id + channel + recipient`；合并通知另见 4.5） |
+| `Notification` / `Delivery` | 通知与投递记录（幂等键：`notification_id + channel + recipient`；合并通知另见 4.5）；投递记录分别保存平台提交、渠道接受与用户阅读（渠道支持时）的时间与结果，供送达指标分段统计（[质量与验收第 7 节](../../05-delivery/02-quality-and-acceptance.md#7-可靠性与安全)） |
 | `ActionToken` | 一次性动作令牌：租户、用户、对象、动作、过期时间 |
 | `Briefing` | 一期简报：租户、受众、简报来源（日常简报定义或持续型推进 ID）、周期起止时间、各区条目引用与排序列表版本、数据截至时间、规则版本、投递记录 |
 
