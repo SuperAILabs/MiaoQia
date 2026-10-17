@@ -1,6 +1,6 @@
 # 监测与匹配子系统（detection）
 
-> 状态：评审中 · 版本：1.3 · 更新：2026-10-17 · 平面：客户智能
+> 状态：评审中 · 版本：1.4 · 更新：2026-10-17 · 平面：客户智能
 
 ## 1. 使命
 
@@ -61,7 +61,7 @@
 
 **发布**：`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`、`detection.pursuit_related_event.v1`。
 
-**消费**：领域事件（`domain.fact.upserted.v1` 及各领域事件）、`entity.merge.applied.v1`、`customer_context.policy.activated.v1`、`customer_context.objective.changed.v1`、`customer_context.profile.updated.v1` 与 `customer_context.entity_list.changed.v1`（按上下文版本提前刷新快照缓存）、`pursuit.pursuit.created.v1`（建立推进关联索引）。
+**消费**：领域事件（`domain.fact.upserted.v1` 及各领域事件）、`entity.merge.applied.v1`、`customer_context.policy.activated.v1` 与 `customer_context.policy.rolled_back.v1`（按策略代次提前刷新策略缓存）、`customer_context.objective.changed.v1`、`customer_context.profile.updated.v1` 与 `customer_context.entity_list.changed.v1`（按上下文版本提前刷新快照缓存）、`pursuit.pursuit.created.v1`（建立推进关联索引）。
 
 ## 7. 扩展点
 
@@ -74,6 +74,7 @@
 - 按租户单元（cell）分区消费，单元之间互不影响；
 - 匹配为确定性计算：相同输入（事实版本、策略版本、上下文版本）产生相同输出，支持重放；
 - 每批求值前读取 `customer-context.GetContextVersion`，按目标所属组织单元加载快照（缓存键含租户、组织单元与上下文版本），缓存较旧时先重新加载；读取失败时该批重试，不用可能过期的缓存求值；版本不高于缓存的事件被忽略（[PRD 第2段 第5节](../../01-product/prd/02-profile-and-objectives.md#5-业务与权限规则)）；
+- 每批求值前同样读取各目标的策略代次（`GetActivePolicies`），缓存较旧时先重新加载；读取失败时该批重试。激活或回滚返回后开始的批次一律使用新版本，事件只用于提前刷新（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节）；
 - 延迟目标：领域事件到信号生成 P95 < 1 分钟（规模化后的目标，具体见 [质量与验收](../../05-delivery/02-quality-and-acceptance.md)）。
 
 ## 9. 安全要点
