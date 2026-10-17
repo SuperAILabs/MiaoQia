@@ -1,6 +1,6 @@
 # 立项准入清单
 
-> 状态：评审中 · 版本：3.7 · 更新：2026-10-17 · 负责人：项目负责人
+> 状态：评审中 · 版本：3.8 · 更新：2026-10-17 · 负责人：项目负责人
 
 本文跟踪进入 M0 前的设计准入条件，以及后续能力首次使用前必须关闭的准备事项。人员编制、到岗与项目预算灵活处理，不作为立项准入条件；技术调用的限额、计量与审批仍按运行安全要求设计。
 
@@ -38,7 +38,7 @@
 | C1a | 开发部署形态 | G0 / M0 前 | 方案批准 | 平台工程负责人 | [ADR-0014](../04-decisions/0014-self-hosted-open-source-infrastructure.md)：前期 VPS，不限定厂商；开发配置与生产隔离，迁移可重放 |
 | C1b | 生产云与迁移 | G1 / 正式运行前，M4 发布前 | 产出完成（对比与推荐） | 平台工程负责人 | [部署拓扑](../03-architecture/07-deployment-topology.md#9-开发-vps-与生产云选择)；推荐阿里云大陆区域，AWS 中国区为备选；同规格询价、区域实测、S3 兼容与迁移演练后批准 |
 | C2 | 容量与非功能基线 | G0 / M0 前形成假设；性能验证 G1 / 发布前 | 方案批准 | 架构、平台工程负责人 | [容量规划](../03-architecture/12-capacity-plan.md)；区分 VPS 开发与生产规模，补重建/回填/故障峰值 |
-| C3 | 模型供应商与最小网关 | G1 / M1 OCR、增强、嵌入首次使用前 | 待决策 | AI 负责人 | [ADR-0015](../04-decisions/0015-model-inference-via-api.md)；主备评测（含分类与评分的决策模型候选，[ai-platform 第11节](../03-architecture/subsystems/ai-platform.md#11-决策能力类-jev-决策模型)）、数据用途、路由、计量（按 token 与按请求）、超限与降级验收 |
+| C3 | 模型供应商与最小网关 | G1 / M1 OCR、增强、嵌入首次使用前 | 待决策 | AI 负责人 | [ADR-0015](../04-decisions/0015-model-inference-via-api.md)、[评测方案](08-model-vendor-evaluation.md)；主备评测（含分类与评分的决策模型候选，[ai-platform 第11节](../03-architecture/subsystems/ai-platform.md#11-决策能力类-jev-决策模型)）、数据用途、路由、计量（按 token 与按请求）、超限与降级验收 |
 | C4a | 工程横切首批契约 | G0 / M0 前 | 首批已冻结1.0.0 | 首席架构师 | [冻结清单](../../contracts/reviews/engineering-first-batch-freeze.yaml)：标识、上下文/信封、集成配置、身份Check、审计/探针与内核SQL；60个工程正反例、本地/远程与真实OpenFGA/PostgreSQL/Kafka、生成/往返/兼容复验通过；M0 HTTP认证、完整探针及现有消费者运行时门禁已通过[真实组件验收](05-m0-runtime-acceptance.md)；生产部署另验收 |
 | C4a-R1 | M0 HTTP生产认证策略 | G1 / 内部远程与对外API启用前 | 实现及真实组件验收通过 | 安全、平台工程负责人 | [验收清单](../../contracts/reviews/m0-runtime-acceptance.yaml)：HTTPS Keycloak令牌目标与类型、有效期/签名及mTLS调用方验证；部署证书/客户端配置另验收 |
 | C4a-R2 | 完整M0探针链路 | G1 / M0退出前 | 实现及真实组件验收通过 | 平台、数据负责人 | 同上；三个部署单元跨Go/Python，真实Kafka/PostgreSQL/OpenFGA/Keycloak；追踪、审计、授权、回滚与重放 |
@@ -47,7 +47,7 @@
 | C4b | 信息领域契约 | G1 / 各信息领域实现前；公开发布前冻结 | 公共采购/企业首批已冻结1.0.0；其他领域分批验收 | 数据负责人、领域负责人 | [冻结清单](../../contracts/reviews/first-batch-freeze.yaml)：11份Schema、6份事件文档及采购生命周期；15份采购原件/20条事实和5份企业原件/10条事实通过，司法验收失败保留争议与裁判；自动解析、授权接口及生产链路门禁见[冻结结论](../03-architecture/13-contract-readiness.md) |
 | C5 | 策略 DSL 与仿真 | G1 / M2 首次策略激活前 | 产出完成（编译求值）；仿真/下推执行中 | 客户智能负责人 | [策略 DSL](../03-architecture/11-policy-dsl.md)；样例与限成本已实现，首次激活前必须有最小仿真与审批 |
 | C6 | 权限矩阵 | G1 / M2 客户内测前 | 方案批准（2026-10-15 评审修订后合入） | 安全负责人、identity 负责人 | [identity](../03-architecture/subsystems/identity.md#7-授权模型) 1.2；矩阵、职责分离、属性条件、负向测试与评审已完成；单元绑定、业务资源与审批额度的运行时接入随各功能首次启用验收 |
-| C7a | OCR 与版面 | G1 / M1 扫描件处理前 | 待决策 | AI、数据负责人 | 随 C3 评测 API；中文表格、金额、日期、证据坐标验收，不建设私有推理 |
+| C7a | OCR 与版面 | G1 / M1 扫描件处理前 | 待决策 | AI、数据负责人 | 随 C3 评测 API（[评测方案](08-model-vendor-evaluation.md)）；中文表格、金额、日期、证据坐标验收，不建设私有推理 |
 | C7b | 图查询引擎 | G1 / M3 末、M4 使用前 | 方案批准（评测方法） | 实体负责人 | PG 递归 / AGE / NebulaGraph 同一真实查询集基准，不以个人偏好替代评测 |
 | C8 | ADR 批准 | G0 / M0 前 | 验收通过 | 首席架构师 | [ADR 索引](../04-decisions/README.md)；现行批准决策与全部受影响文档一致 |
 | C9 | 服务端语言 | G0 / M0 前 | 验收通过 | 首席架构师 | ADR-0006 |

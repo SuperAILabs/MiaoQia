@@ -51,7 +51,8 @@ docs/
 │   ├── 03-engineering-standards.md
 │   ├── 05-m0-runtime-acceptance.md M0运行时验收
 │   ├── 06-stage-baseline.md       范围与阶段交接基线
-│   └── 07-m0-identity-acceptance.md 身份生命周期与cell路由验收
+│   ├── 07-m0-identity-acceptance.md 身份生命周期与cell路由验收
+│   └── 08-model-vendor-evaluation.md 模型供应商评测方案（C3/C7a）
 ```
 
 ## 2. 阅读路径
