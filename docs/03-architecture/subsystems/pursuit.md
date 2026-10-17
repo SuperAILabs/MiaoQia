@@ -1,6 +1,6 @@
 # 推进与结果子系统（pursuit）
 
-> 状态：评审中 · 版本：1.4 · 更新：2026-10-16 · 平面：客户智能
+> 状态：评审中 · 版本：1.5 · 更新：2026-10-17 · 平面：客户智能
 
 ## 1. 使命
 
@@ -58,6 +58,18 @@
 
 客户填写的金额只属于本租户，不回写公共事实；与公共事实不一致时两者并存，展示时标明来源。
 
+### 4.2 依据链
+
+推进与结果显式记录前序，不在事后按时间或对象推测：
+
+| 产物 | 记录的前序 |
+|---|---|
+| `Pursuit` | 来源：信号、决策、另一推进的衔接或手动创建（手动创建标明，没有前序）；引用其固定版本 |
+| `StageTransition` | 触发它的决策、判断或任务 |
+| `Outcome` | 所属推进；可另引用对结果有作用的信号、研究报告或判断版本 |
+
+`Outcome` 可以带贡献关系，取值为有限枚举：`first_alert`（妙洽信号早于客户获知，以信号时间与 `known_at` 比较）、`decision_basis`（研究或判断被决策引用）、`self_found`（客户自行发现）、`external_notice`（采购人、总包等通知）。贡献关系由系统按记录的引用与时间判定，用户可以更正，更正追加记录。它们说明链上发生过什么，不是因果贡献的计算结果：价值指标按贡献关系分别统计（[质量与验收](../../05-delivery/02-quality-and-acceptance.md)），不合成“妙洽带来的金额”。
+
 ## 5. 接口
 
 | 接口 | 类型 | 说明 |
@@ -65,7 +77,7 @@
 | `CreatePursuit` | 命令 | 从决策、信号或手动创建；对没有信号的公共对象手动创建时，界面提示可向 learning 报告漏报（[learning 第 11 节](learning.md#11-漏报反馈与诊断)），不自动提交 |
 | `AdvanceStage` / `ClosePursuit` | 命令 | 阶段推进与关闭 |
 | `PauseTracking` / `ResumeTracking` / `StopTracking` | 命令 | 持续型推进的暂停、恢复与停止 |
-| `Assign` / `CreateTask` / `CompleteTask` | 命令 | 任务管理 |
+| `Assign` / `CreateTask` / `CompleteTask` | 命令 | 任务管理；`Assign` 可采用信号上的候选负责人（来自目标的分派规则，[customer-context 第 11 节](customer-context.md#11-分派配置)），写入前检查被分派人的访问并同步 identity 参与关系 |
 | `RecordOutcome` | 命令 | 结果记录 |
 | `ListPursuits` / `GetPursuit` | 查询 | 看板与详情 |
 

@@ -1,6 +1,6 @@
 # 接入网关子系统（gateway）
 
-> 状态：评审中 · 版本：1.2 · 更新：2026-10-15 · 平面：交互
+> 状态：评审中 · 版本：1.3 · 更新：2026-10-17 · 平面：交互
 
 ## 1. 使命
 
@@ -45,6 +45,7 @@
 | `search_subjects` | 检索租户可见的领域对象与实体 | `subjects:read` | 服务端从令牌派生租户 |
 | `get_subject` | 领域事实、版本、证据 | `subjects:read` | 服务端从令牌派生租户 |
 | `list_signals` | 信号收件箱 | `signals:read` | — |
+| `create_watch` / `remove_watch` / `list_watch_updates` | 关注对象或保存检索的订阅、变化记录（[detection 第 11 节](detection.md#11-关注)） | `watches:write` / `watches:read` | 以令牌主体为所有者 |
 | `start_research` | 发起研究 | `research:write` | 异步、预算、模板白名单 |
 | `get_research` | 研究进展与报告 | `research:read` | 区分事实、推断、未知项 |
 | `assess_subject` | 生成判断 | `assessments:write` | 只生成判断与草案 |
