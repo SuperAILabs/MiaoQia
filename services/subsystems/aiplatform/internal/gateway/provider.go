@@ -20,10 +20,36 @@ type ProviderRequest struct {
 	MaxOutputTokens int
 }
 
-// ProviderUsage 是供应商报告的 token 用量；费用由网关按目录价格计算。
+// ProviderUsage 是供应商报告的用量；费用由网关按目录的计费单位与价格计算。Requests 是供应商计费的请求数，按请求计费的端点使用。
 type ProviderUsage struct {
 	InputTokens  int
 	OutputTokens int
+	Requests     int
+}
+
+// ProviderClassifyRequest 是交给适配器的分类请求；输入的隔离要求同 ProviderRequest。
+type ProviderClassifyRequest struct {
+	Task            string // 任务@版本
+	Inputs          []api.Input
+	Labels          []api.Label
+	MaxOutputTokens int
+}
+
+// ProviderScoreRequest 是交给适配器的评分请求。
+type ProviderScoreRequest struct {
+	Task            string
+	Inputs          []api.Input
+	Scale           api.Scale
+	MaxOutputTokens int
+}
+
+// ProviderDecision 是适配器从供应商的类型化响应字段转换来的结果。适配器不得解析自由文本猜测标签，
+// 也不得在供应商未提供数值时填写 Score。
+type ProviderDecision struct {
+	Outcome       api.Outcome
+	Label         string
+	Score         *float64
+	UnknownReason api.UnknownReason
 }
 
 // Provider 是供应商适配器。适配器只负责协议转换，不做路由、预算与校验。
@@ -31,6 +57,8 @@ type Provider interface {
 	Generate(ctx context.Context, ep Endpoint, req ProviderRequest) (json.RawMessage, ProviderUsage, error)
 	Embed(ctx context.Context, ep Endpoint, texts []string) ([][]float32, ProviderUsage, error)
 	Rerank(ctx context.Context, ep Endpoint, query string, candidates []string) ([]float64, ProviderUsage, error)
+	Classify(ctx context.Context, ep Endpoint, req ProviderClassifyRequest) (ProviderDecision, ProviderUsage, error)
+	Score(ctx context.Context, ep Endpoint, req ProviderScoreRequest) (ProviderDecision, ProviderUsage, error)
 }
 
 // StubBehavior 是故障桩对某个端点的行为。
@@ -40,6 +68,8 @@ type StubBehavior struct {
 	Output json.RawMessage // 生成输出；为空时返回 {}
 	Usage  ProviderUsage
 	Dim    int // 向量维度，默认 4
+	// Decision 是分类与评分的结果；为空时分类返回第一个候选标签、评分返回量表下限，均不带数值以外的字段。
+	Decision *ProviderDecision
 }
 
 // Stub 是确定性的故障桩适配器：不发起网络调用，用于离线验证网关的路由、切换、预算、校验与计量。
@@ -112,4 +142,27 @@ func (s *Stub) Rerank(ctx context.Context, ep Endpoint, _ string, candidates []s
 		out[i] = 1 / float64(i+1)
 	}
 	return out, b.Usage, nil
+}
+
+func (s *Stub) Classify(ctx context.Context, ep Endpoint, req ProviderClassifyRequest) (ProviderDecision, ProviderUsage, error) {
+	b, err := s.behave(ctx, ep)
+	if err != nil {
+		return ProviderDecision{}, ProviderUsage{}, err
+	}
+	if b.Decision != nil {
+		return *b.Decision, b.Usage, nil
+	}
+	return ProviderDecision{Outcome: api.OutcomeDecided, Label: req.Labels[0].ID}, b.Usage, nil
+}
+
+func (s *Stub) Score(ctx context.Context, ep Endpoint, req ProviderScoreRequest) (ProviderDecision, ProviderUsage, error) {
+	b, err := s.behave(ctx, ep)
+	if err != nil {
+		return ProviderDecision{}, ProviderUsage{}, err
+	}
+	if b.Decision != nil {
+		return *b.Decision, b.Usage, nil
+	}
+	v := req.Scale.Min
+	return ProviderDecision{Outcome: api.OutcomeDecided, Score: &v}, b.Usage, nil
 }

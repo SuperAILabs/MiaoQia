@@ -7,7 +7,8 @@ import (
 )
 
 // route 返回可用于该能力与分级的端点，按主选在前排序。只返回合规端点：没有时由调用方返回明确错误，不降级到不合规模型。
-func (c *Catalog) route(capability api.Capability, class api.Classification) ([]Endpoint, error) {
+// 决策能力另按 task（任务@版本）过滤，只返回声明了该任务版本的端点；目录校验保证这些端点的输出语义一致。
+func (c *Catalog) route(capability api.Capability, class api.Classification, task string) ([]Endpoint, error) {
 	switch class {
 	case api.Public, api.Internal:
 	case api.Sensitive:
@@ -18,12 +19,22 @@ func (c *Catalog) route(capability api.Capability, class api.Classification) ([]
 	}
 	var out []Endpoint
 	for _, e := range c.Endpoints {
-		if e.Filed && e.has(capability) && slices.Contains(c.AllowedRegions, e.Region) {
-			out = append(out, e)
+		if !e.Filed || !e.has(capability) || !slices.Contains(c.AllowedRegions, e.Region) {
+			continue
 		}
+		if capability.Decision() {
+			if _, ok := e.decisionTask(task); !ok {
+				continue
+			}
+		}
+		out = append(out, e)
 	}
 	if len(out) == 0 {
-		return nil, &api.Error{Code: api.CodeNoEligibleModel, Detail: string(capability)}
+		detail := string(capability)
+		if capability.Decision() {
+			detail += " " + task
+		}
+		return nil, &api.Error{Code: api.CodeNoEligibleModel, Detail: detail}
 	}
 	slices.SortStableFunc(out, func(a, b Endpoint) int {
 		if a.Tier != b.Tier {

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -75,25 +76,22 @@ func (s *Service) Generate(ctx context.Context, req api.GenerateRequest) (*api.G
 			bad = "output_schema 无法编译"
 		}
 	}
-	parts := []string{req.Instructions}
-	for _, in := range req.Inputs {
-		parts = append(parts, in.Name, in.Content)
-	}
+	parts := appendInputs([]string{req.Instructions}, req.Inputs)
 	p := plan{capability: api.CapGenerate, call: req.Call, promptRef: req.PromptRef, inputHash: hash(parts...), estInput: runes(parts...), maxOutput: req.Budget.MaxOutputTokens}
 	preq := ProviderRequest{Instructions: req.Instructions, Inputs: req.Inputs, OutputSchema: req.OutputSchema, MaxOutputTokens: req.Budget.MaxOutputTokens}
 	out, ref, usage, id, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) (json.RawMessage, ProviderUsage, error) {
 			return pr.Generate(ctx, ep, preq)
 		},
-		func(out json.RawMessage) error {
+		func(out json.RawMessage, _ Endpoint) (api.Outcome, error) {
 			var v any
 			if err := json.Unmarshal(out, &v); err != nil {
-				return &api.Error{Code: api.CodeOutputInvalid, Detail: "输出不是 JSON"}
+				return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "输出不是 JSON"}
 			}
 			if err := schema.Validate(v); err != nil {
-				return &api.Error{Code: api.CodeOutputInvalid, Detail: err.Error()}
+				return "", &api.Error{Code: api.CodeOutputInvalid, Detail: err.Error()}
 			}
-			return nil
+			return "", nil
 		})
 	if err != nil {
 		return nil, err
@@ -111,11 +109,11 @@ func (s *Service) Embed(ctx context.Context, req api.EmbedRequest) (*api.EmbedRe
 		func(ctx context.Context, pr Provider, ep Endpoint) ([][]float32, ProviderUsage, error) {
 			return pr.Embed(ctx, ep, req.Texts)
 		},
-		func(out [][]float32) error {
+		func(out [][]float32, _ Endpoint) (api.Outcome, error) {
 			if len(out) != len(req.Texts) {
-				return &api.Error{Code: api.CodeProviderResponseBad, Detail: "向量数量与输入不符"}
+				return "", &api.Error{Code: api.CodeProviderResponseBad, Detail: "向量数量与输入不符"}
 			}
-			return nil
+			return "", nil
 		})
 	if err != nil {
 		return nil, err
@@ -134,11 +132,11 @@ func (s *Service) Rerank(ctx context.Context, req api.RerankRequest) (*api.Reran
 		func(ctx context.Context, pr Provider, ep Endpoint) ([]float64, ProviderUsage, error) {
 			return pr.Rerank(ctx, ep, req.Query, req.Candidates)
 		},
-		func(out []float64) error {
+		func(out []float64, _ Endpoint) (api.Outcome, error) {
 			if len(out) != len(req.Candidates) {
-				return &api.Error{Code: api.CodeProviderResponseBad, Detail: "分数数量与候选不符"}
+				return "", &api.Error{Code: api.CodeProviderResponseBad, Detail: "分数数量与候选不符"}
 			}
-			return nil
+			return "", nil
 		})
 	if err != nil {
 		return nil, err
@@ -146,11 +144,152 @@ func (s *Service) Rerank(ctx context.Context, req api.RerankRequest) (*api.Reran
 	return &api.RerankResult{Scores: out, Model: ref, Usage: usage, InvocationID: id}, nil
 }
 
+// Classify 在任务给定的候选标签中选择一个。结果只接受供应商的类型化字段；标签不在候选中、数值越界或与目录声明的含义不符时
+// 返回 output_invalid，不改选标签、不切换端点。未知与拒答作为成功结果返回。
+func (s *Service) Classify(ctx context.Context, req api.ClassifyRequest) (*api.Decision, error) {
+	bad := decisionBad(req.TaskVersion, req.Inputs)
+	labels := map[string]bool{}
+	parts := []string{req.Task, req.TaskVersion}
+	for _, l := range req.Labels {
+		if bad == "" && (l.ID == "" || l.Definition == "") {
+			bad = "候选标签缺少 id 或定义"
+		}
+		if bad == "" && labels[l.ID] {
+			bad = "候选标签重复"
+		}
+		labels[l.ID] = true
+		parts = append(parts, l.ID, l.Definition)
+	}
+	if bad == "" && len(req.Labels) < 2 {
+		bad = "候选标签至少两个"
+	}
+	parts = appendInputs(parts, req.Inputs)
+	key := req.Task + "@" + req.TaskVersion
+	p := plan{capability: api.CapClassify, call: req.Call, promptRef: key, inputHash: hash(parts...), estInput: runes(parts...), maxOutput: req.Budget.MaxOutputTokens}
+	preq := ProviderClassifyRequest{Task: key, Inputs: req.Inputs, Labels: req.Labels, MaxOutputTokens: req.Budget.MaxOutputTokens}
+	var meaning api.ScoreMeaning
+	d, ref, usage, id, err := attempt(ctx, s, p, bad,
+		func(ctx context.Context, pr Provider, ep Endpoint) (ProviderDecision, ProviderUsage, error) {
+			return pr.Classify(ctx, ep, preq)
+		},
+		func(d ProviderDecision, ep Endpoint) (api.Outcome, error) {
+			decl, _ := ep.decisionTask(key)
+			meaning = decl.ScoreMeaning
+			if d.Outcome == api.OutcomeDecided {
+				switch {
+				case !labels[d.Label]:
+					return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "标签不在候选中"}
+				case d.Score != nil && meaning == api.MeaningNone:
+					return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "目录声明该任务不返回数值"}
+				case d.Score != nil && !inRange(*d.Score, 0, 1):
+					return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "数值不在 [0,1]"}
+				}
+			}
+			return checkOutcome(d)
+		})
+	if err != nil {
+		return nil, err
+	}
+	return decision(req.TaskVersion, d, meaning, ref, usage, id), nil
+}
+
+// Score 在任务给定的量表上评分，结果约束同 Classify；分数必须落在量表范围内。
+func (s *Service) Score(ctx context.Context, req api.ScoreRequest) (*api.Decision, error) {
+	bad := decisionBad(req.TaskVersion, req.Inputs)
+	sc := req.Scale
+	if bad == "" && (!(sc.Min < sc.Max) || sc.Definition == "") {
+		bad = "量表须满足 min < max 并说明含义"
+	}
+	parts := appendInputs([]string{req.Task, req.TaskVersion, fmt.Sprint(sc.Min, sc.Max), sc.Definition}, req.Inputs)
+	key := req.Task + "@" + req.TaskVersion
+	p := plan{capability: api.CapScore, call: req.Call, promptRef: key, inputHash: hash(parts...), estInput: runes(parts...), maxOutput: req.Budget.MaxOutputTokens}
+	preq := ProviderScoreRequest{Task: key, Inputs: req.Inputs, Scale: sc, MaxOutputTokens: req.Budget.MaxOutputTokens}
+	d, ref, usage, id, err := attempt(ctx, s, p, bad,
+		func(ctx context.Context, pr Provider, ep Endpoint) (ProviderDecision, ProviderUsage, error) {
+			return pr.Score(ctx, ep, preq)
+		},
+		func(d ProviderDecision, _ Endpoint) (api.Outcome, error) {
+			if d.Outcome == api.OutcomeDecided {
+				switch {
+				case d.Label != "":
+					return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "评分结果不应带标签"}
+				case d.Score == nil:
+					return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "缺少分数"}
+				case !inRange(*d.Score, sc.Min, sc.Max):
+					return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "分数超出量表范围"}
+				}
+			}
+			return checkOutcome(d)
+		})
+	if err != nil {
+		return nil, err
+	}
+	return decision(req.TaskVersion, d, api.MeaningScale, ref, usage, id), nil
+}
+
+func decisionBad(version string, inputs []api.Input) string {
+	switch {
+	case version == "":
+		return "缺少 task_version"
+	case len(inputs) == 0:
+		return "缺少 inputs"
+	}
+	return ""
+}
+
+// checkOutcome 校验未知与拒答结果不夹带标签或数值；供应商未给出未知原因时由 decision 记为 unspecified。
+func checkOutcome(d ProviderDecision) (api.Outcome, error) {
+	switch d.Outcome {
+	case api.OutcomeDecided:
+		if d.UnknownReason != "" {
+			return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "已决结果不应带未知原因"}
+		}
+	case api.OutcomeUnknown, api.OutcomeRefused:
+		if d.Label != "" || d.Score != nil {
+			return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "未知或拒答结果不应带标签或数值"}
+		}
+		if d.Outcome == api.OutcomeRefused {
+			if d.UnknownReason != "" {
+				return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "拒答结果不应带未知原因"}
+			}
+			break
+		}
+		switch d.UnknownReason {
+		case "", api.UnknownOutOfScope, api.UnknownAmbiguous, api.UnknownInsufficientEvidence, api.UnknownLowConfidence, api.UnknownUnspecified:
+		default:
+			return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "未知原因不在约定范围"}
+		}
+	default:
+		return "", &api.Error{Code: api.CodeOutputInvalid, Detail: "结果状态不在约定范围"}
+	}
+	return d.Outcome, nil
+}
+
+func decision(version string, d ProviderDecision, meaning api.ScoreMeaning, ref api.ModelRef, usage api.Usage, id string) *api.Decision {
+	if d.Outcome == api.OutcomeUnknown && d.UnknownReason == "" {
+		d.UnknownReason = api.UnknownUnspecified
+	}
+	return &api.Decision{
+		TaskVersion: version, Outcome: d.Outcome, Label: d.Label, Score: d.Score, ScoreMeaning: meaning,
+		UnknownReason: d.UnknownReason, Model: ref, Usage: usage, InvocationID: id,
+	}
+}
+
+func inRange(v, lo, hi float64) bool { return !math.IsNaN(v) && v >= lo && v <= hi }
+
+func appendInputs(parts []string, inputs []api.Input) []string {
+	for _, in := range inputs {
+		parts = append(parts, in.Name, in.Content)
+	}
+	return parts
+}
+
 // attempt 执行一次网关调用：校验请求与预算、按主备顺序尝试合规端点、校验输出并逐次计量。
 // 只有端点不可用（含端点超时）才切换到下一个端点；输出校验失败或供应商拒绝请求时直接失败，避免重复计费。
+// 决策能力的未知与拒答由 check 作为成功结果返回，不触发切换；路由已保证候选端点对该任务版本的输出语义一致。
 func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 	call func(context.Context, Provider, Endpoint) (T, ProviderUsage, error),
-	check func(T) error,
+	check func(T, Endpoint) (api.Outcome, error),
 ) (T, api.ModelRef, api.Usage, string, error) {
 	var zero T
 	rc, ok := reqctx.From(ctx)
@@ -173,7 +312,7 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 	if bad != "" {
 		return reject(&api.Error{Code: api.CodeInvalidRequest, Detail: bad})
 	}
-	routed, err := s.catalog.route(p.capability, p.call.Classification)
+	routed, err := s.catalog.route(p.capability, p.call.Classification, p.promptRef)
 	if err != nil {
 		var ae *api.Error
 		errors.As(err, &ae)
@@ -188,8 +327,8 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 		if ep.MaxInputTokens > 0 && p.estInput > ep.MaxInputTokens {
 			continue // 上下文不足的端点不参与本次调用
 		}
-		if ep.cost(p.estInput, p.maxOutput) > b.MaxCostMicroYuan {
-			continue // 预计费用超出上限的端点不参与本次调用
+		if est, ok := ep.estimate(p.estInput, p.maxOutput); !ok || est > b.MaxCostMicroYuan {
+			continue // 预计费用超出上限或无法限定的端点不参与本次调用
 		}
 		eligible = append(eligible, ep)
 	}
@@ -208,7 +347,7 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 		out, pu, err := call(cctx, s.providers[ep.Provider], ep)
 		cancel()
 		inv.Latency = time.Since(start)
-		inv.Usage = api.Usage{InputTokens: pu.InputTokens, OutputTokens: pu.OutputTokens, CostMicroYuan: ep.cost(pu.InputTokens, pu.OutputTokens)}
+		inv.Usage = ep.usage(pu, err == nil)
 		if err != nil {
 			inv.Status = StatusFailed
 			if ctx.Err() != nil {
@@ -225,14 +364,15 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 			s.record(ctx, inv)
 			return zero, api.ModelRef{}, api.Usage{}, "", &api.Error{Code: api.CodeProviderResponseBad, Detail: ep.ID}
 		}
-		if err := check(out); err != nil {
+		outcome, err := check(out, ep)
+		if err != nil {
 			var ae *api.Error
 			errors.As(err, &ae)
 			inv.Status, inv.ErrorCode = StatusFailed, ae.Code
 			s.record(ctx, inv)
 			return zero, api.ModelRef{}, api.Usage{}, "", err
 		}
-		inv.Status = StatusOK
+		inv.Status, inv.Outcome = StatusOK, outcome
 		inv.ID = newID()
 		s.record(ctx, inv)
 		return out, ep.ref(), inv.Usage, inv.ID, nil

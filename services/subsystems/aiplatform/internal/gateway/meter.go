@@ -16,7 +16,7 @@ type Invocation struct {
 	Principal      string
 	Purpose        string
 	Task           string
-	PromptRef      string
+	PromptRef      string // 生成为提示模板版本，决策能力为任务@版本
 	Capability     api.Capability
 	Classification api.Classification
 	Endpoint       string // 被拒绝的调用为空
@@ -25,7 +25,8 @@ type Invocation struct {
 	InputHash      string
 	Usage          api.Usage
 	Latency        time.Duration
-	Status         string // ok / failed / rejected
+	Status         string      // ok / failed / rejected
+	Outcome        api.Outcome // 决策能力成功调用的结果状态；未知与拒答在此区分，不记为失败
 	ErrorCode      string
 }
 
