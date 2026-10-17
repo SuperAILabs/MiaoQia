@@ -77,7 +77,7 @@
 | `CreatePursuit` | 命令 | 从决策、信号或手动创建；对没有信号的公共对象手动创建时，界面提示可向 learning 报告漏报（[learning 第 11 节](learning.md#11-漏报反馈与诊断)），不自动提交 |
 | `AdvanceStage` / `ClosePursuit` | 命令 | 阶段推进与关闭 |
 | `PauseTracking` / `ResumeTracking` / `StopTracking` | 命令 | 持续型推进的暂停、恢复与停止 |
-| `Assign` / `CreateTask` / `CompleteTask` | 命令 | 任务管理 |
+| `Assign` / `CreateTask` / `CompleteTask` | 命令 | 任务管理；`Assign` 可采用信号上的候选负责人（来自目标的分派规则，[customer-context 第 11 节](customer-context.md#11-分派配置)），写入前检查被分派人的访问并同步 identity 参与关系 |
 | `RecordOutcome` | 命令 | 结果记录 |
 | `ListPursuits` / `GetPursuit` | 查询 | 看板与详情 |
 
