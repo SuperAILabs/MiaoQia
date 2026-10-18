@@ -1,6 +1,6 @@
 # 监测与匹配子系统（detection）
 
-> 状态：评审中 · 版本：1.7 · 更新：2026-10-18 · 平面：客户智能
+> 状态：评审中 · 版本：1.8 · 更新：2026-10-18 · 平面：客户智能
 
 ## 1. 使命
 
@@ -53,6 +53,7 @@
 |---|---|---|
 | `ListSignals` / `GetSignal` | 查询 | 信号收件箱：按目标、分栏（待处理、已处理、已排除、已关闭）与筛选游标分页；信号随目标的 `can_view_signals` 授权；不属于本租户与不存在的信号返回相同结果 |
 | `CreateWatch` / `RemoveWatch` / `ListWatchUpdates` | 命令/查询 | 用户关注与变化记录（第 11 节）；也以 MCP 工具暴露 |
+| `ListSignalsForObject` | 查询 | 对象页的本租户信号分区：按采购项目（及标包）、项目（经 `part_of` 归属边展开到采购项目）或组织（信号视图中的中标方、采购人）列出本租户信号，只返回用户有 `can_view_signals` 的目标的信号；租户上下文来自请求，不接受他租户标识（[PRD 第4段](../../01-product/prd/04-object-page-evidence.md) F3–F5） |
 | `ExplainSignal` | 查询 | 命中/未命中的规则、证据、特征（可解释性） |
 | `TriageSignal` | 命令 | 单条反馈、忽略、恢复、调整处置（第 12 节）：需 `can_feedback`，带操作标识、幂等键、所见内容版本、状态版本与反馈版本；写入 `SignalTriage` 并发布 `signal.triaged` |
 | `TriageSignals` / `GetSignalBatch` / `CancelSignalBatch` / `RetrySignalBatchItems` | 命令/查询 | 批量处理：`202` 作业，每项的操作标识为批次标识 + 信号标识，逐项按 `TriageSignal` 的规则执行并给出结果；`RetrySignalBatchItems` 为暂时失败项与未处理项发起新的尝试 |
