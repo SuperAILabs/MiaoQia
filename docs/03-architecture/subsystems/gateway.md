@@ -1,6 +1,6 @@
 # 接入网关子系统（gateway）
 
-> 状态：评审中 · 版本：1.3 · 更新：2026-10-17 · 平面：交互
+> 状态：评审中 · 版本：1.4 · 更新：2026-10-18 · 平面：交互
 
 ## 1. 使命
 
@@ -11,7 +11,7 @@
 **职责**
 
 - 公共 API：REST/OpenAPI，资源化、版本化；
-- BFF（Backend for Frontend）：为 Web 应用聚合和裁剪数据，不包含业务规则；
+- BFF（Backend for Frontend）：为 Web 应用聚合和裁剪数据，不包含业务规则；只缓存按调用方裁剪后的响应（键含租户、用户、权利与权益版本），不跨租户复用，缓存命中也现场执行授权、覆盖、权利与配额检查（[安全与租户第3节](../06-security-and-tenancy.md#3-隔离层次)）；
 - MCP 服务器：把业务能力以 MCP 工具与资源暴露给 AI 助手，作为 OAuth 资源服务器；
 - 出站 Webhook：客户订阅事件、签名、重试、失败告警；
 - 认证接入：校验令牌、派生租户与主体、注入请求上下文；M0实现校验issuer/audience、RS256签名、Bearer访问令牌类型与exp/iat/nbf，丢弃外部上下文头；真实HTTPS Keycloak及安全反例见[运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；
