@@ -1,0 +1,205 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>妙洽对象页原型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：左侧页面目录 + 顶部状态切换 + 中间线框画面（桌面/手机两种框） */
+:root{
+  --bg:#f4f5f3; --panel:#ffffff; --ink:#1d2320; --muted:#5d6862; --line:#cfd5d1;
+  --accent:#1f6f5c; --accent-soft:#e1efe9; --warn:#a2610b; --warn-soft:#fbf0dc;
+  --bad:#b03a2e; --bad-soft:#f8e3e0; --off:#9aa39e;
+  --f-ui:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+header.top{max-width:1180px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+header.top h1{font-size:1.25rem;margin:0;text-wrap:balance}
+header.top p{margin:0;color:var(--muted);font-size:.85rem}
+nav.pages{display:flex;flex-direction:column;gap:4px}
+@media (max-width:760px){nav.pages{flex-direction:row;overflow-x:auto;padding-bottom:4px}}
+nav.pages button{all:unset;cursor:pointer;padding:8px 10px;border-radius:6px;font-size:.9rem;white-space:nowrap}
+nav.pages button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.pages button:focus-visible,.states button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.states button{font:inherit;font-size:.82rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.states button:disabled{color:var(--off);cursor:not-allowed;border-style:dashed}
+.note{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.stage{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.desk{flex:1 1 420px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.desk .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.phone{flex:0 0 300px;max-width:100%;background:var(--panel);border:2px solid var(--line);border-radius:22px;overflow:hidden}
+.phone .bar{padding:8px 14px;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.scr{padding:18px;display:flex;flex-direction:column;gap:12px}
+.scr h2{font-size:1.05rem;margin:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
+.box{border:1px solid var(--line);border-radius:6px;padding:8px 10px;color:var(--muted);background:var(--bg)}
+.btn{display:inline-block;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer;text-align:center}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.msg{border-radius:6px;padding:10px 12px;font-size:.88rem}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--accent)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.off{color:var(--off)}
+.skel{height:12px;border-radius:4px;background:var(--line);opacity:.6}
+.qr{width:120px;height:120px;border:1px dashed var(--muted);display:grid;place-items:center;font-size:.75rem;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:22px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.rules{margin-top:18px;font-size:.84rem;color:var(--muted)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+@media (prefers-reduced-motion:no-preference){.skel{animation:p 1.2s ease-in-out infinite}@keyframes p{50%{opacity:.25}}}
+</style>
+
+
+
+<header class="top">
+  <h1>第4段原型：对象页与证据</h1>
+  <p>低保真线框 · 对应 docs/01-product/prd/04-object-page-evidence.md · 示例数据</p>
+</header>
+<div class="wrap">
+  <nav class="pages" id="pages" aria-label="页面"></nav>
+  <main style="min-width:0">
+    <div class="label">状态</div>
+    <div class="states" id="states" role="group" aria-label="状态"></div>
+    <p class="note" id="note"></p>
+    <div class="stage" id="stage"></div>
+    <div class="rules" id="rules"></div>
+  </main>
+</div>
+
+<script>
+const ALL=["正常","空态","加载","无权限","过期","失败","部分成功","来源中断","数据未知"];
+const L=n=>Array.from({length:n},()=>'<div class="skel"></div>').join('');
+const desk=(url,body)=>`<div class="desk"><div class="bar">${url}</div><div class="scr">${body}</div></div>`;
+const phone=(t,body)=>`<div class="phone"><div class="bar">${t}</div><div class="scr">${body}</div></div>`;
+const ctx=`<div class="msg ok">来自信号：A02 进入供货 · 跟进候选 · 按公告版本 v2 判断 · 求值时间 2026-10-16 22:10 UTC+08:00 · 信号生成 22:11 · 视角：<b>当前</b> | <u>信号判断时</u></div>`;
+const sec=(t,asof,body)=>`<div class="card"><div class="row" style="justify-content:space-between"><b>${t}</b><span class="note">${asof}</span></div>${body}</div>`;
+const lot=`<div class="tbl"><table><tr><th>标包</th><th>标的</th><th>品类</th><th>预算</th><th>中标方</th><th>中标金额</th></tr>
+<tr><td><b>2 包（信号所在）</b></td><td>PE 给水管 DN110–DN315<sup>[3]</sup></td><td>PE 管 <span class="note">模型识别 · 0.91</span></td><td>2,000 万<sup>[4]</sup></td><td><u>浙江某建工</u><sup>[1]</sup></td><td>1,800 万<sup>[2]</sup></td></tr>
+<tr><td>1 包</td><td>土建施工</td><td>—</td><td>6,500 万</td><td>杭州某路桥</td><td>6,120 万</td></tr></table></div><p class="note">金额按标包与类型分别显示，不相加。</p>`;
+const tl=`<div class="tbl"><table><tr><th>来源发布时间</th><th>公告</th><th>平台记录</th></tr>
+<tr><td>2026-08-01（仅到日）</td><td>招标公告</td><td>08-01 10:12</td></tr>
+<tr><td>2026-08-20 09:00 UTC+08:00</td><td>更正公告：开标时间 09-05 → 09-12</td><td>08-20 09:40</td></tr>
+<tr><td>2026-10-09 15:00 UTC+08:00</td><td>中标结果公告</td><td>10-09 15:22</td></tr></table></div><p class="note">时间轴：按来源发布时间排序，同时显示平台记录时间；发布时间保留原精度与时区。</p>`;
+const winners=`<div class="tbl"><table><tr><th>项目</th><th>采购人</th><th>地区</th><th>品类</th><th>中标金额</th><th>发布</th></tr>
+<tr><td>杭州某污水管网改造 EPC</td><td>杭州某水务</td><td>杭州西湖</td><td>PE 管</td><td>1,800 万</td><td>2026-10-09</td></tr>
+<tr><td>嘉兴某排水工程</td><td>嘉兴某建设</td><td>嘉兴南湖</td><td>PVC 管</td><td>960 万</td><td>2026-06-12</td></tr></table></div>`;
+const PAGES=[
+{id:"pp",name:"采购项目页",
+ na:{},
+ rules:["从信号进入时定位到信号所在标包，显示信号上下文","各分区独立加载，显示各自截至时间与时间轴","金额分类型、分标包显示，不相加","他租户或看不到的信号不显示上下文","每次打开都按你的覆盖、权利与配额现场判断，缓存不放宽"],
+ s:{
+ "正常":()=>desk("采购项目 / 杭州某污水管网改造 EPC",`${ctx}<h2>杭州某污水管网改造 EPC</h2><p class="note">采购人 <u>杭州某水务</u><sup>[5]</sup> · 代理 杭州某招标 · 杭州西湖区 · 公开招标 · 阶段：结果</p>
+ ${sec("标包与中标结果","公告截至 10-17 08:40",lot)}${sec("所属项目","归属边：当前有效",`<div><u>杭州西湖区污水系统提升工程</u> <span class="note">显式标识（项目代码）· 已确认</span></div>`)}${sec("公告时间线","",tl)}
+ ${sec("本租户","",`<div>信号：A02 进入供货 · 跟进候选（2 包）</div><div class="row"><button class="btn ghost">报告漏报</button><span class="note">跟进入口随第6段</span></div>`)}`)+phone("采购项目",`<div class="msg ok">来自信号 · 跟进候选</div><b>杭州某污水管网改造 EPC</b><div>2 包 · 中标方 浙江某建工<sup>[1]</sup></div><div>中标金额 1,800 万<sup>[2]</sup></div><div class="note">公告截至 10-17 08:40</div>`),
+ "空态":()=>desk("采购项目 / 宁波某供水管道工程",`${sec("所属项目","",`<div class="empty"><div>没有归属到上位项目。投资项目数据未接入前，多数采购项目只有采购项目页。</div></div>`)}${sec("本租户","",`<div class="empty"><div>本租户在这个项目上还没有你能看的信号。</div></div>`)}`),
+ "加载":()=>desk("采购项目",`${L(2)}${sec("标包与中标结果","",L(3))}${sec("公告时间线","",L(2))}`),
+ "无权限":()=>desk("采购项目 / 温州某管网工程",`<div class="empty"><div><b>温州某管网工程</b></div><div>该项目所在区域不在你的数据覆盖范围内（entitlement.coverage_insufficient），不展示内容。可请租户管理员了解覆盖范围。</div><div class="note">其他租户刚打开过同一项目也不改变结果：每次打开都按你的覆盖范围、来源权利与配额现场判断。</div></div>`)+desk("采购项目 / 杭州某污水管网改造 EPC（链接带他人的信号）",`<p class="note">只显示公共部分，没有信号上下文。</p>${L(3)}`),
+ "过期":()=>desk("采购项目 / 杭州某污水管网改造 EPC",`<div class="msg warn">信号判断后公告已更正（v3，10-17 11:20 记录）：中标金额 1,800 万 → 1,760 万。当前显示更正后的值，<u>切换到“信号判断时”</u>。</div><p>中标金额 1,760 万 <span class="pill warn">已更正</span> <u>展开原值与更正公告</u></p>`)+desk("采购项目 / 嘉兴某管网工程",`<div class="msg warn">中标结果公告已被发布方撤回：撤回生效 10-12 10:00（发布方声明），平台 10-12 12:00 发现。该公告的值不再作为当前事实；原文在历史中可查看并标“已撤回的原文”。</div>`),
+ "失败":()=>desk("采购项目",`<div class="msg bad">页面没有加载成功（服务暂时不可用），可以重试。</div><button class="btn">重试</button>`),
+ "部分成功":()=>desk("采购项目 / 杭州某污水管网改造 EPC",`<div class="msg warn">2 个分区暂不可用</div>${sec("标包与中标结果","公告截至 10-17 08:40",lot)}${sec("所属项目","",`<div class="msg bad">暂不可用，<u>重试</u></div>`)}${sec("本租户","",`<div class="msg bad">本租户信号暂不可用，<u>重试</u>。公共部分不受影响。</div>`)}`),
+ "来源中断":()=>desk("采购项目 / 杭州某污水管网改造 EPC",`<div class="msg warn">浙江省政府采购网自 10-16 21:00 起暂不可达：公告截至 10-16 20:55。之后的更正或结果可能尚未收录。</div>${lot}`),
+ "数据未知":()=>desk("采购项目 / 宁波某供水管道工程",`<div class="tbl"><table><tr><th>字段</th><th>显示</th></tr>
+ <tr><td>中标金额</td><td>原文未提供</td></tr><tr><td>品类</td><td>未能识别（低于增强器发布门槛）</td></tr>
+ <tr><td>最高限价</td><td><span class="pill warn">低置信，待核对</span> <span class="note">模型识别 · 0.64，已折叠</span></td></tr>
+ <tr><td>中标方</td><td><span class="pill warn">冲突，待核对</span> 宁波某市政<sup>[1]</sup> / 宁波某市政集团<sup>[2]</sup></td></tr>
+ <tr><td>单项中标金额</td><td>不适用（框架协议第一阶段）</td></tr></table></div>`)}},
+{id:"prj",name:"项目页",
+ na:{"来源中断":"项目页读取平台已保存的事实，来源中断只影响截至时间，在页头统一显示"},
+ rules:["按 part_of 归属边组装，默认取当前有效的边","候选边不进入时间线","信号按发现时间、公告按来源发布时间排列，并标明"],
+ s:{
+ "正常":()=>desk("项目 / 杭州西湖区污水系统提升工程",`<h2>杭州西湖区污水系统提升工程</h2><p class="note">项目代码 2025-330106-… · 归属边：当前有效</p>${sec("归属的采购项目","",`<div>杭州某污水管网改造 EPC（1、2 包）<span class="note">显式标识 · 已确认</span></div><div>西湖区泵站改造监理 <span class="note">属性匹配 · 0.93</span></div>`)}${sec("时间线","公告按来源发布时间，信号按发现时间",`<div>2026-08-01 招标公告（管网改造）</div><div>2026-09-03 招标公告（泵站监理）</div><div>2026-10-09 中标结果（管网改造）</div><div>2026-10-16 22:11 本租户信号 · A02 跟进候选</div>`)}`),
+ "空态":()=>desk("项目 / 余杭某综合管廊",`${sec("归属的采购项目","",`<div>余杭某综合管廊二期（1 包）</div><p class="note">目前只有一个采购项目归属到本项目。</p>`)}`),
+ "加载":()=>desk("项目",`${L(5)}`),
+ "无权限":()=>desk("项目 / 某跨省引水工程",`<div class="empty"><div>项目所在区域不在你的数据覆盖范围内，不展示内容。</div></div>`),
+ "过期":()=>desk("项目 / 杭州西湖区污水系统提升工程",`<div class="msg warn">项目归属已调整（10-18 09:10）：“西湖区泵站改造监理”的归属边已撤销，时间线已更新。已有信号与跟进不改写。</div>`),
+ "失败":()=>desk("项目",`<div class="msg bad">项目页没有加载成功，可以重试。</div><button class="btn">重试</button>`),
+ "部分成功":()=>desk("项目 / 杭州西湖区污水系统提升工程",`<div>杭州某污水管网改造 EPC</div><div class="msg warn">另有 1 个采购项目所在区域不在你的覆盖范围内，只计入数量。</div>`),
+ "数据未知":()=>desk("项目 / 杭州西湖区污水系统提升工程",`${sec("投资审批与施工许可","",`<div class="msg warn">投资项目数据未接入，暂不显示审批与施工许可；不代表没有记录。</div>`)}`)}},
+{id:"winner",name:"组织页 · 中标方",
+ na:{},
+ rules:["主要人员只作登记信息文本，不可点击、不汇总","品牌归属只取平台级 brand_owned_by，不按制造商推断","“含我方品类”筛选只在本租户会话内","列表每页 20 条，最多 200 条","“信号判断时”按信号固定的输入与求值时间解析企业，不按信号生成时间；现在的合并或撤销只在页头另行提示","统计与画像没有历史，“信号判断时”标“历史不可用”"],
+ s:{
+ "正常":()=>desk("组织 / 浙江某建工",`<div class="row" style="justify-content:space-between"><h2>浙江某建工</h2><span class="pill ok">本租户：客户</span></div>
+ ${sec("登记信息","企业登记观察于 10-16 21:05",`<div>统一社会信用代码 91330…<sup>[1]</sup> · 存续 · 成立 2003-05-12 · 注册资本 2 亿元</div><div class="note">法定代表人 张某；股东 浙江某控股 60%、李某 40%（登记公示信息，不可点击）</div>`)}
+ ${sec("作为中标方（近 3 年）","公告截至 10-17 08:40 · 按来源发布时间",`<div class="row"><span class="pill ok">☑ 含我方品类</span><span class="note">共 14 个项目，杭州 9、嘉兴 3、湖州 2</span></div>${winners}`)}
+ ${sec("供过的品牌","品牌词表 2026.09",`<div>某牌 PE 管 · 6 次 → 归属 某管业有限公司<sup>[6]</sup></div><div>某某牌 PVC 管 · 2 次 → 归属 某塑胶</div>`)}
+ ${sec("信用","",`<div class="note">企业信用数据未接入</div>`)}${sec("本租户信号","",`<div>3 条（A02 进入供货）</div>`)}`)+phone("组织 · 浙江某建工",`<span class="pill ok">本租户：客户</span><div>近 3 年中标 14 个含我方品类的项目</div><div>常供品牌：某牌（归属 某管业）</div>`),
+ "空态":()=>desk("组织 / 丽水某建设",`${sec("作为中标方（近 3 年）","覆盖起点 2024-01",`<div class="empty"><div>自 2024-01 起，平台覆盖范围内没有该企业的中标记录。</div></div>`)}`),
+ "加载":()=>desk("组织",`${L(2)}${sec("作为中标方","",L(4))}`),
+ "无权限":()=>desk("组织 / 浙江某建工",`<div class="msg bad">今日对象查看额度已用完（quota.exhausted）：已用 200 / 200，北京时间 00:00 重置。今天早些时候打开过的页面也不再显示。</div>`),
+ "过期":()=>desk("组织 / 宁波某市政",`<div class="msg warn">该企业已于 10-18 09:30 并入 宁波某市政集团（依据：统一社会信用代码一致）。当前页面内容截至打开时，<u>刷新后显示合并后的企业</u>。</div>`)+desk("组织 / 宁波某市政集团",`<div class="msg warn">此前并入的 宁波某市政 已恢复为独立企业（10-18 14:00 合并撤销），部分历史项目已移回。</div>`)+desk("组织 / 宁波某市政 · 视角：信号判断时 · 求值时间 2026-10-16 22:10 · 信号生成 22:11",`<div class="msg warn">该企业现已并入 宁波某市政集团（10-18 09:30）。<u>切换到当前查看</u></div><div class="msg ok">当时已知口径，记录截止为求值时间 10-16 22:10（不是信号生成时间 22:11）：中标方按信号视图快照中的实体版本显示独立的 宁波某市政；其余登记信息与中标项目取截至 22:10 已记录的版本；之后记录的公告与登记变更不显示。</div><p>汇总统计 <span class="pill">历史不可用</span> · 组织画像 <span class="pill">历史不可用</span> · 本租户其他信号与跟进 <span class="pill">历史不可用</span></p>`)+desk("组织 / 绍兴某建设 · 视角：信号判断时 · 求值时间 2026-10-12 08:00 · 信号生成 08:01",`<div class="msg warn">信号判断时该企业已并入 绍兴某建设集团，该合并已于 10-18 11:00 撤销。<u>切换到当前查看</u>（当前显示独立的 绍兴某建设）。</div><div class="msg ok">当时已知口径，记录截止为求值时间 10-12 08:00：按当时记录显示 绍兴某建设集团（含当时归入的 绍兴某建设 的项目）。</div>`)+desk("组织 / 温州某管道 · 视角：信号判断时 · 求值时间 2026-10-09 15:20 · 信号生成 2026-10-18 02:40（回填）",`<div class="msg warn">该企业现已并入 温州某管道集团（10-12 10:00）。<u>切换到当前查看</u></div><div class="msg ok">回填信号：10-18 的回填为 10-09 的事件求值。锚点是求值时间 10-09 15:20，不是生成时间 10-18：显示独立的 温州某管道；10-14 新增的项目归属不显示。</div><p>中标项目列表 <span class="note">截至 10-09 15:20 已记录</span> · 汇总统计 <span class="pill">历史不可用</span></p>`),
+ "失败":()=>desk("组织",`<div class="msg bad">组织页没有加载成功，可以重试。</div><button class="btn">重试</button>`),
+ "部分成功":()=>desk("组织 / 浙江某建工",`${sec("作为中标方","",`<div>汇总：近 3 年 86 个项目（统计可用）</div><div class="msg warn">列表最多翻到 200 条（limit.safety_cap）。请按地区或品类缩小范围；升级套餐不能解除此上限。</div>`)}`),
+ "来源中断":()=>desk("组织 / 浙江某建工",`<div class="msg warn">企业登记来源自 10-15 起暂不可达：登记信息观察于 10-14 20:00，可能不是最新。</div>`),
+ "数据未知":()=>desk("组织 / 浙江某建工",`${sec("供过的品牌","",`<div>某牌 PE 管 → <span class="pill warn">归属冲突</span> 某管业有限公司 / 某管业集团（两条声明同时有效）</div><div>某型号 PPR 管 → 制造商 某代工厂；品牌归属未登记（不按制造商推断）</div><div class="msg warn">湖州片区品牌数据未就绪（M2-P13），该区域的供货品牌暂不显示。</div>`)}${sec("信用","",`<div class="note">企业信用数据未接入，不代表没有记录</div>`)}`)}},
+{id:"buyer",name:"组织页 · 采购人",
+ na:{"来源中断":"采购人统计读取平台已保存的事实，来源中断只影响截至时间，在页头统一显示"},
+ rules:["统计显示口径版本、截至时间与覆盖起点","金额按类型分别汇总","近 3 年，按覆盖起点截断"],
+ s:{
+ "正常":()=>desk("组织 / 杭州某水务 · 作为采购人",`${sec("采购统计（近 3 年）","统计口径 v2 · 截至 10-17 03:00 · 覆盖 2024-01 起",`<div class="tbl"><table><tr><th>年份</th><th>项目数</th><th>预算合计</th><th>中标金额合计</th></tr><tr><td>2026</td><td>12</td><td>3.2 亿</td><td>2.9 亿</td></tr><tr><td>2025</td><td>18</td><td>4.1 亿</td><td>3.7 亿</td></tr></table></div><p class="note">常用代理：杭州某招标（21）· 主要品类：管材、泵阀</p>`)}`),
+ "空态":()=>desk("组织 / 衢州某村委",`<div class="empty"><div>自 2024-01 起，平台覆盖范围内没有该采购人的其他采购。</div></div>`),
+ "加载":()=>desk("组织 · 作为采购人",`${L(4)}`),
+ "无权限":()=>desk("组织 / 某省外采购人",`<div class="empty"><div>该采购人所在区域不在你的数据覆盖范围内，不展示内容。</div></div>`),
+ "过期":()=>desk("组织 / 杭州某水务 · 作为采购人",`<div class="msg warn">统计截至 10-15 03:00（每日更新延迟），最近两天的公告未计入。</div>`),
+ "失败":()=>desk("组织 / 杭州某水务 · 作为采购人",`<div class="msg bad">采购统计暂不可用；采购项目列表仍可查看。</div>`),
+ "部分成功":()=>desk("组织 / 杭州某水务 · 作为采购人",`<div class="msg warn">2024 年部分项目来自只允许引用与链接的来源，只计入项目数，不计入金额合计。</div>`),
+ "数据未知":()=>desk("组织 / 杭州某水务 · 作为采购人",`<p>2026 年 12 个项目中，3 个没有公布中标金额：中标金额合计只含 9 个，另列“未公布 3 个”。</p>`)}},
+{id:"evidence",name:"证据查看",
+ na:{"空态":"证据查看总针对一个已存在的证据角标"},
+ rules:["展示级别按全部输入来源逐维取最严格","证据来自平台快照，来源网站不可达不影响查看","打开证据计入原文查看配额，同日同证据只计一次","展示级别按当前权利判断，此前看过的证据也一样"],
+ s:{
+ "正常":()=>desk("证据 · 中标金额",`<div class="note">文档证据 · 中标结果公告 第 2 页 第 3 段 · 快照保存于 2026-10-09 15:22</div><div class="box">……第二标段：中标人 浙江某建工有限公司，<mark>中标金额：人民币壹仟捌佰万元整（¥18,000,000.00）</mark>，工期 180 日历天……</div><div class="row"><u>打开来源页面</u></div>`)+desk("证据 · 项目所在区县代码",`<div class="note">派生证据 · 转换：区划新旧代码对照 2024 版</div><div>输入 1：公告原文“西湖区” → 文档证据 <u>展开</u></div><div>输入 2：区划对照表 2024.03 → 记录证据 <u>展开</u></div>`),
+ "加载":()=>desk("证据",`${L(4)}`),
+ "无权限":()=>desk("证据 · 标的明细",`<div class="msg warn">来源权利不允许展示原文（rights.restricted）。可以打开来源页面查看。</div><div><u>某市公共资源交易网 · 中标结果公告</u></div>`)+desk("证据 · 标的明细（权利已收紧）",`<div class="msg warn">该来源的权利已于 10-18 10:00 调整，你 10-17 看过全文的这条证据现在只显示引用与链接。</div><div><u>某市公共资源交易网 · 中标结果公告</u></div>`),
+ "过期":()=>desk("证据 · 中标金额（已撤回的原文）",`<div class="msg warn">该公告已被发布方撤回（撤回生效 10-12 10:00，平台 10-12 12:00 发现）。以下为撤回前的原文，不再作为当前事实。</div><div class="box">……中标金额：人民币玖佰陆拾万元整……</div>`)+desk("证据 · 中标金额（已更正）",`<div>当前值 1,760 万 · 来自更正公告 2026-10-17<sup>[7]</sup></div><div class="note">原值 1,800 万 · 来自中标结果公告 2026-10-09<sup>[2]</sup></div>`),
+ "失败":()=>desk("证据",`<div class="msg bad">原文定位暂不可用，可以重试或打开快照。不显示猜测的片段。</div><button class="btn">重试</button>`),
+ "部分成功":()=>desk("证据 · 项目所在区县代码（派生）",`<div class="msg warn">派生字段的一个输入只允许引用与链接，整个字段按“仅引用与链接”显示。</div><div>输入 1：<u>来源链接</u>（仅链接）</div><div>输入 2：区划对照表 2024.03</div>`),
+ "来源中断":()=>desk("证据 · 中标金额",`<div class="note">快照保存于 2026-10-09 15:22</div><div class="box">……<mark>中标金额：人民币壹仟捌佰万元整</mark>……</div><div class="note">打开来源页面：来源网站暂不可达（10-17 08:00 起）</div>`),
+ "数据未知":()=>desk("证据 · 最高限价（低置信）",`<div class="note">模型识别 · 置信度 0.64 · 低于展示门槛 0.8，按低置信显示</div><div class="box">……最高投标限价为<mark>贰仟万元</mark>（含暂列金）……</div>`)}},
+{id:"timeline",name:"时间线与版本",
+ na:{"无权限":"在已能打开的对象页内展开，权限已在对象页判断","部分成功":"一次查询","来源中断":"读取平台已保存的版本，来源中断在页头统一显示"},
+ rules:["每个视图标明时间轴","版本历史按平台记录时间","撤回显示业务生效时间与发现时间","“信号判断时”先读信号固定的版本，其余取求值时间前已记录的版本与归属边；求值时间与生成时间分别标注","之后才记录的输入不出现；不支持历史的分区标“历史不可用”，不以当前数据代替"],
+ s:{
+ "正常":()=>desk("版本历史 · 嘉兴某管网工程 中标结果公告",`<p class="note">时间轴：平台记录时间</p><div class="tbl"><table><tr><th>版本</th><th>记录时间</th><th>原因</th><th>业务生效</th></tr><tr><td>v1</td><td>10-08 10:05</td><td>首次发布</td><td>10-08</td></tr><tr><td>v2</td><td>10-12 12:00</td><td>发布方撤回</td><td>10-12 10:00</td></tr><tr><td>v3</td><td>10-14 09:30</td><td>已恢复（恢复自 v1）</td><td>10-14 09:00（推定）</td></tr></table></div>`),
+ "空态":()=>desk("版本历史",`<div class="empty"><div>这条公告只有一个版本，没有更正或撤回。</div></div>`),
+ "加载":()=>desk("版本历史",`${L(3)}`),
+ "过期":()=>desk("项目时间线 · 视角：信号判断时 · 求值时间 2026-10-16 22:10 · 信号生成 22:11",`<div class="msg ok">当时已知口径：公告取信号固定的版本 v2，归属边取求值时间 22:10 前已记录的边（不以生成时间 22:11 为截止）。之后新增的“泵站监理”归属未显示；之后撤销的边仍显示。</div><p>中标结果 v2（10-16 记录） · 之后另有 2 条公告，<u>切换到当前查看</u></p><p>汇总统计 <span class="pill">历史不可用</span> · 本租户其他信号与跟进 <span class="pill">历史不可用</span></p>`),
+ "失败":()=>desk("版本历史",`<div class="msg bad">历史没有加载成功，可以重试。</div>`),
+ "数据未知":()=>desk("公告时间线",`<div>2026-08-01（仅到日） 招标公告</div><p class="note">来源只给出日期，不补成 00:00；同一天内的先后按平台记录时间参考排列并标明。</p>`)}}
+];
+
+let page=PAGES[0], state="正常";
+const $=id=>document.getElementById(id);
+function render(){
+  $("pages").innerHTML=PAGES.map(p=>`<button data-p="${p.id}" aria-current="${p===page}">${p.name}</button>`).join("");
+  $("states").innerHTML=ALL.map(s=>{const na=page.na[s];return `<button data-s="${s}" aria-pressed="${s===state}" ${na?`disabled title="${na}"`:""}>${s}</button>`}).join("");
+  const nas=Object.entries(page.na).map(([k,v])=>`${k}：${v}`).join("；");
+  $("note").textContent=nas?`不适用的状态：${nas}`:"";
+  $("stage").innerHTML=(page.s[state]||page.s["正常"])();
+  $("rules").innerHTML=`<div class="label">本页规则</div><ul>${page.rules.map(r=>`<li>${r}</li>`).join("")}</ul>`;
+}
+$("pages").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;page=PAGES.find(p=>p.id===b.dataset.p);state="正常";render()});
+$("states").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;state=b.dataset.s;render()});
+render();
+</script>
