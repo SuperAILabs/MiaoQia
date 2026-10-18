@@ -1,0 +1,229 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>妙洽简报原型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：左侧页面目录 + 顶部状态切换 + 中间线框画面（桌面/手机两种框） */
+:root{
+  --bg:#f4f5f3; --panel:#ffffff; --ink:#1d2320; --muted:#5d6862; --line:#cfd5d1;
+  --accent:#1f6f5c; --accent-soft:#e1efe9; --warn:#a2610b; --warn-soft:#fbf0dc;
+  --bad:#b03a2e; --bad-soft:#f8e3e0; --off:#9aa39e;
+  --f-ui:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+header.top{max-width:1180px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+header.top h1{font-size:1.25rem;margin:0;text-wrap:balance}
+header.top p{margin:0;color:var(--muted);font-size:.85rem}
+nav.pages{display:flex;flex-direction:column;gap:4px}
+@media (max-width:760px){nav.pages{flex-direction:row;overflow-x:auto;padding-bottom:4px}}
+nav.pages button{all:unset;cursor:pointer;padding:8px 10px;border-radius:6px;font-size:.9rem;white-space:nowrap}
+nav.pages button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.pages button:focus-visible,.states button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.states button{font:inherit;font-size:.82rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.states button:disabled{color:var(--off);cursor:not-allowed;border-style:dashed}
+.note{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.stage{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.desk{flex:1 1 420px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.desk .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.phone{flex:0 0 300px;max-width:100%;background:var(--panel);border:2px solid var(--line);border-radius:22px;overflow:hidden}
+.phone .bar{padding:8px 14px;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.scr{padding:18px;display:flex;flex-direction:column;gap:12px}
+.scr h2{font-size:1.05rem;margin:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
+.box{border:1px solid var(--line);border-radius:6px;padding:8px 10px;color:var(--muted);background:var(--bg)}
+.btn{display:inline-block;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer;text-align:center}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.msg{border-radius:6px;padding:10px 12px;font-size:.88rem}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--accent)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.off{color:var(--off)}
+.skel{height:12px;border-radius:4px;background:var(--line);opacity:.6}
+.qr{width:120px;height:120px;border:1px dashed var(--muted);display:grid;place-items:center;font-size:.75rem;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:22px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.rules{margin-top:18px;font-size:.84rem;color:var(--muted)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+/* 企业微信会话：消息气泡与模板卡片 */
+.chat{background:var(--bg);padding:12px;display:flex;flex-direction:column;gap:10px}
+.who{font-size:.72rem;color:var(--muted)}
+.wx{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:.84rem}
+.wx .t{font-weight:600;font-size:.92rem}
+.wx .kv{display:grid;grid-template-columns:4.5em minmax(0,1fr);gap:2px 8px;font-size:.8rem}
+.wx .kv span:nth-child(odd){color:var(--muted)}
+.wx .btns{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.wx .btns span{flex:1 1 auto;text-align:center;border:1px solid var(--line);border-radius:4px;padding:4px 6px;font-size:.8rem;color:var(--accent)}
+.wx .btns span.off{color:var(--off);border-style:dashed}
+.wx .src{font-size:.72rem;color:var(--muted)}
+.sys{align-self:center;font-size:.72rem;color:var(--muted);background:var(--panel);border-radius:999px;padding:2px 10px}
+@media (prefers-reduced-motion:no-preference){.skel{animation:p 1.2s ease-in-out infinite}@keyframes p{50%{opacity:.25}}}
+</style>
+
+<header class="top">
+  <h1>第5段原型：简报与快捷动作</h1>
+  <p>低保真线框 · 以企业微信会话与 H5 为主 · 对应 docs/01-product/prd/05-briefing-quick-actions.md · 示例数据</p>
+</header>
+<div class="wrap">
+  <nav class="pages" id="pages" aria-label="页面"></nav>
+  <main style="min-width:0">
+    <div class="label">状态</div>
+    <div class="states" id="states" role="group" aria-label="状态"></div>
+    <p class="note" id="note"></p>
+    <div class="stage" id="stage"></div>
+    <div class="rules" id="rules"></div>
+  </main>
+</div>
+
+<script>
+const ALL=["正常","空态","加载","无权限","过期","失败","部分成功","来源中断","数据未知"];
+const L=n=>Array.from({length:n},()=>'<div class="skel"></div>').join('');
+const desk=(url,body)=>`<div class="desk"><div class="bar">${url}</div><div class="scr">${body}</div></div>`;
+const phone=(t,body)=>`<div class="phone"><div class="bar">${t}</div><div class="scr" style="padding:0">${body}</div></div>`;
+const h5=(t,body)=>`<div class="phone"><div class="bar">企业微信内置浏览器 · ${t}</div><div class="scr">${body}</div></div>`;
+const chat=(...m)=>phone("企业微信 · 妙洽（应用消息）",`<div class="chat">${m.join("")}</div>`);
+const sys=t=>`<div class="sys">${t}</div>`;
+const wx=(t,body,btns)=>`<div class="who">妙洽</div><div class="wx"><div class="t">${t}</div>${body}${btns?`<div class="btns">${btns}</div>`:""}</div>`;
+const kv=o=>`<div class="kv">${Object.entries(o).map(([k,v])=>`<span>${k}</span><span>${v}</span>`).join("")}</div>`;
+const B=(...b)=>b.map(x=>x.startsWith("~")?`<span class="off">${x.slice(1)}</span>`:`<span>${x}</span>`).join("");
+const me=t=>`<div class="who" style="align-self:flex-end">你（企业微信 · 张伟）</div><div class="wx" style="align-self:flex-end;max-width:80%">${t}</div>`;
+
+const overview=(extra="")=>wx("今日简报 · 10-20 周二",`<div class="src">周期 10-19 07:30 – 10-20 07:30（UTC+08:00）· 内容截至 07:30</div>${extra}
+<div><b>A02 进入供货</b> · 7 条 <span class="note">（本期新增 9 条，其中 2 条已由团队处理）</span></div>
+<div>1. 杭州某污水管网改造 EPC · 浙江某建工 · 中标金额 1,800 万</div><div>2. 宁波某排水管网工程 · 宁波某市政 · 中标金额 未公布</div><div>3. 绍兴某供水改造… · 绍兴某建设 · 中标金额 640 万</div>
+<div class="src">采购公告截至 07:20 · 企业数据截至 10-19</div>
+<div><b>A01 直接投标</b> · 2 条</div><div>1. 湖州某市政道路管网（10-21 17:00 截止）</div>
+<div><b>待我处理</b> · 1 条：A02 策略激活申请（王磊提交）</div>`,B("查看完整简报"));
+const sigcard=(o={})=>wx(`A02 进入供货 · 跟进候选${o.tag||""}`,`${o.top||""}${kv(Object.assign({"项目":"杭州某污水管网改造 EPC（2 包）","中标方":"浙江某建工","金额":"中标金额 1,800 万","地区品类":"杭州西湖 · PE 管","理由":"已有客户总包中标；含我方品类","发现":"10-19 22:11（UTC+08:00）"},o.kv||{}))}<div class="src">内容截至 07:30 · 未知项 0</div>`,o.btns===undefined?B("相关","不相关","跟进","查看"):o.btns);
+
+const PAGES=[
+{id:"ov",name:"企业微信 · 简报总览卡",
+ na:{"加载":"推送的消息没有加载态，完整简报的加载见 H5 页"},
+ rules:["每期一张总览卡 + 每个目标区前 3 条信号卡片，合计最多 6 张","每个目标一区，区内按该目标排序分，不混排","每区写明数据截至时间；周期与时间带时区","空简报默认不推送；有来源中断时不算空简报","成员或绑定失效时不推送，只留在站内与历史"],
+ s:{
+ "正常":()=>chat(sys("07:31"),overview(),sigcard()),
+ "空态":()=>chat(sys("07:31 · 偏好已开启“接收空简报”"),wx("今日简报 · 10-20 周二",`<div class="src">周期 10-19 07:30 – 10-20 07:30（UTC+08:00）</div><div><b>A02 进入供货</b>：本期没有新信号（采购公告截至 07:20）</div><div><b>A01 直接投标</b>：本期没有新信号</div><div><b>待我处理</b>：没有待办</div><div class="note">默认不推送空简报，这条是因为你在偏好中开启了接收。</div>`,B("查看简报历史"))),
+ "无权限":()=>chat(sys("你的企业微信账号尚未绑定妙洽"),wx("请先绑定妙洽账号",`<div>绑定后才会收到简报与信号卡片。</div>`,B("绑定账号"))),
+ "过期":()=>chat(sys("09:42"),overview(`<div class="msg warn">延迟发送（原定 07:30）：服务恢复后补发。内容仍截至 07:30。</div>`)),
+ "失败":()=>desk("站内 · 今日简报",`<div class="msg bad">今日简报推送到企业微信没有成功（渠道返回：应用调用频率超限），已自动重试 4 次，18:00 前继续重试。你可以在这里查看与处理，也可以“重新推送”。</div><div class="row"><span class="btn">查看完整简报</span><span class="btn ghost">重新推送到企业微信</span></div>`),
+ "部分成功":()=>chat(sys("07:31"),wx("今日简报 · 10-20 周二",`<div class="msg warn">A01 直接投标区暂不可用（信号查询失败）。其他区照常；A01 本期的信号会进入下一期简报，标“含上一期未能生成的部分”。</div><div><b>A02 进入供货</b> · 7 条</div><div>1. 杭州某污水管网改造 EPC · 浙江某建工 · 中标金额 1,800 万</div><div><b>A01 直接投标</b> · <span class="pill warn">暂不可用</span></div>`,B("查看完整简报"))),
+ "来源中断":()=>chat(sys("07:31"),wx("今日简报 · 10-20 周二",`<div class="msg warn">采购公告来源中断：浙江省公共资源交易网自 10-19 18:40 起无法采集，A02 区只含 18:40 前发布的公告。恢复后补齐的信号会进入下一期简报。</div><div><b>A02 进入供货</b> · 3 条 <span class="note">采购公告截至 10-19 18:40</span></div><div>1. 杭州某污水管网改造 EPC · 浙江某建工 · 中标金额 1,800 万</div>`,B("查看完整简报"))),
+ "数据未知":()=>chat(sys("07:31"),wx("今日简报 · 10-20 周二",`<div><b>A02 进入供货</b> · 7 条</div><div class="note">回填产生 86 条（目标首次激活回填近 30 天），不列入简报，<u>在收件箱查看</u>。</div><div>1. 宁波某排水管网工程 · 宁波某市政 · 中标金额 <b>未公布</b> · 品类 <b>未能识别</b></div>`,B("查看完整简报"))),
+ }},
+{id:"card",name:"企业微信 · 信号卡片",
+ na:{"空态":"卡片总对应一条信号，没有空卡片","部分成功":"单张卡片的展示是原子的；动作的部分结果见“卡片动作结果”","来源中断":"卡片是组装时的快照，来源中断在总览卡与完整简报中说明"},
+ rules:["字段按优先级：处置、项目、中标方、金额、地区与品类、两条理由、未知项、发现时间、标记","超长在字符边界截断加“…”；金额、金额类型、处置、状态词、AI 标识与“查看”永不省略","按钮按收件人权限：反馈需 can_feedback，跟进需 can_assign（第6段交付后），查看所有人都有","按钮的令牌绑定收件人，24 小时有效"],
+ s:{
+ "正常":()=>chat(sigcard({kv:{"项目":"杭州市西湖区三墩镇污水管网提质增效及雨污分流改造工程（EPC）…","理由":"已有客户总包中标；含我方品类（PE 管）"}}),`<p class="note" style="padding:0 4px">项目名称超长：在字符边界截断，详情中完整显示；金额与“中标金额”不被省略。</p>`)+desk("说明 · 时区",`<p>成员时区 Asia/Tokyo、租户时区 Asia/Shanghai 时，卡片显示“发现 10-19 23:11（UTC+09:00）/ 22:11（UTC+08:00）”。</p>`),
+ "加载":()=>chat(sigcard({btns:B("~提交中…","~不相关","~跟进","查看")})),
+ "无权限":()=>chat(sigcard({btns:B("查看"),top:`<div class="note">你是该目标的业务专家（只读），卡片上没有反馈与跟进。</div>`}))+chat(sigcard({btns:B("相关","不相关","查看")}),me("（李娜点击了张伟转发的卡片上的“相关”）"),wx("没有执行",`<div>此卡片发给其他成员，不能由你操作。你可以在自己的简报或收件箱中处理。</div>`)),
+ "过期":()=>chat(sigcard({btns:B("~相关","~不相关","~跟进","查看")}),me("相关"),wx("卡片已过期",`<div>卡片按钮 24 小时有效，这张卡片发于 10-19 07:31。请在 Web 中处理，状态以当前为准。</div>`,B("打开信号"))),
+ "失败":()=>chat(sigcard({btns:B("相关","不相关","查看")}),me("相关"),wx("暂时没有成功",`<div>已自动重试 3 次仍未成功（服务暂不可用）。可以再点一次，或打开 Web 处理；再点不会重复记录。</div>`)),
+ "数据未知":()=>chat(sigcard({tag:"",kv:{"项目":"宁波某排水管网工程","中标方":"宁波某市政","金额":"中标金额 <b>未公布</b>","地区品类":"宁波鄞州 · 品类<b>未能识别</b>","标的明细":"见原文（来源只允许引用与链接）"},top:""})),
+ }},
+{id:"act",name:"卡片动作结果",
+ na:{"空态":"动作总针对一张已存在的卡片","来源中断":"动作只读写本租户的信号与跟进，不依赖外部来源"},
+ rules:["一次点击是一个操作（令牌即操作标识），同一按钮多次点击与回调重放只提交一次","“不相关 + 忽略”按反馈与处理状态两个部分分别显示结果","撤销 10 分钟内有效，按原操作实际改变的部分恢复操作前的值","信号已更新时整个动作不执行，附按新版本渲染的卡片","只更新点击者本人的卡片"],
+ s:{
+ "正常":()=>chat(sigcard({btns:B("相关","不相关","跟进","查看")}),me("不相关"),wx("选择不相关的原因",`<div class="note">选择后同时移出待处理（团队共享）。不想移出或选“其他”时去 Web 填写。</div>`,B("品类不符","不在服务区域","规模太小","无法接触","时机已过","其他（去填写）")),me("品类不符"),wx("A02 进入供货 · 杭州某污水管网改造 EPC",`<div class="msg ok">已标为不相关（品类不符），已移出待处理。</div>`,B("撤销（10 分钟内）","查看")),me("跟进（另一张卡片）"),wx("已创建跟进",`<div>宁波某排水管网工程 · 负责人：你。截止时间与任务在 Web 中设置。</div>`,B("打开跟进"))),
+ "加载":()=>chat(me("不相关 · 品类不符"),wx("处理中",`${L(2)}`)),
+ "无权限":()=>chat(sys("你的企业微信绑定已失效（成员已退出或管理员解绑）"),me("相关"),wx("请先绑定妙洽账号",`<div>没有执行任何操作。</div>`,B("绑定账号"))),
+ "过期":()=>chat(me("相关"),wx("这条信号已更新，未执行",`<div>更正公告（10-20 09:10 记录）：中标金额 1,800 万 → 1,760 万。请看过变化后再反馈。</div>`),sigcard({tag:" · 已更新",kv:{"金额":"中标金额 1,760 万（已更正）"}})),
+ "失败":()=>chat(me("撤销"),wx("没有撤销",`<div>王磊于 08:20 已把这条信号调整为“跟进候选”，你的“移出待处理”不再撤销；你的反馈已恢复为操作前的“相关 · 已掌握”。</div>`)),
+ "部分成功":()=>chat(me("不相关 · 品类不符"),wx("A02 进入供货 · 宁波某排水管网工程",`<div class="msg ok">已记录你的反馈：不相关（品类不符）。</div><div class="note">状态无变化：王磊于 08:12 已移出待处理。</div>`,B("撤销（10 分钟内）","查看"))),
+ "数据未知":()=>chat(me("不相关 · 品类不符"),wx("A02 进入供货 · 嘉兴某管网工程",`<div class="msg ok">已记录你的反馈：不相关（品类不符）。</div><div class="note">该信号已关闭：中标结果公告被发布方撤回（10-19 12:00 发现），无需移出待处理。</div>`,B("查看"))),
+ }},
+{id:"h5",name:"H5 · 完整简报",
+ na:{},
+ rules:["条目内容是组装时（07:30）的快照；处理状态叠加为当前，并标“状态为当前”","超出每区条数的显示“另有 N 条”，24 小时内截止与更正不被截断","同一采购项目在多个目标区只完整展示一次","每条的动作与卡片相同"],
+ s:{
+ "正常":()=>h5("今日简报 10-20",`<p class="note">周期 10-19 07:30 – 10-20 07:30（UTC+08:00）· 内容截至 07:30 · 状态为当前</p><div class="card"><b>A02 进入供货 · 7 条</b><div>1. 杭州某污水管网改造 EPC · 1,800 万 <span class="pill">待处理</span></div><div>2. 湖州某管网工程 · 更正 <span class="pill warn">更正类，不截断</span></div><div class="note">另有 2 条，<u>在收件箱查看</u></div></div><div class="card"><b>A01 直接投标 · 2 条</b><div>湖州某市政道路管网（10-21 17:00 截止）</div><div class="note">杭州某污水管网改造 EPC：也命中 A02，见上方 · <u>打开本目标的信号</u></div></div>`),
+ "空态":()=>h5("今日简报 10-20",`<div class="empty"><div><b>今日没有新信号</b></div><div>A02：本期无新信号（采购公告截至 07:20）· A01：本期无新信号 · 待我处理：无</div></div>`),
+ "加载":()=>h5("今日简报",L(5)),
+ "无权限":()=>h5("无法打开",`<div class="empty"><div><b>无法打开此内容</b></div><div>内容不存在，或你没有查看权限。</div></div>`),
+ "过期":()=>h5("今日简报 10-20",`<p class="note">内容截至 07:30 · 状态为当前（09:05）</p><div class="card"><div>1. 杭州某污水管网改造 EPC <span class="pill off">王磊已于 08:12 忽略</span></div><div>2. 宁波某排水管网工程 <span class="pill ok">已转跟进 · 负责人 张伟</span></div></div>`),
+ "失败":()=>h5("今日简报",`<div class="msg bad">简报没有加载成功，可以重试。</div>`),
+ "部分成功":()=>h5("今日简报 10-21",`<div class="card"><b>A01 直接投标 · 3 条</b><div class="note">含上一期未能生成的部分：覆盖 10-19 07:30 – 10-21 07:30</div></div><div class="card"><b>A02 进入供货</b><div class="msg warn">本区暂不可用，本期的信号会进入下一期。</div></div>`),
+ "来源中断":()=>h5("今日简报 10-20",`<div class="msg warn">采购公告来源中断（10-19 18:40 起）。A02 区只含 18:40 前发布的公告；恢复后补齐的信号进入下一期简报。</div>`),
+ "数据未知":()=>h5("今日简报 10-20",`<div class="card"><div>宁波某排水管网工程 · 中标金额 未公布 · 未知项 2（品类未能识别、中标方识别低于证据门槛）</div></div>`),
+ }},
+{id:"jump",name:"卡片跳转 Web",
+ na:{"空态":"链接总指向一个对象","部分成功":"打开链接是单个对象的原子操作","数据未知":"跳转只建立会话，字段未知在目标页面中展示"},
+ rules:["链接只指向对象，不携带登录身份，7 天有效","企业微信内置浏览器中免登（绝对 12 小时），过期后重新免登","免登会话不带强认证","打开后默认“当前”视角；卡片上的发现时间是 created_at，“信号判断时”以 evaluated_at 为锚点"],
+ s:{
+ "正常":()=>h5("信号详情",`<div class="msg ok">已通过企业微信免登进入（张伟）</div><p>A02 进入供货 · 跟进候选 · 求值时间 10-19 22:10 · 发现 10-19 22:11</p><div class="msg warn">卡片发出后公告已更正（v3）：中标金额 1,800 万 → 1,760 万。当前显示更正后的值，<u>切换到“信号判断时”</u>。</div>`),
+ "加载":()=>h5("正在进入",L(3)),
+ "无权限":()=>h5("无法打开",`<div class="empty"><div><b>无法打开此内容</b></div><div>内容不存在，或你没有查看权限。</div></div>`),
+ "过期":()=>h5("链接已过期",`<div class="empty"><div>这个链接发于 10-12，已超过 7 天。</div><span class="btn">登录后打开</span></div>`),
+ "失败":()=>h5("账号不一致",`<div class="msg warn">链接是发给 张伟 的，当前登录的是 李娜。</div><span class="btn ghost">退出并以 张伟 登录</span>`),
+ "来源中断":()=>h5("登录",`<div class="msg warn">企业微信网页授权暂不可用，无法免登。请用妙洽账号登录，登录后回到原页面。</div>${L(2)}`),
+ }},
+{id:"approve",name:"审批与强认证",
+ na:{"空态":"从“待我处理”进入时总有一条审批","部分成功":"审批是单个原子操作","来源中断":"审批只读写本租户数据","数据未知":"审批页展示申请与仿真报告，字段未知在第7段说明"},
+ rules:["卡片上没有审批按钮，审批在 Web 中执行","免登会话不带强认证；进入审批先验证 TOTP，15 分钟内有效且不随刷新延长","未登记 TOTP 的先登记"],
+ s:{
+ "正常":()=>h5("强认证",`<p>批准策略激活需要验证身份（免登会话不带强认证）。</p><div class="box">输入身份验证器中的 6 位数字</div><span class="btn">验证并继续</span>`),
+ "加载":()=>h5("审批",L(4)),
+ "无权限":()=>h5("无法批准",`<div class="msg warn">你不是这条申请的批准人，或申请人是你本人。可以查看申请内容。</div>`),
+ "过期":()=>h5("需要重新验证",`<div class="msg warn">上次验证在 15 分钟以前，请重新验证后再批准。</div>`),
+ "失败":()=>h5("强认证",`<div class="msg bad">验证码不正确，还可以再试 4 次。</div>`),
+ }},
+{id:"hist",name:"Web · 简报历史与投递",
+ na:{"无权限":"只显示本人的简报，权限总是本人","过期":"历史按期保存，不随时间失效"},
+ rules:["只列本人的简报；管理员只看投递统计，不看他人条目","推送状态：已送达 / 渠道已接受 / 推送失败，已在站内 / 未推送（空简报、无绑定）","重新推送只限当日一期，不重新组装"],
+ s:{
+ "正常":()=>desk("今日简报 / 历史",`<div class="tbl"><table><tr><th>周期（UTC+08:00）</th><th>组装</th><th>A02</th><th>A01</th><th>推送</th></tr><tr><td>10-19 07:30 – 10-20 07:30</td><td>07:30</td><td>7</td><td>2</td><td><span class="pill ok">已送达 07:31</span></td></tr><tr><td>10-16 07:30 – 10-19 07:30</td><td>07:30</td><td>12</td><td>3</td><td><span class="pill ok">已送达</span></td></tr><tr><td>10-15 07:30 – 10-16 07:30</td><td>07:30</td><td>0</td><td>0</td><td><span class="pill off">未推送：空简报</span></td></tr></table></div>`),
+ "空态":()=>desk("今日简报 / 历史",`<div class="empty"><div>还没有简报。目标激活后的下一个发送时间（工作日 07:30）会生成第一期。</div></div>`),
+ "加载":()=>desk("今日简报 / 历史",L(4)),
+ "失败":()=>desk("今日简报 / 历史",`<div class="msg bad">历史没有加载成功，可以重试。</div>`),
+ "部分成功":()=>desk("今日简报 / 历史",`<div class="tbl"><table><tr><th>周期</th><th>推送</th><th></th></tr><tr><td>10-19 07:30 – 10-20 07:30</td><td><span class="pill bad">推送失败，已在站内</span> 18:00 停止重试</td><td><u>重新推送</u></td></tr><tr><td>10-16 07:30 – 10-19 07:30</td><td><span class="pill ok">已送达</span></td><td></td></tr></table></div>`),
+ "来源中断":()=>desk("今日简报 / 历史",`<div class="msg warn">企业微信渠道异常（凭证失效，10-20 06:50 起），今日简报已改投站内。管理员已收到提示。</div>`),
+ "数据未知":()=>desk("今日简报 / 历史",`<p>10-19 07:30 – 10-20 07:30 · 推送：渠道已接受（企业微信不提供已读回执，阅读以打开或动作近似）</p>`),
+ }},
+{id:"pref",name:"简报偏好",
+ na:{"空态":"偏好总有默认值","无权限":"只设置本人的偏好","部分成功":"一次保存是原子的","来源中断":"偏好不依赖外部来源","数据未知":"偏好没有未知字段"},
+ rules:["修改从下一期生效，新旧周期首尾相接","默认：工作日 07:30、租户时区、安静时段 21:00–07:00、空简报不推送、A02 每区 10 条"],
+ s:{
+ "正常":()=>h5("简报与通知",`<div class="field">发送时间<div class="box">07:30</div></div><div class="field">时区<div class="box">Asia/Shanghai（租户默认）</div></div><div class="field">发送日<div class="box">周一至周五</div></div><div class="field">安静时段<div class="box">21:00 – 07:00</div></div><div class="field">空简报推送到企业微信<div class="box">否</div></div><div class="field">A02 每区条数<div class="box">10（5–20）</div></div><p class="note">修改从下一期生效。例如今天把发送时间改为 08:00：下一期周期为 10-20 07:30 – 10-21 08:00，之后为 08:00 – 08:00。</p><span class="btn">保存</span>`),
+ "加载":()=>h5("简报与通知",L(5)),
+ "过期":()=>h5("简报与通知",`<div class="msg warn">偏好已在其他设备修改（10-20 08:40），请刷新后再保存。</div>`),
+ "失败":()=>h5("简报与通知",`<div class="msg bad">没有保存成功，可以重试。</div>`),
+ }},
+];
+
+let page=PAGES[0], state="正常";
+const $=id=>document.getElementById(id);
+function render(){
+  $("pages").innerHTML=PAGES.map(p=>`<button data-p="${p.id}" aria-current="${p===page}">${p.name}</button>`).join("");
+  $("states").innerHTML=ALL.map(s=>{const na=page.na[s];return `<button data-s="${s}" aria-pressed="${s===state}" ${na?`disabled title="${na}"`:""}>${s}</button>`}).join("");
+  const nas=Object.entries(page.na).map(([k,v])=>`${k}：${v}`).join("；");
+  $("note").textContent=nas?`不适用的状态：${nas}`:"";
+  $("stage").innerHTML=(page.s[state]||page.s["正常"])();
+  $("rules").innerHTML=`<div class="label">本页规则</div><ul>${page.rules.map(r=>`<li>${r}</li>`).join("")}</ul>`;
+}
+$("pages").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;page=PAGES.find(p=>p.id===b.dataset.p);state="正常";render()});
+$("states").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;state=b.dataset.s;render()});
+render();
+</script>
