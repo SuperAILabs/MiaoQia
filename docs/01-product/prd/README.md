@@ -1,6 +1,6 @@
 # 首条客户旅程功能 PRD
 
-> 状态：评审中 · 版本：1.4 · 更新：2026-10-17 · 负责人：产品负责人、设计负责人、首席架构师
+> 状态：评审中 · 版本：1.5 · 更新：2026-10-18 · 负责人：产品负责人、设计负责人、首席架构师
 
 M2 的验收单位是首条客户旅程（建材供应商 A02 进入供货）**逐环节可运行、可解释、可验证**，不是文档数量。本目录按旅程顺序逐段交付功能 PRD、低保真原型和接口说明，每段评审通过后交给实现。PRD 的必备结构与原型状态要求见[产品需求落地规格第3节](../05-product-requirements.md#3-每个功能prd的必备产出)，阶段门禁见[阶段基线 M2-P1](../../05-delivery/06-stage-baseline.md#4-m2-前置条件与能力交接)。
 
@@ -10,7 +10,7 @@ M2 的验收单位是首条客户旅程（建材供应商 A02 进入供货）**�
 |---|---|---|---|---|---|
 | 1 | 登录与渠道绑定 | 管理员开通与邀请成员，成员在 Web 与企业微信等渠道中是同一身份 | identity、channels、gateway | [01-login-and-channel-binding](01-login-and-channel-binding.md) | 设计交接通过 |
 | 2 | 客户档案、角色与目标 | 录入建材供应商的品类、区域、资质，按模板创建 A02 目标 | customer-context | [02-profile-and-objectives](02-profile-and-objectives.md) | 设计交接通过 |
-| 3 | 信号收件箱与批量反馈 | 按目标查看 A02 信号、命中理由，单条与批量反馈 | detection、learning | 待编写 | — |
+| 3 | 信号收件箱与批量反馈 | 按目标查看 A02 信号、命中理由，单条与批量反馈 | detection、learning | [03-signal-inbox-feedback](03-signal-inbox-feedback.md) | 评审中 |
 | 4 | 对象页与证据 | 从信号进入项目、总包、采购人对象页，字段回到原文 | domain-intelligence、entity-graph、evidence | 待编写 | — |
 | 5 | 简报与快捷动作 | 企业微信早间简报，卡片上反馈、跟进、跳转 Web | channels | 待编写 | — |
 | 6 | 跟进 | 从信号创建跟进、指派、截止提醒、关闭记录结果 | pursuit | 待编写 | — |

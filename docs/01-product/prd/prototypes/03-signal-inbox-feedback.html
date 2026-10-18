@@ -1,0 +1,211 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>妙洽信号收件箱原型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：左侧页面目录 + 顶部状态切换 + 中间线框画面（桌面/手机两种框） */
+:root{
+  --bg:#f4f5f3; --panel:#ffffff; --ink:#1d2320; --muted:#5d6862; --line:#cfd5d1;
+  --accent:#1f6f5c; --accent-soft:#e1efe9; --warn:#a2610b; --warn-soft:#fbf0dc;
+  --bad:#b03a2e; --bad-soft:#f8e3e0; --off:#9aa39e;
+  --f-ui:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+header.top{max-width:1180px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+header.top h1{font-size:1.25rem;margin:0;text-wrap:balance}
+header.top p{margin:0;color:var(--muted);font-size:.85rem}
+nav.pages{display:flex;flex-direction:column;gap:4px}
+@media (max-width:760px){nav.pages{flex-direction:row;overflow-x:auto;padding-bottom:4px}}
+nav.pages button{all:unset;cursor:pointer;padding:8px 10px;border-radius:6px;font-size:.9rem;white-space:nowrap}
+nav.pages button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.pages button:focus-visible,.states button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.states button{font:inherit;font-size:.82rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.states button:disabled{color:var(--off);cursor:not-allowed;border-style:dashed}
+.note{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.stage{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.desk{flex:1 1 420px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.desk .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.phone{flex:0 0 300px;max-width:100%;background:var(--panel);border:2px solid var(--line);border-radius:22px;overflow:hidden}
+.phone .bar{padding:8px 14px;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.scr{padding:18px;display:flex;flex-direction:column;gap:12px}
+.scr h2{font-size:1.05rem;margin:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
+.box{border:1px solid var(--line);border-radius:6px;padding:8px 10px;color:var(--muted);background:var(--bg)}
+.btn{display:inline-block;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer;text-align:center}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.msg{border-radius:6px;padding:10px 12px;font-size:.88rem}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--accent)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.off{color:var(--off)}
+.skel{height:12px;border-radius:4px;background:var(--line);opacity:.6}
+.qr{width:120px;height:120px;border:1px dashed var(--muted);display:grid;place-items:center;font-size:.75rem;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:22px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.rules{margin-top:18px;font-size:.84rem;color:var(--muted)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+@media (prefers-reduced-motion:no-preference){.skel{animation:p 1.2s ease-in-out infinite}@keyframes p{50%{opacity:.25}}}
+</style>
+
+
+<header class="top">
+  <h1>第3段原型：信号收件箱与批量反馈</h1>
+  <p>低保真线框 · 对应 docs/01-product/prd/03-signal-inbox-feedback.md · 示例数据</p>
+</header>
+<div class="wrap">
+  <nav class="pages" id="pages" aria-label="页面"></nav>
+  <main style="min-width:0">
+    <div class="label">状态</div>
+    <div class="states" id="states" role="group" aria-label="状态"></div>
+    <p class="note" id="note"></p>
+    <div class="stage" id="stage"></div>
+    <div class="rules" id="rules"></div>
+  </main>
+</div>
+
+<script>
+const ALL=["正常","空态","加载","无权限","过期","失败","部分成功","来源中断","数据未知"];
+const L=n=>Array.from({length:n},()=>'<div class="skel"></div>').join('');
+const desk=(url,body)=>`<div class="desk"><div class="bar">${url}</div><div class="scr">${body}</div></div>`;
+const phone=(t,body)=>`<div class="phone"><div class="bar">${t}</div><div class="scr">${body}</div></div>`;
+const asof=`<p class="note">采购公告截至 10-17 08:40 · 企业数据截至 10-16 · 策略 v3（启用领域：采购、企业）</p>`;
+const tabs=(a)=>`<div class="row">${["待处理 18","已处理 41","已排除 6","已关闭 2"].map((t,i)=>`<span class="pill ${i===a?'ok':'off'}">${t}</span>`).join("")}<span class="note">筛选：处置 · 地区 · 品类 · 金额 · 我的反馈 · 标记</span></div>`;
+const head=`<tr><th>☐</th><th>项目 / 类型</th><th>中标方</th><th>金额</th><th>处置</th><th>分</th><th>命中理由</th><th>标记</th></tr>`;
+const r1=`<tr><td>☐</td><td>杭州某污水管网改造 EPC<br><span class="note">中标结果 · 杭州西湖区 · PE 管</span></td><td>浙江某建工</td><td>中标金额 1,800 万</td><td><span class="pill ok">跟进候选</span></td><td>75</td><td>已有客户 +15；金额≥500 万 +10</td><td>回填</td></tr>`;
+const r2=`<tr><td>☐</td><td>宁波某供水管道工程<br><span class="note">中标结果 · 宁波鄞州 · 品类未知</span></td><td>宁波某市政</td><td>未公布</td><td><span class="pill warn">复核候选</span></td><td>50</td><td>品类未能可靠识别（1 项未知）</td><td>已更新</td></tr>`;
+const r3=`<tr><td>☐</td><td>绍兴某片区雨污分流<br><span class="note">候选人公示 · 绍兴越城 · PVC 管</span></td><td>绍兴某路桥</td><td>—</td><td><span class="pill off">观察</span></td><td>50</td><td>候选人公示，结果未定</td><td>你：相关</td></tr>`;
+const r4=`<tr><td>☐</td><td>湖州某排水管网<br><span class="note">合同公告 · 湖州吴兴 · PE 管 · 同标包共 3 家中标</span></td><td>湖州某水务工程</td><td>合同金额 620 万</td><td><span class="pill warn">复核候选</span> <span class="note">人工，原：跟进</span></td><td>65</td><td>金额≥500 万 +10</td><td>王磊：相关</td></tr>`;
+const list=(rows)=>`<div class="tbl"><table>${head}${rows}</table></div>`;
+const explainRules=`<div class="tbl"><table><tr><th>子句</th><th>规则</th><th>结果</th><th>分值</th></tr>
+<tr><td>硬条件</td><td>项目标的包含我方产品品类</td><td><span class="pill ok">满足</span></td><td></td></tr>
+<tr><td>硬条件</td><td>项目位于服务区域</td><td><span class="pill ok">满足</span></td><td></td></tr>
+<tr><td>硬条件</td><td>已识别中标方或施工单位</td><td><span class="pill ok">满足</span></td><td></td></tr>
+<tr><td>排除</td><td>我方任一主体即中标方</td><td><span class="pill ok">不满足</span></td><td></td></tr>
+<tr><td>加分</td><td>中标方是我方已有客户</td><td><span class="pill ok">满足</span></td><td>+15</td></tr>
+<tr><td>加分</td><td>金额不低于 500 万元</td><td><span class="pill ok">满足</span></td><td>+10</td></tr>
+<tr><td>加分</td><td>施工许可已发放</td><td><span class="pill off">未生效 · 数据未接入</span></td><td>—</td></tr>
+<tr><td>减分</td><td>中标方近一年有较重信用风险</td><td><span class="pill off">未生效 · 数据未接入</span></td><td>—</td></tr></table></div>`;
+const versions=`<p class="note">策略 v3（模板 A02 0.3.0，启用领域：采购、企业）· 档案上下文版本 41 · 事实版本 2 · 求值时间 10-16 22:10 · 发现 10-16 22:11 · 回填</p>`;
+const fbForm=(extra)=>`<div class="row"><button class="btn ghost">相关</button><button class="btn">不相关</button></div>
+<div class="field">原因（至少一项）<div class="box">☑ 品类不符 ☐ 不在服务区域 ☐ 规模太小 ☐ 中标方不做此类采购或无法接触 ☐ 中标方是我方或关联方 ☐ 时机已过 ☐ 公告信息有误 ☐ 与其他信号重复 ☐ 其他（须说明）</div></div>
+<div class="field">说明（可选）<div class="box">PE 管只占很小一部分，主要是球墨铸铁管</div></div>
+<div>☑ 同时移出待处理（忽略）</div>${extra||""}<button class="btn">提交反馈</button>`;
+const PAGES=[
+{id:"inbox",name:"收件箱列表",
+ na:{},
+ rules:["一次只看一个目标，不同目标不混排","有新信号或更新时不自动重排，提示刷新","金额注明含义，未公布不以预算代替","只读成员没有勾选框与反馈入口"],
+ s:{
+ "正常":()=>desk("信号 / A02 进入供货（杭州事业部）",`<div class="row" style="justify-content:space-between"><h2>A02 进入供货</h2><span class="note">目标：A02 进入供货 18 · B03 竞争情报 3</span></div>${asof}${tabs(0)}${list(r1+r2+r3+r4)}<div class="row"><button class="btn ghost">报告漏报</button><span class="note">每页 50 条 · 按排序分</span></div>`)+phone("信号 · A02 进入供货 ▾",`${tabs(0)}<div class="card"><b>杭州某污水管网改造 EPC</b><div>中标结果 · 浙江某建工 · 1,800 万</div><div><span class="pill ok">跟进候选</span> 75 · 已有客户 +15</div><div class="row"><button class="btn ghost">相关</button><button class="btn ghost">不相关</button></div></div><div class="card"><b>宁波某供水管道工程</b><div><span class="pill warn">复核候选</span> 品类未能可靠识别</div></div>`),
+ "空态":()=>desk("信号 / A02 进入供货",`<div class="empty"><div><b>目标尚未激活</b>，激活后才会产生信号。</div><button class="btn">去提交首次激活</button></div>`)+desk("信号 / A02 进入供货 · 待处理",`${asof}<div class="empty"><div>待处理已清空。最近 7 天的 23 条信号都已处理。</div><span class="note">筛选“宁波 · 金额 ≥ 1000 万”没有结果时：当前筛选没有结果 · <u>清除筛选</u></span></div>`),
+ "加载":()=>desk("信号 / A02 进入供货",`${tabs(0)}${L(6)}`),
+ "无权限":()=>desk("信号",`<div class="empty"><div>你还不是任何目标的参与人，暂时没有可看的信号。目标负责人可以把你加为参与人。</div></div>`)+desk("信号 / A02 进入供货（刘洋 · 业务专家，只读）",`<p class="note">只读：你可以查看信号与命中理由；反馈需要决策者、研究分析者，或作为参与人的业务开拓者、项目推进者。</p>${list(r1.replace("<td>☐</td>","<td></td>"))}`),
+ "过期":()=>desk("信号 / A02 进入供货",`<div class="msg ok">有 3 条新信号、2 条已更新。<u>点此刷新</u>（你已勾选的 5 条保持不变）</div>${tabs(0)}${list(r1+r2)}`),
+ "失败":()=>desk("信号 / A02 进入供货",`<div class="msg bad">信号列表没有加载成功（服务暂时不可用）。你的筛选已保留，可以重试。</div><button class="btn">重试</button>`),
+ "部分成功":()=>desk("信号 / A02 进入供货",`${tabs(0)}${list(r1)}<div class="msg warn">2 条信号的来源只允许引用与链接：只显示标题与原文链接，不显示金额与标的。</div>`),
+ "来源中断":()=>desk("信号 / A02 进入供货",`<div class="msg warn">浙江省政府采购网自 10-16 21:00 起暂不可用：采购公告截至 10-16 20:55。恢复后自动补齐，补齐的信号作为新信号到达。</div>${tabs(0)}${list(r1+r3)}`),
+ "数据未知":()=>desk("信号 / A02 进入供货 · 筛选：有未知项",`${tabs(0)}${list(r2)}<p class="note">复核候选：硬条件未能确定，按规则进入人工复核，不当作满足或不满足。</p>`)}},
+{id:"detail",name:"信号详情与命中理由",
+ na:{"空态":"详情总对应一条已存在的信号"},
+ rules:["解释基于信号记录：策略版本、档案版本与事实版本固定","未知写明原因码与文案","旧策略版本产生的信号不重算","展示级别按来源权利逐维取最严格"],
+ s:{
+ "正常":()=>desk("信号详情 · 杭州某污水管网改造 EPC",`<div class="msg ok">跟进候选：硬条件全部满足，得分 75（基础 50 + 已有客户 15 + 大额 10），达到跟进阈值 60。</div>
+ <p>中标方 浙江某建工<sup>[1]</sup> · 中标金额 1,800 万<sup>[2]</sup> · 标的 PE 管等<sup>[3]</sup> · 杭州西湖区</p>${explainRules}${versions}
+ <div class="card"><b>反馈与处理</b><div>王磊 10-17 08:52：相关 · 新线索</div><div>你：未反馈</div><div class="note">候选负责人（建议）：陈晨 · 按区域规则</div></div>
+ <div class="row"><button class="btn ghost">相关</button><button class="btn ghost">不相关</button><button class="btn ghost">忽略</button><button class="btn ghost">调整处置…</button></div>`)+phone("信号详情",`<div class="msg ok">跟进候选 · 75 分</div><div>已有客户 +15 · 大额 +10</div><div class="note">施工许可、信用：数据未接入，不生效</div><div class="row"><button class="btn ghost">相关</button><button class="btn ghost">不相关</button></div>`),
+ "加载":()=>desk("信号详情",`${L(7)}`),
+ "无权限":()=>desk("信号详情",`<div class="empty"><div>信号不存在或你无权查看。</div><span class="note">如果需要处理这个目标的信号，请联系目标负责人或管理员。</span></div>`),
+ "过期":()=>desk("信号详情 · 宁波某供水管道工程",`<div class="msg warn">你查看期间这条信号已更新（10-17 09:30，中标方实体合并）：中标方 宁波某市政 → 宁波某市政集团；处置不变。你的反馈需要基于新版本重新确认。<u>查看变化</u></div><div class="note">你 10-17 08:40 的反馈“相关”基于更新前的版本</div>`)+desk("信号详情 · 嘉兴某管网工程",`<div class="msg warn">该中标结果公告已被发布方撤回（10-17 07:50 发现，原因：发布方作废），信号已关闭。可以继续反馈，不能忽略或调整处置。</div>`),
+ "失败":()=>desk("信号详情 · 杭州某污水管网改造 EPC",`<p>中标结果 · 浙江某建工 · 1,800 万 · <span class="pill ok">跟进候选</span> 75</p><div class="msg bad">命中理由暂不可用，可重试。系统不会显示猜测的理由。</div><button class="btn">重试</button><div class="row"><button class="btn ghost">相关</button><button class="btn ghost">不相关</button></div>`),
+ "部分成功":()=>desk("信号详情 · 依据",`<p>中标方 浙江某建工<sup>[1]</sup> · 中标金额 1,800 万<sup>[2]</sup></p><div class="msg warn">标的明细的来源只允许引用与链接：只显示原文链接，不展示正文。</div>`),
+ "来源中断":()=>desk("信号详情 · 依据",`<div class="msg warn">原文来源暂不可达，显示的是 10-15 14:02 保存的快照。判断不受影响。</div>`),
+ "数据未知":()=>desk("信号详情 · 宁波某供水管道工程",`<div class="msg warn">复核候选：“项目标的包含我方产品品类”未能确定，需人工复核。</div><div class="tbl"><table><tr><th>规则</th><th>结果</th><th>原因</th></tr>
+ <tr><td>项目标的包含我方产品品类</td><td><span class="pill warn">未知</span></td><td>CATEGORY_UNCERTAIN 品类未能可靠识别（置信度 0.62，低于 0.7）</td></tr>
+ <tr><td>已识别中标方或施工单位</td><td><span class="pill ok">满足</span></td><td></td></tr>
+ <tr><td>我方任一主体即中标方</td><td><span class="pill warn">未知，未生效</span></td><td>SELF_NOT_LINKED 未关联本企业</td></tr>
+ <tr><td>金额不低于 500 万元</td><td><span class="pill warn">未知</span></td><td>FIELD_MISSING 公告未公布中标金额</td></tr>
+ <tr><td>中标方近三年项目中出现过我方品类</td><td><span class="pill warn">未知</span></td><td>HISTORY_INSUFFICIENT 历史数据只覆盖 14 个月</td></tr>
+ <tr><td>中标方近一年有较重信用风险</td><td><span class="pill off">未生效</span></td><td>DOMAIN_NOT_ENABLED 数据未接入</td></tr></table></div><p class="note">按策略 v2 判断（当前生效 v3），不随新版本重算。</p>`)}},
+{id:"single",name:"单条反馈",
+ na:{"空态":"反馈总针对一条信号","部分成功":"单条反馈是一次原子提交","来源中断":"只写本租户数据"},
+ rules:["不相关至少选一个原因，“其他”须说明","默认同时忽略，可取消","每人一个当前反馈，修改与撤回都追加记录","提交携带所见内容版本与幂等键"],
+ s:{
+ "正常":()=>desk("反馈 · 杭州某污水管网改造 EPC",fbForm()),
+ "加载":()=>desk("反馈",`<h2>正在提交</h2>${L(2)}`),
+ "无权限":()=>desk("信号详情（只读）",`<p class="note">你可以查看信号，但反馈需要决策者、研究分析者，或作为参与人的业务开拓者、项目推进者。</p>`),
+ "过期":()=>desk("反馈 · 宁波某供水管道工程",`<div class="msg warn">提交时信号已更新（中标金额由“未公布”变为 860 万，处置 复核 → 跟进）。你的反馈没有保存，请看过变化后重新确认。</div><button class="btn">查看变化并重新反馈</button>`),
+ "失败":()=>desk("反馈",`<div class="msg bad">反馈没有提交成功（网络中断）。已选的原因已保留，可以重试；重复提交不会产生两条记录。</div><button class="btn">重试</button>`),
+ "数据未知":()=>desk("反馈 · 排除信号 · 余杭某管廊工程",`<div class="msg warn">排除：中标方是我方主体（SELF_IS_WINNER）。排除信号只能反馈排除是否正确，不能忽略或改为候选；确需跟进时从对象页创建跟进。</div><div class="row"><button class="btn ghost">排除正确</button><button class="btn">排除有误</button></div><div class="field">原因<div class="box">☑ 中标方并非我方主体 ☐ 名单已过时 ☐ 其他</div></div>`)+desk("反馈 · 复核候选（2 项未知）",`<p class="note">这条信号有 2 项未知。你的反馈会作为这类情况的标注，不会修改公告数据或规则。</p>`)}},
+{id:"batch",name:"批量反馈",
+ na:{"来源中断":"批量只写本租户数据","数据未知":"批量按信号标识执行，未知项在列表与详情展示"},
+ rules:["选中后固定为信号清单，筛选变化不扩大范围","单次最多 200 条","逐项授权、逐项结果","只重试失败项，已成功项不重复执行"],
+ s:{
+ "正常":()=>desk("批量操作 · 已选 23 条",`<div class="field">动作<div class="box">标为不相关 · 原因：品类不符 · ☑ 同时移出待处理</div></div><div class="msg ok">将把 23 条标为不相关（品类不符），并移出待处理。其中 3 条你已反馈过，将被修改；2 条已被他人忽略，只记录你的反馈；1 条为排除信号，不适用，不处理。</div><div class="row"><button class="btn">确认执行</button><button class="btn ghost">返回修改选择</button></div>`),
+ "空态":()=>desk("信号 / A02 进入供货",`<div class="row"><button class="btn" disabled>批量操作（先选择信号）</button></div><p class="note">勾选行，或“选择全部符合筛选的信号”（最多 200 条）。</p>`),
+ "加载":()=>desk("批量操作 · 执行中",`<p>已完成 12 / 23</p>${L(2)}<button class="btn ghost">取消（未执行的项标为未处理）</button>`),
+ "无权限":()=>desk("信号 / A02 进入供货（只读）",`<p class="note">你没有反馈权限，列表不显示勾选框与批量操作。</p>`),
+ "过期":()=>desk("信号 / A02 进入供货",`<div class="msg warn">筛选已变化：已选 23 条保持不变，其中 4 条不在当前视图中。新到达的信号不会被加入。</div><div class="msg warn">“选择全部符合筛选”：共 312 条，超过 200 条上限。请收窄筛选后再选。</div>`),
+ "失败":()=>desk("批量操作",`<div class="msg bad">批量作业没有提交成功，所有信号都没有变化。可以重试，重试不会重复执行。</div><button class="btn">重试</button>`),
+ "部分成功":()=>desk("批量操作结果 · 23 条",`<div class="row"><span class="pill ok">成功 18</span><span class="pill off">无变化 2</span><span class="pill bad">失败 2</span><span class="pill warn">不适用 1</span></div><div class="tbl"><table><tr><th>信号</th><th>结果</th><th>原因</th></tr><tr><td>宁波某供水管道工程</td><td>失败</td><td>SIGNAL_UPDATED 信号已更新，请查看后重新操作</td></tr><tr><td>温州某管网工程</td><td>失败</td><td>INTERNAL 系统错误，可重试</td></tr><tr><td>余杭某管廊工程</td><td>不适用</td><td>排除信号只能反馈排除是否正确</td></tr></table></div><div class="row"><button class="btn">只重试失败项（1 条）</button><button class="btn ghost">撤销本次操作</button></div>`)}},
+{id:"summary",name:"反馈汇总",
+ na:{"部分成功":"一次汇总查询","来源中断":"只读本租户反馈集"},
+ rules:["反馈不会自动修改策略","未反馈不计为相关","样本少于 20 条不显示比例"],
+ s:{
+ "正常":()=>desk("A02 进入供货 / 反馈（近 30 天）",`<p class="note">统计截至 10-17 09:40</p><div class="tbl"><table><tr><th>信号</th><th>已反馈</th><th>反馈率</th><th>相关</th><th>不相关</th><th>排除正确 / 有误</th><th>分歧</th></tr><tr><td>86</td><td>61</td><td>71%</td><td>34</td><td>27</td><td>5 / 1</td><td>2</td></tr></table></div>
+ <div class="card"><b>不相关原因</b><div>品类不符 12 <span class="note">↔ R-CAT 与品类参数</span></div><div>规模太小 8 <span class="note">↔ R-AMOUNT 最低金额</span></div><div>中标方不做此类采购 5</div><div>公告信息有误 2 <span class="note">不修改公告数据，可经支持报告</span></div></div>
+ <div class="msg ok">反馈只用于评估与改进建议，不会自动修改策略。需要调整时在策略页修改，经仿真与审批后生效。</div><button class="btn ghost">修改策略</button>`),
+ "空态":()=>desk("A02 进入供货 / 反馈",`<div class="empty"><div>近 30 天还没有反馈。在收件箱中标“相关 / 不相关”后，这里会汇总。</div></div>`),
+ "加载":()=>desk("A02 进入供货 / 反馈",`${L(4)}`),
+ "无权限":()=>desk("A02 进入供货 / 反馈",`<div class="empty"><div>你没有查看本目标信号的权限，看不到反馈汇总。</div></div>`),
+ "过期":()=>desk("A02 进入供货 / 反馈",`<div class="msg warn">统计截至 09:40，你 09:44 的 10 条反馈尚未计入，几分钟后更新。</div>`),
+ "失败":()=>desk("A02 进入供货 / 反馈",`<div class="msg bad">反馈汇总暂不可用。反馈照常记录，恢复后补齐。</div>`),
+ "数据未知":()=>desk("A02 进入供货 / 反馈（近 30 天）",`<p>已反馈 12 条：相关 7、不相关 5（品类不符 3）</p><p class="note">样本少于 20 条，暂不显示比例。</p>`)}},
+{id:"miss",name:"报告漏报",
+ na:{"部分成功":"一次提交","数据未知":"漏报记录的是用户输入，不涉及规则数据"},
+ rules:["三要素：公共对象、目标、当时时点","已有信号的对象不是漏报","M2 只记录，诊断启用后按时点补做","不改变策略与信号"],
+ s:{
+ "正常":()=>desk("报告漏报",`<div class="field">公共对象<div class="box">杭州某综合管廊二期 · 中标结果公告 2026-10-09</div></div><div class="field">目标<div class="box">A02 进入供货</div></div><div class="field">当时时点<div class="box">2026-10-09（对象发布时间）</div></div><div class="field">说明<div class="box">总包是我们的老客户，含 PE 管，但收件箱里没有</div></div><button class="btn">提交</button><p class="note">提交后状态为“已记录，待诊断”。诊断功能开放后会按当时的时点补做，并告诉你原因。</p>`)+desk("我的漏报",`<div class="tbl"><table><tr><th>对象</th><th>目标</th><th>时点</th><th>状态</th></tr><tr><td>杭州某综合管廊二期</td><td>A02</td><td>10-09</td><td><span class="pill off">已记录，待诊断</span></td></tr></table></div>`),
+ "空态":()=>desk("报告漏报",`<div class="msg warn">平台中没有找到匹配的项目或公告。可以填写外部链接与说明提交。</div><div class="field">外部链接<div class="box">https://…</div></div>`),
+ "加载":()=>desk("报告漏报",`<h2>正在提交</h2>${L(2)}`),
+ "无权限":()=>desk("报告漏报",`<p class="note">报告漏报需要对该目标的反馈权限。</p>`),
+ "过期":()=>desk("报告漏报",`<div class="msg warn">这不是漏报：本目标已有这条信号（已排除 · 中标方在禁合作名单）。<u>打开信号并反馈</u></div>`),
+ "失败":()=>desk("报告漏报",`<div class="msg bad">没有提交成功，填写内容已保留，可以重试；重复提交不会产生两条记录。</div><button class="btn">重试</button>`),
+ "来源中断":()=>desk("报告漏报",`<div class="msg warn">检索暂不可用。可以只填写外部链接与说明提交。</div>`)}}
+];
+
+let page=PAGES[0], state="正常";
+const $=id=>document.getElementById(id);
+function render(){
+  $("pages").innerHTML=PAGES.map(p=>`<button data-p="${p.id}" aria-current="${p===page}">${p.name}</button>`).join("");
+  $("states").innerHTML=ALL.map(s=>{const na=page.na[s];return `<button data-s="${s}" aria-pressed="${s===state}" ${na?`disabled title="${na}"`:""}>${s}</button>`}).join("");
+  const nas=Object.entries(page.na).map(([k,v])=>`${k}：${v}`).join("；");
+  $("note").textContent=nas?`不适用的状态：${nas}`:"";
+  $("stage").innerHTML=(page.s[state]||page.s["正常"])();
+  $("rules").innerHTML=`<div class="label">本页规则</div><ul>${page.rules.map(r=>`<li>${r}</li>`).join("")}</ul>`;
+}
+$("pages").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;page=PAGES.find(p=>p.id===b.dataset.p);state="正常";render()});
+$("states").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;state=b.dataset.s;render()});
+render();
+</script>
