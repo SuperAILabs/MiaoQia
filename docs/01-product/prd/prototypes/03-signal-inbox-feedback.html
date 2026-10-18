@@ -112,7 +112,7 @@ const versions=`<p class="note">策略 v3（模板 A02 0.3.0，启用领域：�
 const fbForm=(extra)=>`<div class="row"><button class="btn ghost">相关</button><button class="btn">不相关</button></div>
 <div class="field">原因（至少一项）<div class="box">☑ 品类不符 ☐ 不在服务区域 ☐ 规模太小 ☐ 中标方不做此类采购或无法接触 ☐ 中标方是我方或关联方 ☐ 时机已过 ☐ 公告信息有误 ☐ 与其他信号重复 ☐ 其他（须说明）</div></div>
 <div class="field">说明（可选）<div class="box">PE 管只占很小一部分，主要是球墨铸铁管</div></div>
-<div>☑ 同时移出待处理（忽略）</div>${extra||""}<button class="btn">提交反馈</button>`;
+<div>☑ 同时移出待处理（忽略）</div><p class="note">信号已被同事忽略时，处理状态无变化，你的反馈照常记录。</p>${extra||""}<button class="btn">提交反馈</button>`;
 const PAGES=[
 {id:"inbox",name:"收件箱列表",
  na:{},
@@ -150,30 +150,30 @@ const PAGES=[
  <tr><td>中标方近一年有较重信用风险</td><td><span class="pill off">未生效</span></td><td>DOMAIN_NOT_ENABLED 数据未接入</td></tr></table></div><p class="note">按策略 v2 判断（当前生效 v3），不随新版本重算。</p>`)}},
 {id:"single",name:"单条反馈",
  na:{"空态":"反馈总针对一条信号","部分成功":"单条反馈是一次原子提交","来源中断":"只写本租户数据"},
- rules:["不相关至少选一个原因，“其他”须说明","默认同时忽略，可取消","每人一个当前反馈，修改与撤回都追加记录","提交携带所见内容版本与幂等键"],
+ rules:["不相关至少选一个原因，“其他”须说明","默认同时忽略，可取消","每人一个当前反馈，修改与撤回都追加记录","提交携带操作标识、幂等键与所见内容版本","信号已被忽略时仍可写入本人反馈","撤销恢复操作前的值，不一律撤回"],
  s:{
  "正常":()=>desk("反馈 · 杭州某污水管网改造 EPC",fbForm()),
  "加载":()=>desk("反馈",`<h2>正在提交</h2>${L(2)}`),
  "无权限":()=>desk("信号详情（只读）",`<p class="note">你可以查看信号，但反馈需要决策者、研究分析者，或作为参与人的业务开拓者、项目推进者。</p>`),
  "过期":()=>desk("反馈 · 宁波某供水管道工程",`<div class="msg warn">提交时信号已更新（中标金额由“未公布”变为 860 万，处置 复核 → 跟进）。你的反馈没有保存，请看过变化后重新确认。</div><button class="btn">查看变化并重新反馈</button>`),
- "失败":()=>desk("反馈",`<div class="msg bad">反馈没有提交成功（网络中断）。已选的原因已保留，可以重试；重复提交不会产生两条记录。</div><button class="btn">重试</button>`),
+ "失败":()=>desk("反馈",`<div class="msg bad">反馈没有提交成功（INTERNAL，未提交）。已选的原因已保留，可以重试；重试按同一操作去重，不会产生两条记录。</div><button class="btn">重试</button><p class="note">网络中断、不确定是否提交时，页面先用原请求重发：已提交则直接显示已提交的结果。</p>`),
  "数据未知":()=>desk("反馈 · 排除信号 · 余杭某管廊工程",`<div class="msg warn">排除：中标方是我方主体（SELF_IS_WINNER）。排除信号只能反馈排除是否正确，不能忽略或改为候选；确需跟进时从对象页创建跟进。</div><div class="row"><button class="btn ghost">排除正确</button><button class="btn">排除有误</button></div><div class="field">原因<div class="box">☑ 中标方并非我方主体 ☐ 名单已过时 ☐ 其他</div></div>`)+desk("反馈 · 复核候选（2 项未知）",`<p class="note">这条信号有 2 项未知。你的反馈会作为这类情况的标注，不会修改公告数据或规则。</p>`)}},
 {id:"batch",name:"批量反馈",
  na:{"来源中断":"批量只写本租户数据","数据未知":"批量按信号标识执行，未知项在列表与详情展示"},
- rules:["选中后固定为信号清单，筛选变化不扩大范围","单次最多 200 条","逐项授权、逐项结果","只重试失败项，已成功项不重复执行"],
+ rules:["选中后固定为信号清单，筛选变化不扩大范围","单次最多 200 条","逐项授权、逐项结果","每项操作标识固定，最多提交一次","只重试暂时失败项，确定失败需重新查看","撤销只补偿被改变的部分，版本不符不撤销"],
  s:{
  "正常":()=>desk("批量操作 · 已选 23 条",`<div class="field">动作<div class="box">标为不相关 · 原因：品类不符 · ☑ 同时移出待处理</div></div><div class="msg ok">将把 23 条标为不相关（品类不符），并移出待处理。其中 3 条你已反馈过，将被修改；2 条已被他人忽略，只记录你的反馈；1 条为排除信号，不适用，不处理。</div><div class="row"><button class="btn">确认执行</button><button class="btn ghost">返回修改选择</button></div>`),
  "空态":()=>desk("信号 / A02 进入供货",`<div class="row"><button class="btn" disabled>批量操作（先选择信号）</button></div><p class="note">勾选行，或“选择全部符合筛选的信号”（最多 200 条）。</p>`),
- "加载":()=>desk("批量操作 · 执行中",`<p>已完成 12 / 23</p>${L(2)}<button class="btn ghost">取消（未执行的项标为未处理）</button>`),
+ "加载":()=>desk("批量操作 · 执行中",`<p>已完成 12 / 23</p>${L(2)}<button class="btn ghost">取消（进行中的项照常结束，未尝试的项标为未处理）</button>`)+desk("批量操作 · 已取消",`<div class="row"><span class="pill ok">成功 12</span><span class="pill off">未处理 11</span></div><button class="btn">继续未处理项（11 条）</button><p class="note">只为未处理项发起首次尝试，已提交的 12 条不会重复执行。</p>`),
  "无权限":()=>desk("信号 / A02 进入供货（只读）",`<p class="note">你没有反馈权限，列表不显示勾选框与批量操作。</p>`),
  "过期":()=>desk("信号 / A02 进入供货",`<div class="msg warn">筛选已变化：已选 23 条保持不变，其中 4 条不在当前视图中。新到达的信号不会被加入。</div><div class="msg warn">“选择全部符合筛选”：共 312 条，超过 200 条上限。请收窄筛选后再选。</div>`),
  "失败":()=>desk("批量操作",`<div class="msg bad">批量作业没有提交成功，所有信号都没有变化。可以重试，重试不会重复执行。</div><button class="btn">重试</button>`),
- "部分成功":()=>desk("批量操作结果 · 23 条",`<div class="row"><span class="pill ok">成功 18</span><span class="pill off">无变化 2</span><span class="pill bad">失败 2</span><span class="pill warn">不适用 1</span></div><div class="tbl"><table><tr><th>信号</th><th>结果</th><th>原因</th></tr><tr><td>宁波某供水管道工程</td><td>失败</td><td>SIGNAL_UPDATED 信号已更新，请查看后重新操作</td></tr><tr><td>温州某管网工程</td><td>失败</td><td>INTERNAL 系统错误，可重试</td></tr><tr><td>余杭某管廊工程</td><td>不适用</td><td>排除信号只能反馈排除是否正确</td></tr></table></div><div class="row"><button class="btn">只重试失败项（1 条）</button><button class="btn ghost">撤销本次操作</button></div>`)}},
+ "部分成功":()=>desk("批量操作结果 · 23 条",`<div class="row"><span class="pill ok">成功 18</span><span class="pill off">无变化 2</span><span class="pill bad">确定失败 1</span><span class="pill warn">暂时失败 1</span><span class="pill warn">不适用 1</span></div><div class="tbl"><table><tr><th>信号</th><th>结果</th><th>原因</th></tr><tr><td>宁波某供水管道工程</td><td>确定失败</td><td>SIGNAL_UPDATED 信号已更新，请查看后重新操作（不在重试中）</td></tr><tr><td>温州某管网工程</td><td>暂时失败</td><td>INTERNAL 未提交，可重试</td></tr><tr><td>余杭某管廊工程</td><td>不适用</td><td>排除信号只能反馈排除是否正确</td></tr><tr><td>绍兴某片区雨污分流</td><td>无变化</td><td>已被王磊忽略；你的反馈已记录</td></tr></table></div><div class="row"><button class="btn">重试暂时失败项（1 条）</button><button class="btn ghost">撤销本次操作</button></div><p class="note">重试是新的尝试，按每项的操作标识去重，已提交的项不会重复执行。</p>`)+desk("撤销结果 · 18 条",`<div class="row"><span class="pill ok">已撤销 16</span><span class="pill bad">未撤销 2</span></div><div class="tbl"><table><tr><th>信号</th><th>恢复为</th><th>说明</th></tr><tr><td>杭州某污水管网改造 EPC</td><td>你：相关 · 已掌握；待处理</td><td>恢复操作前的反馈与状态</td></tr><tr><td>台州某管网工程</td><td>你：未反馈；待处理</td><td>操作前没有反馈，已撤回</td></tr><tr><td>金华某供水工程</td><td>—</td><td>CONFLICT 撤销前陈晨已调整为跟进候选，未撤销</td></tr><tr><td>丽水某排水工程</td><td>—</td><td>CONFLICT 你之后又修改了反馈，未撤销</td></tr></table></div>`)}},
 {id:"summary",name:"反馈汇总",
  na:{"部分成功":"一次汇总查询","来源中断":"只读本租户反馈集"},
  rules:["反馈不会自动修改策略","未反馈不计为相关","样本少于 20 条不显示比例"],
  s:{
- "正常":()=>desk("A02 进入供货 / 反馈（近 30 天）",`<p class="note">统计截至 10-17 09:40</p><div class="tbl"><table><tr><th>信号</th><th>已反馈</th><th>反馈率</th><th>相关</th><th>不相关</th><th>排除正确 / 有误</th><th>分歧</th></tr><tr><td>86</td><td>61</td><td>71%</td><td>34</td><td>27</td><td>5 / 1</td><td>2</td></tr></table></div>
+ "正常":()=>desk("A02 进入供货 / 反馈（近 30 天）",`<p class="note">统计截至 10-17 09:40</p><div class="tbl"><table><tr><th>信号</th><th>已反馈</th><th>反馈率</th><th>相关</th><th>不相关</th><th>排除正确 / 有误</th><th>分歧</th></tr><tr><td>86（非排除 80）</td><td>58</td><td>73%</td><td>32</td><td>24</td><td>5 / 1</td><td>2</td></tr></table></div><p class="note">按发现时间近 30 天的信号计；每条信号计一次，同时有相关与不相关计为分歧；另有 3 条反馈基于更新前的版本，不计入上表。</p>
  <div class="card"><b>不相关原因</b><div>品类不符 12 <span class="note">↔ R-CAT 与品类参数</span></div><div>规模太小 8 <span class="note">↔ R-AMOUNT 最低金额</span></div><div>中标方不做此类采购 5</div><div>公告信息有误 2 <span class="note">不修改公告数据，可经支持报告</span></div></div>
  <div class="msg ok">反馈只用于评估与改进建议，不会自动修改策略。需要调整时在策略页修改，经仿真与审批后生效。</div><button class="btn ghost">修改策略</button>`),
  "空态":()=>desk("A02 进入供货 / 反馈",`<div class="empty"><div>近 30 天还没有反馈。在收件箱中标“相关 / 不相关”后，这里会汇总。</div></div>`),
@@ -184,13 +184,13 @@ const PAGES=[
  "数据未知":()=>desk("A02 进入供货 / 反馈（近 30 天）",`<p>已反馈 12 条：相关 7、不相关 5（品类不符 3）</p><p class="note">样本少于 20 条，暂不显示比例。</p>`)}},
 {id:"miss",name:"报告漏报",
  na:{"部分成功":"一次提交","数据未知":"漏报记录的是用户输入，不涉及规则数据"},
- rules:["三要素：公共对象、目标、当时时点","已有信号的对象不是漏报","M2 只记录，诊断启用后按时点补做","不改变策略与信号"],
+ rules:["三要素：公共对象、目标、当时时点","现有信号只作关联提示，不否定漏报","同一目标、对象与时点（按日）的未诊断报告合并","M2 只记录，诊断前不显示结论","不改变策略与信号"],
  s:{
  "正常":()=>desk("报告漏报",`<div class="field">公共对象<div class="box">杭州某综合管廊二期 · 中标结果公告 2026-10-09</div></div><div class="field">目标<div class="box">A02 进入供货</div></div><div class="field">当时时点<div class="box">2026-10-09（对象发布时间）</div></div><div class="field">说明<div class="box">总包是我们的老客户，含 PE 管，但收件箱里没有</div></div><button class="btn">提交</button><p class="note">提交后状态为“已记录，待诊断”。诊断功能开放后会按当时的时点补做，并告诉你原因。</p>`)+desk("我的漏报",`<div class="tbl"><table><tr><th>对象</th><th>目标</th><th>时点</th><th>状态</th></tr><tr><td>杭州某综合管廊二期</td><td>A02</td><td>10-09</td><td><span class="pill off">已记录，待诊断</span></td></tr></table></div>`),
  "空态":()=>desk("报告漏报",`<div class="msg warn">平台中没有找到匹配的项目或公告。可以填写外部链接与说明提交。</div><div class="field">外部链接<div class="box">https://…</div></div>`),
  "加载":()=>desk("报告漏报",`<h2>正在提交</h2>${L(2)}`),
  "无权限":()=>desk("报告漏报",`<p class="note">报告漏报需要对该目标的反馈权限。</p>`),
- "过期":()=>desk("报告漏报",`<div class="msg warn">这不是漏报：本目标已有这条信号（已排除 · 中标方在禁合作名单）。<u>打开信号并反馈</u></div>`),
+ "过期":()=>desk("报告漏报",`<div class="msg warn">本目标现有这条信号（10-11 生成，晚于你填写的时点 10-09）。<u>打开信号</u></div><p class="note">漏报按你填写的时点判断：信号晚到或当时没有送达，都可能是漏报。报告会附上这条信号与投递记录，照常提交。</p><button class="btn">提交漏报</button>`),
  "失败":()=>desk("报告漏报",`<div class="msg bad">没有提交成功，填写内容已保留，可以重试；重复提交不会产生两条记录。</div><button class="btn">重试</button>`),
  "来源中断":()=>desk("报告漏报",`<div class="msg warn">检索暂不可用。可以只填写外部链接与说明提交。</div>`)}}
 ];

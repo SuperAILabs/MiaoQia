@@ -1,6 +1,6 @@
 # 监测与匹配子系统（detection）
 
-> 状态：评审中 · 版本：1.5 · 更新：2026-10-18 · 平面：客户智能
+> 状态：评审中 · 版本：1.6 · 更新：2026-10-18 · 平面：客户智能
 
 ## 1. 使命
 
@@ -42,8 +42,8 @@
 | `Watch` | 监测订阅：来源（策略 / 用户关注 / 保存检索 / 持续型推进）、所有者、条件、目标（个人关注可无目标）、状态 |
 | `WatchUpdate` | 关注对象的变化记录：关注、对象、变化类型、事实版本、时间；与信号分开 |
 | `Signal` | `sig_`：租户、目标、目标对象引用（含版本）、处置、命中规则、特征快照、排序分、策略版本；内容版本（已追加的更新数）；处理状态（待处理 / 已调整处置 / 已转跟进 / 已忽略 / 已关闭）与状态版本、人工处置（第 12 节） |
-| `SignalTriage` | 信号的处理与反馈记录（追加式）：操作者、动作（反馈、忽略、恢复、调整处置、撤回反馈）、反馈结果与原因标签、说明、所见内容版本、处理状态前后、渠道、批次标识、幂等键、时间 |
-| `SignalBatchAction` | 批量处理作业：发起人、目标、动作、固定的信号标识清单（上限见第 12 节）、逐项结果（成功 / 无变化 / 失败及原因码 / 未处理）、状态 |
+| `SignalTriage` | 信号的处理与反馈记录（追加式）：操作标识（唯一，用于去重）、操作者、动作（反馈、忽略、恢复、调整处置、撤回反馈、撤销）、反馈结果与原因标签、说明、所见内容版本；对实际被改变的部分（本人反馈、处理状态、人工处置）记录前值、后值与写入后的版本；撤销记录引用被撤销的操作；渠道、批次标识、时间 |
+| `SignalBatchAction` | 批量处理作业：发起人、目标、动作、固定的信号标识清单（上限见第 12 节）、逐项的操作标识、尝试记录（幂等键、结果、是否已提交）与最终结果（成功 / 无变化 / 确定失败 / 暂时失败 / 未处理）、状态 |
 | `SignalUpdate` | 信号对应对象发生变化的追加记录 |
 | `MatchRun` | 回填运行记录 |
 
@@ -54,15 +54,16 @@
 | `ListSignals` / `GetSignal` | 查询 | 信号收件箱：按目标、分栏（待处理、已处理、已排除、已关闭）与筛选游标分页；信号随目标的 `can_view_signals` 授权；不属于本租户与不存在的信号返回相同结果 |
 | `CreateWatch` / `RemoveWatch` / `ListWatchUpdates` | 命令/查询 | 用户关注与变化记录（第 11 节）；也以 MCP 工具暴露 |
 | `ExplainSignal` | 查询 | 命中/未命中的规则、证据、特征（可解释性） |
-| `TriageSignal` | 命令 | 单条反馈、忽略、恢复、调整处置（第 12 节）：需 `can_feedback`，带幂等键、所见内容版本与（改变处理状态时）状态版本；写入 `SignalTriage` 并发布 `signal.triaged` |
-| `TriageSignals` / `GetSignalBatch` / `CancelSignalBatch` | 命令/查询 | 批量处理：`202` 作业，逐项按 `TriageSignal` 的规则执行并给出结果；重试失败项与继续未处理项复用逐项幂等键 |
+| `TriageSignal` | 命令 | 单条反馈、忽略、恢复、调整处置（第 12 节）：需 `can_feedback`，带操作标识、幂等键、所见内容版本、状态版本与反馈版本；写入 `SignalTriage` 并发布 `signal.triaged` |
+| `TriageSignals` / `GetSignalBatch` / `CancelSignalBatch` / `RetrySignalBatchItems` | 命令/查询 | 批量处理：`202` 作业，每项的操作标识为批次标识 + 信号标识，逐项按 `TriageSignal` 的规则执行并给出结果；`RetrySignalBatchItems` 为暂时失败项与未处理项发起新的尝试 |
+| `UndoSignalTriage` | 命令 | 撤销一次单条操作或一个批次：按第 12 节对被改变的部分追加补偿，逐项给出结果 |
 | `RunBackfill` | 命令 | 回放匹配 |
 | `DryRunPolicy` | 查询 | 给定完整输入快照的诊断求值；调用共享 kernel/policy，不是 learning 仿真的依赖 |
 | `DiagnoseMiss` | 查询 | 供 learning 的漏报诊断调用：给定对象、目标与时点，返回当时是否生成候选、用当时固定的事实版本、生效策略与上下文重新求值的处置及命中/排除规则（与 `DryRunPolicy` 同一求值器）、信号与投递引用；无法恢复当时输入时返回“输入不足”。求值结果不是 `no_signal`（包括 `excluded`）而没有候选时标记为召回缺陷；不改写信号（[learning 第 11 节](learning.md#11-漏报反馈与诊断)） |
 
 ## 6. 事件
 
-**发布**：`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（载荷含动作、反馈结果与原因标签、所见内容版本、处理状态前后、人工处置、渠道与批次标识，`learning` 据此写入反馈集）、`detection.pursuit_related_event.v1`。
+**发布**：`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（载荷含操作标识、动作、反馈结果与原因标签、所见内容版本、各被改变部分的前后值、渠道与批次标识；撤销同样发布并引用被撤销的操作，`learning` 据此写入反馈集，以操作标识幂等）、`detection.pursuit_related_event.v1`。
 
 **消费**：领域事件（`domain.fact.upserted.v1` 及各领域事件）、`entity.merge.applied.v1`、`customer_context.policy.activated.v1` 与 `customer_context.policy.rolled_back.v1`（按策略代次提前刷新策略缓存）、`customer_context.objective.changed.v1`、`customer_context.profile.updated.v1` 与 `customer_context.entity_list.changed.v1`（按上下文版本提前刷新快照缓存）、`pursuit.pursuit.created.v1`（建立推进关联索引）。
 
@@ -102,14 +103,19 @@
 
 ## 12. 信号处理与反馈
 
-用户对信号的处理分两部分：**处理状态**属于信号、团队共享；**反馈**按人保存，表达“这条信号对本目标是否有用”。两者都经 `TriageSignal` / `TriageSignals` 进入，本子系统写入 `SignalTriage` 并发布 `signal.triaged`；`learning` 消费该事件维护租户反馈集，本子系统不同步调用 `learning`。用户可见的流程、文案与默认做法见 [PRD 第3段](../../01-product/prd/03-signal-inbox-feedback.md)。
+用户对信号的处理分两部分：**处理状态**（含人工处置）属于信号、团队共享；**反馈**按人保存，表达“这条信号对本目标是否有用”。两者都经 `TriageSignal` / `TriageSignals` 进入，本子系统写入 `SignalTriage` 并发布 `signal.triaged`；`learning` 消费该事件维护租户反馈集，本子系统不同步调用 `learning`。用户可见的流程、文案与默认做法见 [PRD 第3段](../../01-product/prd/03-signal-inbox-feedback.md)（F4–F6、F9）。
 
 | 方面 | 规则 |
 |---|---|
-| 处理状态 | `open` 待处理、`triaged` 已调整处置、`converted` 已转跟进（消费 `pursuit.pursuit.created.v1`）、`dismissed` 已忽略、`closed` 已关闭（求值单位进入终态，或事实被撤回，[domain-intelligence 第 11 节](domain-intelligence.md#11-事实撤回与恢复)）；带状态版本，并发修改以冲突返回，目标状态相同视为成功、不重复记录 |
+| 处理状态 | `open` 待处理、`triaged` 已调整处置、`converted` 已转跟进（消费 `pursuit.pursuit.created.v1`）、`dismissed` 已忽略、`closed` 已关闭（求值单位进入终态，或事实被撤回，[domain-intelligence 第 11 节](domain-intelligence.md#11-事实撤回与恢复)） |
 | 人工处置 | 只在跟进候选、复核候选、观察之间调整，必须写原因；系统处置、得分与轨迹不变；不触发策略的 `route`。排除信号与已关闭信号不能调整处置 |
+| 版本 | 内容版本：重新求值追加 `SignalUpdate` 时递增。状态版本：处理状态或人工处置任一改变时递增。反馈版本：按（信号、成员）计，本人反馈每次改变时递增 |
+| 无变化与冲突 | 一个动作按部分（本人反馈、处理状态、人工处置）逐项判断：请求的效果已成立（值相同）的部分为无变化，不写记录、不校验版本；其余部分须所带版本等于当前版本，否则整个动作返回 `CONFLICT` 与当前值。处理状态都是 `triaged` 但人工处置不同不算无变化；信号已忽略不妨碍写入本人反馈 |
+| 内容版本绑定 | 每次动作记录所见内容版本；与当前内容版本不一致时拒绝（`SIGNAL_UPDATED`）。重新求值不清除已有反馈与处理状态；已忽略信号遇到更新时是否回到待处理按 PRD 第3段第13节第4项 |
 | 反馈 | 结果为相关、不相关、排除正确、排除有误，原因标签取自应用领域包；每人每条信号以最新记录为当前反馈，修改与撤回都追加记录 |
-| 版本绑定 | 每次动作记录所见内容版本；与当前内容版本不一致时拒绝（`SIGNAL_UPDATED`）。重新求值追加 `SignalUpdate` 时不清除已有反馈与处理状态；已忽略信号遇到更新时是否回到待处理按 PRD 第3段第13节第4项 |
 | 授权与隔离 | 每次提交实时检查目标上的 `can_feedback`，批量逐项检查；不属于本租户或不存在的信号以同一原因码失败，不返回其内容 |
-| 批量 | 选中时固定信号标识清单（上限按 PRD 第3段第13节第3项），之后筛选变化不扩大范围；逐项结果为成功 / 无变化 / 失败（`FORBIDDEN`、`SIGNAL_UPDATED`、`SIGNAL_CLOSED`、`NOT_APPLICABLE`、`INTERNAL`）/ 未处理；逐项幂等键由批次键与信号标识组成，撤销以反向动作追加 |
+| 操作与尝试 | 每个用户意图（单条提交或批量中的一项）有固定的操作标识，`SignalTriage` 以操作标识唯一约束，同一操作最多提交一次。每次请求是一次尝试，带自己的幂等键，遵守[集成契约 2.2](../03-integration-contracts.md#22-约定)的同键同结果：同键重发返回该尝试的结果，已提交而响应丢失时返回已提交的结果。尝试先按操作标识查找已提交的结果，有则直接返回，不再执行 |
+| 最终结果与重试 | 成功、无变化与确定失败（`FORBIDDEN`、`SIGNAL_UPDATED`、`SIGNAL_CLOSED`、`NOT_APPLICABLE`、`CONFLICT`、参数校验失败）固定在操作标识上，不再重试；确认未提交的暂时失败（`INTERNAL`、`UNAVAILABLE`）只是该尝试的结果，可用新的幂等键、同一操作标识再次尝试。批量取消后不再发起新的尝试，未尝试的项为未处理，继续时发起首次尝试 |
+| 批量 | 选中时固定信号标识清单（上限按 PRD 第3段第13节第3项），之后筛选变化不扩大范围；逐项结果为成功 / 无变化 / 确定失败 / 暂时失败 / 未处理 |
+| 撤销 | 撤销是新的操作。对原操作实际改变的每个部分追加补偿，未改变的部分不补偿：反馈原来没有则撤回，原来有则恢复原值及其所基于的内容版本；忽略恢复为原处理状态；恢复重新忽略；调整处置恢复原人工处置，原来没有则回到待处理。补偿前核对该部分当前版本等于原操作写入后的版本，不等（之后有人改过，包括本人）返回 `CONFLICT`；原操作之后内容版本已变化返回 `SIGNAL_UPDATED`；信号已关闭返回 `SIGNAL_CLOSED`。一项内各部分的补偿在同一事务中提交；撤销不能再撤销 |
 | 不改策略与事实 | 处理与反馈不改变策略、系统处置与排序分，也不修改公共事实；策略调整只经 customer-context 的草案、仿真与审批 |
