@@ -157,7 +157,16 @@ def test_repo_definitions_are_checked(sandbox, monkeypatch, capsys):
     ("P10", T + "feedback/a01.yaml", "vocab: [exclude_terms]", "vocab: [focus_terms]"),
     ("P10", T + "outcomes/a02.yaml", "- { code: PAYMENT_RISK, say: 回款风险, relates_to: risk }", "- { code: TOO_SMALL, say: 回款风险, relates_to: risk }"),
     ("P10", T + "outcomes/a02.yaml", "objective: APP-TENDER.A02", "objective: APP-TENDER.B03"),
-    ("P10", T + "metrics.yaml", "segment_by: [objective, value_nature, contribution]", "segment_by: [objective, contribution]"),
+    ("P10", T + "metrics.yaml", "segment_by: [objective, value_nature, amount_type, currency, contribution]", "segment_by: [objective, amount_type, currency, contribution]"),
+    ("P10", T + "metrics.yaml", "segment_by: [objective, value_nature, amount_type, currency, contribution]", "segment_by: [objective, value_nature, currency, contribution]"),
+    ("P10", T + "metrics.yaml", "segment_by: [objective, value_nature, amount_type, currency, contribution]", "segment_by: [objective, value_nature, amount_type, contribution]"),
+    ("P10", T + "metrics.yaml", "numerator_filter: { result_type: [success] }\n      denominator: 由跟进候选信号创建且已关闭的跟进数（成功、失败、放弃都计入）\n      source: [pursuit, outcome]\n      window: 30d\n      segment_by: [region, category]",
+     "numerator_filter: { result_type: [success] }\n      denominator: 由跟进候选信号创建且已关闭的跟进数（成功、失败、放弃都计入）\n      source: [pursuit, outcome]\n      window: 30d\n      segment_by: [result_type]"),  # 按分子固定的维度分组
+    ("P10", T + "metrics.yaml", "denominator_filter: { result_type: [success, failure] }\n      source: [outcome]\n      window: 30d\n      segment_by: [region, category]",
+     "denominator_filter: { result_type: [success, failure] }\n      source: [outcome]\n      window: 30d\n      segment_by: [region, result_type]"),
+    ("P10", T + "metrics.yaml", "      pending:\n        stage: M4\n", "      pending:\n        stage: M3\n"),          # 待定阶段与开始计算阶段不一致
+    ("P10", T + "metrics.yaml", "      pending:\n        stage: M4\n", "      pending:\n        stage: M4\n        task: M2-P4\n"),  # 任务与阶段不一致
+    ("P10", T + "metrics.yaml", "        basis: 跟进进入", "        why: 跟进进入"),                      # 缺计数依据
     ("P10", T + "metrics.yaml", "baseline: { pending: { stage: M2, task: M2-P10 } }", "baseline: { pending: { stage: M2, task: M2-P77 } }"),
     ("P10", T + "pack.yaml", "      - feedback/b03.yaml\n", ""),                   # M2 目标缺反馈原因
     ("P10", T + "pack.yaml", "      - outcomes/a01.yaml\n", ""),                   # M2 交易型目标缺结果原因
@@ -183,6 +192,22 @@ def test_definition_rules(sandbox, monkeypatch, capsys, rule, rel, old, new):
     p.write_text(s.replace(old, new, 1), encoding="utf-8")
     code, out = run_check(sandbox, monkeypatch, capsys)
     assert code == 1 and f" {rule} " in out.err, out.err
+
+
+def test_ratio_metric_worked_example(sandbox):
+    """比例指标的算例：2 条中标、2 条未中标、1 条放弃 → 中标率 50%；按分子固定的 result_type 分组会退化为 0%/100%。"""
+    import yaml
+    m = {x["id"]: x for x in yaml.safe_load((sandbox / T / "metrics.yaml").read_text(encoding="utf-8"))["metrics"]["items"]}
+    closed = ["success", "success", "failure", "failure", "abandoned"]
+    def rate(metric, rows):
+        num = [x for x in rows if x in metric["numerator_filter"]["result_type"]]
+        den = [x for x in rows if x in metric.get("denominator_filter", {}).get("result_type", rows)]
+        return len(num) / len(den)
+    assert rate(m["a01_win_rate"], closed) == 0.5
+    assert rate(m["a02_contact_conversion"], closed[:4]) == 0.5
+    assert {rate(m["a01_win_rate"], [x for x in closed if x == t]) for t in ("success", "failure")} == {1.0, 0.0}
+    assert "result_type" not in m["a01_win_rate"]["segment_by"]
+    assert m["a01_bid_count"]["pending"]["stage"] == "M4" and "a01_pursuits_created" in m
 
 
 def test_industry_codes_unique_across_packs(sandbox, monkeypatch, capsys):

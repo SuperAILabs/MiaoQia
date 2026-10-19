@@ -1,6 +1,7 @@
 # 效果指标与基线引用（格式：contracts/packs/application-domain.schema.json 的 metrics；mqc P10 校验）。
 # platform_metric 指向质量与验收中的平台口径，本包只绑定目标、分层与阶段，不改口径；
-# 金额类指标按取值性质（已发生、估计、客户自报）分列，不相加（learning 8.1）。样本少于 min_sample 时只报告数量。
+# 金额类指标按取值性质（已发生、估计、客户自报）、金额类型与币种分列，不相加（learning 8.1，PRD 第6段 F7.1 与第8节）。
+# 比例指标的 numerator_filter / denominator_filter 写明分子、分母固定的维度；按这些维度分组会使各组恒为 0 或 100%，P10 拒绝。样本少于 min_sample 时只报告数量。
 # 基线集（目标相关性标注集）随 M2-P10 冻结，冻结前 baseline 为待定，监测层指标只作试点观察，不判定门槛。
 metrics:
   id: MET-TENDER
@@ -98,21 +99,24 @@ metrics:
       layer: value
       unit: ratio
       numerator: 由跟进候选信号创建的跟进中，结果为成功的数量
-      denominator: 由跟进候选信号创建且已关闭的跟进数
+      numerator_filter: { result_type: [success] }
+      denominator: 由跟进候选信号创建且已关闭的跟进数（成功、失败、放弃都计入）
       source: [pursuit, outcome]
       window: 30d
-      segment_by: [result_type]
+      segment_by: [region, category]
       min_sample: 20
+      note: 例：已关闭 4 条，2 条成功、2 条失败，转化为 2/4 = 50%。结果类型的构成见 pursuit_results，不在本指标内分组
       stage: M2
     - id: won_amount
       name: 成交额
       objectives: [APP-TENDER.A01, APP-TENDER.A02]
       layer: value
       unit: money
-      numerator: 结果为成功的跟进记录的金额，按金额类型与取值性质分列
+      numerator: 结果为成功的跟进记录的金额条目之和，按取值性质、金额类型与币种分列，各列不相加、不换算
+      numerator_filter: { result_type: [success] }
       source: [outcome]
       window: 30d
-      segment_by: [objective, value_nature, contribution]
+      segment_by: [objective, value_nature, amount_type, currency, contribution]
       platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
       stage: M2
     - id: outcome_coverage
@@ -127,27 +131,57 @@ metrics:
       segment_by: [objective, result_type]
       platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
       stage: M2
+    - id: pursuit_results
+      name: 跟进结果构成
+      objectives: [APP-TENDER.A01, APP-TENDER.A02]
+      layer: value
+      unit: distribution
+      numerator: 窗口内关闭的全部跟进按结果类型（成功、失败、放弃）计数
+      source: [pursuit, outcome]
+      window: 30d
+      segment_by: [objective, result_type]
+      stage: M2
+    - id: a01_pursuits_created
+      name: A01 新建跟进数
+      objectives: [APP-TENDER.A01]
+      layer: value
+      unit: count
+      numerator: 窗口内由 A01 信号创建的跟进数，按创建时间计入；不区分是否已投标，不是投标数
+      source: [pursuit]
+      window: 30d
+      segment_by: [region, category]
+      stage: M2
+      note: 样例：新建未投标、已投标、投标前放弃的跟进各 1 条，本指标为 3；投标数见 a01_bid_count
     - id: a01_bid_count
       name: 投标数
       objectives: [APP-TENDER.A01]
       layer: value
       unit: count
-      numerator: 由 A01 信号创建、未在投标前放弃的跟进数
+      numerator: 窗口内确认已提交投标的 A01 跟进数
       source: [pursuit, outcome]
       window: 30d
       segment_by: [region, category]
-      stage: M2
+      stage: M4
+      pending:
+        stage: M4
+        basis: 跟进进入“已投标”阶段并由负责人确认（记录提交时间与确认人，可附投标回执）；关闭结果为中标或未中标的跟进视为已投标
+        time_point: 投标提交时间，不晚于投标截止时间；只有关闭结果、没有提交时间的按投标截止时间计入
+        note: M2 跟进切片没有投标阶段与提交确认，随 M4 路径引擎的 A01 阶段与决策门交付（pursuit 第10节）
+      note: 样例：新建未投标、已投标、投标前放弃的跟进各 1 条，本指标为 1；放弃的跟进结果为 abandoned，不计入
     - id: a01_win_rate
       name: 中标率（滞后指标）
       objectives: [APP-TENDER.A01]
       layer: value
       unit: ratio
-      numerator: 结果为中标或成交的投标数
-      denominator: 已有结果的投标数（不含放弃）
+      numerator: 关闭结果为中标或成交（success）的 A01 跟进数
+      numerator_filter: { result_type: [success] }
+      denominator: 关闭结果为中标或未中标（success、failure）的 A01 跟进数；放弃投标（abandoned）不计入
+      denominator_filter: { result_type: [success, failure] }
       source: [outcome]
       window: 30d
-      segment_by: [result_type]
+      segment_by: [region, category]
       min_sample: 20
+      note: 例：2 条中标、2 条未中标、1 条放弃，中标率为 2/4 = 50%。M2 以关闭结果判断已投标，不依赖 a01_bid_count
       stage: M2
     - id: b03_competitor_coverage
       name: 竞争对手覆盖

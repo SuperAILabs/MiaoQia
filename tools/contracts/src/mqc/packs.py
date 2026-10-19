@@ -22,6 +22,7 @@
   P10 卡片、简报分区、反馈原因、结果原因与效果指标：目标已定义；卡片事实类型等于目标策略的事实类型，字段来源
       在每个事实类型中可解析，动作与权限对应；简报配额 min ≤ default ≤ max、顺序唯一、卡片属于本目标；
       反馈与结果原因代码唯一、“其他”须说明且在末位，反馈原因关联的规则、参数、清单与词表在本目标策略中；
+      金额指标按取值性质、金额类型、币种分列；比例指标不按分子或分母已固定的维度分组；待定指标的阶段与任务有效；
       release 为 M2 且由策略进入的目标须具备目标定义、收件箱行卡片、简报分区、反馈原因、效果指标，交易型另需结果原因
 行业包见 industry.py（I1–I5）。
 """
@@ -338,6 +339,7 @@ DEF_KINDS = {"roles": "role", "objectives": "objective", "playbooks": "playbook"
              "metrics": "metrics"}
 STAGE_BASELINE = "docs/05-delivery/06-stage-baseline.md"
 STAGES = ("M2", "M3", "M4", "M5")
+MONEY_SEGMENTS = ("value_nature", "amount_type", "currency")  # PRD 第6段 F7.1：不同口径分列，不相加
 CARD_PERMISSIONS = {"view": "can_view_signals", "feedback_relevant": "can_feedback", "feedback_irrelevant": "can_feedback",
                     "exclusion_feedback": "can_feedback", "create_pursuit": "can_assign"}
 
@@ -716,6 +718,18 @@ def _check_delivery(repo: Repo, rel, cov_where: str, cov: dict, defined: dict, o
                     measured.add(o)
                 else:
                     r.error(rel(f), f"P10 指标 {m['id']} 的目标 {o} 没有目标定义")
+            seg = set(m.get("segment_by", []))
+            if m["unit"] == "money":
+                lack = [x for x in MONEY_SEGMENTS if x not in seg]
+                if lack:
+                    r.error(rel(f), f"P10 金额指标 {m['id']} 须按 {'、'.join(lack)} 分列，不同口径不得相加")
+            fixed = set(m.get("numerator_filter", {})) | set(m.get("denominator_filter", {}))
+            if m["unit"] == "ratio" and seg & fixed:
+                r.error(rel(f), f"P10 比例指标 {m['id']} 按分子或分母已固定的 {'、'.join(sorted(seg & fixed))} 分组，各组恒为 0 或 100%")
+            if "pending" in m:
+                if m["pending"]["stage"] != m["stage"]:
+                    r.error(rel(f), f"P10 指标 {m['id']} 的待定阶段 {m['pending']['stage']} 与开始计算阶段 {m['stage']} 不一致")
+                cell(f"指标 {m['id']}", {"pending": m["pending"]}, {}, set(), rel(f), "P10")
             if "baseline" in m:
                 cell(f"指标 {m['id']} 的基线", m["baseline"], {}, set(), rel(f), "P10")
                 for x in m["baseline"].get("defined", []):

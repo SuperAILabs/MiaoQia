@@ -1568,9 +1568,43 @@
           "type": "string",
           "minLength": 1
         },
+        "numerator_filter": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/metric_dimension"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "分子固定的维度取值，如 {result_type: [success]}。比例指标不得按分子或分母固定的维度分组，否则各组恒为 0 或 100%（mqc P10）"
+        },
         "denominator": {
           "type": "string",
           "minLength": 1
+        },
+        "denominator_filter": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/metric_dimension"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "分母固定的维度取值，如 {result_type: [success, failure]}"
         },
         "source": {
           "type": "array",
@@ -1596,19 +1630,7 @@
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "enum": [
-              "objective",
-              "disposition",
-              "fact_type",
-              "region",
-              "category",
-              "backfill",
-              "reason_tag",
-              "value_nature",
-              "contribution",
-              "result_type",
-              "known_via"
-            ]
+            "$ref": "#/$defs/metric_dimension"
           }
         },
         "min_sample": {
@@ -1633,6 +1655,47 @@
             "M5"
           ],
           "description": "开始计算的路线图阶段"
+        },
+        "pending": {
+          "type": "object",
+          "required": [
+            "stage",
+            "basis",
+            "time_point"
+          ],
+          "additionalProperties": false,
+          "description": "口径已定、但计算依赖尚未交付的能力：stage 为开始计算的阶段（与本指标 stage 相同），basis 为计数依据，time_point 为计入窗口的时点",
+          "properties": {
+            "stage": {
+              "enum": [
+                "M2",
+                "M3",
+                "M4",
+                "M5"
+              ]
+            },
+            "task": {
+              "type": "string",
+              "pattern": "^M[0-9]-P[0-9]+$"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_point": {
+              "type": "string",
+              "minLength": 1
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "口径说明与算例"
         }
       },
       "allOf": [
@@ -1661,21 +1724,15 @@
           "then": {
             "required": [
               "segment_by"
-            ],
-            "properties": {
-              "segment_by": {
-                "contains": {
-                  "const": "value_nature"
-                }
-              }
-            }
-          }
+            ]
+          },
+          "$comment": "金额必须按 value_nature、amount_type、currency 分组，由 mqc P10 检查"
         }
       ]
     },
     "metrics": {
       "type": "object",
-      "description": "效果指标与基线引用（learning 扩展点）。金额类指标必须按取值性质分列，不相加（learning 8.1）",
+      "description": "效果指标与基线引用（learning 扩展点）。金额类指标按取值性质、金额类型与币种分列，不相加（learning 8.1，PRD 第6段 F7.1）",
       "required": [
         "id",
         "version",
@@ -1698,6 +1755,24 @@
           }
         }
       }
+    },
+    "metric_dimension": {
+      "enum": [
+        "objective",
+        "disposition",
+        "fact_type",
+        "region",
+        "category",
+        "backfill",
+        "reason_tag",
+        "value_nature",
+        "amount_type",
+        "currency",
+        "contribution",
+        "result_type",
+        "known_via"
+      ],
+      "description": "指标的分组与筛选维度。金额按取值性质、金额类型与币种分列，不相加（PRD 第6段 F7.1、第8节）"
     }
   }
 }
