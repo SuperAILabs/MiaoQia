@@ -1,6 +1,6 @@
 # 首条客户旅程功能 PRD
 
-> 状态：评审中 · 版本：2.1 · 更新：2026-10-19 · 负责人：产品负责人、设计负责人、首席架构师
+> 状态：评审中 · 版本：2.2 · 更新：2026-10-19 · 负责人：产品负责人、设计负责人、首席架构师
 
 M2 的验收单位是首条客户旅程（建材供应商 A02 进入供货）**逐环节可运行、可解释、可验证**，不是文档数量。本目录按旅程顺序逐段交付功能 PRD、低保真原型和接口说明，每段评审通过后交给实现。PRD 的必备结构与原型状态要求见[产品需求落地规格第3节](../05-product-requirements.md#3-每个功能prd的必备产出)，阶段门禁见[阶段基线 M2-P1](../../05-delivery/06-stage-baseline.md#4-m2-前置条件与能力交接)。
 
@@ -13,7 +13,7 @@ M2 的验收单位是首条客户旅程（建材供应商 A02 进入供货）**�
 | 3 | 信号收件箱与批量反馈 | 按目标查看 A02 信号、命中理由，单条与批量反馈 | detection、learning | [03-signal-inbox-feedback](03-signal-inbox-feedback.md) | 设计交接通过 |
 | 4 | 对象页与证据 | 从信号进入项目、总包、采购人对象页，字段回到原文 | domain-intelligence、entity-graph、evidence | [04-object-page-evidence](04-object-page-evidence.md) | 设计交接通过 |
 | 5 | 简报与快捷动作 | 企业微信早间简报，卡片上反馈、跟进、跳转 Web | channels | [05-briefing-quick-actions](05-briefing-quick-actions.md) | 设计交接通过 |
-| 6 | 跟进 | 从信号创建跟进、指派、截止提醒、关闭记录结果 | pursuit | [06-pursuit-follow-up](06-pursuit-follow-up.md) | 评审中 |
+| 6 | 跟进 | 从信号创建跟进、指派、截止提醒、关闭记录结果 | pursuit | [06-pursuit-follow-up](06-pursuit-follow-up.md) | 设计交接通过 |
 | 7 | 策略编辑、仿真与审批 | 调整 A02 规则，仿真后提交激活审批 | customer-context、learning、identity | [07-policy-simulation-approval](07-policy-simulation-approval.md) | 设计交接通过 |
 
 段号是旅程中的位置，交接按运行顺序进行：第7段的首次策略激活在旅程上发生在第2段之后、第3段之前，目标首次激活前不产生信号，因此第2段之后的交接顺序为第7段 → 第3段 → 第4段 → 第5段 → 第6段（项目负责人 2026-10-17 确认，[PR #17 决策记录](https://github.com/SuperAILabs/MiaoQia/pull/17#issuecomment-6232158680)）。研究、追问、完整推进和导出的 PRD 按 M3/M4 交接，不在本目录的 M2 范围内。
