@@ -1,0 +1,789 @@
+openapi: 3.1.0
+info:
+  title: customer-context 接口
+  version: 0.1.0
+  description: >-
+    客户档案、上下文版本与快照、目标配置（PRD 第2段，docs/01-product/prd/02-profile-and-objectives.md；
+    规格见 docs/03-architecture/subsystems/customer-context.md）。草案：随第2段首个实现切片提交，未冻结。
+    租户、cell 与调用主体来自请求上下文，不出现在业务参数中；档案与目标命令只经外部网关，
+    上下文版本与快照读取经 mTLS 内部端口。组织单元在 identity 登记 OrgUnit 标识前只支持租户根单元，
+    以保留值 root 表示，其他单元返回 org_unit_not_found。错误为 application/problem+json 与稳定 code。
+servers:
+- url: /internal
+paths:
+  /v1/customer-context/profile:
+    get:
+      operationId: getProfile
+      summary: 读取当前档案（GetProfile）
+      description: 需要 can_view_profile。从未保存过档案时返回版本 0 与空内容。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 当前档案版本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        default: &problem
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    put:
+      operationId: updateProfile
+      summary: 保存档案（UpdateProfile）
+      description: >-
+        需要 can_edit_profile。整份替换档案内容并形成新的档案版本；expected_version 与当前版本不一致时返回
+        409 version_conflict，不覆盖他人修改。保存在同一事务中递增租户上下文版本、写入该版本的根单元快照、
+        审计与 customer_context.profile.updated.v1。同一 Idempotency-Key 重放返回首次结果，键相同而请求不同返回
+        409 idempotency_conflict。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &idempotency
+        name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: 新的档案版本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        default: *problem
+  /v1/customer-context/context-version:
+    get:
+      operationId: getContextVersion
+      summary: 租户当前上下文版本（GetContextVersion）
+      description: >-
+        读主库。detection 每批求值前读取；资质有效期跨过到期日后，本调用在返回前先形成新的上下文版本
+        （快照中该资质改为过期），保证返回后开始的求值不使用过期判定。调用方为用户时需要 can_view_profile；
+        服务主体只接受登记的快照读取方（detection、learning、research、assessment）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 当前版本；从未保存档案时为 0
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextVersion'
+        default: *problem
+  /v1/customer-context/context-snapshot:
+    get:
+      operationId: getContextSnapshot
+      summary: 客户上下文快照（GetContextSnapshot）
+      description: >-
+        按（租户、组织单元、上下文版本）返回合成快照，同一键永远返回同一结果；缺省版本为当前版本。
+        字段与求值语义见 contracts/schemas/intelligence/context-snapshot.schema.json（本接口的 ContextSnapshot 与之一致，测试校验）。
+        授权同 getContextVersion。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: org_unit_id
+        in: query
+        required: true
+        schema: &unit
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[a-z0-9][a-z0-9_-]{0,63}$
+      - name: context_version
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      responses:
+        '200':
+          description: 快照
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextSnapshot'
+        default: *problem
+  /v1/customer-context/objective-templates:
+    get:
+      operationId: listObjectiveTemplates
+      summary: 可启用目标（ListObjectiveTemplates）
+      description: >-
+        需要 can_view_profile。按档案的价值链角色列出 APP-TENDER 目标目录：角色模板默认与可选目标的并集可启用，
+        未到开放阶段或没有策略模板的目标照常列出并给出不可启用原因；未选角色时全部不可启用。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 目标目录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectiveTemplateList'
+        default: *problem
+  /v1/customer-context/objectives:
+    get:
+      operationId: listObjectives
+      summary: 目标列表
+      description: >-
+        返回调用者可查看（can_view）的目标。本切片按目标所在单元的决策者、研究分析者、租户管理员判断；
+        仅凭参与关系（◐）的查看随 identity 的资源参与关系同步交付，此前不返回。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 目标列表（每个单元每个模板至多一个，数量有界）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectiveList'
+        default: *problem
+    post:
+      operationId: enableObjective
+      summary: 启用目标（EnableObjective）
+      description: >-
+        需要目标单元上的 can_create_objective。创建状态为未激活（inactive）的目标；首次激活经第7段仿真与审批，
+        激活前不产生信号。同一单元同一模板只启用一次，重复启用返回 409 objective_exists 并在 detail 中给出已有目标标识。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnableObjectiveRequest'
+      responses:
+        '200':
+          description: 新目标
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Objective'
+        default: *problem
+  /v1/customer-context/objectives/{objectiveID}:
+    get:
+      operationId: getObjective
+      summary: 目标详情
+      description: 需要 can_view；无权限与不存在同样返回 404 objective_not_found。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &objectiveID
+        name: objectiveID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+      responses:
+        '200':
+          description: 目标
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Objective'
+        default: *problem
+    put:
+      operationId: configureObjective
+      summary: 调整目标（ConfigureObjective）
+      description: >-
+        负责人与参与人需要 can_manage_participants，参数需要 can_edit；整份替换并带 expected_version。
+        参数是下一份策略草案的输入，不改变已生效的策略版本（第7段）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *objectiveID
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigureObjectiveRequest'
+      responses:
+        '200':
+          description: 调整后的目标
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Objective'
+        default: *problem
+  /v1/customer-context/objectives/{objectiveID}/state:
+    put:
+      operationId: setObjectiveState
+      summary: 停用或重新启用目标（DisableObjective）
+      description: >-
+        需要 can_edit。disabled 停用（不再产生新信号，已有信号、跟进与反馈保留）；inactive 只能从已停用重新启用，
+        重新启用后须按第7段重新激活。生效（active）只由策略激活设置，本接口不接受。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *objectiveID
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetObjectiveStateRequest'
+      responses:
+        '200':
+          description: 目标
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Objective'
+        default: *problem
+components:
+  schemas:
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          description: 稳定错误代码
+    ProfileEntity:
+      type: object
+      additionalProperties: false
+      description: 我方主体（集团客户的一个法人），关联公共组织 org_
+      required:
+      - org_id
+      - qualifications_complete
+      properties:
+        org_id: &orgID
+          type: string
+          pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+        org_unit_id: *unit
+        qualifications_complete:
+          type: boolean
+          description: 该主体已声明“资质已录全”；未声明时未录入的资质为未知
+    Qualification:
+      type: object
+      additionalProperties: false
+      description: 客户录入的资质来源观察；同一主体、资质类型与证书编号只录一条
+      required:
+      - org_id
+      - code
+      - certificate_no
+      properties:
+        org_id: *orgID
+        code:
+          type: string
+          description: 行业包资质模板代码，例如 Q-BM-ISO9001
+          pattern: ^Q-[A-Z0-9-]{1,62}$
+        grade:
+          type: string
+          minLength: 1
+          maxLength: 32
+        certificate_no:
+          type: string
+          minLength: 1
+          maxLength: 64
+        valid_from:
+          type: string
+          format: date
+        valid_to:
+          type: string
+          format: date
+          description: 有效期最后一天（含，Asia/Shanghai 日历日）；模板声明有有效期的资质必填
+    ProfileContent:
+      type: object
+      additionalProperties: false
+      required:
+      - subject_type
+      - entities
+      - value_chain_roles
+      - industry_packs
+      - offering_categories
+      - brands
+      - service_regions
+      - qualifications
+      properties:
+        subject_type:
+          type: string
+          enum:
+          - organization
+          description: 主体类型；M2 只支持企业
+        entities:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ProfileEntity'
+          description: 我方主体列表；为空表示尚未关联本企业，快照中不出现 org_ids
+        value_chain_roles:
+          type: array
+          uniqueItems: true
+          maxItems: 16
+          items:
+            type: string
+            pattern: ^ROLE-[A-Z0-9-]{1,32}$
+        industry_packs:
+          type: array
+          uniqueItems: true
+          maxItems: 16
+          items:
+            type: string
+            pattern: ^IND-[A-Z0-9-]{1,48}$
+        offering_categories:
+          type: array
+          uniqueItems: true
+          maxItems: 500
+          items:
+            type: string
+            pattern: ^CAT-[A-Z0-9-]{1,60}$
+        brands:
+          type: array
+          uniqueItems: true
+          maxItems: 200
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+        service_regions:
+          type: array
+          uniqueItems: true
+          maxItems: 500
+          items:
+            type: string
+            pattern: ^[0-9]{6}$
+        qualifications:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/Qualification'
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - content
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 0
+        content:
+          $ref: '#/components/schemas/ProfileContent'
+    Profile:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      - context_version
+      - content
+      properties:
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 档案版本；0 表示从未保存
+        context_version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 保存该版本时形成的租户上下文版本
+        content:
+          $ref: '#/components/schemas/ProfileContent'
+    ContextVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - context_version
+      - profile_version
+      properties:
+        context_version:
+          type: integer
+          format: int64
+          minimum: 0
+        profile_version:
+          type: integer
+          format: int64
+          minimum: 0
+    EntityQualifications:
+      type: object
+      additionalProperties: false
+      required:
+      - qualifications
+      - qualifications_pending
+      - qualifications_complete
+      properties:
+        qualifications:
+          type: object
+          propertyNames:
+            minLength: 1
+          additionalProperties:
+            type: string
+            enum:
+            - valid
+            - expired
+        qualifications_pending:
+          type: array
+          uniqueItems: true
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+        qualifications_complete:
+          type: boolean
+    ContextPolicyView:
+      type: object
+      additionalProperties: false
+      required:
+      - offering_categories
+      - service_regions
+      - brands
+      properties:
+        org_ids:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          maxItems: 10
+          items: *orgID
+        offering_categories:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+        service_regions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[0-9]{6}$
+        brands:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+        entities:
+          type: object
+          minProperties: 1
+          maxProperties: 10
+          propertyNames:
+            pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+          additionalProperties:
+            $ref: '#/components/schemas/EntityQualifications'
+    ContextSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - tenant_id
+      - org_unit_id
+      - context_version
+      - unit_chain
+      - policy_view
+      properties:
+        tenant_id:
+          type: string
+          pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+        org_unit_id:
+          type: string
+          minLength: 1
+        context_version:
+          type: integer
+          format: int64
+          minimum: 1
+        unit_chain:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        policy_view:
+          $ref: '#/components/schemas/ContextPolicyView'
+    ObjectiveTemplateParam:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - type
+      - configurable
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        type:
+          type: string
+          minLength: 1
+          maxLength: 64
+        default_from:
+          type: string
+          description: 随档案的字段，例如 profile.offering_categories
+          maxLength: 128
+        default_number:
+          type: integer
+          format: int64
+        default_values:
+          type: array
+          maxItems: 64
+          items:
+            type: string
+            minLength: 1
+        configurable:
+          type: boolean
+          description: 可否改为本目标值；本切片只支持整数与品类、区域列表
+    ObjectiveTemplate:
+      type: object
+      additionalProperties: false
+      required:
+      - template_id
+      - version
+      - name
+      - say
+      - release_stage
+      - enableable
+      - requires_domains
+      - params
+      properties:
+        template_id: &templateID
+          type: string
+          pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+        version:
+          type: string
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        name:
+          type: string
+          minLength: 1
+        say:
+          type: string
+          minLength: 1
+        release_stage:
+          type: string
+          pattern: ^M[0-9]$
+          description: 租户可启用的阶段（覆盖矩阵 release.stage）
+        enableable:
+          type: boolean
+        unavailable_reason:
+          type: string
+          enum:
+          - not_released
+          - role_not_selected
+          - no_policy_template
+        default_for_roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^ROLE-[A-Z0-9-]{1,32}$
+        requires_domains:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^INF-[A-Z0-9-]{1,32}$
+        policy_template_id:
+          type: string
+          pattern: ^TPL-[A-Z0-9-]{1,64}$
+        policy_template_version:
+          type: string
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        params:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/ObjectiveTemplateParam'
+    ObjectiveTemplateList:
+      type: object
+      additionalProperties: false
+      required:
+      - value_chain_roles
+      - templates
+      properties:
+        value_chain_roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^ROLE-[A-Z0-9-]{1,32}$
+        templates:
+          type: array
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/ObjectiveTemplate'
+    ObjectiveParam:
+      type: object
+      additionalProperties: false
+      description: >-
+        参数取值来源：profile 随档案（default_from 的字段）、default 模板默认值、objective 本目标值。
+        本目标值的品类与区域须是档案取值或其下级（档案的子集），整数须满足模板 min/max。
+      required:
+      - source
+      properties:
+        source:
+          type: string
+          enum:
+          - profile
+          - default
+          - objective
+        values:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          maxItems: 500
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+        number:
+          type: integer
+          format: int64
+    ObjectiveParams:
+      type: object
+      maxProperties: 32
+      propertyNames:
+        pattern: ^[a-z][a-z0-9_]{0,63}$
+      additionalProperties:
+        $ref: '#/components/schemas/ObjectiveParam'
+    Subject:
+      type: string
+      pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+    EnableObjectiveRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - template_id
+      - org_unit_id
+      properties:
+        template_id: *templateID
+        org_unit_id: *unit
+        owner:
+          $ref: '#/components/schemas/Subject'
+        participants:
+          type: array
+          uniqueItems: true
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Subject'
+        params:
+          $ref: '#/components/schemas/ObjectiveParams'
+    ConfigureObjectiveRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - owner
+      - participants
+      - params
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+        owner:
+          $ref: '#/components/schemas/Subject'
+        participants:
+          type: array
+          uniqueItems: true
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Subject'
+        params:
+          $ref: '#/components/schemas/ObjectiveParams'
+    SetObjectiveStateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - state
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+        state:
+          type: string
+          enum:
+          - inactive
+          - disabled
+    Objective:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - template_id
+      - template_version
+      - policy_template_id
+      - policy_template_version
+      - org_unit_id
+      - state
+      - owner
+      - participants
+      - params
+      - version
+      properties:
+        id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        template_id: *templateID
+        template_version:
+          type: string
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        policy_template_id:
+          type: string
+          pattern: ^TPL-[A-Z0-9-]{1,64}$
+        policy_template_version:
+          type: string
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        org_unit_id: *unit
+        state:
+          type: string
+          enum:
+          - inactive
+          - active
+          - disabled
+          description: 未激活 / 生效 / 已停用
+        owner:
+          $ref: '#/components/schemas/Subject'
+        participants:
+          type: array
+          uniqueItems: true
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Subject'
+        params:
+          $ref: '#/components/schemas/ObjectiveParams'
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+    ObjectiveList:
+      type: object
+      additionalProperties: false
+      required:
+      - objectives
+      properties:
+        objectives:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/Objective'

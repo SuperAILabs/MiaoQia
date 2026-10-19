@@ -3,7 +3,8 @@
   python3 tools/dev/gen_local.py           生成 deploy/subsystems.yaml 与 deploy/local/postgres/10-subsystems.sql
   python3 tools/dev/gen_local.py --check   生成物与索引不一致时退出码为 1（CI 使用）
   python3 tools/dev/gen_local.py topics    列出本地需要创建的 Kafka 主题：contracts/events 中声明的通道、
-                                           审计主题 platform.audit，以及每个子系统的死信主题 dlq.<子系统>
+                                           审计主题 platform.audit，以及每个子系统的死信主题 dlq.<子系统>；
+                                           租户域通道地址 cell-{cell}.<命名空间> 按进程角色清单中的 cell 展开
 
 每个子系统数据库两个角色：<db>_owner 拥有库并执行迁移；<db>_app 是应用连接账号（非超级用户、无 BYPASSRLS，
 行级安全对其生效），由默认权限获得 owner 所建表的读写权限。outbox_relay 只被授予各库发件箱表的读与标记权限
@@ -74,9 +75,13 @@ def topics() -> list[str]:
     import yaml
 
     out = {"platform.audit"}
+    cells = sorted({spec["cell"] for path in ROLES.values() if path.exists()
+                    for spec in (yaml.safe_load(path.read_text(encoding="utf-8")).get("roles") or {}).values() if spec.get("cell")})
     for f in sorted((ROOT / "contracts/events").glob("*/*.asyncapi.yaml")):
         doc = yaml.safe_load(f.read_text(encoding="utf-8"))
-        out |= {c.get("address", k) for k, c in (doc.get("channels") or {}).items()}
+        for key, channel in (doc.get("channels") or {}).items():
+            address = channel.get("address", key)
+            out |= {address.replace("{cell}", cell) for cell in cells} if "{cell}" in address else {address}
     out |= {f"dlq.{name}" for name, *_ in subsystems()}
     return sorted(out)
 

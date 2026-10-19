@@ -1,0 +1,478 @@
+fixtures:
+- schema: Problem
+  base:
+    type: https://errors.miaoqia.com/version_conflict
+    title: version_conflict
+    status: 409
+    code: version_conflict
+  cases:
+  - name: 非错误HTTP状态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: 200
+  - name: 未知错误字段
+    valid: false
+    patch:
+    - op: add
+      path: /current
+      value: 3
+- schema: ProfileEntity
+  base:
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    qualifications_complete: false
+  cases:
+  - name: 主体须为公共组织
+    valid: false
+    patch:
+    - op: replace
+      path: /org_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 录全声明必填
+    valid: false
+    patch:
+    - op: remove
+      path: /qualifications_complete
+- schema: Qualification
+  base:
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    code: Q-BM-ISO9001
+    certificate_no: 00124Q31234R1M
+    valid_to: '2027-06-30'
+  cases:
+  - name: 带等级与起始日
+    valid: true
+    patch:
+    - op: add
+      path: /grade
+      value: 一星级
+    - op: add
+      path: /valid_from
+      value: '2024-07-01'
+  - name: 有效期须为日期
+    valid: false
+    patch:
+    - op: replace
+      path: /valid_to
+      value: 2027-06-30T00:00:00Z
+  - name: 缺证书编号
+    valid: false
+    patch:
+    - op: remove
+      path: /certificate_no
+  - name: 资质代码格式
+    valid: false
+    patch:
+    - op: replace
+      path: /code
+      value: ISO9001
+  - name: 状态由服务端判定，不得录入
+    valid: false
+    patch:
+    - op: add
+      path: /status
+      value: valid
+- schema: ProfileContent
+  base: &content
+    subject_type: organization
+    entities:
+    - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      qualifications_complete: false
+    value_chain_roles:
+    - ROLE-MFR
+    industry_packs:
+    - IND-BUILDING-MATERIALS
+    offering_categories:
+    - CAT-PIPE-PE
+    brands:
+    - 示例品牌
+    service_regions:
+    - '330000'
+    qualifications:
+    - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      code: Q-BM-ISO9001
+      certificate_no: 00124Q31234R1M
+      valid_to: '2027-06-30'
+  cases:
+  - name: 未关联本企业为空列表
+    valid: true
+    patch:
+    - op: replace
+      path: /entities
+      value: []
+    - op: replace
+      path: /qualifications
+      value: []
+  - name: M2只支持企业主体
+    valid: false
+    patch:
+    - op: replace
+      path: /subject_type
+      value: person
+  - name: 区划代码为6位
+    valid: false
+    patch:
+    - op: replace
+      path: /service_regions
+      value:
+      - '33'
+  - name: 品类不得重复
+    valid: false
+    patch:
+    - op: replace
+      path: /offering_categories
+      value:
+      - CAT-PIPE-PE
+      - CAT-PIPE-PE
+  - name: 缺品牌字段
+    valid: false
+    patch:
+    - op: remove
+      path: /brands
+- schema: UpdateProfileRequest
+  base:
+    expected_version: 0
+    content: *content
+  cases:
+  - name: 缺预期版本
+    valid: false
+    patch:
+    - op: remove
+      path: /expected_version
+  - name: 业务参数不得传租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: Profile
+  base:
+    version: 1
+    context_version: 1
+    content: *content
+  cases:
+  - name: 从未保存
+    valid: true
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+    - op: replace
+      path: /context_version
+      value: 0
+  - name: 版本不能为负
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: -1
+- schema: ContextVersion
+  base:
+    context_version: 5
+    profile_version: 3
+  cases:
+  - name: 缺档案版本
+    valid: false
+    patch:
+    - op: remove
+      path: /profile_version
+- schema: EntityQualifications
+  base:
+    qualifications:
+      Q-BM-ISO9001: valid
+      Q-BM-WATER-HYGIENE: expired
+    qualifications_pending: []
+    qualifications_complete: false
+  cases:
+  - name: 待核对不能作为已判定状态
+    valid: false
+    patch:
+    - op: add
+      path: /qualifications/Q-BM-ISO14001
+      value: pending
+  - name: 缺录全声明
+    valid: false
+    patch:
+    - op: remove
+      path: /qualifications_complete
+- schema: ContextPolicyView
+  base:
+    org_ids:
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    offering_categories:
+    - CAT-PIPE-PE
+    service_regions:
+    - '330000'
+    brands: []
+    entities:
+      org_01JA8ZXXXXXXXXXXXXXXXXXXX1:
+        qualifications: {}
+        qualifications_pending: []
+        qualifications_complete: false
+  cases:
+  - name: 未关联本企业时不出现主体与状态表
+    valid: true
+    patch:
+    - op: remove
+      path: /org_ids
+    - op: remove
+      path: /entities
+  - name: 未关联本企业不用空列表
+    valid: false
+    patch:
+    - op: replace
+      path: /org_ids
+      value: []
+  - name: 状态表不能为空对象
+    valid: false
+    patch:
+    - op: replace
+      path: /entities
+      value: {}
+- schema: ContextSnapshot
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    context_version: 1
+    unit_chain:
+    - root
+    policy_view:
+      offering_categories: []
+      service_regions: []
+      brands: []
+  cases:
+  - name: 缺上下文版本
+    valid: false
+    patch:
+    - op: remove
+      path: /context_version
+  - name: 单元链不能为空
+    valid: false
+    patch:
+    - op: replace
+      path: /unit_chain
+      value: []
+  - name: 未登记字段
+    valid: false
+    patch:
+    - op: add
+      path: /policy_view/qualification_codes
+      value: []
+- schema: ObjectiveTemplateParam
+  base:
+    name: categories
+    type: list<category_code>
+    default_from: profile.offering_categories
+    configurable: true
+  cases:
+  - name: 整数默认值
+    valid: true
+    patch:
+    - op: remove
+      path: /default_from
+    - op: replace
+      path: /type
+      value: int
+    - op: add
+      path: /default_number
+      value: 5000000
+  - name: 参数名格式
+    valid: false
+    patch:
+    - op: replace
+      path: /name
+      value: Categories
+- schema: ObjectiveTemplate
+  base: &template
+    template_id: APP-TENDER.A02
+    version: 0.1.0
+    name: 进入供货
+    say: 从中标结果、合同与施工许可中找出需要我方产品的项目和可接触的中标方
+    release_stage: M2
+    enableable: true
+    default_for_roles:
+    - ROLE-MFR
+    requires_domains:
+    - INF-PROC
+    - INF-INVP
+    policy_template_id: TPL-TENDER-A02-SUPPLY
+    policy_template_version: 0.3.0
+    params:
+    - name: min_amount_cny
+      type: int
+      default_number: 0
+      configurable: true
+  cases:
+  - name: 未到阶段不可启用
+    valid: true
+    patch:
+    - op: replace
+      path: /enableable
+      value: false
+    - op: add
+      path: /unavailable_reason
+      value: not_released
+    - op: replace
+      path: /release_stage
+      value: M4
+  - name: 未登记的不可启用原因
+    valid: false
+    patch:
+    - op: add
+      path: /unavailable_reason
+      value: unknown
+- schema: ObjectiveTemplateList
+  base:
+    value_chain_roles:
+    - ROLE-MFR
+    templates:
+    - *template
+  cases:
+  - name: 缺角色
+    valid: false
+    patch:
+    - op: remove
+      path: /value_chain_roles
+- schema: ObjectiveParam
+  base:
+    source: profile
+  cases:
+  - name: 本目标品类子集
+    valid: true
+    patch:
+    - op: replace
+      path: /source
+      value: objective
+    - op: add
+      path: /values
+      value:
+      - CAT-PIPE-PE-GAS
+  - name: 未登记来源
+    valid: false
+    patch:
+    - op: replace
+      path: /source
+      value: inherit
+  - name: 本目标值不能为空列表
+    valid: false
+    patch:
+    - op: add
+      path: /values
+      value: []
+- schema: ObjectiveParams
+  base:
+    categories:
+      source: profile
+    min_amount_cny:
+      source: objective
+      number: 1000000
+  cases:
+  - name: 参数名格式
+    valid: false
+    patch:
+    - op: add
+      path: /Min-Amount
+      value:
+        source: default
+- schema: Subject
+  base: keycloak-user
+  cases:
+  - name: 空主体
+    valid: false
+    patch: []
+    instance: ''
+- schema: EnableObjectiveRequest
+  base:
+    template_id: APP-TENDER.A02
+    org_unit_id: root
+    participants:
+    - sales-1
+  cases:
+  - name: 模板标识格式
+    valid: false
+    patch:
+    - op: replace
+      path: /template_id
+      value: A02
+  - name: 不得指定状态
+    valid: false
+    patch:
+    - op: add
+      path: /state
+      value: active
+  - name: 缺单元
+    valid: false
+    patch:
+    - op: remove
+      path: /org_unit_id
+- schema: ConfigureObjectiveRequest
+  base:
+    expected_version: 1
+    owner: dm-1
+    participants: []
+    params: {}
+  cases:
+  - name: 缺预期版本
+    valid: false
+    patch:
+    - op: remove
+      path: /expected_version
+  - name: 参与人不得重复
+    valid: false
+    patch:
+    - op: replace
+      path: /participants
+      value:
+      - sales-1
+      - sales-1
+- schema: SetObjectiveStateRequest
+  base:
+    expected_version: 2
+    state: disabled
+  cases:
+  - name: 不能经本接口激活
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: active
+- schema: Objective
+  base: &objective
+    id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    template_id: APP-TENDER.A02
+    template_version: 0.1.0
+    policy_template_id: TPL-TENDER-A02-SUPPLY
+    policy_template_version: 0.3.0
+    org_unit_id: root
+    state: inactive
+    owner: dm-1
+    participants: []
+    params:
+      categories:
+        source: profile
+    version: 1
+  cases:
+  - name: 未登记状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: draft
+  - name: 目标标识前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /id
+      value: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: ObjectiveList
+  base:
+    objectives:
+    - *objective
+  cases:
+  - name: 缺列表
+    valid: false
+    patch:
+    - op: remove
+      path: /objectives
