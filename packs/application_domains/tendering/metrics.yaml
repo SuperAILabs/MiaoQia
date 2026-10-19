@@ -119,16 +119,21 @@ metrics:
       segment_by: [objective, value_nature, amount_type, currency, contribution]
       platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
       stage: M2
-    - id: outcome_coverage
-      name: 结果反馈覆盖
+    - id: won_amount_coverage
+      name: 成交金额记录覆盖
       objectives: [APP-TENDER.A01, APP-TENDER.A02]
       layer: value
       unit: ratio
-      numerator: 已关闭的跟进中记录了结果与原因的数量
-      denominator: 已关闭的跟进数
+      numerator: 结果为成功的已关闭跟进中至少记录一条金额（含取值性质、金额类型与币种）的数量
+      denominator: 结果为成功的已关闭跟进数
+      numerator_filter:
+        result_type: [success]
+      denominator_filter:
+        result_type: [success]
+      note: 关闭时结果、原因与获知时间已为必填（第6段第13节第9项），按它们计算覆盖率恒为 100%，因此本指标衡量可选的成交金额是否被记录，供成交金额指标判断样本是否充足。
       source: [pursuit, outcome]
       window: 30d
-      segment_by: [objective, result_type]
+      segment_by: [objective]
       platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
       stage: M2
     - id: pursuit_results
