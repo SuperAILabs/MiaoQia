@@ -46,6 +46,7 @@ import (
 type hookedChannelSessions struct {
 	idapi.ChannelSessions
 	failIssue, failRevoke atomic.Bool
+	failLifecycle         atomic.Bool
 	mu                    sync.Mutex
 	before                func(req *idapi.IssueChannelSessionRequest) error
 	after                 func(s *idapi.ChannelSession)
@@ -74,6 +75,13 @@ func (h *hookedChannelSessions) IssueChannelSession(ctx context.Context, req *id
 		after(s)
 	}
 	return s, err
+}
+
+func (h *hookedChannelSessions) MemberLifecycle(ctx context.Context, subject string) (*idapi.ChannelMemberLifecycle, error) {
+	if h.failLifecycle.Load() {
+		return nil, &idapi.Error{Status: 503, Code: "identity_unavailable"}
+	}
+	return h.ChannelSessions.MemberLifecycle(ctx, subject)
 }
 
 func (h *hookedChannelSessions) RevokeChannelSessions(ctx context.Context, req *idapi.RevokeChannelSessionsRequest) (*idapi.ChannelSessionRevocation, error) {
@@ -108,7 +116,7 @@ func TestChannelBindingAndSSO(t *testing.T) {
 	t1, t2 := ids.New("tnt"), ids.New("tnt")
 	suffix := strings.ToLower(iam.Name)
 	user := func(name string) string { return name + "-" + suffix }
-	admin, bd, dm, ex, lv, ra, rj, admin2 := user("admin"), user("bd"), user("dm"), user("ex"), user("lv"), user("ra"), user("rj"), user("admin2")
+	admin, bd, dm, ex, lv, ra, rj, rk, admin2 := user("admin"), user("bd"), user("dm"), user("ex"), user("lv"), user("ra"), user("rj"), user("rk"), user("admin2")
 	iamOwner, err := pgx.Connect(ctx, iam.OwnerDSN)
 	if err != nil {
 		t.Fatal(err)
@@ -121,13 +129,13 @@ func TestChannelBindingAndSSO(t *testing.T) {
 		{`INSERT INTO identity_tenants VALUES ($1,'甲','cell-01','active',1), ($2,'乙','cell-01','active',1)`, []any{t1, t2}},
 		{`INSERT INTO identity_members VALUES ($1,$2,'active',ARRAY['admin'],1), ($1,$3,'active',ARRAY['business_developer'],1),
  ($1,$4,'active',ARRAY['decision_maker'],1), ($1,$5,'active',ARRAY['domain_expert'],1), ($1,$6,'active',ARRAY['business_developer'],1),
- ($1,$7,'active',ARRAY['research_analyst'],1), ($8,$9,'active',ARRAY['admin'],1), ($1,$10,'active',ARRAY['business_developer'],1)`, []any{t1, admin, bd, dm, ex, lv, ra, t2, admin2, rj}},
+ ($1,$7,'active',ARRAY['research_analyst'],1), ($8,$9,'active',ARRAY['admin'],1), ($1,$10,'active',ARRAY['business_developer'],1), ($1,$11,'active',ARRAY['business_developer'],1)`, []any{t1, admin, bd, dm, ex, lv, ra, t2, admin2, rj, rk}},
 	} {
 		if _, err := iamOwner.Exec(ctx, stmt.sql, stmt.args...); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, s := range []string{admin, bd, dm, ex, lv, ra, rj, admin2} {
+	for _, s := range []string{admin, bd, dm, ex, lv, ra, rj, rk, admin2} {
 		idp.Put(idapi.Account{Subject: s, Email: s + "@example.com", EmailVerified: true, TOTPEnrolled: true})
 	}
 	iamApp, err := db.Open(ctx, iam.AppDSN)
@@ -1028,6 +1036,15 @@ func TestChannelBindingAndSSO(t *testing.T) {
 				if _, err := s.ListLiveChannelSessions(svc(t1, who), "", 10); errCode(err) != "forbidden" {
 					t.Fatalf("%s：%v", name, err)
 				}
+				if _, err := s.MemberLifecycle(svc(t1, who), bd); errCode(err) != "forbidden" {
+					t.Fatalf("%s：%v", name, err)
+				}
+			}
+			if m, err := s.MemberLifecycle(svc(t1, "svc:channels"), bd); err != nil || m.State != "active" || m.MemberVersion != 1 || m.LeftVersion != 0 {
+				t.Fatalf("%s：%+v %v", name, m, err)
+			}
+			if m, err := s.MemberLifecycle(svc(t1, "svc:channels"), admin2); err != nil || m.State != "absent" {
+				t.Fatalf("%s：其他租户的成员在本租户为 absent：%+v %v", name, m, err)
 			}
 			if _, err := s.IssueChannelSession(svc(t1, "svc:channels"), req(cred, clock.Now().Add(5*time.Minute))); errCode(err) != "invalid_credential" {
 				t.Fatalf("%s：有效期过长的凭据：%v", name, err)
@@ -1202,6 +1219,93 @@ func TestChannelBindingAndSSO(t *testing.T) {
 			t.Fatal(state)
 		}
 		session(corpA, "u-rj", rj)
+		advance(36 * time.Second)
+		retry()
+	})
+
+	run("用例12：退出事件延迟送达、重新加入后未尝试免登：消息回调发出绑定引导、投递改投站内；角色变化不影响；identity 不可用时失败关闭", func(t *testing.T) {
+		b := bindAccount(t1, rk, corpA, "u-rk")
+		member := func() identityapi.Session {
+			var s identityapi.Session
+			decode(expect(web(admin, t1, "s"), "GET", "/v1/identity/members/"+rk, "", 200, ""), &s)
+			return s
+		}
+		putMember := func(state, roles string) {
+			m := member()
+			expect(web(admin, t1, "s"), "PUT", "/v1/identity/members/"+rk, fmt.Sprintf(`{"state":%q,"roles":%s,"expected_version":%d}`, state, roles, m.MemberVersion), 200, "")
+		}
+		target := func() (*chapi.DeliveryTarget, error) { return messaging.DeliveryTarget(svc(t1, "svc:briefing"), rk) }
+		requests := func() int {
+			return count(chnOwner, `SELECT count(*) FROM chn_binding_requests WHERE channel_user_id='u-rk'`)
+		}
+		// 普通的角色变化：成员版本增加，绑定仍有效（两条路径）
+		putMember("active", `["decision_maker"]`)
+		if res, err := inbound(corpA, "u-rk", clock.Now()); err != nil || res.Outcome != chapi.InboundBound {
+			t.Fatalf("%+v %v", res, err)
+		}
+		if got, err := target(); err != nil || got.Channel != "wecom" || got.BindingID != string(b.ID) {
+			t.Fatalf("%+v %v", got, err)
+		}
+		session(corpA, "u-rk", rk)
+		// identity 不可用：失败关闭，不写入任何状态（含去重记录），同一回调恢复后照常处理
+		before := requests()
+		cb := wc.Sign(&chapi.Callback{CorpID: corpA, EventID: "ev-rk-" + suffix, Timestamp: clock.Now(), Nonce: "n", Body: "message:u-rk"})
+		hooked.failLifecycle.Store(true)
+		if _, err := callbacks.ReceiveInbound(gw, "wecom", cb); errCode(err) != "identity_unavailable" {
+			t.Fatalf("%v", err)
+		}
+		if _, err := target(); errCode(err) != "identity_unavailable" {
+			t.Fatalf("投递不得选择渠道，也不得声称未绑定：%v", err)
+		}
+		hooked.failLifecycle.Store(false)
+		if res, err := callbacks.ReceiveInbound(gw, "wecom", cb); err != nil || res.Outcome != chapi.InboundBound {
+			t.Fatalf("失败时不得记下去重：%+v %v", res, err)
+		}
+		if state, _, _, _ := bindingRow(string(b.ID)); state != "bound" || requests() != before {
+			t.Fatalf("%s %d/%d", state, requests(), before)
+		}
+
+		// 第一次：退出并重新加入，退出事件不送达、不尝试免登
+		putMember("removed", `[]`)
+		putMember("active", `["business_developer"]`)
+		guides := len(wc.Messages(corpA, "u-rk"))
+		hooked.failLifecycle.Store(true)
+		if _, err := inbound(corpA, "u-rk", clock.Now()); errCode(err) != "identity_unavailable" {
+			t.Fatalf("%v", err)
+		}
+		if _, err := target(); errCode(err) != "identity_unavailable" {
+			t.Fatalf("%v", err)
+		}
+		hooked.failLifecycle.Store(false)
+		if state, _, _, _ := bindingRow(string(b.ID)); state != "bound" || requests() != before || len(wc.Messages(corpA, "u-rk")) != guides {
+			t.Fatal("identity 不可用时不得改变状态或发送引导")
+		}
+		// 消息回调：旧绑定以 member_left 失效，发出绑定引导；重新走 F5
+		link := guide(corpA, "u-rk")
+		if state, reason, _, _ := bindingRow(string(b.ID)); state != "revoking" || reason != "member_left" {
+			t.Fatalf("%s %s", state, reason)
+		}
+		token := web(rk, t1, "web-rk")
+		p := preview(token, link, corpA, "u-rk")
+		var renewed chn.BindingConfirmation
+		decode(expect(token, "POST", "/v1/channels/bindings:confirm", linkBody(link, oauth(corpA, "u-rk"), string(p.Confirmation)), 200, ""), &renewed)
+		if got, err := target(); err != nil || got.Channel != "wecom" || got.BindingID != string(renewed.Binding.ID) {
+			t.Fatalf("重新绑定后的新绑定是投递目标：%+v %v", got, err)
+		}
+		if res, err := inbound(corpA, "u-rk", clock.Now()); err != nil || res.Outcome != chapi.InboundBound {
+			t.Fatalf("%+v %v", res, err)
+		}
+		// 第二次：再次退出并重新加入；投递先发现旧绑定：改投站内，旧绑定失效
+		putMember("removed", `[]`)
+		putMember("active", `["business_developer"]`)
+		if got, err := target(); err != nil || got.Channel != "in_app" || got.Reason != "not_bound" {
+			t.Fatalf("投递不得选择退出前的绑定：%+v %v", got, err)
+		}
+		// 新绑定从未签发凭据，撤销确认后可立即完成：失效中或已失效
+		if state, reason, _, _ := bindingRow(string(renewed.Binding.ID)); state == "bound" || reason != "member_left" {
+			t.Fatalf("%s %s", state, reason)
+		}
+		guide(corpA, "u-rk")
 		advance(36 * time.Second)
 		retry()
 	})

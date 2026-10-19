@@ -619,6 +619,37 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /v1/identity/channel-members/{subject}:
+    get:
+      operationId: getChannelMemberLifecycle
+      summary: 读取成员生命周期（渠道绑定是否仍属于当前成员资格）
+      description: >-
+        仅 channels 的服务主体可调用（服务授权 can_issue_channel_sessions），带租户上下文。返回成员当前状态、成员版本与最近一次退出时的
+        成员版本（left_version，从未退出为0）。channels 据此判断一条绑定是否来自成员最近一次退出之前：绑定的成员版本不高于 left_version，
+        或成员当前不是有效成员（removed、absent），即为旧绑定；普通的角色变化只增加成员版本，不改变 left_version，绑定仍有效。
+        channels 在消息回调判断“已绑定”与选择投递目标时调用，identity 不可用时 channels 失败关闭（不当作有效，也不当作未绑定）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: subject
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+      responses:
+        '200':
+          description: 成员生命周期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelMemberLifecycle'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /v1/identity/channel-sessions:revoke:
     post:
       operationId: revokeChannelSessions
@@ -1394,3 +1425,32 @@ components:
           type: boolean
         next_cursor:
           $ref: '#/components/schemas/ChannelSessionCursor'
+    ChannelMemberLifecycle:
+      type: object
+      additionalProperties: false
+      required:
+      - subject
+      - state
+      - member_version
+      - left_version
+      properties:
+        subject:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        state:
+          type: string
+          description: active 有效成员；removed 已退出；absent 不是本租户成员
+          enum:
+          - active
+          - removed
+          - absent
+        member_version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 当前成员版本（absent 为0）
+        left_version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 最近一次退出时的成员版本（从未退出为0）

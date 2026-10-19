@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -108,7 +109,7 @@ func (s *Service) ChannelSSO(ctx context.Context, channel, oauthCode string) (*a
 			return login("member_inactive")
 		case errors.As(err, &safe) && safe.Code == "member_rejoined":
 			// 绑定建立后成员退出过（之后又重新加入）：这是退出前的旧绑定，立即以 member_left 失效（不等成员事件），须重新绑定
-			s.retireStaleBinding(tctx, r, b)
+			s.retireStaleBinding(tctx, r.tenant, r.cell, b)
 			return login("binding_inactive")
 		case errors.As(err, &safe) && safe.Status < 500:
 			return login("session_rejected")
@@ -126,7 +127,7 @@ func (s *Service) ChannelSSO(ctx context.Context, channel, oauthCode string) (*a
 
 // retireStaleBinding 使退出前的旧绑定以 member_left 失效（只在它仍是同一成员版本的有效绑定时），提交后同步撤销。
 // 失败只记录：identity 对它的签发与会话核验都已拒绝，成员事件送达时同样会使它失效。
-func (s *Service) retireStaleBinding(ctx context.Context, r *corpRoute, b *binding) {
+func (s *Service) retireStaleBinding(ctx context.Context, tenant, cell string, b *binding) {
 	var retired []*binding
 	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		var err error
@@ -138,8 +139,23 @@ func (s *Service) retireStaleBinding(ctx context.Context, r *corpRoute, b *bindi
 		return
 	}
 	for _, x := range retired {
-		s.revokeAfterCommit(ctx, r.tenant, r.cell, x)
+		s.revokeAfterCommit(ctx, tenant, cell, x)
 	}
+}
+
+// bindingCurrent 经 identity 判断有效绑定是否仍属于成员当前的成员资格：成员有效，且绑定的成员版本高于最近一次退出时的
+// 成员版本（普通的角色变化只增加成员版本，不使绑定过时）。identity 不可用或拒绝时返回错误（503 identity_unavailable），
+// 调用方失败关闭：既不当作有效，也不当作未绑定。
+func (s *Service) bindingCurrent(ctx context.Context, b *binding) (bool, error) {
+	if s.Sessions == nil {
+		return false, failure(503, "identity_unavailable")
+	}
+	m, err := s.Sessions.MemberLifecycle(ctx, b.subject)
+	if err != nil || m == nil {
+		s.logger().WarnContext(ctx, "成员生命周期查询失败", "binding", b.id, "error", fmt.Sprint(err))
+		return false, failure(503, "identity_unavailable")
+	}
+	return m.State == "active" && b.memberVersion > m.LeftVersion, nil
 }
 
 // credentialID 生成签发凭据标识（24字节随机数的 base64url）。
@@ -215,13 +231,16 @@ func (s *Service) OpenCardLink(ctx context.Context, req *chn.OpenCardLinkRequest
 	return &chn.CardTarget{Object: object}, nil
 }
 
-// DeliveryTarget 是 Messaging.DeliveryTarget：渠道已启用且绑定为 bound 时投到渠道，否则改投站内（PRD 第1段 F4 第4步、第9节）。
+// DeliveryTarget 是 Messaging.DeliveryTarget：渠道已启用、绑定为 bound 且仍属于成员当前的成员资格时投到渠道，否则改投站内
+// （PRD 第1段 F4 第4步、第9节）。绑定来自成员最近一次退出之前时（退出事件尚未送达）立即以 member_left 失效并改投站内；
+// identity 不可用时返回 503 identity_unavailable（可重试），不投到渠道，也不声称未绑定。
 func (s *Service) DeliveryTarget(ctx context.Context, subject string) (*api.DeliveryTarget, error) {
 	rc, ok := reqctx.From(ctx)
 	if !ok || rc.Validate() != nil || rc.Tenant == "" || rc.Principal.Kind != "service" {
 		return nil, failure(403, "forbidden")
 	}
 	out := &api.DeliveryTarget{Channel: "in_app", Reason: "channel_not_enabled"}
+	var b *binding
 	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		var installation string
 		err := tx.QueryRow(ctx, `SELECT id FROM chn_installations WHERE channel = $1 AND state = 'enabled'`, Channel).Scan(&installation)
@@ -231,20 +250,32 @@ func (s *Service) DeliveryTarget(ctx context.Context, subject string) (*api.Deli
 		if err != nil {
 			return err
 		}
-		var id string
-		err = tx.QueryRow(ctx, `SELECT id FROM chn_bindings WHERE installation_id = $1 AND subject = $2 AND state = 'bound'`, installation, subject).Scan(&id)
+		out.Reason = "not_bound"
+		found, err := scanBinding(tx.QueryRow(ctx, `SELECT `+bindingColumns+` FROM chn_bindings WHERE installation_id = $1 AND subject = $2 AND state = 'bound'`, installation, subject))
 		if errors.Is(err, pgx.ErrNoRows) {
-			out.Reason = "not_bound"
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		*out = api.DeliveryTarget{Channel: Channel, BindingID: id}
+		b = found
 		return nil
 	})
+	if err != nil || b == nil {
+		if err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+	// 以 channels 自己的服务主体查询 identity（调用方是其他子系统的服务主体）
+	sctx := serviceContext(ctx, rc.Tenant, rc.Cell)
+	current, err := s.bindingCurrent(sctx, b)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	if !current {
+		s.retireStaleBinding(sctx, rc.Tenant, rc.Cell, b)
+		return out, nil
+	}
+	return &api.DeliveryTarget{Channel: Channel, BindingID: b.id}, nil
 }

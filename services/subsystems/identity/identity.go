@@ -67,7 +67,8 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			}
 			for _, pattern := range []string{"POST /internal/v1/authz:check", "GET /internal/v1/identity/session",
 				"GET /internal/v1/identity/org-units/{unitID}", "POST /internal/v1/identity/participants:sync",
-				"POST /internal/v1/identity/channel-sessions", "GET /internal/v1/identity/channel-sessions", "POST /internal/v1/identity/channel-sessions:revoke"} {
+				"POST /internal/v1/identity/channel-sessions", "GET /internal/v1/identity/channel-sessions", "POST /internal/v1/identity/channel-sessions:revoke",
+				"GET /internal/v1/identity/channel-members/{subject}"} {
 				internal.Handle(pattern, binding.InternalServer(api.Name, srv))
 			}
 			pub, err := identityapi.NewServer(handler, identityapi.WithErrorHandler(app.WriteProtocolError))

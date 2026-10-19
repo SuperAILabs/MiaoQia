@@ -31,6 +31,106 @@ func (s *AcceptInvitationRequest) SetToken(val string) {
 
 type ChannelBindingID string
 
+// Ref: #/components/schemas/ChannelMemberLifecycle
+type ChannelMemberLifecycle struct {
+	Subject string `json:"subject"`
+	// Active 有效成员；removed 已退出；absent 不是本租户成员.
+	State ChannelMemberLifecycleState `json:"state"`
+	// 当前成员版本（absent 为0）.
+	MemberVersion int64 `json:"member_version"`
+	// 最近一次退出时的成员版本（从未退出为0）.
+	LeftVersion int64 `json:"left_version"`
+}
+
+// GetSubject returns the value of Subject.
+func (s *ChannelMemberLifecycle) GetSubject() string {
+	return s.Subject
+}
+
+// GetState returns the value of State.
+func (s *ChannelMemberLifecycle) GetState() ChannelMemberLifecycleState {
+	return s.State
+}
+
+// GetMemberVersion returns the value of MemberVersion.
+func (s *ChannelMemberLifecycle) GetMemberVersion() int64 {
+	return s.MemberVersion
+}
+
+// GetLeftVersion returns the value of LeftVersion.
+func (s *ChannelMemberLifecycle) GetLeftVersion() int64 {
+	return s.LeftVersion
+}
+
+// SetSubject sets the value of Subject.
+func (s *ChannelMemberLifecycle) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetState sets the value of State.
+func (s *ChannelMemberLifecycle) SetState(val ChannelMemberLifecycleState) {
+	s.State = val
+}
+
+// SetMemberVersion sets the value of MemberVersion.
+func (s *ChannelMemberLifecycle) SetMemberVersion(val int64) {
+	s.MemberVersion = val
+}
+
+// SetLeftVersion sets the value of LeftVersion.
+func (s *ChannelMemberLifecycle) SetLeftVersion(val int64) {
+	s.LeftVersion = val
+}
+
+// Active 有效成员；removed 已退出；absent 不是本租户成员.
+type ChannelMemberLifecycleState string
+
+const (
+	ChannelMemberLifecycleStateActive  ChannelMemberLifecycleState = "active"
+	ChannelMemberLifecycleStateRemoved ChannelMemberLifecycleState = "removed"
+	ChannelMemberLifecycleStateAbsent  ChannelMemberLifecycleState = "absent"
+)
+
+// AllValues returns all ChannelMemberLifecycleState values.
+func (ChannelMemberLifecycleState) AllValues() []ChannelMemberLifecycleState {
+	return []ChannelMemberLifecycleState{
+		ChannelMemberLifecycleStateActive,
+		ChannelMemberLifecycleStateRemoved,
+		ChannelMemberLifecycleStateAbsent,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ChannelMemberLifecycleState) MarshalText() ([]byte, error) {
+	switch s {
+	case ChannelMemberLifecycleStateActive:
+		return []byte(s), nil
+	case ChannelMemberLifecycleStateRemoved:
+		return []byte(s), nil
+	case ChannelMemberLifecycleStateAbsent:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ChannelMemberLifecycleState) UnmarshalText(data []byte) error {
+	switch ChannelMemberLifecycleState(data) {
+	case ChannelMemberLifecycleStateActive:
+		*s = ChannelMemberLifecycleStateActive
+		return nil
+	case ChannelMemberLifecycleStateRemoved:
+		*s = ChannelMemberLifecycleStateRemoved
+		return nil
+	case ChannelMemberLifecycleStateAbsent:
+		*s = ChannelMemberLifecycleStateAbsent
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/ChannelSession
 type ChannelSession struct {
 	ID             ChannelSessionID `json:"id"`

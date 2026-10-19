@@ -918,3 +918,27 @@ fixtures:
     - op: add
       path: /bindings/0/session_id
       value: chs_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: ChannelMemberLifecycle
+  base:
+    subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    state: active
+    member_version: 5
+    left_version: 2
+  cases:
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: suspended
+  - name: 缺最近退出版本
+    valid: false
+    patch:
+    - op: remove
+      path: /left_version
+  - name: 不在租户中
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: absent

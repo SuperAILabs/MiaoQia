@@ -66,7 +66,8 @@ type Installation struct {
 // Callbacks 是渠道侧入口。调用上下文为不带租户的服务主体（网关的未认证入口），租户只从已登记的企业路由派生：
 //   - InstallCallback：渠道官方授权页的回调（state 一次性、10分钟有效）；成功后安装为 pending_verification；
 //   - ReceiveInbound：消息回调。先验签（失败计入渠道健康，不改变状态），再按渠道事件标识去重、核对时间窗（重放不改变状态）；
-//     未绑定账号只收到绑定引导；
+//     未绑定账号只收到绑定引导；已绑定账号经 identity 核对绑定仍属于成员当前的成员资格，来自退出之前的旧绑定以 member_left
+//     失效后按未绑定发出引导；identity 不可用时返回 503 且不写入任何状态（含去重记录），由渠道重发；
 //   - ChannelSSO：渠道内置浏览器打开妙洽链接时，经渠道网页授权取得当前渠道账号，核对权威绑定后请 identity 签发免登会话。
 type Callbacks interface {
 	InstallCallback(ctx context.Context, channel, state, code string) (*Installation, error)
@@ -93,7 +94,9 @@ type DeliveryTarget struct {
 
 // Messaging 供出站编排使用（以带租户的服务主体调用）：
 //   - CreateCardLink 为收件人与对象生成卡片详情链接（72小时有效）；
-//   - DeliveryTarget 返回投递目标：只有渠道已启用且绑定为 bound 时投到渠道，否则改投站内。查询失败返回错误，不当作“未绑定”。
+//   - DeliveryTarget 返回投递目标：只有渠道已启用、绑定为 bound 且经 identity 核对仍属于成员当前的成员资格（绑定的成员版本高于
+//     最近一次退出时的成员版本）时投到渠道，否则改投站内；来自退出之前的旧绑定随即以 member_left 失效。查询失败或 identity
+//     不可用时返回错误（503，可重试），既不投到渠道，也不当作“未绑定”。
 type Messaging interface {
 	CreateCardLink(ctx context.Context, recipient, object string) (*CardLink, error)
 	DeliveryTarget(ctx context.Context, subject string) (*DeliveryTarget, error)

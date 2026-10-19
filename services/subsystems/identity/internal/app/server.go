@@ -113,6 +113,9 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityapi.AcceptIn
 func (s *Server) IssueChannelSession(ctx context.Context, req *identityapi.IssueChannelSessionRequest) (*identityapi.ChannelSession, error) {
 	return s.Directory.IssueChannelSession(ctx, req)
 }
+func (s *Server) GetChannelMemberLifecycle(ctx context.Context, params identityapi.GetChannelMemberLifecycleParams) (*identityapi.ChannelMemberLifecycle, error) {
+	return s.Directory.MemberLifecycle(ctx, params.Subject)
+}
 func (s *Server) RevokeChannelSessions(ctx context.Context, req *identityapi.RevokeChannelSessionsRequest) (*identityapi.ChannelSessionRevocation, error) {
 	return s.Directory.RevokeChannelSessions(ctx, req)
 }

@@ -77,6 +77,33 @@ func leftVersion(ctx context.Context, tx pgx.Tx, tenantID, subject string) (int6
 	return left, err
 }
 
+// MemberLifecycle 是 api.ChannelSessions：成员当前状态、成员版本与最近一次退出时的成员版本（只读，不加锁）。
+// 不是本租户成员时 state 为 absent。只接受 service:channels。
+func (d *Directory) MemberLifecycle(ctx context.Context, subject string) (*identityapi.ChannelMemberLifecycle, error) {
+	out := &identityapi.ChannelMemberLifecycle{Subject: subject, State: identityapi.ChannelMemberLifecycleStateAbsent}
+	if out.Validate() != nil {
+		return nil, failure(400, "invalid_request")
+	}
+	rc, err := d.channelService(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		var state string
+		err := tx.QueryRow(ctx, `SELECT state, version, left_version FROM identity_members WHERE tenant_id=$1 AND subject=$2`, rc.Tenant, subject).
+			Scan(&state, &out.MemberVersion, &out.LeftVersion)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		out.State = identityapi.ChannelMemberLifecycleState(state)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 type storedSession struct {
 	id, tenant, binding, subject string
 	version, memberVersion       int64

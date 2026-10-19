@@ -63,6 +63,20 @@ type Handler interface {
 	//
 	// POST /v1/tenants
 	CreateTenant(ctx context.Context, req *CreateTenantRequest, params CreateTenantParams) (*Tenant, error)
+	// GetChannelMemberLifecycle implements getChannelMemberLifecycle operation.
+	//
+	// 仅 channels 的服务主体可调用（服务授权
+	// can_issue_channel_sessions），带租户上下文。返回成员当前状态、成员版本与最近一次退出时的
+	// 成员版本（left_version，从未退出为0）。channels
+	// 据此判断一条绑定是否来自成员最近一次退出之前：绑定的成员版本不高于
+	// left_version，
+	// 或成员当前不是有效成员（removed、absent），即为旧绑定；普通的角色变化只增加成员版本，不改变
+	// left_version，绑定仍有效。 channels
+	// 在消息回调判断“已绑定”与选择投递目标时调用，identity 不可用时 channels
+	// 失败关闭（不当作有效，也不当作未绑定）。.
+	//
+	// GET /v1/identity/channel-members/{subject}
+	GetChannelMemberLifecycle(ctx context.Context, params GetChannelMemberLifecycleParams) (*ChannelMemberLifecycle, error)
 	// GetMember implements getMember operation.
 	//
 	// GET /v1/identity/members/{subject}

@@ -144,6 +144,17 @@ func (c client) RevokeChannelSessions(ctx context.Context, req *api.RevokeChanne
 	})
 }
 
+// MemberLifecycle 读取成员生命周期（状态、成员版本、最近一次退出时的成员版本）。
+func (c client) MemberLifecycle(ctx context.Context, subject string) (*api.ChannelMemberLifecycle, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "MemberLifecycle", Idempotent: true}, func(ctx context.Context) (*api.ChannelMemberLifecycle, error) {
+		value, err := c.c.GetChannelMemberLifecycle(ctx, identityapi.GetChannelMemberLifecycleParams{Subject: subject})
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}
+
 // ListLiveChannelSessions 分页列出仍有有效免登会话的绑定。
 func (c client) ListLiveChannelSessions(ctx context.Context, cursor string, limit int) (*api.LiveChannelBindingList, error) {
 	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "ListLiveChannelSessions", Idempotent: true}, func(ctx context.Context) (*api.LiveChannelBindingList, error) {

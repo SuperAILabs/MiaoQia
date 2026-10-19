@@ -17,17 +17,27 @@ type (
 	RevokeChannelSessionsRequest = identityapi.RevokeChannelSessionsRequest
 	ChannelSessionRevocation     = identityapi.ChannelSessionRevocation
 	LiveChannelBindingList       = identityapi.LiveChannelBindingList
+	ChannelMemberLifecycle       = identityapi.ChannelMemberLifecycle
 )
 
 // ChannelSessions 是只供 channels 服务主体调用的免登会话接口（本地与远程绑定行为一致，identity.md 第5节）：
 //   - IssueChannelSession 凭 channels 的签发凭据签发不带强认证的免登会话：锁定该绑定的撤销水位行，核验凭据未过期
 //     （5秒偏差从严）、绑定版本高于水位、成员有效且绑定建立后没有退出过（MemberVersion 高于最近一次退出时的成员版本）后写入会话；同一凭据标识的重试返回首次结果；
 //   - RevokeChannelSessions 在同一水位行上把水位抬高到给定版本并作废版本不高于它的会话；返回即已生效。按版本幂等；
-//   - ListLiveChannelSessions 分页列出仍有有效会话的绑定，供 channels 对账（cursor 为空表示第一页）。
+//   - ListLiveChannelSessions 分页列出仍有有效会话的绑定，供 channels 对账（cursor 为空表示第一页）；
+//   - MemberLifecycle 返回成员当前状态、成员版本与最近一次退出时的成员版本，channels 据此判断绑定是否来自退出之前。
 type ChannelSessions interface {
 	IssueChannelSession(ctx context.Context, req *IssueChannelSessionRequest) (*ChannelSession, error)
 	RevokeChannelSessions(ctx context.Context, req *RevokeChannelSessionsRequest) (*ChannelSessionRevocation, error)
 	ListLiveChannelSessions(ctx context.Context, cursor string, limit int) (*LiveChannelBindingList, error)
+	MemberLifecycle(ctx context.Context, subject string) (*ChannelMemberLifecycle, error)
+}
+
+func (l localChannelSessions) MemberLifecycle(ctx context.Context, subject string) (*ChannelMemberLifecycle, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "MemberLifecycle", Idempotent: true},
+		func(ctx context.Context) (*ChannelMemberLifecycle, error) {
+			return l.impl.MemberLifecycle(ctx, subject)
+		})
 }
 
 func LocalChannelSessions(impl ChannelSessions) ChannelSessions { return localChannelSessions{impl} }

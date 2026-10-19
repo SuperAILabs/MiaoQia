@@ -239,6 +239,91 @@ func decodeCreateTenantParams(args [0]string, argsEscaped bool, r *http.Request)
 	return params, nil
 }
 
+// GetChannelMemberLifecycleParams is parameters of getChannelMemberLifecycle operation.
+type GetChannelMemberLifecycleParams struct {
+	Subject string
+}
+
+func unpackGetChannelMemberLifecycleParams(packed middleware.Parameters) (params GetChannelMemberLifecycleParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "subject",
+			In:   "path",
+		}
+		params.Subject = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetChannelMemberLifecycleParams(args [1]string, argsEscaped bool, r *http.Request) (params GetChannelMemberLifecycleParams, _ error) {
+	// Decode path: subject.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "subject",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Subject = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.Subject)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "subject",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetMemberParams is parameters of getMember operation.
 type GetMemberParams struct {
 	Subject string
