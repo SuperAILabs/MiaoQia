@@ -88,6 +88,7 @@ func invalid(code, format string, args ...any) error {
 
 var (
 	orgPattern    = regexp.MustCompile(`^org_[0-9A-HJKMNP-TV-Z]{26}$`)
+	unitPattern   = regexp.MustCompile(`^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$`)
 	regionPattern = regexp.MustCompile(`^[0-9]{6}$`)
 )
 
@@ -118,7 +119,8 @@ func (p Profile) Validate(c *Catalog) error {
 			return invalid("duplicate_entity", "我方主体 %s 重复", e.OrgID)
 		}
 		entities[e.OrgID] = true
-		if e.OrgUnitID != "" && e.OrgUnitID != RootUnit {
+		// 这里只校验单元标识格式（不合格式的单元不可能存在）；单元是否存在、是否属于本租户由应用层经 identity 核对。
+		if e.OrgUnitID != "" && !unitPattern.MatchString(e.OrgUnitID) {
 			return invalid("org_unit_not_found", "组织单元 %s 不存在", e.OrgUnitID)
 		}
 	}

@@ -12,7 +12,6 @@ import (
 
 	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
-	"github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/internal/domain"
 )
 
@@ -74,6 +73,10 @@ func scanObjective(row pgx.Row) (*Objective, error) {
 	return &o, json.Unmarshal(params, &o.Params)
 }
 
+// MaxParticipantRelations 是目标负责人与参与人合计的不同主体数上限，等于 identity SyncResourceParticipants 单次请求的
+// 关系上限（负责人同时是参与人只计一次）。在命令提交前校验，保证已提交的目标都能同步到 identity。
+const MaxParticipantRelations = 50
+
 func checkPeople(owner string, participants []string) error {
 	if !subjectPattern.MatchString(owner) {
 		return failure(400, "invalid_request")
@@ -85,18 +88,37 @@ func checkPeople(owner string, participants []string) error {
 		}
 		seen[p] = true
 	}
+	seen[owner] = true
+	if len(seen) > MaxParticipantRelations {
+		return failureDetail(422, "too_many_participants", fmt.Sprintf("负责人与参与人合计最多 %d 人", MaxParticipantRelations))
+	}
 	return nil
+}
+
+// involved 判断主体是否为目标当前版本（本地）的负责人或参与人。
+func (o *Objective) involved(subject string) bool {
+	return o.Owner == subject || slices.Contains(o.Participants, subject)
 }
 
 // EnableObjective 启用目标（目标单元上的 can_create_objective）：目标须在目录中可启用，参数按模板与当前档案补全校验；
 // 创建状态为未激活的目标，激活前不产生信号。同一单元同一模板只启用一次（含已停用的目标，重新启用经 SetObjectiveState）。
 func (s *Service) EnableObjective(ctx context.Context, in ObjectiveInput, key string) (*Objective, error) {
-	rc, err := s.require(ctx, canCreateObjective...)
+	rc, err := tenantContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if in.OrgUnitID != api.RootUnit {
-		return nil, failure(404, "org_unit_not_found")
+	if rc.Principal.Kind != "user" {
+		return nil, failure(403, "forbidden")
+	}
+	if _, err := s.unitChain(ctx, in.OrgUnitID); err != nil {
+		return nil, err
+	}
+	ok, err := s.allowedOn(ctx, rc, "can_create_objective", "org_unit:"+in.OrgUnitID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, failure(403, "forbidden")
 	}
 	if in.Owner == "" {
 		in.Owner = rc.Principal.ID
@@ -154,6 +176,7 @@ func (s *Service) EnableObjective(ctx context.Context, in ObjectiveInput, key st
 	if err != nil {
 		return nil, err
 	}
+	s.syncAfterCommit(ctx, out)
 	return out, nil
 }
 
@@ -191,9 +214,9 @@ func lockObjective(ctx context.Context, tx pgx.Tx, id string, expected int64) (*
 // 参数是下一份策略草案的输入，不改变已生效的策略版本；未修改的本目标值不按当前档案重新校验。
 // 目标所用的策略模板已有新版本时，参数调整须经第7段的模板升级，本接口只接受负责人与参与人的调整。
 func (s *Service) ConfigureObjective(ctx context.Context, id string, expected int64, in ObjectiveInput, key string) (*Objective, error) {
-	rc, err := s.require(ctx, canEditObjective...)
+	rc, _, err := s.requireObjective(ctx, id, "can_manage_participants", "can_edit")
 	if err != nil {
-		return nil, s.hideObjective(ctx, rc, err)
+		return nil, err
 	}
 	if in.Participants == nil {
 		in.Participants = []string{}
@@ -244,8 +267,9 @@ func (s *Service) ConfigureObjective(ctx context.Context, id string, expected in
 		})
 	})
 	if err != nil {
-		return nil, s.hideObjective(ctx, rc, err)
+		return nil, err
 	}
+	s.syncAfterCommit(ctx, out)
 	return out, nil
 }
 
@@ -257,9 +281,8 @@ func sameParams(a, b map[string]domain.Param) bool {
 
 // SetObjectiveState 停用或重新启用目标（can_edit）。生效只由策略激活设置（第7段）。
 func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int64, target, key string) (*Objective, error) {
-	rc, err := s.require(ctx, canEditObjective...)
-	if err != nil {
-		return nil, s.hideObjective(ctx, rc, err)
+	if _, _, err := s.requireObjective(ctx, id, "can_edit"); err != nil {
+		return nil, err
 	}
 	if target != domain.StateInactive && target != domain.StateDisabled {
 		return nil, failure(400, "invalid_request")
@@ -270,7 +293,7 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 		Expected int64  `json:"expected_version"`
 		State    string `json:"state"`
 	}{id, expected, target}
-	err = s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return command(ctx, tx, key, "objective.state", request, out, func() error {
 			o, err := lockObjective(ctx, tx, id, expected)
 			if err != nil {
@@ -290,71 +313,102 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 		})
 	})
 	if err != nil {
-		return nil, s.hideObjective(ctx, rc, err)
+		return nil, err
 	}
+	s.syncAfterCommit(ctx, out)
 	return out, nil
 }
 
-// hideObjective 让无权查看目标的调用者得到与“不存在”相同的结果，不暴露目标是否存在（PRD 第1段 F5）。
-func (s *Service) hideObjective(ctx context.Context, rc reqctx.Context, err error) error {
-	var safe *api.Error
-	if !errors.As(err, &safe) || safe.Code != "forbidden" || rc.Tenant == "" {
-		return err
-	}
-	if viewer, verr := s.canView(ctx, rc); verr == nil && !viewer {
-		return failure(404, "objective_not_found")
-	}
-	return err
+// objectiveRelations 列出本子系统在目标上判断的关系，以及其中不经参与关系的部分对应的单元关系（identity.md 7.7）。
+// 映射为空的关系不含参与关系（只看目标所在单元的角色），直接在目标资源上判断。
+//
+// 参与关系由 identity 在 SyncResourceParticipants 后才更新，同步失败或尚在重试时 identity 中可能仍有旧版本的参与关系。
+// 因此凡可经参与关系获得的权限，按“单元关系 或（目标当前版本的负责人/参与人 且 identity 判断通过）”放行：
+// 移除参与人、改派负责人在本地提交后立即撤权；新加入的主体在同步应用前 identity 不放行，应用后才可见。
+var objectiveRelations = map[string]string{
+	"can_view":                "can_list_objectives",
+	"can_edit":                "",
+	"can_manage_participants": "",
 }
 
-func (s *Service) canView(ctx context.Context, rc reqctx.Context) (bool, error) {
-	if rc.Principal.Kind != "user" {
-		return false, nil
+// allowedObjective 判断用户主体对目标（本地当前版本）是否具有关系，见 objectiveRelations。
+func (s *Service) allowedObjective(ctx context.Context, rc reqctx.Context, o *Objective, relation string) (bool, error) {
+	unitRelation, known := objectiveRelations[relation]
+	if !known {
+		return false, fmt.Errorf("customer-context：目标关系 %s 未登记参与关系口径", relation)
 	}
-	for _, relation := range canViewObjective {
-		ok, err := s.allowed(ctx, rc, relation)
+	if unitRelation != "" {
+		ok, err := s.allowedOn(ctx, rc, unitRelation, "org_unit:"+o.OrgUnitID)
 		if err != nil || ok {
 			return ok, err
 		}
+		if !o.involved(rc.Principal.ID) {
+			return false, nil
+		}
 	}
-	return false, nil
+	return s.allowedOn(ctx, rc, relation, "objective:"+o.ID)
 }
 
-// GetObjective 读取目标（can_view）；无权限与不存在同样返回 404。
-func (s *Service) GetObjective(ctx context.Context, id string) (*Objective, error) {
+// requireObjective 读取目标并要求用户主体对它具有全部关系。无权查看目标的调用者得到与“不存在”相同的结果，
+// 不暴露目标是否存在（PRD 第1段 F7）；能查看而无权操作时为 403。
+func (s *Service) requireObjective(ctx context.Context, id string, relations ...string) (reqctx.Context, *Objective, error) {
 	rc, err := tenantContext(ctx)
 	if err != nil {
-		return nil, err
+		return rc, nil, err
 	}
-	viewer, err := s.canView(ctx, rc)
-	if err != nil {
-		return nil, err
+	if rc.Principal.Kind != "user" {
+		return rc, nil, failure(403, "forbidden")
 	}
-	if !viewer {
-		return nil, failure(404, "objective_not_found")
-	}
-	var out *Objective
+	var o *Objective
 	err = s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		out, err = scanObjective(tx.QueryRow(ctx, `SELECT `+objectiveColumns+` FROM ctx_objectives WHERE id = $1`, id))
+		var err error
+		o, err = scanObjective(tx.QueryRow(ctx, `SELECT `+objectiveColumns+` FROM ctx_objectives WHERE id = $1`, id))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return failure(404, "objective_not_found")
 		}
 		return err
 	})
-	return out, err
+	if err != nil {
+		return rc, nil, err
+	}
+	for _, relation := range relations {
+		ok, err := s.allowedObjective(ctx, rc, o, relation)
+		if err != nil {
+			return rc, nil, err
+		}
+		if ok {
+			continue
+		}
+		viewer, err := s.allowedObjective(ctx, rc, o, "can_view")
+		if err != nil {
+			return rc, nil, err
+		}
+		if !viewer {
+			return rc, nil, failure(404, "objective_not_found")
+		}
+		return rc, nil, failure(403, "forbidden")
+	}
+	return rc, o, nil
 }
 
-// ListObjectives 列出调用者可查看的目标；没有单元级查看关系的成员得到空列表。
+// GetObjective 读取目标（can_view，见 objectiveRelations）；无权限与不存在同样返回 404。
+func (s *Service) GetObjective(ctx context.Context, id string) (*Objective, error) {
+	_, o, err := s.requireObjective(ctx, id, "can_view")
+	return o, err
+}
+
+// ListObjectives 列出调用者可查看的目标（identity.md 7.7），与 GetObjective 同一口径（objectiveRelations）：按目标所在单元的
+// can_list_objectives 过滤（每个单元判断一次），再加上调用者是当前负责人或参与人、且经 identity 判断目标 can_view 的目标。
 func (s *Service) ListObjectives(ctx context.Context) ([]Objective, error) {
 	rc, err := tenantContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	viewer, err := s.canView(ctx, rc)
-	if err != nil || !viewer {
-		return []Objective{}, err
-	}
 	out := []Objective{}
+	if rc.Principal.Kind != "user" {
+		return out, nil
+	}
+	var all []Objective
 	err = s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `SELECT `+objectiveColumns+` FROM ctx_objectives ORDER BY template_id, org_unit_id`)
 		if err != nil {
@@ -366,9 +420,30 @@ func (s *Service) ListObjectives(ctx context.Context) ([]Objective, error) {
 			if err != nil {
 				return err
 			}
-			out = append(out, *o)
+			all = append(all, *o)
 		}
 		return rows.Err()
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	listable := map[string]bool{}
+	for _, o := range all {
+		visible, known := listable[o.OrgUnitID]
+		if !known {
+			if visible, err = s.allowedOn(ctx, rc, "can_list_objectives", "org_unit:"+o.OrgUnitID); err != nil {
+				return nil, err
+			}
+			listable[o.OrgUnitID] = visible
+		}
+		if !visible && o.involved(rc.Principal.ID) {
+			if visible, err = s.allowedOn(ctx, rc, "can_view", "objective:"+o.ID); err != nil {
+				return nil, err
+			}
+		}
+		if visible {
+			out = append(out, o)
+		}
+	}
+	return out, nil
 }

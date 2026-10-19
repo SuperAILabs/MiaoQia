@@ -248,3 +248,33 @@ func TestPermissionBoundaries(t *testing.T) {
 		t.Error("研究不能共享给外部协作者")
 	}
 }
+
+// 服务主体的租户动作只来自服务授权清单（infra.ServiceGrants，启动时与 OpenFGA 对齐），成员角色不能获得它们，服务主体也不因此获得成员权限。
+func TestServiceAuthorization(t *testing.T) {
+	check, grant, _ := fixture(t, "tenant")
+	grant([3]string{infra.PlatformObject, "platform", "tenant:t"})
+	for relation, services := range infra.ServiceGrants {
+		tenantRelation := map[string]string{"context_reader": "can_read_context", "objective_registrar": "can_sync_objective_participants",
+			"pursuit_registrar": "can_sync_pursuit_participants", "research_registrar": "can_sync_research_case_participants"}[relation]
+		if tenantRelation == "" {
+			t.Fatalf("服务授权 %s 没有对应的租户动作", relation)
+		}
+		for _, s := range services {
+			if !check("service:"+s, tenantRelation, "tenant:t") {
+				t.Errorf("service:%s 应有 %s", s, tenantRelation)
+			}
+		}
+		for _, other := range []string{"service:channels", "user:ta", "user:dm"} {
+			if check(other, tenantRelation, "tenant:t") {
+				t.Errorf("%s 不应有 %s", other, tenantRelation)
+			}
+		}
+	}
+	if check("service:detection", "can_view_profile", "tenant:t") || check("service:detection", "can_view", "objective:o1") {
+		t.Error("服务主体不是租户成员，不获得成员权限")
+	}
+	// 没有平台关联的租户（例如另一租户的一次性对象）上服务动作不成立
+	if check("service:detection", "can_read_context", "tenant:other") {
+		t.Error("服务授权只经租户的 platform 关系生效")
+	}
+}

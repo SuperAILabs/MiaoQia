@@ -16,7 +16,8 @@ var _ Handler = UnimplementedHandler{}
 // ConfigureObjective implements configureObjective operation.
 //
 // 负责人与参与人需要 can_manage_participants，参数需要 can_edit；整份替换并带
-// expected_version。
+// expected_version。 负责人与参与人合计不超过 50 个不同主体，超出返回 422
+// too_many_participants，命令不生效。
 // 参数是下一份策略草案的输入，不改变已生效的策略版本（第7段）。.
 //
 // PUT /v1/customer-context/objectives/{objectiveID}
@@ -29,7 +30,8 @@ func (UnimplementedHandler) ConfigureObjective(ctx context.Context, req *Configu
 // 需要目标单元上的
 // can_create_objective。创建状态为未激活（inactive）的目标；首次激活经第7段仿真与审批，
 // 激活前不产生信号。同一单元同一模板只启用一次，重复启用返回 409
-// objective_exists 并在 detail 中给出已有目标标识。.
+// objective_exists 并在 detail 中给出已有目标标识。 负责人与参与人合计不超过
+// 50 个不同主体，超出返回 422 too_many_participants，命令不生效。.
 //
 // POST /v1/customer-context/objectives
 func (UnimplementedHandler) EnableObjective(ctx context.Context, req *EnableObjectiveRequest, params EnableObjectiveParams) (r *Objective, _ error) {
@@ -52,8 +54,8 @@ func (UnimplementedHandler) GetContextSnapshot(ctx context.Context, params GetCo
 // 读主库。detection
 // 每批求值前读取；资质有效期跨过到期日后，本调用在返回前先形成新的上下文版本
 // （快照中该资质改为过期），保证返回后开始的求值不使用过期判定。调用方为用户时需要
-// can_view_profile；
-// 服务主体只接受登记的快照读取方（detection、learning、research、assessment）。.
+// can_view_profile； 服务主体需要 identity 授予的 can_read_context（identity
+// 的服务授权清单登记 detection、learning、research、assessment）。.
 //
 // GET /v1/customer-context/context-version
 func (UnimplementedHandler) GetContextVersion(ctx context.Context) (r *ContextVersion, _ error) {
@@ -62,7 +64,9 @@ func (UnimplementedHandler) GetContextVersion(ctx context.Context) (r *ContextVe
 
 // GetObjective implements getObjective operation.
 //
-// 需要 can_view；无权限与不存在同样返回 404 objective_not_found。.
+// 需要 can_view；无权限与不存在同样返回 404
+// objective_not_found。单元上的决策者、研究分析者与管理员按目标所在单元判断；
+// 仅凭参与关系的查看还要求调用者是目标当前版本的负责人或参与人，移除或改派在命令提交后立即生效，不等待参与关系同步。.
 //
 // GET /v1/customer-context/objectives/{objectiveID}
 func (UnimplementedHandler) GetObjective(ctx context.Context, params GetObjectiveParams) (r *Objective, _ error) {
@@ -91,9 +95,10 @@ func (UnimplementedHandler) ListObjectiveTemplates(ctx context.Context) (r *Obje
 
 // ListObjectives implements listObjectives operation.
 //
-// 返回调用者可查看（can_view）的目标。本切片按目标所在单元的决策者、研究分析者、租户管理员判断；
-// 仅凭参与关系（◐）的查看随 identity
-// 的资源参与关系同步交付，此前不返回。.
+// 返回调用者可查看（can_view）的目标：调用者在目标所在单元（含上级继承）有
+// can_list_objectives（决策者、研究分析者、
+// 租户管理员）的目标，以及本地参与人副本中包含调用者且经 identity 判断
+// can_view 的目标（仅凭参与关系 ◐）。.
 //
 // GET /v1/customer-context/objectives
 func (UnimplementedHandler) ListObjectives(ctx context.Context) (r *ObjectiveList, _ error) {

@@ -101,6 +101,21 @@ func (s *Service) UpdateProfile(ctx context.Context, expected int64, content dom
 		}
 		return nil, err
 	}
+	// 我方主体挂接的组织单元须属于本租户（identity 的 OrgUnit）
+	checked := map[string]bool{api.RootUnit: true}
+	for _, e := range content.Entities {
+		if e.OrgUnitID == "" || checked[e.OrgUnitID] {
+			continue
+		}
+		if _, err := s.unitChain(ctx, e.OrgUnitID); err != nil {
+			var safe *api.Error
+			if errors.As(err, &safe) && safe.Code == "org_unit_not_found" {
+				return nil, failureDetail(422, "org_unit_not_found", e.OrgUnitID)
+			}
+			return nil, err
+		}
+		checked[e.OrgUnitID] = true
+	}
 	today := s.today()
 	out := &ProfileResult{}
 	request := struct {
@@ -289,8 +304,11 @@ func (s *Service) ContextSnapshot(ctx context.Context, unit string, version int6
 	if err != nil {
 		return nil, err
 	}
+	chain := []string{api.RootUnit}
 	if unit != api.RootUnit {
-		return nil, failure(404, "org_unit_not_found")
+		if chain, err = s.unitChain(ctx, unit); err != nil {
+			return nil, err
+		}
 	}
 	out := &SnapshotResult{Tenant: rc.Tenant, Unit: unit}
 	var warn *overLimit
@@ -314,6 +332,15 @@ func (s *Service) ContextSnapshot(ctx context.Context, unit string, version int6
 		}
 		if out.Version > st.Context {
 			return failure(404, "context_version_not_found")
+		}
+		if unit != api.RootUnit {
+			// 单元覆盖（PRD 第2段用例 21）实现前，各单元的合成结果与根单元相同；单元快照在首次读取时按当时的单元链物化，
+			// 之后同一（租户、单元、上下文版本）永远返回同一结果。
+			if _, err := tx.Exec(ctx, `INSERT INTO ctx_snapshots (tenant_id, org_unit_id, context_version, profile_version, unit_chain, as_of, policy_view)
+ SELECT tenant_id, $2, context_version, profile_version, $4, as_of, policy_view FROM ctx_snapshots WHERE tenant_id = $1 AND org_unit_id = $5 AND context_version = $3
+ ON CONFLICT DO NOTHING`, rc.Tenant, unit, out.Version, chain, api.RootUnit); err != nil {
+				return err
+			}
 		}
 		var raw []byte
 		if err := tx.QueryRow(ctx, `SELECT unit_chain, policy_view FROM ctx_snapshots WHERE tenant_id = $1 AND org_unit_id = $2 AND context_version = $3`,

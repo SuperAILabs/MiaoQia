@@ -1,0 +1,34 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-19T12:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  A02 第1–2段服务端切片（identity 组织单元、单元角色、资源级 Check、服务主体授权与 SyncResourceParticipants）
+  对 C4a 冻结契约做了追加式修改：contracts/identifiers.yaml 新增 OrgUnit 前缀 unt（1.1.0 → 1.2.0）；
+  contracts/apis/identity/openapi.yaml 新增组织单元与参与关系同步路径、PutMemberRequest 与 Session 的可选 unit_roles
+  （1.1.0 → 1.2.0）。mqc compat 对 origin/main 判定 identity 与标识前缀无 breaking，已有路径与类型不变；
+  identity 事件 1.1.0 为 identity.member.changed.v1 追加可选 unit_roles（该文件不在 C4a 冻结范围，只记录）。
+  这里把切片结束时的内容登记为新基线；原冻结记录不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.2.0
+  sha256: d139a61fd1f5f9305f78f7795a3c6469dbb0bd9e6e49964aaa4c543b4fa0d8fc
+- path: contracts/apis/identity/openapi.yaml
+  current_version: 1.2.0
+  sha256: 88eb706a83ddce8d8b376454493afd82031ebf476592ca4f264cde595233e0b6
+fixture_artifacts:
+- path: contracts/apis/identity/fixtures.yaml
+  sha256: a940d672b86b9c469d6f5b72f0795e649d425741d02a677ba76587d91b5cad54
+- path: contracts/events/identity/events.asyncapi.yaml
+  sha256: aff2321eb68186283d6d66da79b700a4c8793603d356d1e102005c7ad2a7dec3
+- path: contracts/events/identity/fixtures.yaml
+  sha256: 0a9687721383821a648bab305c6cca6645d5726df65379f26b3322c2f31968e3
+verification:
+  base: 5db6bf6
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（customer-context 0.x 草案共 16 项 breaking：单元标识 pattern 收紧 9 项、参与人 maxItems 200→50 共 7 项，均随 0.2.0 草案迁移；identity 与标识前缀无 breaking）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA）

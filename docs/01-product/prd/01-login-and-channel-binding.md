@@ -1,6 +1,6 @@
 # PRD 第1段：登录与渠道绑定
 
-> 状态：设计交接通过 · 版本：1.4 · 更新：2026-10-15 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
+> 状态：设计交接通过 · 版本：1.5 · 更新：2026-10-19 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
 
 本段让一家建材供应商从开通到“销售在企业微信收到妙洽消息、点开卡片在手机上看到同一账号下的内容”。它是首条旅程（A02 进入供货）后续各段的前提：第2段的客户档案由本段激活的管理员录入，第5段的简报与卡片只发给本段绑定的成员。
 
@@ -248,6 +248,19 @@
 | 18 | 会话空闲 12 小时、绝对 7 天、免登 12 小时到期后均要求重新认证 | 第10节 | 登录·过期 |
 
 证据位置在实现时逐条填入：自动化用例写测试文件与用例名，走查写记录链接。
+
+服务端首个切片（identity 契约 1.2.0：组织单元、单元角色、资源级 `Check`、服务主体授权与 `SyncResourceParticipants`，见 [identity 第5节实现状况](../../03-architecture/subsystems/identity.md#5-接口)）为 F2 的“分配角色和组织单元”提供了目录与授权基础；本段的邀请、强认证时效、渠道与免登流程尚未实现。当前自动化证据：
+
+| 用例 | 状态 | 证据位置 |
+|---|---|---|
+| 4 | 部分：成员管理接口对非管理员拒绝（含单元与单元角色管理）；`AcceptInvitation` 未实现 | `services/kernel/integration/identity_test.go`（authorization-and-mfa-negative）；`services/kernel/integration/units_participants_test.go`（组织单元：创建、列表、读取与管理权限） |
+| 5 | 部分：非管理员、无 MFA 的角色与单元变更被拒绝；15 分钟强认证时效未实现（目前只核对已签名的 `amr=mfa`），邀请与渠道安装未实现 | 同上 |
+| 12 | 部分：成员退出后旧 Web 会话的下一次请求被拒绝，其资源参与关系失效并清理、重新加入不复活；渠道动作与免登随 channels | `services/kernel/integration/identity_test.go`（join-and-role-revocation-with-old-token）；`services/kernel/integration/units_participants_test.go`（成员退出） |
+| 14 | 部分：目标详情对无权限与不存在返回同一 404 `objective_not_found`，响应不含标题、归属或负责人；卡片跳转与账号不一致提示随 channels 与 Web | `services/kernel/integration/units_participants_test.go`；`services/kernel/integration/customercontext_test.go` |
+| 1、2、3 | 未实现：邀请需要 `Invitation` 模型、`identity.invitation.changed.v1` 契约、邮件渠道与 IdP 账号租户归属写入（Keycloak 管理接口），本环境无 Keycloak | — |
+| 6、7、18 | 未实现：依赖生产 IdP 的可信强认证时间声明、TOTP 登记与会话时长配置（第3节前置条件） | — |
+| 8–11e、13、15、16 | 未实现：依赖 channels 子系统与 C10 渠道方案（绑定、免登会话、撤销水位） | — |
+| 17 | 未实现：管理员账号恢复需要 IdP 管理接口与平台运营双人控制 | — |
 
 ## 13. 已确认事项
 

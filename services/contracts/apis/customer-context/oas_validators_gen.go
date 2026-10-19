@@ -54,7 +54,7 @@ func (s *ConfigureObjectiveRequest) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    200,
+			MaxLength:    50,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Participants)); err != nil {
 			return errors.Wrap(err, "array")
@@ -588,7 +588,7 @@ func (s *EnableObjectiveRequest) Validate() error {
 			MaxLengthSet:  true,
 			Email:         false,
 			Hostname:      false,
-			Regex:         regexMap["^[a-z0-9][a-z0-9_-]{0,63}$"],
+			Regex:         regexMap["^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$"],
 			MinNumeric:    0,
 			MinNumericSet: false,
 			MaxNumeric:    0,
@@ -628,7 +628,7 @@ func (s *EnableObjectiveRequest) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    200,
+			MaxLength:    50,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Participants)); err != nil {
 			return errors.Wrap(err, "array")
@@ -920,7 +920,7 @@ func (s *Objective) Validate() error {
 			MaxLengthSet:  true,
 			Email:         false,
 			Hostname:      false,
-			Regex:         regexMap["^[a-z0-9][a-z0-9_-]{0,63}$"],
+			Regex:         regexMap["^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$"],
 			MinNumeric:    0,
 			MinNumericSet: false,
 			MaxNumeric:    0,
@@ -964,7 +964,7 @@ func (s *Objective) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    200,
+			MaxLength:    50,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Participants)); err != nil {
 			return errors.Wrap(err, "array")
@@ -2314,7 +2314,7 @@ func (s *ProfileEntity) Validate() error {
 					MaxLengthSet:  true,
 					Email:         false,
 					Hostname:      false,
-					Regex:         regexMap["^[a-z0-9][a-z0-9_-]{0,63}$"],
+					Regex:         regexMap["^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$"],
 					MinNumeric:    0,
 					MinNumericSet: false,
 					MaxNumeric:    0,

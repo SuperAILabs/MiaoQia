@@ -1,13 +1,15 @@
 openapi: 3.1.0
 info:
   title: customer-context 接口
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     客户档案、上下文版本与快照、目标配置（PRD 第2段，docs/01-product/prd/02-profile-and-objectives.md；
     规格见 docs/03-architecture/subsystems/customer-context.md）。草案：随第2段首个实现切片提交，未冻结。
     租户、cell 与调用主体来自请求上下文，不出现在业务参数中；档案与目标命令只经外部网关，
-    上下文版本与快照读取经 mTLS 内部端口。组织单元在 identity 登记 OrgUnit 标识前只支持租户根单元，
-    以保留值 root 表示，其他单元返回 org_unit_not_found。错误为 application/problem+json 与稳定 code。
+    上下文版本与快照读取经 mTLS 内部端口。组织单元为 identity 的 OrgUnit：租户根单元为保留值 root，其他单元为
+    unt_<ULID>（contracts/identifiers.yaml），不属于本租户的单元返回 404 org_unit_not_found。授权经 identity 的 Check：
+    目标的查看、调整与参与人管理在目标资源上判断（含仅凭参与关系的查看），参与关系由本子系统经 identity 的
+    SyncResourceParticipants 同步。错误为 application/problem+json 与稳定 code。
 servers:
 - url: /internal
 paths:
@@ -70,7 +72,7 @@ paths:
       description: >-
         读主库。detection 每批求值前读取；资质有效期跨过到期日后，本调用在返回前先形成新的上下文版本
         （快照中该资质改为过期），保证返回后开始的求值不使用过期判定。调用方为用户时需要 can_view_profile；
-        服务主体只接受登记的快照读取方（detection、learning、research、assessment）。
+        服务主体需要 identity 授予的 can_read_context（identity 的服务授权清单登记 detection、learning、research、assessment）。
       x-timeout-ms: 5000
       x-idempotent: true
       responses:
@@ -99,7 +101,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 64
-          pattern: ^[a-z0-9][a-z0-9_-]{0,63}$
+          pattern: ^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$
       - name: context_version
         in: query
         required: false
@@ -137,8 +139,8 @@ paths:
       operationId: listObjectives
       summary: 目标列表
       description: >-
-        返回调用者可查看（can_view）的目标。本切片按目标所在单元的决策者、研究分析者、租户管理员判断；
-        仅凭参与关系（◐）的查看随 identity 的资源参与关系同步交付，此前不返回。
+        返回调用者可查看（can_view）的目标：调用者在目标所在单元（含上级继承）有 can_list_objectives（决策者、研究分析者、
+        租户管理员）的目标，以及本地参与人副本中包含调用者且经 identity 判断 can_view 的目标（仅凭参与关系 ◐）。
       x-timeout-ms: 5000
       x-idempotent: true
       responses:
@@ -155,6 +157,7 @@ paths:
       description: >-
         需要目标单元上的 can_create_objective。创建状态为未激活（inactive）的目标；首次激活经第7段仿真与审批，
         激活前不产生信号。同一单元同一模板只启用一次，重复启用返回 409 objective_exists 并在 detail 中给出已有目标标识。
+        负责人与参与人合计不超过 50 个不同主体，超出返回 422 too_many_participants，命令不生效。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -177,7 +180,9 @@ paths:
     get:
       operationId: getObjective
       summary: 目标详情
-      description: 需要 can_view；无权限与不存在同样返回 404 objective_not_found。
+      description: >-
+        需要 can_view；无权限与不存在同样返回 404 objective_not_found。单元上的决策者、研究分析者与管理员按目标所在单元判断；
+        仅凭参与关系的查看还要求调用者是目标当前版本的负责人或参与人，移除或改派在命令提交后立即生效，不等待参与关系同步。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -201,6 +206,7 @@ paths:
       summary: 调整目标（ConfigureObjective）
       description: >-
         负责人与参与人需要 can_manage_participants，参数需要 can_edit；整份替换并带 expected_version。
+        负责人与参与人合计不超过 50 个不同主体，超出返回 422 too_many_participants，命令不生效。
         参数是下一份策略草案的输入，不改变已生效的策略版本（第7段）。
       x-timeout-ms: 5000
       x-idempotent: true
@@ -680,8 +686,12 @@ components:
           $ref: '#/components/schemas/Subject'
         participants:
           type: array
+          description: >-
+            参与人，可以包含负责人。负责人与参与人合计的不同主体数即同步到 identity 的
+            参与关系数，最多 50（与 SyncResourceParticipants 的单次上限一致，负责人同时是参与人只计一次）；
+            超出时命令返回 422 too_many_participants，不入库、不产生事件。
           uniqueItems: true
-          maxItems: 200
+          maxItems: 50
           items:
             $ref: '#/components/schemas/Subject'
         params:
@@ -703,8 +713,12 @@ components:
           $ref: '#/components/schemas/Subject'
         participants:
           type: array
+          description: >-
+            参与人，可以包含负责人。负责人与参与人合计的不同主体数即同步到 identity 的
+            参与关系数，最多 50（与 SyncResourceParticipants 的单次上限一致，负责人同时是参与人只计一次）；
+            超出时命令返回 422 too_many_participants，不入库、不产生事件。
           uniqueItems: true
-          maxItems: 200
+          maxItems: 50
           items:
             $ref: '#/components/schemas/Subject'
         params:
@@ -766,8 +780,12 @@ components:
           $ref: '#/components/schemas/Subject'
         participants:
           type: array
+          description: >-
+            参与人，可以包含负责人。负责人与参与人合计的不同主体数即同步到 identity 的
+            参与关系数，最多 50（与 SyncResourceParticipants 的单次上限一致，负责人同时是参与人只计一次）；
+            超出时命令返回 422 too_many_participants，不入库、不产生事件。
           uniqueItems: true
-          maxItems: 200
+          maxItems: 50
           items:
             $ref: '#/components/schemas/Subject'
         params:

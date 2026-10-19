@@ -20,15 +20,18 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/internal/domain"
+	identity "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 )
 
-// Service 是 customer-context 的用例。Authz 是 identity 的授权决策点（经绑定）。
+// Service 是 customer-context 的用例。Authz 是 identity 的授权决策点，Directory 是 identity 的组织单元读取与
+// 参与关系同步（均经绑定）。
 type Service struct {
-	DB      *db.DB
-	Authz   authz.Decider
-	Catalog *domain.Catalog
-	Now     func() time.Time // 缺省 time.Now；测试注入以验证有效期跨日
-	Log     *slog.Logger     // 运行告警（快照超出规模上界）；缺省 slog.Default()
+	DB        *db.DB
+	Authz     authz.Decider
+	Directory identity.Directory
+	Catalog   *domain.Catalog
+	Now       func() time.Time // 缺省 time.Now；测试注入以验证有效期跨日
+	Log       *slog.Logger     // 运行告警（快照超出规模上界）；缺省 slog.Default()
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }
@@ -79,10 +82,15 @@ func tenantContext(ctx context.Context) (reqctx.Context, error) {
 // allowed 经 identity 判断调用主体对本租户是否具有关系（资源为 tenant 的动作，identity.md 7.2）。
 // 决策失败按失败关闭处理。
 func (s *Service) allowed(ctx context.Context, rc reqctx.Context, relation string) (bool, error) {
+	return s.allowedOn(ctx, rc, relation, "tenant:"+rc.Tenant)
+}
+
+// allowedOn 经 identity 判断调用主体对资源（tenant、org_unit 或 objective）是否具有关系。
+func (s *Service) allowedOn(ctx context.Context, rc reqctx.Context, relation, object string) (bool, error) {
 	if s.Authz == nil {
 		return false, failure(503, "identity_unavailable")
 	}
-	ok, err := s.Authz.Check(ctx, authz.Request{Subject: authz.Subject(rc.Principal), Relation: relation, Object: "tenant:" + rc.Tenant})
+	ok, err := s.Authz.Check(ctx, authz.Request{Subject: authz.Subject(rc.Principal), Relation: relation, Object: object})
 	if err != nil {
 		return false, failure(503, "identity_unavailable")
 	}
@@ -107,32 +115,51 @@ func (s *Service) require(ctx context.Context, relations ...string) (reqctx.Cont
 	return rc, failure(403, "forbidden")
 }
 
-// 目标的授权（identity.md 7.2，model.fga 的 objective 与 org_unit 类型）。identity 当前只对 tenant 根资源判断
-// （identity.md 第5节），组织单元与目标资源随其首次启用补齐；在只有根单元、角色均绑定在租户上的现阶段，
-// 根单元及其上目标的“决策者 / 研究分析者 / 租户管理员 from unit”与租户上的同名角色关系等价，按租户角色判断。
-// 仅凭参与关系（◐）的权限需要 identity 的资源参与关系（SyncResourceParticipants），此前不授予（失败关闭）。
-var (
-	canCreateObjective = []string{"decision_maker"}                              // org_unit#can_create_objective
-	canViewObjective   = []string{"decision_maker", "research_analyst", "admin"} // objective#can_view（不含 participant）
-	canEditObjective   = []string{"decision_maker"}                              // objective#can_edit / can_manage_participants
-)
-
-// 快照与上下文版本的服务读取方（customer-context.md 第6节：detection 求值、研究与判断固定引用、learning 仿真）。
-// identity 尚不能为带租户上下文的服务主体判断租户资源，服务调用只经 mTLS 内部端口并按此名单放行（实现中发现的设计缺口）。
-var snapshotReaders = map[string]bool{"svc:detection": true, "svc:learning": true, "svc:research": true, "svc:assessment": true}
-
+// 目标的授权（identity.md 7.2，model.fga 的 objective 与 org_unit 类型）由 identity 在目标资源与目标单元上判断：
+// 启用为目标单元的 can_create_objective；查看、调整与参与人管理为目标的 can_view / can_edit / can_manage_participants
+// （含仅凭参与关系的查看，参与关系经 SyncResourceParticipants 同步）；列表按单元的 can_list_objectives 过滤。
+//
+// 快照与上下文版本的服务读取方（customer-context.md 第6节）经 identity 判断 tenant 上的 can_read_context，
+// 读取方清单由 identity 的服务授权维护，本子系统不保存名单。
 func (s *Service) requireReader(ctx context.Context) (reqctx.Context, error) {
 	rc, err := tenantContext(ctx)
 	if err != nil {
 		return rc, err
 	}
 	if rc.Principal.Kind == "service" {
-		if !snapshotReaders[rc.Principal.ID] {
+		ok, err := s.allowed(ctx, rc, "can_read_context")
+		if err != nil {
+			return rc, err
+		}
+		if !ok {
 			return rc, failure(403, "forbidden")
 		}
 		return rc, nil
 	}
 	return s.require(ctx, "can_view_profile")
+}
+
+// unitChain 经 identity 核对单元属于本租户并返回单元链（从单元到根单元）。
+func (s *Service) unitChain(ctx context.Context, unit string) ([]string, error) {
+	if s.Directory == nil {
+		return nil, failure(503, "identity_unavailable")
+	}
+	u, err := s.Directory.OrgUnit(ctx, unit)
+	if err != nil {
+		var safe *identity.Error
+		if errors.As(err, &safe) && safe.Status < 500 {
+			if safe.Code == "org_unit_not_found" || safe.Code == "invalid_request" {
+				return nil, failure(404, "org_unit_not_found")
+			}
+			return nil, failure(safe.Status, safe.Code)
+		}
+		return nil, failure(503, "identity_unavailable")
+	}
+	chain := make([]string, 0, len(u.Chain))
+	for _, c := range u.Chain {
+		chain = append(chain, string(c))
+	}
+	return chain, nil
 }
 
 var commandKey = regexp.MustCompile(`^[A-Za-z0-9_-]{16,128}$`)

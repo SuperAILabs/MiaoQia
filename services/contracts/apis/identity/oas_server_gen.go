@@ -10,10 +10,20 @@ import (
 type Handler interface {
 	// CheckAuthorization implements checkAuthorization operation.
 	//
-	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
+	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体；带租户上下文时显式主体只能是调用主体本身。
+	// 用户按identity目录中的当前成员状态、租户与单元角色判断；服务主体按identity登记的服务授权判断（例如
+	// tenant 的 can_read_context）。 org_unit
+	// 与业务资源须属于上下文租户，否则为拒绝。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, req *CheckRequest) (*CheckResult, error)
+	// CreateOrgUnit implements createOrgUnit operation.
+	//
+	// 需要 can_manage_members
+	// 与MFA。上级单元须属于本租户；单元链（含根单元）最多8层。.
+	//
+	// POST /v1/identity/org-units
+	CreateOrgUnit(ctx context.Context, req *CreateOrgUnitRequest, params CreateOrgUnitParams) (*OrgUnit, error)
 	// CreateTenant implements createTenant operation.
 	//
 	// POST /v1/tenants
@@ -22,10 +32,24 @@ type Handler interface {
 	//
 	// GET /v1/identity/members/{subject}
 	GetMember(ctx context.Context, params GetMemberParams) (*Session, error)
+	// GetOrgUnit implements getOrgUnit operation.
+	//
+	// 当前租户的有效成员，或带本租户上下文的服务主体可调用（业务子系统据此核对资源所在单元并取得单元链）。
+	// 单元不属于上下文租户时返回 404 org_unit_not_found。.
+	//
+	// GET /v1/identity/org-units/{unitID}
+	GetOrgUnit(ctx context.Context, params GetOrgUnitParams) (*OrgUnit, error)
 	// GetTenant implements getTenant operation.
 	//
 	// GET /v1/tenants/{tenantID}
 	GetTenant(ctx context.Context, params GetTenantParams) (*Tenant, error)
+	// ListOrgUnits implements listOrgUnits operation.
+	//
+	// 当前租户的有效成员可调用。返回全部单元（含根单元
+	// root），每个单元附从自身到根单元的单元链。.
+	//
+	// GET /v1/identity/org-units
+	ListOrgUnits(ctx context.Context) (*OrgUnitList, error)
 	// PutMember implements putMember operation.
 	//
 	// PUT /v1/identity/members/{subject}
@@ -38,6 +62,30 @@ type Handler interface {
 	//
 	// PUT /v1/tenants/{tenantID}/state
 	SetTenantState(ctx context.Context, req *SetTenantStateRequest, params SetTenantStateParams) (*Tenant, error)
+	// SyncResourceParticipants implements syncResourceParticipants operation.
+	//
+	// 仅资源所属业务子系统的服务主体可调用（例如 objective 由
+	// customer-context），带资源所在租户的上下文。
+	// 请求给出资源、所在单元、完整期望参与关系与参与版本：版本高于已应用版本时，identity
+	// 与成员状态及单元范围访问求交， 在一次 OpenFGA
+	// 写入中加上应有的关系、删掉多余的关系，并记录已应用版本与结果（outcome
+	// applied）；同一版本、同一请求重复提交返回 首次结果（outcome
+	// replayed），同一版本不同请求返回 409
+	// participants_version_conflict；低于已应用版本时不做修改，返回 outcome stale
+	// 与当前已应用版本。被拒成员及原因列在 rejected，其余关系照常应用。.
+	//
+	// POST /v1/identity/participants:sync
+	SyncResourceParticipants(ctx context.Context, req *SyncParticipantsRequest) (*SyncParticipantsResult, error)
+	// UpdateOrgUnit implements updateOrgUnit operation.
+	//
+	// 需要 can_manage_members 与MFA，按 expected_version
+	// 并发控制。根单元只能重命名；其他单元须给出上级单元，
+	// 不能移到自身或下级之下（409 org_unit_cycle），移动后单元链最多8层（422
+	// org_unit_too_deep）。
+	// 移动立即改变继承的角色范围：之后的授权决策按新的单元链判断。.
+	//
+	// PUT /v1/identity/org-units/{unitID}
+	UpdateOrgUnit(ctx context.Context, req *UpdateOrgUnitRequest, params UpdateOrgUnitParams) (*OrgUnit, error)
 	// NewError creates *ProblemStatusCode from error returned by handler.
 	//
 	// Used for common default response.

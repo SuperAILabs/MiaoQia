@@ -94,6 +94,24 @@ fixtures:
     - op: replace
       path: /version
       value: 0
+  - name: 单元角色
+    valid: true
+    patch:
+    - op: add
+      path: /unit_roles
+      value:
+      - org_unit_id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        roles:
+        - business_developer
+  - name: 单元上不得绑定租户管理员
+    valid: false
+    patch:
+    - op: add
+      path: /unit_roles
+      value:
+      - org_unit_id: root
+        roles:
+        - admin
   - name: 退出后清空角色
     valid: true
     patch:

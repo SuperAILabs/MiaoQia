@@ -8,6 +8,11 @@
 # 资源为 tenant 的动作作用于整个租户：查看档案与检索公共数据对全体成员开放，其余只认绑定在租户上的角色。
 # 外部协作者不是租户成员，只经推进上的 external_collaborator 关系（带到期时间）获得受限视图。
 # 审批（策略激活、批量导出等）的“申请人不能批准自己”由 identity 的审批服务保证，不在本模型中表达。
+#
+# 运行时求值（internal/app 的授权决策）：成员资格、租户与单元上的角色、单元层级与业务资源所在单元以 identity 目录（SQL）为准，
+# 每次决策作为上下文关系（contextual tuples）传入，挂在不可预测的一次性租户与单元对象上，不受持久化旧关系影响；
+# 持久化在 OpenFGA 中的只有业务资源上的参与关系（SyncResourceParticipants 写入）与平台上的服务授权（服务授权清单写入）。
+# 服务主体（service:<子系统>）不是租户成员：它们只经 platform 上登记的服务授权，在带有效租户上下文时获得 tenant 上的服务动作。
 model
   schema 1.1
 
@@ -19,9 +24,15 @@ type platform
   relations
     define operator: [user, service]
     define can_trigger_probe: operator
+    # 服务授权（infra/service_grants.go 的清单，启动时与 OpenFGA 对齐）
+    define context_reader: [service]
+    define objective_registrar: [service]
+    define pursuit_registrar: [service]
+    define research_registrar: [service]
 
 type tenant
   relations
+    define platform: [platform]
     define member: [user, service_account]
     define tenant_member: member
     define admin: [user] and member
@@ -41,6 +52,11 @@ type tenant
     define can_manage_credentials: admin
     define can_approve_support_access: admin
     define can_grant_service_delegation: admin
+    # 服务主体的租户动作：读取客户上下文快照与版本；同步本子系统资源上的参与关系
+    define can_read_context: context_reader from platform
+    define can_sync_objective_participants: objective_registrar from platform
+    define can_sync_pursuit_participants: pursuit_registrar from platform
+    define can_sync_research_case_participants: research_registrar from platform
 
 type org_unit
   relations
@@ -57,6 +73,8 @@ type org_unit
     define can_start_research: decision_maker or business_developer or pursuit_lead or research_analyst
     define can_manage_knowledge: domain_expert or admin
     define can_request_export: decision_maker or business_developer or pursuit_lead or research_analyst or admin
+    # 单元级列表关系（identity.md 7.7）：范围内可见的目标，等于 objective#can_view 去掉参与关系的部分
+    define can_list_objectives: decision_maker or research_analyst or admin
 
 # 租户启用的商业目标：策略、信号、判断与决策都归属目标
 type objective

@@ -75,3 +75,43 @@ func (c client) Resolve(ctx context.Context) (*api.Session, error) {
 		return value, nil
 	})
 }
+
+// problem 把远程错误转换为与本地绑定相同的错误：5xx 为暂时性错误（重试），其余为带稳定 code 的 api.Error。
+func problem(err error) error {
+	var p *identityapi.ProblemStatusCode
+	if errors.As(err, &p) {
+		if p.StatusCode >= 500 {
+			return fmt.Errorf("%w: identity unavailable", binding.ErrTransient)
+		}
+		return &api.Error{Status: p.StatusCode, Code: p.Response.Code.Value}
+	}
+	return err
+}
+
+// OrgUnit 读取上下文租户内的组织单元。
+func (c client) OrgUnit(ctx context.Context, id string) (*api.OrgUnit, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetOrgUnit", Idempotent: true}, func(ctx context.Context) (*api.OrgUnit, error) {
+		if identityapi.OrgUnitID(id).Validate() != nil {
+			return nil, &api.Error{Status: 400, Code: "invalid_request"}
+		}
+		value, err := c.c.GetOrgUnit(ctx, identityapi.GetOrgUnitParams{UnitID: identityapi.OrgUnitID(id)})
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}
+
+// SyncResourceParticipants 同步资源上的参与关系；按参与版本幂等，暂时性失败可重试。
+func (c client) SyncResourceParticipants(ctx context.Context, req *api.SyncParticipantsRequest) (*api.SyncParticipantsResult, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "SyncResourceParticipants", Idempotent: true}, func(ctx context.Context) (*api.SyncParticipantsResult, error) {
+		if req == nil || req.Validate() != nil {
+			return nil, &api.Error{Status: 400, Code: "invalid_request"}
+		}
+		value, err := c.c.SyncResourceParticipants(ctx, req)
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}

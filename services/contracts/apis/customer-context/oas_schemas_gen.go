@@ -15,10 +15,14 @@ func (s *ProblemStatusCode) Error() string {
 
 // Ref: #/components/schemas/ConfigureObjectiveRequest
 type ConfigureObjectiveRequest struct {
-	ExpectedVersion int64           `json:"expected_version"`
-	Owner           Subject         `json:"owner"`
-	Participants    []Subject       `json:"participants"`
-	Params          ObjectiveParams `json:"params"`
+	ExpectedVersion int64   `json:"expected_version"`
+	Owner           Subject `json:"owner"`
+	// 参与人，可以包含负责人。负责人与参与人合计的不同主体数即同步到
+	// identity 的 参与关系数，最多 50（与 SyncResourceParticipants
+	// 的单次上限一致，负责人同时是参与人只计一次）； 超出时命令返回 422
+	// too_many_participants，不入库、不产生事件。.
+	Participants []Subject       `json:"participants"`
+	Params       ObjectiveParams `json:"params"`
 }
 
 // GetExpectedVersion returns the value of ExpectedVersion.
@@ -218,9 +222,13 @@ func (s *ContextVersion) SetProfileVersion(val int64) {
 
 // Ref: #/components/schemas/EnableObjectiveRequest
 type EnableObjectiveRequest struct {
-	TemplateID   string             `json:"template_id"`
-	OrgUnitID    string             `json:"org_unit_id"`
-	Owner        OptSubject         `json:"owner"`
+	TemplateID string     `json:"template_id"`
+	OrgUnitID  string     `json:"org_unit_id"`
+	Owner      OptSubject `json:"owner"`
+	// 参与人，可以包含负责人。负责人与参与人合计的不同主体数即同步到
+	// identity 的 参与关系数，最多 50（与 SyncResourceParticipants
+	// 的单次上限一致，负责人同时是参与人只计一次）； 超出时命令返回 422
+	// too_many_participants，不入库、不产生事件。.
 	Participants []Subject          `json:"participants"`
 	Params       OptObjectiveParams `json:"params"`
 }
@@ -373,8 +381,12 @@ type Objective struct {
 	PolicyTemplateVersion string `json:"policy_template_version"`
 	OrgUnitID             string `json:"org_unit_id"`
 	// 未激活 / 生效 / 已停用.
-	State        ObjectiveState  `json:"state"`
-	Owner        Subject         `json:"owner"`
+	State ObjectiveState `json:"state"`
+	Owner Subject        `json:"owner"`
+	// 参与人，可以包含负责人。负责人与参与人合计的不同主体数即同步到
+	// identity 的 参与关系数，最多 50（与 SyncResourceParticipants
+	// 的单次上限一致，负责人同时是参与人只计一次）； 超出时命令返回 422
+	// too_many_participants，不入库、不产生事件。.
 	Participants []Subject       `json:"participants"`
 	Params       ObjectiveParams `json:"params"`
 	Version      int64           `json:"version"`
