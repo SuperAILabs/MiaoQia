@@ -1,6 +1,6 @@
 # 推进与结果子系统（pursuit）
 
-> 状态：评审中 · 版本：1.6 · 更新：2026-10-19 · 平面：客户智能
+> 状态：评审中 · 版本：1.7 · 更新：2026-10-19 · 平面：客户智能
 
 ## 1. 使命
 
@@ -38,7 +38,8 @@
 
 | 实体 | 说明 |
 |---|---|
-| `Pursuit` | `pur_`：形态（`deal` 交易型 / `continuous` 持续型）、目标对象（持续型可为一组对象，以 `subject_set` 定义；每期触发简报或研究时解析出本期成员快照并随请求传递，产物固定该快照）、目标、机会路径版本、阶段、状态、负责人、关联决策与信号；持续型另含周期与下次执行时间；交易型另含目标对象键（A02 为采购项目 + 标包 + 中标方）、来源信号与创建时所见的信号内容版本、版本（改派、任务、关闭任一改变时递增），状态含进行中 / 已关闭 / 已撤销（撤销创建，保留记录、不计入统计）。同一租户、同一目标、同一目标对象至多一个进行中的交易型推进，以唯一约束保证 |
+| `Pursuit` | `pur_`：形态（`deal` 交易型 / `continuous` 持续型）、目标对象（持续型可为一组对象，以 `subject_set` 定义；每期触发简报或研究时解析出本期成员快照并随请求传递，产物固定该快照）、目标、机会路径版本、阶段、状态、负责人、关联决策与信号；持续型另含周期与下次执行时间；交易型另含目标对象键（A02 为采购项目 + 标包 + 中标方）、来源信号与创建时所见的信号内容版本、版本（改派、任务、关闭、新增信号关联任一改变时递增）、期望参与关系与参与版本（创建、改派、协作者变化、撤销创建时递增）及 identity 已应用的参与版本，状态含进行中 / 已关闭 / 已撤销（撤销创建，保留记录、不计入统计）。同一租户、同一目标、同一目标对象至多一个进行中的交易型推进，以唯一约束保证 |
+| `PursuitSignalLink` | 信号与推进的关联记录：关联标识、推进、信号、建立时所见的信号内容版本、建立方式（创建 / 关联到已有推进）与操作标识、状态（有效 / 已解除）；同一推进与同一信号至多一条有效关联（唯一约束）；M2 只随撤销创建解除（[PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F2 第5条） |
 | `StageTransition` | 阶段变化与原因 |
 | `Task` | 任务、负责人、状态（待办 / 已完成 / 已取消）、版本；截止时间保存值、精度（日或分钟）与时区，只填日期的不补成时刻；可绑定目标对象的公开截止时间（`deadline` 标识与类型），绑定的随公开截止变化改时，手工修改即解除绑定；提醒按任务 + 截止版本 + 提醒种类幂等，规则见 [PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F5 |
 | `Outcome` | 追加式结果记录：结果类型、原因代码、说明、证据、金额条目、事件锚点与获知信息（第 4.1 节）；修订时追加新记录并引用被取代的记录 |
@@ -74,20 +75,30 @@
 
 | 接口 | 类型 | 说明 |
 |---|---|---|
-| `CreatePursuit` | 命令 | 从决策、信号或手动创建；对没有信号的公共对象手动创建时，界面提示可向 learning 报告漏报（[learning 第 11 节](learning.md#11-漏报反馈与诊断)），不自动提交。带操作标识（Web 为表单意图，渠道为动作令牌标识）与每次尝试的幂等键；跟进、负责人、协作者与第一项任务在一个事务中写入。从信号创建时实时检查 `can_assign`，并经 `detection.GetSignal` 核对信号属于本租户与目标、内容版本一致（否则 `SIGNAL_UPDATED`）、不是排除信号（`NOT_APPLICABLE`）与未关闭（`SIGNAL_CLOSED`）。同一目标与目标对象已有进行中的推进时返回“已存在”与该推进（成功、无改变），请求中的负责人与任务不写入；调用者无权查看时只返回负责人姓名。结果固定在操作标识上（[PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F1、F2、F11） |
-| `VoidPursuit` | 命令 | 撤销创建：创建者在创建后 10 分钟内、推进版本仍为创建时的版本时，转为已撤销，取消任务与提醒、撤回参与关系，一个事务提交；版本已变返回 `CONFLICT`；发布 `pursuit.pursuit.voided.v1`，detection 据此恢复信号转换前的处理状态 |
+| `CreatePursuit` | 命令 | 从决策、信号或手动创建；对没有信号的公共对象手动创建时，界面提示可向 learning 报告漏报（[learning 第 11 节](learning.md#11-漏报反馈与诊断)），不自动提交。带操作标识（Web 为表单意图，渠道为动作令牌标识）与每次尝试的幂等键；推进、负责人、协作者、第一项任务、与来源信号的关联、期望参与关系与授权同步请求在 pursuit 的一个本地事务中写入；identity 参与关系不在该事务内，由授权同步写入（第 5.1 节）。从信号创建时实时检查 `can_assign`，并经 `detection.GetSignal` 核对信号属于本租户与目标、内容版本一致（否则 `SIGNAL_UPDATED`）、不是排除信号（`NOT_APPLICABLE`）与未关闭（`SIGNAL_CLOSED`）。同一目标与目标对象已有进行中的推进时：请求带信号且该信号与该推进还没有有效关联，则只新增关联记录（检查同上），推进版本递增，结果为“已存在 · 已关联”，发布 `pursuit.pursuit.signal_linked.v1`，不再发布 `pursuit.pursuit.created.v1`；已有有效关联或请求不带信号时结果为“已存在”（成功、无改变）；两种情况请求中的负责人与任务都不写入；调用者无权查看时只返回负责人姓名。结果（已创建、已存在 · 已关联、已存在）连同返回时的授权状态（已生效 / 授权同步中）固定在操作标识上，同步完成不使操作再执行（[PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F1、F2、F11、F12） |
+| `VoidPursuit` | 命令 | 撤销创建：创建者在创建后 10 分钟内、推进版本仍为创建时的版本时，转为已撤销，取消任务与提醒、解除全部有效关联、清空期望参与关系并排队授权同步，在 pursuit 的一个本地事务中提交，提交后推进不再接受任何操作；版本已变（含之后新增关联）返回 `CONFLICT`；发布 `pursuit.pursuit.voided.v1` 与每条解除关联的 `pursuit.pursuit.signal_unlinked.v1`，detection 按有效关联集合决定是否恢复信号（[detection 第 4 节](detection.md#4-拥有的数据租户域)）；identity 不可用时返回“已撤销（授权清理中）” |
 | `AdvanceStage` / `ClosePursuit` | 命令 | 阶段推进与关闭 |
 | `PauseTracking` / `ResumeTracking` / `StopTracking` | 命令 | 持续型推进的暂停、恢复与停止 |
-| `Assign` / `CreateTask` / `UpdateTask` / `CompleteTask` / `ReopenTask` | 命令 | 任务管理；`Assign` 可采用信号上的候选负责人（来自目标的分派规则，[customer-context 第 11 节](customer-context.md#11-分派配置)），写入前检查被分派人的访问并同步 identity 参与关系。写操作带推进或任务版本：请求的效果已成立（改派给当前负责人、完成已完成的任务、相同截止）为无变化，否则版本不一致返回 `CONFLICT`；`ReopenTask` 撤销完成，恢复完成前的状态、截止与提醒，带版本保护 |
+| `Assign` / `CreateTask` / `UpdateTask` / `CompleteTask` / `ReopenTask` | 命令 | 任务管理；`Assign` 可采用信号上的候选负责人（来自目标的分派规则，[customer-context 第 11 节](customer-context.md#11-分派配置)），写入前检查被分派人的访问，本地事务写入新的期望参与关系与参与版本，identity 参与关系经授权同步写入（第 5.1 节）；改派本地提交即生效，原负责人立即不能以负责人身份操作，新负责人在同步完成后才能操作与收到通知。写操作带推进或任务版本：请求的效果已成立（改派给当前负责人、完成已完成的任务、相同截止）为无变化，否则版本不一致返回 `CONFLICT`；`ReopenTask` 撤销完成，恢复完成前的状态、截止与提醒，带版本保护 |
 | `ClosePursuit` / `RecordOutcome` | 命令 | 关闭并记录结果：结果类型与原因代码必填，成功与失败须有获知时间（可只到日，保存精度与时区），金额条目须带取值性质与币种；关闭取消未完成任务的提醒，不改变信号；修订追加新记录（第 4.1 节） |
 | `ListPursuits` / `GetPursuit` | 查询 | 看板与详情 |
 | `ListMyTasks` | 查询 | 本人的未完成任务（按截止时间，带精度与时区），供简报“待我处理”与工作台使用；无有效负责人的推进的任务列给目标范围的决策者 |
 
+### 5.1 授权同步
+
+推进的参与关系（负责人、协作者）的授权权威在 identity（OpenFGA），不与 pursuit 数据在一个事务中写入（[集成契约 2.3](../03-integration-contracts.md#23-跨子系统一致性)）。规则见 [PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F12：
+
+- **请求**：本地事务写入期望参与关系、参与版本 N 与发件箱同步请求；同步任务以推进标识 + N 为幂等键调用 identity `SyncResourceParticipants`（[identity 第 5 节](identity.md#5-接口)），提交完整期望关系；
+- **重试与告警**：暂时失败退避重试（1 分钟起，最长间隔 30 分钟）；待处理超过 5 分钟告警；超过 24 小时标“授权同步失败”，通知目标范围的决策者与运营，只允许决策者改派或关闭，之后同步成功即恢复；
+- **准入失败关闭**：依赖参与关系的操作须同时通过 pursuit 本地期望关系与 identity `Check`。新负责人在已应用版本达到 N 前不能操作；原负责人即使 identity 中残留旧关系也被本地关系拒绝；按角色范围授权的决策者不受影响；
+- **返回与通知**：命令在本地提交后返回，带授权状态；分派通知、任务提醒与提醒卡片只在对应参与版本同步完成后发给新负责人；
+- **补偿**：identity 返回被拒成员（同步前已退出或失去目标访问）时，被拒的负责人按“无有效负责人”处理，提醒改发决策者并通知操作者。
+
 ## 6. 事件
 
-**发布**：`pursuit.pursuit.created.v1`（含操作标识、来源信号与内容版本）、`pursuit.pursuit.voided.v1`（撤销创建）、`pursuit.stage.entered.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`pursuit.outcome.recorded.v1`、`pursuit.pursuit.closed.v1`。
+**发布**：`pursuit.pursuit.created.v1`（含操作标识、来源信号与内容版本；只在真正创建时发布）、`pursuit.pursuit.signal_linked.v1` / `pursuit.pursuit.signal_unlinked.v1`（关联标识、推进、信号、所见内容版本；分区键为推进标识；每条关联各发布一次，发件箱重试，超过上限进入死信并告警，可人工重放）、`pursuit.pursuit.voided.v1`（撤销创建）、`pursuit.stage.entered.v1`、`pursuit.task.assigned.v1` 与 `pursuit.task.due.v1`（发给负责人的，在对应参与版本授权同步完成后才发布，第 5.1 节）、`pursuit.outcome.recorded.v1`、`pursuit.pursuit.closed.v1`。
 
-**消费**：`assessment.decision.recorded.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`。
+**消费**：`assessment.decision.recorded.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`、`identity.member.changed.v1`。
 
 ## 7. 扩展点
 
