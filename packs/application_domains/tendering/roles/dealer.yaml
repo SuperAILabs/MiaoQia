@@ -1,0 +1,8 @@
+# 角色模板（格式与说明见 roles/mfr.yaml）。
+role:
+  id: ROLE-DEALER
+  version: 0.1.0
+  name: 经销代理商
+  say: 凭厂商授权投标或向中标总包供货，在授权区域内经营
+  default_objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.C01]
+  optional_objectives: [APP-TENDER.A06, APP-TENDER.B01, APP-TENDER.B04, APP-TENDER.C02, APP-TENDER.C03]

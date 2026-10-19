@@ -1,0 +1,11 @@
+# 角色模板（格式：contracts/packs/application-domain.schema.json 的 role；mqc P9 校验）。
+# default_objectives 为声明该角色时默认列入“可启用”的目标；optional_objectives 为同样列出、按需启用的目标。
+# 目标何时可启用以覆盖矩阵 coverage.yaml 的 release 为准：未到阶段的目标在目标页列出并标开放阶段、不可启用（PRD 第2段 F2）。
+# 租户可声明多个角色，可启用目标取并集（05-release-plan.md 3.1）。
+role:
+  id: ROLE-MFR
+  version: 0.1.0
+  name: 材料设备厂商
+  say: 生产建材管材等产品，直接投标、向中标总包供货、在设计与品牌库阶段影响规格、管理经销渠道
+  default_objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.B03, APP-TENDER.C01]
+  optional_objectives: [APP-TENDER.A04, APP-TENDER.A05, APP-TENDER.A06, APP-TENDER.B01, APP-TENDER.B02, APP-TENDER.B04, APP-TENDER.C02, APP-TENDER.C03]

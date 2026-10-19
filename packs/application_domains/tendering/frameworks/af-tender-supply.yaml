@@ -1,0 +1,54 @@
+# 判断框架 AF-TENDER-SUPPLY：A02 进入供货（格式：contracts/packs/application-domain.schema.json 的 framework；mqc P9 校验）。
+# M2 规则型版本：需求相关性、规模、中标方价值、接触窗口、付款风险五类维度，全部取自信号固定的输入与特征；
+# 结合研究（RT-TENDER-PROJECT、RT-TENDER-WINNER）的版本随 M3。表达式环境与未知处理同 af-tender-elig.yaml。
+framework:
+  id: AF-TENDER-SUPPLY
+  version: 0.1.0
+  subject_types: [procurement_project, organization]
+  dimensions:
+    - id: winner_identified
+      kind: hard_gate
+      say: 已识别中标方或施工单位
+      when: has(fact.winner.org_id)
+      manual: [input]
+    - id: winner_not_self
+      kind: hard_gate
+      say: 中标方不是我方任一主体
+      when: '!(fact.winner.org_id in profile.org_ids)'
+    - id: winner_not_blocked
+      kind: hard_gate
+      say: 中标方不在禁合作名单
+      when: '!(fact.winner.org_id in lists.blocked)'
+    - id: relevance
+      kind: rule_feature
+      say: 项目标的包含我方产品品类
+      when: category.any_match(fact.categories, params.categories)
+      manual: [input, override]
+    - id: region
+      kind: rule_feature
+      say: 项目位于服务区域
+      when: region.within(fact.location, params.regions)
+    - id: scale
+      kind: rule_feature
+      say: 金额不低于 {params.large_amount_cny} 元
+      when: money.cny(fact.amount) >= params.large_amount_cny
+      manual: [input]
+    - id: winner_value
+      kind: rule_feature
+      say: 中标方是我方已有客户，或近三年项目中出现过我方品类
+      when: fact.winner.org_id in lists.customers || features.winner_buys_our_categories
+      manual: [input, override]
+    - id: contact_window
+      kind: rule_feature
+      say: 合同已签订或施工许可已发放，进入材料采购窗口
+      when: event.type in ["tendering.contract.published.v1", "investment.construction_permit.issued.v1"]
+      manual: [input]
+    - id: payment_risk
+      kind: rule_feature
+      say: 中标方近一年没有未了结的较重信用风险
+      when: features.winner_credit_risk < 2
+      manual: [input, override]
+    - id: competitor_brand
+      kind: rule_feature
+      say: 中标方近三年项目中没有使用过竞争对手品牌
+      when: '!features.winner_uses_competitor_brands'

@@ -1,0 +1,13 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.A01
+  version: 0.1.0
+  name: 直接投标
+  say: 从采购意向与招标公告中找出品类、区域、时限与资格都合适、值得投标的机会
+  catalog_objective: OBJ-A01
+  form: transactional
+  subject_types: [procurement_project]
+  playbook: PB-TENDER-A01
+  policy_templates: [TPL-TENDER-A01-BID]
+  requires_domains: [INF-PROC, INF-ORG, INF-CRED]

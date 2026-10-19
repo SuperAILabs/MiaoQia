@@ -1,0 +1,59 @@
+# B03 收件箱行（格式与说明见 cards/a02-row.yaml、cards/b03-signal.yaml）。
+card:
+  id: CARD-TENDER-B03-ROW
+  version: 0.1.0
+  objective: APP-TENDER.B03
+  surfaces: [inbox_row]
+  fact_types: [tendering.bid_result, tendering.contract_record, credit.record, org.change]
+  fact_type_labels:
+    - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 候选人公示 }
+    - { fact_type: tendering.bid_result, label: 中标结果 }
+    - { fact_type: tendering.contract_record, label: 合同公告 }
+    - { fact_type: credit.record, label: 信用记录 }
+    - { fact_type: org.change, label: 企业变更 }
+  fields:
+    - id: subject
+      label: 涉及企业
+      from:
+        tendering.bid_result: fact.winner
+        tendering.contract_record: fact.winner
+        credit.record: fact.subject
+        org.change: fact.subject
+      format: party
+      never_omit: true
+    - { id: fact_type, label: 类型, source: signal.fact_type, format: label, never_omit: true }
+    - id: event
+      label: 事项
+      from:
+        tendering.bid_result: record.title.value
+        tendering.contract_record: record.title.value
+        credit.record: fact.record_type
+        org.change: fact.change_type
+      format: text
+    - id: amount
+      label: 金额
+      labels:
+        - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 投标报价 }
+        - { fact_type: tendering.bid_result, label: 中标金额 }
+        - { fact_type: tendering.contract_record, label: 合同金额 }
+        - { fact_type: credit.record, label: 涉及金额 }
+      from:
+        tendering.bid_result: fact.amount
+        tendering.contract_record: fact.amount
+        credit.record: fact.amount
+      format: money
+      missing_text: 未公布
+      never_omit: true
+    - { id: disposition, label: 处置, source: signal.disposition, format: disposition, never_omit: true }
+    - { id: manual_disposition, label: 人工处置, source: signal.manual_disposition, format: disposition }
+    - { id: exclusion_reason, label: 排除原因, source: signal.exclusion_reason, format: exclusion_reason }
+    - { id: rank_score, label: 排序分, source: signal.rank_score, format: score }
+    - { id: reasons, label: 命中理由, source: signal.reasons, format: reasons, max_items: 2 }
+    - { id: created_at, label: 发现时间, source: signal.created_at, format: datetime }
+    - { id: my_feedback, label: 我的反馈, source: signal.my_feedback, format: feedback }
+  markers: [backfill, updated, my_feedback, manual_disposition]
+  actions:
+    - { action: view, permission: can_view_signals }
+    - { action: feedback_relevant, permission: can_feedback }
+    - { action: feedback_irrelevant, permission: can_feedback, reasons: all }
+    - { action: exclusion_feedback, permission: can_feedback }

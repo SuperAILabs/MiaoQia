@@ -1,0 +1,21 @@
+# B03 信号反馈原因标签（格式与说明见 feedback/a02.yaml）。PRD 尚未确认 B03 的标签，本文件为推荐值，待领域负责人核对。
+feedback:
+  id: FB-TENDER-B03
+  version: 0.1.0
+  objective: APP-TENDER.B03
+  quick: 5
+  irrelevant:
+    - { code: NOT_OUR_COMPETITOR, say: 不是我们关注的竞争对手, relates: { rules: [R-COMPETITOR], lists: [competitors], data_quality: true } }
+    - { code: CATEGORY_MISMATCH, say: 品类不相关, relates: { rules: [B-OUR-MARKET], params: [categories] } }
+    - { code: OUT_OF_REGION, say: 区域不相关, relates: { rules: [B-OUR-REGION], params: [regions] } }
+    - { code: TOO_SMALL, say: 金额太小, relates: { rules: [B-LARGE], params: [large_amount_cny] } }
+    - { code: MINOR_EVENT, say: 事项不影响竞争判断, relates: { rules: [X-MINOR-CHANGE, B-CREDIT], params: [minor_change_types] } }
+    - { code: SOURCE_ERROR, say: 公告或记录有误, relates: { data_quality: true } }
+    - { code: DUPLICATE, say: 与其他信号重复, relates: { data_quality: true } }
+    - { code: OTHER, say: 其他, note_required: true }
+  relevant:
+    - { code: NEW_INSIGHT, say: 新情报 }
+    - { code: ALREADY_KNOWN, say: 已掌握 }
+  exclusion_wrong:
+    - { code: CHANGE_MATTERS, say: 该变更影响竞争判断, relates: { rules: [X-MINOR-CHANGE], params: [minor_change_types] } }
+    - { code: OTHER, say: 其他, note_required: true }

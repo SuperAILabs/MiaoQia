@@ -1,0 +1,53 @@
+# 判断框架 AF-TENDER-ELIG：A01 直接投标的资格研究（格式：contracts/packs/application-domain.schema.json 的 framework；mqc P9 校验）。
+# M2 规则型版本：只用信号固定的输入与特征（assessment 第11节），硬门槛与规则特征分别记录；
+# 业绩、人员、信用要求在 M2 不自动比对，标出“有要求”并允许人工输入。结合研究（RT-TENDER-ELIG）与 AI 归纳的版本随 M3。
+# 表达式与策略同一 CEL 环境：fact 为信号的事实视图，params 为信号所属策略的模板参数，features 为特征函数结果；
+# 任一输入未知时维度结果为未知，不变成满足或不满足（策略 DSL 4.1）。
+framework:
+  id: AF-TENDER-ELIG
+  version: 0.1.0
+  subject_types: [procurement_project]
+  dimensions:
+    - id: deadline_open
+      kind: hard_gate
+      say: 投标截止时间未过
+      when: features.deadline_days >= 0
+    - id: prep_time
+      kind: rule_feature
+      say: 距投标截止不少于 {params.min_prep_days} 天
+      when: features.deadline_days >= params.min_prep_days
+      manual: [override]
+    - id: qualification
+      kind: rule_feature
+      say: 至少一个我方主体单独具备公告要求的全部资质
+      when: '!features.qualification_gap'
+      manual: [input, override]
+    - id: performance
+      kind: rule_feature
+      say: 公告没有业绩要求（有要求时本版本不自动比对，需人工确认）
+      when: '!fact.requirements.exists(r, r.kind == "performance")'
+      manual: [input]
+    - id: personnel
+      kind: rule_feature
+      say: 公告没有项目人员要求（有要求时需人工确认）
+      when: '!fact.requirements.exists(r, r.kind == "personnel")'
+      manual: [input]
+    - id: credit
+      kind: rule_feature
+      say: 公告没有信用记录要求（有要求时需人工确认我方信用状态）
+      when: '!fact.requirements.exists(r, r.kind == "credit")'
+      manual: [input]
+    - id: authorization
+      kind: rule_feature
+      say: 公告没有要求原厂授权（有要求时需取得授权，可衔接渠道与授权路径）
+      when: '!fact.requirements.exists(r, r.kind == "authorization")'
+      manual: [input]
+    - id: consortium
+      kind: rule_feature
+      say: 允许联合体投标（资格缺口可经合作组队补足）
+      when: fact.consortium_allowed == true
+    - id: brand_open
+      kind: rule_feature
+      say: 标的没有指定我方以外的品牌
+      when: '!features.brand_locked_to_others'
+      manual: [override]

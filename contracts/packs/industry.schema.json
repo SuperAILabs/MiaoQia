@@ -1,0 +1,679 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/packs/industry.schema.json",
+  "x-version": "0.1.0",
+  "title": "IndustryDefinitions 行业包定义格式",
+  "description": "行业包（纯声明）的定义格式草案：品类分类与跨分类映射、产品与规格词表、行业标签、品牌词表、能力与资质模板、默认排除与关注词表。每个定义文件的顶层键为对应种类名，按 pack.yaml provides 的同名键登记；引用与校验规则由 mqc I1–I5 执行（docs/03-architecture/04-extensibility.md 2.4）。",
+  "type": "object",
+  "minProperties": 1,
+  "maxProperties": 1,
+  "additionalProperties": false,
+  "properties": {
+    "taxonomy": {
+      "$ref": "#/$defs/taxonomy"
+    },
+    "vocabulary": {
+      "$ref": "#/$defs/vocabulary"
+    },
+    "qualifications": {
+      "$ref": "#/$defs/qualifications"
+    },
+    "defaults": {
+      "$ref": "#/$defs/defaults"
+    }
+  },
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "review": {
+      "enum": [
+        "proposed",
+        "reviewed"
+      ],
+      "description": "内容核对状态：proposed 为推荐值、待领域负责人核对；reviewed 为已核对"
+    },
+    "taxonomy": {
+      "type": "object",
+      "description": "品类分类（entity-graph Category）。代码按“-”分级，上级包含全部下级（category.any_match 的语义）；category.any_match 不区分行业体系只比较代码，因此代码在全部行业包之间唯一且互不为上下级",
+      "required": [
+        "scheme",
+        "scheme_version",
+        "categories"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "pattern": "^industry:[a-z][a-z0-9-]*$",
+          "description": "industry:<行业包目录名>"
+        },
+        "scheme_version": {
+          "$ref": "#/$defs/version"
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^CAT(-[A-Z0-9]+)+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "say": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stage": {
+                "enum": [
+                  "M2",
+                  "M3",
+                  "M4",
+                  "M5"
+                ],
+                "description": "品类开放给客户勾选的阶段；缺省为随包可用"
+              }
+            }
+          }
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapping"
+          }
+        }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "description": "跨分类映射（版本化）。映射本身也是版本化事实，未核对的标 proposed，待定的写明阶段",
+      "required": [
+        "scheme",
+        "scheme_version",
+        "review"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$"
+        },
+        "scheme_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "say": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review": {
+          "$ref": "#/$defs/review"
+        },
+        "pending": {
+          "type": "object",
+          "required": [
+            "stage",
+            "note"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "stage": {
+              "enum": [
+                "M2",
+                "M3",
+                "M4",
+                "M5"
+              ]
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "target",
+              "relation"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^CAT(-[A-Z0-9]+)+$"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "relation": {
+                "enum": [
+                  "exact",
+                  "broader",
+                  "narrower",
+                  "related"
+                ],
+                "description": "目标代码相对本品类：broader 更宽、narrower 更窄"
+              }
+            }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "entries"
+          ]
+        },
+        {
+          "required": [
+            "pending"
+          ]
+        }
+      ]
+    },
+    "term": {
+      "type": "object",
+      "required": [
+        "term"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1
+        },
+        "synonyms": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "say": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "description": "产品、规格、品牌词表与同义词（search、entity-graph）与行业标签及品类分类规则（evidence.enrichment，rule 方法）",
+      "required": [
+        "products",
+        "specs",
+        "tags",
+        "brands"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "products": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "term",
+              "category"
+            ],
+            "additionalProperties": false,
+            "description": "产品词：标的名称命中词或同义词时，rule 增强器给出该品类（置信度与发布门槛归增强器版本）",
+            "properties": {
+              "term": {
+                "type": "string",
+                "minLength": 1
+              },
+              "synonyms": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "category": {
+                "type": "string",
+                "pattern": "^CAT(-[A-Z0-9]+)+$"
+              },
+              "not_when": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "同时出现这些词时不据此判定（同名异物）"
+              },
+              "say": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "specs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "term",
+              "say"
+            ],
+            "additionalProperties": false,
+            "description": "规格词：用于抽取与检索，不单独决定品类",
+            "properties": {
+              "term": {
+                "type": "string",
+                "minLength": 1
+              },
+              "synonyms": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "say": {
+                "type": "string",
+                "minLength": 1
+              },
+              "categories": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^CAT(-[A-Z0-9]+)+$"
+                }
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "name",
+              "terms"
+            ],
+            "additionalProperties": false,
+            "description": "行业标签（例如用途：给水、排水、燃气），与品类正交",
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^TAG(-[A-Z0-9]+)+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "terms": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              }
+            }
+          }
+        },
+        "brands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/brand"
+          },
+          "description": "品牌词表与带证据的归属声明（entity-graph brand_owned_by 的唯一声明来源之一）"
+        },
+        "brands_pending": {
+          "type": "object",
+          "required": [
+            "stage",
+            "task"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "stage": {
+              "enum": [
+                "M2",
+                "M3",
+                "M4",
+                "M5"
+              ]
+            },
+            "task": {
+              "type": "string",
+              "pattern": "^M[0-9]-P[0-9]+$"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "品牌词表尚未交付时登记交付任务"
+        }
+      }
+    },
+    "brand": {
+      "type": "object",
+      "required": [
+        "name",
+        "categories",
+        "owner_claims"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^CAT(-[A-Z0-9]+)+$"
+          }
+        },
+        "owner_claims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "owner_name",
+              "valid_from",
+              "evidence"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "owner_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "owner_uscc": {
+                "type": "string",
+                "pattern": "^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$"
+              },
+              "valid_from": {
+                "type": "string",
+                "format": "date"
+              },
+              "valid_to": {
+                "type": "string",
+                "format": "date"
+              },
+              "evidence": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "trademark_registration",
+                      "official_website",
+                      "registration_record",
+                      "operations_review"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "qualifications": {
+      "type": "object",
+      "description": "能力与资质模板（customer-context.profile）。scheme 为本包资质体系（平台登记），缺 code_scheme 的资质要求按本体系解释；equivalents 为到其他登记体系的映射，未核对的标 proposed",
+      "required": [
+        "scheme",
+        "scheme_version",
+        "templates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "pattern": "^qual:[a-z][a-z0-9-]*$"
+        },
+        "scheme_version": {
+          "$ref": "#/$defs/version"
+        },
+        "templates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "name",
+              "kind",
+              "holder",
+              "has_validity",
+              "review"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^Q-[A-Z0-9]+(-[A-Z0-9]+)*$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "aliases": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "公告与证书中的常见叫法，供资格要求归一与检索"
+              },
+              "say": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "production_license",
+                  "product_permit",
+                  "product_certification",
+                  "management_system",
+                  "enterprise_qualification",
+                  "safety_license",
+                  "installation_license"
+                ]
+              },
+              "holder": {
+                "enum": [
+                  "organization",
+                  "product"
+                ],
+                "description": "证书持有单位：主体，或主体名下的具体产品"
+              },
+              "categories": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^CAT(-[A-Z0-9]+)+$"
+                },
+                "description": "适用品类；缺省为不限品类"
+              },
+              "roles": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^ROLE-[A-Z]+$"
+                },
+                "description": "常见持有该资质的价值链角色"
+              },
+              "grades": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "等级（由高到低）；本阶段等级只记录、不比较"
+              },
+              "has_validity": {
+                "type": "boolean",
+                "description": "证书有有效期（到期前提醒、过期按不具备）"
+              },
+              "issuer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "equivalents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "scheme"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "scheme": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*(:[a-z0-9-]+)*$"
+                    },
+                    "scheme_version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "code": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "say": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              "review": {
+                "$ref": "#/$defs/review"
+              }
+            }
+          }
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "description": "默认排除与关注词表（customer-context.policy_engine）：作为策略的 vocab.<名> 提供；同名词表在租户选择的多个行业包之间取并集。展开同义词后的词数不超过 CEL 规模上界（cel-environment.yaml size_bounds.paths.vocab）",
+      "required": [
+        "vocab"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "vocab": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "say",
+              "stage",
+              "groups"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "say": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stage": {
+                "enum": [
+                  "M2",
+                  "M3",
+                  "M4",
+                  "M5"
+                ]
+              },
+              "groups": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "say",
+                    "terms",
+                    "review"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "say": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "terms": {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 1
+                    },
+                    "review": {
+                      "$ref": "#/$defs/review"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.B03
+  version: 0.1.0
+  name: 竞争情报
+  say: 持续监测竞争对手的中标、候选人排名、合同、信用与企业变更
+  catalog_objective: OBJ-B03
+  form: continuous
+  subject_types: [organization]
+  playbook: PB-TENDER-B03
+  policy_templates: [TPL-TENDER-B03-COMPETE]
+  requires_domains: [INF-PROC, INF-ORG, INF-CRED]

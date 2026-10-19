@@ -2,7 +2,7 @@
 pack:
   id: APP-TENDER
   kind: application_domain
-  version: 0.6.0                 # 草案：R1 策略模板评审中
+  version: 0.7.0                 # 草案：R1 策略模板评审中；M2-P2 定义已交付，推荐值待领域负责人核对
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-PROC@^1.0
@@ -11,9 +11,9 @@ pack:
     - INF-CRED@^1.0
   owners: [tendering-domain-team]
   provides:
-    # 覆盖矩阵：十六条机会路径的策略、路径、框架与研究模板各自已定义、复用、无需或待定。
-    # 角色、目标、机会路径、判断框架与研究模板按矩阵交付后以 roles/objectives/playbooks/
-    # frameworks/research_templates 列出定义文件（格式 contracts/packs/application-domain.schema.json，mqc P9）
+    # 覆盖矩阵：十六条机会路径的发布阶段，策略、路径、框架与研究模板各自已定义、复用、无需或待定。
+    # 其他定义的格式见 contracts/packs/application-domain.schema.json：引用与覆盖由 mqc P9 校验，
+    # 卡片、简报分区、反馈原因、结果原因与效果指标由 mqc P10 校验。
     coverage: coverage.yaml
     policy:
       views: policy/views.yaml
@@ -25,3 +25,42 @@ pack:
         - policy/templates/b03-competitive-intel.yaml
         - policy/templates/b05-org-tracking.yaml
         - policy/templates/c01-counterparty-risk.yaml
+    roles:
+      - roles/mfr.yaml
+      - roles/bidder.yaml
+      - roles/dealer.yaml
+      - roles/prime.yaml
+    objectives:
+      - objectives/a01.yaml
+      - objectives/a02.yaml
+      - objectives/a04.yaml
+      - objectives/a05.yaml
+      - objectives/a06.yaml
+      - objectives/b01.yaml
+      - objectives/b02.yaml
+      - objectives/b03.yaml
+      - objectives/b04.yaml
+      - objectives/c01.yaml
+      - objectives/c02.yaml
+      - objectives/c03.yaml
+    frameworks:
+      - frameworks/af-tender-elig.yaml
+      - frameworks/af-tender-supply.yaml
+    cards:
+      - cards/a01-signal.yaml
+      - cards/a01-row.yaml
+      - cards/a02-signal.yaml
+      - cards/a02-row.yaml
+      - cards/b03-signal.yaml
+      - cards/b03-row.yaml
+    briefing:
+      - briefing.yaml
+    feedback:
+      - feedback/a01.yaml
+      - feedback/a02.yaml
+      - feedback/b03.yaml
+    outcomes:
+      - outcomes/a01.yaml
+      - outcomes/a02.yaml
+    metrics:
+      - metrics.yaml

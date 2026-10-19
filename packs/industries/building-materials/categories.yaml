@@ -1,9 +1,65 @@
-# 建材行业品类分类。代码按“-”分级，上级代码包含全部下级（category.any_match 的语义）。
-# 品类增强器以本体系输出 {scheme, scheme_version, code, confidence}；政府采购品目等其他体系的映射待补。
-scheme: industry:building-materials
-scheme_version: 0.1.0
-categories:
-  - { code: CAT-PIPE, name: 管材 }
-  - { code: CAT-PIPE-PE, name: PE 管 }
-  - { code: CAT-PIPE-PVC, name: PVC 管 }
-  - { code: CAT-PIPE-DI, name: 球墨铸铁管 }
+# 建材管材品类分类（格式：contracts/packs/industry.schema.json 的 taxonomy；mqc I1–I5 校验）。
+# 代码按“-”分级，上级代码包含全部下级（category.any_match 的语义）：勾选 CAT-PIPE-PE 即包含 PE 给水、燃气、排水等全部下级。
+# 第二级按材质、第三级按用途；管件与附属构件单列一支，勾选“管材”不自动包含管件，客户需要时同时勾选。
+# 品类增强器以本体系输出 {scheme, scheme_version, code, confidence}；产品词到品类的分类规则见 vocabulary.yaml。
+# 阀门、水泵等设备不在本包，另建行业包后可与本包同时选择（PRD 第2段 F2）。
+taxonomy:
+  scheme: industry:building-materials
+  scheme_version: 0.2.0
+  categories:
+    - { code: CAT-PIPE, name: 管材 }
+    - { code: CAT-PIPE-PE, name: PE 管, say: 聚乙烯管，含 HDPE、PE80、PE100 }
+    - { code: CAT-PIPE-PE-WS, name: PE 给水管 }
+    - { code: CAT-PIPE-PE-GAS, name: PE 燃气管, say: 埋地燃气用聚乙烯管，属压力管道元件 }
+    - { code: CAT-PIPE-PE-SW, name: PE 结构壁排水管, say: 双壁波纹管、缠绕结构壁管、克拉管等埋地排水排污管 }
+    - { code: CAT-PIPE-PE-SOLID, name: PE 实壁排水排污管 }
+    - { code: CAT-PIPE-PE-RT, name: PE-RT 地暖与热水管 }
+    - { code: CAT-PIPE-PVC, name: PVC 管, say: 硬聚氯乙烯（PVC-U）、改性聚氯乙烯（PVC-M、PVC-O）管 }
+    - { code: CAT-PIPE-PVC-WS, name: PVC 给水管 }
+    - { code: CAT-PIPE-PVC-DR, name: PVC 排水管, say: 建筑排水、埋地排水排污 }
+    - { code: CAT-PIPE-PVC-EC, name: PVC 电工套管与线管 }
+    - { code: CAT-PIPE-PPR, name: PP-R 管, say: 建筑冷热水用无规共聚聚丙烯管 }
+    - { code: CAT-PIPE-PP, name: PP 结构壁管, say: 聚丙烯双壁波纹管等埋地排水管 }
+    - { code: CAT-PIPE-CABLE, name: 电力与通信保护管, say: MPP、CPVC 电力电缆保护管，通信硅芯管、梅花管 }
+    - { code: CAT-PIPE-DI, name: 球墨铸铁管 }
+    - { code: CAT-PIPE-CI, name: 铸铁排水管, say: 建筑柔性接口铸铁排水管 }
+    - { code: CAT-PIPE-STEEL, name: 钢管 }
+    - { code: CAT-PIPE-STEEL-WELD, name: 焊接钢管, say: 直缝、螺旋埋弧焊钢管与防腐钢管 }
+    - { code: CAT-PIPE-STEEL-GALV, name: 镀锌钢管 }
+    - { code: CAT-PIPE-STEEL-SS, name: 不锈钢管, say: 薄壁不锈钢给水管等 }
+    - { code: CAT-PIPE-STEEL-COMP, name: 钢塑复合管, say: 衬塑、涂塑钢管与钢丝网骨架塑料复合管 }
+    - { code: CAT-PIPE-GRP, name: 玻璃钢管, say: 玻璃纤维增强塑料夹砂管 }
+    - { code: CAT-PIPE-CONC, name: 混凝土管, say: 钢筋混凝土排水管、预应力钢筒混凝土管（PCCP） }
+    - { code: CAT-PIPE-CU, name: 铜管 }
+    - { code: CAT-FIT, name: 管件与管道附件 }
+    - { code: CAT-FIT-PE, name: PE 管件, say: 热熔、电熔管件 }
+    - { code: CAT-FIT-PVC, name: PVC 管件 }
+    - { code: CAT-FIT-PPR, name: PP-R 管件 }
+    - { code: CAT-FIT-DI, name: 球墨铸铁管件 }
+    - { code: CAT-FIT-STEEL, name: 钢制与不锈钢管件 }
+    - { code: CAT-FIT-WELL, name: 塑料检查井与井盖, say: 与埋地排水管配套采购的管网构件 }
+
+  # 跨分类映射。国民经济行业分类用于把组织的登记行业与本包品类对照（例如中标方是否可能采购本品类），
+  # 是“相关”关系而非等同；政府采购品目分类的映射需对照官方目录逐项核对后交付。
+  mappings:
+    - scheme: std:gb-t-4754
+      scheme_version: "2017"
+      say: 国民经济行业分类（组织所属行业）
+      review: proposed
+      entries:
+        - { code: CAT-PIPE-PE, target: C2922, target_name: 塑料板、管、型材制造, relation: related }
+        - { code: CAT-PIPE-PVC, target: C2922, target_name: 塑料板、管、型材制造, relation: related }
+        - { code: CAT-PIPE-PPR, target: C2922, target_name: 塑料板、管、型材制造, relation: related }
+        - { code: CAT-PIPE-PP, target: C2922, target_name: 塑料板、管、型材制造, relation: related }
+        - { code: CAT-PIPE-CABLE, target: C2922, target_name: 塑料板、管、型材制造, relation: related }
+        - { code: CAT-PIPE-DI, target: C3391, target_name: 黑色金属铸造, relation: related }
+        - { code: CAT-PIPE-CI, target: C3391, target_name: 黑色金属铸造, relation: related }
+        - { code: CAT-PIPE-STEEL, target: C3130, target_name: 钢压延加工, relation: related }
+        - { code: CAT-PIPE-GRP, target: C3062, target_name: 玻璃纤维增强塑料制品制造, relation: related }
+        - { code: CAT-PIPE-CONC, target: C3021, target_name: 水泥制品制造, relation: related }
+        - { code: CAT-PIPE-CU, target: C3251, target_name: 铜压延加工, relation: related }
+    - scheme: gov-procurement-catalog
+      scheme_version: "2022"
+      say: 政府采购品目分类目录
+      review: proposed
+      pending: { stage: M2, note: 按财政部现行品目分类目录逐项核对后交付，用于检索与统计口径对照；category.any_match 只比较行业包体系，不受影响 }

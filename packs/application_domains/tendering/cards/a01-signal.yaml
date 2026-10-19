@@ -1,0 +1,30 @@
+# A01 信号卡片（格式与渲染规则见 cards/a02-signal.yaml）。A01 按采购项目标包的当前状态求值，
+# 投标截止取应用全部更正后的值，属于不截断、不省略的日期。
+card:
+  id: CARD-TENDER-A01-SIGNAL
+  version: 0.1.0
+  objective: APP-TENDER.A01
+  surfaces: [briefing_item, channel_card, notification_card]
+  fact_types: [tendering.lot_opportunity]
+  fact_type_labels:
+    - { fact_type: tendering.lot_opportunity, when: 'fact.stage == "intent"', label: 采购意向 }
+    - { fact_type: tendering.lot_opportunity, when: 'fact.stage == "amended"', label: 采购公告（已更正） }
+    - { fact_type: tendering.lot_opportunity, label: 采购公告 }
+  fields:
+    - { id: objective, label: 目标, source: signal.objective, format: label, never_omit: true }
+    - { id: disposition, label: 处置, source: signal.disposition, format: disposition, never_omit: true }
+    - { id: project, label: 项目, source: fact.title, format: text }
+    - { id: bid_deadline, label: 投标截止, source: fact.bid_deadline, format: datetime, missing_text: 未公布, never_omit: true }
+    - { id: budget, label: 预算, source: fact.budget, format: money, missing_text: 未公布, never_omit: true }
+    - { id: buyer, label: 采购人, source: fact.buyer, format: party }
+    - { id: region, label: 地区, source: fact.location, format: region }
+    - { id: categories, label: 品类, source: fact.categories, format: categories, missing_text: 未能可靠识别 }
+    - { id: reasons, label: 命中理由, source: signal.reasons, format: reasons, max_items: 2 }
+    - { id: unknown_count, label: 未知项, source: signal.unknown_count, format: count }
+    - { id: created_at, label: 发现时间, source: signal.created_at, format: datetime }
+  markers: [new, updated, overnight, notified, also_matched]
+  actions:
+    - { action: view, permission: can_view_signals }
+    - { action: feedback_relevant, permission: can_feedback }
+    - { action: feedback_irrelevant, permission: can_feedback, reasons: quick }
+    - { action: create_pursuit, permission: can_assign }

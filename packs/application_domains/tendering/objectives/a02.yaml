@@ -1,0 +1,13 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.A02
+  version: 0.1.0
+  name: 进入供货
+  say: 从中标结果、合同与施工许可中找出需要我方产品的项目和可接触的中标方，赶在材料采购前跟进
+  catalog_objective: OBJ-A02
+  form: transactional
+  subject_types: [procurement_project, organization]
+  playbook: PB-TENDER-A02
+  policy_templates: [TPL-TENDER-A02-SUPPLY]
+  requires_domains: [INF-PROC, INF-INVP, INF-ORG, INF-CRED]

@@ -1,0 +1,29 @@
+# 建材管材默认排除与关注词表（格式：contracts/packs/industry.schema.json 的 defaults；mqc I1–I5 校验）。
+# 作为策略的 vocab.<名> 提供（策略 DSL 5.1），同名词表在租户选择的多个行业包之间取并集；租户不能逐词修改，
+# 不需要时在策略中停用引用它的规则（如 A01 的 X-TERM）。text.contains_any 按子串匹配，词要足够具体，
+# 不能误伤本行业的采购（例如“导管”会命中电力导管、“试管”会命中“压力测试管道”，均不收录）。review: proposed 为推荐值，待领域负责人核对。
+defaults:
+  vocab:
+    exclude_terms:
+      say: 标题命中即排除（A01 X-TERM，原因 EXCLUDED_TERM）
+      stage: M2
+      groups:
+        - say: 管道服务而非管材采购
+          terms: [管道疏通, 管道清淤, 管道清掏, 管网清淤, 管道CCTV检测, 管道内窥检测, 化粪池清掏]
+          review: proposed
+        - say: 医疗与实验室耗材中的“管”
+          terms: [采血管, 输液管, 气管插管, 离心管, 胃管, 引流管]
+          review: proposed
+        - say: 照明与电子器件中的“管”
+          terms: [荧光灯管, LED灯管, 显像管, 数码管]
+          review: proposed
+    focus_terms:
+      say: 前置与集采信号词（A04 规格与品牌入围、A01 观察），命中时提示关注，不改变处置
+      stage: M4
+      groups:
+        - say: 品牌库与入围
+          terms: [品牌库, 品牌入围, 入围品牌, 推荐品牌, 短名单, 供应商库]
+          review: proposed
+        - say: 集中与框架采购
+          terms: [集中采购, 框架协议, 年度采购, 战略采购, 联合采购]
+          review: proposed

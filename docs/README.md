@@ -22,8 +22,9 @@ docs/
 │   ├── 02-commercial-objectives.md
 │   ├── 03-information-domains.md
 │   ├── 04-application-domains.md
-│   └── application-domains/
-│       └── tendering/            首个应用领域：招投标与政企采购
+│   ├── application-domains/
+│   │   └── tendering/            首个应用领域：招投标与政企采购
+│   └── industries/               行业说明（行业包内容在 packs/industries/）
 │
 ├── 03-architecture/              架构层：系统如何构建
 │   ├── 01-architecture-overview.md

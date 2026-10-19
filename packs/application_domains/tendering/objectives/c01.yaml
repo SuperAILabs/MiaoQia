@@ -1,0 +1,13 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.C01
+  version: 0.1.0
+  name: 交易对手风险评估
+  say: 评估采购人、总包与伙伴的付款能力与信用风险，嵌入投标与供货判断
+  catalog_objective: OBJ-C01
+  form: embedded
+  subject_types: [organization]
+  playbook: PB-TENDER-C01
+  policy_templates: [TPL-TENDER-C01-RISK]
+  requires_domains: [INF-ORG, INF-CRED, INF-PROC]

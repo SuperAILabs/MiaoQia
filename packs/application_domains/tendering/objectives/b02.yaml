@@ -1,0 +1,12 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.B02
+  version: 0.1.0
+  name: 市场研究与布局
+  say: 按区域与品类看市场规模、趋势、集中度与主要采购人，指导布局
+  catalog_objective: OBJ-B02
+  form: continuous
+  subject_types: [market]
+  playbook: PB-TENDER-B02
+  requires_domains: [INF-PROC, INF-INVP]

@@ -1,6 +1,6 @@
 # 可扩展性设计
 
-> 状态：评审中 · 版本：2.6 · 更新：2026-10-17 · 负责人：首席架构师
+> 状态：评审中 · 版本：2.7 · 更新：2026-10-19 · 负责人：首席架构师
 
 ## 1. 设计目标
 
@@ -32,7 +32,7 @@ pack:
   provides: { … }                    # 按 kind 列出提供的扩展点
 ```
 
-扩展包由声明式定义文件（YAML/JSON）组成。清单没有独立的 manifest Schema，由 `mqc check` 的扩展包一致性规则（`tools/contracts/src/mqc/packs.py`，P0–P9）对照 `contracts/` 校验：信息领域包检查 `pack.yaml` 引用的 Schema、事件文件与领域校验入口存在且合规，生命周期状态与触发值取自所引用 Schema 的枚举；应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验，并检查视图来源、引用声明、规则编号、事件类型与样例处置；其他定义（角色模板、目标模板、机会路径、判断框架、研究模板）与覆盖矩阵按 `contracts/packs/application-domain.schema.json`（草案）校验，P9 检查引用可解析（见 2.3）。行业包尚未纳入检查。扩展包按种类允许的形式不同（ADR-0006）：
+扩展包由声明式定义文件（YAML/JSON）组成。清单没有独立的 manifest Schema，由 `mqc check` 的扩展包一致性规则（`tools/contracts/src/mqc/packs.py` 的 P0–P10 与 `industry.py` 的 I1–I5）对照 `contracts/` 校验：信息领域包检查 `pack.yaml` 引用的 Schema、事件文件与领域校验入口存在且合规，生命周期状态与触发值取自所引用 Schema 的枚举；应用领域包的策略模板按 `contracts/policy/policy.schema.json` 校验，并检查视图来源、引用声明、规则编号、事件类型与样例处置；其他定义（角色模板、目标模板、机会路径、判断框架、研究模板）与覆盖矩阵按 `contracts/packs/application-domain.schema.json`（草案）校验，P9 检查引用可解析，P10 检查卡片、简报分区、反馈原因、结果原因与效果指标（见 2.3）；行业包按 `contracts/packs/industry.schema.json`（草案）校验，I1–I5 检查品类、词表与资质引用（见 2.4）。扩展包按种类允许的形式不同（ADR-0006）：
 
 | 种类 | 形式 | 运行位置 |
 |---|---|---|
@@ -79,9 +79,19 @@ pack:
 | API 视图、MCP 工具、Skills | `gateway` |
 | Web 视图描述 | Web 前端（视图注册表） |
 
-**登记与覆盖矩阵**：`pack.yaml` 的 `provides` 以同名键登记定义文件：`policy`（策略模板及其视图、特征、原因代码）、`roles`、`objectives`、`playbooks`、`frameworks`、`research_templates`，格式见 `contracts/packs/application-domain.schema.json`。`provides.coverage` 登记覆盖矩阵：包内每条机会路径的进入策略、路径定义、判断框架与研究模板分别标为已定义、复用（另一条路径或另一项定义）、无需（附理由）或待定（必须注明交付阶段；阶段基线已有对应任务时引用该任务，不重复立项）。每个应用领域包都必须登记覆盖矩阵。路径不必各有一套策略或框架，共用关系在矩阵中显式写出。覆盖矩阵表达设计完整性，不等于运行就绪：待定项允许设计检查通过，具体功能启用时其必需定义必须已交付并通过验收（ADR-0009）。`mqc` P9 校验：应用领域包登记了覆盖矩阵；路径与目标代码一致；已定义项有登记文件、复用项存在；每个策略模板都进入矩阵且目标一致；框架与研究模板目录没有未登记引用和孤儿；待定任务在阶段基线中存在且与交付阶段一致；定义之间的引用（目标 → 路径、阶段 → 框架与研究、衔接 → 路径、挂钩 → 事件、研究输出 Schema）可解析。卡片模板、简报分区、反馈原因标签、效果指标、API/MCP 与 Web 视图的格式随各自首次交付由所有者补入同一份格式文件（阶段基线 M2-P2、M2-P5）。
+**登记与覆盖矩阵**：`pack.yaml` 的 `provides` 以同名键登记定义文件：`policy`（策略模板及其视图、特征、原因代码）、`roles`、`objectives`、`playbooks`、`frameworks`、`research_templates`、`cards`、`briefing`、`feedback`、`outcomes`、`metrics`，格式见 `contracts/packs/application-domain.schema.json`。`provides.coverage` 登记覆盖矩阵：包内每条机会路径的进入策略、路径定义、判断框架与研究模板分别标为已定义、复用（另一条路径或另一项定义）、无需（附理由）或待定（必须注明交付阶段；阶段基线已有对应任务时引用该任务，不重复立项）。每个应用领域包都必须登记覆盖矩阵。路径不必各有一套策略或框架，共用关系在矩阵中显式写出。覆盖矩阵表达设计完整性，不等于运行就绪：待定项允许设计检查通过，具体功能启用时其必需定义必须已交付并通过验收（ADR-0009）。`mqc` P9 校验：应用领域包登记了覆盖矩阵；路径与目标代码一致；已定义项有登记文件、复用项存在；每个策略模板都进入矩阵且目标一致；框架与研究模板目录没有未登记引用和孤儿；待定任务在阶段基线中存在且与交付阶段一致；每条路径登记发布批次与阶段（`release`），待定项的交付阶段不晚于路径发布阶段；定义之间的引用（角色 → 目标、目标 → 路径与策略模板、阶段 → 框架与研究、衔接 → 路径、挂钩 → 事件、研究输出 Schema、判断框架表达式中的视图、特征与参数）可解析。
 
-APP-TENDER 的矩阵见 `packs/application_domains/tendering/coverage.yaml`：十六条路径中，A01、A02、B03、B05、C01 已有进入策略；A03 复用 A02 的策略与路径结构；A05、B02、B04、C03 不由信号直接进入；B04 不建推进。判断框架与研究模板全部待定，阶段按[首发范围](../02-business/application-domains/tendering/05-release-plan.md#2-商业目标分批)与路线图。
+交付定义（M2-P2）同在这份格式文件中，由 `mqc` P10 校验：
+
+- **卡片**（`cards`）：按目标与形态（信号卡片、列表行）声明字段，字段取自信号属性或该目标策略模板声明的视图与事实字段；金额等字段按条件给出口径标签，缺失时显示固定文字而不省略（`never_omit`）；操作映射到权限；
+- **简报**（`briefing`）：分区对应目标，声明顺序、每区默认条数与可调范围、合并窗口；
+- **反馈**（`feedback`）：不相关、相关与排除有误的原因标签，标明各自关联的可调对象（规则、参数、画像、名单、视图、词表、数据质量）；卡片快捷原因取前若干项加“其他”；
+- **结果**（`outcomes`）：成功、失败、放弃三类结果及其原因、结果时点要求与金额口径；结果用于判断是否已提交（如投标）时声明 `submission_evidence`，每个失败原因以 `implies_bid` 声明能否证明已提交（流标、终止、资格预审未通过等不能）；
+- **效果指标**（`metrics`）：分子、分母、分组与基线；金额类指标必须按取值性质、金额类型与币种分组，各组不相加；比例指标以 `numerator_filter`、`denominator_filter` 写明筛选，分组维度不得在分子中被限定得比分母更窄（分母未限定视为不限，否则各组恒为 0 或 100%），分子、分母共用同一筛选时可按该维度分组；口径已定但依赖未交付能力的指标以 `pending` 写明阶段、计数依据与计入时点；基线未定时标为待定并引用交付任务。
+
+P10 还检查 M2 发布路径的卡片、简报分区、反馈与指标齐全。API/MCP 与 Web 视图的格式随首次交付补入（阶段基线 M2-P5）。
+
+APP-TENDER 的矩阵见 `packs/application_domains/tendering/coverage.yaml`：十六条路径中，A01、A02、B03、B05、C01 已有进入策略；A03 复用 A02 的策略与路径结构；A05、B02、B04、C03 不由信号直接进入；B04 不建推进。判断框架 AF-TENDER-ELIG 与 AF-TENDER-SUPPLY 已有 M2 规则型版本，其余框架与研究模板待定，阶段按[首发范围](../02-business/application-domains/tendering/05-release-plan.md#2-商业目标分批)与路线图。
 
 ### 2.4 行业包
 
@@ -92,6 +102,15 @@ APP-TENDER 的矩阵见 `packs/application_domains/tendering/coverage.yaml`：�
 | 行业标签体系与品类分类规则（声明） | `evidence.enrichment` |
 | 能力与资质模板（行业包资质代码到平台登记资质体系的映射；体系与版本由平台登记） | `customer-context.profile` |
 | 默认排除与关注规则 | `customer-context.policy_engine` |
+
+`pack.yaml` 的 `provides` 以 `taxonomy`、`vocabulary`、`qualifications`、`defaults` 登记定义文件，格式见 `contracts/packs/industry.schema.json`（草案）：
+
+- **品类分类**：体系为 `industry:<包目录名>`，代码以 `CAT-` 开头、按连字符逐级细分；跨分类映射（如国民经济行业分类）逐项标注评审状态，未完成的映射标为待定并注明交付阶段；
+- **词表**：产品词与同义词各对应一个品类，可声明不适用语境；规格词、行业标签与品牌（品牌须附归属依据）；品牌词表为空时登记交付任务；
+- **资质模板**：体系为 `qual:<包目录名>`，每项声明类型、持有主体、适用品类与角色、等级、有效期与发证机关，以及到平台登记资质体系的等价关系；
+- **默认词表**：策略模板以 `vocab.<名>` 引用的词表，按组给出词与说明，注明启用阶段。
+
+由于 `category.any_match` 只比较代码，不同行业包的品类代码不得相同或互为上下级。`mqc` 校验：I1 清单与格式；I2 品类代码唯一、上级存在、跨包不冲突；I3 词表、映射、品牌与资质引用的品类存在，同一个词不对应两个品类；I4 资质代码唯一、词表规模不超过 CEL 上界；I5 应用领域包策略模板引用的 `vocab.<名>` 由某个行业包提供，模板样例中的品类存在。首个样板为 `packs/industries/building-materials`，业务说明见[建材管材](../02-business/industries/building-materials.md)。
 
 ## 3. 扩展点规范
 
