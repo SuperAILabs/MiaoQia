@@ -163,5 +163,5 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 自然人关系端点的标识前缀与关系端点类型 | [entity-graph 第 4.2 节](subsystems/entity-graph.md#42-自然人关系端点) | 首个需要实际控制链的规则或研究 | 新增前缀经架构评审登记；关系端点类型追加 |
 | 模板参数的个人可调标记 | [策略 DSL 3.3](11-policy-dsl.md#33-模板与租户策略的合成) 第 6 条 | 个人客户进入产品范围 | 模板格式追加可选字段 |
 | 领域历史覆盖起点 | [可扩展性第 4 节](04-extensibility.md#4-加载版本与发布) | 首个声明历史窗口的视图启用 | 覆盖度量追加字段 |
-| 投标提交确认（A01 跟进“已投标”阶段的提交时间、确认人与依据） | APP-TENDER 效果指标 `a01_bid_count` 的待定口径（`packs/application_domains/tendering/metrics.yaml`）；[pursuit 第10节](subsystems/pursuit.md#10-分阶段交付) | M4 路径引擎的 A01 投标阶段 | pursuit 阶段数据与事件追加字段 |
+| 投标提交确认（A01 跟进“已投标”阶段的提交时间、确认人与依据） | APP-TENDER 效果指标 `a01_bid_count`、`a01_win_rate` 的待定口径与结果原因的 `implies_bid`（`packs/application_domains/tendering/outcomes/a01.yaml`）（`packs/application_domains/tendering/metrics.yaml`）；[pursuit 第10节](subsystems/pursuit.md#10-分阶段交付) | M4 路径引擎的 A01 投标阶段 | pursuit 阶段数据与事件追加字段 |
 | 平台资质体系登记（`qual:*` 体系与版本，行业包资质模板 `equivalents` 的加载与解析） | [可扩展性 2.4](04-extensibility.md#24-行业包) | INF-QUAL 首次启用，或首个跨资质体系比较资质的规则 | 新增 |

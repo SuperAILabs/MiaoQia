@@ -1418,6 +1418,10 @@
           "type": "string",
           "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
         },
+        "submission_evidence": {
+          "type": "boolean",
+          "description": "结果是否用于判断已提交（如投标）。为 true 时每个 failure 原因必须以 implies_bid 声明该原因能否证明已提交；success 视为已提交，abandoned 视为未提交（mqc P10）"
+        },
         "results": {
           "type": "array",
           "minItems": 1,
@@ -1483,6 +1487,10 @@
                         "other"
                       ],
                       "description": "原因对应的问题类别，供评估与改进建议归类"
+                    },
+                    "implies_bid": {
+                      "type": "boolean",
+                      "description": "仅 failure 原因：该原因只能在提交之后发生（如报价不具竞争力）为 true；流标、终止、资格预审未通过等不能证明已提交的为 false"
                     }
                   }
                 }
@@ -1583,7 +1591,7 @@
               "minLength": 1
             }
           },
-          "description": "分子固定的维度取值，如 {result_type: [success]}。比例指标不得按分子或分母固定的维度分组，否则各组恒为 0 或 100%（mqc P10）"
+          "description": "分子固定的维度取值，如 {result_type: [success]}。比例指标的分组维度若在分子中被限定为比分母更窄的取值（分母未限定视为不限），各组恒为 0 或 100%，mqc P10 拒绝；分子、分母共用同一筛选（同一队列）时可以按该维度分组"
         },
         "denominator": {
           "type": "string",
@@ -1604,7 +1612,7 @@
               "minLength": 1
             }
           },
-          "description": "分母固定的维度取值，如 {result_type: [success, failure]}"
+          "description": "分母固定的维度取值，如 {result_type: [success, failure]}；未列出的维度不限"
         },
         "source": {
           "type": "array",
@@ -1770,9 +1778,11 @@
         "currency",
         "contribution",
         "result_type",
-        "known_via"
+        "known_via",
+        "bid_evidence",
+        "submission_time"
       ],
-      "description": "指标的分组与筛选维度。金额按取值性质、金额类型与币种分列，不相加（PRD 第6段 F7.1、第8节）"
+      "description": "指标的分组与筛选维度。金额按取值性质、金额类型与币种分列，不相加（PRD 第6段 F7.1、第8节）。bid_evidence：已提交的依据，可同时具备多项，筛选按任一匹配（confirmed 为负责人确认，result 为结果可证：success 或 implies_bid 为 true 的 failure）；submission_time：提交时间 recorded 或 unknown"
     }
   }
 }

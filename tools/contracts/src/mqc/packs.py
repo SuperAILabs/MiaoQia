@@ -22,7 +22,8 @@
   P10 卡片、简报分区、反馈原因、结果原因与效果指标：目标已定义；卡片事实类型等于目标策略的事实类型，字段来源
       在每个事实类型中可解析，动作与权限对应；简报配额 min ≤ default ≤ max、顺序唯一、卡片属于本目标；
       反馈与结果原因代码唯一、“其他”须说明且在末位，反馈原因关联的规则、参数、清单与词表在本目标策略中；
-      金额指标按取值性质、金额类型、币种分列；比例指标不按分子或分母已固定的维度分组；待定指标的阶段与任务有效；
+      结果声明 submission_evidence 时每个 failure 原因声明 implies_bid；金额指标按取值性质、金额类型、币种分列；
+      比例指标不按分子限定窄于分母的维度分组；待定指标的阶段与任务有效；
       release 为 M2 且由策略进入的目标须具备目标定义、收件箱行卡片、简报分区、反馈原因、效果指标，交易型另需结果原因
 行业包见 industry.py（I1–I5）。
 """
@@ -702,6 +703,12 @@ def _check_delivery(repo: Repo, rel, cov_where: str, cov: dict, defined: dict, o
             codes = [c["code"] for c in res["reasons"]]
             if len(codes) != len(set(codes)):
                 r.error(rel(f), f"P10 {d['id']} 的 {res['type']} 原因代码重复")
+        for res in d["results"]:
+            for c in res["reasons"]:
+                if "implies_bid" in c and not (d.get("submission_evidence") and res["type"] == "failure"):
+                    r.error(rel(f), f"P10 {d['id']} 的 {res['type']} 原因 {c['code']}：implies_bid 只用于 submission_evidence 结果的 failure 原因")
+                elif d.get("submission_evidence") and res["type"] == "failure" and "implies_bid" not in c:
+                    r.error(rel(f), f"P10 {d['id']} 的 failure 原因 {c['code']} 须声明 implies_bid（能否证明已提交）")
         amts = [a["code"] for a in d["amount_types"]]
         if len(amts) != len(set(amts)):
             r.error(rel(f), f"P10 {d['id']} 的金额类型重复")
@@ -723,9 +730,14 @@ def _check_delivery(repo: Repo, rel, cov_where: str, cov: dict, defined: dict, o
                 lack = [x for x in MONEY_SEGMENTS if x not in seg]
                 if lack:
                     r.error(rel(f), f"P10 金额指标 {m['id']} 须按 {'、'.join(lack)} 分列，不同口径不得相加")
-            fixed = set(m.get("numerator_filter", {})) | set(m.get("denominator_filter", {}))
-            if m["unit"] == "ratio" and seg & fixed:
-                r.error(rel(f), f"P10 比例指标 {m['id']} 按分子或分母已固定的 {'、'.join(sorted(seg & fixed))} 分组，各组恒为 0 或 100%")
+            nf, df = m.get("numerator_filter", {}), m.get("denominator_filter", {})
+            narrowed = sorted(x for x in seg & set(nf) if x not in df or set(nf[x]) != set(df[x]))
+            if m["unit"] == "ratio" and narrowed:
+                r.error(rel(f), f"P10 比例指标 {m['id']} 按 {'、'.join(narrowed)} 分组，而分子对该维度的限定窄于分母，各组恒为 0 或 100%")
+            if "bid_evidence" in {*nf, *df, *seg}:
+                for o in m["objectives"]:
+                    if not outs.get(o, {}).get("submission_evidence"):
+                        r.error(rel(f), f"P10 指标 {m['id']} 使用 bid_evidence，但目标 {o} 的结果定义未声明 submission_evidence")
             if "pending" in m:
                 if m["pending"]["stage"] != m["stage"]:
                     r.error(rel(f), f"P10 指标 {m['id']} 的待定阶段 {m['pending']['stage']} 与开始计算阶段 {m['stage']} 不一致")

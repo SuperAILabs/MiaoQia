@@ -1,9 +1,12 @@
 # A01 投标的结果类型、原因代码与金额类型（格式与说明见 outcomes/a02.yaml）。M2 跟进切片以 A02 为首条旅程，
 # A01 的跟进同用本格式；原因为推荐值，待领域负责人核对。
+# submission_evidence：结果用于判断是否已投标。中标视为已投标，放弃视为未投标；未中标按原因的 implies_bid 判断——
+# 只有只能在递交投标文件之后发生的原因为 true。流标、废标或终止可能发生在递交之前，资格预审在递交之前，不能证明已投标。
 outcome:
   id: OUT-TENDER-A01
   version: 0.1.0
   objective: APP-TENDER.A01
+  submission_evidence: true
   results:
     - type: success
       say: 中标或成交
@@ -18,12 +21,13 @@ outcome:
       say: 未中标
       known_at_required: true
       reasons:
-        - { code: PRICE_UNCOMPETITIVE, say: 报价不具竞争力, relates_to: price }
-        - { code: TECHNICAL_SCORE_LOW, say: 技术或商务得分偏低, relates_to: product }
-        - { code: DISQUALIFIED, say: 资格或符合性审查未通过, relates_to: qualification }
-        - { code: SPEC_FAVORED_OTHERS, say: 参数或品牌倾向他人, relates_to: product }
-        - { code: PROCUREMENT_FAILED, say: 流标、废标或终止, relates_to: project }
-        - { code: OTHER, say: 其他, note_required: true, relates_to: other }
+        - { code: PRICE_UNCOMPETITIVE, say: 报价不具竞争力, relates_to: price, implies_bid: true }
+        - { code: TECHNICAL_SCORE_LOW, say: 技术或商务得分偏低, relates_to: product, implies_bid: true }
+        - { code: BID_REJECTED, say: 资格后审或符合性审查未通过, relates_to: qualification, implies_bid: true }
+        - { code: PREQUAL_FAILED, say: 资格预审未通过, relates_to: qualification, implies_bid: false }
+        - { code: SPEC_FAVORED_OTHERS, say: 参数或品牌倾向他人, relates_to: product, implies_bid: false }
+        - { code: PROCUREMENT_FAILED, say: 流标、废标或终止, relates_to: project, implies_bid: false }
+        - { code: OTHER, say: 其他, note_required: true, relates_to: other, implies_bid: false }
     - type: abandoned
       say: 放弃投标
       known_at_required: false

@@ -162,32 +162,52 @@ metrics:
       objectives: [APP-TENDER.A01]
       layer: value
       unit: count
-      numerator: 窗口内确认已提交投标的 A01 跟进数
+      numerator: 已提交投标的 A01 跟进数。已提交的依据：负责人确认（confirmed），或结果可证（result：中标，或未中标且原因 implies_bid 为 true）；流标、废标、终止、资格预审未通过等不能证明已提交
       source: [pursuit, outcome]
       window: 30d
-      segment_by: [region, category]
+      segment_by: [region, category, bid_evidence, submission_time]
       stage: M4
       pending:
         stage: M4
-        basis: 跟进进入“已投标”阶段并由负责人确认（记录提交时间与确认人，可附投标回执）；关闭结果为中标或未中标的跟进视为已投标
-        time_point: 投标提交时间，不晚于投标截止时间；只有关闭结果、没有提交时间的按投标截止时间计入
+        basis: 跟进进入“已投标”阶段并由负责人确认（记录提交时间与确认人，可附投标回执）；没有确认时，仅当结果可证已提交（中标，或未中标且原因 implies_bid 为 true，见 outcomes/a01.yaml）才计入
+        time_point: 有提交时间的按提交时间计入窗口；只由结果证明、没有提交时间的不补填（不用截止时间或获知时间代替），按结果获知时间 known_at 计入窗口，并单列为 submission_time = unknown
         note: M2 跟进切片没有投标阶段与提交确认，随 M4 路径引擎的 A01 阶段与决策门交付（pursuit 第10节）
-      note: 样例：新建未投标、已投标、投标前放弃的跟进各 1 条，本指标为 1；放弃的跟进结果为 abandoned，不计入
-    - id: a01_win_rate
-      name: 中标率（滞后指标）
+      note: 边界样例——新建未投标：不计；投标前放弃（abandoned）：不计；递交前终止（未中标·PROCUREMENT_FAILED，无确认）：不计；递交后终止（同一原因，有确认）：计入，按提交时间；递交后未中标（PRICE_UNCOMPETITIVE，有确认）：计入，按提交时间；同上但无确认、无提交时间：计入，按 known_at 计入窗口并列入 submission_time = unknown
+    - id: a01_closed_success_rate
+      name: A01 已关闭跟进成功率（结果可证已投标口径，非中标率）
       objectives: [APP-TENDER.A01]
       layer: value
       unit: ratio
       numerator: 关闭结果为中标或成交（success）的 A01 跟进数
       numerator_filter: { result_type: [success] }
-      denominator: 关闭结果为中标或未中标（success、failure）的 A01 跟进数；放弃投标（abandoned）不计入
-      denominator_filter: { result_type: [success, failure] }
+      denominator: 关闭结果可证已投标的 A01 跟进数：success，以及原因 implies_bid 为 true 的 failure；放弃与不能证明已投标的未中标不计入
+      denominator_filter: { result_type: [success, failure], bid_evidence: [result] }
       source: [outcome]
       window: 30d
       segment_by: [region, category]
       min_sample: 20
-      note: 例：2 条中标、2 条未中标、1 条放弃，中标率为 2/4 = 50%。M2 以关闭结果判断已投标，不依赖 a01_bid_count
+      note: M2 没有投标确认，只能以关闭结果判断，因此不称中标率；漏掉的是已投标但以流标等原因关闭的跟进。例：2 条中标、2 条因报价未中标、1 条流标、1 条放弃，成功率为 2/4 = 50%。真实中标率见 a01_win_rate（M4）
       stage: M2
+    - id: a01_win_rate
+      name: 中标率（滞后指标）
+      objectives: [APP-TENDER.A01]
+      layer: value
+      unit: ratio
+      numerator: 已提交投标（见 a01_bid_count 的依据）且关闭结果为中标的 A01 跟进数
+      numerator_filter: { result_type: [success] }
+      denominator: 已提交投标且已关闭为中标或未中标的 A01 跟进数，含经确认已提交后流标、废标或终止的
+      denominator_filter: { result_type: [success, failure], bid_evidence: [confirmed, result] }
+      source: [pursuit, outcome]
+      window: 30d
+      segment_by: [region, category]
+      min_sample: 20
+      stage: M4
+      pending:
+        stage: M4
+        basis: 同 a01_bid_count：负责人确认已提交，或结果可证已提交
+        time_point: 按结果获知时间 known_at 计入窗口
+        note: 依赖 M4 的投标提交确认；M2 只有 a01_closed_success_rate
+      note: 例：确认已提交 5 条，2 条中标、2 条因报价未中标、1 条递交后流标，中标率为 2/5 = 40%
     - id: b03_competitor_coverage
       name: 竞争对手覆盖
       objectives: [APP-TENDER.B03]

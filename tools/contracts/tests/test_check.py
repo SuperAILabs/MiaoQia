@@ -162,8 +162,11 @@ def test_repo_definitions_are_checked(sandbox, monkeypatch, capsys):
     ("P10", T + "metrics.yaml", "segment_by: [objective, value_nature, amount_type, currency, contribution]", "segment_by: [objective, value_nature, amount_type, contribution]"),
     ("P10", T + "metrics.yaml", "numerator_filter: { result_type: [success] }\n      denominator: 由跟进候选信号创建且已关闭的跟进数（成功、失败、放弃都计入）\n      source: [pursuit, outcome]\n      window: 30d\n      segment_by: [region, category]",
      "numerator_filter: { result_type: [success] }\n      denominator: 由跟进候选信号创建且已关闭的跟进数（成功、失败、放弃都计入）\n      source: [pursuit, outcome]\n      window: 30d\n      segment_by: [result_type]"),  # 按分子固定的维度分组
-    ("P10", T + "metrics.yaml", "denominator_filter: { result_type: [success, failure] }\n      source: [outcome]\n      window: 30d\n      segment_by: [region, category]",
-     "denominator_filter: { result_type: [success, failure] }\n      source: [outcome]\n      window: 30d\n      segment_by: [region, result_type]"),
+    ("P10", T + "metrics.yaml", "denominator_filter: { result_type: [success, failure], bid_evidence: [result] }\n      source: [outcome]\n      window: 30d\n      segment_by: [region, category]",
+     "denominator_filter: { result_type: [success, failure], bid_evidence: [result] }\n      source: [outcome]\n      window: 30d\n      segment_by: [region, result_type]"),  # 分子 [success] 窄于分母
+    ("P10", T + "outcomes/a01.yaml", "relates_to: project, implies_bid: false }", "relates_to: project }"),   # failure 原因未声明能否证明已投标
+    ("P10", T + "outcomes/a01.yaml", "say: 报价有竞争力, relates_to: price }", "say: 报价有竞争力, relates_to: price, implies_bid: true }"),  # 只用于 failure
+    ("P10", T + "outcomes/a01.yaml", "  submission_evidence: true\n", ""),     # 指标用 bid_evidence，结果未声明
     ("P10", T + "metrics.yaml", "      pending:\n        stage: M4\n", "      pending:\n        stage: M3\n"),          # 待定阶段与开始计算阶段不一致
     ("P10", T + "metrics.yaml", "      pending:\n        stage: M4\n", "      pending:\n        stage: M4\n        task: M2-P4\n"),  # 任务与阶段不一致
     ("P10", T + "metrics.yaml", "        basis: 跟进进入", "        why: 跟进进入"),                      # 缺计数依据
@@ -194,20 +197,94 @@ def test_definition_rules(sandbox, monkeypatch, capsys, rule, rel, old, new):
     assert code == 1 and f" {rule} " in out.err, out.err
 
 
-def test_ratio_metric_worked_example(sandbox):
-    """比例指标的算例：2 条中标、2 条未中标、1 条放弃 → 中标率 50%；按分子固定的 result_type 分组会退化为 0%/100%。"""
+def _metric_cases(sandbox):
     import yaml
     m = {x["id"]: x for x in yaml.safe_load((sandbox / T / "metrics.yaml").read_text(encoding="utf-8"))["metrics"]["items"]}
-    closed = ["success", "success", "failure", "failure", "abandoned"]
+    out = yaml.safe_load((sandbox / T / "outcomes/a01.yaml").read_text(encoding="utf-8"))["outcome"]
+    implies = {c["code"]: c["implies_bid"] for res in out["results"] if res["type"] == "failure" for c in res["reasons"]}
+
+    def row(result=None, reason=None, confirmed=False, submitted_at=None, region="310000"):
+        ev = set()
+        if confirmed:
+            ev.add("confirmed")
+        if result == "success" or (result == "failure" and implies[reason]):
+            ev.add("result")
+        return {"result_type": {result}, "bid_evidence": ev, "region": {region},
+                "submission_time": {"recorded" if submitted_at else "unknown"}}
+
+    def match(r, flt):
+        return all(r[k] & set(v) for k, v in flt.items())
+
     def rate(metric, rows):
-        num = [x for x in rows if x in metric["numerator_filter"]["result_type"]]
-        den = [x for x in rows if x in metric.get("denominator_filter", {}).get("result_type", rows)]
-        return len(num) / len(den)
-    assert rate(m["a01_win_rate"], closed) == 0.5
-    assert rate(m["a02_contact_conversion"], closed[:4]) == 0.5
-    assert {rate(m["a01_win_rate"], [x for x in closed if x == t]) for t in ("success", "failure")} == {1.0, 0.0}
-    assert "result_type" not in m["a01_win_rate"]["segment_by"]
+        den = [r for r in rows if match(r, metric.get("denominator_filter", {}))]
+        return sum(match(r, metric["numerator_filter"]) for r in den) / len(den)
+    return m, row, match, rate
+
+
+def test_bid_metrics_boundary_samples(sandbox):
+    """投标数只认确认或结果可证；递交前终止不计；只由结果证明的不补提交时间。"""
+    m, row, match, rate = _metric_cases(sandbox)
     assert m["a01_bid_count"]["pending"]["stage"] == "M4" and "a01_pursuits_created" in m
+    bid = {"bid_evidence": ["confirmed", "result"]}
+    samples = {
+        "新建未投标": row(),
+        "投标前放弃": row("abandoned", "NOT_ENOUGH_TIME"),
+        "递交前终止": row("failure", "PROCUREMENT_FAILED"),
+        "递交后终止": row("failure", "PROCUREMENT_FAILED", confirmed=True, submitted_at="2026-11-02"),
+        "递交后未中标": row("failure", "PRICE_UNCOMPETITIVE", confirmed=True, submitted_at="2026-11-03"),
+        "结果可证、提交时间未知": row("failure", "PRICE_UNCOMPETITIVE"),
+    }
+    counted = {k for k, r in samples.items() if match(r, bid)}
+    assert counted == {"递交后终止", "递交后未中标", "结果可证、提交时间未知"}
+    assert [k for k in counted if samples[k]["submission_time"] == {"unknown"}] == ["结果可证、提交时间未知"]
+
+
+def test_ratio_metric_worked_example(sandbox):
+    """M2 成功率：2 中标、2 因报价未中标、1 流标、1 放弃 → 2/4 = 50%；M4 中标率：确认已提交 5 条（含递交后流标）→ 40%。"""
+    m, row, match, rate = _metric_cases(sandbox)
+    m2 = [row("success"), row("success"), row("failure", "PRICE_UNCOMPETITIVE"), row("failure", "PRICE_UNCOMPETITIVE"),
+          row("failure", "PROCUREMENT_FAILED"), row("abandoned", "LOW_VALUE")]
+    assert rate(m["a01_closed_success_rate"], m2) == 0.5
+    m4 = [row("success", confirmed=True), row("success", confirmed=True), row("failure", "PRICE_UNCOMPETITIVE", confirmed=True),
+          row("failure", "PRICE_UNCOMPETITIVE", confirmed=True), row("failure", "PROCUREMENT_FAILED", confirmed=True),
+          row("failure", "PROCUREMENT_FAILED")]
+    assert rate(m["a01_win_rate"], m4) == 0.4
+    # 按分子限定窄于分母的 result_type 分组会退化为 100%/0%，P10 因此拒绝
+    assert [rate(m["a01_closed_success_rate"], [r for r in m2 if r["result_type"] == {t}]) for t in ("success", "failure")] == [1.0, 0.0]
+
+
+SHARED_COHORT = """    - id: two_region_conversion
+      name: 两区域接触转化
+      objectives: [APP-TENDER.A02]
+      layer: value
+      unit: ratio
+      numerator: 两个区域内结果为成功的跟进数
+      numerator_filter: { region: [NUM], result_type: [success] }
+      denominator: 两个区域内已关闭的跟进数
+      denominator_filter: { region: ["310000", "320000"] }
+      source: [pursuit, outcome]
+      window: 30d
+      segment_by: [region]
+      stage: M2
+"""
+
+
+@pytest.mark.parametrize("numerator_region,ok", [('"310000", "320000"', True), ('"310000"', False)])
+def test_shared_cohort_filter_may_be_segmented(sandbox, monkeypatch, capsys, numerator_region, ok):
+    """分子、分母共用两区域筛选，按区域分组有效（如 50% 与 25%）；分子只取一个区域则各组退化。"""
+    m, row, match, rate = _metric_cases(sandbox)
+    flt = {"region": ["310000", "320000"]}
+    metric = {"numerator_filter": {**flt, "result_type": ["success"]}, "denominator_filter": flt}
+    rows = [row("success"), row("failure", "PRICE_UNCOMPETITIVE"),
+            *[row("success", region="320000")], *[row("failure", "PRICE_UNCOMPETITIVE", region="320000")] * 3]
+    assert [rate(metric, [r for r in rows if r["region"] == {g}]) for g in ("310000", "320000")] == [0.5, 0.25]
+    p = sandbox / T / "metrics.yaml"
+    item = SHARED_COHORT.replace("NUM", numerator_region)
+    p.write_text(p.read_text(encoding="utf-8") + item, encoding="utf-8")
+    code, out = run_check(sandbox, monkeypatch, capsys)
+    assert (code == 0) == ok, out.err
+    if not ok:
+        assert " P10 " in out.err and "two_region_conversion" in out.err
 
 
 def test_industry_codes_unique_across_packs(sandbox, monkeypatch, capsys):
