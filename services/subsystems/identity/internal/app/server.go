@@ -98,7 +98,7 @@ func (s *Server) CreateInvitation(ctx context.Context, req *identityapi.CreateIn
 	return s.Directory.CreateInvitation(ctx, req, params.IdempotencyKey)
 }
 func (s *Server) ListInvitations(ctx context.Context, params identityapi.ListInvitationsParams) (*identityapi.InvitationList, error) {
-	return s.Directory.ListInvitations(ctx, params.State)
+	return s.Directory.ListInvitations(ctx, params)
 }
 func (s *Server) ResendInvitation(ctx context.Context, req *identityapi.InvitationVersionRequest, params identityapi.ResendInvitationParams) (*identityapi.InvitationIssued, error) {
 	return s.Directory.ResendInvitation(ctx, string(params.InvitationID), req, params.IdempotencyKey)

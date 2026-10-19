@@ -766,6 +766,43 @@ func TestInvitationsAndStrongAuth(t *testing.T) {
 		}
 	})
 
+	run("用例7：受邀管理员已取消TOTP登记时，新鲜的 amr=mfa 不能代替登记", func(t *testing.T) {
+		// 账号刚完成过带第二因素的认证（令牌新鲜），随后在 IdP 删除了 TOTP：IdP 明确未登记，接受被拒绝
+		removed, removedEmail := newcomer("admin7r", false)
+		out := invite(fresh(admin, t1), `{"email":"`+removedEmail+`","name":"已取消登记","roles":["admin"]}`)
+		id, link := string(out.Invitation.ID), out.LinkToken.Value
+		events := count(`SELECT count(*) FROM kernel_outbox`)
+		if code, raw := accept(fresh(removed, ""), link); code != 403 || codeOf(raw) != "totp_enrollment_required" {
+			t.Fatalf("新鲜 MFA 但未登记：%d %s", code, raw)
+		}
+		// IdP 不可用：登记状态未知，失败关闭
+		idp.SetFailures(true, false)
+		code, raw := accept(fresh(removed, ""), link)
+		idp.SetFailures(false, false)
+		if code != 503 || codeOf(raw) != "identity_unavailable" {
+			t.Fatalf("IdP 不可用：%d %s", code, raw)
+		}
+		var state string
+		var version int64
+		if err := owner.QueryRow(ctx, `SELECT state, version FROM identity_invitations WHERE id=$1`, id).Scan(&state, &version); err != nil || state != "pending" || version != 1 {
+			t.Fatalf("邀请：%s %d %v", state, version, err)
+		}
+		if s, _, _ := memberRow(t1, removed); s != "" || memberEvents(t1, removed) != 0 || invitationEvents(id, "accepted") != 0 || count(`SELECT count(*) FROM kernel_outbox`) != events {
+			t.Fatal("被拒绝的接受写入了成员或事件")
+		}
+		// 重新登记 TOTP：登记前签发的令牌也要重新完成强认证后才能接受
+		idp.Put(idapi.Account{Subject: removed, Email: removedEmail, EmailVerified: true, TOTPEnrolled: true})
+		if code, raw := accept(plain(removed, ""), link); code != 403 || codeOf(raw) != "mfa_required" {
+			t.Fatalf("登记后未重新认证：%d %s", code, raw)
+		}
+		if code, raw := accept(fresh(removed, ""), link); code != 200 {
+			t.Fatalf("登记并重新认证后：%d %s", code, raw)
+		}
+		if s, roles, _ := memberRow(t1, removed); s != "active" || !slices.Equal(roles, []string{"admin"}) || invitationEvents(id, "accepted") != 1 {
+			t.Fatalf("%s %v", s, roles)
+		}
+	})
+
 	run("用例4：接受不经成员管理接口；成员管理接口对非管理员仍拒绝", func(t *testing.T) {
 		subject, email := newcomer("new4", false)
 		out := invite(fresh(admin, t1), `{"email":"`+email+`","name":"自助","roles":["business_developer"]}`)
@@ -834,13 +871,88 @@ func TestInvitationsAndStrongAuth(t *testing.T) {
 		}
 		var list identityapi.InvitationList
 		decode(expect(fresh(admin2, t2), "GET", invitations, "", 200, ""), &list)
-		if len(list.Invitations) != 500 || !list.Truncated {
+		if len(list.Invitations) != 500 || !list.Truncated || !list.NextCursor.Set {
 			t.Fatalf("列表：%d %v", len(list.Invitations), list.Truncated)
 		}
 		// 链接令牌原文不落库
 		var leaked int
 		if err := owner.QueryRow(ctx, `SELECT count(*) FROM identity_commands WHERE response::text LIKE '%' || $1 || '%'`, first.LinkToken.Value).Scan(&leaked); err != nil || leaked != 0 {
 			t.Fatalf("链接令牌写入了回执：%d %v", leaked, err)
+		}
+	})
+
+	run("邀请列表分页：同一状态超过500条时翻页不重复、不遗漏，最早的邀请可取到并操作", func(t *testing.T) {
+		// 上一子测试已在租户2批量写入1000条待接受邀请（同一 created_at，翻页须按标识区分先后）
+		want := count(`SELECT count(*) FROM identity_invitations WHERE tenant_id=$1 AND state='pending'`, t2)
+		if want <= 500 {
+			t.Fatalf("待接受邀请 %d 条", want)
+		}
+		pageAll := func(limit string) []identityapi.Invitation {
+			t.Helper()
+			var all []identityapi.Invitation
+			cursor := ""
+			for pages := 0; ; pages++ {
+				if pages > 20 {
+					t.Fatal("翻页未结束")
+				}
+				path := invitations + "?state=pending" + limit
+				if cursor != "" {
+					path += "&cursor=" + cursor
+				}
+				var page identityapi.InvitationList
+				decode(expect(fresh(admin2, t2), "GET", path, "", 200, ""), &page)
+				all = append(all, page.Invitations...)
+				if page.Truncated != page.NextCursor.Set {
+					t.Fatalf("truncated 与 next_cursor 不一致：%v %v", page.Truncated, page.NextCursor)
+				}
+				if !page.NextCursor.Set {
+					return all
+				}
+				cursor = string(page.NextCursor.Value)
+			}
+		}
+		for _, limit := range []string{"", "&limit=300"} {
+			all := pageAll(limit)
+			seen := map[identityapi.InvitationID]bool{}
+			for i, inv := range all {
+				if seen[inv.ID] || inv.State != "pending" {
+					t.Fatalf("limit%s：第%d条重复或状态不符：%s %s", limit, i, inv.ID, inv.State)
+				}
+				seen[inv.ID] = true
+				// 接口的 created_at 精确到秒，同一秒内的先后（库内微秒与标识）不可见，这里只核对按秒不递增
+				if i > 0 && inv.CreatedAt.After(all[i-1].CreatedAt) {
+					t.Fatalf("limit%s：第%d条顺序错误", limit, i)
+				}
+			}
+			if len(all) != want {
+				t.Fatalf("limit%s：翻页得到 %d 条，应为 %d 条", limit, len(all), want)
+			}
+		}
+		// 游标绑定签发它的租户与 state 过滤
+		var first identityapi.InvitationList
+		decode(expect(fresh(admin2, t2), "GET", invitations+"?state=pending&limit=2", "", 200, ""), &first)
+		cursor := string(first.NextCursor.Value)
+		expect(fresh(admin2, t2), "GET", invitations+"?state=expired&cursor="+cursor, "", 400, "invalid_cursor")
+		expect(fresh(admin2, t2), "GET", invitations+"?cursor="+cursor, "", 400, "invalid_cursor")
+		expect(fresh(admin, t1), "GET", invitations+"?state=pending&cursor="+cursor, "", 400, "invalid_cursor")
+		expect(fresh(admin2, t2), "GET", invitations+"?state=pending&cursor=bm90LWpzb24", "", 400, "invalid_cursor")
+		expect(fresh(admin2, t2), "GET", invitations+"?limit=501", "", 400, "")
+		expect(fresh(admin2, t2), "GET", invitations+"?limit=0", "", 400, "")
+		// 最早的两条在最后一页：可重发与撤回
+		all := pageAll("&limit=400")
+		oldest, second := all[len(all)-1], all[len(all)-2]
+		var resent issued
+		decode(expect(fresh(admin2, t2), "POST", invitations+"/"+string(oldest.ID)+"/resend", fmt.Sprintf(`{"expected_version":%d}`, oldest.Version), 200, ""), &resent)
+		if resent.Outcome != "resent" || resent.Invitation.Version != oldest.Version+1 {
+			t.Fatalf("%+v", resent)
+		}
+		var revoked identityapi.Invitation
+		decode(expect(fresh(admin2, t2), "POST", invitations+"/"+string(second.ID)+"/revoke", fmt.Sprintf(`{"expected_version":%d}`, second.Version), 200, ""), &revoked)
+		if revoked.State != "revoked" {
+			t.Fatalf("%+v", revoked)
+		}
+		if got := len(pageAll("")); got != want-1 {
+			t.Fatalf("撤回后待接受 %d 条，应为 %d 条", got, want-1)
 		}
 	})
 

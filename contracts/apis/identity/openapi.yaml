@@ -358,8 +358,10 @@ paths:
       operationId: listInvitations
       summary: 列出本租户邀请
       description: >-
-        需要 can_manage_members 与15分钟内的强认证。按创建时间倒序返回至多500条，truncated 表示还有更早的邀请未返回；
-        已到过期时间的待接受邀请先置为 expired（发布 identity.invitation.changed.v1）再返回。可按 state 过滤。
+        需要 can_manage_members 与15分钟内的强认证。按创建时间倒序（同一时间按标识倒序）分页返回，每页至多 limit 条（默认且至多500）；
+        还有更早的邀请时 truncated 为 true 并给出 next_cursor，以它作为 cursor 取下一页（须带相同的 state 过滤，
+        否则 400 invalid_cursor；游标只在签发它的租户内有效）。翻页期间不变的邀请不重复也不遗漏；翻页期间状态改变的邀请
+        可能在按 state 过滤的后续页中不再出现。已到过期时间的待接受邀请先置为 expired（发布 identity.invitation.changed.v1）再返回。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -368,6 +370,19 @@ paths:
         required: false
         schema:
           $ref: '#/components/schemas/InvitationState'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 500
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/InvitationCursor'
       responses:
         '200':
           description: 邀请列表
@@ -1062,6 +1077,13 @@ components:
             $ref: '#/components/schemas/Invitation'
         truncated:
           type: boolean
+          description: 还有更早的邀请未返回，此时给出 next_cursor
+        next_cursor:
+          $ref: '#/components/schemas/InvitationCursor'
+    InvitationCursor:
+      type: string
+      description: 不透明的翻页游标（base64url），由 InvitationList.next_cursor 给出，客户端不得解析或构造
+      pattern: ^[A-Za-z0-9_-]{1,256}$
     AcceptInvitationRequest:
       type: object
       additionalProperties: false

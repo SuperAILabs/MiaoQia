@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"slices"
 	"strconv"
@@ -38,7 +39,8 @@ const (
 	InvitationTTL = 7 * 24 * time.Hour
 	// MaxPendingInvitations 是每个租户未过期的待接受邀请上限，在写入前核对。
 	MaxPendingInvitations = 1000
-	maxListedInvitations  = 500
+	// maxListedInvitations 是邀请列表每页的默认与最大条数。
+	maxListedInvitations = 500
 )
 
 type invitation struct {
@@ -585,8 +587,43 @@ func (d *Directory) RevokeInvitation(ctx context.Context, id string, req *identi
 	return out, nil
 }
 
-// ListInvitations 列出本租户邀请（can_manage_members + 强认证），先把到期的待接受邀请置为已过期。
-func (d *Directory) ListInvitations(ctx context.Context, state identityapi.OptInvitationState) (*identityapi.InvitationList, error) {
+// invitationCursor 是邀请列表的翻页位置：上一页最后一条的 (created_at, id)，以及签发它的租户与 state 过滤的摘要。
+// 列表按 (created_at, id) 倒序，下一页取严格更早的位置，因此翻页期间新建的邀请不会挤入、已列出的不会重复。
+type invitationCursor struct {
+	CreatedAt int64  `json:"t"` // created_at，Unix 微秒（与 PostgreSQL timestamptz 精度一致）
+	ID        string `json:"i"`
+	Filter    string `json:"f"`
+}
+
+func cursorFilter(tenantID, state string) string {
+	sum := sha256.Sum256([]byte(tenantID + "\x00" + state))
+	return hex.EncodeToString(sum[:8])
+}
+
+func encodeCursor(c invitationCursor) identityapi.InvitationCursor {
+	raw, _ := json.Marshal(c)
+	return identityapi.InvitationCursor(base64.RawURLEncoding.EncodeToString(raw))
+}
+
+// decodeCursor 解析游标；无法解析、或不是本租户以同一 state 过滤签发的游标返回 400 invalid_cursor。
+func decodeCursor(value, tenantID, state string) (*invitationCursor, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(value)
+	var c invitationCursor
+	if err != nil || json.Unmarshal(raw, &c) != nil || c.ID == "" || identityapi.InvitationID(c.ID).Validate() != nil || c.Filter != cursorFilter(tenantID, state) {
+		return nil, failure(400, "invalid_cursor")
+	}
+	return &c, nil
+}
+
+// ListInvitations 分页列出本租户邀请（can_manage_members + 强认证），先把到期的待接受邀请置为已过期。
+func (d *Directory) ListInvitations(ctx context.Context, params identityapi.ListInvitationsParams) (*identityapi.InvitationList, error) {
+	// 生成的路由已按契约校验参数；这里再核对一次，供不经 HTTP 的调用方。
+	if l, ok := params.Limit.Get(); ok && (l < 1 || l > maxListedInvitations) {
+		return nil, failure(400, "invalid_request")
+	}
+	if s, ok := params.State.Get(); ok && s.Validate() != nil {
+		return nil, failure(400, "invalid_request")
+	}
 	rc, err := actor(ctx)
 	if err != nil {
 		return nil, err
@@ -594,21 +631,43 @@ func (d *Directory) ListInvitations(ctx context.Context, state identityapi.OptIn
 	if rc.Tenant == "" {
 		return nil, failure(403, "invalid_tenant_context")
 	}
+	state := ""
+	if s, ok := params.State.Get(); ok {
+		state = string(s)
+	}
+	limit := params.Limit.Or(maxListedInvitations)
+	var after *invitationCursor
+	if c, ok := params.Cursor.Get(); ok {
+		if after, err = decodeCursor(string(c), rc.Tenant, state); err != nil {
+			return nil, err
+		}
+	}
 	out := &identityapi.InvitationList{Invitations: []identityapi.Invitation{}}
 	err = d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if _, err := d.admin(ctx, tx); err != nil {
 			return err
 		}
-		if _, err := d.expireDue(ctx, tx, rc.Tenant, "", ""); err != nil {
-			return err
+		// 到期处理每批至多500条；待接受至多 MaxPendingInvitations 条，循环到处理完，避免本页仍给出已到期的待接受邀请。
+		for {
+			n, err := d.expireDue(ctx, tx, rc.Tenant, "", "")
+			if err != nil {
+				return err
+			}
+			if n < 500 {
+				break
+			}
 		}
 		q := `SELECT ` + invitationColumns + ` FROM identity_invitations WHERE tenant_id=$1`
 		args := []any{rc.Tenant}
-		if s, ok := state.Get(); ok {
-			q += ` AND state=$2`
-			args = append(args, string(s))
+		if state != "" {
+			args = append(args, state)
+			q += ` AND state=$` + strconv.Itoa(len(args))
 		}
-		rows, err := tx.Query(ctx, q+` ORDER BY created_at DESC, id DESC LIMIT `+strconv.Itoa(maxListedInvitations+1), args...)
+		if after != nil {
+			args = append(args, time.UnixMicro(after.CreatedAt).UTC(), after.ID)
+			q += ` AND (created_at, id) < ($` + strconv.Itoa(len(args)-1) + `, $` + strconv.Itoa(len(args)) + `)`
+		}
+		rows, err := tx.Query(ctx, q+` ORDER BY created_at DESC, id DESC LIMIT `+strconv.Itoa(limit+1), args...)
 		if err != nil {
 			return err
 		}
@@ -625,8 +684,10 @@ func (d *Directory) ListInvitations(ctx context.Context, state identityapi.OptIn
 		if err := rows.Err(); err != nil {
 			return err
 		}
-		if len(list) > maxListedInvitations {
-			list, out.Truncated = list[:maxListedInvitations], true
+		if len(list) > limit {
+			list, out.Truncated = list[:limit], true
+			last := list[limit-1]
+			out.NextCursor = identityapi.NewOptInvitationCursor(encodeCursor(invitationCursor{CreatedAt: last.createdAt.UnixMicro(), ID: last.id, Filter: cursorFilter(rc.Tenant, state)}))
 		}
 		for _, inv := range list {
 			if err := inv.loadUnits(ctx, tx); err != nil {

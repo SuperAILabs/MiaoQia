@@ -21,6 +21,7 @@ var regexMap = map[string]ogenregex.Regexp{
 	"^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$": ogenregex.MustCompile("^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$"),
 	"^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$":                                    ogenregex.MustCompile("^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$"),
 	"^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$":                                   ogenregex.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$"),
+	"^[A-Za-z0-9_-]{1,256}$":                                                 ogenregex.MustCompile("^[A-Za-z0-9_-]{1,256}$"),
 	"^[A-Za-z0-9_-]{16,128}$":                                                ogenregex.MustCompile("^[A-Za-z0-9_-]{16,128}$"),
 	"^[A-Za-z0-9_-]{43}$":                                                    ogenregex.MustCompile("^[A-Za-z0-9_-]{43}$"),
 	"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$":                                         ogenregex.MustCompile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"),

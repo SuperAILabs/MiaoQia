@@ -531,6 +531,8 @@ func (s *InvitationAcceptanceOutcome) UnmarshalText(data []byte) error {
 	}
 }
 
+type InvitationCursor string
+
 // 当前链接的邮件投递结果：pending 尚未确认（含发送结果未知）；sent
 // 已交给邮件渠道；failed 发送失败，可重发或复制链接.
 type InvitationDelivery string
@@ -674,7 +676,9 @@ func (s *InvitationIssuedOutcome) UnmarshalText(data []byte) error {
 // Ref: #/components/schemas/InvitationList
 type InvitationList struct {
 	Invitations []Invitation `json:"invitations"`
-	Truncated   bool         `json:"truncated"`
+	// 还有更早的邀请未返回，此时给出 next_cursor.
+	Truncated  bool                `json:"truncated"`
+	NextCursor OptInvitationCursor `json:"next_cursor"`
 }
 
 // GetInvitations returns the value of Invitations.
@@ -687,6 +691,11 @@ func (s *InvitationList) GetTruncated() bool {
 	return s.Truncated
 }
 
+// GetNextCursor returns the value of NextCursor.
+func (s *InvitationList) GetNextCursor() OptInvitationCursor {
+	return s.NextCursor
+}
+
 // SetInvitations sets the value of Invitations.
 func (s *InvitationList) SetInvitations(val []Invitation) {
 	s.Invitations = val
@@ -695,6 +704,11 @@ func (s *InvitationList) SetInvitations(val []Invitation) {
 // SetTruncated sets the value of Truncated.
 func (s *InvitationList) SetTruncated(val bool) {
 	s.Truncated = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *InvitationList) SetNextCursor(val OptInvitationCursor) {
+	s.NextCursor = val
 }
 
 type InvitationRoles []InvitationRolesItem
@@ -881,6 +895,98 @@ func (o OptDateTime) Get() (v time.Time, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInt returns new OptInt with value set to v.
+func NewOptInt(v int) OptInt {
+	return OptInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt is optional int.
+type OptInt struct {
+	Value int
+	Set   bool
+}
+
+// IsSet returns true if OptInt was set.
+func (o OptInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt) SetTo(v int) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt) Get() (v int, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInvitationCursor returns new OptInvitationCursor with value set to v.
+func NewOptInvitationCursor(v InvitationCursor) OptInvitationCursor {
+	return OptInvitationCursor{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInvitationCursor is optional InvitationCursor.
+type OptInvitationCursor struct {
+	Value InvitationCursor
+	Set   bool
+}
+
+// IsSet returns true if OptInvitationCursor was set.
+func (o OptInvitationCursor) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInvitationCursor) Reset() {
+	var v InvitationCursor
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInvitationCursor) SetTo(v InvitationCursor) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInvitationCursor) Get() (v InvitationCursor, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInvitationCursor) Or(d InvitationCursor) InvitationCursor {
 	if v, ok := o.Get(); ok {
 		return v
 	}

@@ -111,7 +111,11 @@ func (d *Directory) AcceptInvitation(ctx context.Context, req *identityapi.Accep
 			return failure(403, "invitation_email_mismatch")
 		}
 		if slices.Contains(inv.roles, "admin") {
-			// 受邀管理员须已登记 TOTP 并刚完成强认证
+			// 受邀管理员须已登记 TOTP 并刚完成强认证，两者是独立条件：令牌里新鲜的 amr=mfa 只证明当时用过第二因素，
+			// 不能覆盖 IdP 本次明确的“未登记”（例如认证后删除了 TOTP）。account 已在事务前读取，IdP 不可用时已 503 失败关闭。
+			if !account.TOTPEnrolled {
+				return failure(403, "totp_enrollment_required")
+			}
 			if err := d.strongAuth(ctx, subject, account); err != nil {
 				return err
 			}

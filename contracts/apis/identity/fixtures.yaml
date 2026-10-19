@@ -678,6 +678,27 @@ fixtures:
     patch:
     - op: remove
       path: /truncated
+  - name: 接受下一页游标
+    valid: true
+    patch:
+    - op: replace
+      path: /truncated
+      value: true
+    - op: add
+      path: /next_cursor
+      value: eyJ0IjoxNzAwMDAwMDAwMDAwMDAwLCJpIjoiaW52XzAxIn0
+  - name: 拒绝非 base64url 的游标
+    valid: false
+    patch:
+    - op: add
+      path: /next_cursor
+      value: 'abc+/='
+- schema: InvitationCursor
+  base: eyJ0IjoxNzAwMDAwMDAwMDAwMDAwLCJpIjoiaW52XzAxIn0
+  cases:
+  - name: 拒绝空游标
+    valid: false
+    instance: ''
 - schema: AcceptInvitationRequest
   base:
     token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA

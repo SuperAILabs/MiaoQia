@@ -110,9 +110,12 @@ func (UnimplementedHandler) GetTenant(ctx context.Context, params GetTenantParam
 // ListInvitations implements listInvitations operation.
 //
 // 需要 can_manage_members
-// 与15分钟内的强认证。按创建时间倒序返回至多500条，truncated
-// 表示还有更早的邀请未返回； 已到过期时间的待接受邀请先置为
-// expired（发布 identity.invitation.changed.v1）再返回。可按 state 过滤。.
+// 与15分钟内的强认证。按创建时间倒序（同一时间按标识倒序）分页返回，每页至多
+// limit 条（默认且至多500）； 还有更早的邀请时 truncated 为 true 并给出
+// next_cursor，以它作为 cursor 取下一页（须带相同的 state 过滤， 否则 400
+// invalid_cursor；游标只在签发它的租户内有效）。翻页期间不变的邀请不重复也不遗漏；翻页期间状态改变的邀请
+// 可能在按 state 过滤的后续页中不再出现。已到过期时间的待接受邀请先置为
+// expired（发布 identity.invitation.changed.v1）再返回。.
 //
 // GET /v1/identity/invitations
 func (UnimplementedHandler) ListInvitations(ctx context.Context, params ListInvitationsParams) (r *InvitationList, _ error) {

@@ -53,7 +53,7 @@
 | `SyncResourceParticipants` | 命令 | 业务子系统（首个为 pursuit）经发件箱调用，写入其资源上的参与关系（负责人、协作者）。请求带资源、完整期望参与关系与参与版本 N；identity 与成员状态及资源范围访问求交后，在一次 OpenFGA 写入中加上应有的关系、删掉多余的关系，并记录已应用版本；只接受高于已应用版本的 N，同一 N 重复提交返回同一结果，低于已应用版本的返回已过期；结果列出被拒成员及原因（已停用、已退出、无范围访问），其余关系照常应用。业务子系统不直接写 OpenFGA。见 [PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F12 |
 | 成员、角色、组织管理 | 命令/查询 | 管理控制台 |
 | `CreateInvitation` / `ResendInvitation` / `RevokeInvitation` / `ListInvitations` | 命令/查询 | 管理员邀请成员，需 `can_manage_members` 与强认证；邀请不授予任何权限，重发使旧链接失效 |
-| `AcceptInvitation` | 命令 | 受邀人接受邀请。独立授权路径，不经成员管理接口：核验链接与邀请状态、已验证邮箱一致、账号不属于其他租户、受邀管理员已完成 TOTP；在一个事务中按邀请限定的角色与单元写入成员资格并消费邀请（复用成员写入的内部逻辑），状态变化按邀请版本串行；之后写入 IdP 中账号的租户与 cell 归属，写入前访问失败关闭。见 [PRD 第1段 F2](../../01-product/prd/01-login-and-channel-binding.md#f2-邀请与接受) |
+| `AcceptInvitation` | 命令 | 受邀人接受邀请。独立授权路径，不经成员管理接口：核验链接与邀请状态、已验证邮箱一致、账号不属于其他租户；受邀管理员另须同时满足两项独立条件：IdP 本次读取明确已登记 TOTP（明确未登记时 403 `totp_enrollment_required`，令牌里新鲜的 `amr=mfa` 不能代替，例如认证后删除了 TOTP），且 15 分钟内的强认证（IdP 不可用时 503，失败关闭）；在一个事务中按邀请限定的角色与单元写入成员资格并消费邀请（复用成员写入的内部逻辑），状态变化按邀请版本串行；之后写入 IdP 中账号的租户与 cell 归属，写入前访问失败关闭。见 [PRD 第1段 F2](../../01-product/prd/01-login-and-channel-binding.md#f2-邀请与接受) |
 | `IssueChannelSession` / `RevokeChannelSessions` | 命令 | 仅 `channels` 可调用。签发：凭 channels 签发的 30 秒有效签发凭据（绑定标识、版本、成员），在一个事务中锁定该绑定的撤销水位行，核验凭据未过期且版本高于水位后写入不带强认证的免登会话。撤销：绑定失效后由 channels 同步调用（失败时经 `channels.binding.changed.v1` 重试），在同一行上抬高水位（无对应会话也记录）并作废版本不高于水位的会话，确认后 channels 才把失效标为已完成；并定时与 channels 对账。IdP 不保存长期渠道身份关联。并发顺序见 [PRD 第1段 F6](../../01-product/prd/01-login-and-channel-binding.md#f6-解绑与失效) |
 | `RecoverAdminAccount` | 命令 | 唯一管理员无法认证时的账号恢复：平台运营双人控制且均 MFA；只清除 TOTP、要求重设密码、撤销会话，不授予租户数据访问，全程审计并通知。见 [PRD 第1段 F8](../../01-product/prd/01-login-and-channel-binding.md#f8-唯一管理员账号恢复) |
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
@@ -96,7 +96,7 @@
 |---|---|
 | 强认证时间声明 | OIDC `auth_time` 与 `amr` 含 `mfa`；时效 15 分钟（含边界），未来偏差至多 5 秒；会话来源声明 `miaoqia_session_source`，缺省为 IdP 交互登录 |
 | 强认证判断顺序 | 先授权后强认证：非管理员得到 `forbidden`，不会被引导登记 TOTP |
-| 邀请列表 | 也要求强认证（PRD 第8节）；按创建时间倒序至多 500 条，`truncated` 表示还有更早的 |
+| 邀请列表 | 也要求强认证（PRD 第8节）；按 `(created_at, id)` 倒序分页，每页 `limit` 条（默认且至多 500）。还有更早的邀请时 `truncated` 为真并给出不透明的 `next_cursor`，作为 `cursor` 取下一页：下一页取严格更早的位置，翻页期间不变的邀请不重复、不遗漏，新建的不会挤入；游标绑定签发它的租户与 `state` 过滤，换租户或换过滤为 400 `invalid_cursor`。翻页期间状态改变的邀请可能不再出现在按状态过滤的后续页。列表前先把全部到期的待接受邀请置为已过期 |
 | 同一邮箱已有待接受邀请 | 返回已有邀请（`outcome existing`），不发新链接 |
 | 待接受上限 | 每租户 1000 个未过期的待接受邀请，写入前核对 |
 | 过期时间 | 创建或最近一次重发起 7 天，取整到秒；过期事件的 `effective_at` 为过期时间，其余为执行时间 |
