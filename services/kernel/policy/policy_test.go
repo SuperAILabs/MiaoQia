@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
@@ -154,3 +155,32 @@ func TestEnvironmentMatchesContract(t *testing.T) {
 }
 
 var report = flag.Bool("report", false, "输出成本报告")
+
+// 合成后的策略以 JSON 存储（customer-context 的策略版本）：JSON 往返后编译与样例结果不变（含取值为 0 的默认值）。
+func TestPolicyJSONRoundTrip(t *testing.T) {
+	pack := loadTendering(t)
+	for id, tpl := range pack.Templates {
+		raw, err := json.Marshal(tpl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var back Policy
+		if err := json.Unmarshal(raw, &back); err != nil {
+			t.Fatal(err)
+		}
+		c, issues := Compile(&back, pack.Features, DefaultLimits())
+		if issues != nil {
+			t.Fatalf("%s：%v", id, issues)
+		}
+		for _, ex := range back.Examples {
+			in, err := back.ExampleInput(ex)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, err := c.Evaluate(in)
+			if err != nil || r.Disposition != ex.Expect {
+				t.Errorf("%s「%s」：期望 %s，得到 %v %v", id, ex.Name, ex.Expect, r, err)
+			}
+		}
+	}
+}

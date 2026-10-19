@@ -1,4 +1,4 @@
-// Package identity 组装 identity 子系统（租户、成员、角色、授权决策、审批）。M0 提供授权决策、最小目录生命周期及cell核验。
+// Package identity 组装 identity 子系统（租户、成员、角色、授权决策、审批）。M0 提供授权决策、最小目录生命周期及cell核验；M2 起提供策略激活与回滚的审批。
 package identity
 
 import (
@@ -57,6 +57,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.GuardBinding, api.LocalGuard(directory))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(directory))
 			env.Bindings.Provide(api.ChannelSessionsBinding, api.LocalChannelSessions(directory))
+			env.Bindings.Provide(api.ApprovalsBinding, api.LocalApprovals(directory))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
@@ -68,7 +69,8 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			for _, pattern := range []string{"POST /internal/v1/authz:check", "GET /internal/v1/identity/session",
 				"GET /internal/v1/identity/org-units/{unitID}", "POST /internal/v1/identity/participants:sync",
 				"POST /internal/v1/identity/channel-sessions", "GET /internal/v1/identity/channel-sessions", "POST /internal/v1/identity/channel-sessions:revoke",
-				"GET /internal/v1/identity/channel-members/{subject}"} {
+				"GET /internal/v1/identity/channel-members/{subject}", "POST /internal/v1/identity/approvals:request",
+				"POST /internal/v1/identity/approvals/{closeSegment}"} {
 				internal.Handle(pattern, binding.InternalServer(api.Name, srv))
 			}
 			pub, err := identityapi.NewServer(handler, identityapi.WithErrorHandler(app.WriteProtocolError))
@@ -78,7 +80,9 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			for _, pattern := range []string{"POST /v1/tenants", "GET /v1/tenants/{tenantID}", "GET /v1/identity/members/{subject}", "PUT /v1/tenants/{tenantID}/state", "PUT /v1/identity/members/{subject}", "GET /v1/identity/session",
 				"GET /v1/identity/org-units", "POST /v1/identity/org-units", "GET /v1/identity/org-units/{unitID}", "PUT /v1/identity/org-units/{unitID}",
 				"GET /v1/identity/invitations", "POST /v1/identity/invitations", "POST /v1/identity/invitations/{invitationID}/resend",
-				"POST /v1/identity/invitations/{invitationID}/revoke", "POST /v1/identity/invitations:accept"} {
+				"POST /v1/identity/invitations/{invitationID}/revoke", "POST /v1/identity/invitations:accept",
+				"GET /v1/identity/approvals", "GET /v1/identity/approvals/{approvalID}", "POST /v1/identity/approvals/{approvalID}/decide",
+				"POST /v1/identity/approvals/{approvalID}/withdraw"} {
 				public.Handle(pattern, pub)
 			}
 		},

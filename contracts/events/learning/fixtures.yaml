@@ -1,0 +1,41 @@
+fixtures:
+- event: learning.simulation.completed.v1
+  base:
+    simulation_id: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    revision: 2
+    status: completed
+    compare_version: 0
+    compare_generation: 0
+    enabled_domains:
+    - INF-PROC
+    - INF-ORG
+    completed_at: '2026-10-19T08:00:00Z'
+  cases:
+  - name: 失败带原因
+    valid: true
+    patch:
+    - op: replace
+      path: /status
+      value: failed
+    - op: add
+      path: /failure_reason
+      value: dataset_unavailable
+  - name: 失败缺少原因
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: failed
+  - name: 完成不带失败原因
+    valid: false
+    patch:
+    - op: add
+      path: /failure_reason
+      value: timeout
+  - name: 不带报告内容
+    valid: false
+    patch:
+    - op: add
+      path: /report
+      value: {}

@@ -15,7 +15,7 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/internal/domain"
 )
 
-// Objective 是一个租户目标（TenantObjective）。首版策略草案随第7段的策略草案实现创建（实现中发现的设计缺口）。
+// Objective 是一个租户目标（TenantObjective）。启用时在同一事务中创建首版策略草案（第7段）。
 type Objective struct {
 	ID                    string                  `json:"id"`
 	TemplateID            string                  `json:"template_id"`
@@ -170,7 +170,11 @@ func (s *Service) EnableObjective(ctx context.Context, in ObjectiveInput, key st
 				out.Participants, out.Params, out.Version, rc.Tenant, rc.Principal.ID); err != nil {
 				return err
 			}
-			return emitObjective(ctx, tx, out, "enabled", "can_create_objective")
+			if err := emitObjective(ctx, tx, out, "enabled", "can_create_objective"); err != nil {
+				return err
+			}
+			// 首版策略草案（模板缺省 + 目标参数）与目标在同一事务中创建（第7段）
+			return s.createFirstDraft(ctx, tx, rc.Tenant, rc.Principal.ID, out)
 		})
 	})
 	if err != nil {
@@ -293,6 +297,7 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 		Expected int64  `json:"expected_version"`
 		State    string `json:"state"`
 	}{id, expected, target}
+	var pending string
 	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return command(ctx, tx, key, "objective.state", request, out, func() error {
 			o, err := lockObjective(ctx, tx, id, expected)
@@ -308,6 +313,11 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 			if _, err := tx.Exec(ctx, `UPDATE ctx_objectives SET state = $2, version = $3, updated_at = now() WHERE id = $1`, o.ID, o.State, o.Version); err != nil {
 				return err
 			}
+			if target == domain.StateDisabled {
+				if pending, err = pendingRequest(ctx, tx, id); err != nil {
+					return err
+				}
+			}
 			*out = *o
 			return emitObjective(ctx, tx, o, change, "can_edit")
 		})
@@ -316,6 +326,10 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 		return nil, err
 	}
 	s.syncAfterCommit(ctx, out)
+	if pending != "" {
+		// 停用后进行中的激活或回滚申请随即失效（尽力而为；未完成时批准后的执行前核验以 objective_disabled 拒绝执行）
+		s.closeApproval(ctx, pending, "objective_disabled")
+	}
 	return out, nil
 }
 
@@ -329,6 +343,8 @@ var objectiveRelations = map[string]string{
 	"can_view":                "can_list_objectives",
 	"can_edit":                "",
 	"can_manage_participants": "",
+	"can_draft_policy":        "can_draft_unit_policies",
+	"can_request_activation":  "can_draft_unit_policies",
 }
 
 // allowedObjective 判断用户主体对目标（本地当前版本）是否具有关系，见 objectiveRelations。

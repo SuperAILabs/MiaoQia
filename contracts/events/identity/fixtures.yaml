@@ -224,3 +224,120 @@ fixtures:
     - op: replace
       path: /link_generation
       value: 0
+- event: identity.approval.requested.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    type: policy_activation
+    resource: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    applicant: dm-1
+    version: 1
+    binding:
+      object_version: 2
+      evidence_ref: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      baseline_version: 0
+      baseline_generation: 0
+      backfill_days: 30
+    effective_at: '2026-10-19T08:00:00Z'
+    expires_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 回滚请求
+    valid: true
+    patch:
+    - op: replace
+      path: /type
+      value: policy_rollback
+    - op: remove
+      path: /binding/backfill_days
+  - name: 缺少到期时间
+    valid: false
+    patch:
+    - op: remove
+      path: /expires_at
+  - name: 载荷不含申请说明
+    valid: false
+    patch:
+    - op: add
+      path: /note
+      value: 说明
+- event: identity.approval.decided.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    type: policy_activation
+    resource: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    applicant: dm-1
+    version: 2
+    binding:
+      object_version: 2
+      evidence_ref: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      baseline_version: 1
+      baseline_generation: 1
+    effective_at: '2026-10-19T09:00:00Z'
+    decision: approve
+    decided_by: admin-1
+  cases:
+  - name: 驳回带原因
+    valid: true
+    patch:
+    - op: replace
+      path: /decision
+      value: reject
+    - op: add
+      path: /reason
+      value: 阈值过低
+  - name: 驳回缺原因
+    valid: false
+    patch:
+    - op: replace
+      path: /decision
+      value: reject
+  - name: 缺少决定人
+    valid: false
+    patch:
+    - op: remove
+      path: /decided_by
+- event: identity.approval.closed.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    type: policy_rollback
+    resource: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    applicant: dm-1
+    version: 2
+    binding:
+      object_version: 1
+      evidence_ref: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      baseline_version: 2
+      baseline_generation: 2
+    effective_at: '2026-10-26T08:00:00Z'
+    state: expired
+    reason: expired
+  cases:
+  - name: 申请人失权失效
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: invalidated
+    - op: replace
+      path: /reason
+      value: applicant_lost_permission
+  - name: 撤回原因须一致
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: withdrawn
+  - name: 失效不能以到期为原因
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: invalidated
+  - name: 不能以批准关闭
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: approved

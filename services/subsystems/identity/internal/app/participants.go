@@ -149,6 +149,10 @@ func (d *Directory) SyncResourceParticipants(ctx context.Context, req *identitya
 			req.Resource, string(req.OrgUnitID), req.Version, fingerprint, stored); err != nil {
 			return err
 		}
+		// 参与关系或资源所在单元变化后，逐个重核该资源上待审批请求的申请人（持有资源登记行排他锁，与决定串行）
+		if err := d.invalidatePending(ctx, tx, rc.Tenant, rc.Cell, "", req.Resource, false); err != nil {
+			return err
+		}
 		return (audit.Recorder{Subsystem: api.Name}).Record(ctx, tx, audit.Entry{Action: "identity.participants.sync",
 			Resource: fmt.Sprintf("%s/v%d", req.Resource, req.Version), Result: "succeeded", Basis: syncRelations[kind]})
 	})

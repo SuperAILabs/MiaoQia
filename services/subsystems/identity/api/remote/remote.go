@@ -172,3 +172,31 @@ func (c client) ListLiveChannelSessions(ctx context.Context, cursor string, limi
 		return value, nil
 	})
 }
+
+// RequestApproval 经内部端口提交审批请求。认证保证不进内部调用头，需要强认证的审批类型经此一律 403 mfa_required（失败关闭）。
+func (c client) RequestApproval(ctx context.Context, req *api.RequestApprovalRequest, key string) (*api.ApprovalRequest, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "RequestApproval", Idempotent: true}, func(ctx context.Context) (*api.ApprovalRequest, error) {
+		if req == nil || req.Validate() != nil {
+			return nil, &api.Error{Status: 400, Code: "invalid_request"}
+		}
+		value, err := c.c.RequestApproval(ctx, req, identityapi.RequestApprovalParams{IdempotencyKey: key})
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}
+
+// CloseApproval 使绑定已不成立的待审批请求失效；重复调用无副作用。
+func (c client) CloseApproval(ctx context.Context, id string, req *api.CloseApprovalRequest) (*api.ApprovalRequest, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "CloseApproval", Idempotent: true}, func(ctx context.Context) (*api.ApprovalRequest, error) {
+		if req == nil || req.Validate() != nil || identityapi.ApprovalID(id).Validate() != nil {
+			return nil, &api.Error{Status: 400, Code: "invalid_request"}
+		}
+		value, err := c.c.CloseApproval(ctx, req, identityapi.CloseApprovalParams{ApprovalID: identityapi.ApprovalID(id)})
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}

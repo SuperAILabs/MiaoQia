@@ -629,9 +629,9 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 			counts[envelope.Type]++
 		}
 		// 档案：t1 保存 3 次（含并发胜出的一次）+ 刷新 1 次，t2 保存 1 次，t3 保存 2 次；
-		// 目标：t1 启用、调整、停用、重新启用，t3 启用 1 次。
+		// 目标：t1 启用、调整、停用、重新启用，t3 启用 1 次；每次启用同事务创建首版策略草案（第7段）。
 		if counts["customer_context.profile.updated.v1"] != 7 || counts["customer_context.objective.changed.v1"] != 5 ||
-			counts["audit.entry.recorded.v1"] != 12 {
+			counts["customer_context.policy.drafted.v1"] != 2 || counts["audit.entry.recorded.v1"] != 14 {
 			t.Fatalf("%v", counts)
 		}
 	})

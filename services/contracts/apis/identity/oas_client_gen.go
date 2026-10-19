@@ -58,6 +58,18 @@ type Invoker interface {
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, request *CheckRequest) (*CheckResult, error)
+	// CloseApproval invokes closeApproval operation.
+	//
+	// 只接受审批类型所属子系统的服务主体（策略激活与回滚为
+	// service:customer-context），其他主体 403 forbidden。
+	// 所属子系统发现请求绑定的对象版本或基准已不成立（策略草案已变、生效版本或策略代次已变、目标已停用）时调用：
+	// 待审批的请求置为 invalidated（reason 记录原因）并发布
+	// identity.approval.closed.v1；已决定或已关闭的请求原样返回（outcome
+	// 已由状态表示），重复调用无副作用。经本地绑定 identity.Approvals
+	// 与内部端口提供，二者行为一致。.
+	//
+	// POST /v1/identity/approvals/{approvalID}:close
+	CloseApproval(ctx context.Context, request *CloseApprovalRequest, params CloseApprovalParams) (*ApprovalRequest, error)
 	// CreateInvitation invokes createInvitation operation.
 	//
 	// 需要 can_manage_members
@@ -83,6 +95,32 @@ type Invoker interface {
 	//
 	// POST /v1/tenants
 	CreateTenant(ctx context.Context, request *CreateTenantRequest, params CreateTenantParams) (*Tenant, error)
+	// DecideApproval invokes decideApproval operation.
+	//
+	// 依次核验：调用者能看到该请求（否则 404
+	// approval_not_found）；调用者不是申请人（申请人本人 403 self_approval_forbidden）；
+	// 调用者此刻对请求资源有批准关系（实时经授权模型判断；策略激活与回滚为
+	// can_approve_activation，即目标所在范围的决策者或租户管理员）；
+	// 15分钟内的强认证（403 mfa_required /
+	// totp_enrollment_required）；请求仍待审批且未到期（409
+	// approval_not_pending，到期的先置为 expired）；expected_version 等于当前版本（409
+	// version_conflict）；申请人仍是有效成员且仍有申请关系（否则请求置为
+	// invalidated、 发布 identity.approval.closed.v1，本次决定 409
+	// approval_invalidated）。授权服务不可用时 503，不当作已失权，也不作出决定。
+	// 驳回必须写原因。决定后发布
+	// identity.approval.decided.v1，请求关闭，其他审批人看到已由谁处理；批准只针对请求绑定的对象版本
+	// （binding），执行方在执行前核验绑定仍成立。同一 Idempotency-Key
+	// 的重放返回首次结果。.
+	//
+	// POST /v1/identity/approvals/{approvalID}/decide
+	DecideApproval(ctx context.Context, request *DecideApprovalRequest, params DecideApprovalParams) (*ApprovalRequest, error)
+	// GetApproval invokes getApproval operation.
+	//
+	// 申请人本人与对请求资源有批准关系的成员可读取（含已由他人处理、已关闭的请求）；其他成员、其他租户的与不存在的请求返回同一
+	// 404 approval_not_found。已到期的待审批请求先置为 expired。.
+	//
+	// GET /v1/identity/approvals/{approvalID}
+	GetApproval(ctx context.Context, params GetApprovalParams) (*ApprovalRequest, error)
 	// GetChannelMemberLifecycle invokes getChannelMemberLifecycle operation.
 	//
 	// 仅 channels 的服务主体可调用（服务授权
@@ -137,6 +175,19 @@ type Invoker interface {
 	//
 	// POST /v1/identity/channel-sessions
 	IssueChannelSession(ctx context.Context, request *IssueChannelSessionRequest) (*ChannelSession, error)
+	// ListApprovals invokes listApprovals operation.
+	//
+	// Role=approver（缺省）列出调用者当前有资格决定的请求：按请求类型的批准关系（策略激活与回滚为目标上的
+	// can_approve_activation） 逐个资源实时判断，不含调用者本人提交的请求；state
+	// 缺省为 pending。role=applicant 列出调用者本人提交的请求（任意状态，可按
+	// state 过滤）。 按提交记录时间倒序（同一时间按标识倒序）分页，每页至多
+	// limit 条（默认且至多100）；还有更早的请求时 truncated 为 true 并给出
+	// next_cursor（须带相同的 role 与 state，否则 400
+	// invalid_cursor；只在签发它的租户与调用者内有效）。到期的待审批请求先置为
+	// expired（发布 identity.approval.closed.v1）再返回。不要求强认证。.
+	//
+	// GET /v1/identity/approvals
+	ListApprovals(ctx context.Context, params ListApprovalsParams) (*ApprovalList, error)
 	// ListInvitations invokes listInvitations operation.
 	//
 	// 需要 can_manage_members
@@ -170,6 +221,24 @@ type Invoker interface {
 	//
 	// PUT /v1/identity/members/{subject}
 	PutMember(ctx context.Context, request *PutMemberRequest, params PutMemberParams) (*Session, error)
+	// RequestApproval invokes requestApproval operation.
+	//
+	// 由审批类型的所属子系统代申请人调用（策略激活与回滚为 customer-context 的
+	// RequestPolicyActivation / RequestPolicyRollback），
+	// 请求上下文的主体即申请人。经本地绑定 identity.Approvals
+	// 与内部端口提供；申请要求15分钟内的强认证，而认证保证只在网关进程内传递、
+	// 不进内部调用头，因此经内部端口的调用一律 403
+	// mfa_required（失败关闭），需要强认证的类型只能经本地绑定提交。
+	// 核验：类型已登记、资源类型与类型一致（400
+	// invalid_request）；申请人此刻对资源有申请关系（策略为 can_request_activation，
+	// 否则 403 forbidden）；强认证（403
+	// mfa_required）；同一资源没有进行中的请求（409 approval_in_progress）。
+	// 有效期7天（业务时间），到期自动置为 expired。同一申请人、租户与
+	// Idempotency-Key 的重放返回首次结果，不产生第二个请求。 创建后发布
+	// identity.approval.requested.v1。.
+	//
+	// POST /v1/identity/approvals:request
+	RequestApproval(ctx context.Context, request *RequestApprovalRequest, params RequestApprovalParams) (*ApprovalRequest, error)
 	// ResendInvitation invokes resendInvitation operation.
 	//
 	// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
@@ -234,6 +303,15 @@ type Invoker interface {
 	//
 	// PUT /v1/identity/org-units/{unitID}
 	UpdateOrgUnit(ctx context.Context, request *UpdateOrgUnitRequest, params UpdateOrgUnitParams) (*OrgUnit, error)
+	// WithdrawApproval invokes withdrawApproval operation.
+	//
+	// 只有申请人本人可在决定前撤回（能看到请求的审批人 403
+	// forbidden；其他成员 404 approval_not_found），按 expected_version 并发控制。
+	// 已决定、已关闭或已到期的请求 409 approval_not_pending。撤回后发布
+	// identity.approval.closed.v1（state withdrawn）。.
+	//
+	// POST /v1/identity/approvals/{approvalID}/withdraw
+	WithdrawApproval(ctx context.Context, request *ApprovalVersionRequest, params WithdrawApprovalParams) (*ApprovalRequest, error)
 }
 
 // Client implements OAS client.
@@ -452,6 +530,117 @@ func (c *Client) sendCheckAuthorization(ctx context.Context, request *CheckReque
 
 	stage = "DecodeResponse"
 	result, err := decodeCheckAuthorizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// CloseApproval invokes closeApproval operation.
+//
+// 只接受审批类型所属子系统的服务主体（策略激活与回滚为
+// service:customer-context），其他主体 403 forbidden。
+// 所属子系统发现请求绑定的对象版本或基准已不成立（策略草案已变、生效版本或策略代次已变、目标已停用）时调用：
+// 待审批的请求置为 invalidated（reason 记录原因）并发布
+// identity.approval.closed.v1；已决定或已关闭的请求原样返回（outcome
+// 已由状态表示），重复调用无副作用。经本地绑定 identity.Approvals
+// 与内部端口提供，二者行为一致。.
+//
+// POST /v1/identity/approvals/{approvalID}:close
+func (c *Client) CloseApproval(ctx context.Context, request *CloseApprovalRequest, params CloseApprovalParams) (*ApprovalRequest, error) {
+	res, err := c.sendCloseApproval(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendCloseApproval(ctx context.Context, request *CloseApprovalRequest, params CloseApprovalParams) (res *ApprovalRequest, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("closeApproval"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/approvals/{approvalID}:close"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CloseApprovalOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/identity/approvals/"
+	{
+		// Encode "approvalID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "approvalID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.ApprovalID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = ":close"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCloseApprovalRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCloseApprovalResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -750,6 +939,240 @@ func (c *Client) sendCreateTenant(ctx context.Context, request *CreateTenantRequ
 
 	stage = "DecodeResponse"
 	result, err := decodeCreateTenantResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DecideApproval invokes decideApproval operation.
+//
+// 依次核验：调用者能看到该请求（否则 404
+// approval_not_found）；调用者不是申请人（申请人本人 403 self_approval_forbidden）；
+// 调用者此刻对请求资源有批准关系（实时经授权模型判断；策略激活与回滚为
+// can_approve_activation，即目标所在范围的决策者或租户管理员）；
+// 15分钟内的强认证（403 mfa_required /
+// totp_enrollment_required）；请求仍待审批且未到期（409
+// approval_not_pending，到期的先置为 expired）；expected_version 等于当前版本（409
+// version_conflict）；申请人仍是有效成员且仍有申请关系（否则请求置为
+// invalidated、 发布 identity.approval.closed.v1，本次决定 409
+// approval_invalidated）。授权服务不可用时 503，不当作已失权，也不作出决定。
+// 驳回必须写原因。决定后发布
+// identity.approval.decided.v1，请求关闭，其他审批人看到已由谁处理；批准只针对请求绑定的对象版本
+// （binding），执行方在执行前核验绑定仍成立。同一 Idempotency-Key
+// 的重放返回首次结果。.
+//
+// POST /v1/identity/approvals/{approvalID}/decide
+func (c *Client) DecideApproval(ctx context.Context, request *DecideApprovalRequest, params DecideApprovalParams) (*ApprovalRequest, error) {
+	res, err := c.sendDecideApproval(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendDecideApproval(ctx context.Context, request *DecideApprovalRequest, params DecideApprovalParams) (res *ApprovalRequest, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("decideApproval"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/approvals/{approvalID}/decide"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DecideApprovalOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/identity/approvals/"
+	{
+		// Encode "approvalID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "approvalID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.ApprovalID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/decide"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeDecideApprovalRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDecideApprovalResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetApproval invokes getApproval operation.
+//
+// 申请人本人与对请求资源有批准关系的成员可读取（含已由他人处理、已关闭的请求）；其他成员、其他租户的与不存在的请求返回同一
+// 404 approval_not_found。已到期的待审批请求先置为 expired。.
+//
+// GET /v1/identity/approvals/{approvalID}
+func (c *Client) GetApproval(ctx context.Context, params GetApprovalParams) (*ApprovalRequest, error) {
+	res, err := c.sendGetApproval(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetApproval(ctx context.Context, params GetApprovalParams) (res *ApprovalRequest, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getApproval"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/identity/approvals/{approvalID}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetApprovalOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/v1/identity/approvals/"
+	{
+		// Encode "approvalID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "approvalID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.ApprovalID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetApprovalResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -1259,6 +1682,168 @@ func (c *Client) sendIssueChannelSession(ctx context.Context, request *IssueChan
 	return result, nil
 }
 
+// ListApprovals invokes listApprovals operation.
+//
+// Role=approver（缺省）列出调用者当前有资格决定的请求：按请求类型的批准关系（策略激活与回滚为目标上的
+// can_approve_activation） 逐个资源实时判断，不含调用者本人提交的请求；state
+// 缺省为 pending。role=applicant 列出调用者本人提交的请求（任意状态，可按
+// state 过滤）。 按提交记录时间倒序（同一时间按标识倒序）分页，每页至多
+// limit 条（默认且至多100）；还有更早的请求时 truncated 为 true 并给出
+// next_cursor（须带相同的 role 与 state，否则 400
+// invalid_cursor；只在签发它的租户与调用者内有效）。到期的待审批请求先置为
+// expired（发布 identity.approval.closed.v1）再返回。不要求强认证。.
+//
+// GET /v1/identity/approvals
+func (c *Client) ListApprovals(ctx context.Context, params ListApprovalsParams) (*ApprovalList, error) {
+	res, err := c.sendListApprovals(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListApprovals(ctx context.Context, params ListApprovalsParams) (res *ApprovalList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listApprovals"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/identity/approvals"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListApprovalsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/approvals"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "role" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "role",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Role.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "state" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "state",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.State.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListApprovalsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListInvitations invokes listInvitations operation.
 //
 // 需要 can_manage_members
@@ -1715,6 +2300,115 @@ func (c *Client) sendPutMember(ctx context.Context, request *PutMemberRequest, p
 
 	stage = "DecodeResponse"
 	result, err := decodePutMemberResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RequestApproval invokes requestApproval operation.
+//
+// 由审批类型的所属子系统代申请人调用（策略激活与回滚为 customer-context 的
+// RequestPolicyActivation / RequestPolicyRollback），
+// 请求上下文的主体即申请人。经本地绑定 identity.Approvals
+// 与内部端口提供；申请要求15分钟内的强认证，而认证保证只在网关进程内传递、
+// 不进内部调用头，因此经内部端口的调用一律 403
+// mfa_required（失败关闭），需要强认证的类型只能经本地绑定提交。
+// 核验：类型已登记、资源类型与类型一致（400
+// invalid_request）；申请人此刻对资源有申请关系（策略为 can_request_activation，
+// 否则 403 forbidden）；强认证（403
+// mfa_required）；同一资源没有进行中的请求（409 approval_in_progress）。
+// 有效期7天（业务时间），到期自动置为 expired。同一申请人、租户与
+// Idempotency-Key 的重放返回首次结果，不产生第二个请求。 创建后发布
+// identity.approval.requested.v1。.
+//
+// POST /v1/identity/approvals:request
+func (c *Client) RequestApproval(ctx context.Context, request *RequestApprovalRequest, params RequestApprovalParams) (*ApprovalRequest, error) {
+	res, err := c.sendRequestApproval(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendRequestApproval(ctx context.Context, request *RequestApprovalRequest, params RequestApprovalParams) (res *ApprovalRequest, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("requestApproval"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/approvals:request"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RequestApprovalOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/approvals:request"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeRequestApprovalRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRequestApprovalResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2455,6 +3149,128 @@ func (c *Client) sendUpdateOrgUnit(ctx context.Context, request *UpdateOrgUnitRe
 
 	stage = "DecodeResponse"
 	result, err := decodeUpdateOrgUnitResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// WithdrawApproval invokes withdrawApproval operation.
+//
+// 只有申请人本人可在决定前撤回（能看到请求的审批人 403
+// forbidden；其他成员 404 approval_not_found），按 expected_version 并发控制。
+// 已决定、已关闭或已到期的请求 409 approval_not_pending。撤回后发布
+// identity.approval.closed.v1（state withdrawn）。.
+//
+// POST /v1/identity/approvals/{approvalID}/withdraw
+func (c *Client) WithdrawApproval(ctx context.Context, request *ApprovalVersionRequest, params WithdrawApprovalParams) (*ApprovalRequest, error) {
+	res, err := c.sendWithdrawApproval(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendWithdrawApproval(ctx context.Context, request *ApprovalVersionRequest, params WithdrawApprovalParams) (res *ApprovalRequest, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("withdrawApproval"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/approvals/{approvalID}/withdraw"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, WithdrawApprovalOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/identity/approvals/"
+	{
+		// Encode "approvalID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "approvalID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.ApprovalID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/withdraw"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeWithdrawApprovalRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeWithdrawApprovalResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

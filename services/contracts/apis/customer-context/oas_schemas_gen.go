@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/go-faster/jx"
 )
 
 func (s *ProblemStatusCode) Error() string {
@@ -218,6 +219,49 @@ func (s *ContextVersion) SetContextVersion(val int64) {
 // SetProfileVersion sets the value of ProfileVersion.
 func (s *ContextVersion) SetProfileVersion(val int64) {
 	s.ProfileVersion = val
+}
+
+// Ref: #/components/schemas/DiscardPolicyDraftRequest
+type DiscardPolicyDraftRequest struct {
+	ExpectedVersion int64 `json:"expected_version"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *DiscardPolicyDraftRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *DiscardPolicyDraftRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+type DomainCode string
+
+// Ref: #/components/schemas/DraftPolicyRequest
+type DraftPolicyRequest struct {
+	ExpectedVersion int64      `json:"expected_version"`
+	Form            PolicyForm `json:"form"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *DraftPolicyRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// GetForm returns the value of Form.
+func (s *DraftPolicyRequest) GetForm() PolicyForm {
+	return s.Form
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *DraftPolicyRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// SetForm sets the value of Form.
+func (s *DraftPolicyRequest) SetForm(val PolicyForm) {
+	s.Form = val
 }
 
 // Ref: #/components/schemas/EnableObjectiveRequest
@@ -1042,6 +1086,52 @@ func (o OptDate) Or(d time.Time) time.Time {
 	return d
 }
 
+// NewOptInt returns new OptInt with value set to v.
+func NewOptInt(v int) OptInt {
+	return OptInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt is optional int.
+type OptInt struct {
+	Value int
+	Set   bool
+}
+
+// IsSet returns true if OptInt was set.
+func (o OptInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt) SetTo(v int) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt) Get() (v int, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptInt64 returns new OptInt64 with value set to v.
 func NewOptInt64(v int64) OptInt64 {
 	return OptInt64{
@@ -1082,6 +1172,52 @@ func (o OptInt64) Get() (v int64, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptObjectiveParam returns new OptObjectiveParam with value set to v.
+func NewOptObjectiveParam(v ObjectiveParam) OptObjectiveParam {
+	return OptObjectiveParam{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptObjectiveParam is optional ObjectiveParam.
+type OptObjectiveParam struct {
+	Value ObjectiveParam
+	Set   bool
+}
+
+// IsSet returns true if OptObjectiveParam was set.
+func (o OptObjectiveParam) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptObjectiveParam) Reset() {
+	var v ObjectiveParam
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptObjectiveParam) SetTo(v ObjectiveParam) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptObjectiveParam) Get() (v ObjectiveParam, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptObjectiveParam) Or(d ObjectiveParam) ObjectiveParam {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1180,6 +1316,328 @@ func (o OptObjectiveTemplateUnavailableReason) Or(d ObjectiveTemplateUnavailable
 	return d
 }
 
+// NewOptPolicyCursor returns new OptPolicyCursor with value set to v.
+func NewOptPolicyCursor(v PolicyCursor) OptPolicyCursor {
+	return OptPolicyCursor{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPolicyCursor is optional PolicyCursor.
+type OptPolicyCursor struct {
+	Value PolicyCursor
+	Set   bool
+}
+
+// IsSet returns true if OptPolicyCursor was set.
+func (o OptPolicyCursor) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPolicyCursor) Reset() {
+	var v PolicyCursor
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPolicyCursor) SetTo(v PolicyCursor) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPolicyCursor) Get() (v PolicyCursor, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPolicyCursor) Or(d PolicyCursor) PolicyCursor {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPolicyDraft returns new OptPolicyDraft with value set to v.
+func NewOptPolicyDraft(v PolicyDraft) OptPolicyDraft {
+	return OptPolicyDraft{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPolicyDraft is optional PolicyDraft.
+type OptPolicyDraft struct {
+	Value PolicyDraft
+	Set   bool
+}
+
+// IsSet returns true if OptPolicyDraft was set.
+func (o OptPolicyDraft) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPolicyDraft) Reset() {
+	var v PolicyDraft
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPolicyDraft) SetTo(v PolicyDraft) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPolicyDraft) Get() (v PolicyDraft, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPolicyDraft) Or(d PolicyDraft) PolicyDraft {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPolicyNotify returns new OptPolicyNotify with value set to v.
+func NewOptPolicyNotify(v PolicyNotify) OptPolicyNotify {
+	return OptPolicyNotify{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPolicyNotify is optional PolicyNotify.
+type OptPolicyNotify struct {
+	Value PolicyNotify
+	Set   bool
+}
+
+// IsSet returns true if OptPolicyNotify was set.
+func (o OptPolicyNotify) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPolicyNotify) Reset() {
+	var v PolicyNotify
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPolicyNotify) SetTo(v PolicyNotify) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPolicyNotify) Get() (v PolicyNotify, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPolicyNotify) Or(d PolicyNotify) PolicyNotify {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPolicyRequest returns new OptPolicyRequest with value set to v.
+func NewOptPolicyRequest(v PolicyRequest) OptPolicyRequest {
+	return OptPolicyRequest{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPolicyRequest is optional PolicyRequest.
+type OptPolicyRequest struct {
+	Value PolicyRequest
+	Set   bool
+}
+
+// IsSet returns true if OptPolicyRequest was set.
+func (o OptPolicyRequest) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPolicyRequest) Reset() {
+	var v PolicyRequest
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPolicyRequest) SetTo(v PolicyRequest) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPolicyRequest) Get() (v PolicyRequest, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPolicyRequest) Or(d PolicyRequest) PolicyRequest {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPolicySimulationInputCompare returns new OptPolicySimulationInputCompare with value set to v.
+func NewOptPolicySimulationInputCompare(v PolicySimulationInputCompare) OptPolicySimulationInputCompare {
+	return OptPolicySimulationInputCompare{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPolicySimulationInputCompare is optional PolicySimulationInputCompare.
+type OptPolicySimulationInputCompare struct {
+	Value PolicySimulationInputCompare
+	Set   bool
+}
+
+// IsSet returns true if OptPolicySimulationInputCompare was set.
+func (o OptPolicySimulationInputCompare) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPolicySimulationInputCompare) Reset() {
+	var v PolicySimulationInputCompare
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPolicySimulationInputCompare) SetTo(v PolicySimulationInputCompare) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPolicySimulationInputCompare) Get() (v PolicySimulationInputCompare, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPolicySimulationInputCompare) Or(d PolicySimulationInputCompare) PolicySimulationInputCompare {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPolicySimulationRef returns new OptPolicySimulationRef with value set to v.
+func NewOptPolicySimulationRef(v PolicySimulationRef) OptPolicySimulationRef {
+	return OptPolicySimulationRef{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPolicySimulationRef is optional PolicySimulationRef.
+type OptPolicySimulationRef struct {
+	Value PolicySimulationRef
+	Set   bool
+}
+
+// IsSet returns true if OptPolicySimulationRef was set.
+func (o OptPolicySimulationRef) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPolicySimulationRef) Reset() {
+	var v PolicySimulationRef
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPolicySimulationRef) SetTo(v PolicySimulationRef) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPolicySimulationRef) Get() (v PolicySimulationRef, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPolicySimulationRef) Or(d PolicySimulationRef) PolicySimulationRef {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPolicyVersion returns new OptPolicyVersion with value set to v.
+func NewOptPolicyVersion(v PolicyVersion) OptPolicyVersion {
+	return OptPolicyVersion{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPolicyVersion is optional PolicyVersion.
+type OptPolicyVersion struct {
+	Value PolicyVersion
+	Set   bool
+}
+
+// IsSet returns true if OptPolicyVersion was set.
+func (o OptPolicyVersion) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPolicyVersion) Reset() {
+	var v PolicyVersion
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPolicyVersion) SetTo(v PolicyVersion) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPolicyVersion) Get() (v PolicyVersion, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPolicyVersion) Or(d PolicyVersion) PolicyVersion {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
@@ -1270,6 +1728,2077 @@ func (o OptSubject) Or(d Subject) Subject {
 		return v
 	}
 	return d
+}
+
+// Ref: #/components/schemas/Policy
+type Policy struct {
+	ObjectiveID string `json:"objective_id"`
+	// 策略代次：每次激活或回滚加一.
+	Generation int64 `json:"generation"`
+	// 当前生效版本（0 为尚未激活）.
+	ActiveVersion int64            `json:"active_version"`
+	Active        OptPolicyVersion `json:"active"`
+	// 草案的乐观并发版本号：每次保存或放弃加一，0 表示从未有过草案.
+	DraftVersion int64            `json:"draft_version"`
+	Draft        OptPolicyDraft   `json:"draft"`
+	Request      OptPolicyRequest `json:"request"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *Policy) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetGeneration returns the value of Generation.
+func (s *Policy) GetGeneration() int64 {
+	return s.Generation
+}
+
+// GetActiveVersion returns the value of ActiveVersion.
+func (s *Policy) GetActiveVersion() int64 {
+	return s.ActiveVersion
+}
+
+// GetActive returns the value of Active.
+func (s *Policy) GetActive() OptPolicyVersion {
+	return s.Active
+}
+
+// GetDraftVersion returns the value of DraftVersion.
+func (s *Policy) GetDraftVersion() int64 {
+	return s.DraftVersion
+}
+
+// GetDraft returns the value of Draft.
+func (s *Policy) GetDraft() OptPolicyDraft {
+	return s.Draft
+}
+
+// GetRequest returns the value of Request.
+func (s *Policy) GetRequest() OptPolicyRequest {
+	return s.Request
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *Policy) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *Policy) SetGeneration(val int64) {
+	s.Generation = val
+}
+
+// SetActiveVersion sets the value of ActiveVersion.
+func (s *Policy) SetActiveVersion(val int64) {
+	s.ActiveVersion = val
+}
+
+// SetActive sets the value of Active.
+func (s *Policy) SetActive(val OptPolicyVersion) {
+	s.Active = val
+}
+
+// SetDraftVersion sets the value of DraftVersion.
+func (s *Policy) SetDraftVersion(val int64) {
+	s.DraftVersion = val
+}
+
+// SetDraft sets the value of Draft.
+func (s *Policy) SetDraft(val OptPolicyDraft) {
+	s.Draft = val
+}
+
+// SetRequest sets the value of Request.
+func (s *Policy) SetRequest(val OptPolicyRequest) {
+	s.Request = val
+}
+
+type PolicyCursor string
+
+// Ref: #/components/schemas/PolicyDiff
+type PolicyDiff struct {
+	From                string                     `json:"from"`
+	To                  string                     `json:"to"`
+	TemplateVersionFrom string                     `json:"template_version_from"`
+	TemplateVersionTo   string                     `json:"template_version_to"`
+	Rules               []PolicyDiffRulesItem      `json:"rules"`
+	Params              []PolicyDiffParamsItem     `json:"params"`
+	Thresholds          []PolicyDiffThresholdsItem `json:"thresholds"`
+	Notify              []PolicyDiffNotifyItem     `json:"notify"`
+	DomainsAdded        []DomainCode               `json:"domains_added"`
+	DomainsRemoved      []DomainCode               `json:"domains_removed"`
+}
+
+// GetFrom returns the value of From.
+func (s *PolicyDiff) GetFrom() string {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *PolicyDiff) GetTo() string {
+	return s.To
+}
+
+// GetTemplateVersionFrom returns the value of TemplateVersionFrom.
+func (s *PolicyDiff) GetTemplateVersionFrom() string {
+	return s.TemplateVersionFrom
+}
+
+// GetTemplateVersionTo returns the value of TemplateVersionTo.
+func (s *PolicyDiff) GetTemplateVersionTo() string {
+	return s.TemplateVersionTo
+}
+
+// GetRules returns the value of Rules.
+func (s *PolicyDiff) GetRules() []PolicyDiffRulesItem {
+	return s.Rules
+}
+
+// GetParams returns the value of Params.
+func (s *PolicyDiff) GetParams() []PolicyDiffParamsItem {
+	return s.Params
+}
+
+// GetThresholds returns the value of Thresholds.
+func (s *PolicyDiff) GetThresholds() []PolicyDiffThresholdsItem {
+	return s.Thresholds
+}
+
+// GetNotify returns the value of Notify.
+func (s *PolicyDiff) GetNotify() []PolicyDiffNotifyItem {
+	return s.Notify
+}
+
+// GetDomainsAdded returns the value of DomainsAdded.
+func (s *PolicyDiff) GetDomainsAdded() []DomainCode {
+	return s.DomainsAdded
+}
+
+// GetDomainsRemoved returns the value of DomainsRemoved.
+func (s *PolicyDiff) GetDomainsRemoved() []DomainCode {
+	return s.DomainsRemoved
+}
+
+// SetFrom sets the value of From.
+func (s *PolicyDiff) SetFrom(val string) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *PolicyDiff) SetTo(val string) {
+	s.To = val
+}
+
+// SetTemplateVersionFrom sets the value of TemplateVersionFrom.
+func (s *PolicyDiff) SetTemplateVersionFrom(val string) {
+	s.TemplateVersionFrom = val
+}
+
+// SetTemplateVersionTo sets the value of TemplateVersionTo.
+func (s *PolicyDiff) SetTemplateVersionTo(val string) {
+	s.TemplateVersionTo = val
+}
+
+// SetRules sets the value of Rules.
+func (s *PolicyDiff) SetRules(val []PolicyDiffRulesItem) {
+	s.Rules = val
+}
+
+// SetParams sets the value of Params.
+func (s *PolicyDiff) SetParams(val []PolicyDiffParamsItem) {
+	s.Params = val
+}
+
+// SetThresholds sets the value of Thresholds.
+func (s *PolicyDiff) SetThresholds(val []PolicyDiffThresholdsItem) {
+	s.Thresholds = val
+}
+
+// SetNotify sets the value of Notify.
+func (s *PolicyDiff) SetNotify(val []PolicyDiffNotifyItem) {
+	s.Notify = val
+}
+
+// SetDomainsAdded sets the value of DomainsAdded.
+func (s *PolicyDiff) SetDomainsAdded(val []DomainCode) {
+	s.DomainsAdded = val
+}
+
+// SetDomainsRemoved sets the value of DomainsRemoved.
+func (s *PolicyDiff) SetDomainsRemoved(val []DomainCode) {
+	s.DomainsRemoved = val
+}
+
+type PolicyDiffNotifyItem struct {
+	Disposition PolicyDiffNotifyItemDisposition `json:"disposition"`
+	From        OptPolicyNotify                 `json:"from"`
+	To          OptPolicyNotify                 `json:"to"`
+}
+
+// GetDisposition returns the value of Disposition.
+func (s *PolicyDiffNotifyItem) GetDisposition() PolicyDiffNotifyItemDisposition {
+	return s.Disposition
+}
+
+// GetFrom returns the value of From.
+func (s *PolicyDiffNotifyItem) GetFrom() OptPolicyNotify {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *PolicyDiffNotifyItem) GetTo() OptPolicyNotify {
+	return s.To
+}
+
+// SetDisposition sets the value of Disposition.
+func (s *PolicyDiffNotifyItem) SetDisposition(val PolicyDiffNotifyItemDisposition) {
+	s.Disposition = val
+}
+
+// SetFrom sets the value of From.
+func (s *PolicyDiffNotifyItem) SetFrom(val OptPolicyNotify) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *PolicyDiffNotifyItem) SetTo(val OptPolicyNotify) {
+	s.To = val
+}
+
+type PolicyDiffNotifyItemDisposition string
+
+const (
+	PolicyDiffNotifyItemDispositionPursueCandidate PolicyDiffNotifyItemDisposition = "pursue_candidate"
+	PolicyDiffNotifyItemDispositionReviewCandidate PolicyDiffNotifyItemDisposition = "review_candidate"
+	PolicyDiffNotifyItemDispositionWatchSignal     PolicyDiffNotifyItemDisposition = "watch_signal"
+)
+
+// AllValues returns all PolicyDiffNotifyItemDisposition values.
+func (PolicyDiffNotifyItemDisposition) AllValues() []PolicyDiffNotifyItemDisposition {
+	return []PolicyDiffNotifyItemDisposition{
+		PolicyDiffNotifyItemDispositionPursueCandidate,
+		PolicyDiffNotifyItemDispositionReviewCandidate,
+		PolicyDiffNotifyItemDispositionWatchSignal,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyDiffNotifyItemDisposition) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyDiffNotifyItemDispositionPursueCandidate:
+		return []byte(s), nil
+	case PolicyDiffNotifyItemDispositionReviewCandidate:
+		return []byte(s), nil
+	case PolicyDiffNotifyItemDispositionWatchSignal:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyDiffNotifyItemDisposition) UnmarshalText(data []byte) error {
+	switch PolicyDiffNotifyItemDisposition(data) {
+	case PolicyDiffNotifyItemDispositionPursueCandidate:
+		*s = PolicyDiffNotifyItemDispositionPursueCandidate
+		return nil
+	case PolicyDiffNotifyItemDispositionReviewCandidate:
+		*s = PolicyDiffNotifyItemDispositionReviewCandidate
+		return nil
+	case PolicyDiffNotifyItemDispositionWatchSignal:
+		*s = PolicyDiffNotifyItemDispositionWatchSignal
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PolicyDiffParamsItem struct {
+	Name string            `json:"name"`
+	From OptObjectiveParam `json:"from"`
+	To   OptObjectiveParam `json:"to"`
+}
+
+// GetName returns the value of Name.
+func (s *PolicyDiffParamsItem) GetName() string {
+	return s.Name
+}
+
+// GetFrom returns the value of From.
+func (s *PolicyDiffParamsItem) GetFrom() OptObjectiveParam {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *PolicyDiffParamsItem) GetTo() OptObjectiveParam {
+	return s.To
+}
+
+// SetName sets the value of Name.
+func (s *PolicyDiffParamsItem) SetName(val string) {
+	s.Name = val
+}
+
+// SetFrom sets the value of From.
+func (s *PolicyDiffParamsItem) SetFrom(val OptObjectiveParam) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *PolicyDiffParamsItem) SetTo(val OptObjectiveParam) {
+	s.To = val
+}
+
+type PolicyDiffRulesItem struct {
+	ID         PolicyRuleID              `json:"id"`
+	Clause     PolicyDiffRulesItemClause `json:"clause"`
+	Change     PolicyDiffRulesItemChange `json:"change"`
+	FromWeight OptInt                    `json:"from_weight"`
+	ToWeight   OptInt                    `json:"to_weight"`
+	// 停用硬条件（require）等需要审批人特别注意的变化.
+	Highlight bool `json:"highlight"`
+}
+
+// GetID returns the value of ID.
+func (s *PolicyDiffRulesItem) GetID() PolicyRuleID {
+	return s.ID
+}
+
+// GetClause returns the value of Clause.
+func (s *PolicyDiffRulesItem) GetClause() PolicyDiffRulesItemClause {
+	return s.Clause
+}
+
+// GetChange returns the value of Change.
+func (s *PolicyDiffRulesItem) GetChange() PolicyDiffRulesItemChange {
+	return s.Change
+}
+
+// GetFromWeight returns the value of FromWeight.
+func (s *PolicyDiffRulesItem) GetFromWeight() OptInt {
+	return s.FromWeight
+}
+
+// GetToWeight returns the value of ToWeight.
+func (s *PolicyDiffRulesItem) GetToWeight() OptInt {
+	return s.ToWeight
+}
+
+// GetHighlight returns the value of Highlight.
+func (s *PolicyDiffRulesItem) GetHighlight() bool {
+	return s.Highlight
+}
+
+// SetID sets the value of ID.
+func (s *PolicyDiffRulesItem) SetID(val PolicyRuleID) {
+	s.ID = val
+}
+
+// SetClause sets the value of Clause.
+func (s *PolicyDiffRulesItem) SetClause(val PolicyDiffRulesItemClause) {
+	s.Clause = val
+}
+
+// SetChange sets the value of Change.
+func (s *PolicyDiffRulesItem) SetChange(val PolicyDiffRulesItemChange) {
+	s.Change = val
+}
+
+// SetFromWeight sets the value of FromWeight.
+func (s *PolicyDiffRulesItem) SetFromWeight(val OptInt) {
+	s.FromWeight = val
+}
+
+// SetToWeight sets the value of ToWeight.
+func (s *PolicyDiffRulesItem) SetToWeight(val OptInt) {
+	s.ToWeight = val
+}
+
+// SetHighlight sets the value of Highlight.
+func (s *PolicyDiffRulesItem) SetHighlight(val bool) {
+	s.Highlight = val
+}
+
+type PolicyDiffRulesItemChange string
+
+const (
+	PolicyDiffRulesItemChangeAdded         PolicyDiffRulesItemChange = "added"
+	PolicyDiffRulesItemChangeRemoved       PolicyDiffRulesItemChange = "removed"
+	PolicyDiffRulesItemChangeEnabled       PolicyDiffRulesItemChange = "enabled"
+	PolicyDiffRulesItemChangeDisabled      PolicyDiffRulesItemChange = "disabled"
+	PolicyDiffRulesItemChangeWeightChanged PolicyDiffRulesItemChange = "weight_changed"
+)
+
+// AllValues returns all PolicyDiffRulesItemChange values.
+func (PolicyDiffRulesItemChange) AllValues() []PolicyDiffRulesItemChange {
+	return []PolicyDiffRulesItemChange{
+		PolicyDiffRulesItemChangeAdded,
+		PolicyDiffRulesItemChangeRemoved,
+		PolicyDiffRulesItemChangeEnabled,
+		PolicyDiffRulesItemChangeDisabled,
+		PolicyDiffRulesItemChangeWeightChanged,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyDiffRulesItemChange) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyDiffRulesItemChangeAdded:
+		return []byte(s), nil
+	case PolicyDiffRulesItemChangeRemoved:
+		return []byte(s), nil
+	case PolicyDiffRulesItemChangeEnabled:
+		return []byte(s), nil
+	case PolicyDiffRulesItemChangeDisabled:
+		return []byte(s), nil
+	case PolicyDiffRulesItemChangeWeightChanged:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyDiffRulesItemChange) UnmarshalText(data []byte) error {
+	switch PolicyDiffRulesItemChange(data) {
+	case PolicyDiffRulesItemChangeAdded:
+		*s = PolicyDiffRulesItemChangeAdded
+		return nil
+	case PolicyDiffRulesItemChangeRemoved:
+		*s = PolicyDiffRulesItemChangeRemoved
+		return nil
+	case PolicyDiffRulesItemChangeEnabled:
+		*s = PolicyDiffRulesItemChangeEnabled
+		return nil
+	case PolicyDiffRulesItemChangeDisabled:
+		*s = PolicyDiffRulesItemChangeDisabled
+		return nil
+	case PolicyDiffRulesItemChangeWeightChanged:
+		*s = PolicyDiffRulesItemChangeWeightChanged
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PolicyDiffRulesItemClause string
+
+const (
+	PolicyDiffRulesItemClauseRequire  PolicyDiffRulesItemClause = "require"
+	PolicyDiffRulesItemClauseExclude  PolicyDiffRulesItemClause = "exclude"
+	PolicyDiffRulesItemClauseWatch    PolicyDiffRulesItemClause = "watch"
+	PolicyDiffRulesItemClauseBoost    PolicyDiffRulesItemClause = "boost"
+	PolicyDiffRulesItemClausePenalize PolicyDiffRulesItemClause = "penalize"
+)
+
+// AllValues returns all PolicyDiffRulesItemClause values.
+func (PolicyDiffRulesItemClause) AllValues() []PolicyDiffRulesItemClause {
+	return []PolicyDiffRulesItemClause{
+		PolicyDiffRulesItemClauseRequire,
+		PolicyDiffRulesItemClauseExclude,
+		PolicyDiffRulesItemClauseWatch,
+		PolicyDiffRulesItemClauseBoost,
+		PolicyDiffRulesItemClausePenalize,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyDiffRulesItemClause) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyDiffRulesItemClauseRequire:
+		return []byte(s), nil
+	case PolicyDiffRulesItemClauseExclude:
+		return []byte(s), nil
+	case PolicyDiffRulesItemClauseWatch:
+		return []byte(s), nil
+	case PolicyDiffRulesItemClauseBoost:
+		return []byte(s), nil
+	case PolicyDiffRulesItemClausePenalize:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyDiffRulesItemClause) UnmarshalText(data []byte) error {
+	switch PolicyDiffRulesItemClause(data) {
+	case PolicyDiffRulesItemClauseRequire:
+		*s = PolicyDiffRulesItemClauseRequire
+		return nil
+	case PolicyDiffRulesItemClauseExclude:
+		*s = PolicyDiffRulesItemClauseExclude
+		return nil
+	case PolicyDiffRulesItemClauseWatch:
+		*s = PolicyDiffRulesItemClauseWatch
+		return nil
+	case PolicyDiffRulesItemClauseBoost:
+		*s = PolicyDiffRulesItemClauseBoost
+		return nil
+	case PolicyDiffRulesItemClausePenalize:
+		*s = PolicyDiffRulesItemClausePenalize
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PolicyDiffThresholdsItem struct {
+	Name PolicyDiffThresholdsItemName `json:"name"`
+	From int                          `json:"from"`
+	To   int                          `json:"to"`
+}
+
+// GetName returns the value of Name.
+func (s *PolicyDiffThresholdsItem) GetName() PolicyDiffThresholdsItemName {
+	return s.Name
+}
+
+// GetFrom returns the value of From.
+func (s *PolicyDiffThresholdsItem) GetFrom() int {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *PolicyDiffThresholdsItem) GetTo() int {
+	return s.To
+}
+
+// SetName sets the value of Name.
+func (s *PolicyDiffThresholdsItem) SetName(val PolicyDiffThresholdsItemName) {
+	s.Name = val
+}
+
+// SetFrom sets the value of From.
+func (s *PolicyDiffThresholdsItem) SetFrom(val int) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *PolicyDiffThresholdsItem) SetTo(val int) {
+	s.To = val
+}
+
+type PolicyDiffThresholdsItemName string
+
+const (
+	PolicyDiffThresholdsItemNameBaseScore PolicyDiffThresholdsItemName = "base_score"
+	PolicyDiffThresholdsItemNamePursueAt  PolicyDiffThresholdsItemName = "pursue_at"
+	PolicyDiffThresholdsItemNameDropBelow PolicyDiffThresholdsItemName = "drop_below"
+)
+
+// AllValues returns all PolicyDiffThresholdsItemName values.
+func (PolicyDiffThresholdsItemName) AllValues() []PolicyDiffThresholdsItemName {
+	return []PolicyDiffThresholdsItemName{
+		PolicyDiffThresholdsItemNameBaseScore,
+		PolicyDiffThresholdsItemNamePursueAt,
+		PolicyDiffThresholdsItemNameDropBelow,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyDiffThresholdsItemName) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyDiffThresholdsItemNameBaseScore:
+		return []byte(s), nil
+	case PolicyDiffThresholdsItemNamePursueAt:
+		return []byte(s), nil
+	case PolicyDiffThresholdsItemNameDropBelow:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyDiffThresholdsItemName) UnmarshalText(data []byte) error {
+	switch PolicyDiffThresholdsItemName(data) {
+	case PolicyDiffThresholdsItemNameBaseScore:
+		*s = PolicyDiffThresholdsItemNameBaseScore
+		return nil
+	case PolicyDiffThresholdsItemNamePursueAt:
+		*s = PolicyDiffThresholdsItemNamePursueAt
+		return nil
+	case PolicyDiffThresholdsItemNameDropBelow:
+		*s = PolicyDiffThresholdsItemNameDropBelow
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 处置（策略 DSL 第4节）.
+// Ref: #/components/schemas/PolicyDisposition
+type PolicyDisposition string
+
+const (
+	PolicyDispositionNoSignal        PolicyDisposition = "no_signal"
+	PolicyDispositionExcluded        PolicyDisposition = "excluded"
+	PolicyDispositionWatchSignal     PolicyDisposition = "watch_signal"
+	PolicyDispositionReviewCandidate PolicyDisposition = "review_candidate"
+	PolicyDispositionPursueCandidate PolicyDisposition = "pursue_candidate"
+)
+
+// AllValues returns all PolicyDisposition values.
+func (PolicyDisposition) AllValues() []PolicyDisposition {
+	return []PolicyDisposition{
+		PolicyDispositionNoSignal,
+		PolicyDispositionExcluded,
+		PolicyDispositionWatchSignal,
+		PolicyDispositionReviewCandidate,
+		PolicyDispositionPursueCandidate,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyDisposition) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyDispositionNoSignal:
+		return []byte(s), nil
+	case PolicyDispositionExcluded:
+		return []byte(s), nil
+	case PolicyDispositionWatchSignal:
+		return []byte(s), nil
+	case PolicyDispositionReviewCandidate:
+		return []byte(s), nil
+	case PolicyDispositionPursueCandidate:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyDisposition) UnmarshalText(data []byte) error {
+	switch PolicyDisposition(data) {
+	case PolicyDispositionNoSignal:
+		*s = PolicyDispositionNoSignal
+		return nil
+	case PolicyDispositionExcluded:
+		*s = PolicyDispositionExcluded
+		return nil
+	case PolicyDispositionWatchSignal:
+		*s = PolicyDispositionWatchSignal
+		return nil
+	case PolicyDispositionReviewCandidate:
+		*s = PolicyDispositionReviewCandidate
+		return nil
+	case PolicyDispositionPursueCandidate:
+		*s = PolicyDispositionPursueCandidate
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 合成后的完整策略文档（services/kernel/policy 的 Policy 的 JSON 形式：模板 +
+// 参数值 + 启停、权重、阈值与通知覆盖）， 结构以策略 DSL
+// 第3节为准；接收方按 kernel/policy 编译后求值。除 id 与 version
+// 外的字段原样传递.
+// Ref: #/components/schemas/PolicyDocument
+type PolicyDocument struct {
+	ID              string `json:"id"`
+	Version         string `json:"version"`
+	AdditionalProps PolicyDocumentAdditional
+}
+
+// GetID returns the value of ID.
+func (s *PolicyDocument) GetID() string {
+	return s.ID
+}
+
+// GetVersion returns the value of Version.
+func (s *PolicyDocument) GetVersion() string {
+	return s.Version
+}
+
+// GetAdditionalProps returns the value of AdditionalProps.
+func (s *PolicyDocument) GetAdditionalProps() PolicyDocumentAdditional {
+	return s.AdditionalProps
+}
+
+// SetID sets the value of ID.
+func (s *PolicyDocument) SetID(val string) {
+	s.ID = val
+}
+
+// SetVersion sets the value of Version.
+func (s *PolicyDocument) SetVersion(val string) {
+	s.Version = val
+}
+
+// SetAdditionalProps sets the value of AdditionalProps.
+func (s *PolicyDocument) SetAdditionalProps(val PolicyDocumentAdditional) {
+	s.AdditionalProps = val
+}
+
+type PolicyDocumentAdditional map[string]jx.Raw
+
+func (s *PolicyDocumentAdditional) init() PolicyDocumentAdditional {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
+
+// Ref: #/components/schemas/PolicyDraft
+type PolicyDraft struct {
+	Revision int64 `json:"revision"`
+	// 草案所基于的生效版本（0 为首次激活前的首版草案）.
+	BaseVersion       int64                   `json:"base_version"`
+	TemplateID        string                  `json:"template_id"`
+	TemplateVersion   string                  `json:"template_version"`
+	Form              PolicyForm              `json:"form"`
+	Rules             []PolicyRule            `json:"rules"`
+	Valid             bool                    `json:"valid"`
+	Issues            []PolicyIssue           `json:"issues"`
+	ExampleMismatches []PolicyExampleMismatch `json:"example_mismatches"`
+	SavedBy           Subject                 `json:"saved_by"`
+	SavedAt           time.Time               `json:"saved_at"`
+	// 锁定草案的进行中激活申请（审批请求标识）.
+	LockedBy   OptString              `json:"locked_by"`
+	Simulation OptPolicySimulationRef `json:"simulation"`
+}
+
+// GetRevision returns the value of Revision.
+func (s *PolicyDraft) GetRevision() int64 {
+	return s.Revision
+}
+
+// GetBaseVersion returns the value of BaseVersion.
+func (s *PolicyDraft) GetBaseVersion() int64 {
+	return s.BaseVersion
+}
+
+// GetTemplateID returns the value of TemplateID.
+func (s *PolicyDraft) GetTemplateID() string {
+	return s.TemplateID
+}
+
+// GetTemplateVersion returns the value of TemplateVersion.
+func (s *PolicyDraft) GetTemplateVersion() string {
+	return s.TemplateVersion
+}
+
+// GetForm returns the value of Form.
+func (s *PolicyDraft) GetForm() PolicyForm {
+	return s.Form
+}
+
+// GetRules returns the value of Rules.
+func (s *PolicyDraft) GetRules() []PolicyRule {
+	return s.Rules
+}
+
+// GetValid returns the value of Valid.
+func (s *PolicyDraft) GetValid() bool {
+	return s.Valid
+}
+
+// GetIssues returns the value of Issues.
+func (s *PolicyDraft) GetIssues() []PolicyIssue {
+	return s.Issues
+}
+
+// GetExampleMismatches returns the value of ExampleMismatches.
+func (s *PolicyDraft) GetExampleMismatches() []PolicyExampleMismatch {
+	return s.ExampleMismatches
+}
+
+// GetSavedBy returns the value of SavedBy.
+func (s *PolicyDraft) GetSavedBy() Subject {
+	return s.SavedBy
+}
+
+// GetSavedAt returns the value of SavedAt.
+func (s *PolicyDraft) GetSavedAt() time.Time {
+	return s.SavedAt
+}
+
+// GetLockedBy returns the value of LockedBy.
+func (s *PolicyDraft) GetLockedBy() OptString {
+	return s.LockedBy
+}
+
+// GetSimulation returns the value of Simulation.
+func (s *PolicyDraft) GetSimulation() OptPolicySimulationRef {
+	return s.Simulation
+}
+
+// SetRevision sets the value of Revision.
+func (s *PolicyDraft) SetRevision(val int64) {
+	s.Revision = val
+}
+
+// SetBaseVersion sets the value of BaseVersion.
+func (s *PolicyDraft) SetBaseVersion(val int64) {
+	s.BaseVersion = val
+}
+
+// SetTemplateID sets the value of TemplateID.
+func (s *PolicyDraft) SetTemplateID(val string) {
+	s.TemplateID = val
+}
+
+// SetTemplateVersion sets the value of TemplateVersion.
+func (s *PolicyDraft) SetTemplateVersion(val string) {
+	s.TemplateVersion = val
+}
+
+// SetForm sets the value of Form.
+func (s *PolicyDraft) SetForm(val PolicyForm) {
+	s.Form = val
+}
+
+// SetRules sets the value of Rules.
+func (s *PolicyDraft) SetRules(val []PolicyRule) {
+	s.Rules = val
+}
+
+// SetValid sets the value of Valid.
+func (s *PolicyDraft) SetValid(val bool) {
+	s.Valid = val
+}
+
+// SetIssues sets the value of Issues.
+func (s *PolicyDraft) SetIssues(val []PolicyIssue) {
+	s.Issues = val
+}
+
+// SetExampleMismatches sets the value of ExampleMismatches.
+func (s *PolicyDraft) SetExampleMismatches(val []PolicyExampleMismatch) {
+	s.ExampleMismatches = val
+}
+
+// SetSavedBy sets the value of SavedBy.
+func (s *PolicyDraft) SetSavedBy(val Subject) {
+	s.SavedBy = val
+}
+
+// SetSavedAt sets the value of SavedAt.
+func (s *PolicyDraft) SetSavedAt(val time.Time) {
+	s.SavedAt = val
+}
+
+// SetLockedBy sets the value of LockedBy.
+func (s *PolicyDraft) SetLockedBy(val OptString) {
+	s.LockedBy = val
+}
+
+// SetSimulation sets the value of Simulation.
+func (s *PolicyDraft) SetSimulation(val OptPolicySimulationRef) {
+	s.Simulation = val
+}
+
+// Ref: #/components/schemas/PolicyExampleMismatch
+type PolicyExampleMismatch struct {
+	Name     string            `json:"name"`
+	Expected PolicyDisposition `json:"expected"`
+	Actual   PolicyDisposition `json:"actual"`
+}
+
+// GetName returns the value of Name.
+func (s *PolicyExampleMismatch) GetName() string {
+	return s.Name
+}
+
+// GetExpected returns the value of Expected.
+func (s *PolicyExampleMismatch) GetExpected() PolicyDisposition {
+	return s.Expected
+}
+
+// GetActual returns the value of Actual.
+func (s *PolicyExampleMismatch) GetActual() PolicyDisposition {
+	return s.Actual
+}
+
+// SetName sets the value of Name.
+func (s *PolicyExampleMismatch) SetName(val string) {
+	s.Name = val
+}
+
+// SetExpected sets the value of Expected.
+func (s *PolicyExampleMismatch) SetExpected(val PolicyDisposition) {
+	s.Expected = val
+}
+
+// SetActual sets the value of Actual.
+func (s *PolicyExampleMismatch) SetActual(val PolicyDisposition) {
+	s.Actual = val
+}
+
+// 草案表单（M2
+// 可调范围：参数、非锁定规则启停、权重、阈值、通知受众与方式）.
+// Ref: #/components/schemas/PolicyForm
+type PolicyForm struct {
+	Params     ObjectiveParams      `json:"params"`
+	Rules      []PolicyRuleOverride `json:"rules"`
+	Thresholds PolicyThresholds     `json:"thresholds"`
+	Notify     PolicyNotifySettings `json:"notify"`
+}
+
+// GetParams returns the value of Params.
+func (s *PolicyForm) GetParams() ObjectiveParams {
+	return s.Params
+}
+
+// GetRules returns the value of Rules.
+func (s *PolicyForm) GetRules() []PolicyRuleOverride {
+	return s.Rules
+}
+
+// GetThresholds returns the value of Thresholds.
+func (s *PolicyForm) GetThresholds() PolicyThresholds {
+	return s.Thresholds
+}
+
+// GetNotify returns the value of Notify.
+func (s *PolicyForm) GetNotify() PolicyNotifySettings {
+	return s.Notify
+}
+
+// SetParams sets the value of Params.
+func (s *PolicyForm) SetParams(val ObjectiveParams) {
+	s.Params = val
+}
+
+// SetRules sets the value of Rules.
+func (s *PolicyForm) SetRules(val []PolicyRuleOverride) {
+	s.Rules = val
+}
+
+// SetThresholds sets the value of Thresholds.
+func (s *PolicyForm) SetThresholds(val PolicyThresholds) {
+	s.Thresholds = val
+}
+
+// SetNotify sets the value of Notify.
+func (s *PolicyForm) SetNotify(val PolicyNotifySettings) {
+	s.Notify = val
+}
+
+// Ref: #/components/schemas/PolicyIssue
+type PolicyIssue struct {
+	// 规则编号、params.<名称>、thresholds 等.
+	Where   string `json:"where"`
+	Message string `json:"message"`
+}
+
+// GetWhere returns the value of Where.
+func (s *PolicyIssue) GetWhere() string {
+	return s.Where
+}
+
+// GetMessage returns the value of Message.
+func (s *PolicyIssue) GetMessage() string {
+	return s.Message
+}
+
+// SetWhere sets the value of Where.
+func (s *PolicyIssue) SetWhere(val string) {
+	s.Where = val
+}
+
+// SetMessage sets the value of Message.
+func (s *PolicyIssue) SetMessage(val string) {
+	s.Message = val
+}
+
+// 某一处置的通知受众与方式。受众只能是目标负责人
+// objective_owner、全部参与人 objective_members，或目标范围内的业务角色
+// role:<角色>（不含租户管理员）；不能引入目标外成员。实际发送由 channels
+// 逐人检查访问权限。.
+// Ref: #/components/schemas/PolicyNotify
+type PolicyNotify struct {
+	Audience []string         `json:"audience"`
+	Mode     PolicyNotifyMode `json:"mode"`
+}
+
+// GetAudience returns the value of Audience.
+func (s *PolicyNotify) GetAudience() []string {
+	return s.Audience
+}
+
+// GetMode returns the value of Mode.
+func (s *PolicyNotify) GetMode() PolicyNotifyMode {
+	return s.Mode
+}
+
+// SetAudience sets the value of Audience.
+func (s *PolicyNotify) SetAudience(val []string) {
+	s.Audience = val
+}
+
+// SetMode sets the value of Mode.
+func (s *PolicyNotify) SetMode(val PolicyNotifyMode) {
+	s.Mode = val
+}
+
+type PolicyNotifyMode string
+
+const (
+	PolicyNotifyModeImmediate PolicyNotifyMode = "immediate"
+	PolicyNotifyModeDigest    PolicyNotifyMode = "digest"
+)
+
+// AllValues returns all PolicyNotifyMode values.
+func (PolicyNotifyMode) AllValues() []PolicyNotifyMode {
+	return []PolicyNotifyMode{
+		PolicyNotifyModeImmediate,
+		PolicyNotifyModeDigest,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyNotifyMode) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyNotifyModeImmediate:
+		return []byte(s), nil
+	case PolicyNotifyModeDigest:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyNotifyMode) UnmarshalText(data []byte) error {
+	switch PolicyNotifyMode(data) {
+	case PolicyNotifyModeImmediate:
+		*s = PolicyNotifyModeImmediate
+		return nil
+	case PolicyNotifyModeDigest:
+		*s = PolicyNotifyModeDigest
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/PolicyNotifySettings
+type PolicyNotifySettings struct {
+	PursueCandidate OptPolicyNotify `json:"pursue_candidate"`
+	ReviewCandidate OptPolicyNotify `json:"review_candidate"`
+	WatchSignal     OptPolicyNotify `json:"watch_signal"`
+}
+
+// GetPursueCandidate returns the value of PursueCandidate.
+func (s *PolicyNotifySettings) GetPursueCandidate() OptPolicyNotify {
+	return s.PursueCandidate
+}
+
+// GetReviewCandidate returns the value of ReviewCandidate.
+func (s *PolicyNotifySettings) GetReviewCandidate() OptPolicyNotify {
+	return s.ReviewCandidate
+}
+
+// GetWatchSignal returns the value of WatchSignal.
+func (s *PolicyNotifySettings) GetWatchSignal() OptPolicyNotify {
+	return s.WatchSignal
+}
+
+// SetPursueCandidate sets the value of PursueCandidate.
+func (s *PolicyNotifySettings) SetPursueCandidate(val OptPolicyNotify) {
+	s.PursueCandidate = val
+}
+
+// SetReviewCandidate sets the value of ReviewCandidate.
+func (s *PolicyNotifySettings) SetReviewCandidate(val OptPolicyNotify) {
+	s.ReviewCandidate = val
+}
+
+// SetWatchSignal sets the value of WatchSignal.
+func (s *PolicyNotifySettings) SetWatchSignal(val OptPolicyNotify) {
+	s.WatchSignal = val
+}
+
+// 激活或回滚申请在本子系统的执行记录（审批本身在 identity）。pending
+// 待审批；executed 已激活或已回滚；failed 批准后执行前
+// 核验未通过（基准已变、草案修订不一致、目标已停用），未执行；rejected、withdrawn、expired、invalidated
+// 未经执行关闭。.
+// Ref: #/components/schemas/PolicyRequest
+type PolicyRequest struct {
+	ApprovalID string             `json:"approval_id"`
+	Kind       PolicyRequestKind  `json:"kind"`
+	State      PolicyRequestState `json:"state"`
+	// 激活为草案修订号；回滚为目标版本号.
+	ObjectVersion      int64      `json:"object_version"`
+	SimulationID       string     `json:"simulation_id"`
+	BaselineVersion    int64      `json:"baseline_version"`
+	BaselineGeneration int64      `json:"baseline_generation"`
+	BackfillDays       OptInt     `json:"backfill_days"`
+	RequestedBy        Subject    `json:"requested_by"`
+	DecidedBy          OptSubject `json:"decided_by"`
+	// 驳回原因，或执行失败、失效的原因代码.
+	Reason OptString `json:"reason"`
+}
+
+// GetApprovalID returns the value of ApprovalID.
+func (s *PolicyRequest) GetApprovalID() string {
+	return s.ApprovalID
+}
+
+// GetKind returns the value of Kind.
+func (s *PolicyRequest) GetKind() PolicyRequestKind {
+	return s.Kind
+}
+
+// GetState returns the value of State.
+func (s *PolicyRequest) GetState() PolicyRequestState {
+	return s.State
+}
+
+// GetObjectVersion returns the value of ObjectVersion.
+func (s *PolicyRequest) GetObjectVersion() int64 {
+	return s.ObjectVersion
+}
+
+// GetSimulationID returns the value of SimulationID.
+func (s *PolicyRequest) GetSimulationID() string {
+	return s.SimulationID
+}
+
+// GetBaselineVersion returns the value of BaselineVersion.
+func (s *PolicyRequest) GetBaselineVersion() int64 {
+	return s.BaselineVersion
+}
+
+// GetBaselineGeneration returns the value of BaselineGeneration.
+func (s *PolicyRequest) GetBaselineGeneration() int64 {
+	return s.BaselineGeneration
+}
+
+// GetBackfillDays returns the value of BackfillDays.
+func (s *PolicyRequest) GetBackfillDays() OptInt {
+	return s.BackfillDays
+}
+
+// GetRequestedBy returns the value of RequestedBy.
+func (s *PolicyRequest) GetRequestedBy() Subject {
+	return s.RequestedBy
+}
+
+// GetDecidedBy returns the value of DecidedBy.
+func (s *PolicyRequest) GetDecidedBy() OptSubject {
+	return s.DecidedBy
+}
+
+// GetReason returns the value of Reason.
+func (s *PolicyRequest) GetReason() OptString {
+	return s.Reason
+}
+
+// SetApprovalID sets the value of ApprovalID.
+func (s *PolicyRequest) SetApprovalID(val string) {
+	s.ApprovalID = val
+}
+
+// SetKind sets the value of Kind.
+func (s *PolicyRequest) SetKind(val PolicyRequestKind) {
+	s.Kind = val
+}
+
+// SetState sets the value of State.
+func (s *PolicyRequest) SetState(val PolicyRequestState) {
+	s.State = val
+}
+
+// SetObjectVersion sets the value of ObjectVersion.
+func (s *PolicyRequest) SetObjectVersion(val int64) {
+	s.ObjectVersion = val
+}
+
+// SetSimulationID sets the value of SimulationID.
+func (s *PolicyRequest) SetSimulationID(val string) {
+	s.SimulationID = val
+}
+
+// SetBaselineVersion sets the value of BaselineVersion.
+func (s *PolicyRequest) SetBaselineVersion(val int64) {
+	s.BaselineVersion = val
+}
+
+// SetBaselineGeneration sets the value of BaselineGeneration.
+func (s *PolicyRequest) SetBaselineGeneration(val int64) {
+	s.BaselineGeneration = val
+}
+
+// SetBackfillDays sets the value of BackfillDays.
+func (s *PolicyRequest) SetBackfillDays(val OptInt) {
+	s.BackfillDays = val
+}
+
+// SetRequestedBy sets the value of RequestedBy.
+func (s *PolicyRequest) SetRequestedBy(val Subject) {
+	s.RequestedBy = val
+}
+
+// SetDecidedBy sets the value of DecidedBy.
+func (s *PolicyRequest) SetDecidedBy(val OptSubject) {
+	s.DecidedBy = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PolicyRequest) SetReason(val OptString) {
+	s.Reason = val
+}
+
+type PolicyRequestKind string
+
+const (
+	PolicyRequestKindActivation PolicyRequestKind = "activation"
+	PolicyRequestKindRollback   PolicyRequestKind = "rollback"
+)
+
+// AllValues returns all PolicyRequestKind values.
+func (PolicyRequestKind) AllValues() []PolicyRequestKind {
+	return []PolicyRequestKind{
+		PolicyRequestKindActivation,
+		PolicyRequestKindRollback,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyRequestKind) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyRequestKindActivation:
+		return []byte(s), nil
+	case PolicyRequestKindRollback:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyRequestKind) UnmarshalText(data []byte) error {
+	switch PolicyRequestKind(data) {
+	case PolicyRequestKindActivation:
+		*s = PolicyRequestKindActivation
+		return nil
+	case PolicyRequestKindRollback:
+		*s = PolicyRequestKindRollback
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PolicyRequestState string
+
+const (
+	PolicyRequestStatePending     PolicyRequestState = "pending"
+	PolicyRequestStateExecuted    PolicyRequestState = "executed"
+	PolicyRequestStateFailed      PolicyRequestState = "failed"
+	PolicyRequestStateRejected    PolicyRequestState = "rejected"
+	PolicyRequestStateWithdrawn   PolicyRequestState = "withdrawn"
+	PolicyRequestStateExpired     PolicyRequestState = "expired"
+	PolicyRequestStateInvalidated PolicyRequestState = "invalidated"
+)
+
+// AllValues returns all PolicyRequestState values.
+func (PolicyRequestState) AllValues() []PolicyRequestState {
+	return []PolicyRequestState{
+		PolicyRequestStatePending,
+		PolicyRequestStateExecuted,
+		PolicyRequestStateFailed,
+		PolicyRequestStateRejected,
+		PolicyRequestStateWithdrawn,
+		PolicyRequestStateExpired,
+		PolicyRequestStateInvalidated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyRequestState) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyRequestStatePending:
+		return []byte(s), nil
+	case PolicyRequestStateExecuted:
+		return []byte(s), nil
+	case PolicyRequestStateFailed:
+		return []byte(s), nil
+	case PolicyRequestStateRejected:
+		return []byte(s), nil
+	case PolicyRequestStateWithdrawn:
+		return []byte(s), nil
+	case PolicyRequestStateExpired:
+		return []byte(s), nil
+	case PolicyRequestStateInvalidated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyRequestState) UnmarshalText(data []byte) error {
+	switch PolicyRequestState(data) {
+	case PolicyRequestStatePending:
+		*s = PolicyRequestStatePending
+		return nil
+	case PolicyRequestStateExecuted:
+		*s = PolicyRequestStateExecuted
+		return nil
+	case PolicyRequestStateFailed:
+		*s = PolicyRequestStateFailed
+		return nil
+	case PolicyRequestStateRejected:
+		*s = PolicyRequestStateRejected
+		return nil
+	case PolicyRequestStateWithdrawn:
+		*s = PolicyRequestStateWithdrawn
+		return nil
+	case PolicyRequestStateExpired:
+		*s = PolicyRequestStateExpired
+		return nil
+	case PolicyRequestStateInvalidated:
+		*s = PolicyRequestStateInvalidated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 合成后的一条规则（按子句分组展示）.
+// Ref: #/components/schemas/PolicyRule
+type PolicyRule struct {
+	ID      PolicyRuleID     `json:"id"`
+	Clause  PolicyRuleClause `json:"clause"`
+	Say     string           `json:"say"`
+	Enabled bool             `json:"enabled"`
+	Locked  bool             `json:"locked"`
+	Weight  OptInt           `json:"weight"`
+}
+
+// GetID returns the value of ID.
+func (s *PolicyRule) GetID() PolicyRuleID {
+	return s.ID
+}
+
+// GetClause returns the value of Clause.
+func (s *PolicyRule) GetClause() PolicyRuleClause {
+	return s.Clause
+}
+
+// GetSay returns the value of Say.
+func (s *PolicyRule) GetSay() string {
+	return s.Say
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *PolicyRule) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetLocked returns the value of Locked.
+func (s *PolicyRule) GetLocked() bool {
+	return s.Locked
+}
+
+// GetWeight returns the value of Weight.
+func (s *PolicyRule) GetWeight() OptInt {
+	return s.Weight
+}
+
+// SetID sets the value of ID.
+func (s *PolicyRule) SetID(val PolicyRuleID) {
+	s.ID = val
+}
+
+// SetClause sets the value of Clause.
+func (s *PolicyRule) SetClause(val PolicyRuleClause) {
+	s.Clause = val
+}
+
+// SetSay sets the value of Say.
+func (s *PolicyRule) SetSay(val string) {
+	s.Say = val
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *PolicyRule) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetLocked sets the value of Locked.
+func (s *PolicyRule) SetLocked(val bool) {
+	s.Locked = val
+}
+
+// SetWeight sets the value of Weight.
+func (s *PolicyRule) SetWeight(val OptInt) {
+	s.Weight = val
+}
+
+type PolicyRuleClause string
+
+const (
+	PolicyRuleClauseRequire  PolicyRuleClause = "require"
+	PolicyRuleClauseExclude  PolicyRuleClause = "exclude"
+	PolicyRuleClauseWatch    PolicyRuleClause = "watch"
+	PolicyRuleClauseBoost    PolicyRuleClause = "boost"
+	PolicyRuleClausePenalize PolicyRuleClause = "penalize"
+)
+
+// AllValues returns all PolicyRuleClause values.
+func (PolicyRuleClause) AllValues() []PolicyRuleClause {
+	return []PolicyRuleClause{
+		PolicyRuleClauseRequire,
+		PolicyRuleClauseExclude,
+		PolicyRuleClauseWatch,
+		PolicyRuleClauseBoost,
+		PolicyRuleClausePenalize,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyRuleClause) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyRuleClauseRequire:
+		return []byte(s), nil
+	case PolicyRuleClauseExclude:
+		return []byte(s), nil
+	case PolicyRuleClauseWatch:
+		return []byte(s), nil
+	case PolicyRuleClauseBoost:
+		return []byte(s), nil
+	case PolicyRuleClausePenalize:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyRuleClause) UnmarshalText(data []byte) error {
+	switch PolicyRuleClause(data) {
+	case PolicyRuleClauseRequire:
+		*s = PolicyRuleClauseRequire
+		return nil
+	case PolicyRuleClauseExclude:
+		*s = PolicyRuleClauseExclude
+		return nil
+	case PolicyRuleClauseWatch:
+		*s = PolicyRuleClauseWatch
+		return nil
+	case PolicyRuleClauseBoost:
+		*s = PolicyRuleClauseBoost
+		return nil
+	case PolicyRuleClausePenalize:
+		*s = PolicyRuleClausePenalize
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PolicyRuleID string
+
+// 对模板规则的覆盖：enabled 启停（锁定规则不可改）；weight
+// 只用于加分与减分规则，1–50 的正整数（PRD 第7段第13节第5项）。
+// 表单未列出的规则取模板缺省（启用、模板权重）。.
+// Ref: #/components/schemas/PolicyRuleOverride
+type PolicyRuleOverride struct {
+	ID      PolicyRuleID `json:"id"`
+	Enabled bool         `json:"enabled"`
+	Weight  OptInt       `json:"weight"`
+}
+
+// GetID returns the value of ID.
+func (s *PolicyRuleOverride) GetID() PolicyRuleID {
+	return s.ID
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *PolicyRuleOverride) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetWeight returns the value of Weight.
+func (s *PolicyRuleOverride) GetWeight() OptInt {
+	return s.Weight
+}
+
+// SetID sets the value of ID.
+func (s *PolicyRuleOverride) SetID(val PolicyRuleID) {
+	s.ID = val
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *PolicyRuleOverride) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetWeight sets the value of Weight.
+func (s *PolicyRuleOverride) SetWeight(val OptInt) {
+	s.Weight = val
+}
+
+// Ref: #/components/schemas/PolicySimulationInput
+type PolicySimulationInput struct {
+	ObjectiveID       string                  `json:"objective_id"`
+	OrgUnitID         string                  `json:"org_unit_id"`
+	RequiresDomains   []DomainCode            `json:"requires_domains"`
+	Revision          int64                   `json:"revision"`
+	Valid             bool                    `json:"valid"`
+	Document          PolicyDocument          `json:"document"`
+	Form              PolicyForm              `json:"form"`
+	Rules             []PolicyRule            `json:"rules"`
+	ExampleMismatches []PolicyExampleMismatch `json:"example_mismatches"`
+	Generation        int64                   `json:"generation"`
+	// 读取时的生效版本（对比一侧）；尚未激活时不出现.
+	Compare OptPolicySimulationInputCompare `json:"compare"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *PolicySimulationInput) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetOrgUnitID returns the value of OrgUnitID.
+func (s *PolicySimulationInput) GetOrgUnitID() string {
+	return s.OrgUnitID
+}
+
+// GetRequiresDomains returns the value of RequiresDomains.
+func (s *PolicySimulationInput) GetRequiresDomains() []DomainCode {
+	return s.RequiresDomains
+}
+
+// GetRevision returns the value of Revision.
+func (s *PolicySimulationInput) GetRevision() int64 {
+	return s.Revision
+}
+
+// GetValid returns the value of Valid.
+func (s *PolicySimulationInput) GetValid() bool {
+	return s.Valid
+}
+
+// GetDocument returns the value of Document.
+func (s *PolicySimulationInput) GetDocument() PolicyDocument {
+	return s.Document
+}
+
+// GetForm returns the value of Form.
+func (s *PolicySimulationInput) GetForm() PolicyForm {
+	return s.Form
+}
+
+// GetRules returns the value of Rules.
+func (s *PolicySimulationInput) GetRules() []PolicyRule {
+	return s.Rules
+}
+
+// GetExampleMismatches returns the value of ExampleMismatches.
+func (s *PolicySimulationInput) GetExampleMismatches() []PolicyExampleMismatch {
+	return s.ExampleMismatches
+}
+
+// GetGeneration returns the value of Generation.
+func (s *PolicySimulationInput) GetGeneration() int64 {
+	return s.Generation
+}
+
+// GetCompare returns the value of Compare.
+func (s *PolicySimulationInput) GetCompare() OptPolicySimulationInputCompare {
+	return s.Compare
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *PolicySimulationInput) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetOrgUnitID sets the value of OrgUnitID.
+func (s *PolicySimulationInput) SetOrgUnitID(val string) {
+	s.OrgUnitID = val
+}
+
+// SetRequiresDomains sets the value of RequiresDomains.
+func (s *PolicySimulationInput) SetRequiresDomains(val []DomainCode) {
+	s.RequiresDomains = val
+}
+
+// SetRevision sets the value of Revision.
+func (s *PolicySimulationInput) SetRevision(val int64) {
+	s.Revision = val
+}
+
+// SetValid sets the value of Valid.
+func (s *PolicySimulationInput) SetValid(val bool) {
+	s.Valid = val
+}
+
+// SetDocument sets the value of Document.
+func (s *PolicySimulationInput) SetDocument(val PolicyDocument) {
+	s.Document = val
+}
+
+// SetForm sets the value of Form.
+func (s *PolicySimulationInput) SetForm(val PolicyForm) {
+	s.Form = val
+}
+
+// SetRules sets the value of Rules.
+func (s *PolicySimulationInput) SetRules(val []PolicyRule) {
+	s.Rules = val
+}
+
+// SetExampleMismatches sets the value of ExampleMismatches.
+func (s *PolicySimulationInput) SetExampleMismatches(val []PolicyExampleMismatch) {
+	s.ExampleMismatches = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *PolicySimulationInput) SetGeneration(val int64) {
+	s.Generation = val
+}
+
+// SetCompare sets the value of Compare.
+func (s *PolicySimulationInput) SetCompare(val OptPolicySimulationInputCompare) {
+	s.Compare = val
+}
+
+// 读取时的生效版本（对比一侧）；尚未激活时不出现.
+type PolicySimulationInputCompare struct {
+	Version        int64          `json:"version"`
+	Document       PolicyDocument `json:"document"`
+	EnabledDomains []DomainCode   `json:"enabled_domains"`
+}
+
+// GetVersion returns the value of Version.
+func (s *PolicySimulationInputCompare) GetVersion() int64 {
+	return s.Version
+}
+
+// GetDocument returns the value of Document.
+func (s *PolicySimulationInputCompare) GetDocument() PolicyDocument {
+	return s.Document
+}
+
+// GetEnabledDomains returns the value of EnabledDomains.
+func (s *PolicySimulationInputCompare) GetEnabledDomains() []DomainCode {
+	return s.EnabledDomains
+}
+
+// SetVersion sets the value of Version.
+func (s *PolicySimulationInputCompare) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetDocument sets the value of Document.
+func (s *PolicySimulationInputCompare) SetDocument(val PolicyDocument) {
+	s.Document = val
+}
+
+// SetEnabledDomains sets the value of EnabledDomains.
+func (s *PolicySimulationInputCompare) SetEnabledDomains(val []DomainCode) {
+	s.EnabledDomains = val
+}
+
+// 草案修订最近一次完成（或失败）的仿真。stale 为 true
+// 表示报告已过期：草案已再保存，或生效版本与策略代次已不同于仿真时的对比一侧。.
+// Ref: #/components/schemas/PolicySimulationRef
+type PolicySimulationRef struct {
+	SimulationID      string                    `json:"simulation_id"`
+	Status            PolicySimulationRefStatus `json:"status"`
+	FailureReason     OptString                 `json:"failure_reason"`
+	Stale             bool                      `json:"stale"`
+	CompareVersion    int64                     `json:"compare_version"`
+	CompareGeneration int64                     `json:"compare_generation"`
+	EnabledDomains    []DomainCode              `json:"enabled_domains"`
+	CompletedAt       time.Time                 `json:"completed_at"`
+}
+
+// GetSimulationID returns the value of SimulationID.
+func (s *PolicySimulationRef) GetSimulationID() string {
+	return s.SimulationID
+}
+
+// GetStatus returns the value of Status.
+func (s *PolicySimulationRef) GetStatus() PolicySimulationRefStatus {
+	return s.Status
+}
+
+// GetFailureReason returns the value of FailureReason.
+func (s *PolicySimulationRef) GetFailureReason() OptString {
+	return s.FailureReason
+}
+
+// GetStale returns the value of Stale.
+func (s *PolicySimulationRef) GetStale() bool {
+	return s.Stale
+}
+
+// GetCompareVersion returns the value of CompareVersion.
+func (s *PolicySimulationRef) GetCompareVersion() int64 {
+	return s.CompareVersion
+}
+
+// GetCompareGeneration returns the value of CompareGeneration.
+func (s *PolicySimulationRef) GetCompareGeneration() int64 {
+	return s.CompareGeneration
+}
+
+// GetEnabledDomains returns the value of EnabledDomains.
+func (s *PolicySimulationRef) GetEnabledDomains() []DomainCode {
+	return s.EnabledDomains
+}
+
+// GetCompletedAt returns the value of CompletedAt.
+func (s *PolicySimulationRef) GetCompletedAt() time.Time {
+	return s.CompletedAt
+}
+
+// SetSimulationID sets the value of SimulationID.
+func (s *PolicySimulationRef) SetSimulationID(val string) {
+	s.SimulationID = val
+}
+
+// SetStatus sets the value of Status.
+func (s *PolicySimulationRef) SetStatus(val PolicySimulationRefStatus) {
+	s.Status = val
+}
+
+// SetFailureReason sets the value of FailureReason.
+func (s *PolicySimulationRef) SetFailureReason(val OptString) {
+	s.FailureReason = val
+}
+
+// SetStale sets the value of Stale.
+func (s *PolicySimulationRef) SetStale(val bool) {
+	s.Stale = val
+}
+
+// SetCompareVersion sets the value of CompareVersion.
+func (s *PolicySimulationRef) SetCompareVersion(val int64) {
+	s.CompareVersion = val
+}
+
+// SetCompareGeneration sets the value of CompareGeneration.
+func (s *PolicySimulationRef) SetCompareGeneration(val int64) {
+	s.CompareGeneration = val
+}
+
+// SetEnabledDomains sets the value of EnabledDomains.
+func (s *PolicySimulationRef) SetEnabledDomains(val []DomainCode) {
+	s.EnabledDomains = val
+}
+
+// SetCompletedAt sets the value of CompletedAt.
+func (s *PolicySimulationRef) SetCompletedAt(val time.Time) {
+	s.CompletedAt = val
+}
+
+type PolicySimulationRefStatus string
+
+const (
+	PolicySimulationRefStatusCompleted PolicySimulationRefStatus = "completed"
+	PolicySimulationRefStatusFailed    PolicySimulationRefStatus = "failed"
+)
+
+// AllValues returns all PolicySimulationRefStatus values.
+func (PolicySimulationRefStatus) AllValues() []PolicySimulationRefStatus {
+	return []PolicySimulationRefStatus{
+		PolicySimulationRefStatusCompleted,
+		PolicySimulationRefStatusFailed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicySimulationRefStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicySimulationRefStatusCompleted:
+		return []byte(s), nil
+	case PolicySimulationRefStatusFailed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicySimulationRefStatus) UnmarshalText(data []byte) error {
+	switch PolicySimulationRefStatus(data) {
+	case PolicySimulationRefStatusCompleted:
+		*s = PolicySimulationRefStatusCompleted
+		return nil
+	case PolicySimulationRefStatusFailed:
+		*s = PolicySimulationRefStatusFailed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 处置阈值；drop_below 须小于 pursue_at（不满足时草案保存但不通过校验）.
+// Ref: #/components/schemas/PolicyThresholds
+type PolicyThresholds struct {
+	BaseScore int `json:"base_score"`
+	PursueAt  int `json:"pursue_at"`
+	DropBelow int `json:"drop_below"`
+}
+
+// GetBaseScore returns the value of BaseScore.
+func (s *PolicyThresholds) GetBaseScore() int {
+	return s.BaseScore
+}
+
+// GetPursueAt returns the value of PursueAt.
+func (s *PolicyThresholds) GetPursueAt() int {
+	return s.PursueAt
+}
+
+// GetDropBelow returns the value of DropBelow.
+func (s *PolicyThresholds) GetDropBelow() int {
+	return s.DropBelow
+}
+
+// SetBaseScore sets the value of BaseScore.
+func (s *PolicyThresholds) SetBaseScore(val int) {
+	s.BaseScore = val
+}
+
+// SetPursueAt sets the value of PursueAt.
+func (s *PolicyThresholds) SetPursueAt(val int) {
+	s.PursueAt = val
+}
+
+// SetDropBelow sets the value of DropBelow.
+func (s *PolicyThresholds) SetDropBelow(val int) {
+	s.DropBelow = val
+}
+
+// 策略版本：激活时的合成结果、模板版本与仿真时固定的启用领域集合，以及申请人、批准人与依据.
+// Ref: #/components/schemas/PolicyVersion
+type PolicyVersion struct {
+	Version         int64              `json:"version"`
+	State           PolicyVersionState `json:"state"`
+	TemplateID      string             `json:"template_id"`
+	TemplateVersion string             `json:"template_version"`
+	Form            PolicyForm         `json:"form"`
+	Rules           []PolicyRule       `json:"rules"`
+	EnabledDomains  []DomainCode       `json:"enabled_domains"`
+	SimulationID    string             `json:"simulation_id"`
+	ApprovalID      string             `json:"approval_id"`
+	RequestedBy     Subject            `json:"requested_by"`
+	ApprovedBy      Subject            `json:"approved_by"`
+	// 首次激活的业务时间（回滚重新生效不改变它）.
+	ActivatedAt    time.Time `json:"activated_at"`
+	SourceRevision int64     `json:"source_revision"`
+}
+
+// GetVersion returns the value of Version.
+func (s *PolicyVersion) GetVersion() int64 {
+	return s.Version
+}
+
+// GetState returns the value of State.
+func (s *PolicyVersion) GetState() PolicyVersionState {
+	return s.State
+}
+
+// GetTemplateID returns the value of TemplateID.
+func (s *PolicyVersion) GetTemplateID() string {
+	return s.TemplateID
+}
+
+// GetTemplateVersion returns the value of TemplateVersion.
+func (s *PolicyVersion) GetTemplateVersion() string {
+	return s.TemplateVersion
+}
+
+// GetForm returns the value of Form.
+func (s *PolicyVersion) GetForm() PolicyForm {
+	return s.Form
+}
+
+// GetRules returns the value of Rules.
+func (s *PolicyVersion) GetRules() []PolicyRule {
+	return s.Rules
+}
+
+// GetEnabledDomains returns the value of EnabledDomains.
+func (s *PolicyVersion) GetEnabledDomains() []DomainCode {
+	return s.EnabledDomains
+}
+
+// GetSimulationID returns the value of SimulationID.
+func (s *PolicyVersion) GetSimulationID() string {
+	return s.SimulationID
+}
+
+// GetApprovalID returns the value of ApprovalID.
+func (s *PolicyVersion) GetApprovalID() string {
+	return s.ApprovalID
+}
+
+// GetRequestedBy returns the value of RequestedBy.
+func (s *PolicyVersion) GetRequestedBy() Subject {
+	return s.RequestedBy
+}
+
+// GetApprovedBy returns the value of ApprovedBy.
+func (s *PolicyVersion) GetApprovedBy() Subject {
+	return s.ApprovedBy
+}
+
+// GetActivatedAt returns the value of ActivatedAt.
+func (s *PolicyVersion) GetActivatedAt() time.Time {
+	return s.ActivatedAt
+}
+
+// GetSourceRevision returns the value of SourceRevision.
+func (s *PolicyVersion) GetSourceRevision() int64 {
+	return s.SourceRevision
+}
+
+// SetVersion sets the value of Version.
+func (s *PolicyVersion) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetState sets the value of State.
+func (s *PolicyVersion) SetState(val PolicyVersionState) {
+	s.State = val
+}
+
+// SetTemplateID sets the value of TemplateID.
+func (s *PolicyVersion) SetTemplateID(val string) {
+	s.TemplateID = val
+}
+
+// SetTemplateVersion sets the value of TemplateVersion.
+func (s *PolicyVersion) SetTemplateVersion(val string) {
+	s.TemplateVersion = val
+}
+
+// SetForm sets the value of Form.
+func (s *PolicyVersion) SetForm(val PolicyForm) {
+	s.Form = val
+}
+
+// SetRules sets the value of Rules.
+func (s *PolicyVersion) SetRules(val []PolicyRule) {
+	s.Rules = val
+}
+
+// SetEnabledDomains sets the value of EnabledDomains.
+func (s *PolicyVersion) SetEnabledDomains(val []DomainCode) {
+	s.EnabledDomains = val
+}
+
+// SetSimulationID sets the value of SimulationID.
+func (s *PolicyVersion) SetSimulationID(val string) {
+	s.SimulationID = val
+}
+
+// SetApprovalID sets the value of ApprovalID.
+func (s *PolicyVersion) SetApprovalID(val string) {
+	s.ApprovalID = val
+}
+
+// SetRequestedBy sets the value of RequestedBy.
+func (s *PolicyVersion) SetRequestedBy(val Subject) {
+	s.RequestedBy = val
+}
+
+// SetApprovedBy sets the value of ApprovedBy.
+func (s *PolicyVersion) SetApprovedBy(val Subject) {
+	s.ApprovedBy = val
+}
+
+// SetActivatedAt sets the value of ActivatedAt.
+func (s *PolicyVersion) SetActivatedAt(val time.Time) {
+	s.ActivatedAt = val
+}
+
+// SetSourceRevision sets the value of SourceRevision.
+func (s *PolicyVersion) SetSourceRevision(val int64) {
+	s.SourceRevision = val
+}
+
+// Ref: #/components/schemas/PolicyVersionList
+type PolicyVersionList struct {
+	Versions   []PolicyVersion `json:"versions"`
+	Truncated  bool            `json:"truncated"`
+	NextCursor OptPolicyCursor `json:"next_cursor"`
+}
+
+// GetVersions returns the value of Versions.
+func (s *PolicyVersionList) GetVersions() []PolicyVersion {
+	return s.Versions
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *PolicyVersionList) GetTruncated() bool {
+	return s.Truncated
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *PolicyVersionList) GetNextCursor() OptPolicyCursor {
+	return s.NextCursor
+}
+
+// SetVersions sets the value of Versions.
+func (s *PolicyVersionList) SetVersions(val []PolicyVersion) {
+	s.Versions = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *PolicyVersionList) SetTruncated(val bool) {
+	s.Truncated = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *PolicyVersionList) SetNextCursor(val OptPolicyCursor) {
+	s.NextCursor = val
+}
+
+type PolicyVersionState string
+
+const (
+	PolicyVersionStateActive     PolicyVersionState = "active"
+	PolicyVersionStateSuperseded PolicyVersionState = "superseded"
+)
+
+// AllValues returns all PolicyVersionState values.
+func (PolicyVersionState) AllValues() []PolicyVersionState {
+	return []PolicyVersionState{
+		PolicyVersionStateActive,
+		PolicyVersionStateSuperseded,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PolicyVersionState) MarshalText() ([]byte, error) {
+	switch s {
+	case PolicyVersionStateActive:
+		return []byte(s), nil
+	case PolicyVersionStateSuperseded:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PolicyVersionState) UnmarshalText(data []byte) error {
+	switch PolicyVersionState(data) {
+	case PolicyVersionStateActive:
+		*s = PolicyVersionStateActive
+		return nil
+	case PolicyVersionStateSuperseded:
+		*s = PolicyVersionStateSuperseded
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/Problem
@@ -1636,6 +4165,92 @@ func (s *Qualification) SetValidFrom(val OptDate) {
 // SetValidTo sets the value of ValidTo.
 func (s *Qualification) SetValidTo(val OptDate) {
 	s.ValidTo = val
+}
+
+// Ref: #/components/schemas/RequestPolicyActivationRequest
+type RequestPolicyActivationRequest struct {
+	ExpectedVersion int64  `json:"expected_version"`
+	Revision        int64  `json:"revision"`
+	SimulationID    string `json:"simulation_id"`
+	Note            string `json:"note"`
+	// 仅首次激活；缺省 30（PRD 第7段第13节第2项），0 为不回填.
+	BackfillDays OptInt `json:"backfill_days"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *RequestPolicyActivationRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// GetRevision returns the value of Revision.
+func (s *RequestPolicyActivationRequest) GetRevision() int64 {
+	return s.Revision
+}
+
+// GetSimulationID returns the value of SimulationID.
+func (s *RequestPolicyActivationRequest) GetSimulationID() string {
+	return s.SimulationID
+}
+
+// GetNote returns the value of Note.
+func (s *RequestPolicyActivationRequest) GetNote() string {
+	return s.Note
+}
+
+// GetBackfillDays returns the value of BackfillDays.
+func (s *RequestPolicyActivationRequest) GetBackfillDays() OptInt {
+	return s.BackfillDays
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *RequestPolicyActivationRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// SetRevision sets the value of Revision.
+func (s *RequestPolicyActivationRequest) SetRevision(val int64) {
+	s.Revision = val
+}
+
+// SetSimulationID sets the value of SimulationID.
+func (s *RequestPolicyActivationRequest) SetSimulationID(val string) {
+	s.SimulationID = val
+}
+
+// SetNote sets the value of Note.
+func (s *RequestPolicyActivationRequest) SetNote(val string) {
+	s.Note = val
+}
+
+// SetBackfillDays sets the value of BackfillDays.
+func (s *RequestPolicyActivationRequest) SetBackfillDays(val OptInt) {
+	s.BackfillDays = val
+}
+
+// Ref: #/components/schemas/RequestPolicyRollbackRequest
+type RequestPolicyRollbackRequest struct {
+	TargetVersion int64  `json:"target_version"`
+	Note          string `json:"note"`
+}
+
+// GetTargetVersion returns the value of TargetVersion.
+func (s *RequestPolicyRollbackRequest) GetTargetVersion() int64 {
+	return s.TargetVersion
+}
+
+// GetNote returns the value of Note.
+func (s *RequestPolicyRollbackRequest) GetNote() string {
+	return s.Note
+}
+
+// SetTargetVersion sets the value of TargetVersion.
+func (s *RequestPolicyRollbackRequest) SetTargetVersion(val int64) {
+	s.TargetVersion = val
+}
+
+// SetNote sets the value of Note.
+func (s *RequestPolicyRollbackRequest) SetNote(val string) {
+	s.Note = val
 }
 
 // Ref: #/components/schemas/SetObjectiveStateRequest

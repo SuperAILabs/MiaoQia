@@ -31,6 +31,15 @@ func NewContextReader(baseURL string) (api.ContextReader, error) {
 	return client{cl}, nil
 }
 
+// NewPolicyReader 返回远程策略仿真输入读取接口；baseURL 同 NewContextReader。
+func NewPolicyReader(baseURL string) (api.PolicyReader, error) {
+	r, err := NewContextReader(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return r.(client), nil
+}
+
 // refuseRedirect 拒绝重定向：重定向后的请求会重新附加请求上下文头，且目标未经入口校验。
 func refuseRedirect(*http.Request, []*http.Request) error {
 	return errors.New("customer-context remote refuses redirects")
@@ -77,5 +86,16 @@ func (c client) ContextSnapshot(ctx context.Context, orgUnit string, version int
 				return nil, translate(err)
 			}
 			return s, nil
+		})
+}
+
+func (c client) SimulationInput(ctx context.Context, objective string, revision int64) (*api.SimulationInput, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetPolicySimulationInput", Idempotent: true},
+		func(ctx context.Context) (*api.SimulationInput, error) {
+			in, err := c.c.GetPolicySimulationInput(ctx, cc.GetPolicySimulationInputParams{ObjectiveID: objective, Revision: revision})
+			if err != nil {
+				return nil, translate(err)
+			}
+			return in, nil
 		})
 }

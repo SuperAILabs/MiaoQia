@@ -601,3 +601,547 @@ fixtures:
     patch:
     - op: remove
       path: /objectives
+- schema: PolicyDisposition
+  base: pursue_candidate
+  cases:
+  - name: 未知处置
+    valid: false
+    instance: signal
+- schema: PolicyRuleID
+  base: B-LARGE
+  cases:
+  - name: 小写编号
+    valid: false
+    instance: b-large
+- schema: PolicyRuleOverride
+  base:
+    id: B-LARGE
+    enabled: true
+    weight: 20
+  cases:
+  - name: 只停用
+    valid: true
+    patch:
+    - op: remove
+      path: /weight
+    - op: replace
+      path: /enabled
+      value: false
+  - name: 权重超过50
+    valid: false
+    patch:
+    - op: replace
+      path: /weight
+      value: 51
+  - name: 权重为0
+    valid: false
+    patch:
+    - op: replace
+      path: /weight
+      value: 0
+  - name: 缺少启停
+    valid: false
+    patch:
+    - op: remove
+      path: /enabled
+- schema: PolicyThresholds
+  base:
+    base_score: 50
+    pursue_at: 60
+    drop_below: 20
+  cases:
+  - name: 负数阈值
+    valid: false
+    patch:
+    - op: replace
+      path: /drop_below
+      value: -1
+  - name: 缺少阈值
+    valid: false
+    patch:
+    - op: remove
+      path: /pursue_at
+- schema: PolicyNotify
+  base:
+    audience:
+    - objective_owner
+    - role:decision_maker
+    mode: immediate
+  cases:
+  - name: 不能通知租户管理员角色
+    valid: false
+    patch:
+    - op: replace
+      path: /audience
+      value:
+      - role:admin
+  - name: 不能直接指定成员
+    valid: false
+    patch:
+    - op: replace
+      path: /audience
+      value:
+      - user-1
+  - name: 受众不能为空
+    valid: false
+    patch:
+    - op: replace
+      path: /audience
+      value: []
+  - name: 未知方式
+    valid: false
+    patch:
+    - op: replace
+      path: /mode
+      value: sms
+- schema: PolicyNotifySettings
+  base:
+    pursue_candidate:
+      audience:
+      - objective_owner
+      mode: immediate
+    review_candidate:
+      audience:
+      - objective_members
+      mode: digest
+  cases:
+  - name: 排除处置没有通知
+    valid: false
+    patch:
+    - op: add
+      path: /excluded
+      value:
+        audience:
+        - objective_owner
+        mode: digest
+- schema: PolicyForm
+  base:
+    params:
+      large_amount_cny:
+        source: objective
+        number: 10000000
+    rules:
+    - id: B-LARGE
+      enabled: true
+      weight: 20
+    - id: R-AMOUNT
+      enabled: false
+    thresholds:
+      base_score: 50
+      pursue_at: 60
+      drop_below: 20
+    notify:
+      pursue_candidate:
+        audience:
+        - objective_owner
+        mode: immediate
+  cases:
+  - name: 缺少阈值
+    valid: false
+    patch:
+    - op: remove
+      path: /thresholds
+  - name: 不能追加规则表达式
+    valid: false
+    patch:
+    - op: add
+      path: /rules/0/when
+      value: 'true'
+- schema: PolicyRule
+  base:
+    id: R-CAT
+    clause: require
+    say: 项目标的包含我方产品品类
+    enabled: true
+    locked: false
+  cases:
+  - name: 加分规则带权重
+    valid: true
+    patch:
+    - op: replace
+      path: /clause
+      value: boost
+    - op: add
+      path: /weight
+      value: 10
+  - name: 未知子句
+    valid: false
+    patch:
+    - op: replace
+      path: /clause
+      value: score
+- schema: PolicyIssue
+  base:
+    where: thresholds
+    message: drop_below 须小于 pursue_at
+  cases:
+  - name: 缺少说明
+    valid: false
+    patch:
+    - op: remove
+      path: /message
+- schema: PolicyExampleMismatch
+  base:
+    name: 已有客户总包中标含我方品类的项目
+    expected: pursue_candidate
+    actual: review_candidate
+  cases:
+  - name: 未知处置
+    valid: false
+    patch:
+    - op: replace
+      path: /actual
+      value: maybe
+- schema: DomainCode
+  base: INF-CRED
+  cases:
+  - name: 不是信息领域编码
+    valid: false
+    instance: credit
+- schema: PolicySimulationRef
+  base:
+    simulation_id: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    status: completed
+    stale: false
+    compare_version: 0
+    compare_generation: 0
+    enabled_domains:
+    - INF-PROC
+    - INF-ORG
+    completed_at: '2026-10-19T08:00:00Z'
+  cases:
+  - name: 失败带原因
+    valid: true
+    patch:
+    - op: replace
+      path: /status
+      value: failed
+    - op: add
+      path: /failure_reason
+      value: dataset_unavailable
+  - name: 运行中不是完成态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: running
+  - name: 仿真标识前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /simulation_id
+      value: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: PolicyDraft
+  base:
+    revision: 2
+    base_version: 0
+    template_id: TPL-TENDER-A02-SUPPLY
+    template_version: 0.3.0
+    form:
+      params: {}
+      rules: []
+      thresholds:
+        base_score: 50
+        pursue_at: 60
+        drop_below: 20
+      notify: {}
+    rules:
+    - id: R-CAT
+      clause: require
+      say: 项目标的包含我方产品品类
+      enabled: true
+      locked: false
+    valid: true
+    issues: []
+    example_mismatches: []
+    saved_by: dm-1
+    saved_at: '2026-10-19T08:00:00Z'
+  cases:
+  - name: 被激活申请锁定
+    valid: true
+    patch:
+    - op: add
+      path: /locked_by
+      value: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 修订从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /revision
+      value: 0
+  - name: 缺少校验结果
+    valid: false
+    patch:
+    - op: remove
+      path: /valid
+- schema: PolicyVersion
+  base:
+    version: 1
+    state: active
+    template_id: TPL-TENDER-A02-SUPPLY
+    template_version: 0.3.0
+    form:
+      params: {}
+      rules: []
+      thresholds:
+        base_score: 50
+        pursue_at: 60
+        drop_below: 20
+      notify: {}
+    rules: []
+    enabled_domains:
+    - INF-PROC
+    simulation_id: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    requested_by: dm-1
+    approved_by: admin-1
+    activated_at: '2026-10-19T09:00:00Z'
+    source_revision: 2
+  cases:
+  - name: 已替代
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: superseded
+  - name: 草案不是版本状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: draft
+  - name: 缺少批准人
+    valid: false
+    patch:
+    - op: remove
+      path: /approved_by
+- schema: PolicyRequest
+  base:
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    kind: activation
+    state: pending
+    object_version: 2
+    simulation_id: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    baseline_version: 0
+    baseline_generation: 0
+    backfill_days: 30
+    requested_by: dm-1
+  cases:
+  - name: 回滚执行失败
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: rollback
+    - op: remove
+      path: /backfill_days
+    - op: replace
+      path: /state
+      value: failed
+    - op: add
+      path: /reason
+      value: baseline_changed
+  - name: 回填超过30天
+    valid: false
+    patch:
+    - op: replace
+      path: /backfill_days
+      value: 31
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: approved
+- schema: Policy
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    generation: 0
+    active_version: 0
+    draft_version: 1
+  cases:
+  - name: 代次不能为负
+    valid: false
+    patch:
+    - op: replace
+      path: /generation
+      value: -1
+  - name: 缺少草案版本号
+    valid: false
+    patch:
+    - op: remove
+      path: /draft_version
+- schema: PolicyCursor
+  base: eyJ2IjozfQ
+  cases:
+  - name: 非 base64url
+    valid: false
+    instance: a/b
+- schema: PolicyVersionList
+  base:
+    versions: []
+    truncated: false
+  cases:
+  - name: 缺少截断标记
+    valid: false
+    patch:
+    - op: remove
+      path: /truncated
+- schema: PolicyDiff
+  base:
+    from: v1
+    to: draft
+    template_version_from: 0.3.0
+    template_version_to: 0.3.0
+    rules:
+    - id: R-AMOUNT
+      clause: require
+      change: disabled
+      highlight: true
+    - id: B-LARGE
+      clause: boost
+      change: weight_changed
+      from_weight: 10
+      to_weight: 20
+      highlight: false
+    params:
+    - name: large_amount_cny
+      from:
+        source: default
+      to:
+        source: objective
+        number: 10000000
+    thresholds: []
+    notify: []
+    domains_added: []
+    domains_removed: []
+  cases:
+  - name: 引用格式
+    valid: false
+    patch:
+    - op: replace
+      path: /from
+      value: '1'
+  - name: 未知变化
+    valid: false
+    patch:
+    - op: replace
+      path: /rules/0/change
+      value: edited
+- schema: DraftPolicyRequest
+  base:
+    expected_version: 0
+    form:
+      params: {}
+      rules: []
+      thresholds:
+        base_score: 50
+        pursue_at: 60
+        drop_below: 20
+      notify: {}
+  cases:
+  - name: 缺少表单
+    valid: false
+    patch:
+    - op: remove
+      path: /form
+- schema: DiscardPolicyDraftRequest
+  base:
+    expected_version: 3
+  cases:
+  - name: 版本号从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+- schema: RequestPolicyActivationRequest
+  base:
+    expected_version: 2
+    revision: 2
+    simulation_id: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    note: 提高大额阈值并加重已有客户权重
+    backfill_days: 30
+  cases:
+  - name: 不回填
+    valid: true
+    patch:
+    - op: replace
+      path: /backfill_days
+      value: 0
+  - name: 说明必填
+    valid: false
+    patch:
+    - op: remove
+      path: /note
+  - name: 回填超过30天
+    valid: false
+    patch:
+    - op: replace
+      path: /backfill_days
+      value: 90
+- schema: RequestPolicyRollbackRequest
+  base:
+    target_version: 1
+    note: v2 信号过多，回到 v1
+  cases:
+  - name: 说明不能为空
+    valid: false
+    patch:
+    - op: replace
+      path: /note
+      value: ''
+- schema: PolicyDocument
+  base:
+    id: TPL-TENDER-A02-SUPPLY
+    version: 0.3.0
+    thresholds:
+      base_score: 50
+      pursue_at: 60
+      drop_below: 20
+  cases:
+  - name: 缺少模板版本
+    valid: false
+    patch:
+    - op: remove
+      path: /version
+- schema: PolicySimulationInput
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    requires_domains:
+    - INF-PROC
+    - INF-CRED
+    revision: 2
+    valid: true
+    document:
+      id: TPL-TENDER-A02-SUPPLY
+      version: 0.3.0
+    form:
+      params: {}
+      rules: []
+      thresholds:
+        base_score: 50
+        pursue_at: 60
+        drop_below: 20
+      notify: {}
+    example_mismatches: []
+    generation: 1
+    compare:
+      version: 1
+      document:
+        id: TPL-TENDER-A02-SUPPLY
+        version: 0.3.0
+      enabled_domains:
+      - INF-PROC
+  cases:
+  - name: 首次激活没有对比一侧
+    valid: true
+    patch:
+    - op: remove
+      path: /compare
+  - name: 对比一侧缺少文档
+    valid: false
+    patch:
+    - op: remove
+      path: /compare/document

@@ -3,3 +3,17 @@ package api
 
 // Name 是子系统名。
 const Name = "learning"
+
+// Error 是可在传输边界暴露的错误（稳定 code）；基础设施错误不直接暴露。
+type Error struct {
+	Status int
+	Code   string
+	Detail string
+}
+
+func (e *Error) Error() string {
+	if e.Detail != "" {
+		return e.Code + "：" + e.Detail
+	}
+	return e.Code
+}

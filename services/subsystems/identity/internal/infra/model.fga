@@ -78,6 +78,8 @@ type org_unit
     define can_request_export: decision_maker or business_developer or pursuit_lead or research_analyst or admin
     # 单元级列表关系（identity.md 7.7）：范围内可见的目标，等于 objective#can_view 去掉参与关系的部分
     define can_list_objectives: decision_maker or research_analyst or admin
+    # 单元级策略起草关系（identity.md 7.7）：objective#can_draft_policy 去掉参与关系的部分
+    define can_draft_unit_policies: decision_maker
 
 # 租户启用的商业目标：策略、信号、判断与决策都归属目标
 type objective

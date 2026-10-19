@@ -24,8 +24,64 @@ func encodeConfigureObjectiveRequest(
 	return nil
 }
 
+func encodeDiscardPolicyDraftRequest(
+	req *DiscardPolicyDraftRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeDraftPolicyChangeRequest(
+	req *DraftPolicyRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeEnableObjectiveRequest(
 	req *EnableObjectiveRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeRequestPolicyActivationRequest(
+	req *RequestPolicyActivationRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeRequestPolicyRollbackRequest(
+	req *RequestPolicyRollbackRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

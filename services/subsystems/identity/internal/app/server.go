@@ -122,3 +122,22 @@ func (s *Server) RevokeChannelSessions(ctx context.Context, req *identityapi.Rev
 func (s *Server) ListLiveChannelSessions(ctx context.Context, params identityapi.ListLiveChannelSessionsParams) (*identityapi.LiveChannelBindingList, error) {
 	return s.Directory.ListLiveChannelSessions(ctx, string(params.Cursor.Or("")), params.Limit.Or(maxLiveBindings))
 }
+
+func (s *Server) ListApprovals(ctx context.Context, params identityapi.ListApprovalsParams) (*identityapi.ApprovalList, error) {
+	return s.Directory.ListApprovals(ctx, params)
+}
+func (s *Server) GetApproval(ctx context.Context, params identityapi.GetApprovalParams) (*identityapi.ApprovalRequest, error) {
+	return s.Directory.GetApproval(ctx, string(params.ApprovalID))
+}
+func (s *Server) DecideApproval(ctx context.Context, req *identityapi.DecideApprovalRequest, params identityapi.DecideApprovalParams) (*identityapi.ApprovalRequest, error) {
+	return s.Directory.DecideApproval(ctx, string(params.ApprovalID), req, params.IdempotencyKey)
+}
+func (s *Server) WithdrawApproval(ctx context.Context, req *identityapi.ApprovalVersionRequest, params identityapi.WithdrawApprovalParams) (*identityapi.ApprovalRequest, error) {
+	return s.Directory.WithdrawApproval(ctx, string(params.ApprovalID), req, params.IdempotencyKey)
+}
+func (s *Server) RequestApproval(ctx context.Context, req *identityapi.RequestApprovalRequest, params identityapi.RequestApprovalParams) (*identityapi.ApprovalRequest, error) {
+	return s.Directory.RequestApproval(ctx, req, params.IdempotencyKey)
+}
+func (s *Server) CloseApproval(ctx context.Context, req *identityapi.CloseApprovalRequest, params identityapi.CloseApprovalParams) (*identityapi.ApprovalRequest, error) {
+	return s.Directory.CloseApproval(ctx, string(params.ApprovalID), req)
+}

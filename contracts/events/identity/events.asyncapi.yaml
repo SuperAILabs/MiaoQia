@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: identity 生命周期事件
-  version: 1.2.0
+  version: 1.3.0
 channels:
   platform.identity:
     address: platform.identity
@@ -16,6 +16,12 @@ channels:
         $ref: '#/components/messages/memberChanged'
       invitationChanged:
         $ref: '#/components/messages/invitationChanged'
+      approvalRequested:
+        $ref: '#/components/messages/approvalRequested'
+      approvalDecided:
+        $ref: '#/components/messages/approvalDecided'
+      approvalClosed:
+        $ref: '#/components/messages/approvalClosed'
 operations:
   publishIdentityEvents:
     action: send
@@ -303,3 +309,250 @@ components:
             properties:
               state:
                 const: expired
+    approvalRequested:
+      name: identity.approval.requested.v1
+      x-fixtures-required: true
+      description: >-
+        审批请求已提交（1.3.0 起）。通知有资格的审批人（不含申请人），所属子系统据此核对本地是否已登记该请求（未登记且绑定已不成立时使其失效）。
+        按 (approval_id, version) 去重。effective_at 为提交时间（业务时间），expires_at 为最长有效期。
+      payload:
+        additionalProperties: false
+        type: object
+        required: [tenant_id, approval_id, type, resource, applicant, version, binding, effective_at, expires_at]
+        properties:
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          approval_id:
+            pattern: ^apr_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          type:
+            type: string
+            enum:
+            - policy_activation
+            - policy_rollback
+          resource:
+            type: string
+            pattern: ^objective:obj_[0-9A-HJKMNP-TV-Z]{26}$
+          applicant:
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+            type: string
+          version:
+            minimum: 1
+            type: integer
+          binding:
+            type: object
+            additionalProperties: false
+            description: 请求绑定的不可变对象版本与基准（与 identity OpenAPI 的 ApprovalBinding 相同）
+            required:
+            - object_version
+            - evidence_ref
+            - baseline_version
+            - baseline_generation
+            properties:
+              object_version:
+                type: integer
+                minimum: 1
+              evidence_ref:
+                type: string
+                pattern: ^sim_[0-9A-HJKMNP-TV-Z]{26}$
+              baseline_version:
+                type: integer
+                minimum: 0
+              baseline_generation:
+                type: integer
+                minimum: 0
+              backfill_days:
+                type: integer
+                minimum: 0
+                maximum: 30
+          effective_at:
+            type: string
+            format: date-time
+          expires_at:
+            type: string
+            format: date-time
+    approvalDecided:
+      name: identity.approval.decided.v1
+      x-fixtures-required: true
+      description: >-
+        审批请求已批准或驳回（1.3.0 起）。批准只针对 binding 中的对象版本与基准，所属子系统执行前核验绑定仍成立，不成立时不执行。
+        驳回带原因。每个请求只发布一次。
+      payload:
+        additionalProperties: false
+        type: object
+        required: [tenant_id, approval_id, type, resource, applicant, version, binding, effective_at, decision, decided_by]
+        properties:
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          approval_id:
+            pattern: ^apr_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          type:
+            type: string
+            enum:
+            - policy_activation
+            - policy_rollback
+          resource:
+            type: string
+            pattern: ^objective:obj_[0-9A-HJKMNP-TV-Z]{26}$
+          applicant:
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+            type: string
+          version:
+            minimum: 1
+            type: integer
+          binding:
+            type: object
+            additionalProperties: false
+            description: 请求绑定的不可变对象版本与基准（与 identity OpenAPI 的 ApprovalBinding 相同）
+            required:
+            - object_version
+            - evidence_ref
+            - baseline_version
+            - baseline_generation
+            properties:
+              object_version:
+                type: integer
+                minimum: 1
+              evidence_ref:
+                type: string
+                pattern: ^sim_[0-9A-HJKMNP-TV-Z]{26}$
+              baseline_version:
+                type: integer
+                minimum: 0
+              baseline_generation:
+                type: integer
+                minimum: 0
+              backfill_days:
+                type: integer
+                minimum: 0
+                maximum: 30
+          effective_at:
+            type: string
+            format: date-time
+          decision:
+            type: string
+            enum:
+            - approve
+            - reject
+          decided_by:
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+            type: string
+          reason:
+            type: string
+            minLength: 1
+            maxLength: 2000
+        allOf:
+        - if:
+            properties:
+              decision:
+                const: reject
+          then:
+            required:
+            - reason
+    approvalClosed:
+      name: identity.approval.closed.v1
+      x-fixtures-required: true
+      description: >-
+        审批请求未经决定而关闭（1.3.0 起）：withdrawn 申请人撤回；expired 超过7天有效期（effective_at 为到期时间，可能早于发布）；
+        invalidated 失效（reason：申请人退出或失去申请关系、所属子系统报告基准或对象已变）。通知申请人；激活申请的草案随之解锁，回滚申请不涉及草案。
+      payload:
+        additionalProperties: false
+        type: object
+        required: [tenant_id, approval_id, type, resource, applicant, version, binding, effective_at, state, reason]
+        properties:
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          approval_id:
+            pattern: ^apr_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          type:
+            type: string
+            enum:
+            - policy_activation
+            - policy_rollback
+          resource:
+            type: string
+            pattern: ^objective:obj_[0-9A-HJKMNP-TV-Z]{26}$
+          applicant:
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+            type: string
+          version:
+            minimum: 1
+            type: integer
+          binding:
+            type: object
+            additionalProperties: false
+            description: 请求绑定的不可变对象版本与基准（与 identity OpenAPI 的 ApprovalBinding 相同）
+            required:
+            - object_version
+            - evidence_ref
+            - baseline_version
+            - baseline_generation
+            properties:
+              object_version:
+                type: integer
+                minimum: 1
+              evidence_ref:
+                type: string
+                pattern: ^sim_[0-9A-HJKMNP-TV-Z]{26}$
+              baseline_version:
+                type: integer
+                minimum: 0
+              baseline_generation:
+                type: integer
+                minimum: 0
+              backfill_days:
+                type: integer
+                minimum: 0
+                maximum: 30
+          effective_at:
+            type: string
+            format: date-time
+          state:
+            type: string
+            enum:
+            - withdrawn
+            - expired
+            - invalidated
+          reason:
+            type: string
+            enum:
+            - withdrawn
+            - expired
+            - applicant_left
+            - applicant_lost_permission
+            - baseline_changed
+            - object_changed
+        allOf:
+        - if:
+            properties:
+              state:
+                const: withdrawn
+          then:
+            properties:
+              reason:
+                const: withdrawn
+        - if:
+            properties:
+              state:
+                const: expired
+          then:
+            properties:
+              reason:
+                const: expired
+        - if:
+            properties:
+              state:
+                const: invalidated
+          then:
+            properties:
+              reason:
+                enum:
+                - applicant_left
+                - applicant_lost_permission
+                - baseline_changed
+                - object_changed

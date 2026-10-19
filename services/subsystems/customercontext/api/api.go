@@ -45,6 +45,30 @@ func (l local) ContextSnapshot(ctx context.Context, orgUnit string, version int6
 		func(ctx context.Context) (*Snapshot, error) { return l.impl.ContextSnapshot(ctx, orgUnit, version) })
 }
 
+// PolicyBinding 是策略仿真输入读取接口在绑定表中的名称。
+const PolicyBinding = "customer-context.PolicyReader"
+
+// SimulationInput 是契约生成类型（PolicySimulationInput）。
+type SimulationInput = customercontextapi.PolicySimulationInput
+
+// PolicyReader 是策略草案的仿真输入读取接口（learning 使用；有 tenant#can_read_context 的服务主体）。只读、幂等：
+// 返回草案修订的合成文档与校验结果，以及读取时的生效版本（对比一侧）与策略代次。
+type PolicyReader interface {
+	SimulationInput(ctx context.Context, objective string, revision int64) (*SimulationInput, error)
+}
+
+// LocalPolicy 把本地实现包装为经调用管线的接口。
+func LocalPolicy(impl PolicyReader) PolicyReader { return localPolicy{impl} }
+
+type localPolicy struct{ impl PolicyReader }
+
+func (l localPolicy) SimulationInput(ctx context.Context, objective string, revision int64) (*SimulationInput, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetPolicySimulationInput", Idempotent: true},
+		func(ctx context.Context) (*SimulationInput, error) {
+			return l.impl.SimulationInput(ctx, objective, revision)
+		})
+}
+
 // Error 是可在传输边界暴露的错误（稳定 code）；基础设施错误不直接暴露。
 type Error struct {
 	Status int
