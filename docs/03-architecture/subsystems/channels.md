@@ -1,6 +1,6 @@
 # 渠道与会话子系统（channels）
 
-> 状态：评审中 · 版本：3.5 · 更新：2026-10-18 · 平面：交互
+> 状态：评审中 · 版本：3.6 · 更新：2026-10-19 · 平面：交互
 
 ## 1. 使命
 
@@ -91,7 +91,7 @@
 简报是“今日简报”导航与渠道早间推送的共同来源。组装规则：
 
 1. **按区组织**：每个启用目标一个区（如“直接投标”“进入供货”“竞争情报”），另设“待我处理”（待审批、到期任务）与“关注变化”（持续型推进的对象变化，以及本人的个人关注，[detection 第 11 节](detection.md#11-关注)）两个跨目标区。不同目标的 `rank_score` 不混排，符合 [业务不变量](../../02-business/01-business-architecture.md#7-业务不变量)第 8 条；
-2. **区内排序**：目标区按该目标策略的排序分；“待我处理”按截止时间；“关注变化”按变化时间；
+2. **区内排序**：目标区按该目标策略的排序分；“待我处理”按截止时间；“关注变化”按变化时间；“待我处理”的到期任务来自 `pursuit.ListMyTasks`（分派给收件人、未完成、在下一期之前到期或已逾期；无有效负责人的列给目标范围的决策者），截止时间带精度与时区；
 3. **配额与优先**：每区条数上限与区的顺序由应用领域包声明，用户可在偏好中调整；截止时间在 24 小时内的事项和更正类变化不受配额截断；
 4. **去重**：同一目标对象在多个区出现时，只在优先级最高的区完整展示，其他区显示引用；
 5. **空态与截至时间**：每区标明数据截至时间；无结果、来源中断、目标未启用、无权限分别说明，不以空列表代替；
@@ -155,7 +155,7 @@
 | `InstallChannel` / `VerifyInstallation` / `UninstallChannel` | 命令 | 租户管理员安装、以测试消息验证、停用渠道应用；停用使该安装下全部绑定失效 |
 | `StartBinding` / `BindAccount` / `UnbindAccount` / `ListBindings` | 命令/查询 | 渠道账号绑定：`StartBinding` 为发起的渠道账号签发一次性绑定链接；`BindAccount` 只在渠道内置浏览器中、经渠道网页授权取得的当前渠道账号与链接一致且已登录妙洽时确认，请求与首次登录的会话固定。绑定的权威在本子系统；免登时核对绑定有效后签发 30 秒有效的签发凭据，交 identity 的 `IssueChannelSession` 使用，不在凭据有效期外重试；失效提交后绑定进入“失效中”、不再签发凭据，同步调用 `RevokeChannelSessions`（失败时经事件重试），撤销确认且最后一张凭据过期后才标为已完成。流程见 [PRD 第1段](../../01-product/prd/01-login-and-channel-binding.md) |
 | `ReceiveInbound` | 命令 | 适配器回调入口（经 `gateway` 暴露，验签） |
-| `ExecuteAction` | 命令 | 动作令牌触发，按 4.6 检查后以点击者身份转调对应子系统命令（`detection.TriageSignal` / `UndoSignalTriage`、`pursuit.CreatePursuit`）；令牌标识为操作标识，每次调用为一次尝试 |
+| `ExecuteAction` | 命令 | 动作令牌触发，按 4.6 检查后以点击者身份转调对应子系统命令（`detection.TriageSignal` / `UndoSignalTriage`、`pursuit.CreatePursuit`）；令牌标识为操作标识，每次调用为一次尝试；任务提醒卡片的“完成”转调 `pursuit.CompleteTask`，撤销转调 `ReopenTask`，规则同 4.6；截止改变后重建的提醒是新卡片与新令牌（[PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F9） |
 | `GetPreferences` / `UpdatePreferences` | 查询/命令 | 偏好 |
 | `ListNotifications` / `ListConversations` | 查询 | 工作台中的通知与会话列表 |
 | `ListBriefings` / `GetBriefing` | 查询 | 本人的简报历史与详情：条目为组装时快照，另叠加当前处理状态并分别标注时间轴；只返回本人的简报 |

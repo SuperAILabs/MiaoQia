@@ -1,6 +1,6 @@
 # 监测与匹配子系统（detection）
 
-> 状态：评审中 · 版本：2.1 · 更新：2026-10-18 · 平面：客户智能
+> 状态：评审中 · 版本：2.3 · 更新：2026-10-19 · 平面：客户智能
 
 ## 1. 使命
 
@@ -66,7 +66,7 @@
 
 **发布**：`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（载荷含操作标识、动作、反馈结果与原因标签、所见内容版本、各被改变部分的前后值、渠道与批次标识；撤销同样发布并引用被撤销的操作，`learning` 据此写入反馈集，以操作标识幂等）、`detection.pursuit_related_event.v1`。
 
-**消费**：领域事件（`domain.fact.upserted.v1` 及各领域事件）、`entity.merge.applied.v1`、`customer_context.policy.activated.v1` 与 `customer_context.policy.rolled_back.v1`（按策略代次提前刷新策略缓存）、`customer_context.objective.changed.v1`、`customer_context.profile.updated.v1` 与 `customer_context.entity_list.changed.v1`（按上下文版本提前刷新快照缓存）、`pursuit.pursuit.created.v1`（建立推进关联索引）。
+**消费**：领域事件（`domain.fact.upserted.v1` 及各领域事件）、`entity.merge.applied.v1`、`customer_context.policy.activated.v1` 与 `customer_context.policy.rolled_back.v1`（按策略代次提前刷新策略缓存）、`customer_context.objective.changed.v1`、`customer_context.profile.updated.v1` 与 `customer_context.entity_list.changed.v1`（按上下文版本提前刷新快照缓存）、`pursuit.pursuit.created.v1`（建立推进索引，不改变处理状态）、`pursuit.pursuit.signal_linked.v1` / `pursuit.pursuit.signal_unlinked.v1`（按关联标识加入或移除信号的有效关联，派生已转跟进，见第 4 节处理状态）。
 
 ## 7. 扩展点
 
@@ -108,10 +108,10 @@
 
 | 方面 | 规则 |
 |---|---|
-| 处理状态 | `open` 待处理、`triaged` 已调整处置、`converted` 已转跟进（消费 `pursuit.pursuit.created.v1`）、`dismissed` 已忽略、`closed` 已关闭（求值单位进入终态，或事实被撤回，[domain-intelligence 第 11 节](domain-intelligence.md#11-事实撤回与恢复)） |
+| 处理状态 | `open` 待处理、`triaged` 已调整处置、`converted` 已转跟进（由有效关联集合派生）、`dismissed` 已忽略、`closed` 已关闭（求值单位进入终态，或事实被撤回，[domain-intelligence 第 11 节](domain-intelligence.md#11-事实撤回与恢复)）。`converted` 只由推进的关联决定：每个信号保存有效关联集合（关联标识与推进标识），`signal_linked` 加入、`signal_unlinked` 移除，以关联标识幂等，已移除的关联标识保留为墓碑，同一关联晚到的加入或移除不再生效（不只依赖事件 `id` 去重）。集合从空变为非空时记录转换基线（转换前的处理状态与人工处置），未关闭的信号转为 `converted`（系统写入，状态版本递增）并记下写入后的状态版本 V；已关闭的信号只记录关联。集合非空时再加入只记账，不改状态与基线。移除只移除该关联；集合变空时，若状态版本仍为 V 则恢复基线，否则保持当前值，然后清除基线。因此不依赖跨推进的事件顺序：撤销 P1 后立即创建 P2、P2 的加入先于 P1 的移除到达时，基线仍是 P1 转换前的值，P2 撤销后信号回到该值。推进关闭不改变 `converted`（[PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F3） |
 | 人工处置 | 只在跟进候选、复核候选、观察之间调整，必须写原因；系统处置、得分与轨迹不变；不触发策略的 `route`。排除信号与已关闭信号不能调整处置 |
 | 版本 | 内容版本：重新求值追加 `SignalUpdate` 时递增。状态版本：处理状态或人工处置任一改变时递增。反馈版本：按（信号、成员）计，本人反馈每次改变时递增 |
-| 无变化与冲突 | 一个动作按部分（本人反馈、处理状态、人工处置）逐项判断：请求的效果已成立（值相同）的部分为无变化，不写记录、不校验版本；其余部分须所带版本等于当前版本，否则整个动作返回 `CONFLICT` 与当前值。处理状态都是 `triaged` 但人工处置不同不算无变化；信号已忽略不妨碍写入本人反馈。信号已关闭时，动作中的处理状态部分为不适用（`NOT_APPLICABLE`），反馈部分照常写入，一项结果按部分汇总；已转跟进的信号上“不相关 + 忽略”的处理状态部分按 [PRD 第5段](../../01-product/prd/05-briefing-quick-actions.md)第13节第6项 |
+| 无变化与冲突 | 一个动作按部分（本人反馈、处理状态、人工处置）逐项判断：请求的效果已成立（值相同）的部分为无变化，不写记录、不校验版本；其余部分须所带版本等于当前版本，否则整个动作返回 `CONFLICT` 与当前值。处理状态都是 `triaged` 但人工处置不同不算无变化；信号已忽略不妨碍写入本人反馈。信号已关闭时，动作中的处理状态部分为不适用（`NOT_APPLICABLE`），反馈部分照常写入，一项结果按部分汇总；已转跟进的信号上，忽略、恢复与调整处置的处理状态部分同样为不适用，反馈照常写入（[PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F3 第2条） |
 | 内容版本绑定 | 每次动作记录所见内容版本；与当前内容版本不一致时拒绝（`SIGNAL_UPDATED`）。重新求值不清除已有反馈与处理状态；已忽略信号遇到更新时是否回到待处理按 PRD 第3段第13节第4项 |
 | 反馈 | 结果为相关、不相关、排除正确、排除有误，原因标签取自应用领域包；每人每条信号以最新记录为当前反馈，修改与撤回都追加记录 |
 | 渠道来源 | 渠道卡片上的动作由 `channels` 以点击者身份调用 `TriageSignal` / `UndoSignalTriage`：操作标识为卡片按钮的动作令牌标识，每次调用是一次尝试并带自己的幂等键；`SignalTriage` 与 `signal.triaged` 记录渠道（如企业微信）。规则与 Web 完全相同，不另设渠道专用的判断 |
