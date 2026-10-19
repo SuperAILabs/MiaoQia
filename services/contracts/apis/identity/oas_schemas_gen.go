@@ -67,6 +67,32 @@ func (s *CheckResult) SetAllowed(val bool) {
 	s.Allowed = val
 }
 
+// Ref: #/components/schemas/CreateOrgUnitRequest
+type CreateOrgUnitRequest struct {
+	Name     string    `json:"name"`
+	ParentID OrgUnitID `json:"parent_id"`
+}
+
+// GetName returns the value of Name.
+func (s *CreateOrgUnitRequest) GetName() string {
+	return s.Name
+}
+
+// GetParentID returns the value of ParentID.
+func (s *CreateOrgUnitRequest) GetParentID() OrgUnitID {
+	return s.ParentID
+}
+
+// SetName sets the value of Name.
+func (s *CreateOrgUnitRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetParentID sets the value of ParentID.
+func (s *CreateOrgUnitRequest) SetParentID(val OrgUnitID) {
+	s.ParentID = val
+}
+
 // Ref: #/components/schemas/CreateTenantRequest
 type CreateTenantRequest struct {
 	Name         string `json:"name"`
@@ -91,6 +117,52 @@ func (s *CreateTenantRequest) SetName(val string) {
 // SetAdminSubject sets the value of AdminSubject.
 func (s *CreateTenantRequest) SetAdminSubject(val string) {
 	s.AdminSubject = val
+}
+
+// NewOptOrgUnitID returns new OptOrgUnitID with value set to v.
+func NewOptOrgUnitID(v OrgUnitID) OptOrgUnitID {
+	return OptOrgUnitID{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptOrgUnitID is optional OrgUnitID.
+type OptOrgUnitID struct {
+	Value OrgUnitID
+	Set   bool
+}
+
+// IsSet returns true if OptOrgUnitID was set.
+func (o OptOrgUnitID) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptOrgUnitID) Reset() {
+	var v OrgUnitID
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptOrgUnitID) SetTo(v OrgUnitID) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptOrgUnitID) Get() (v OrgUnitID, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptOrgUnitID) Or(d OrgUnitID) OrgUnitID {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
 }
 
 // NewOptString returns new OptString with value set to v.
@@ -137,6 +209,169 @@ func (o OptString) Or(d string) string {
 		return v
 	}
 	return d
+}
+
+// Ref: #/components/schemas/OrgUnit
+type OrgUnit struct {
+	ID       OrgUnitID    `json:"id"`
+	Name     string       `json:"name"`
+	ParentID OptOrgUnitID `json:"parent_id"`
+	// 单元链，从本单元到根单元（含两端）；根单元的链只含 root.
+	Chain   []OrgUnitID `json:"chain"`
+	Version int64       `json:"version"`
+}
+
+// GetID returns the value of ID.
+func (s *OrgUnit) GetID() OrgUnitID {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *OrgUnit) GetName() string {
+	return s.Name
+}
+
+// GetParentID returns the value of ParentID.
+func (s *OrgUnit) GetParentID() OptOrgUnitID {
+	return s.ParentID
+}
+
+// GetChain returns the value of Chain.
+func (s *OrgUnit) GetChain() []OrgUnitID {
+	return s.Chain
+}
+
+// GetVersion returns the value of Version.
+func (s *OrgUnit) GetVersion() int64 {
+	return s.Version
+}
+
+// SetID sets the value of ID.
+func (s *OrgUnit) SetID(val OrgUnitID) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *OrgUnit) SetName(val string) {
+	s.Name = val
+}
+
+// SetParentID sets the value of ParentID.
+func (s *OrgUnit) SetParentID(val OptOrgUnitID) {
+	s.ParentID = val
+}
+
+// SetChain sets the value of Chain.
+func (s *OrgUnit) SetChain(val []OrgUnitID) {
+	s.Chain = val
+}
+
+// SetVersion sets the value of Version.
+func (s *OrgUnit) SetVersion(val int64) {
+	s.Version = val
+}
+
+type OrgUnitID string
+
+// Ref: #/components/schemas/OrgUnitList
+type OrgUnitList struct {
+	Units []OrgUnit `json:"units"`
+}
+
+// GetUnits returns the value of Units.
+func (s *OrgUnitList) GetUnits() []OrgUnit {
+	return s.Units
+}
+
+// SetUnits sets the value of Units.
+func (s *OrgUnitList) SetUnits(val []OrgUnit) {
+	s.Units = val
+}
+
+// Ref: #/components/schemas/ParticipantRelation
+type ParticipantRelation struct {
+	// 成员主体（identity 目录中的成员标识，与成员接口的 subject 相同）.
+	Subject string `json:"subject"`
+	// 参与关系，须为资源类型允许的关系：objective 为 owner、participant；pursuit 为
+	// owner、collaborator；research_case 为 owner、shared_with.
+	Relation ParticipantRelationRelation `json:"relation"`
+}
+
+// GetSubject returns the value of Subject.
+func (s *ParticipantRelation) GetSubject() string {
+	return s.Subject
+}
+
+// GetRelation returns the value of Relation.
+func (s *ParticipantRelation) GetRelation() ParticipantRelationRelation {
+	return s.Relation
+}
+
+// SetSubject sets the value of Subject.
+func (s *ParticipantRelation) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetRelation sets the value of Relation.
+func (s *ParticipantRelation) SetRelation(val ParticipantRelationRelation) {
+	s.Relation = val
+}
+
+// 参与关系，须为资源类型允许的关系：objective 为 owner、participant；pursuit 为
+// owner、collaborator；research_case 为 owner、shared_with.
+type ParticipantRelationRelation string
+
+const (
+	ParticipantRelationRelationOwner        ParticipantRelationRelation = "owner"
+	ParticipantRelationRelationParticipant  ParticipantRelationRelation = "participant"
+	ParticipantRelationRelationCollaborator ParticipantRelationRelation = "collaborator"
+	ParticipantRelationRelationSharedWith   ParticipantRelationRelation = "shared_with"
+)
+
+// AllValues returns all ParticipantRelationRelation values.
+func (ParticipantRelationRelation) AllValues() []ParticipantRelationRelation {
+	return []ParticipantRelationRelation{
+		ParticipantRelationRelationOwner,
+		ParticipantRelationRelationParticipant,
+		ParticipantRelationRelationCollaborator,
+		ParticipantRelationRelationSharedWith,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ParticipantRelationRelation) MarshalText() ([]byte, error) {
+	switch s {
+	case ParticipantRelationRelationOwner:
+		return []byte(s), nil
+	case ParticipantRelationRelationParticipant:
+		return []byte(s), nil
+	case ParticipantRelationRelationCollaborator:
+		return []byte(s), nil
+	case ParticipantRelationRelationSharedWith:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ParticipantRelationRelation) UnmarshalText(data []byte) error {
+	switch ParticipantRelationRelation(data) {
+	case ParticipantRelationRelationOwner:
+		*s = ParticipantRelationRelationOwner
+		return nil
+	case ParticipantRelationRelationParticipant:
+		*s = ParticipantRelationRelationParticipant
+		return nil
+	case ParticipantRelationRelationCollaborator:
+		*s = ParticipantRelationRelationCollaborator
+		return nil
+	case ParticipantRelationRelationSharedWith:
+		*s = ParticipantRelationRelationSharedWith
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/Problem
@@ -230,6 +465,7 @@ type PutMemberRequest struct {
 	State           PutMemberRequestState       `json:"state"`
 	Roles           []PutMemberRequestRolesItem `json:"roles"`
 	ExpectedVersion int64                       `json:"expected_version"`
+	UnitRoles       UnitRoles                   `json:"unit_roles"`
 }
 
 // GetState returns the value of State.
@@ -247,6 +483,11 @@ func (s *PutMemberRequest) GetExpectedVersion() int64 {
 	return s.ExpectedVersion
 }
 
+// GetUnitRoles returns the value of UnitRoles.
+func (s *PutMemberRequest) GetUnitRoles() UnitRoles {
+	return s.UnitRoles
+}
+
 // SetState sets the value of State.
 func (s *PutMemberRequest) SetState(val PutMemberRequestState) {
 	s.State = val
@@ -260,6 +501,11 @@ func (s *PutMemberRequest) SetRoles(val []PutMemberRequestRolesItem) {
 // SetExpectedVersion sets the value of ExpectedVersion.
 func (s *PutMemberRequest) SetExpectedVersion(val int64) {
 	s.ExpectedVersion = val
+}
+
+// SetUnitRoles sets the value of UnitRoles.
+func (s *PutMemberRequest) SetUnitRoles(val UnitRoles) {
+	s.UnitRoles = val
 }
 
 type PutMemberRequestRolesItem string
@@ -381,6 +627,7 @@ type Session struct {
 	Roles         []SessionRolesItem `json:"roles"`
 	TenantVersion int64              `json:"tenant_version"`
 	MemberVersion int64              `json:"member_version"`
+	UnitRoles     UnitRoles          `json:"unit_roles"`
 }
 
 // GetTenant returns the value of Tenant.
@@ -418,6 +665,11 @@ func (s *Session) GetMemberVersion() int64 {
 	return s.MemberVersion
 }
 
+// GetUnitRoles returns the value of UnitRoles.
+func (s *Session) GetUnitRoles() UnitRoles {
+	return s.UnitRoles
+}
+
 // SetTenant sets the value of Tenant.
 func (s *Session) SetTenant(val string) {
 	s.Tenant = val
@@ -451,6 +703,11 @@ func (s *Session) SetTenantVersion(val int64) {
 // SetMemberVersion sets the value of MemberVersion.
 func (s *Session) SetMemberVersion(val int64) {
 	s.MemberVersion = val
+}
+
+// SetUnitRoles sets the value of UnitRoles.
+func (s *Session) SetUnitRoles(val UnitRoles) {
+	s.UnitRoles = val
 }
 
 type SessionCell string
@@ -664,6 +921,296 @@ func (s *SetTenantStateRequestState) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/SyncParticipantsRequest
+type SyncParticipantsRequest struct {
+	// 业务资源，例如 objective:obj_…、pursuit:pur_…、research_case:rsc_….
+	Resource  string    `json:"resource"`
+	OrgUnitID OrgUnitID `json:"org_unit_id"`
+	// 参与版本 N，由业务子系统按资源单调递增.
+	Version int64 `json:"version"`
+	// 完整的期望参与关系；空列表表示删除全部参与关系.
+	Participants []ParticipantRelation `json:"participants"`
+}
+
+// GetResource returns the value of Resource.
+func (s *SyncParticipantsRequest) GetResource() string {
+	return s.Resource
+}
+
+// GetOrgUnitID returns the value of OrgUnitID.
+func (s *SyncParticipantsRequest) GetOrgUnitID() OrgUnitID {
+	return s.OrgUnitID
+}
+
+// GetVersion returns the value of Version.
+func (s *SyncParticipantsRequest) GetVersion() int64 {
+	return s.Version
+}
+
+// GetParticipants returns the value of Participants.
+func (s *SyncParticipantsRequest) GetParticipants() []ParticipantRelation {
+	return s.Participants
+}
+
+// SetResource sets the value of Resource.
+func (s *SyncParticipantsRequest) SetResource(val string) {
+	s.Resource = val
+}
+
+// SetOrgUnitID sets the value of OrgUnitID.
+func (s *SyncParticipantsRequest) SetOrgUnitID(val OrgUnitID) {
+	s.OrgUnitID = val
+}
+
+// SetVersion sets the value of Version.
+func (s *SyncParticipantsRequest) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetParticipants sets the value of Participants.
+func (s *SyncParticipantsRequest) SetParticipants(val []ParticipantRelation) {
+	s.Participants = val
+}
+
+// Ref: #/components/schemas/SyncParticipantsResult
+type SyncParticipantsResult struct {
+	Resource       string                               `json:"resource"`
+	AppliedVersion int64                                `json:"applied_version"`
+	Outcome        SyncParticipantsResultOutcome        `json:"outcome"`
+	Rejected       []SyncParticipantsResultRejectedItem `json:"rejected"`
+}
+
+// GetResource returns the value of Resource.
+func (s *SyncParticipantsResult) GetResource() string {
+	return s.Resource
+}
+
+// GetAppliedVersion returns the value of AppliedVersion.
+func (s *SyncParticipantsResult) GetAppliedVersion() int64 {
+	return s.AppliedVersion
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *SyncParticipantsResult) GetOutcome() SyncParticipantsResultOutcome {
+	return s.Outcome
+}
+
+// GetRejected returns the value of Rejected.
+func (s *SyncParticipantsResult) GetRejected() []SyncParticipantsResultRejectedItem {
+	return s.Rejected
+}
+
+// SetResource sets the value of Resource.
+func (s *SyncParticipantsResult) SetResource(val string) {
+	s.Resource = val
+}
+
+// SetAppliedVersion sets the value of AppliedVersion.
+func (s *SyncParticipantsResult) SetAppliedVersion(val int64) {
+	s.AppliedVersion = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *SyncParticipantsResult) SetOutcome(val SyncParticipantsResultOutcome) {
+	s.Outcome = val
+}
+
+// SetRejected sets the value of Rejected.
+func (s *SyncParticipantsResult) SetRejected(val []SyncParticipantsResultRejectedItem) {
+	s.Rejected = val
+}
+
+type SyncParticipantsResultOutcome string
+
+const (
+	SyncParticipantsResultOutcomeApplied  SyncParticipantsResultOutcome = "applied"
+	SyncParticipantsResultOutcomeReplayed SyncParticipantsResultOutcome = "replayed"
+	SyncParticipantsResultOutcomeStale    SyncParticipantsResultOutcome = "stale"
+)
+
+// AllValues returns all SyncParticipantsResultOutcome values.
+func (SyncParticipantsResultOutcome) AllValues() []SyncParticipantsResultOutcome {
+	return []SyncParticipantsResultOutcome{
+		SyncParticipantsResultOutcomeApplied,
+		SyncParticipantsResultOutcomeReplayed,
+		SyncParticipantsResultOutcomeStale,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SyncParticipantsResultOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case SyncParticipantsResultOutcomeApplied:
+		return []byte(s), nil
+	case SyncParticipantsResultOutcomeReplayed:
+		return []byte(s), nil
+	case SyncParticipantsResultOutcomeStale:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SyncParticipantsResultOutcome) UnmarshalText(data []byte) error {
+	switch SyncParticipantsResultOutcome(data) {
+	case SyncParticipantsResultOutcomeApplied:
+		*s = SyncParticipantsResultOutcomeApplied
+		return nil
+	case SyncParticipantsResultOutcomeReplayed:
+		*s = SyncParticipantsResultOutcomeReplayed
+		return nil
+	case SyncParticipantsResultOutcomeStale:
+		*s = SyncParticipantsResultOutcomeStale
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SyncParticipantsResultRejectedItem struct {
+	Subject  string                                     `json:"subject"`
+	Relation SyncParticipantsResultRejectedItemRelation `json:"relation"`
+	// Not_member 不是本租户成员；member_inactive 已停用或已退出；no_scope_access
+	// 在资源所在单元没有范围访问.
+	Reason SyncParticipantsResultRejectedItemReason `json:"reason"`
+}
+
+// GetSubject returns the value of Subject.
+func (s *SyncParticipantsResultRejectedItem) GetSubject() string {
+	return s.Subject
+}
+
+// GetRelation returns the value of Relation.
+func (s *SyncParticipantsResultRejectedItem) GetRelation() SyncParticipantsResultRejectedItemRelation {
+	return s.Relation
+}
+
+// GetReason returns the value of Reason.
+func (s *SyncParticipantsResultRejectedItem) GetReason() SyncParticipantsResultRejectedItemReason {
+	return s.Reason
+}
+
+// SetSubject sets the value of Subject.
+func (s *SyncParticipantsResultRejectedItem) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetRelation sets the value of Relation.
+func (s *SyncParticipantsResultRejectedItem) SetRelation(val SyncParticipantsResultRejectedItemRelation) {
+	s.Relation = val
+}
+
+// SetReason sets the value of Reason.
+func (s *SyncParticipantsResultRejectedItem) SetReason(val SyncParticipantsResultRejectedItemReason) {
+	s.Reason = val
+}
+
+// Not_member 不是本租户成员；member_inactive 已停用或已退出；no_scope_access
+// 在资源所在单元没有范围访问.
+type SyncParticipantsResultRejectedItemReason string
+
+const (
+	SyncParticipantsResultRejectedItemReasonNotMember      SyncParticipantsResultRejectedItemReason = "not_member"
+	SyncParticipantsResultRejectedItemReasonMemberInactive SyncParticipantsResultRejectedItemReason = "member_inactive"
+	SyncParticipantsResultRejectedItemReasonNoScopeAccess  SyncParticipantsResultRejectedItemReason = "no_scope_access"
+)
+
+// AllValues returns all SyncParticipantsResultRejectedItemReason values.
+func (SyncParticipantsResultRejectedItemReason) AllValues() []SyncParticipantsResultRejectedItemReason {
+	return []SyncParticipantsResultRejectedItemReason{
+		SyncParticipantsResultRejectedItemReasonNotMember,
+		SyncParticipantsResultRejectedItemReasonMemberInactive,
+		SyncParticipantsResultRejectedItemReasonNoScopeAccess,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SyncParticipantsResultRejectedItemReason) MarshalText() ([]byte, error) {
+	switch s {
+	case SyncParticipantsResultRejectedItemReasonNotMember:
+		return []byte(s), nil
+	case SyncParticipantsResultRejectedItemReasonMemberInactive:
+		return []byte(s), nil
+	case SyncParticipantsResultRejectedItemReasonNoScopeAccess:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SyncParticipantsResultRejectedItemReason) UnmarshalText(data []byte) error {
+	switch SyncParticipantsResultRejectedItemReason(data) {
+	case SyncParticipantsResultRejectedItemReasonNotMember:
+		*s = SyncParticipantsResultRejectedItemReasonNotMember
+		return nil
+	case SyncParticipantsResultRejectedItemReasonMemberInactive:
+		*s = SyncParticipantsResultRejectedItemReasonMemberInactive
+		return nil
+	case SyncParticipantsResultRejectedItemReasonNoScopeAccess:
+		*s = SyncParticipantsResultRejectedItemReasonNoScopeAccess
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SyncParticipantsResultRejectedItemRelation string
+
+const (
+	SyncParticipantsResultRejectedItemRelationOwner        SyncParticipantsResultRejectedItemRelation = "owner"
+	SyncParticipantsResultRejectedItemRelationParticipant  SyncParticipantsResultRejectedItemRelation = "participant"
+	SyncParticipantsResultRejectedItemRelationCollaborator SyncParticipantsResultRejectedItemRelation = "collaborator"
+	SyncParticipantsResultRejectedItemRelationSharedWith   SyncParticipantsResultRejectedItemRelation = "shared_with"
+)
+
+// AllValues returns all SyncParticipantsResultRejectedItemRelation values.
+func (SyncParticipantsResultRejectedItemRelation) AllValues() []SyncParticipantsResultRejectedItemRelation {
+	return []SyncParticipantsResultRejectedItemRelation{
+		SyncParticipantsResultRejectedItemRelationOwner,
+		SyncParticipantsResultRejectedItemRelationParticipant,
+		SyncParticipantsResultRejectedItemRelationCollaborator,
+		SyncParticipantsResultRejectedItemRelationSharedWith,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SyncParticipantsResultRejectedItemRelation) MarshalText() ([]byte, error) {
+	switch s {
+	case SyncParticipantsResultRejectedItemRelationOwner:
+		return []byte(s), nil
+	case SyncParticipantsResultRejectedItemRelationParticipant:
+		return []byte(s), nil
+	case SyncParticipantsResultRejectedItemRelationCollaborator:
+		return []byte(s), nil
+	case SyncParticipantsResultRejectedItemRelationSharedWith:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SyncParticipantsResultRejectedItemRelation) UnmarshalText(data []byte) error {
+	switch SyncParticipantsResultRejectedItemRelation(data) {
+	case SyncParticipantsResultRejectedItemRelationOwner:
+		*s = SyncParticipantsResultRejectedItemRelationOwner
+		return nil
+	case SyncParticipantsResultRejectedItemRelationParticipant:
+		*s = SyncParticipantsResultRejectedItemRelationParticipant
+		return nil
+	case SyncParticipantsResultRejectedItemRelationCollaborator:
+		*s = SyncParticipantsResultRejectedItemRelationCollaborator
+		return nil
+	case SyncParticipantsResultRejectedItemRelationSharedWith:
+		*s = SyncParticipantsResultRejectedItemRelationSharedWith
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/Tenant
 type Tenant struct {
 	ID      string      `json:"id"`
@@ -796,4 +1343,130 @@ func (s *TenantState) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+type UnitRoles []UnitRolesItem
+
+type UnitRolesItem struct {
+	OrgUnitID OrgUnitID                `json:"org_unit_id"`
+	Roles     []UnitRolesItemRolesItem `json:"roles"`
+}
+
+// GetOrgUnitID returns the value of OrgUnitID.
+func (s *UnitRolesItem) GetOrgUnitID() OrgUnitID {
+	return s.OrgUnitID
+}
+
+// GetRoles returns the value of Roles.
+func (s *UnitRolesItem) GetRoles() []UnitRolesItemRolesItem {
+	return s.Roles
+}
+
+// SetOrgUnitID sets the value of OrgUnitID.
+func (s *UnitRolesItem) SetOrgUnitID(val OrgUnitID) {
+	s.OrgUnitID = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *UnitRolesItem) SetRoles(val []UnitRolesItemRolesItem) {
+	s.Roles = val
+}
+
+type UnitRolesItemRolesItem string
+
+const (
+	UnitRolesItemRolesItemDecisionMaker     UnitRolesItemRolesItem = "decision_maker"
+	UnitRolesItemRolesItemBusinessDeveloper UnitRolesItemRolesItem = "business_developer"
+	UnitRolesItemRolesItemPursuitLead       UnitRolesItemRolesItem = "pursuit_lead"
+	UnitRolesItemRolesItemResearchAnalyst   UnitRolesItemRolesItem = "research_analyst"
+	UnitRolesItemRolesItemDomainExpert      UnitRolesItemRolesItem = "domain_expert"
+)
+
+// AllValues returns all UnitRolesItemRolesItem values.
+func (UnitRolesItemRolesItem) AllValues() []UnitRolesItemRolesItem {
+	return []UnitRolesItemRolesItem{
+		UnitRolesItemRolesItemDecisionMaker,
+		UnitRolesItemRolesItemBusinessDeveloper,
+		UnitRolesItemRolesItemPursuitLead,
+		UnitRolesItemRolesItemResearchAnalyst,
+		UnitRolesItemRolesItemDomainExpert,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s UnitRolesItemRolesItem) MarshalText() ([]byte, error) {
+	switch s {
+	case UnitRolesItemRolesItemDecisionMaker:
+		return []byte(s), nil
+	case UnitRolesItemRolesItemBusinessDeveloper:
+		return []byte(s), nil
+	case UnitRolesItemRolesItemPursuitLead:
+		return []byte(s), nil
+	case UnitRolesItemRolesItemResearchAnalyst:
+		return []byte(s), nil
+	case UnitRolesItemRolesItemDomainExpert:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *UnitRolesItemRolesItem) UnmarshalText(data []byte) error {
+	switch UnitRolesItemRolesItem(data) {
+	case UnitRolesItemRolesItemDecisionMaker:
+		*s = UnitRolesItemRolesItemDecisionMaker
+		return nil
+	case UnitRolesItemRolesItemBusinessDeveloper:
+		*s = UnitRolesItemRolesItemBusinessDeveloper
+		return nil
+	case UnitRolesItemRolesItemPursuitLead:
+		*s = UnitRolesItemRolesItemPursuitLead
+		return nil
+	case UnitRolesItemRolesItemResearchAnalyst:
+		*s = UnitRolesItemRolesItemResearchAnalyst
+		return nil
+	case UnitRolesItemRolesItemDomainExpert:
+		*s = UnitRolesItemRolesItemDomainExpert
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/UpdateOrgUnitRequest
+type UpdateOrgUnitRequest struct {
+	Name            string       `json:"name"`
+	ParentID        OptOrgUnitID `json:"parent_id"`
+	ExpectedVersion int64        `json:"expected_version"`
+}
+
+// GetName returns the value of Name.
+func (s *UpdateOrgUnitRequest) GetName() string {
+	return s.Name
+}
+
+// GetParentID returns the value of ParentID.
+func (s *UpdateOrgUnitRequest) GetParentID() OptOrgUnitID {
+	return s.ParentID
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *UpdateOrgUnitRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// SetName sets the value of Name.
+func (s *UpdateOrgUnitRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetParentID sets the value of ParentID.
+func (s *UpdateOrgUnitRequest) SetParentID(val OptOrgUnitID) {
+	s.ParentID = val
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *UpdateOrgUnitRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
 }

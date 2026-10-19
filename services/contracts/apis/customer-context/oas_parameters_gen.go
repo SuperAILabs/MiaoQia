@@ -298,7 +298,7 @@ func decodeGetContextSnapshotParams(args [0]string, argsEscaped bool, r *http.Re
 					MaxLengthSet:  true,
 					Email:         false,
 					Hostname:      false,
-					Regex:         regexMap["^[a-z0-9][a-z0-9_-]{0,63}$"],
+					Regex:         regexMap["^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$"],
 					MinNumeric:    0,
 					MinNumericSet: false,
 					MaxNumeric:    0,

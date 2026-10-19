@@ -545,8 +545,8 @@ func (s *Server) handleGetContextSnapshotRequest(args [0]string, argsEscaped boo
 // 读主库。detection
 // 每批求值前读取；资质有效期跨过到期日后，本调用在返回前先形成新的上下文版本
 // （快照中该资质改为过期），保证返回后开始的求值不使用过期判定。调用方为用户时需要
-// can_view_profile；
-// 服务主体只接受登记的快照读取方（detection、learning、research、assessment）。.
+// can_view_profile； 服务主体需要 identity 授予的 can_read_context（identity
+// 的服务授权清单登记 detection、learning、research、assessment）。.
 //
 // GET /v1/customer-context/context-version
 func (s *Server) handleGetContextVersionRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -1107,9 +1107,10 @@ func (s *Server) handleListObjectiveTemplatesRequest(args [0]string, argsEscaped
 
 // handleListObjectivesRequest handles listObjectives operation.
 //
-// 返回调用者可查看（can_view）的目标。本切片按目标所在单元的决策者、研究分析者、租户管理员判断；
-// 仅凭参与关系（◐）的查看随 identity
-// 的资源参与关系同步交付，此前不返回。.
+// 返回调用者可查看（can_view）的目标：调用者在目标所在单元（含上级继承）有
+// can_list_objectives（决策者、研究分析者、
+// 租户管理员）的目标，以及本地参与人副本中包含调用者且经 identity 判断
+// can_view 的目标（仅凭参与关系 ◐）。.
 //
 // GET /v1/customer-context/objectives
 func (s *Server) handleListObjectivesRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {

@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: identity 生命周期事件
-  version: 1.0.0
+  version: 1.1.0
 channels:
   platform.identity:
     address: platform.identity
@@ -114,6 +114,33 @@ components:
           tenant_id:
             pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
             type: string
+          unit_roles:
+            description: 绑定在组织单元上的角色（全量，1.1.0 起）；roles 为绑定在租户上的角色。退出时为空或缺省
+            type: array
+            maxItems: 50
+            items:
+              additionalProperties: false
+              type: object
+              required:
+              - org_unit_id
+              - roles
+              properties:
+                org_unit_id:
+                  pattern: ^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$
+                  type: string
+                roles:
+                  items:
+                    enum:
+                    - decision_maker
+                    - business_developer
+                    - pursuit_lead
+                    - research_analyst
+                    - domain_expert
+                    type: string
+                  minItems: 1
+                  maxItems: 5
+                  type: array
+                  uniqueItems: true
           version:
             minimum: 1
             type: integer

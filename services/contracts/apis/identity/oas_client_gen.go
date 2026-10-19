@@ -30,10 +30,20 @@ func trimTrailingSlashes(u *url.URL) {
 type Invoker interface {
 	// CheckAuthorization invokes checkAuthorization operation.
 	//
-	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
+	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体；带租户上下文时显式主体只能是调用主体本身。
+	// 用户按identity目录中的当前成员状态、租户与单元角色判断；服务主体按identity登记的服务授权判断（例如
+	// tenant 的 can_read_context）。 org_unit
+	// 与业务资源须属于上下文租户，否则为拒绝。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, request *CheckRequest) (*CheckResult, error)
+	// CreateOrgUnit invokes createOrgUnit operation.
+	//
+	// 需要 can_manage_members
+	// 与MFA。上级单元须属于本租户；单元链（含根单元）最多8层。.
+	//
+	// POST /v1/identity/org-units
+	CreateOrgUnit(ctx context.Context, request *CreateOrgUnitRequest, params CreateOrgUnitParams) (*OrgUnit, error)
 	// CreateTenant invokes createTenant operation.
 	//
 	// POST /v1/tenants
@@ -42,10 +52,24 @@ type Invoker interface {
 	//
 	// GET /v1/identity/members/{subject}
 	GetMember(ctx context.Context, params GetMemberParams) (*Session, error)
+	// GetOrgUnit invokes getOrgUnit operation.
+	//
+	// 当前租户的有效成员，或带本租户上下文的服务主体可调用（业务子系统据此核对资源所在单元并取得单元链）。
+	// 单元不属于上下文租户时返回 404 org_unit_not_found。.
+	//
+	// GET /v1/identity/org-units/{unitID}
+	GetOrgUnit(ctx context.Context, params GetOrgUnitParams) (*OrgUnit, error)
 	// GetTenant invokes getTenant operation.
 	//
 	// GET /v1/tenants/{tenantID}
 	GetTenant(ctx context.Context, params GetTenantParams) (*Tenant, error)
+	// ListOrgUnits invokes listOrgUnits operation.
+	//
+	// 当前租户的有效成员可调用。返回全部单元（含根单元
+	// root），每个单元附从自身到根单元的单元链。.
+	//
+	// GET /v1/identity/org-units
+	ListOrgUnits(ctx context.Context) (*OrgUnitList, error)
 	// PutMember invokes putMember operation.
 	//
 	// PUT /v1/identity/members/{subject}
@@ -58,6 +82,30 @@ type Invoker interface {
 	//
 	// PUT /v1/tenants/{tenantID}/state
 	SetTenantState(ctx context.Context, request *SetTenantStateRequest, params SetTenantStateParams) (*Tenant, error)
+	// SyncResourceParticipants invokes syncResourceParticipants operation.
+	//
+	// 仅资源所属业务子系统的服务主体可调用（例如 objective 由
+	// customer-context），带资源所在租户的上下文。
+	// 请求给出资源、所在单元、完整期望参与关系与参与版本：版本高于已应用版本时，identity
+	// 与成员状态及单元范围访问求交， 在一次 OpenFGA
+	// 写入中加上应有的关系、删掉多余的关系，并记录已应用版本与结果（outcome
+	// applied）；同一版本、同一请求重复提交返回 首次结果（outcome
+	// replayed），同一版本不同请求返回 409
+	// participants_version_conflict；低于已应用版本时不做修改，返回 outcome stale
+	// 与当前已应用版本。被拒成员及原因列在 rejected，其余关系照常应用。.
+	//
+	// POST /v1/identity/participants:sync
+	SyncResourceParticipants(ctx context.Context, request *SyncParticipantsRequest) (*SyncParticipantsResult, error)
+	// UpdateOrgUnit invokes updateOrgUnit operation.
+	//
+	// 需要 can_manage_members 与MFA，按 expected_version
+	// 并发控制。根单元只能重命名；其他单元须给出上级单元，
+	// 不能移到自身或下级之下（409 org_unit_cycle），移动后单元链最多8层（422
+	// org_unit_too_deep）。
+	// 移动立即改变继承的角色范围：之后的授权决策按新的单元链判断。.
+	//
+	// PUT /v1/identity/org-units/{unitID}
+	UpdateOrgUnit(ctx context.Context, request *UpdateOrgUnitRequest, params UpdateOrgUnitParams) (*OrgUnit, error)
 }
 
 // Client implements OAS client.
@@ -101,7 +149,10 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 
 // CheckAuthorization invokes checkAuthorization operation.
 //
-// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
+// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体；带租户上下文时显式主体只能是调用主体本身。
+// 用户按identity目录中的当前成员状态、租户与单元角色判断；服务主体按identity登记的服务授权判断（例如
+// tenant 的 can_read_context）。 org_unit
+// 与业务资源须属于上下文租户，否则为拒绝。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。.
 //
 // POST /v1/authz:check
 func (c *Client) CheckAuthorization(ctx context.Context, request *CheckRequest) (*CheckResult, error) {
@@ -175,6 +226,104 @@ func (c *Client) sendCheckAuthorization(ctx context.Context, request *CheckReque
 
 	stage = "DecodeResponse"
 	result, err := decodeCheckAuthorizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// CreateOrgUnit invokes createOrgUnit operation.
+//
+// 需要 can_manage_members
+// 与MFA。上级单元须属于本租户；单元链（含根单元）最多8层。.
+//
+// POST /v1/identity/org-units
+func (c *Client) CreateOrgUnit(ctx context.Context, request *CreateOrgUnitRequest, params CreateOrgUnitParams) (*OrgUnit, error) {
+	res, err := c.sendCreateOrgUnit(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendCreateOrgUnit(ctx context.Context, request *CreateOrgUnitRequest, params CreateOrgUnitParams) (res *OrgUnit, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("createOrgUnit"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/org-units"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CreateOrgUnitOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/org-units"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateOrgUnitRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCreateOrgUnitResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -373,6 +522,108 @@ func (c *Client) sendGetMember(ctx context.Context, params GetMemberParams) (res
 	return result, nil
 }
 
+// GetOrgUnit invokes getOrgUnit operation.
+//
+// 当前租户的有效成员，或带本租户上下文的服务主体可调用（业务子系统据此核对资源所在单元并取得单元链）。
+// 单元不属于上下文租户时返回 404 org_unit_not_found。.
+//
+// GET /v1/identity/org-units/{unitID}
+func (c *Client) GetOrgUnit(ctx context.Context, params GetOrgUnitParams) (*OrgUnit, error) {
+	res, err := c.sendGetOrgUnit(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetOrgUnit(ctx context.Context, params GetOrgUnitParams) (res *OrgUnit, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getOrgUnit"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/identity/org-units/{unitID}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetOrgUnitOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/v1/identity/org-units/"
+	{
+		// Encode "unitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "unitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.UnitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetOrgUnitResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetTenant invokes getTenant operation.
 //
 // GET /v1/tenants/{tenantID}
@@ -462,6 +713,87 @@ func (c *Client) sendGetTenant(ctx context.Context, params GetTenantParams) (res
 
 	stage = "DecodeResponse"
 	result, err := decodeGetTenantResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListOrgUnits invokes listOrgUnits operation.
+//
+// 当前租户的有效成员可调用。返回全部单元（含根单元
+// root），每个单元附从自身到根单元的单元链。.
+//
+// GET /v1/identity/org-units
+func (c *Client) ListOrgUnits(ctx context.Context) (*OrgUnitList, error) {
+	res, err := c.sendListOrgUnits(ctx)
+	return res, err
+}
+
+func (c *Client) sendListOrgUnits(ctx context.Context) (res *OrgUnitList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listOrgUnits"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/identity/org-units"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListOrgUnitsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/org-units"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListOrgUnitsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -767,6 +1099,219 @@ func (c *Client) sendSetTenantState(ctx context.Context, request *SetTenantState
 
 	stage = "DecodeResponse"
 	result, err := decodeSetTenantStateResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// SyncResourceParticipants invokes syncResourceParticipants operation.
+//
+// 仅资源所属业务子系统的服务主体可调用（例如 objective 由
+// customer-context），带资源所在租户的上下文。
+// 请求给出资源、所在单元、完整期望参与关系与参与版本：版本高于已应用版本时，identity
+// 与成员状态及单元范围访问求交， 在一次 OpenFGA
+// 写入中加上应有的关系、删掉多余的关系，并记录已应用版本与结果（outcome
+// applied）；同一版本、同一请求重复提交返回 首次结果（outcome
+// replayed），同一版本不同请求返回 409
+// participants_version_conflict；低于已应用版本时不做修改，返回 outcome stale
+// 与当前已应用版本。被拒成员及原因列在 rejected，其余关系照常应用。.
+//
+// POST /v1/identity/participants:sync
+func (c *Client) SyncResourceParticipants(ctx context.Context, request *SyncParticipantsRequest) (*SyncParticipantsResult, error) {
+	res, err := c.sendSyncResourceParticipants(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendSyncResourceParticipants(ctx context.Context, request *SyncParticipantsRequest) (res *SyncParticipantsResult, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("syncResourceParticipants"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/participants:sync"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, SyncResourceParticipantsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/participants:sync"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeSyncResourceParticipantsRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeSyncResourceParticipantsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdateOrgUnit invokes updateOrgUnit operation.
+//
+// 需要 can_manage_members 与MFA，按 expected_version
+// 并发控制。根单元只能重命名；其他单元须给出上级单元，
+// 不能移到自身或下级之下（409 org_unit_cycle），移动后单元链最多8层（422
+// org_unit_too_deep）。
+// 移动立即改变继承的角色范围：之后的授权决策按新的单元链判断。.
+//
+// PUT /v1/identity/org-units/{unitID}
+func (c *Client) UpdateOrgUnit(ctx context.Context, request *UpdateOrgUnitRequest, params UpdateOrgUnitParams) (*OrgUnit, error) {
+	res, err := c.sendUpdateOrgUnit(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateOrgUnit(ctx context.Context, request *UpdateOrgUnitRequest, params UpdateOrgUnitParams) (res *OrgUnit, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updateOrgUnit"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.URLTemplateKey.String("/v1/identity/org-units/{unitID}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UpdateOrgUnitOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/v1/identity/org-units/"
+	{
+		// Encode "unitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "unitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.UnitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PUT", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateOrgUnitRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeUpdateOrgUnitResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

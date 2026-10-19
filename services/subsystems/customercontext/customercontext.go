@@ -9,6 +9,9 @@ import (
 
 	cc "github.com/superailabs/miaoqia/services/contracts/apis/customer-context"
 	"github.com/superailabs/miaoqia/services/kernel/binding"
+	"github.com/superailabs/miaoqia/services/kernel/consumer"
+	"github.com/superailabs/miaoqia/services/kernel/outbox"
+	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/internal/app"
@@ -49,7 +52,11 @@ func Module() runtime.Module {
 			if !ok {
 				return fmt.Errorf("customer-context：缺少 %s 绑定", identity.AuthorizerBinding)
 			}
-			svc.DB, svc.Authz, svc.Catalog, svc.Log = env.DB, a, catalog, env.Log
+			directory, ok := runtime.Lookup[identity.Directory](env.Bindings, identity.DirectoryBinding)
+			if !ok {
+				return fmt.Errorf("customer-context：缺少 %s 绑定", identity.DirectoryBinding)
+			}
+			svc.DB, svc.Authz, svc.Directory, svc.Catalog, svc.Log = env.DB, a, directory, catalog, env.Log
 			env.Bindings.Provide(api.ContextBinding, api.Local(app.Reader{Service: svc}))
 			return nil
 		},
@@ -69,6 +76,14 @@ func Module() runtime.Module {
 			for _, pattern := range publicRoutes {
 				public.Handle(pattern, pub)
 			}
+		},
+		// 目标参与关系同步的重试：消费本子系统的 objective.changed（经发件箱），按目标当前版本调用 identity。
+		Consumers: func(env *runtime.Env) []*consumer.Consumer {
+			return []*consumer.Consumer{{
+				Name: "customer-context.objective-participants", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+				Topics:   []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "customer_context")},
+				Handlers: map[string]consumer.Handler{app.ObjectiveChanged: svc.SyncObjectiveParticipants},
+			}}
 		},
 	}
 }

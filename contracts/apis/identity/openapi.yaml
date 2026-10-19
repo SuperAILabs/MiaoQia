@@ -1,8 +1,11 @@
 openapi: 3.1.0
 info:
   title: identity 内部接口
-  version: 1.1.0
-  description: identity接口。授权Check及会话核验经mTLS内部端口；生命周期命令仅经外部网关，要求已验证的MFA。租户来自上下文，cell归属来自identity目录。
+  version: 1.2.0
+  description: >-
+    identity接口。授权Check、会话核验、组织单元读取与资源参与关系同步经mTLS内部端口；生命周期、组织单元与成员命令仅经外部网关，
+    要求已验证的MFA。租户来自上下文，cell归属来自identity目录。组织单元标识为租户根单元的保留值 root 或 unt_<ULID>
+    （contracts/identifiers.yaml）；Check 的资源可为本租户的 tenant、org_unit 与已登记的业务资源（objective、pursuit、research_case）。
 servers:
 - url: /internal
 paths:
@@ -10,7 +13,10 @@ paths:
     post:
       operationId: checkAuthorization
       summary: 授权决策（Check）
-      description: 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。
+      description: >-
+        判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体；带租户上下文时显式主体只能是调用主体本身。
+        用户按identity目录中的当前成员状态、租户与单元角色判断；服务主体按identity登记的服务授权判断（例如 tenant 的 can_read_context）。
+        org_unit 与业务资源须属于上下文租户，否则为拒绝。只读、幂等，可安全重试；单次超时5秒，暂时性失败最多3次。
       x-timeout-ms: 5000
       x-idempotent: true
       requestBody:
@@ -196,6 +202,154 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /v1/identity/org-units:
+    get:
+      operationId: listOrgUnits
+      summary: 列出本租户组织单元
+      description: 当前租户的有效成员可调用。返回全部单元（含根单元 root），每个单元附从自身到根单元的单元链。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 组织单元列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgUnitList'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: createOrgUnit
+      summary: 创建组织单元
+      description: 需要 can_manage_members 与MFA。上级单元须属于本租户；单元链（含根单元）最多8层。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrgUnitRequest'
+      responses:
+        '200':
+          description: 新单元
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgUnit'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/org-units/{unitID}:
+    get:
+      operationId: getOrgUnit
+      summary: 读取组织单元与单元链
+      description: >-
+        当前租户的有效成员，或带本租户上下文的服务主体可调用（业务子系统据此核对资源所在单元并取得单元链）。
+        单元不属于上下文租户时返回 404 org_unit_not_found。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &unitParam
+        name: unitID
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/OrgUnitID'
+      responses:
+        '200':
+          description: 组织单元
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgUnit'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    put:
+      operationId: updateOrgUnit
+      summary: 重命名或移动组织单元
+      description: >-
+        需要 can_manage_members 与MFA，按 expected_version 并发控制。根单元只能重命名；其他单元须给出上级单元，
+        不能移到自身或下级之下（409 org_unit_cycle），移动后单元链最多8层（422 org_unit_too_deep）。
+        移动立即改变继承的角色范围：之后的授权决策按新的单元链判断。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *unitParam
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrgUnitRequest'
+      responses:
+        '200':
+          description: 更新后的单元
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgUnit'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/participants:sync:
+    post:
+      operationId: syncResourceParticipants
+      summary: 同步业务资源的参与关系（SyncResourceParticipants）
+      description: >-
+        仅资源所属业务子系统的服务主体可调用（例如 objective 由 customer-context），带资源所在租户的上下文。
+        请求给出资源、所在单元、完整期望参与关系与参与版本：版本高于已应用版本时，identity 与成员状态及单元范围访问求交，
+        在一次 OpenFGA 写入中加上应有的关系、删掉多余的关系，并记录已应用版本与结果（outcome applied）；同一版本、同一请求重复提交返回
+        首次结果（outcome replayed），同一版本不同请求返回 409 participants_version_conflict；低于已应用版本时不做修改，返回 outcome stale
+        与当前已应用版本。被拒成员及原因列在 rejected，其余关系照常应用。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncParticipantsRequest'
+      responses:
+        '200':
+          description: 同步结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncParticipantsResult'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 components:
   schemas:
     CheckRequest:
@@ -332,6 +486,8 @@ components:
           type: integer
           format: int64
           minimum: 0
+        unit_roles:
+          $ref: '#/components/schemas/UnitRoles'
     Session:
       type: object
       additionalProperties: false
@@ -372,3 +528,203 @@ components:
           type: integer
           format: int64
           minimum: 1
+        unit_roles:
+          $ref: '#/components/schemas/UnitRoles'
+    OrgUnitID:
+      type: string
+      description: 组织单元标识：租户根单元为保留值 root，其他单元为 unt_<ULID>
+      pattern: ^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$
+    UnitRoles:
+      type: array
+      description: >-
+        绑定在组织单元上的角色（全量）。租户管理员只绑定在租户上，不能出现在单元上；角色作用于该单元及其下级单元，不作用于兄弟单元。
+        成员命令中缺省等于空列表；退出状态必须为空。
+      maxItems: 50
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - org_unit_id
+        - roles
+        properties:
+          org_unit_id:
+            $ref: '#/components/schemas/OrgUnitID'
+          roles:
+            type: array
+            uniqueItems: true
+            minItems: 1
+            maxItems: 5
+            items:
+              type: string
+              enum:
+              - decision_maker
+              - business_developer
+              - pursuit_lead
+              - research_analyst
+              - domain_expert
+    OrgUnit:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - chain
+      - version
+      properties:
+        id:
+          $ref: '#/components/schemas/OrgUnitID'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        parent_id:
+          $ref: '#/components/schemas/OrgUnitID'
+        chain:
+          type: array
+          description: 单元链，从本单元到根单元（含两端）；根单元的链只含 root
+          minItems: 1
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/OrgUnitID'
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+    OrgUnitList:
+      type: object
+      additionalProperties: false
+      required:
+      - units
+      properties:
+        units:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/OrgUnit'
+    CreateOrgUnitRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - parent_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        parent_id:
+          $ref: '#/components/schemas/OrgUnitID'
+    UpdateOrgUnitRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - expected_version
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        parent_id:
+          $ref: '#/components/schemas/OrgUnitID'
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+    ParticipantRelation:
+      type: object
+      additionalProperties: false
+      required:
+      - subject
+      - relation
+      properties:
+        subject:
+          type: string
+          description: 成员主体（identity 目录中的成员标识，与成员接口的 subject 相同）
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        relation:
+          type: string
+          description: 参与关系，须为资源类型允许的关系：objective 为 owner、participant；pursuit 为 owner、collaborator；research_case 为 owner、shared_with
+          enum:
+          - owner
+          - participant
+          - collaborator
+          - shared_with
+    SyncParticipantsRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - resource
+      - org_unit_id
+      - version
+      - participants
+      properties:
+        resource:
+          type: string
+          description: 业务资源，例如 objective:obj_…、pursuit:pur_…、research_case:rsc_…
+          pattern: ^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$
+        org_unit_id:
+          $ref: '#/components/schemas/OrgUnitID'
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+          description: 参与版本 N，由业务子系统按资源单调递增
+        participants:
+          type: array
+          description: 完整的期望参与关系；空列表表示删除全部参与关系
+          uniqueItems: true
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ParticipantRelation'
+    SyncParticipantsResult:
+      type: object
+      additionalProperties: false
+      required:
+      - resource
+      - applied_version
+      - outcome
+      - rejected
+      properties:
+        resource:
+          type: string
+          pattern: ^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$
+        applied_version:
+          type: integer
+          format: int64
+          minimum: 1
+        outcome:
+          type: string
+          enum:
+          - applied
+          - replayed
+          - stale
+        rejected:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - subject
+            - relation
+            - reason
+            properties:
+              subject:
+                type: string
+                pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+              relation:
+                type: string
+                enum:
+                - owner
+                - participant
+                - collaborator
+                - shared_with
+              reason:
+                type: string
+                description: not_member 不是本租户成员；member_inactive 已停用或已退出；no_scope_access 在资源所在单元没有范围访问
+                enum:
+                - not_member
+                - member_inactive
+                - no_scope_access

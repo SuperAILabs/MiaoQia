@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.7 · 更新：2026-10-19 · 平面：平台
+> 状态：评审中 · 版本：1.8 · 更新：2026-10-19 · 平面：平台
 
 ## 1. 使命
 
@@ -59,7 +59,15 @@
 | `GrantSupportAccess` | 命令 | 内部支持访问 |
 | `GrantServiceDelegation` / `RevokeServiceDelegation` / `ListServiceDelegations` | 命令/查询 | 服务委托，需 `can_grant_service_delegation` 与强认证；授予前核对 `commerce` 中有效的托管服务合同，撤销立即生效（第 7.8 节） |
 
-最小租户/成员/角色生命周期、权威目录核验与cell-01路由已实现，具体接口、MFA边界及真实组件证据见[M0身份验收](../../05-delivery/07-m0-identity-acceptance.md)。目录数据在iam中，角色权限复用OpenFGA模型；当前M0托管租户Check仅支持当前主体对tenant根资源，其他业务资源与协作者按其首次启用阶段补齐，不以权限矩阵代证全部接口。
+最小租户/成员/角色生命周期、权威目录核验与cell-01路由已实现，具体接口、MFA边界及真实组件证据见[M0身份验收](../../05-delivery/07-m0-identity-acceptance.md)。目录数据在iam中，角色权限复用OpenFGA模型。
+
+**实现状况（A02 第1–2段服务端切片，契约 1.2.0）**：
+
+- **组织单元**：`OrgUnit` 在 iam 中，每个租户的根单元标识为保留值 `root`（随租户创建），其他单元为 `unt_<ULID>`（[标识前缀](../../../contracts/identifiers.yaml)）。管理员（`can_manage_members` + MFA）经 `POST/PUT /v1/identity/org-units` 创建、重命名与移动单元，按 `expected_version` 并发控制，租户内串行；不能移到自身或下级之下，单元链（含根）最多 8 层，根单元不能移动。成员经 `GET /v1/identity/org-units` 列出单元；`GET /v1/identity/org-units/{unitID}` 同时经内部端口提供给业务子系统（成员或带租户上下文的服务主体），返回从单元到根单元的单元链。删除单元未实现；
+- **单元角色**：成员命令的 `unit_roles` 写入绑定在单元上的角色（全量替换，缺省为空；租户管理员只能绑定在租户上），会话与 `identity.member.changed.v1`（1.1.0 起）携带 `unit_roles`；
+- **Check**：带租户上下文时只判断调用主体自身。用户主体按目录中的当前成员资格、租户角色、单元角色、单元层级与资源所在单元构造上下文关系，挂在每次决策独有的一次性租户与单元对象上，由 OpenFGA 按 `model.fga` 求值，持久化旧关系不参与；资源可为本租户的 `tenant`、`org_unit` 与经 `SyncResourceParticipants` 登记的 `objective`、`pursuit`、`research_case`，其他租户的或未登记的资源一律拒绝。服务主体（`service:<子系统>`）不是成员，只能判断上下文租户上的服务动作：`can_read_context`（读取客户上下文快照与版本）与 `can_sync_<资源>_participants`，依据 identity 的服务授权清单（`services/subsystems/identity/internal/infra/service_grants.go`，启动时与 OpenFGA 对齐，清单外的同类关系删除），每次决策核对租户处于启用状态且 cell 一致。服务主体代表用户判断（显式其他主体）仍为拒绝；
+- **SyncResourceParticipants**：内部端口 `POST /internal/v1/identity/participants:sync`，只接受资源所属子系统的服务主体（objective 为 customer-context，pursuit 为 pursuit，research_case 为 research）。资源登记所在租户与单元（一经登记不能转到其他租户，可随更高版本改变单元），参与版本按上表规则处理：高于已应用版本时与成员状态和单元范围访问（`org_unit#scope_member`）求交，按 OpenFGA 中的现有关系计算增删并一次写入（单次写入至多 100 条，期望集合至多 50 条），同一 SQL 事务记录版本、请求指纹与结果；同一版本同一请求返回首次结果（`replayed`），同一版本不同请求 409 `participants_version_conflict`，低于已应用版本返回 `stale` 不做修改。成员退出提交后尽力清理其在本租户已登记资源上的参与关系，重新加入前必须清理成功（失败关闭），旧参与关系不会随重新加入复活；
+- 尚未实现：邀请（`CreateInvitation` 等）、免登会话、管理员账号恢复、审批、支持访问与服务委托、`ListPermitted`（列表目前由业务子系统按单元逐个 `Check` 列表关系）、服务账号与外部协作者的运行时接入、单元删除与单元变更事件。
 
 内部授权Check契约见[`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。目录核验租户/成员当前状态及单元；当前SQL角色经同一OpenFGA模型做隔离contextual tuples求值，持久化旧角色关系不恢复被撤销权限。上下文提供租户不等于已获得资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
 
@@ -103,6 +111,7 @@
 | 发起研究 | org_unit | can_start_research | ✓ | ✓ | ✓ | ✓ | — | — | — |
 | 上传与维护知识资产 | org_unit | can_manage_knowledge | — | — | — | — | ✓ | ✓ | — |
 | 申请批量导出租户产物 | org_unit | can_request_export | ✓ | ✓ | ✓ | ✓ | — | ✓ | — |
+| 列出单元内目标（范围内可见） | org_unit | can_list_objectives | ✓ | — | — | ✓ | — | ✓ | — |
 | 查看一般知识资产 | knowledge_asset | can_view | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | 查看受限知识资产 | knowledge_asset:restricted | can_view | ◐ | ◐ | ◐ | ◐ | ✓ | ◐ | — |
 | 授予受限知识资产 | knowledge_asset:restricted | can_grant | — | — | — | — | ✓ | ✓ | — |
@@ -178,6 +187,7 @@
 ### 7.5 服务账号、Agent 与渠道
 
 - **服务账号**：可绑定除租户管理员外的角色，权限为其角色绑定与令牌作用域（`gateway` 的 MCP 与 API 作用域）的交集；停用即删除其成员资格；
+- **平台服务主体**：子系统以 `service:<子系统>` 身份在带租户上下文时调用（事件消费、求值、同步），不是租户成员、没有角色，只获得 identity 服务授权清单登记的租户服务动作（第 5 节实现状况）；与服务委托不同，它不代表任何妙洽人员，审计条目记录服务主体本身，不带 `delegation`；
 - **Agent**：研究运行以发起人的身份执行，可用的数据与工具为发起人权限与研究模板工具白名单的交集；定时运行的监测以服务身份执行，结果只写入目标范围内的资源；
 - **渠道**：渠道内的提问、反馈、分派与审批调用与 Web 相同的接口，经同一授权决策，渠道身份须先与成员绑定。
 

@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.9 · 更新：2026-10-19 · 平面：客户智能
+> 状态：评审中 · 版本：1.10 · 更新：2026-10-19 · 平面：客户智能
 
 ## 1. 使命
 
@@ -72,7 +72,7 @@
 | `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界） |
 | `UploadKnowledgeAsset` | 命令 | 上传与分级 |
 
-实现状况：首个切片实现了 `GetContextSnapshot`、`GetContextVersion`（内部端口，经 mTLS）、`Get/Update Profile`（本企业关联与资质在档案内维护）与目标的 `ListObjectiveTemplates`、`EnableObjective`、`ConfigureObjective`、`DisableObjective`（含重新启用），契约为 [`contracts/apis/customer-context/openapi.yaml`](../../../contracts/apis/customer-context/openapi.yaml) 0.1.0 草案。现阶段只有根组织单元 `root`；启用目标时的首版策略草案随第7段实现。
+实现状况：首个切片实现了 `GetContextSnapshot`、`GetContextVersion`（内部端口，经 mTLS）、`Get/Update Profile`（本企业关联与资质在档案内维护）与目标的 `ListObjectiveTemplates`、`EnableObjective`、`ConfigureObjective`、`DisableObjective`（含重新启用），契约为 [`contracts/apis/customer-context/openapi.yaml`](../../../contracts/apis/customer-context/openapi.yaml) 0.2.0 草案。组织单元为 identity 的 `OrgUnit`（根单元 `root` 或 `unt_<ULID>`），经 identity 核对属于本租户并取得单元链；单元覆盖实现前，非根单元的快照与根单元合成结果相同，首次读取时按当时的单元链物化，之后同一（租户、单元、上下文版本）不变。授权全部经 identity 的 `Check`：启用目标在目标单元上判断 `can_create_objective`，查看、调整与参与人管理在目标资源上判断；目标的单元、负责人与参与人在每个目标版本上以服务主体经 `SyncResourceParticipants` 同步（参与版本即目标版本），命令提交后同步一次，失败时由本子系统消费 `objective.changed` 重试，同步完成前目标的访问失败关闭；目标列表按单元的 `can_list_objectives` 过滤，并加上本地参与人副本中经 `Check` 可查看的目标。快照与版本的服务读取方由 identity 判断 `can_read_context`，本子系统不保存名单。启用目标时的首版策略草案随第7段实现。
 
 ## 7. 事件
 

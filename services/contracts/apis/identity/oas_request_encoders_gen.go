@@ -24,6 +24,20 @@ func encodeCheckAuthorizationRequest(
 	return nil
 }
 
+func encodeCreateOrgUnitRequest(
+	req *CreateOrgUnitRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeCreateTenantRequest(
 	req *CreateTenantRequest,
 	r *http.Request,
@@ -54,6 +68,34 @@ func encodePutMemberRequest(
 
 func encodeSetTenantStateRequest(
 	req *SetTenantStateRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeSyncResourceParticipantsRequest(
+	req *SyncParticipantsRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeUpdateOrgUnitRequest(
+	req *UpdateOrgUnitRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

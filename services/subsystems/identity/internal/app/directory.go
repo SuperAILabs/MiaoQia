@@ -18,14 +18,12 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/identity/api"
 )
 
-// Roles is the model adapter; lifecycle state and role bindings are authoritative in SQL.
-type Roles interface {
-	CheckRoles(context.Context, string, string, []string) (bool, error)
-}
+// Directory 是 identity 目录：租户、成员、组织单元、角色绑定与业务资源登记以 SQL 为准，授权模型在 OpenFGA 中求值
+// （FGA；Authorizer 只用于平台对象上的持久化关系，例如 operator）。
 type Directory struct {
 	DB         *db.DB
 	Authorizer authz.Decider
-	Roles      Roles
+	FGA        Store
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }
@@ -120,6 +118,11 @@ func readMember(ctx context.Context, tx pgx.Tx, tenantID, subject, cell string, 
 	for _, r := range roles {
 		s.Roles = append(s.Roles, identityapi.SessionRolesItem(r))
 	}
+	units, err := unitRoles(ctx, tx, tenantID, subject)
+	if err != nil {
+		return nil, err
+	}
+	s.UnitRoles = toUnitRoles(units)
 	return &s, nil
 }
 func (d *Directory) Resolve(ctx context.Context) (*api.Session, error) {
@@ -138,17 +141,12 @@ func (d *Directory) Resolve(ctx context.Context) (*api.Session, error) {
 	})
 	return s, err
 }
+
+// Allow 判断成员对其租户（tenant 资源）的关系，按当前目录角色求值。
 func (d *Directory) Allow(ctx context.Context, s *api.Session, relation string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if d == nil || d.Roles == nil {
-		return false, failure(503, "identity_unavailable")
-	}
-	roles := make([]string, 0, len(s.Roles))
-	for _, r := range s.Roles {
-		roles = append(roles, string(r))
-	}
-	allowed, err := d.Roles.CheckRoles(ctx, "user:"+s.Subject, relation, roles)
+	allowed, err := d.evaluate(ctx, s, relation, &target{})
 	if err != nil {
 		return false, failure(503, "identity_unavailable")
 	}
@@ -165,7 +163,11 @@ func tenantEvent(t *identityapi.Tenant) map[string]any {
 	return map[string]any{"tenant_id": t.ID, "state": string(t.State), "version": t.Version}
 }
 func memberEvent(s *api.Session) map[string]any {
-	return map[string]any{"tenant_id": s.Tenant, "subject": s.Subject, "state": string(s.State), "version": s.MemberVersion, "roles": s.Roles}
+	event := map[string]any{"tenant_id": s.Tenant, "subject": s.Subject, "state": string(s.State), "version": s.MemberVersion, "roles": s.Roles}
+	if len(s.UnitRoles) > 0 {
+		event["unit_roles"] = s.UnitRoles
+	}
+	return event
 }
 
 func (d *Directory) Create(ctx context.Context, req *identityapi.CreateTenantRequest, key string) (*identityapi.Tenant, error) {
@@ -228,8 +230,20 @@ func (d *Directory) SetState(ctx context.Context, id string, req *identityapi.Se
 	return t, err
 }
 func (d *Directory) Put(ctx context.Context, subject string, req *identityapi.PutMemberRequest, key string) (*api.Session, error) {
-	if req.Validate() != nil || (req.State == "removed" && len(req.Roles) != 0) {
+	if req.Validate() != nil || (req.State == "removed" && (len(req.Roles) != 0 || len(req.UnitRoles) != 0)) {
 		return nil, failure(400, "invalid_request")
+	}
+	wantUnits := map[string][]string{}
+	for _, b := range req.UnitRoles {
+		if _, dup := wantUnits[string(b.OrgUnitID)]; dup {
+			return nil, failure(400, "invalid_request")
+		}
+		roles := make([]string, 0, len(b.Roles))
+		for _, r := range b.Roles {
+			roles = append(roles, string(r))
+		}
+		slices.Sort(roles)
+		wantUnits[string(b.OrgUnitID)] = roles
 	}
 	rc, err := actor(ctx)
 	if err != nil {
@@ -242,6 +256,7 @@ func (d *Directory) Put(ctx context.Context, subject string, req *identityapi.Pu
 		return nil, failure(403, "invalid_tenant_context")
 	}
 	result := new(api.Session)
+	removed := false
 	err = d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		t, err := tenant(ctx, tx, rc.Tenant, true)
 		if err != nil {
@@ -275,13 +290,33 @@ func (d *Directory) Put(ctx context.Context, subject string, req *identityapi.Pu
 			}
 			slices.Sort(roles)
 			slices.Sort(oldRoles)
-			*result = api.Session{Tenant: t.ID, Cell: "cell-01", Subject: subject, State: identityapi.SessionState(req.State), Roles: make([]identityapi.SessionRolesItem, 0, len(roles)), TenantVersion: t.Version, MemberVersion: version}
+			oldUnits, err := unitRoles(ctx, tx, rc.Tenant, subject)
+			if err != nil {
+				return err
+			}
+			*result = api.Session{Tenant: t.ID, Cell: "cell-01", Subject: subject, State: identityapi.SessionState(req.State), Roles: make([]identityapi.SessionRolesItem, 0, len(roles)), TenantVersion: t.Version, MemberVersion: version, UnitRoles: toUnitRoles(wantUnits)}
 			for _, r := range roles {
 				result.Roles = append(result.Roles, identityapi.SessionRolesItem(r))
 			}
-			if string(req.State) == oldState && slices.Equal(oldRoles, roles) {
+			if string(req.State) == oldState && slices.Equal(oldRoles, roles) && sameUnitRoles(oldUnits, wantUnits) {
 				return nil
 			}
+			for unit := range wantUnits {
+				chain, err := unitChain(ctx, tx, rc.Tenant, unit)
+				if err != nil {
+					return err
+				}
+				if chain == nil {
+					return failure(422, "org_unit_not_found")
+				}
+			}
+			if req.State == "active" && oldState != "active" {
+				// 加入或重新加入：先清除该主体此前留在本租户资源上的参与关系，避免旧参与关系随重新加入复活（identity.md 7.1）。
+				if err := d.purgeParticipation(ctx, tx, rc.Tenant, subject); err != nil {
+					return err
+				}
+			}
+			removed = oldState == "active" && req.State != "active"
 			if oldState == "active" && slices.Contains(oldRoles, "admin") && (req.State != "active" || !slices.Contains(roles, "admin")) {
 				var n int
 				if err = tx.QueryRow(ctx, `SELECT count(*) FROM identity_members WHERE tenant_id=$1 AND state='active' AND roles @> ARRAY['admin']`, rc.Tenant).Scan(&n); err != nil {
@@ -295,10 +330,34 @@ func (d *Directory) Put(ctx context.Context, subject string, req *identityapi.Pu
 			if _, err = tx.Exec(ctx, `INSERT INTO identity_members(tenant_id,subject,state,roles,version) VALUES($1,$2,$3,$4,$5) ON CONFLICT(tenant_id,subject) DO UPDATE SET state=EXCLUDED.state,roles=EXCLUDED.roles,version=EXCLUDED.version`, rc.Tenant, subject, string(req.State), roles, result.MemberVersion); err != nil {
 				return err
 			}
+			if _, err = tx.Exec(ctx, `DELETE FROM identity_member_unit_roles WHERE tenant_id=$1 AND subject=$2`, rc.Tenant, subject); err != nil {
+				return err
+			}
+			for unit, bound := range wantUnits {
+				if _, err = tx.Exec(ctx, `INSERT INTO identity_member_unit_roles(tenant_id,subject,org_unit_id,roles) VALUES($1,$2,$3,$4)`, rc.Tenant, subject, unit, bound); err != nil {
+					return err
+				}
+			}
 			return emit(ctx, tx, "identity.member.changed.v1", rc.Tenant, memberEvent(result))
 		})
 	})
+	if err == nil && removed {
+		// 退出后的参与关系已因成员资格求交而失效；提交后尽力清理，失败时由重新加入前的清理兜底。
+		_ = d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error { return d.purgeParticipation(ctx, tx, rc.Tenant, subject) })
+	}
 	return result, err
+}
+
+func sameUnitRoles(a, b map[string][]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for unit, roles := range a {
+		if !slices.Equal(roles, b[unit]) {
+			return false
+		}
+	}
+	return true
 }
 
 // GetTenant/GetMember expose current versions needed to recover from a command conflict.

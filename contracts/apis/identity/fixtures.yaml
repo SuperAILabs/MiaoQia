@@ -164,6 +164,24 @@ fixtures:
       value:
       - admin
       - admin
+  - name: 单元角色
+    valid: true
+    patch:
+    - op: add
+      path: /unit_roles
+      value:
+      - org_unit_id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        roles:
+        - decision_maker
+  - name: 拒绝单元上的租户管理员
+    valid: false
+    patch:
+    - op: add
+      path: /unit_roles
+      value:
+      - org_unit_id: root
+        roles:
+        - admin
 - schema: Session
   base:
     tenant: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
@@ -207,3 +225,266 @@ fixtures:
       value:
       - admin
       - admin
+- schema: OrgUnitID
+  base: root
+  cases:
+  - name: 单元ULID
+    valid: true
+    instance: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 拒绝其他保留词
+    valid: false
+    instance: tenant
+  - name: 拒绝小写ULID
+    valid: false
+    instance: unt_01ja8zxxxxxxxxxxxxxxxxxxx1
+  - name: 拒绝其他前缀
+    valid: false
+    instance: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: UnitRoles
+  base:
+  - org_unit_id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    roles:
+    - business_developer
+  cases:
+  - name: 空列表
+    valid: true
+    instance: []
+  - name: 根单元上的多个角色
+    valid: true
+    patch:
+    - op: replace
+      path: /0/org_unit_id
+      value: root
+    - op: replace
+      path: /0/roles
+      value:
+      - decision_maker
+      - research_analyst
+  - name: 拒绝单元上的租户管理员
+    valid: false
+    patch:
+    - op: replace
+      path: /0/roles
+      value:
+      - admin
+  - name: 拒绝空角色
+    valid: false
+    patch:
+    - op: replace
+      path: /0/roles
+      value: []
+  - name: 拒绝重复角色
+    valid: false
+    patch:
+    - op: replace
+      path: /0/roles
+      value:
+      - pursuit_lead
+      - pursuit_lead
+  - name: 拒绝非法单元
+    valid: false
+    patch:
+    - op: replace
+      path: /0/org_unit_id
+      value: unit-gas
+- schema: OrgUnit
+  base:
+    id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    name: 燃气管道事业部
+    parent_id: root
+    chain:
+    - unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - root
+    version: 1
+  cases:
+  - name: 根单元没有上级
+    valid: true
+    instance:
+      id: root
+      name: 示例租户
+      chain:
+      - root
+      version: 1
+  - name: 拒绝空单元链
+    valid: false
+    patch:
+    - op: replace
+      path: /chain
+      value: []
+  - name: 拒绝超过8层的单元链
+    valid: false
+    patch:
+    - op: replace
+      path: /chain
+      value: [root, root, root, root, root, root, root, root, root]
+  - name: 拒绝夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: OrgUnitList
+  base:
+    units:
+    - id: root
+      name: 示例租户
+      chain:
+      - root
+      version: 1
+  cases:
+  - name: 拒绝空列表（根单元总存在）
+    valid: false
+    patch:
+    - op: replace
+      path: /units
+      value: []
+- schema: CreateOrgUnitRequest
+  base:
+    name: 燃气管道事业部
+    parent_id: root
+  cases:
+  - name: 拒绝缺少上级
+    valid: false
+    patch:
+    - op: remove
+      path: /parent_id
+  - name: 拒绝空名称
+    valid: false
+    patch:
+    - op: replace
+      path: /name
+      value: ''
+  - name: 拒绝客户端指定标识
+    valid: false
+    patch:
+    - op: add
+      path: /id
+      value: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: UpdateOrgUnitRequest
+  base:
+    name: 燃气管道事业部
+    parent_id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    expected_version: 1
+  cases:
+  - name: 根单元只重命名
+    valid: true
+    patch:
+    - op: remove
+      path: /parent_id
+  - name: 拒绝缺少版本
+    valid: false
+    patch:
+    - op: remove
+      path: /expected_version
+  - name: 拒绝版本0
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+- schema: ParticipantRelation
+  base:
+    subject: bd-1
+    relation: participant
+  cases:
+  - name: 拒绝未登记关系
+    valid: false
+    patch:
+    - op: replace
+      path: /relation
+      value: admin
+  - name: 拒绝带类型的主体
+    valid: false
+    patch:
+    - op: replace
+      path: /subject
+      value: user:bd 1
+- schema: SyncParticipantsRequest
+  base:
+    resource: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    version: 2
+    participants:
+    - subject: dm-1
+      relation: owner
+    - subject: bd-1
+      relation: participant
+  cases:
+  - name: 空参与关系表示全部删除
+    valid: true
+    patch:
+    - op: replace
+      path: /participants
+      value: []
+  - name: 推进的负责人与协作者
+    valid: true
+    patch:
+    - op: replace
+      path: /resource
+      value: pursuit:pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - op: replace
+      path: /participants/1/relation
+      value: collaborator
+  - name: 拒绝未登记资源类型
+    valid: false
+    patch:
+    - op: replace
+      path: /resource
+      value: knowledge_asset:kas_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 拒绝资源前缀与类型不符
+    valid: false
+    patch:
+    - op: replace
+      path: /resource
+      value: objective:pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 拒绝版本0
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+  - name: 拒绝重复关系
+    valid: false
+    patch:
+    - op: replace
+      path: /participants/1
+      value:
+        subject: dm-1
+        relation: owner
+  - name: 拒绝夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: SyncParticipantsResult
+  base:
+    resource: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    applied_version: 2
+    outcome: applied
+    rejected:
+    - subject: bd-gone
+      relation: participant
+      reason: member_inactive
+  cases:
+  - name: 已过期的版本
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: stale
+    - op: replace
+      path: /rejected
+      value: []
+  - name: 拒绝未登记原因
+    valid: false
+    patch:
+    - op: replace
+      path: /rejected/0/reason
+      value: unknown
+  - name: 拒绝未登记结果
+    valid: false
+    patch:
+    - op: replace
+      path: /outcome
+      value: partial

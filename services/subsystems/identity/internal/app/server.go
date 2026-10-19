@@ -77,3 +77,19 @@ func (s *Server) GetTenant(ctx context.Context, params identityapi.GetTenantPara
 func (s *Server) GetMember(ctx context.Context, params identityapi.GetMemberParams) (*identityapi.Session, error) {
 	return s.Directory.GetMember(ctx, params.Subject)
 }
+
+func (s *Server) ListOrgUnits(ctx context.Context) (*identityapi.OrgUnitList, error) {
+	return s.Directory.ListOrgUnits(ctx)
+}
+func (s *Server) GetOrgUnit(ctx context.Context, params identityapi.GetOrgUnitParams) (*identityapi.OrgUnit, error) {
+	return s.Directory.OrgUnit(ctx, string(params.UnitID))
+}
+func (s *Server) CreateOrgUnit(ctx context.Context, req *identityapi.CreateOrgUnitRequest, params identityapi.CreateOrgUnitParams) (*identityapi.OrgUnit, error) {
+	return s.Directory.CreateOrgUnit(ctx, req, params.IdempotencyKey)
+}
+func (s *Server) UpdateOrgUnit(ctx context.Context, req *identityapi.UpdateOrgUnitRequest, params identityapi.UpdateOrgUnitParams) (*identityapi.OrgUnit, error) {
+	return s.Directory.UpdateOrgUnit(ctx, string(params.UnitID), req, params.IdempotencyKey)
+}
+func (s *Server) SyncResourceParticipants(ctx context.Context, req *identityapi.SyncParticipantsRequest) (*identityapi.SyncParticipantsResult, error) {
+	return s.Directory.SyncResourceParticipants(ctx, req)
+}

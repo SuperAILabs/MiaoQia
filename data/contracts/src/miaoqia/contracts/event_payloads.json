@@ -1750,6 +1750,50 @@
     },
     {
       "event": "identity.member.changed.v1",
+      "name": "单元角色",
+      "valid": true,
+      "value": {
+        "roles": [
+          "admin"
+        ],
+        "state": "active",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unit_roles": [
+          {
+            "org_unit_id": "unt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "roles": [
+              "business_developer"
+            ]
+          }
+        ],
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
+      "name": "单元上不得绑定租户管理员",
+      "valid": false,
+      "value": {
+        "roles": [
+          "admin"
+        ],
+        "state": "active",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unit_roles": [
+          {
+            "org_unit_id": "root",
+            "roles": [
+              "admin"
+            ]
+          }
+        ],
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.member.changed.v1",
       "name": "退出后清空角色",
       "valid": true,
       "value": {
@@ -3496,6 +3540,41 @@
         "tenant_id": {
           "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$",
           "type": "string"
+        },
+        "unit_roles": {
+          "description": "绑定在组织单元上的角色（全量，1.1.0 起）；roles 为绑定在租户上的角色。退出时为空或缺省",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "org_unit_id": {
+                "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+                "type": "string"
+              },
+              "roles": {
+                "items": {
+                  "enum": [
+                    "decision_maker",
+                    "business_developer",
+                    "pursuit_lead",
+                    "research_analyst",
+                    "domain_expert"
+                  ],
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "org_unit_id",
+              "roles"
+            ],
+            "type": "object"
+          },
+          "maxItems": 50,
+          "type": "array"
         },
         "version": {
           "minimum": 1,

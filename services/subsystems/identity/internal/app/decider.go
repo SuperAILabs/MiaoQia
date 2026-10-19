@@ -38,13 +38,15 @@ func (d Decider) Check(ctx context.Context, req authz.Request) (bool, error) {
 		}
 		return d.Store.Check(ctx, req)
 	}
-	// M0 supports tenant-root permissions only; later resource owners must supply a verified tenant scope.
-	if req.Object != "tenant:"+rc.Tenant || req.Subject != authz.Subject(rc.Principal) {
+	// 带租户上下文时只判断调用主体自身；租户、单元与业务资源须属于上下文租户（Directory 解析，否则为拒绝）。
+	if req.Subject != authz.Subject(rc.Principal) {
 		return false, nil
 	}
-	session, err := d.Directory.Resolve(ctx)
-	if err != nil {
-		return false, err
+	switch rc.Principal.Kind {
+	case "user":
+		return d.Directory.CheckMember(ctx, req.Relation, req.Object)
+	case "service":
+		return d.Directory.CheckService(ctx, req.Relation, req.Object)
 	}
-	return d.Directory.Allow(ctx, session, req.Relation)
+	return false, nil
 }

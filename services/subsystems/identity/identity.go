@@ -32,10 +32,11 @@ func Module() runtime.Module {
 			if err != nil {
 				return err
 			}
-			directory = &app.Directory{DB: env.DB, Authorizer: d, Roles: d}
+			directory = &app.Directory{DB: env.DB, Authorizer: d, FGA: d}
 			decider = app.Decider{Store: d, Directory: directory}
 			env.Bindings.Provide(api.AuthorizerBinding, api.Local(decider))
 			env.Bindings.Provide(api.SessionBinding, api.LocalSession(directory))
+			env.Bindings.Provide(api.DirectoryBinding, api.LocalDirectory(directory))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
@@ -44,14 +45,16 @@ func Module() runtime.Module {
 			if err != nil {
 				panic(err)
 			}
-			for _, pattern := range []string{"POST /internal/v1/authz:check", "GET /internal/v1/identity/session"} {
+			for _, pattern := range []string{"POST /internal/v1/authz:check", "GET /internal/v1/identity/session",
+				"GET /internal/v1/identity/org-units/{unitID}", "POST /internal/v1/identity/participants:sync"} {
 				internal.Handle(pattern, binding.InternalServer(api.Name, srv))
 			}
 			pub, err := identityapi.NewServer(handler, identityapi.WithErrorHandler(app.WriteProtocolError))
 			if err != nil {
 				panic(err)
 			}
-			for _, pattern := range []string{"POST /v1/tenants", "GET /v1/tenants/{tenantID}", "GET /v1/identity/members/{subject}", "PUT /v1/tenants/{tenantID}/state", "PUT /v1/identity/members/{subject}", "GET /v1/identity/session"} {
+			for _, pattern := range []string{"POST /v1/tenants", "GET /v1/tenants/{tenantID}", "GET /v1/identity/members/{subject}", "PUT /v1/tenants/{tenantID}/state", "PUT /v1/identity/members/{subject}", "GET /v1/identity/session",
+				"GET /v1/identity/org-units", "POST /v1/identity/org-units", "GET /v1/identity/org-units/{unitID}", "PUT /v1/identity/org-units/{unitID}"} {
 				public.Handle(pattern, pub)
 			}
 		},

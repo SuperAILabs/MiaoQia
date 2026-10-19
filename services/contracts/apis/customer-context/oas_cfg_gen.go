@@ -18,6 +18,7 @@ import (
 )
 
 var regexMap = map[string]ogenregex.Regexp{
+	"^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$":   ogenregex.MustCompile("^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$"),
 	"^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$": ogenregex.MustCompile("^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$"),
 	"^CAT-[A-Z0-9-]{1,60}$":                 ogenregex.MustCompile("^CAT-[A-Z0-9-]{1,60}$"),
 	"^IND-[A-Z0-9-]{1,48}$":                 ogenregex.MustCompile("^IND-[A-Z0-9-]{1,48}$"),
@@ -30,7 +31,6 @@ var regexMap = map[string]ogenregex.Regexp{
 	"^[0-9]{6}$":                            ogenregex.MustCompile("^[0-9]{6}$"),
 	"^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$":  ogenregex.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$"),
 	"^[A-Za-z0-9_-]{16,128}$":               ogenregex.MustCompile("^[A-Za-z0-9_-]{16,128}$"),
-	"^[a-z0-9][a-z0-9_-]{0,63}$":            ogenregex.MustCompile("^[a-z0-9][a-z0-9_-]{0,63}$"),
 	"^[a-z][a-z0-9_]{0,63}$":                ogenregex.MustCompile("^[a-z][a-z0-9_]{0,63}$"),
 	"^obj_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^obj_[0-9A-HJKMNP-TV-Z]{26}$"),
 	"^org_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^org_[0-9A-HJKMNP-TV-Z]{26}$"),

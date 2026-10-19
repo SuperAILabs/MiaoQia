@@ -1,6 +1,6 @@
 # PRD 第2段：客户档案、角色与目标
 
-> 状态：设计交接通过 · 版本：1.7 · 更新：2026-10-19 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/02-profile-and-objectives.html](prototypes/02-profile-and-objectives.html)（[在线预览](https://claude.ai/artifact/6D47XeNuNcu9vLWPmvhn9o)）
+> 状态：设计交接通过 · 版本：1.8 · 更新：2026-10-19 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/02-profile-and-objectives.html](prototypes/02-profile-and-objectives.html)（[在线预览](https://claude.ai/artifact/6D47XeNuNcu9vLWPmvhn9o)）
 
 本段让建材供应商把“我们是谁、卖什么、在哪卖、和谁打交道”录成结构化档案，并按角色模板启用 A02 进入供货目标。它承接第1段（管理员和成员已就位），产出第3段信号所需的两样东西：客户上下文快照（`GetContextSnapshot`）和 A02 目标的策略草案。策略草案的首次激活要经过仿真与审批，流程在第7段；在旅程顺序上，第7段的首次激活发生在本段之后、第3段之前。
 
@@ -236,7 +236,7 @@
 | 21 | 单元覆盖：同租户同一上下文版本下，两个单元交错读取得到各自的合成快照、缓存互不复用；覆盖更新后版本递增、重读得到新结果；按旧版本重放得到原结果；“未覆盖”继承上级，“显式空集合”不继承 | F3 | —（管理接口验收） |
 | 22 | 资质来源裁决与求值（`INF-QUAL` 启用门禁，端到端经策略求值断言）：公告要求 A、B 两项资质时，A 有效、B 为客户录入有效而公共记录已过期，则 B 列入待核对、资质缺口规则结果为未知、轨迹记未知且不计减分；B 经确认过期后缺口规则为真；A 有效、B 未录入且未声明录全时为未知，声明录全后为真；A、B 均有效时为假；B 确认过期而另有待核对项时仍为真；A、B 分属两个我方主体时为真（不跨主体拼凑），其中一个主体同时具备 A、B 时为假；两个主体中只有一个给出状态表且有缺口时为未知；未关联本企业时资质缺口与单一来源排除都为未知、不排除；公共记录未查到时按客户录入判定、核验状态“未查到”，不判为不具备；无新证据不能确认客户录入 | F3 | 档案总览·数据未知 |
 
-证据位置在实现时逐条填入。服务端首个切片（档案、目标与 `GetContextSnapshot`，契约 `contracts/apis/customer-context/openapi.yaml` 与 `contracts/events/customer_context/` 0.1.0 草案）的自动化证据如下，界面走查、用户任务观察与其余用例仍待实现：
+证据位置在实现时逐条填入。服务端首个切片（档案、目标与 `GetContextSnapshot`，契约 `contracts/apis/customer-context/openapi.yaml` 0.2.0 与 `contracts/events/customer_context/` 0.1.0 草案；授权经 identity 契约 1.2.0 的组织单元、目标资源 `Check` 与 `SyncResourceParticipants`）的自动化证据如下，界面走查、用户任务观察与其余用例仍待实现：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|
@@ -244,7 +244,7 @@
 | 3 | 快照品类经 A02 模板 `category.any_match` 求值 | `services/subsystems/customercontext/internal/app/policy_test.go` |
 | 4、5、10、11、13、17 | 已覆盖（真实 PostgreSQL、identity 与 OpenFGA） | `services/kernel/integration/customercontext_test.go` |
 | 6 | 部分：保存返回后立即读到新上下文版本，旧版本快照可重放；保存前影响预览（`PreviewProfileImpact`）未实现 | 同上 |
-| 14 | 部分：单元角色可查看、非参与业务开拓者不可见；参与人授权待 identity 资源参与关系 | 同上 |
+| 14 | 服务端已覆盖：参与人可查看目标（含列表）且有信号查看权限；非参与业务开拓者不可见；同单元链（含上级继承）非参与的决策者、研究分析者、管理员可查看；管理员查看目标不自动获得信号权限；兄弟单元成员与兄弟单元参与人（identity 拒绝为无范围访问）不可见；单元移动后按新单元链判断。信号列表侧随第3段 | `services/kernel/integration/units_participants_test.go`；`services/kernel/integration/customercontext_test.go` |
 | 16 | 部分：停用与重新启用的状态转换；信号侧随第3段 | 同上 |
 | 1、7、8、9、12、15、18、19、21、22 | 未实现（依赖企业库解析、清单导入、策略草案、到期提醒、detection 与单元覆盖） | — |
 

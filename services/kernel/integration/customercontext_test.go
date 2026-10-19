@@ -362,7 +362,8 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 			problem(t, expect(t, who, t1, "POST", objectives, enable, 403), "forbidden")
 		}
 		problem(t, expect(t, dm, t1, "POST", objectives, strings.Replace(enable, "CAT-PIPE-PE-GAS", "CAT-PIPE-PVC", 1), 422), "param_not_subset")
-		problem(t, expect(t, dm, t1, "POST", objectives, strings.Replace(enable, `"root"`, `"unit-gas"`, 1), 404), "org_unit_not_found")
+		problem(t, expect(t, dm, t1, "POST", objectives, strings.Replace(enable, `"root"`, `"unt_01JA8ZXXXXXXXXXXXXXXXXXXX9"`, 1), 404), "org_unit_not_found")
+		problem(t, expect(t, dm, t1, "POST", objectives, strings.Replace(enable, `"root"`, `"unit-gas"`, 1), 400), "invalid_request")
 		problem(t, expect(t, dm, t1, "POST", objectives, strings.Replace(enable, "A02", "C01", 1), 422), "objective_not_enableable")
 		decode(t, expect(t, dm, t1, "POST", objectives, enable, 200, "enable-a02-000001"), &objective)
 		if objective.State != "inactive" || objective.Version != 1 || string(objective.Owner) != dm || objective.Params["regions"].Source != "profile" ||
@@ -384,7 +385,7 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 		}
 	})
 	objPath := objectives + "/" + objective.ID
-	t.Run("用例14（本切片范围）：单元级角色可查看，非参与业务开拓者看不到", func(t *testing.T) {
+	t.Run("用例14：单元级角色可查看，非参与业务开拓者看不到", func(t *testing.T) {
 		for _, who := range []string{dm, ra, admin} {
 			expect(t, who, t1, "GET", objPath, "", 200)
 		}
@@ -410,7 +411,13 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 			t.Fatalf("%+v", o)
 		}
 		problem(t, expect(t, dm, t1, "PUT", objPath, strings.Replace(configure, `"number":1000000`, `"number":5`, 1), 409), "version_conflict")
-		problem(t, expect(t, bd, t1, "GET", objPath, "", 404), "objective_not_found") // 参与关系授权随 identity 资源参与关系交付
+		// 加为参与人后，业务开拓者仅凭参与关系可查看（◐，经 identity 的 SyncResourceParticipants），列表中也可见
+		expect(t, bd, t1, "GET", objPath, "", 200)
+		var list cc.ObjectiveList
+		decode(t, expect(t, bd, t1, "GET", objectives, "", 200), &list)
+		if len(list.Objectives) != 1 {
+			t.Fatalf("参与人应在列表中看到目标：%+v", list)
+		}
 		decode(t, expect(t, dm, t1, "PUT", objPath+"/state", `{"expected_version":2,"state":"disabled"}`, 200), &o)
 		if o.State != "disabled" || o.Version != 3 {
 			t.Fatalf("%+v", o)

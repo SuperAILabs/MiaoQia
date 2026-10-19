@@ -407,6 +407,18 @@ fixtures:
     patch:
     - op: remove
       path: /org_unit_id
+  - name: identity 单元标识
+    valid: true
+    patch:
+    - op: replace
+      path: /org_unit_id
+      value: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 拒绝未登记格式的单元
+    valid: false
+    patch:
+    - op: replace
+      path: /org_unit_id
+      value: unit-gas
 - schema: ConfigureObjectiveRequest
   base:
     expected_version: 1
