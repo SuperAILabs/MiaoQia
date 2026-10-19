@@ -362,6 +362,228 @@
       }
     },
     {
+      "event": "customer_context.profile.updated.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "cause": "profile_saved",
+        "changed": [
+          "offering_categories",
+          "service_regions"
+        ],
+        "context_version": 3,
+        "profile_version": 2
+      }
+    },
+    {
+      "event": "customer_context.profile.updated.v1",
+      "name": "有效期跨日只改资质状态",
+      "valid": true,
+      "value": {
+        "cause": "qualification_validity",
+        "changed": [
+          "qualifications"
+        ],
+        "context_version": 3,
+        "profile_version": 2
+      }
+    },
+    {
+      "event": "customer_context.profile.updated.v1",
+      "name": "有效期跨日不得声称其他部分变化",
+      "valid": false,
+      "value": {
+        "cause": "qualification_validity",
+        "changed": [
+          "offering_categories",
+          "service_regions"
+        ],
+        "context_version": 3,
+        "profile_version": 2
+      }
+    },
+    {
+      "event": "customer_context.profile.updated.v1",
+      "name": "缺上下文版本",
+      "valid": false,
+      "value": {
+        "cause": "profile_saved",
+        "changed": [
+          "offering_categories",
+          "service_regions"
+        ],
+        "profile_version": 2
+      }
+    },
+    {
+      "event": "customer_context.profile.updated.v1",
+      "name": "上下文版本从1开始",
+      "valid": false,
+      "value": {
+        "cause": "profile_saved",
+        "changed": [
+          "offering_categories",
+          "service_regions"
+        ],
+        "context_version": 0,
+        "profile_version": 2
+      }
+    },
+    {
+      "event": "customer_context.profile.updated.v1",
+      "name": "载荷不得夹带租户",
+      "valid": false,
+      "value": {
+        "cause": "profile_saved",
+        "changed": [
+          "offering_categories",
+          "service_regions"
+        ],
+        "context_version": 3,
+        "profile_version": 2,
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "customer_context.profile.updated.v1",
+      "name": "未登记的档案部分",
+      "valid": false,
+      "value": {
+        "cause": "profile_saved",
+        "changed": [
+          "knowledge"
+        ],
+        "context_version": 3,
+        "profile_version": 2
+      }
+    },
+    {
+      "event": "customer_context.profile.updated.v1",
+      "name": "未登记的原因",
+      "valid": false,
+      "value": {
+        "cause": "manual",
+        "changed": [
+          "offering_categories",
+          "service_regions"
+        ],
+        "context_version": 3,
+        "profile_version": 2
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "change": "enabled",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "state": "inactive",
+        "template_id": "APP-TENDER.A02",
+        "template_version": "0.1.0",
+        "version": 1
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "停用",
+      "valid": true,
+      "value": {
+        "change": "disabled",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "state": "disabled",
+        "template_id": "APP-TENDER.A02",
+        "template_version": "0.1.0",
+        "version": 2
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "调整生效目标",
+      "valid": true,
+      "value": {
+        "change": "configured",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "state": "active",
+        "template_id": "APP-TENDER.A02",
+        "template_version": "0.1.0",
+        "version": 1
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "启用即生效不允许",
+      "valid": false,
+      "value": {
+        "change": "enabled",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "state": "active",
+        "template_id": "APP-TENDER.A02",
+        "template_version": "0.1.0",
+        "version": 1
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "停用后状态须为已停用",
+      "valid": false,
+      "value": {
+        "change": "disabled",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "state": "inactive",
+        "template_id": "APP-TENDER.A02",
+        "template_version": "0.1.0",
+        "version": 1
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "目标标识前缀错误",
+      "valid": false,
+      "value": {
+        "change": "enabled",
+        "objective_id": "pol_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "state": "inactive",
+        "template_id": "APP-TENDER.A02",
+        "template_version": "0.1.0",
+        "version": 1
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "缺模板版本",
+      "valid": false,
+      "value": {
+        "change": "enabled",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "state": "inactive",
+        "template_id": "APP-TENDER.A02",
+        "version": 1
+      }
+    },
+    {
+      "event": "customer_context.objective.changed.v1",
+      "name": "未知字段拒绝",
+      "valid": false,
+      "value": {
+        "change": "enabled",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "participants": [],
+        "state": "inactive",
+        "template_id": "APP-TENDER.A02",
+        "template_version": "0.1.0",
+        "version": 1
+      }
+    },
+    {
       "event": "domain.fact.upserted.v1",
       "name": "base",
       "valid": true,
@@ -2092,6 +2314,161 @@
           "type": "object"
         }
       ]
+    },
+    "customer_context.objective.changed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "disabled"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "disabled"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "enum": [
+                  "enabled",
+                  "reenabled"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "inactive"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "change": {
+          "enum": [
+            "enabled",
+            "configured",
+            "disabled",
+            "reenabled"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "inactive",
+            "active",
+            "disabled"
+          ],
+          "type": "string"
+        },
+        "template_id": {
+          "pattern": "^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$",
+          "type": "string"
+        },
+        "template_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "objective_id",
+        "version",
+        "template_id",
+        "template_version",
+        "org_unit_id",
+        "state",
+        "change"
+      ],
+      "type": "object"
+    },
+    "customer_context.profile.updated.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "cause": {
+                "const": "qualification_validity"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "changed": {
+                "const": [
+                  "qualifications"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "cause": {
+          "description": "profile_saved 为档案保存；qualification_validity 为有效期跨日后快照中的资质状态变化，档案版本不变",
+          "enum": [
+            "profile_saved",
+            "qualification_validity"
+          ],
+          "type": "string"
+        },
+        "changed": {
+          "description": "与上一版本相比变化的档案部分；只用于提示，不代替读取快照",
+          "items": {
+            "enum": [
+              "entities",
+              "value_chain_roles",
+              "industry_packs",
+              "offering_categories",
+              "brands",
+              "service_regions",
+              "qualifications"
+            ],
+            "type": "string"
+          },
+          "maxItems": 8,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "context_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "profile_version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "context_version",
+        "profile_version",
+        "cause",
+        "changed"
+      ],
+      "type": "object"
     },
     "domain.aggregation.changed.v1": {
       "additionalProperties": false,

@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.8 · 更新：2026-10-17 · 平面：客户智能
+> 状态：评审中 · 版本：1.9 · 更新：2026-10-19 · 平面：客户智能
 
 ## 1. 使命
 
@@ -72,9 +72,13 @@
 | `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界） |
 | `UploadKnowledgeAsset` | 命令 | 上传与分级 |
 
+实现状况：首个切片实现了 `GetContextSnapshot`、`GetContextVersion`（内部端口，经 mTLS）、`Get/Update Profile`（本企业关联与资质在档案内维护）与目标的 `ListObjectiveTemplates`、`EnableObjective`、`ConfigureObjective`、`DisableObjective`（含重新启用），契约为 [`contracts/apis/customer-context/openapi.yaml`](../../../contracts/apis/customer-context/openapi.yaml) 0.1.0 草案。现阶段只有根组织单元 `root`；启用目标时的首版策略草案随第7段实现。
+
 ## 7. 事件
 
 **发布**：`customer_context.profile.updated.v1`、`customer_context.objective.changed.v1`、`customer_context.entity_list.changed.v1`、`customer_context.qualification.expiring.v1`、`customer_context.policy.drafted.v1`、`customer_context.policy.activated.v1`、`customer_context.policy.rolled_back.v1`、`customer_context.knowledge.changed.v1`。
+
+已实现发布 `profile.updated` 与 `objective.changed`，契约见 [`contracts/events/customer_context/events.asyncapi.yaml`](../../../contracts/events/customer_context/events.asyncapi.yaml) 0.1.0 草案；资质有效期跨日改变快照时，`GetContextVersion` 递增上下文版本并以 `cause: qualification_validity` 发布 `profile.updated`。
 
 **消费**：`identity.approval.decided.v1`（策略激活与回滚的审批结果）、`identity.approval.closed.v1`（撤回或失效；激活申请的草案解锁）、`learning.policy.proposal_created.v1`（学习子系统提出的策略调整建议，转为草案）、`learning.simulation.completed.v1`（附在草案上）。
 

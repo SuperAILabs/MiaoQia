@@ -1,0 +1,116 @@
+fixtures:
+- event: customer_context.profile.updated.v1
+  base:
+    context_version: 3
+    profile_version: 2
+    cause: profile_saved
+    changed:
+    - offering_categories
+    - service_regions
+  cases:
+  - name: 有效期跨日只改资质状态
+    valid: true
+    patch:
+    - op: replace
+      path: /cause
+      value: qualification_validity
+    - op: replace
+      path: /changed
+      value:
+      - qualifications
+  - name: 有效期跨日不得声称其他部分变化
+    valid: false
+    patch:
+    - op: replace
+      path: /cause
+      value: qualification_validity
+  - name: 缺上下文版本
+    valid: false
+    patch:
+    - op: remove
+      path: /context_version
+  - name: 上下文版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /context_version
+      value: 0
+  - name: 载荷不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 未登记的档案部分
+    valid: false
+    patch:
+    - op: replace
+      path: /changed
+      value:
+      - knowledge
+  - name: 未登记的原因
+    valid: false
+    patch:
+    - op: replace
+      path: /cause
+      value: manual
+- event: customer_context.objective.changed.v1
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    template_id: APP-TENDER.A02
+    template_version: 0.1.0
+    org_unit_id: root
+    state: inactive
+    change: enabled
+  cases:
+  - name: 停用
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: disabled
+    - op: replace
+      path: /change
+      value: disabled
+    - op: replace
+      path: /version
+      value: 2
+  - name: 调整生效目标
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: active
+    - op: replace
+      path: /change
+      value: configured
+  - name: 启用即生效不允许
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: active
+  - name: 停用后状态须为已停用
+    valid: false
+    patch:
+    - op: replace
+      path: /change
+      value: disabled
+  - name: 目标标识前缀错误
+    valid: false
+    patch:
+    - op: replace
+      path: /objective_id
+      value: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 缺模板版本
+    valid: false
+    patch:
+    - op: remove
+      path: /template_version
+  - name: 未知字段拒绝
+    valid: false
+    patch:
+    - op: add
+      path: /participants
+      value: []
