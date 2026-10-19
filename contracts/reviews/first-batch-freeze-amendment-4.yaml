@@ -29,6 +29,6 @@ verification:
   commands:
   - mqc check
   - mqc freeze-check
-  - mqc compat --base origin/main（customer-context 0.x 草案的单元标识 pattern 收紧为 breaking，已升 0.2.0；identity 与标识前缀无 breaking）
+  - mqc compat --base origin/main（customer-context 0.x 草案共 16 项 breaking：单元标识 pattern 收紧 9 项、参与人 maxItems 200→50 共 7 项，均随 0.2.0 草案迁移；identity 与标识前缀无 breaking）
   - mqc generate --check --lang go --lang python
   - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA）
