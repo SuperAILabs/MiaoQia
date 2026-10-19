@@ -14,13 +14,19 @@ var (
 	rn3AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
+	rn14AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
+	rn19AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
 	rn4AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn16AllowedHeaders = map[string]string{
+	rn17AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn19AllowedHeaders = map[string]string{
+	rn21AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn1AllowedHeaders = map[string]string{
@@ -35,13 +41,13 @@ var (
 	rn11AllowedHeaders = map[string]string{
 		"PUT": "Content-Type,Idempotency-Key",
 	}
-	rn21AllowedHeaders = map[string]string{
+	rn23AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
 	rn7AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn20AllowedHeaders = map[string]string{
+	rn22AllowedHeaders = map[string]string{
 		"PUT": "Content-Type,Idempotency-Key",
 	}
 )
@@ -134,6 +140,59 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
+				case 'c': // Prefix: "channel-sessions"
+
+					if l := len("channel-sessions"); len(elem) >= l && elem[0:l] == "channel-sessions" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListLiveChannelSessionsRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleIssueChannelSessionRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET,POST",
+								allowedHeaders: rn14AllowedHeaders,
+								acceptPost:     "application/json",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case ':': // Prefix: ":revoke"
+
+						if l := len(":revoke"); len(elem) >= l && elem[0:l] == ":revoke" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "POST":
+								s.handleRevokeChannelSessionsRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "POST",
+									allowedHeaders: rn19AllowedHeaders,
+									acceptPost:     "application/json",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					}
+
 				case 'i': // Prefix: "invitations"
 
 					if l := len("invitations"); len(elem) >= l && elem[0:l] == "invitations" {
@@ -211,7 +270,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									default:
 										s.notAllowed(w, r, notAllowedParams{
 											allowedMethods: "POST",
-											allowedHeaders: rn16AllowedHeaders,
+											allowedHeaders: rn17AllowedHeaders,
 											acceptPost:     "application/json",
 											acceptPatch:    "",
 										})
@@ -238,7 +297,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									default:
 										s.notAllowed(w, r, notAllowedParams{
 											allowedMethods: "POST",
-											allowedHeaders: rn19AllowedHeaders,
+											allowedHeaders: rn21AllowedHeaders,
 											acceptPost:     "application/json",
 											acceptPatch:    "",
 										})
@@ -402,7 +461,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						default:
 							s.notAllowed(w, r, notAllowedParams{
 								allowedMethods: "POST",
-								allowedHeaders: rn21AllowedHeaders,
+								allowedHeaders: rn23AllowedHeaders,
 								acceptPost:     "application/json",
 								acceptPatch:    "",
 							})
@@ -515,7 +574,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "PUT",
-									allowedHeaders: rn20AllowedHeaders,
+									allowedHeaders: rn22AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -665,6 +724,66 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
+				case 'c': // Prefix: "channel-sessions"
+
+					if l := len("channel-sessions"); len(elem) >= l && elem[0:l] == "channel-sessions" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = ListLiveChannelSessionsOperation
+							r.summary = "列出仍有有效免登会话的绑定（对账）"
+							r.operationID = "listLiveChannelSessions"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/identity/channel-sessions"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = IssueChannelSessionOperation
+							r.summary = "签发渠道免登会话（IssueChannelSession）"
+							r.operationID = "issueChannelSession"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/identity/channel-sessions"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case ':': // Prefix: ":revoke"
+
+						if l := len(":revoke"); len(elem) >= l && elem[0:l] == ":revoke" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "POST":
+								r.name = RevokeChannelSessionsOperation
+								r.summary = "撤销渠道绑定的免登会话（RevokeChannelSessions）"
+								r.operationID = "revokeChannelSessions"
+								r.operationGroup = ""
+								r.pathPattern = "/v1/identity/channel-sessions:revoke"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
 				case 'i': // Prefix: "invitations"
 
 					if l := len("invitations"); len(elem) >= l && elem[0:l] == "invitations" {

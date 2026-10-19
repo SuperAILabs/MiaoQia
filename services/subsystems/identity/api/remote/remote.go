@@ -115,3 +115,49 @@ func (c client) SyncResourceParticipants(ctx context.Context, req *api.SyncParti
 		return value, nil
 	})
 }
+
+// IssueChannelSession 签发渠道免登会话；按凭据标识幂等，暂时性失败可重试（channels 只在凭据有效期内调用）。
+func (c client) IssueChannelSession(ctx context.Context, req *api.IssueChannelSessionRequest) (*api.ChannelSession, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "IssueChannelSession", Idempotent: true}, func(ctx context.Context) (*api.ChannelSession, error) {
+		if req == nil || req.Validate() != nil {
+			return nil, &api.Error{Status: 400, Code: "invalid_request"}
+		}
+		value, err := c.c.IssueChannelSession(ctx, req)
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}
+
+// RevokeChannelSessions 撤销绑定版本及以下的免登会话；按版本幂等。
+func (c client) RevokeChannelSessions(ctx context.Context, req *api.RevokeChannelSessionsRequest) (*api.ChannelSessionRevocation, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "RevokeChannelSessions", Idempotent: true}, func(ctx context.Context) (*api.ChannelSessionRevocation, error) {
+		if req == nil || req.Validate() != nil {
+			return nil, &api.Error{Status: 400, Code: "invalid_request"}
+		}
+		value, err := c.c.RevokeChannelSessions(ctx, req)
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}
+
+// ListLiveChannelSessions 分页列出仍有有效免登会话的绑定。
+func (c client) ListLiveChannelSessions(ctx context.Context, cursor string, limit int) (*api.LiveChannelBindingList, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "ListLiveChannelSessions", Idempotent: true}, func(ctx context.Context) (*api.LiveChannelBindingList, error) {
+		params := identityapi.ListLiveChannelSessionsParams{}
+		if cursor != "" {
+			params.Cursor = identityapi.NewOptChannelSessionCursor(identityapi.ChannelSessionCursor(cursor))
+		}
+		if limit != 0 {
+			params.Limit = identityapi.NewOptInt(limit)
+		}
+		value, err := c.c.ListLiveChannelSessions(ctx, params)
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}

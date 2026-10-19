@@ -107,6 +107,30 @@ func (UnimplementedHandler) GetTenant(ctx context.Context, params GetTenantParam
 	return r, ht.ErrNotImplemented
 }
 
+// IssueChannelSession implements issueChannelSession operation.
+//
+// 仅 channels 的服务主体可调用（服务授权
+// can_issue_channel_sessions），带绑定所在租户的上下文。channels
+// 在核对绑定有效后签发
+// 签发凭据（凭据标识、绑定标识、绑定版本、成员、到期时间为签发后30秒），本接口凭它签发不带强认证的免登会话（12小时）。
+// identity 在一个事务中锁定该绑定的撤销水位行，依次核验：凭据未过期（按
+// identity 时钟与5秒偏差从严：须早于到期前5秒， 否则 410
+// credential_expired；有效期长于35秒的凭据为 400
+// invalid_credential）、绑定版本高于撤销水位（否则 409 binding_revoked）、
+// 成员为本租户有效成员（否则 403
+// member_inactive），再写入会话并记审计。同一凭据标识重复提交返回同一会话（outcome
+// replayed）， 凭据标识相同而内容不同为 409
+// credential_conflict；该会话已被撤销时为 409
+// binding_revoked，不返回已作废的会话。 与 revokeChannelSessions
+// 在同一水位行上串行。免登令牌（miaoqia_session_source=channel、miaoqia_channel_session=会话标识）
+// 由 IdP 的受控会话签发生成，网关对此类令牌每次请求都经 identity
+// 核验会话与水位。.
+//
+// POST /v1/identity/channel-sessions
+func (UnimplementedHandler) IssueChannelSession(ctx context.Context, req *IssueChannelSessionRequest) (r *ChannelSession, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListInvitations implements listInvitations operation.
 //
 // 需要 can_manage_members
@@ -119,6 +143,19 @@ func (UnimplementedHandler) GetTenant(ctx context.Context, params GetTenantParam
 //
 // GET /v1/identity/invitations
 func (UnimplementedHandler) ListInvitations(ctx context.Context, params ListInvitationsParams) (r *InvitationList, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ListLiveChannelSessions implements listLiveChannelSessions operation.
+//
+// 仅 channels
+// 的服务主体可调用。按绑定标识升序分页列出上下文租户中仍有未撤销、未过期免登会话的绑定及其最高绑定版本，
+// channels 据此与自己的有效绑定对账，对不在其中的绑定调用
+// revokeChannelSessions。每页至多 limit 条（默认且至多500）； 还有更多时 truncated
+// 为 true 并给出 next_cursor（只在签发它的租户内有效，否则 400 invalid_cursor）。.
+//
+// GET /v1/identity/channel-sessions
+func (UnimplementedHandler) ListLiveChannelSessions(ctx context.Context, params ListLiveChannelSessionsParams) (r *LiveChannelBindingList, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -156,6 +193,21 @@ func (UnimplementedHandler) ResendInvitation(ctx context.Context, req *Invitatio
 //
 // GET /v1/identity/session
 func (UnimplementedHandler) ResolveSession(ctx context.Context) (r *Session, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// RevokeChannelSessions implements revokeChannelSessions operation.
+//
+// 仅 channels 的服务主体可调用。绑定失效后调用（失败时经
+// channels.binding.changed.v1 重试，identity 亦消费该事件）：
+// 在一个事务中锁定该绑定的撤销水位行，把水位抬高到
+// binding_version（不降低；无对应会话也记录），作废版本不高于水位的全部会话。
+// 返回后撤销已生效（outcome applied；水位已不低于请求版本时为
+// already_applied），channels 据此确认撤销。 与 issueChannelSession
+// 在同一水位行上串行：进行中的签发事务提交后撤销才执行，并作废其写入的会话。.
+//
+// POST /v1/identity/channel-sessions:revoke
+func (UnimplementedHandler) RevokeChannelSessions(ctx context.Context, req *RevokeChannelSessionsRequest) (r *ChannelSessionRevocation, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

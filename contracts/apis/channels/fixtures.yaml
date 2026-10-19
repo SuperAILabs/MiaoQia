@@ -1,0 +1,375 @@
+fixtures:
+- schema: Problem
+  base:
+    type: https://errors.miaoqia.com/content_unavailable
+    title: content_unavailable
+    status: 404
+    code: content_unavailable
+  cases:
+  - name: 账号不一致给出收件人
+    valid: true
+    patch:
+    - op: replace
+      path: /code
+      value: account_mismatch
+    - op: replace
+      path: /status
+      value: 409
+    - op: add
+      path: /recipient
+      value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 通用不可打开不得夹带标题
+    valid: false
+    patch:
+    - op: add
+      path: /object_title
+      value: 某燃气项目
+  - name: 状态码须为错误
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: 200
+- schema: ChannelKind
+  base: wecom
+  cases:
+  - name: 未接入的渠道
+    valid: false
+    instance: telegram
+- schema: InstallationID
+  base: chi_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 其他前缀
+    valid: false
+    instance: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: BindingID
+  base: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 非 ULID
+    valid: false
+    instance: chb_1
+- schema: InstallationState
+  base: pending_verification
+  cases:
+  - name: 异常尚未实现
+    valid: false
+    instance: abnormal
+- schema: Installation
+  base:
+    id: chi_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: wecom
+    state: enabled
+    version: 3
+    corp_id: wwcorp01
+    corp_name: 甲建材
+    bound_count: 2
+    rejected_callbacks: 0
+    created_at: '2026-10-19T08:00:00Z'
+    verified_at: '2026-10-19T08:10:00Z'
+  cases:
+  - name: 授权中尚无企业
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: authorizing
+    - op: remove
+      path: /corp_id
+    - op: remove
+      path: /corp_name
+  - name: 不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不得返回渠道凭证
+    valid: false
+    patch:
+    - op: add
+      path: /secret
+      value: abc
+  - name: 已绑定人数不能为负
+    valid: false
+    patch:
+    - op: replace
+      path: /bound_count
+      value: -1
+- schema: InstallationList
+  base:
+    installations: []
+  cases:
+  - name: 缺列表
+    valid: false
+    patch:
+    - op: remove
+      path: /installations
+- schema: InstallChannelRequest
+  base:
+    channel: wecom
+  cases:
+  - name: 请求不得指定企业
+    valid: false
+    patch:
+    - op: add
+      path: /corp_id
+      value: wwcorp01
+  - name: 未接入的渠道
+    valid: false
+    patch:
+    - op: replace
+      path: /channel
+      value: feishu
+- schema: InstallationStarted
+  base:
+    installation:
+      id: chi_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      channel: wecom
+      state: authorizing
+      version: 1
+      bound_count: 0
+      created_at: '2026-10-19T08:00:00Z'
+    authorize_url: https://open.work.weixin.qq.com/wwopen/sso/3rd_qrConnect?state=abc
+  cases:
+  - name: 重放不含授权页地址
+    valid: true
+    patch:
+    - op: remove
+      path: /authorize_url
+  - name: 缺安装记录
+    valid: false
+    patch:
+    - op: remove
+      path: /installation
+- schema: VersionRequest
+  base:
+    expected_version: 1
+  cases:
+  - name: 版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+- schema: BindingState
+  base: revoking
+  cases:
+  - name: 未登记的状态
+    valid: false
+    instance: unbound
+- schema: BindingReason
+  base: member_left
+  cases:
+  - name: 未登记的原因
+    valid: false
+    instance: expired
+- schema: Binding
+  base:
+    id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: wecom
+    installation_id: chi_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    corp_id: wwcorp01
+    channel_user_id: zhangsan
+    display_name: 张三
+    state: bound
+    version: 1
+    bound_at: '2026-10-19T08:00:00Z'
+  cases:
+  - name: 解绑处理中
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: revoking
+    - op: replace
+      path: /version
+      value: 2
+    - op: add
+      path: /reason
+      value: admin_unbind
+    - op: add
+      path: /note
+      value: 员工调岗
+    - op: add
+      path: /revoking_at
+      value: '2026-10-19T09:00:00Z'
+  - name: 显示名不可得
+    valid: true
+    patch:
+    - op: remove
+      path: /display_name
+  - name: 不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 缺渠道账号
+    valid: false
+    patch:
+    - op: remove
+      path: /channel_user_id
+- schema: BindingCursor
+  base: eyJ0IjoxfQ
+  cases:
+  - name: 非 base64url
+    valid: false
+    instance: a/b
+- schema: BindingList
+  base:
+    bindings: []
+    truncated: false
+  cases:
+  - name: 缺 truncated
+    valid: false
+    patch:
+    - op: remove
+      path: /truncated
+- schema: LinkToken
+  base: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  cases:
+  - name: 长度不符
+    valid: false
+    instance: short
+- schema: OAuthCode
+  base: CODE_abc-123
+  cases:
+  - name: 空授权码
+    valid: false
+    instance: ''
+- schema: BindingLinkRequest
+  base:
+    link_token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    oauth_code: CODE_abc-123
+  cases:
+  - name: 渠道内置浏览器以外没有授权码（由服务端返回 channel_browser_required）
+    valid: true
+    patch:
+    - op: remove
+      path: /oauth_code
+  - name: 请求不得指定租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 请求不得自报渠道账号
+    valid: false
+    patch:
+    - op: add
+      path: /channel_user_id
+      value: lisi
+- schema: Confirmation
+  base: '0000000000000000000000000000000000000000000000000000000000000000'
+  cases:
+  - name: 大写十六进制
+    valid: false
+    instance: ABCDEF0000000000000000000000000000000000000000000000000000000000
+- schema: BindingPreview
+  base:
+    channel: wecom
+    corp_id: wwcorp01
+    corp_name: 甲建材
+    channel_user_id: zhangsan
+    display_name: 张三
+    subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    expires_at: '2026-10-19T08:10:00Z'
+    confirmation: '0000000000000000000000000000000000000000000000000000000000000000'
+  cases:
+  - name: 缺内容摘要
+    valid: false
+    patch:
+    - op: remove
+      path: /confirmation
+  - name: 不得返回会话标识
+    valid: false
+    patch:
+    - op: add
+      path: /session
+      value: sid-1
+- schema: ConfirmBindingRequest
+  base:
+    link_token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    oauth_code: CODE_abc-123
+    confirmation: '0000000000000000000000000000000000000000000000000000000000000000'
+  cases:
+  - name: 缺内容摘要
+    valid: false
+    patch:
+    - op: remove
+      path: /confirmation
+  - name: 请求不得指定成员
+    valid: false
+    patch:
+    - op: add
+      path: /subject
+      value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: BindingConfirmation
+  base:
+    binding:
+      id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      channel: wecom
+      installation_id: chi_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      corp_id: wwcorp01
+      channel_user_id: zhangsan
+      state: bound
+      version: 1
+      bound_at: '2026-10-19T08:00:00Z'
+    outcome: bound
+  cases:
+  - name: 重试返回首次结果
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: already_bound
+  - name: 未登记的结果
+    valid: false
+    patch:
+    - op: replace
+      path: /outcome
+      value: rebound
+- schema: UnbindRequest
+  base:
+    expected_version: 1
+  cases:
+  - name: 强制解绑带原因
+    valid: true
+    patch:
+    - op: add
+      path: /reason
+      value: 员工调岗
+  - name: 原因不能为空串
+    valid: false
+    patch:
+    - op: add
+      path: /reason
+      value: ''
+- schema: OpenCardLinkRequest
+  base:
+    token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  cases:
+  - name: 不得携带登录身份
+    valid: false
+    patch:
+    - op: add
+      path: /subject
+      value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: CardTarget
+  base:
+    object: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 不得返回对象标题
+    valid: false
+    patch:
+    - op: add
+      path: /title
+      value: 某燃气项目
+  - name: 未登记的对象类型
+    valid: false
+    patch:
+    - op: replace
+      path: /object
+      value: tenant:tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1

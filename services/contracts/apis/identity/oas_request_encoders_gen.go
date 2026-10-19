@@ -80,6 +80,20 @@ func encodeCreateTenantRequest(
 	return nil
 }
 
+func encodeIssueChannelSessionRequest(
+	req *IssueChannelSessionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodePutMemberRequest(
 	req *PutMemberRequest,
 	r *http.Request,
@@ -96,6 +110,20 @@ func encodePutMemberRequest(
 
 func encodeResendInvitationRequest(
 	req *InvitationVersionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeRevokeChannelSessionsRequest(
+	req *RevokeChannelSessionsRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

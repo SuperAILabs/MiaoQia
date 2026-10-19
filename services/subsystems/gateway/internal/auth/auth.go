@@ -30,6 +30,10 @@ type Claims struct {
 	AuthTime *jwt.NumericDate `json:"auth_time,omitempty"`
 	// SessionSource 缺省为 IdP 交互登录；channel 为渠道免登会话（不带强认证），其他取值视为未知来源。
 	SessionSource *string `json:"miaoqia_session_source,omitempty"`
+	// SessionID 是 IdP 的 Web 会话标识（OIDC sid）；渠道绑定请求固定在它上面。
+	SessionID string `json:"sid,omitempty"`
+	// ChannelSession 是渠道免登会话标识（identity 签发的 chs_…），只对免登会话令牌有意义。
+	ChannelSession string `json:"miaoqia_channel_session,omitempty"`
 }
 
 // Verifier 校验令牌。
@@ -114,6 +118,10 @@ func (v *Verifier) VerifyAssurance(r *http.Request) (reqctx.Context, reqctx.Assu
 		if *c.SessionSource == reqctx.SourceChannel {
 			a.Source = reqctx.SourceChannel
 		}
+	}
+	a.SessionID = c.SessionID
+	if a.Source == reqctx.SourceChannel {
+		a.ChannelSession = c.ChannelSession
 	}
 	return rc, a, nil
 }

@@ -1,0 +1,84 @@
+asyncapi: 3.0.0
+info:
+  title: channels 渠道绑定事件
+  version: 0.1.0
+  description: >-
+    由 channels 经发件箱发布（PRD 第1段第8节）。信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；
+    本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。绑定的每次状态变化发布一条，按绑定版本单调递增；
+    identity 消费 revoking 与 invalidated 撤销该绑定版本以下的免登会话（撤销水位只升不降，迟到的旧事件不改变结果），
+    channels 自身消费 revoking 重试同步撤销。投递、动作与会话事件随第5段追加。
+channels:
+  tenantChannels:
+    address: cell-{cell}.channels
+    parameters:
+      cell:
+        description: 租户所在 cell，例如 cell-01
+    messages:
+      bindingChanged:
+        $ref: '#/components/messages/bindingChanged'
+operations:
+  publishChannelsEvents:
+    action: send
+    channel:
+      $ref: '#/channels/tenantChannels'
+components:
+  messages:
+    bindingChanged:
+      name: channels.binding.changed.v1
+      x-fixtures-required: true
+      summary: 渠道绑定建立、进入失效中或失效完成
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - binding_id
+        - channel
+        - subject
+        - version
+        - state
+        properties:
+          binding_id:
+            type: string
+            pattern: ^chb_[0-9A-HJKMNP-TV-Z]{26}$
+          channel:
+            type: string
+            enum:
+            - wecom
+          subject:
+            type: string
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+          version:
+            type: integer
+            minimum: 1
+            description: 绑定版本：建立为1，失效时加一；撤销水位抬高到该值
+          state:
+            type: string
+            enum:
+            - bound
+            - revoking
+            - invalidated
+          reason:
+            type: string
+            enum:
+            - member_unbind
+            - admin_unbind
+            - member_left
+            - channel_disabled
+        allOf:
+        - if:
+            properties:
+              state:
+                const: bound
+          then:
+            properties:
+              version:
+                const: 1
+            not:
+              required:
+              - reason
+          else:
+            required:
+            - reason
+            properties:
+              version:
+                minimum: 2

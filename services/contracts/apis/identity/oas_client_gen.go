@@ -98,6 +98,27 @@ type Invoker interface {
 	//
 	// GET /v1/tenants/{tenantID}
 	GetTenant(ctx context.Context, params GetTenantParams) (*Tenant, error)
+	// IssueChannelSession invokes issueChannelSession operation.
+	//
+	// 仅 channels 的服务主体可调用（服务授权
+	// can_issue_channel_sessions），带绑定所在租户的上下文。channels
+	// 在核对绑定有效后签发
+	// 签发凭据（凭据标识、绑定标识、绑定版本、成员、到期时间为签发后30秒），本接口凭它签发不带强认证的免登会话（12小时）。
+	// identity 在一个事务中锁定该绑定的撤销水位行，依次核验：凭据未过期（按
+	// identity 时钟与5秒偏差从严：须早于到期前5秒， 否则 410
+	// credential_expired；有效期长于35秒的凭据为 400
+	// invalid_credential）、绑定版本高于撤销水位（否则 409 binding_revoked）、
+	// 成员为本租户有效成员（否则 403
+	// member_inactive），再写入会话并记审计。同一凭据标识重复提交返回同一会话（outcome
+	// replayed）， 凭据标识相同而内容不同为 409
+	// credential_conflict；该会话已被撤销时为 409
+	// binding_revoked，不返回已作废的会话。 与 revokeChannelSessions
+	// 在同一水位行上串行。免登令牌（miaoqia_session_source=channel、miaoqia_channel_session=会话标识）
+	// 由 IdP 的受控会话签发生成，网关对此类令牌每次请求都经 identity
+	// 核验会话与水位。.
+	//
+	// POST /v1/identity/channel-sessions
+	IssueChannelSession(ctx context.Context, request *IssueChannelSessionRequest) (*ChannelSession, error)
 	// ListInvitations invokes listInvitations operation.
 	//
 	// 需要 can_manage_members
@@ -110,6 +131,16 @@ type Invoker interface {
 	//
 	// GET /v1/identity/invitations
 	ListInvitations(ctx context.Context, params ListInvitationsParams) (*InvitationList, error)
+	// ListLiveChannelSessions invokes listLiveChannelSessions operation.
+	//
+	// 仅 channels
+	// 的服务主体可调用。按绑定标识升序分页列出上下文租户中仍有未撤销、未过期免登会话的绑定及其最高绑定版本，
+	// channels 据此与自己的有效绑定对账，对不在其中的绑定调用
+	// revokeChannelSessions。每页至多 limit 条（默认且至多500）； 还有更多时 truncated
+	// 为 true 并给出 next_cursor（只在签发它的租户内有效，否则 400 invalid_cursor）。.
+	//
+	// GET /v1/identity/channel-sessions
+	ListLiveChannelSessions(ctx context.Context, params ListLiveChannelSessionsParams) (*LiveChannelBindingList, error)
 	// ListOrgUnits invokes listOrgUnits operation.
 	//
 	// 当前租户的有效成员可调用。返回全部单元（含根单元
@@ -135,6 +166,18 @@ type Invoker interface {
 	//
 	// GET /v1/identity/session
 	ResolveSession(ctx context.Context) (*Session, error)
+	// RevokeChannelSessions invokes revokeChannelSessions operation.
+	//
+	// 仅 channels 的服务主体可调用。绑定失效后调用（失败时经
+	// channels.binding.changed.v1 重试，identity 亦消费该事件）：
+	// 在一个事务中锁定该绑定的撤销水位行，把水位抬高到
+	// binding_version（不降低；无对应会话也记录），作废版本不高于水位的全部会话。
+	// 返回后撤销已生效（outcome applied；水位已不低于请求版本时为
+	// already_applied），channels 据此确认撤销。 与 issueChannelSession
+	// 在同一水位行上串行：进行中的签发事务提交后撤销才执行，并作废其写入的会话。.
+	//
+	// POST /v1/identity/channel-sessions:revoke
+	RevokeChannelSessions(ctx context.Context, request *RevokeChannelSessionsRequest) (*ChannelSessionRevocation, error)
 	// RevokeInvitation invokes revokeInvitation operation.
 	//
 	// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
@@ -990,6 +1033,104 @@ func (c *Client) sendGetTenant(ctx context.Context, params GetTenantParams) (res
 	return result, nil
 }
 
+// IssueChannelSession invokes issueChannelSession operation.
+//
+// 仅 channels 的服务主体可调用（服务授权
+// can_issue_channel_sessions），带绑定所在租户的上下文。channels
+// 在核对绑定有效后签发
+// 签发凭据（凭据标识、绑定标识、绑定版本、成员、到期时间为签发后30秒），本接口凭它签发不带强认证的免登会话（12小时）。
+// identity 在一个事务中锁定该绑定的撤销水位行，依次核验：凭据未过期（按
+// identity 时钟与5秒偏差从严：须早于到期前5秒， 否则 410
+// credential_expired；有效期长于35秒的凭据为 400
+// invalid_credential）、绑定版本高于撤销水位（否则 409 binding_revoked）、
+// 成员为本租户有效成员（否则 403
+// member_inactive），再写入会话并记审计。同一凭据标识重复提交返回同一会话（outcome
+// replayed）， 凭据标识相同而内容不同为 409
+// credential_conflict；该会话已被撤销时为 409
+// binding_revoked，不返回已作废的会话。 与 revokeChannelSessions
+// 在同一水位行上串行。免登令牌（miaoqia_session_source=channel、miaoqia_channel_session=会话标识）
+// 由 IdP 的受控会话签发生成，网关对此类令牌每次请求都经 identity
+// 核验会话与水位。.
+//
+// POST /v1/identity/channel-sessions
+func (c *Client) IssueChannelSession(ctx context.Context, request *IssueChannelSessionRequest) (*ChannelSession, error) {
+	res, err := c.sendIssueChannelSession(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendIssueChannelSession(ctx context.Context, request *IssueChannelSessionRequest) (res *ChannelSession, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("issueChannelSession"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/channel-sessions"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, IssueChannelSessionOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/channel-sessions"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeIssueChannelSessionRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeIssueChannelSessionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListInvitations invokes listInvitations operation.
 //
 // 需要 can_manage_members
@@ -1127,6 +1268,131 @@ func (c *Client) sendListInvitations(ctx context.Context, params ListInvitations
 
 	stage = "DecodeResponse"
 	result, err := decodeListInvitationsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListLiveChannelSessions invokes listLiveChannelSessions operation.
+//
+// 仅 channels
+// 的服务主体可调用。按绑定标识升序分页列出上下文租户中仍有未撤销、未过期免登会话的绑定及其最高绑定版本，
+// channels 据此与自己的有效绑定对账，对不在其中的绑定调用
+// revokeChannelSessions。每页至多 limit 条（默认且至多500）； 还有更多时 truncated
+// 为 true 并给出 next_cursor（只在签发它的租户内有效，否则 400 invalid_cursor）。.
+//
+// GET /v1/identity/channel-sessions
+func (c *Client) ListLiveChannelSessions(ctx context.Context, params ListLiveChannelSessionsParams) (*LiveChannelBindingList, error) {
+	res, err := c.sendListLiveChannelSessions(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListLiveChannelSessions(ctx context.Context, params ListLiveChannelSessionsParams) (res *LiveChannelBindingList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listLiveChannelSessions"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/identity/channel-sessions"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListLiveChannelSessionsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/channel-sessions"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListLiveChannelSessionsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -1522,6 +1788,95 @@ func (c *Client) sendResolveSession(ctx context.Context) (res *Session, err erro
 
 	stage = "DecodeResponse"
 	result, err := decodeResolveSessionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RevokeChannelSessions invokes revokeChannelSessions operation.
+//
+// 仅 channels 的服务主体可调用。绑定失效后调用（失败时经
+// channels.binding.changed.v1 重试，identity 亦消费该事件）：
+// 在一个事务中锁定该绑定的撤销水位行，把水位抬高到
+// binding_version（不降低；无对应会话也记录），作废版本不高于水位的全部会话。
+// 返回后撤销已生效（outcome applied；水位已不低于请求版本时为
+// already_applied），channels 据此确认撤销。 与 issueChannelSession
+// 在同一水位行上串行：进行中的签发事务提交后撤销才执行，并作废其写入的会话。.
+//
+// POST /v1/identity/channel-sessions:revoke
+func (c *Client) RevokeChannelSessions(ctx context.Context, request *RevokeChannelSessionsRequest) (*ChannelSessionRevocation, error) {
+	res, err := c.sendRevokeChannelSessions(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendRevokeChannelSessions(ctx context.Context, request *RevokeChannelSessionsRequest) (res *ChannelSessionRevocation, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("revokeChannelSessions"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/channel-sessions:revoke"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RevokeChannelSessionsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/channel-sessions:revoke"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeRevokeChannelSessionsRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRevokeChannelSessionsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

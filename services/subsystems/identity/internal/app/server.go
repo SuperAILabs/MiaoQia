@@ -109,3 +109,13 @@ func (s *Server) RevokeInvitation(ctx context.Context, req *identityapi.Invitati
 func (s *Server) AcceptInvitation(ctx context.Context, req *identityapi.AcceptInvitationRequest) (*identityapi.InvitationAcceptance, error) {
 	return s.Directory.AcceptInvitation(ctx, req)
 }
+
+func (s *Server) IssueChannelSession(ctx context.Context, req *identityapi.IssueChannelSessionRequest) (*identityapi.ChannelSession, error) {
+	return s.Directory.IssueChannelSession(ctx, req)
+}
+func (s *Server) RevokeChannelSessions(ctx context.Context, req *identityapi.RevokeChannelSessionsRequest) (*identityapi.ChannelSessionRevocation, error) {
+	return s.Directory.RevokeChannelSessions(ctx, req)
+}
+func (s *Server) ListLiveChannelSessions(ctx context.Context, params identityapi.ListLiveChannelSessionsParams) (*identityapi.LiveChannelBindingList, error) {
+	return s.Directory.ListLiveChannelSessions(ctx, string(params.Cursor.Or("")), params.Limit.Or(maxLiveBindings))
+}

@@ -65,3 +65,19 @@ func (l localDirectory) SyncResourceParticipants(ctx context.Context, req *SyncP
 			return l.impl.SyncResourceParticipants(ctx, req)
 		})
 }
+
+// ChannelSessionResolver 核验渠道免登会话（PRD 第1段 F6、F7）：会话未作废、未过期、绑定版本高于该绑定的撤销水位，
+// 且会话的成员是令牌租户的有效成员。网关对 miaoqia_session_source=channel 的令牌每次请求调用它（取代 Resolve）。
+// 会话标识来自令牌（进程内的 reqctx.Assurance），不跨进程传递，因此只由本地绑定提供；远程绑定没有它，网关失败关闭。
+type ChannelSessionResolver interface {
+	ResolveChannelSession(ctx context.Context, sessionID string) (*Session, error)
+}
+
+func (s localSession) ResolveChannelSession(ctx context.Context, sessionID string) (*Session, error) {
+	impl, ok := s.impl.(ChannelSessionResolver)
+	if !ok {
+		return nil, &Error{Status: 503, Code: "identity_unavailable"}
+	}
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ResolveChannelSession", Idempotent: true},
+		func(ctx context.Context) (*Session, error) { return impl.ResolveChannelSession(ctx, sessionID) })
+}

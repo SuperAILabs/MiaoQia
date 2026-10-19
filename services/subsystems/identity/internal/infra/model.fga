@@ -29,6 +29,7 @@ type platform
     define objective_registrar: [service]
     define pursuit_registrar: [service]
     define research_registrar: [service]
+    define channel_session_issuer: [service]
 
 type tenant
   relations
@@ -57,6 +58,8 @@ type tenant
     define can_sync_objective_participants: objective_registrar from platform
     define can_sync_pursuit_participants: pursuit_registrar from platform
     define can_sync_research_case_participants: research_registrar from platform
+    # 渠道免登会话的签发、撤销与对账（只授予 channels）
+    define can_issue_channel_sessions: channel_session_issuer from platform
 
 type org_unit
   relations

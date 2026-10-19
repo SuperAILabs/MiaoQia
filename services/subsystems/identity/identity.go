@@ -7,8 +7,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	identityapi "github.com/superailabs/miaoqia/services/contracts/apis/identity"
+
 	"github.com/superailabs/miaoqia/services/kernel/binding"
+	"github.com/superailabs/miaoqia/services/kernel/consumer"
+	"github.com/superailabs/miaoqia/services/kernel/outbox"
+	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/subsystems/identity/api"
 	"github.com/superailabs/miaoqia/services/subsystems/identity/internal/app"
@@ -51,6 +56,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.DirectoryBinding, api.LocalDirectory(directory))
 			env.Bindings.Provide(api.GuardBinding, api.LocalGuard(directory))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(directory))
+			env.Bindings.Provide(api.ChannelSessionsBinding, api.LocalChannelSessions(directory))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
@@ -60,7 +66,8 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				panic(err)
 			}
 			for _, pattern := range []string{"POST /internal/v1/authz:check", "GET /internal/v1/identity/session",
-				"GET /internal/v1/identity/org-units/{unitID}", "POST /internal/v1/identity/participants:sync"} {
+				"GET /internal/v1/identity/org-units/{unitID}", "POST /internal/v1/identity/participants:sync",
+				"POST /internal/v1/identity/channel-sessions", "GET /internal/v1/identity/channel-sessions", "POST /internal/v1/identity/channel-sessions:revoke"} {
 				internal.Handle(pattern, binding.InternalServer(api.Name, srv))
 			}
 			pub, err := identityapi.NewServer(handler, identityapi.WithErrorHandler(app.WriteProtocolError))
@@ -73,6 +80,16 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				"POST /v1/identity/invitations/{invitationID}/revoke", "POST /v1/identity/invitations:accept"} {
 				public.Handle(pattern, pub)
 			}
+		},
+		// 渠道绑定失效的撤销重试：消费 channels.binding.changed.v1（经 channels 的发件箱），按事件版本抬高撤销水位并作废免登会话。
+		Consumers: func(env *runtime.Env) []*consumer.Consumer {
+			return []*consumer.Consumer{{
+				Name: "identity.channel-revocations", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+				Topics: []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "channels")},
+				Handlers: map[string]consumer.Handler{"channels.binding.changed.v1": func(ctx context.Context, tx pgx.Tx, e *outbox.Envelope) error {
+					return directory.ChannelBindingChanged(ctx, tx, e)
+				}},
+			}}
 		},
 	}
 }

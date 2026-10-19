@@ -17,11 +17,15 @@ const (
 // Assurance 是网关从已验证访问令牌取得的认证保证：
 //   - MFA：令牌的 amr 含 mfa；
 //   - AuthTime：令牌的 auth_time，即 IdP 签发的最近一次交互认证时间（刷新令牌不改变它）；缺省为零值；
-//   - Source：会话来源，见 SourceIdP 等。
+//   - Source：会话来源，见 SourceIdP 等；
+//   - SessionID：令牌的 sid，即 IdP 的 Web 会话标识（退出或重新登录后改变）；渠道绑定请求固定在它上面；
+//   - ChannelSession：渠道免登会话标识（miaoqia_channel_session），只对 Source=channel 的令牌有意义，网关每次请求经 identity 核验。
 type Assurance struct {
-	MFA      bool
-	AuthTime time.Time
-	Source   string
+	MFA            bool
+	AuthTime       time.Time
+	Source         string
+	SessionID      string
+	ChannelSession string
 }
 
 // WithAssurance carries assurance from the verified access token within the gateway process.
