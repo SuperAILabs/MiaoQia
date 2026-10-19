@@ -1,6 +1,6 @@
 # 推进与结果子系统（pursuit）
 
-> 状态：评审中 · 版本：1.5 · 更新：2026-10-17 · 平面：客户智能
+> 状态：评审中 · 版本：1.6 · 更新：2026-10-19 · 平面：客户智能
 
 ## 1. 使命
 
@@ -38,9 +38,9 @@
 
 | 实体 | 说明 |
 |---|---|
-| `Pursuit` | `pur_`：形态（`deal` 交易型 / `continuous` 持续型）、目标对象（持续型可为一组对象，以 `subject_set` 定义；每期触发简报或研究时解析出本期成员快照并随请求传递，产物固定该快照）、目标、机会路径版本、阶段、状态、负责人、关联决策与信号；持续型另含周期与下次执行时间 |
+| `Pursuit` | `pur_`：形态（`deal` 交易型 / `continuous` 持续型）、目标对象（持续型可为一组对象，以 `subject_set` 定义；每期触发简报或研究时解析出本期成员快照并随请求传递，产物固定该快照）、目标、机会路径版本、阶段、状态、负责人、关联决策与信号；持续型另含周期与下次执行时间；交易型另含目标对象键（A02 为采购项目 + 标包 + 中标方）、来源信号与创建时所见的信号内容版本、版本（改派、任务、关闭任一改变时递增），状态含进行中 / 已关闭 / 已撤销（撤销创建，保留记录、不计入统计）。同一租户、同一目标、同一目标对象至多一个进行中的交易型推进，以唯一约束保证 |
 | `StageTransition` | 阶段变化与原因 |
-| `Task` | 任务、负责人、截止、状态 |
+| `Task` | 任务、负责人、状态（待办 / 已完成 / 已取消）、版本；截止时间保存值、精度（日或分钟）与时区，只填日期的不补成时刻；可绑定目标对象的公开截止时间（`deadline` 标识与类型），绑定的随公开截止变化改时，手工修改即解除绑定；提醒按任务 + 截止版本 + 提醒种类幂等，规则见 [PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F5 |
 | `Outcome` | 追加式结果记录：结果类型、原因代码、说明、证据、金额条目、事件锚点与获知信息（第 4.1 节）；修订时追加新记录并引用被取代的记录 |
 | `Retrospective` | 复盘记录 |
 | `ExternalLink` | 与外部系统记录的映射 |
@@ -74,16 +74,18 @@
 
 | 接口 | 类型 | 说明 |
 |---|---|---|
-| `CreatePursuit` | 命令 | 从决策、信号或手动创建；对没有信号的公共对象手动创建时，界面提示可向 learning 报告漏报（[learning 第 11 节](learning.md#11-漏报反馈与诊断)），不自动提交 |
+| `CreatePursuit` | 命令 | 从决策、信号或手动创建；对没有信号的公共对象手动创建时，界面提示可向 learning 报告漏报（[learning 第 11 节](learning.md#11-漏报反馈与诊断)），不自动提交。带操作标识（Web 为表单意图，渠道为动作令牌标识）与每次尝试的幂等键；跟进、负责人、协作者与第一项任务在一个事务中写入。从信号创建时实时检查 `can_assign`，并经 `detection.GetSignal` 核对信号属于本租户与目标、内容版本一致（否则 `SIGNAL_UPDATED`）、不是排除信号（`NOT_APPLICABLE`）与未关闭（`SIGNAL_CLOSED`）。同一目标与目标对象已有进行中的推进时返回“已存在”与该推进（成功、无改变），请求中的负责人与任务不写入；调用者无权查看时只返回负责人姓名。结果固定在操作标识上（[PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md) F1、F2、F11） |
+| `VoidPursuit` | 命令 | 撤销创建：创建者在创建后 10 分钟内、推进版本仍为创建时的版本时，转为已撤销，取消任务与提醒、撤回参与关系，一个事务提交；版本已变返回 `CONFLICT`；发布 `pursuit.pursuit.voided.v1`，detection 据此恢复信号转换前的处理状态 |
 | `AdvanceStage` / `ClosePursuit` | 命令 | 阶段推进与关闭 |
 | `PauseTracking` / `ResumeTracking` / `StopTracking` | 命令 | 持续型推进的暂停、恢复与停止 |
-| `Assign` / `CreateTask` / `CompleteTask` | 命令 | 任务管理；`Assign` 可采用信号上的候选负责人（来自目标的分派规则，[customer-context 第 11 节](customer-context.md#11-分派配置)），写入前检查被分派人的访问并同步 identity 参与关系 |
-| `RecordOutcome` | 命令 | 结果记录 |
+| `Assign` / `CreateTask` / `UpdateTask` / `CompleteTask` / `ReopenTask` | 命令 | 任务管理；`Assign` 可采用信号上的候选负责人（来自目标的分派规则，[customer-context 第 11 节](customer-context.md#11-分派配置)），写入前检查被分派人的访问并同步 identity 参与关系。写操作带推进或任务版本：请求的效果已成立（改派给当前负责人、完成已完成的任务、相同截止）为无变化，否则版本不一致返回 `CONFLICT`；`ReopenTask` 撤销完成，恢复完成前的状态、截止与提醒，带版本保护 |
+| `ClosePursuit` / `RecordOutcome` | 命令 | 关闭并记录结果：结果类型与原因代码必填，成功与失败须有获知时间（可只到日，保存精度与时区），金额条目须带取值性质与币种；关闭取消未完成任务的提醒，不改变信号；修订追加新记录（第 4.1 节） |
 | `ListPursuits` / `GetPursuit` | 查询 | 看板与详情 |
+| `ListMyTasks` | 查询 | 本人的未完成任务（按截止时间，带精度与时区），供简报“待我处理”与工作台使用；无有效负责人的推进的任务列给目标范围的决策者 |
 
 ## 6. 事件
 
-**发布**：`pursuit.pursuit.created.v1`、`pursuit.stage.entered.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`pursuit.outcome.recorded.v1`、`pursuit.pursuit.closed.v1`。
+**发布**：`pursuit.pursuit.created.v1`（含操作标识、来源信号与内容版本）、`pursuit.pursuit.voided.v1`（撤销创建）、`pursuit.stage.entered.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`pursuit.outcome.recorded.v1`、`pursuit.pursuit.closed.v1`。
 
 **消费**：`assessment.decision.recorded.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`。
 
@@ -123,7 +125,7 @@
 
 M2 的最小事件处理只消费 `detection.pursuit_related_event.v1` 中由截止时间变化引起的事件（`tendering.deadline.changed.v1`，或更正公告改变了投标截止时间）：截止时间绑定目标对象公开截止的任务按新时间更新，取消旧提醒并重建，变更记入审计；负责人手工设定的截止时间不改，只通知负责人公开截止已变化。其他推进相关事件（结果发布、终止等）在 M2 只由 `channels` 通知负责人，不改变推进状态；按事件推进阶段属于 M4 的通用挂钩。
 
-M2 切片沿用本文第 4–6 节的数据、接口与事件，不另建临时模型；授权使用 [identity 7.2](identity.md#72-权限矩阵) 已有的 `can_assign`、`can_edit`、`can_manage_team`。M2 验收必须覆盖：
+M2 切片的用户流程、唯一性、撤销创建、提醒与结果规则见 [PRD 第6段](../../01-product/prd/06-pursuit-follow-up.md)。M2 切片沿用本文第 4–6 节的数据、接口与事件，不另建临时模型；授权使用 [identity 7.2](identity.md#72-权限矩阵) 已有的 `can_assign`、`can_edit`、`can_manage_team`。M2 验收必须覆盖：
 
 - 重复点击“跟进”或重复提交：以幂等键返回同一推进，不重复创建任务或通知；
 - 改派：原负责人失去“分派给本人”的任务视图，新负责人收到一次通知，审计记录前后负责人；
