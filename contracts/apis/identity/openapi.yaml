@@ -1,10 +1,13 @@
 openapi: 3.1.0
 info:
   title: identity 内部接口
-  version: 1.2.0
+  version: 1.3.0
   description: >-
-    identity接口。授权Check、会话核验、组织单元读取与资源参与关系同步经mTLS内部端口；生命周期、组织单元与成员命令仅经外部网关，
-    要求已验证的MFA。租户来自上下文，cell归属来自identity目录。组织单元标识为租户根单元的保留值 root 或 unt_<ULID>
+    identity接口。授权Check、会话核验、组织单元读取与资源参与关系同步经mTLS内部端口；生命周期、组织单元、成员与邀请命令仅经外部网关。
+    平台运营命令与成员读取要求已签名的 amr=mfa；租户管理命令（成员、单元、邀请）要求15分钟内的强认证：访问令牌带 amr=mfa 与
+    IdP 签发的 auth_time，且 identity 时钟下 auth_time 距今不超过15分钟（含边界、未来偏差至多5秒），刷新令牌不改变 auth_time，
+    渠道免登会话（miaoqia_session_source=channel）与未知会话来源一律不满足。不满足时为 403 mfa_required；IdP 明确该账号尚未登记
+    TOTP 时为 403 totp_enrollment_required（客户端先引导登记，原动作不执行）。租户来自上下文，cell归属来自identity目录。组织单元标识为租户根单元的保留值 root 或 unt_<ULID>
     （contracts/identifiers.yaml）；Check 的资源可为本租户的 tenant、org_unit 与已登记的业务资源（objective、pursuit、research_case）。
 servers:
 - url: /internal
@@ -344,6 +347,199 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SyncParticipantsResult'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/invitations:
+    get:
+      operationId: listInvitations
+      summary: 列出本租户邀请
+      description: >-
+        需要 can_manage_members 与15分钟内的强认证。按创建时间倒序（同一时间按标识倒序）分页返回，每页至多 limit 条（默认且至多500）；
+        还有更早的邀请时 truncated 为 true 并给出 next_cursor，以它作为 cursor 取下一页（须带相同的 state 过滤，
+        否则 400 invalid_cursor；游标只在签发它的租户内有效）。翻页期间不变的邀请不重复也不遗漏；翻页期间状态改变的邀请
+        可能在按 state 过滤的后续页中不再出现。已到过期时间的待接受邀请先置为 expired（发布 identity.invitation.changed.v1）再返回。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: state
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/InvitationState'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 500
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/InvitationCursor'
+      responses:
+        '200':
+          description: 邀请列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationList'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: createInvitation
+      summary: 创建邀请（CreateInvitation）
+      description: >-
+        需要 can_manage_members 与15分钟内的强认证。邀请不授予任何权限；角色与单元角色限定接受时可写入的成员资格，
+        单元须属于本租户（422 org_unit_not_found）。同一邮箱在本租户已有未过期的待接受邀请时返回该邀请（outcome existing，
+        不发新链接，可重发）；本租户待接受邀请至多1000条（409 invitation_limit_reached）。邀请7天有效。
+        链接令牌只出现在首次响应的 link_token 中，identity 只保存其摘要；同一 Idempotency-Key 的重放返回同一邀请但不含 link_token。
+        邮件在提交后发送，结果写入 delivery（sent / failed；未知时保持 pending），发送失败不回滚邀请。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvitationRequest'
+      responses:
+        '200':
+          description: 新建或已有的邀请
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationIssued'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/invitations/{invitationID}/resend:
+    post:
+      operationId: resendInvitation
+      summary: 重发邀请（ResendInvitation）
+      description: >-
+        需要 can_manage_members 与15分钟内的强认证，按 expected_version 并发控制。待接受或已过期的邀请生成新链接、重新计算7天有效期并发送，
+        旧链接立即失效（接受时返回 410 invitation_link_superseded）；已接受或已撤回的返回 409 invitation_not_pending。
+        其他租户的或不存在的邀请返回同一 404 invitation_not_found。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &invitationParam
+        name: invitationID
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/InvitationID'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationVersionRequest'
+      responses:
+        '200':
+          description: 重发后的邀请与新链接令牌
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationIssued'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/invitations/{invitationID}/revoke:
+    post:
+      operationId: revokeInvitation
+      summary: 撤回邀请（RevokeInvitation）
+      description: >-
+        需要 can_manage_members 与15分钟内的强认证，按 expected_version 并发控制。只有待接受且未过期的邀请可撤回；
+        与接受并发时以邀请行锁串行，只有一个生效，失败的一方按最新状态返回 409 invitation_not_pending 或 version_conflict。
+        其他租户的或不存在的邀请返回同一 404 invitation_not_found。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *invitationParam
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationVersionRequest'
+      responses:
+        '200':
+          description: 撤回后的邀请
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/invitations:accept:
+    post:
+      operationId: acceptInvitation
+      summary: 接受邀请（AcceptInvitation）
+      description: >-
+        受邀人以自己的登录令牌调用，独立授权，不经成员管理接口；令牌通常还不带租户。依次核验：链接存在（404 invitation_not_found）、
+        邀请未撤回（410 invitation_revoked）、链接是当前这一次发出的（410 invitation_link_superseded）、未过期（410 invitation_expired）；
+        IdP 中账号的已验证邮箱与邀请一致（403 email_unverified、403 invitation_email_mismatch）；账号不是其他租户的有效成员
+        （409 account_in_other_tenant），也不是本租户的有效成员（409 already_member）；邀请含租户管理员角色时须有15分钟内的强认证
+        （403 mfa_required、403 totp_enrollment_required）。通过后在一个事务中按邀请限定的角色与单元角色写入成员资格、把邀请置为已接受，
+        发布 identity.member.changed.v1 与 identity.invitation.changed.v1 各一次；随后写入 IdP 中账号的租户与 cell 归属，
+        未完成时 access 为 provisioning（令牌暂不带租户，访问失败关闭），identity 重试写入。同一账号用同一链接重复接受返回首次结果
+        （outcome already_accepted），不重复写入或发布；其他账号接受已接受的邀请返回 409 invitation_already_accepted。IdP 不可用时 503。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+      responses:
+        '200':
+          description: 接受结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationAcceptance'
         default:
           description: 失败关闭，稳定错误码
           content:
@@ -728,3 +924,217 @@ components:
                 - not_member
                 - member_inactive
                 - no_scope_access
+    InvitationID:
+      type: string
+      description: 邀请标识 inv_<ULID>（contracts/identifiers.yaml）
+      pattern: ^inv_[0-9A-HJKMNP-TV-Z]{26}$
+    InvitationState:
+      type: string
+      description: pending 待接受；accepted 已接受；revoked 已撤回；expired 已过期（可重发回到 pending）
+      enum:
+      - pending
+      - accepted
+      - revoked
+      - expired
+    InvitationRoles:
+      type: array
+      description: 绑定在租户上的角色；租户管理员只能绑定在租户上
+      uniqueItems: true
+      maxItems: 6
+      items:
+        type: string
+        enum:
+        - admin
+        - decision_maker
+        - business_developer
+        - pursuit_lead
+        - research_analyst
+        - domain_expert
+    CreateInvitationRequest:
+      type: object
+      additionalProperties: false
+      description: 角色与单元角色至少一项非空
+      required:
+      - email
+      - name
+      - roles
+      properties:
+        email:
+          type: string
+          description: 受邀人邮箱；identity 按小写保存与比较
+          minLength: 3
+          maxLength: 254
+          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        roles:
+          $ref: '#/components/schemas/InvitationRoles'
+        unit_roles:
+          $ref: '#/components/schemas/UnitRoles'
+    InvitationVersionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+    Invitation:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - email
+      - name
+      - roles
+      - state
+      - version
+      - inviter
+      - expires_at
+      - delivery
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/InvitationID'
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        roles:
+          $ref: '#/components/schemas/InvitationRoles'
+        unit_roles:
+          $ref: '#/components/schemas/UnitRoles'
+        state:
+          $ref: '#/components/schemas/InvitationState'
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        inviter:
+          type: string
+          description: 最近一次创建或重发该邀请的管理员
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        expires_at:
+          type: string
+          format: date-time
+          description: 当前链接的过期时间（业务时间：创建或最近一次重发起7天）
+        delivery:
+          type: string
+          description: 当前链接的邮件投递结果：pending 尚未确认（含发送结果未知）；sent 已交给邮件渠道；failed 发送失败，可重发或复制链接
+          enum:
+          - pending
+          - sent
+          - failed
+        accepted_by:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        accepted_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          description: 记录时间
+    InvitationIssued:
+      type: object
+      additionalProperties: false
+      required:
+      - invitation
+      - outcome
+      properties:
+        invitation:
+          $ref: '#/components/schemas/Invitation'
+        outcome:
+          type: string
+          description: created 新建；existing 已有未过期的待接受邀请（未发新链接）；resent 已重发
+          enum:
+          - created
+          - existing
+          - resent
+        link_token:
+          type: string
+          description: 当前链接令牌（43位 base64url），只在首次响应中返回，identity 不保存原文
+          pattern: ^[A-Za-z0-9_-]{43}$
+    InvitationList:
+      type: object
+      additionalProperties: false
+      required:
+      - invitations
+      - truncated
+      properties:
+        invitations:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Invitation'
+        truncated:
+          type: boolean
+          description: 还有更早的邀请未返回，此时给出 next_cursor
+        next_cursor:
+          $ref: '#/components/schemas/InvitationCursor'
+    InvitationCursor:
+      type: string
+      description: 不透明的翻页游标（base64url），由 InvitationList.next_cursor 给出，客户端不得解析或构造
+      pattern: ^[A-Za-z0-9_-]{1,256}$
+    AcceptInvitationRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - token
+      properties:
+        token:
+          type: string
+          description: 邀请链接令牌
+          pattern: ^[A-Za-z0-9_-]{43}$
+    InvitationAcceptance:
+      type: object
+      additionalProperties: false
+      required:
+      - invitation_id
+      - tenant
+      - subject
+      - roles
+      - member_version
+      - accepted_at
+      - outcome
+      - access
+      properties:
+        invitation_id:
+          $ref: '#/components/schemas/InvitationID'
+        tenant:
+          type: string
+          pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+        subject:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        roles:
+          $ref: '#/components/schemas/InvitationRoles'
+        unit_roles:
+          $ref: '#/components/schemas/UnitRoles'
+        member_version:
+          type: integer
+          format: int64
+          minimum: 1
+        accepted_at:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          description: accepted 本次写入；already_accepted 同一账号此前已用同一链接接受（返回首次结果，未重复写入）
+          enum:
+          - accepted
+          - already_accepted
+        access:
+          type: string
+          description: ready IdP 中的租户与 cell 归属已写入，重新登录后令牌带租户；provisioning 尚未写入，identity 重试中
+          enum:
+          - ready
+          - provisioning

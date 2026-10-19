@@ -488,3 +488,281 @@ fixtures:
     - op: replace
       path: /outcome
       value: partial
+- schema: InvitationID
+  base: inv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 拒绝其他前缀
+    valid: false
+    instance: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: InvitationState
+  base: pending
+  cases:
+  - name: 已过期
+    valid: true
+    instance: expired
+  - name: 拒绝未登记状态
+    valid: false
+    instance: consumed
+- schema: InvitationRoles
+  base:
+  - business_developer
+  cases:
+  - name: 可为空（只绑定单元角色）
+    valid: true
+    instance: []
+  - name: 拒绝重复角色
+    valid: false
+    patch:
+    - op: add
+      path: /-
+      value: business_developer
+- schema: CreateInvitationRequest
+  base:
+    email: bd@example.com
+    name: 王销售
+    roles: []
+    unit_roles:
+    - org_unit_id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      roles:
+      - business_developer
+  cases:
+  - name: 租户管理员绑定在租户上
+    valid: true
+    patch:
+    - op: replace
+      path: /roles
+      value:
+      - admin
+    - op: remove
+      path: /unit_roles
+  - name: 拒绝单元上的租户管理员
+    valid: false
+    patch:
+    - op: replace
+      path: /unit_roles/0/roles
+      value:
+      - admin
+  - name: 拒绝非邮箱
+    valid: false
+    patch:
+    - op: replace
+      path: /email
+      value: not-an-email
+  - name: 拒绝带空白的邮箱
+    valid: false
+    patch:
+    - op: replace
+      path: /email
+      value: ' bd@example.com'
+  - name: 拒绝夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 拒绝缺少角色字段
+    valid: false
+    patch:
+    - op: remove
+      path: /roles
+- schema: InvitationVersionRequest
+  base:
+    expected_version: 1
+  cases:
+  - name: 拒绝版本0
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+  - name: 拒绝未知字段
+    valid: false
+    patch:
+    - op: add
+      path: /roles
+      value:
+      - admin
+- schema: Invitation
+  base:
+    id: inv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    email: bd@example.com
+    name: 王销售
+    roles:
+    - business_developer
+    state: pending
+    version: 1
+    inviter: admin-1
+    expires_at: '2026-10-26T08:00:00Z'
+    delivery: sent
+    created_at: '2026-10-19T08:00:00Z'
+  cases:
+  - name: 已接受
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: accepted
+    - op: add
+      path: /accepted_by
+      value: keycloak-user
+    - op: add
+      path: /accepted_at
+      value: '2026-10-20T08:00:00Z'
+  - name: 发送结果未知
+    valid: true
+    patch:
+    - op: replace
+      path: /delivery
+      value: pending
+  - name: 拒绝未登记投递状态
+    valid: false
+    patch:
+    - op: replace
+      path: /delivery
+      value: unknown
+  - name: 拒绝在邀请上返回链接令牌
+    valid: false
+    patch:
+    - op: add
+      path: /link_token
+      value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  - name: 拒绝缺少过期时间
+    valid: false
+    patch:
+    - op: remove
+      path: /expires_at
+- schema: InvitationIssued
+  base:
+    invitation:
+      id: inv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      email: bd@example.com
+      name: 王销售
+      roles:
+      - business_developer
+      state: pending
+      version: 1
+      inviter: admin-1
+      expires_at: '2026-10-26T08:00:00Z'
+      delivery: pending
+      created_at: '2026-10-19T08:00:00Z'
+    outcome: created
+    link_token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  cases:
+  - name: 已有邀请不含链接
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: existing
+    - op: remove
+      path: /link_token
+  - name: 拒绝长度不符的链接令牌
+    valid: false
+    patch:
+    - op: replace
+      path: /link_token
+      value: short
+  - name: 拒绝未登记结果
+    valid: false
+    patch:
+    - op: replace
+      path: /outcome
+      value: accepted
+- schema: InvitationList
+  base:
+    invitations: []
+    truncated: false
+  cases:
+  - name: 拒绝缺少截断标记
+    valid: false
+    patch:
+    - op: remove
+      path: /truncated
+  - name: 接受下一页游标
+    valid: true
+    patch:
+    - op: replace
+      path: /truncated
+      value: true
+    - op: add
+      path: /next_cursor
+      value: eyJ0IjoxNzAwMDAwMDAwMDAwMDAwLCJpIjoiaW52XzAxIn0
+  - name: 拒绝非 base64url 的游标
+    valid: false
+    patch:
+    - op: add
+      path: /next_cursor
+      value: 'abc+/='
+- schema: InvitationCursor
+  base: eyJ0IjoxNzAwMDAwMDAwMDAwMDAwLCJpIjoiaW52XzAxIn0
+  cases:
+  - name: 拒绝空游标
+    valid: false
+    instance: ''
+- schema: AcceptInvitationRequest
+  base:
+    token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  cases:
+  - name: 拒绝夹带角色
+    valid: false
+    patch:
+    - op: add
+      path: /roles
+      value:
+      - admin
+  - name: 拒绝夹带单元角色
+    valid: false
+    patch:
+    - op: add
+      path: /unit_roles
+      value:
+      - org_unit_id: root
+        roles:
+        - decision_maker
+  - name: 拒绝夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 拒绝非base64url令牌
+    valid: false
+    patch:
+    - op: replace
+      path: /token
+      value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+
+- schema: InvitationAcceptance
+  base:
+    invitation_id: inv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    tenant: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    subject: keycloak-user
+    roles: []
+    unit_roles:
+    - org_unit_id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      roles:
+      - business_developer
+    member_version: 1
+    accepted_at: '2026-10-20T08:00:00Z'
+    outcome: accepted
+    access: ready
+  cases:
+  - name: 重复接受返回首次结果
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: already_accepted
+    - op: replace
+      path: /access
+      value: provisioning
+  - name: 拒绝未登记访问状态
+    valid: false
+    patch:
+    - op: replace
+      path: /access
+      value: unknown
+  - name: 拒绝缺少成员版本
+    valid: false
+    patch:
+    - op: remove
+      path: /member_version

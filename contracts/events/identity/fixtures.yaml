@@ -127,3 +127,100 @@ fixtures:
     - op: replace
       path: /state
       value: removed
+- event: identity.invitation.changed.v1
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    invitation_id: inv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    change: created
+    state: pending
+    version: 1
+    link_generation: 1
+    expires_at: '2026-10-26T08:00:00Z'
+    effective_at: '2026-10-19T08:00:00Z'
+    roles:
+    - business_developer
+  cases:
+  - name: 接受带接受人
+    valid: true
+    patch:
+    - op: replace
+      path: /change
+      value: accepted
+    - op: replace
+      path: /state
+      value: accepted
+    - op: replace
+      path: /version
+      value: 2
+    - op: add
+      path: /subject
+      value: keycloak-user
+  - name: 过期生效时间为过期时间
+    valid: true
+    patch:
+    - op: replace
+      path: /change
+      value: expired
+    - op: replace
+      path: /state
+      value: expired
+    - op: replace
+      path: /effective_at
+      value: '2026-10-26T08:00:00Z'
+  - name: 单元角色
+    valid: true
+    patch:
+    - op: replace
+      path: /roles
+      value: []
+    - op: add
+      path: /unit_roles
+      value:
+      - org_unit_id: unt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        roles:
+        - business_developer
+  - name: 接受缺少接受人
+    valid: false
+    patch:
+    - op: replace
+      path: /change
+      value: accepted
+    - op: replace
+      path: /state
+      value: accepted
+  - name: 非接受不得带接受人
+    valid: false
+    patch:
+    - op: add
+      path: /subject
+      value: keycloak-user
+  - name: 撤回状态不一致
+    valid: false
+    patch:
+    - op: replace
+      path: /change
+      value: revoked
+  - name: 不得携带邮箱
+    valid: false
+    patch:
+    - op: add
+      path: /email
+      value: bd@example.com
+  - name: 不得携带链接令牌
+    valid: false
+    patch:
+    - op: add
+      path: /link_token
+      value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  - name: 未登记变化
+    valid: false
+    patch:
+    - op: replace
+      path: /change
+      value: consumed
+  - name: 链接代次为0
+    valid: false
+    patch:
+    - op: replace
+      path: /link_generation
+      value: 0

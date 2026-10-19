@@ -1819,6 +1819,214 @@
       }
     },
     {
+      "event": "identity.invitation.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "change": "created",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "pending",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "接受带接受人",
+      "valid": true,
+      "value": {
+        "change": "accepted",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "accepted",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 2
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "过期生效时间为过期时间",
+      "valid": true,
+      "value": {
+        "change": "expired",
+        "effective_at": "2026-10-26T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "expired",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "单元角色",
+      "valid": true,
+      "value": {
+        "change": "created",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [],
+        "state": "pending",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unit_roles": [
+          {
+            "org_unit_id": "unt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "roles": [
+              "business_developer"
+            ]
+          }
+        ],
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "接受缺少接受人",
+      "valid": false,
+      "value": {
+        "change": "accepted",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "accepted",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "非接受不得带接受人",
+      "valid": false,
+      "value": {
+        "change": "created",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "pending",
+        "subject": "keycloak-user",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "撤回状态不一致",
+      "valid": false,
+      "value": {
+        "change": "revoked",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "pending",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "不得携带邮箱",
+      "valid": false,
+      "value": {
+        "change": "created",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "email": "bd@example.com",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "pending",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "不得携带链接令牌",
+      "valid": false,
+      "value": {
+        "change": "created",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "link_token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "roles": [
+          "business_developer"
+        ],
+        "state": "pending",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "未登记变化",
+      "valid": false,
+      "value": {
+        "change": "consumed",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 1,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "pending",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "identity.invitation.changed.v1",
+      "name": "链接代次为0",
+      "valid": false,
+      "value": {
+        "change": "created",
+        "effective_at": "2026-10-19T08:00:00Z",
+        "expires_at": "2026-10-26T08:00:00Z",
+        "invitation_id": "inv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "link_generation": 0,
+        "roles": [
+          "business_developer"
+        ],
+        "state": "pending",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
       "event": "operations.probe.requested.v1",
       "name": "base",
       "valid": true,
@@ -3486,6 +3694,203 @@
         "artifact_ref",
         "rights_tags",
         "content_hash"
+      ],
+      "type": "object"
+    },
+    "identity.invitation.changed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "subject"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "change": {
+                "const": "accepted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "accepted"
+              }
+            },
+            "required": [
+              "subject"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "enum": [
+                  "created",
+                  "resent"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "pending"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "revoked"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "revoked"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "expired"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "expired"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "change": {
+          "enum": [
+            "created",
+            "resent",
+            "accepted",
+            "revoked",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "invitation_id": {
+          "pattern": "^inv_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "link_generation": {
+          "description": "当前链接的代次，重发加一",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "roles": {
+          "description": "邀请限定的租户角色",
+          "items": {
+            "enum": [
+              "admin",
+              "decision_maker",
+              "business_developer",
+              "pursuit_lead",
+              "research_analyst",
+              "domain_expert"
+            ],
+            "type": "string"
+          },
+          "maxItems": 6,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "accepted",
+            "revoked",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "subject": {
+          "description": "接受人（仅 accepted）",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "tenant_id": {
+          "pattern": "^tnt_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "unit_roles": {
+          "description": "邀请限定的单元角色",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "org_unit_id": {
+                "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+                "type": "string"
+              },
+              "roles": {
+                "items": {
+                  "enum": [
+                    "decision_maker",
+                    "business_developer",
+                    "pursuit_lead",
+                    "research_analyst",
+                    "domain_expert"
+                  ],
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "org_unit_id",
+              "roles"
+            ],
+            "type": "object"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "invitation_id",
+        "change",
+        "state",
+        "version",
+        "link_generation",
+        "expires_at",
+        "effective_at",
+        "roles"
       ],
       "type": "object"
     },

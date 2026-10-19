@@ -28,6 +28,27 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// AcceptInvitation invokes acceptInvitation operation.
+	//
+	// 受邀人以自己的登录令牌调用，独立授权，不经成员管理接口；令牌通常还不带租户。依次核验：链接存在（404
+	// invitation_not_found）、 邀请未撤回（410
+	// invitation_revoked）、链接是当前这一次发出的（410
+	// invitation_link_superseded）、未过期（410 invitation_expired）； IdP
+	// 中账号的已验证邮箱与邀请一致（403 email_unverified、403
+	// invitation_email_mismatch）；账号不是其他租户的有效成员 （409
+	// account_in_other_tenant），也不是本租户的有效成员（409
+	// already_member）；邀请含租户管理员角色时须有15分钟内的强认证 （403
+	// mfa_required、403
+	// totp_enrollment_required）。通过后在一个事务中按邀请限定的角色与单元角色写入成员资格、把邀请置为已接受，
+	// 发布 identity.member.changed.v1 与 identity.invitation.changed.v1 各一次；随后写入 IdP
+	// 中账号的租户与 cell 归属， 未完成时 access 为
+	// provisioning（令牌暂不带租户，访问失败关闭），identity
+	// 重试写入。同一账号用同一链接重复接受返回首次结果 （outcome
+	// already_accepted），不重复写入或发布；其他账号接受已接受的邀请返回 409
+	// invitation_already_accepted。IdP 不可用时 503。.
+	//
+	// POST /v1/identity/invitations:accept
+	AcceptInvitation(ctx context.Context, request *AcceptInvitationRequest) (*InvitationAcceptance, error)
 	// CheckAuthorization invokes checkAuthorization operation.
 	//
 	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体；带租户上下文时显式主体只能是调用主体本身。
@@ -37,6 +58,20 @@ type Invoker interface {
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, request *CheckRequest) (*CheckResult, error)
+	// CreateInvitation invokes createInvitation operation.
+	//
+	// 需要 can_manage_members
+	// 与15分钟内的强认证。邀请不授予任何权限；角色与单元角色限定接受时可写入的成员资格，
+	// 单元须属于本租户（422
+	// org_unit_not_found）。同一邮箱在本租户已有未过期的待接受邀请时返回该邀请（outcome
+	// existing， 不发新链接，可重发）；本租户待接受邀请至多1000条（409
+	// invitation_limit_reached）。邀请7天有效。 链接令牌只出现在首次响应的 link_token
+	// 中，identity 只保存其摘要；同一 Idempotency-Key 的重放返回同一邀请但不含
+	// link_token。 邮件在提交后发送，结果写入 delivery（sent / failed；未知时保持
+	// pending），发送失败不回滚邀请。.
+	//
+	// POST /v1/identity/invitations
+	CreateInvitation(ctx context.Context, request *CreateInvitationRequest, params CreateInvitationParams) (*InvitationIssued, error)
 	// CreateOrgUnit invokes createOrgUnit operation.
 	//
 	// 需要 can_manage_members
@@ -63,6 +98,18 @@ type Invoker interface {
 	//
 	// GET /v1/tenants/{tenantID}
 	GetTenant(ctx context.Context, params GetTenantParams) (*Tenant, error)
+	// ListInvitations invokes listInvitations operation.
+	//
+	// 需要 can_manage_members
+	// 与15分钟内的强认证。按创建时间倒序（同一时间按标识倒序）分页返回，每页至多
+	// limit 条（默认且至多500）； 还有更早的邀请时 truncated 为 true 并给出
+	// next_cursor，以它作为 cursor 取下一页（须带相同的 state 过滤， 否则 400
+	// invalid_cursor；游标只在签发它的租户内有效）。翻页期间不变的邀请不重复也不遗漏；翻页期间状态改变的邀请
+	// 可能在按 state 过滤的后续页中不再出现。已到过期时间的待接受邀请先置为
+	// expired（发布 identity.invitation.changed.v1）再返回。.
+	//
+	// GET /v1/identity/invitations
+	ListInvitations(ctx context.Context, params ListInvitationsParams) (*InvitationList, error)
 	// ListOrgUnits invokes listOrgUnits operation.
 	//
 	// 当前租户的有效成员可调用。返回全部单元（含根单元
@@ -74,10 +121,30 @@ type Invoker interface {
 	//
 	// PUT /v1/identity/members/{subject}
 	PutMember(ctx context.Context, request *PutMemberRequest, params PutMemberParams) (*Session, error)
+	// ResendInvitation invokes resendInvitation operation.
+	//
+	// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
+	// 并发控制。待接受或已过期的邀请生成新链接、重新计算7天有效期并发送，
+	// 旧链接立即失效（接受时返回 410
+	// invitation_link_superseded）；已接受或已撤回的返回 409 invitation_not_pending。
+	// 其他租户的或不存在的邀请返回同一 404 invitation_not_found。.
+	//
+	// POST /v1/identity/invitations/{invitationID}/resend
+	ResendInvitation(ctx context.Context, request *InvitationVersionRequest, params ResendInvitationParams) (*InvitationIssued, error)
 	// ResolveSession invokes resolveSession operation.
 	//
 	// GET /v1/identity/session
 	ResolveSession(ctx context.Context) (*Session, error)
+	// RevokeInvitation invokes revokeInvitation operation.
+	//
+	// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
+	// 并发控制。只有待接受且未过期的邀请可撤回；
+	// 与接受并发时以邀请行锁串行，只有一个生效，失败的一方按最新状态返回
+	// 409 invitation_not_pending 或 version_conflict。 其他租户的或不存在的邀请返回同一
+	// 404 invitation_not_found。.
+	//
+	// POST /v1/identity/invitations/{invitationID}/revoke
+	RevokeInvitation(ctx context.Context, request *InvitationVersionRequest, params RevokeInvitationParams) (*Invitation, error)
 	// SetTenantState invokes setTenantState operation.
 	//
 	// PUT /v1/tenants/{tenantID}/state
@@ -145,6 +212,104 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// AcceptInvitation invokes acceptInvitation operation.
+//
+// 受邀人以自己的登录令牌调用，独立授权，不经成员管理接口；令牌通常还不带租户。依次核验：链接存在（404
+// invitation_not_found）、 邀请未撤回（410
+// invitation_revoked）、链接是当前这一次发出的（410
+// invitation_link_superseded）、未过期（410 invitation_expired）； IdP
+// 中账号的已验证邮箱与邀请一致（403 email_unverified、403
+// invitation_email_mismatch）；账号不是其他租户的有效成员 （409
+// account_in_other_tenant），也不是本租户的有效成员（409
+// already_member）；邀请含租户管理员角色时须有15分钟内的强认证 （403
+// mfa_required、403
+// totp_enrollment_required）。通过后在一个事务中按邀请限定的角色与单元角色写入成员资格、把邀请置为已接受，
+// 发布 identity.member.changed.v1 与 identity.invitation.changed.v1 各一次；随后写入 IdP
+// 中账号的租户与 cell 归属， 未完成时 access 为
+// provisioning（令牌暂不带租户，访问失败关闭），identity
+// 重试写入。同一账号用同一链接重复接受返回首次结果 （outcome
+// already_accepted），不重复写入或发布；其他账号接受已接受的邀请返回 409
+// invitation_already_accepted。IdP 不可用时 503。.
+//
+// POST /v1/identity/invitations:accept
+func (c *Client) AcceptInvitation(ctx context.Context, request *AcceptInvitationRequest) (*InvitationAcceptance, error) {
+	res, err := c.sendAcceptInvitation(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendAcceptInvitation(ctx context.Context, request *AcceptInvitationRequest) (res *InvitationAcceptance, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("acceptInvitation"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/invitations:accept"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, AcceptInvitationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/invitations:accept"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeAcceptInvitationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeAcceptInvitationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // CheckAuthorization invokes checkAuthorization operation.
@@ -226,6 +391,111 @@ func (c *Client) sendCheckAuthorization(ctx context.Context, request *CheckReque
 
 	stage = "DecodeResponse"
 	result, err := decodeCheckAuthorizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// CreateInvitation invokes createInvitation operation.
+//
+// 需要 can_manage_members
+// 与15分钟内的强认证。邀请不授予任何权限；角色与单元角色限定接受时可写入的成员资格，
+// 单元须属于本租户（422
+// org_unit_not_found）。同一邮箱在本租户已有未过期的待接受邀请时返回该邀请（outcome
+// existing， 不发新链接，可重发）；本租户待接受邀请至多1000条（409
+// invitation_limit_reached）。邀请7天有效。 链接令牌只出现在首次响应的 link_token
+// 中，identity 只保存其摘要；同一 Idempotency-Key 的重放返回同一邀请但不含
+// link_token。 邮件在提交后发送，结果写入 delivery（sent / failed；未知时保持
+// pending），发送失败不回滚邀请。.
+//
+// POST /v1/identity/invitations
+func (c *Client) CreateInvitation(ctx context.Context, request *CreateInvitationRequest, params CreateInvitationParams) (*InvitationIssued, error) {
+	res, err := c.sendCreateInvitation(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendCreateInvitation(ctx context.Context, request *CreateInvitationRequest, params CreateInvitationParams) (res *InvitationIssued, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("createInvitation"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/invitations"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CreateInvitationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/invitations"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateInvitationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCreateInvitationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -720,6 +990,150 @@ func (c *Client) sendGetTenant(ctx context.Context, params GetTenantParams) (res
 	return result, nil
 }
 
+// ListInvitations invokes listInvitations operation.
+//
+// 需要 can_manage_members
+// 与15分钟内的强认证。按创建时间倒序（同一时间按标识倒序）分页返回，每页至多
+// limit 条（默认且至多500）； 还有更早的邀请时 truncated 为 true 并给出
+// next_cursor，以它作为 cursor 取下一页（须带相同的 state 过滤， 否则 400
+// invalid_cursor；游标只在签发它的租户内有效）。翻页期间不变的邀请不重复也不遗漏；翻页期间状态改变的邀请
+// 可能在按 state 过滤的后续页中不再出现。已到过期时间的待接受邀请先置为
+// expired（发布 identity.invitation.changed.v1）再返回。.
+//
+// GET /v1/identity/invitations
+func (c *Client) ListInvitations(ctx context.Context, params ListInvitationsParams) (*InvitationList, error) {
+	res, err := c.sendListInvitations(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListInvitations(ctx context.Context, params ListInvitationsParams) (res *InvitationList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listInvitations"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/identity/invitations"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListInvitationsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/identity/invitations"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "state" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "state",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.State.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListInvitationsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListOrgUnits invokes listOrgUnits operation.
 //
 // 当前租户的有效成员可调用。返回全部单元（含根单元
@@ -914,6 +1328,129 @@ func (c *Client) sendPutMember(ctx context.Context, request *PutMemberRequest, p
 	return result, nil
 }
 
+// ResendInvitation invokes resendInvitation operation.
+//
+// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
+// 并发控制。待接受或已过期的邀请生成新链接、重新计算7天有效期并发送，
+// 旧链接立即失效（接受时返回 410
+// invitation_link_superseded）；已接受或已撤回的返回 409 invitation_not_pending。
+// 其他租户的或不存在的邀请返回同一 404 invitation_not_found。.
+//
+// POST /v1/identity/invitations/{invitationID}/resend
+func (c *Client) ResendInvitation(ctx context.Context, request *InvitationVersionRequest, params ResendInvitationParams) (*InvitationIssued, error) {
+	res, err := c.sendResendInvitation(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendResendInvitation(ctx context.Context, request *InvitationVersionRequest, params ResendInvitationParams) (res *InvitationIssued, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("resendInvitation"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/invitations/{invitationID}/resend"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ResendInvitationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/identity/invitations/"
+	{
+		// Encode "invitationID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "invitationID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.InvitationID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/resend"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeResendInvitationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeResendInvitationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ResolveSession invokes resolveSession operation.
 //
 // GET /v1/identity/session
@@ -985,6 +1522,129 @@ func (c *Client) sendResolveSession(ctx context.Context) (res *Session, err erro
 
 	stage = "DecodeResponse"
 	result, err := decodeResolveSessionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RevokeInvitation invokes revokeInvitation operation.
+//
+// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
+// 并发控制。只有待接受且未过期的邀请可撤回；
+// 与接受并发时以邀请行锁串行，只有一个生效，失败的一方按最新状态返回
+// 409 invitation_not_pending 或 version_conflict。 其他租户的或不存在的邀请返回同一
+// 404 invitation_not_found。.
+//
+// POST /v1/identity/invitations/{invitationID}/revoke
+func (c *Client) RevokeInvitation(ctx context.Context, request *InvitationVersionRequest, params RevokeInvitationParams) (*Invitation, error) {
+	res, err := c.sendRevokeInvitation(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendRevokeInvitation(ctx context.Context, request *InvitationVersionRequest, params RevokeInvitationParams) (res *Invitation, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("revokeInvitation"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/identity/invitations/{invitationID}/revoke"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RevokeInvitationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/identity/invitations/"
+	{
+		// Encode "invitationID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "invitationID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.InvitationID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/revoke"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeRevokeInvitationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRevokeInvitationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

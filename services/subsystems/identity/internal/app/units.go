@@ -149,14 +149,22 @@ func (d *Directory) ListOrgUnits(ctx context.Context) (*identityapi.OrgUnitList,
 	return out, err
 }
 
-// manager 核对单元与成员管理的调用者：用户、MFA、当前成员且有 can_manage_members（与成员命令相同）。
+// manager 核对单元、成员与邀请管理的调用者：用户、当前成员、有 can_manage_members，且有15分钟内的强认证（与成员命令相同）。
 func (d *Directory) manager(ctx context.Context, tx pgx.Tx) (reqctx.Context, error) {
-	rc, err := actor(ctx)
+	rc, err := d.admin(ctx, tx)
 	if err != nil {
 		return rc, err
 	}
-	if !reqctx.MFA(ctx) {
-		return rc, failure(403, "mfa_required")
+	// 单元结构变更在租户内串行，并发移动不会形成环
+	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "identity-units/"+rc.Tenant)
+	return rc, err
+}
+
+// admin 核对管理员动作的调用者：先授权（can_manage_members），再核对强认证，均在返回已存回执之前。
+func (d *Directory) admin(ctx context.Context, tx pgx.Tx) (reqctx.Context, error) {
+	rc, err := actor(ctx)
+	if err != nil {
+		return rc, err
 	}
 	if rc.Tenant == "" {
 		return rc, failure(403, "invalid_tenant_context")
@@ -175,9 +183,7 @@ func (d *Directory) manager(ctx context.Context, tx pgx.Tx) (reqctx.Context, err
 	if !allowed {
 		return rc, failure(403, "forbidden")
 	}
-	// 单元结构变更在租户内串行，并发移动不会形成环
-	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "identity-units/"+rc.Tenant)
-	return rc, err
+	return rc, d.strongAuth(ctx, rc.Principal.ID, nil)
 }
 
 func unitName(name string) (string, error) {

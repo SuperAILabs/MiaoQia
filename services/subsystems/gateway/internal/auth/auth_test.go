@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/superailabs/miaoqia/services/internal/testissuer"
+	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 )
 
 func TestSignedTokenBoundaries(t *testing.T) {
@@ -109,5 +110,44 @@ func TestMFAAssurance(t *testing.T) {
 		if err != nil || mfa != strong {
 			t.Fatalf("signed assurance strong=%v got=%v err=%v", strong, mfa, err)
 		}
+	}
+}
+
+// 认证保证只取已签名的声明：amr=mfa、auth_time 与会话来源；未登记的会话来源为 unknown，不会被当作交互登录。
+func TestAssuranceClaims(t *testing.T) {
+	t.Setenv("MIAOQIA_ENV", "production")
+	issuer := testissuer.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	v, err := NewVerifier(ctx, issuer.Server.URL, "miaoqia-api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	authTime := time.Now().Add(-10 * time.Minute).Truncate(time.Second)
+	for _, c := range []struct {
+		name   string
+		claims map[string]any
+		mfa    bool
+		at     time.Time
+		source string
+	}{
+		{"交互登录带认证时间", map[string]any{"amr": []string{"pwd", "mfa"}, "auth_time": authTime.Unix()}, true, authTime, reqctx.SourceIdP},
+		{"只有 amr", map[string]any{"amr": []string{"mfa"}}, true, time.Time{}, reqctx.SourceIdP},
+		{"免登会话", map[string]any{"auth_time": authTime.Unix(), "miaoqia_session_source": "channel"}, false, authTime, reqctx.SourceChannel},
+		{"未知会话来源", map[string]any{"amr": []string{"mfa"}, "auth_time": authTime.Unix(), "miaoqia_session_source": "password"}, true, authTime, reqctx.SourceUnknown},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "/", nil)
+			r.Header.Set("Authorization", "Bearer "+issuer.TokenWith(t, "usr_test", "", "", c.claims))
+			_, a, err := v.VerifyAssurance(r)
+			if err != nil || a.MFA != c.mfa || !a.AuthTime.Equal(c.at) || a.Source != c.source {
+				t.Fatalf("%+v %v", a, err)
+			}
+		})
+	}
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Authorization", "Bearer "+issuer.TokenWith(t, "usr_test", "", "", map[string]any{"auth_time": "yesterday"}))
+	if _, _, err := v.VerifyAssurance(r); err == nil {
+		t.Fatal("非数值 auth_time 必须拒绝")
 	}
 }

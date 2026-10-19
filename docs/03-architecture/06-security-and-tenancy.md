@@ -1,6 +1,6 @@
 # 安全与租户隔离
 
-> 状态：评审中 · 版本：1.6 · 更新：2026-10-18 · 负责人：安全负责人
+> 状态：评审中 · 版本：1.7 · 更新：2026-10-19 · 负责人：安全负责人
 
 ## 1. 安全目标
 
@@ -46,7 +46,7 @@ Tenant（签约客户）
 
 ### 3.1 M0 HTTP认证边界
 
-外部网关只接受指定HTTPS Keycloak issuer签发、目标audience匹配的RS256 Bearer访问令牌，必须含有效exp/iat；检查nbf、主体及租户/单元配对，丢弃客户端Miaoqia-Context头。租户请求再经identity权威目录核对当前租户/成员状态及cell-01归属；错误租户/cell拒绝，目录故障503，不读取令牌角色恢复撤权。生命周期管理要求已签名amr=mfa且通过当前授权，MFA声明不在内部头传递；平台operator+MFA命令可指定受管理的tenantID，但不据此切换用户上下文或cell。具体边界见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。内部上下文只经TLS1.3双向认证及精确SPIFFE调用方白名单传递。默认生产策略缺配置失败关闭，仅显式development允许实验环境明文。认证配置及真实正反例见[M0运行时验收](../05-delivery/05-m0-runtime-acceptance.md)；实际证书运维和部署网络另验收。
+外部网关只接受指定HTTPS Keycloak issuer签发、目标audience匹配的RS256 Bearer访问令牌，必须含有效exp/iat；检查nbf、主体及租户/单元配对，丢弃客户端Miaoqia-Context头。租户请求再经identity权威目录核对当前租户/成员状态及cell-01归属；错误租户/cell拒绝，目录故障503，不读取令牌角色恢复撤权。平台生命周期管理要求已签名amr=mfa且通过当前授权；租户管理命令（成员、角色、单元、邀请）还要求15分钟内的强认证，以IdP签发的auth_time计算，刷新令牌与渠道免登会话不延长（[identity 第8节](subsystems/identity.md#8-安全要点)）；认证保证不在内部头传递；平台operator+MFA命令可指定受管理的tenantID，但不据此切换用户上下文或cell。具体边界见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。内部上下文只经TLS1.3双向认证及精确SPIFFE调用方白名单传递。默认生产策略缺配置失败关闭，仅显式development允许实验环境明文。认证配置及真实正反例见[M0运行时验收](../05-delivery/05-m0-runtime-acceptance.md)；实际证书运维和部署网络另验收。
 
 ## 4. 授权
 

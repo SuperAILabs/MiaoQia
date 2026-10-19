@@ -1,6 +1,6 @@
 # PRD 第1段：登录与渠道绑定
 
-> 状态：设计交接通过 · 版本：1.5 · 更新：2026-10-19 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
+> 状态：设计交接通过 · 版本：1.6 · 更新：2026-10-19 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
 
 本段让一家建材供应商从开通到“销售在企业微信收到妙洽消息、点开卡片在手机上看到同一账号下的内容”。它是首条旅程（A02 进入供货）后续各段的前提：第2段的客户档案由本段激活的管理员录入，第5段的简报与卡片只发给本段绑定的成员。
 
@@ -249,16 +249,20 @@
 
 证据位置在实现时逐条填入：自动化用例写测试文件与用例名，走查写记录链接。
 
-服务端首个切片（identity 契约 1.2.0：组织单元、单元角色、资源级 `Check`、服务主体授权与 `SyncResourceParticipants`，见 [identity 第5节实现状况](../../03-architecture/subsystems/identity.md#5-接口)）为 F2 的“分配角色和组织单元”提供了目录与授权基础；本段的邀请、强认证时效、渠道与免登流程尚未实现。当前自动化证据：
+服务端切片：identity 契约 1.2.0 提供组织单元、单元角色、资源级 `Check`、服务主体授权与 `SyncResourceParticipants`；契约 1.3.0（事件契约 1.2.0）实现邀请（F2）与强认证时效（F3 第2、4步的服务端部分），见 [identity 第5节实现状况](../../03-architecture/subsystems/identity.md#5-接口)。IdP 账号与邮件渠道在本环境以端口的内存实现测试（生产 Keycloak 管理接口与邮件适配器未接入），强认证时间来自测试签发方签名的 `auth_time`，不代证真实 TOTP 仪式与 IdP 配置（第3节前置条件仍待部署验收）；渠道、免登与 Web 页面未实现。邀请列表按游标分页（每页至多 500 条），待接受上限 1000 条时可翻到全部并操作最早的邀请（子测试“邀请列表分页：同一状态超过500条时翻页不重复、不遗漏，最早的邀请可取到并操作”）。当前自动化证据（均在 `services/kernel/integration/invitations_test.go` 的 `TestInvitationsAndStrongAuth` 中，另注明的除外）：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|
-| 4 | 部分：成员管理接口对非管理员拒绝（含单元与单元角色管理）；`AcceptInvitation` 未实现 | `services/kernel/integration/identity_test.go`（authorization-and-mfa-negative）；`services/kernel/integration/units_participants_test.go`（组织单元：创建、列表、读取与管理权限） |
-| 5 | 部分：非管理员、无 MFA 的角色与单元变更被拒绝；15 分钟强认证时效未实现（目前只核对已签名的 `amr=mfa`），邀请与渠道安装未实现 | 同上 |
+| 1 | 部分：邀请的重复接受（顺序重试、并发重复、首次并发、响应丢失后重试）只写入一次成员资格、只发布一次 `identity.member.changed.v1` 与一次 `identity.invitation.changed.v1`（accepted），返回首次结果 `already_accepted`；IdP 归属写入失败时显示 `provisioning` 并可重试。“一次通知”以接受事件计，通知的实际发出随通知消费方；绑定确认的重试随 channels | 子测试“用例1：重复接受只写入一次、通知一次；响应丢失后重试返回已接受”“用例1：首次接受并发且IdP归属写入失败时，只写入一次并可重试” |
+| 2 | 全部（服务端）：撤回、过期（业务时钟越过 7 天）、重发后的旧链接分别返回 410 `invitation_revoked`、`invitation_expired`、`invitation_link_superseded`；接受与撤回并发经行锁屏障在两种排队顺序下各验证两次，只有一个生效，接受生效时成员角色与单元角色等于邀请所限，撤回生效时不写入成员；请求体不能携带角色 | 子测试“用例2：撤回、过期、重发后的旧链接不可用”“用例2：接受与撤回并发只有一个生效，不写入超出邀请的角色或单元” |
+| 3 | 全部（服务端，IdP 为内存实现）：邮箱不一致、邮箱未验证、他人账号拒绝；账号已是其他租户有效成员时 409，同一账号并发接受两个租户的邀请只有一个成功；受邀管理员未登记 TOTP（`totp_enrollment_required`）、强认证缺失或超过 15 分钟（`mfa_required`）时不能完成接受，补齐后可接受；IdP 明确未登记时即使令牌带新鲜的 `amr=mfa` 也拒绝（例如认证后删除了 TOTP），邀请仍待接受、不写成员、无接受事件，重新登记并认证后接受；IdP 不可用时 503 且邀请不被消耗 | 子测试“用例3：邮箱不一致、账号已属于其他租户、受邀管理员未完成TOTP时拒绝”“用例7：受邀管理员已取消TOTP登记时，新鲜的 amr=mfa 不能代替登记” |
+| 4 | 全部（服务端）：受邀人不经成员管理接口加入；接受前后受邀人调用成员管理与邀请接口均被拒绝 | 子测试“用例4：接受不经成员管理接口；成员管理接口对非管理员仍拒绝”；`services/kernel/integration/identity_test.go`（authorization-and-mfa-negative） |
+| 5 | 部分：非管理员的邀请、邀请列表、角色变更被拒绝（`forbidden`）；管理员无强认证或超过 15 分钟时邀请、列表、角色变更、单元创建与修改被拒绝（`mfa_required`）且不写入。渠道安装只验证了供 channels 调用的门禁 `identity.Guard.RequireAdmin`，安装流程本身随 channels | 子测试“用例5：非管理员或没有15分钟内强认证时邀请、角色变更与渠道安装被拒绝”；`services/kernel/integration/units_participants_test.go` |
+| 6 | 部分：第 14 分 59 秒可执行、第 15 分 01 秒要求重新验证（冻结 identity 时钟，邀请、单元创建与角色变更）；刷新后的令牌（新签发时间、原 `auth_time`）不延长；只有 `amr=mfa`、免登会话来源、未知会话来源、未来的 `auth_time` 均要求重新验证；边界另有单元测试。免登会话令牌的实际签发随 channels 免登实现，真实 IdP 的 `auth_time` 与刷新行为待部署验收 | 子测试“用例6：强认证时间边界、刷新不延长、免登会话须重新验证”；`services/subsystems/identity/internal/app/strongauth_test.go`；`services/subsystems/gateway/internal/auth/auth_test.go`（TestAssuranceClaims） |
+| 7 | 部分（服务端）：未登记 TOTP 的业务开拓者执行强认证动作时得到 `totp_enrollment_required`，取消登记后再次提交仍要求登记、原动作未执行；登记并验证后执行一次；管理员同样。策略激活申请本身随第7段、登记流程与“已填内容保留”随 IdP 与 Web | 子测试“用例7：首次强认证动作前须登记TOTP，取消登记则原动作不执行” |
 | 12 | 部分：成员退出后旧 Web 会话的下一次请求被拒绝，其资源参与关系失效并清理、重新加入不复活；渠道动作与免登随 channels | `services/kernel/integration/identity_test.go`（join-and-role-revocation-with-old-token）；`services/kernel/integration/units_participants_test.go`（成员退出） |
 | 14 | 部分：目标详情对无权限与不存在返回同一 404 `objective_not_found`，响应不含标题、归属或负责人；卡片跳转与账号不一致提示随 channels 与 Web | `services/kernel/integration/units_participants_test.go`；`services/kernel/integration/customercontext_test.go` |
-| 1、2、3 | 未实现：邀请需要 `Invitation` 模型、`identity.invitation.changed.v1` 契约、邮件渠道与 IdP 账号租户归属写入（Keycloak 管理接口），本环境无 Keycloak | — |
-| 6、7、18 | 未实现：依赖生产 IdP 的可信强认证时间声明、TOTP 登记与会话时长配置（第3节前置条件） | — |
+| 18 | 未实现：依赖生产 IdP 的会话时长配置（第3节前置条件） | — |
 | 8–11e、13、15、16 | 未实现：依赖 channels 子系统与 C10 渠道方案（绑定、免登会话、撤销水位） | — |
 | 17 | 未实现：管理员账号恢复需要 IdP 管理接口与平台运营双人控制 | — |
 
