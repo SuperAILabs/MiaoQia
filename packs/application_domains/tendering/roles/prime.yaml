@@ -1,0 +1,8 @@
+# 角色模板（格式与说明见 roles/mfr.yaml）。总包的供应商寻源（E01）不属于本包，随采购方侧应用领域另行定义。
+role:
+  id: ROLE-PRIME
+  version: 0.1.0
+  name: 总承包商 / 集成商
+  say: 承接管网等工程项目，投标并向下采购材料、分包专业工程
+  default_objectives: [APP-TENDER.A01, APP-TENDER.B03, APP-TENDER.C01]
+  optional_objectives: [APP-TENDER.A05, APP-TENDER.B01, APP-TENDER.B02, APP-TENDER.B04, APP-TENDER.C02, APP-TENDER.C03]

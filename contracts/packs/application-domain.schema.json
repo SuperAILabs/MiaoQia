@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/packs/application-domain.schema.json",
-  "x-version": "0.2.0",
+  "x-version": "0.3.0",
   "title": "ApplicationDomainDefinitions 应用领域包定义格式",
-  "description": "应用领域包除策略模板（contracts/policy/policy.schema.json）以外的定义格式草案：角色模板、目标模板、机会路径、判断框架、研究模板，以及包的覆盖矩阵。每个定义文件的顶层键为对应种类名，按 pack.yaml provides 的同名键登记；引用与校验规则由 mqc P9 执行（docs/03-architecture/04-extensibility.md 2.3）。条件一律为 CEL 表达式，包内不含可执行代码。",
+  "description": "应用领域包除策略模板（contracts/policy/policy.schema.json）以外的定义格式草案：角色模板、目标模板、机会路径、判断框架、研究模板、信号与渠道卡片、简报分区与配额、反馈原因标签、推进结果原因与金额类型、效果指标，以及包的覆盖矩阵。每个定义文件的顶层键为对应种类名，按 pack.yaml provides 的同名复数键登记；引用与校验规则由 mqc P9、P10 执行（docs/03-architecture/04-extensibility.md 2.3）。条件一律为 CEL 表达式，包内不含可执行代码。",
   "type": "object",
   "minProperties": 1,
   "maxProperties": 1,
@@ -26,6 +26,21 @@
     },
     "coverage": {
       "$ref": "#/$defs/coverage"
+    },
+    "card": {
+      "$ref": "#/$defs/card"
+    },
+    "briefing": {
+      "$ref": "#/$defs/briefing"
+    },
+    "feedback": {
+      "$ref": "#/$defs/feedback"
+    },
+    "outcome": {
+      "$ref": "#/$defs/outcome"
+    },
+    "metrics": {
+      "$ref": "#/$defs/metrics"
     }
   },
   "$defs": {
@@ -71,15 +86,21 @@
             "type": "string",
             "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
           }
+        },
+        "say": {
+          "type": "string",
+          "minLength": 1,
+          "description": "角色说明（目标页与档案页展示）"
         }
       }
     },
     "objective_template": {
       "type": "object",
-      "description": "目标模板：把平台商业目标（OBJ-）实例化到本领域，说明用哪条机会路径、哪些策略模板、框架与研究模板，以及启用依赖的信息领域",
+      "description": "目标模板：把平台商业目标（OBJ-）实例化到本领域，说明用哪条机会路径、哪些策略模板、框架与研究模板，以及启用依赖的信息领域。可启用阶段只在覆盖矩阵的 release 中登记，不在此重复",
       "required": [
         "id",
         "version",
+        "name",
         "catalog_objective",
         "form",
         "subject_types",
@@ -94,6 +115,16 @@
         },
         "version": {
           "$ref": "#/$defs/version"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "目标名称（目标页、简报区与卡片展示）"
+        },
+        "say": {
+          "type": "string",
+          "minLength": 1,
+          "description": "它找什么、用哪些数据（目标目录的说明文字）"
         },
         "catalog_objective": {
           "type": "string",
@@ -807,6 +838,7 @@
       "required": [
         "objective",
         "form",
+        "release",
         "entry",
         "playbook",
         "frameworks",
@@ -825,6 +857,9 @@
             "embedded"
           ],
           "description": "推进形态：交易型有终点；持续型按周期运行（业务架构 4.2）；嵌入型只在其他推进中调用，不单独建推进"
+        },
+        "release": {
+          "$ref": "#/$defs/release"
         },
         "entry": {
           "$ref": "#/$defs/cell",
@@ -848,6 +883,818 @@
           "items": {
             "type": "string",
             "pattern": "^RT-[A-Z]+-[A-Z]+$"
+          }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "description": "目标的发布批次与租户可启用的路线图阶段（批次见 05-release-plan.md 第2节）。目标目录完整列出，未到阶段的标注开放阶段、不可启用",
+      "required": [
+        "batch",
+        "stage"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "batch": {
+          "enum": [
+            "R1",
+            "R2",
+            "R3"
+          ]
+        },
+        "stage": {
+          "enum": [
+            "M2",
+            "M3",
+            "M4",
+            "M5"
+          ]
+        }
+      }
+    },
+    "signal_attr": {
+      "description": "卡片可引用的信号属性（detection 的 Signal 与处理记录、channels 的组装结果），以 signal.<属性> 引用",
+      "enum": [
+        "objective",
+        "fact_type",
+        "disposition",
+        "manual_disposition",
+        "rank_score",
+        "reasons",
+        "unknown_count",
+        "created_at",
+        "evaluated_at",
+        "exclusion_reason",
+        "same_lot_winner_count",
+        "processing_state",
+        "my_feedback"
+      ]
+    },
+    "display_source": {
+      "type": "string",
+      "description": "卡片字段的取值来源：signal.<属性>（signal_attr）；fact.<视图字段>（该事实类型在视图目录中的字段或视图项）；record.<路径>（该事实类型来源 Schema 中的展示字段，a.b[*].c）",
+      "pattern": "^(signal\\.[a-z_]+|fact\\.[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*|record\\.[a-z_][a-z0-9_]*(\\[\\*\\])?(\\.[a-z_][a-z0-9_]*(\\[\\*\\])?)*)$"
+    },
+    "conditional_label": {
+      "type": "object",
+      "required": [
+        "fact_type",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fact_type": {
+          "type": "string",
+          "pattern": "^[a-z_]+\\.[a-z_]+$",
+          "description": "事实类型（策略视图目录 views.yaml 的 fact_types 键）"
+        },
+        "when": {
+          "$ref": "../policy/policy.schema.json#/$defs/expr",
+          "description": "只读 fact 的 CEL 条件；缺省为该事实类型的默认标签。按列出顺序取第一条成立的"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "card_field": {
+      "type": "object",
+      "description": "卡片字段，按列出顺序为优先级从高到低；放不下时按优先级从低到高整项省略（never_omit 的除外），被省略的内容在详情中完整可见",
+      "required": [
+        "id",
+        "label",
+        "format"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conditional_label"
+          },
+          "description": "按事实类型与条件变化的标签，例如结果公告的“中标金额”与合同公告的“合同金额”"
+        },
+        "source": {
+          "$ref": "#/$defs/display_source"
+        },
+        "from": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z_]+\\.[a-z_]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/display_source"
+          },
+          "description": "按事实类型取值；未列出的事实类型不显示该字段。source 对卡片的全部事实类型都必须可解析"
+        },
+        "format": {
+          "enum": [
+            "text",
+            "money",
+            "party",
+            "region",
+            "categories",
+            "datetime",
+            "count",
+            "score",
+            "disposition",
+            "reasons",
+            "label",
+            "exclusion_reason",
+            "feedback"
+          ]
+        },
+        "max_items": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "列表字段最多显示的条数（如命中理由最多两条）"
+        },
+        "missing_text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "取值缺失时显示的状态词（如“未公布”），不用其他字段代替"
+        },
+        "never_omit": {
+          "type": "boolean",
+          "description": "截断时永不省略（处置、金额类型、状态词等）"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "source"
+          ],
+          "not": {
+            "required": [
+              "from"
+            ]
+          }
+        },
+        {
+          "required": [
+            "from"
+          ],
+          "not": {
+            "required": [
+              "source"
+            ]
+          }
+        }
+      ]
+    },
+    "card_action": {
+      "type": "object",
+      "required": [
+        "action",
+        "permission"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "view",
+            "feedback_relevant",
+            "feedback_irrelevant",
+            "exclusion_feedback",
+            "create_pursuit"
+          ]
+        },
+        "permission": {
+          "enum": [
+            "can_view_signals",
+            "can_feedback",
+            "can_assign"
+          ],
+          "description": "渲染时按收件人当时的权限决定是否出现，执行时实时检查（identity 7.2）"
+        },
+        "reasons": {
+          "enum": [
+            "quick",
+            "all"
+          ],
+          "description": "feedback_irrelevant 的原因选择：quick 为反馈定义的前 quick 个与“其他”，all 为全部"
+        }
+      }
+    },
+    "card": {
+      "type": "object",
+      "description": "信号卡片模板（渠道无关表示，channels 4.1、4.4；PRD 第3段 F2、第5段 F3–F4）。同一模板可用于收件箱行、简报条目、渠道卡片与即时通知卡片",
+      "required": [
+        "id",
+        "version",
+        "objective",
+        "surfaces",
+        "fact_types",
+        "fact_type_labels",
+        "fields",
+        "actions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^CARD-[A-Z]+-[A-Z][0-9]{2}-[A-Z]+$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "objective": {
+          "type": "string",
+          "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+        },
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "inbox_row",
+              "briefing_item",
+              "channel_card",
+              "notification_card"
+            ]
+          }
+        },
+        "fact_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+\\.[a-z_]+$",
+            "description": "事实类型（策略视图目录 views.yaml 的 fact_types 键）"
+          },
+          "description": "等于该目标策略模板的事实类型并集"
+        },
+        "fact_type_labels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/conditional_label"
+          },
+          "description": "事实类型的展示名（如 中标结果 / 候选人公示 / 合同公告 / 施工许可）"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/card_field"
+          }
+        },
+        "markers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "new",
+              "updated",
+              "backfill",
+              "overnight",
+              "notified",
+              "also_matched",
+              "my_feedback",
+              "same_lot_winners",
+              "manual_disposition"
+            ]
+          }
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/card_action"
+          }
+        }
+      }
+    },
+    "briefing": {
+      "type": "object",
+      "description": "简报的目标分区声明（channels 4.4 第3条）：区的顺序、每区条数默认值与成员可调范围、即时通知的合并窗口。“待我处理”“关注变化”是平台跨目标区，不在此声明",
+      "required": [
+        "id",
+        "version",
+        "sections"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^BRF-[A-Z]+-[A-Z]+$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "objective",
+              "order",
+              "title",
+              "card",
+              "quota"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "objective": {
+                "type": "string",
+                "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "区顺序；同一采购项目出现在多个区时只在靠前的区完整展示"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "card": {
+                "type": "string",
+                "pattern": "^CARD-[A-Z]+-[A-Z][0-9]{2}-[A-Z]+$"
+              },
+              "quota": {
+                "type": "object",
+                "required": [
+                  "default",
+                  "min",
+                  "max"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "default": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "min": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "description": "每区条数：默认值与成员偏好可调范围；24 小时内截止与更正类变化不受配额截断"
+              },
+              "merge_window": {
+                "type": "string",
+                "pattern": "^[0-9]+[mh]$",
+                "description": "即时通知的合并窗口（channels 4.5），成员偏好可在此基础上调整"
+              }
+            }
+          }
+        }
+      }
+    },
+    "feedback_tag": {
+      "type": "object",
+      "required": [
+        "code",
+        "say"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "say": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note_required": {
+          "type": "boolean",
+          "description": "选此原因须填写说明（“其他”）"
+        },
+        "relates": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "description": "原因可能对应的规则、参数、档案字段、清单、视图项、词表或数据质量，供反馈汇总提示（PRD 第3段 F7 第2条），只作提示",
+          "properties": {
+            "rules": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[RXWBP]-[A-Z0-9-]+$"
+              }
+            },
+            "params": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            },
+            "profile": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            },
+            "lists": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            },
+            "views": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z_]+\\.[a-z_]+$"
+              }
+            },
+            "vocab": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            },
+            "data_quality": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "description": "目标的信号反馈原因标签（learning 扩展点；PRD 第3段 F4、第13节第2项）。代码进入反馈记录与事件，展示文字可改，代码不改义",
+      "required": [
+        "id",
+        "version",
+        "objective",
+        "irrelevant",
+        "quick",
+        "exclusion_wrong"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^FB-[A-Z]+-[A-Z][0-9]{2}$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "objective": {
+          "type": "string",
+          "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+        },
+        "irrelevant": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/feedback_tag"
+          },
+          "description": "不相关：至少选一个；最后一项为须说明的“其他”"
+        },
+        "quick": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "渠道卡片上展示的不相关原因个数（列表前 quick 个，另加“其他”）"
+        },
+        "relevant": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/feedback_tag"
+          },
+          "description": "相关：可选标签"
+        },
+        "exclusion_wrong": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/feedback_tag"
+          },
+          "description": "排除有误：须选原因；最后一项为“其他”"
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "description": "交易型目标的推进结果类型、原因代码与金额类型（PRD 第6段 F7、第13节第8–9项）。结果原因与信号反馈原因分开：一个是“做的结果”，一个是“值不值得做”",
+      "required": [
+        "id",
+        "version",
+        "objective",
+        "results",
+        "amount_types"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^OUT-[A-Z]+-[A-Z][0-9]{2}$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "objective": {
+          "type": "string",
+          "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "say",
+              "known_at_required",
+              "reasons"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "success",
+                  "failure",
+                  "abandoned"
+                ]
+              },
+              "say": {
+                "type": "string",
+                "minLength": 1
+              },
+              "known_at_required": {
+                "type": "boolean",
+                "description": "关闭时是否必须填写获知时间（可只到日）"
+              },
+              "reasons": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "say",
+                    "relates_to"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "pattern": "^[A-Z][A-Z0-9_]*$"
+                    },
+                    "say": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "note_required": {
+                      "type": "boolean"
+                    },
+                    "relates_to": {
+                      "enum": [
+                        "product",
+                        "price",
+                        "qualification",
+                        "relationship",
+                        "timing",
+                        "project",
+                        "risk",
+                        "resource",
+                        "data",
+                        "other"
+                      ],
+                      "description": "原因对应的问题类别，供评估与改进建议归类"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "amount_types": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "say"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "say": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "description": "结果金额条目的金额类型；不同类型、不同取值性质的金额不相加"
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "objectives",
+        "layer",
+        "unit",
+        "numerator",
+        "source",
+        "window",
+        "stage"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "objectives": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^APP-[A-Z]+\\.[A-Z][0-9]{2}$"
+          }
+        },
+        "layer": {
+          "enum": [
+            "monitoring",
+            "value",
+            "engagement"
+          ],
+          "description": "质量与验收第4节监测与判断、第6节推进与客户价值、使用活跃"
+        },
+        "unit": {
+          "enum": [
+            "ratio",
+            "count",
+            "duration",
+            "money",
+            "distribution"
+          ]
+        },
+        "numerator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "denominator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "signal",
+              "feedback",
+              "outcome",
+              "pursuit",
+              "briefing",
+              "delivery",
+              "label_set"
+            ]
+          }
+        },
+        "window": {
+          "type": "string",
+          "pattern": "^[0-9]+[dw]$"
+        },
+        "segment_by": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "objective",
+              "disposition",
+              "fact_type",
+              "region",
+              "category",
+              "backfill",
+              "reason_tag",
+              "value_nature",
+              "contribution",
+              "result_type",
+              "known_via"
+            ]
+          }
+        },
+        "min_sample": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "样本少于此数时只报告数量，不报告比例"
+        },
+        "platform_metric": {
+          "type": "string",
+          "pattern": "^docs/.+\\.md#.+$",
+          "description": "平台口径的指标（质量与验收）；本包只绑定目标与分层，不改口径"
+        },
+        "baseline": {
+          "$ref": "#/$defs/cell",
+          "description": "基线引用：已有基线集时 defined 列出版本，待定时注明阶段与任务"
+        },
+        "stage": {
+          "enum": [
+            "M2",
+            "M3",
+            "M4",
+            "M5"
+          ],
+          "description": "开始计算的路线图阶段"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "ratio"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "denominator"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "money"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "segment_by"
+            ],
+            "properties": {
+              "segment_by": {
+                "contains": {
+                  "const": "value_nature"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "description": "效果指标与基线引用（learning 扩展点）。金额类指标必须按取值性质分列，不相加（learning 8.1）",
+      "required": [
+        "id",
+        "version",
+        "items"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^MET-[A-Z]+$"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/metric"
           }
         }
       }

@@ -1,0 +1,25 @@
+# A01 信号反馈原因标签（格式与说明见 feedback/a02.yaml）。PRD 尚未确认 A01 的标签，本文件为推荐值，待领域负责人核对。
+feedback:
+  id: FB-TENDER-A01
+  version: 0.1.0
+  objective: APP-TENDER.A01
+  quick: 5
+  irrelevant:
+    - { code: CATEGORY_MISMATCH, say: 品类不符, relates: { rules: [R-CAT], params: [categories], profile: [offering_categories] } }
+    - { code: OUT_OF_REGION, say: 不在服务区域, relates: { rules: [R-REGION], params: [regions], profile: [service_regions] } }
+    - { code: QUALIFICATION_NOT_MET, say: 资质或业绩不满足, relates: { rules: [P-QUAL-GAP], profile: [entities] } }
+    - { code: NOT_ENOUGH_TIME, say: 准备时间不够, relates: { rules: [R-DEADLINE, P-TIGHT], params: [min_prep_days] } }
+    - { code: BRAND_OR_SPEC_LOCKED, say: 指定品牌或参数倾向他人, relates: { rules: [P-BRAND], profile: [brands] } }
+    - { code: TOO_SMALL, say: 预算太小, relates: { rules: [R-BUDGET, B-LARGE], params: [min_budget_cny, large_budget_cny] } }
+    - { code: BUYER_NOT_PURSUED, say: 不与该采购人合作, relates: { rules: [X-BUYER-BLOCKED], lists: [blocked] } }
+    - { code: SOURCE_ERROR, say: 公告信息有误, relates: { data_quality: true } }
+    - { code: DUPLICATE, say: 与其他信号重复, relates: { data_quality: true } }
+    - { code: OTHER, say: 其他, note_required: true }
+  relevant:
+    - { code: NEW_LEAD, say: 新线索 }
+    - { code: ALREADY_KNOWN, say: 已掌握 }
+  exclusion_wrong:
+    - { code: SUPPLIER_IS_SELF, say: 单一来源拟定供应商是我方主体, relates: { rules: [X-SINGLE-SOURCE], profile: [org_ids], data_quality: true } }
+    - { code: LIST_OUTDATED, say: 名单已过时, relates: { rules: [X-BUYER-BLOCKED], lists: [blocked] } }
+    - { code: TERM_MISFIRE, say: 排除词误伤, relates: { rules: [X-TERM], vocab: [exclude_terms] } }
+    - { code: OTHER, say: 其他, note_required: true }

@@ -1,0 +1,25 @@
+# A02 信号反馈原因标签（格式：contracts/packs/application-domain.schema.json 的 feedback；mqc P10 校验）。
+# 标签取自 PRD 第3段第13节第2项（项目负责人 2026-10-18 确认）；relates 指向可能相关的规则、参数、清单或数据质量，
+# 只用于反馈汇总的提示（第3段 F7 第2条），不自动修改策略。渠道卡片展示前 quick 个与“其他”（第5段 F4 第3条）。
+feedback:
+  id: FB-TENDER-A02
+  version: 0.1.0
+  objective: APP-TENDER.A02
+  quick: 5
+  irrelevant:
+    - { code: CATEGORY_MISMATCH, say: 品类不符, relates: { rules: [R-CAT], params: [categories], profile: [offering_categories] } }
+    - { code: OUT_OF_REGION, say: 不在服务区域, relates: { rules: [R-REGION], params: [regions], profile: [service_regions] } }
+    - { code: TOO_SMALL, say: 规模太小, relates: { rules: [R-AMOUNT, B-LARGE], params: [min_amount_cny, large_amount_cny] } }
+    - { code: WINNER_NOT_REACHABLE, say: 中标方不做此类采购或无法接触, relates: { rules: [B-BUYS-CATEGORY, B-KNOWN-PRIME], views: [winner.history_categories], lists: [customers] } }
+    - { code: WINNER_IS_SELF_OR_AFFILIATE, say: 中标方是我方或关联方, relates: { rules: [X-SELF], profile: [org_ids] } }
+    - { code: TOO_LATE, say: 时机已过（材料已采购）, relates: { rules: [W-CANDIDATE, B-PERMIT] } }
+    - { code: SOURCE_ERROR, say: 公告信息有误, relates: { data_quality: true } }
+    - { code: DUPLICATE, say: 与其他信号重复, relates: { data_quality: true } }
+    - { code: OTHER, say: 其他, note_required: true }
+  relevant:
+    - { code: NEW_LEAD, say: 新线索 }
+    - { code: ALREADY_KNOWN, say: 已掌握 }
+  exclusion_wrong:
+    - { code: WINNER_NOT_SELF, say: 中标方并非我方主体, relates: { rules: [X-SELF], profile: [org_ids], data_quality: true } }
+    - { code: LIST_OUTDATED, say: 名单已过时, relates: { rules: [X-BLOCKED], lists: [blocked] } }
+    - { code: OTHER, say: 其他, note_required: true }

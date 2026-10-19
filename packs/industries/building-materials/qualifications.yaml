@@ -1,0 +1,141 @@
+# 建材管材能力与资质模板（格式：contracts/packs/industry.schema.json 的 qualifications；mqc I1–I5 校验）。
+# 客户档案录入资质时选择这里的资质类型（PRD 第2段 F3）；代码属于本包资质体系 qual:building-materials（平台登记），
+# 公告资格要求缺 code_scheme 的代码按本体系解释（procurement defs requirement.code）。
+# equivalents 是到其他登记体系的映射，代码随平台资质体系登记交付（INF-QUAL 启用门禁）；没有映射时不跨体系比较，读取为未知。
+# 本阶段等级只记录、不比较（views.yaml qualification.comparable）。review: proposed 为推荐值，待领域负责人核对。
+qualifications:
+  scheme: qual:building-materials
+  scheme_version: 0.1.0
+  templates:
+    # 产品许可与认证（持有单位为生产企业，按具体产品发证）
+    - code: Q-BM-WATER-HYGIENE
+      name: 涉及饮用水卫生安全产品卫生许可批件
+      aliases: [涉水批件, 涉水产品卫生许可批件, 卫生许可批件, 涉水卫生许可]
+      say: 生活饮用水输配水设备（给水管材管件）进入供水系统前须取得
+      kind: product_permit
+      holder: product
+      categories: [CAT-PIPE-PE-WS, CAT-PIPE-PVC-WS, CAT-PIPE-PPR, CAT-PIPE-DI, CAT-PIPE-STEEL-SS, CAT-PIPE-STEEL-COMP, CAT-FIT-PE, CAT-FIT-PVC, CAT-FIT-PPR, CAT-FIT-DI]
+      roles: [ROLE-MFR, ROLE-DEALER]
+      has_validity: true
+      issuer: 省级卫生健康主管部门
+      equivalents: [{ scheme: qual:nhc-water-safety }]
+      review: proposed
+    - code: Q-BM-SPECIAL-EQUIP-MFG
+      name: 特种设备生产许可证（压力管道元件制造）
+      aliases: [压力管道元件制造许可, 特种设备制造许可证, TS 许可证]
+      say: 燃气用聚乙烯管材管件等压力管道元件的制造许可
+      kind: production_license
+      holder: organization
+      categories: [CAT-PIPE-PE-GAS, CAT-PIPE-STEEL-WELD, CAT-FIT-PE]
+      roles: [ROLE-MFR]
+      has_validity: true
+      issuer: 市场监督管理部门（特种设备安全监管）
+      equivalents: [{ scheme: qual:samr-special-equipment }]
+      review: proposed
+    - code: Q-BM-PRODUCTION-LICENSE
+      name: 全国工业产品生产许可证
+      aliases: [生产许可证, 工业产品生产许可证, QS 证]
+      say: 只适用于仍列入生产许可目录的产品；目录随政策调整，适用品类待核对后填写
+      kind: production_license
+      holder: organization
+      roles: [ROLE-MFR]
+      has_validity: true
+      issuer: 市场监督管理部门
+      equivalents: [{ scheme: qual:samr-production-license }]
+      review: proposed
+    - code: Q-BM-GREEN-PRODUCT
+      name: 绿色建材产品认证
+      aliases: [绿色建材认证, 绿色建材标识, 绿色建材产品认证证书]
+      kind: product_certification
+      holder: product
+      categories: [CAT-PIPE, CAT-FIT]
+      roles: [ROLE-MFR]
+      has_validity: true
+      issuer: 经批准的认证机构
+      grades: [三星级, 二星级, 一星级]
+      equivalents: [{ scheme: qual:cnca-certification }]
+      review: proposed
+    - code: Q-BM-PRODUCT-CERT
+      name: 自愿性产品认证证书
+      aliases: [产品认证证书, 产品质量认证, CQC 认证]
+      kind: product_certification
+      holder: product
+      categories: [CAT-PIPE, CAT-FIT]
+      roles: [ROLE-MFR]
+      has_validity: true
+      issuer: 经批准的认证机构
+      equivalents: [{ scheme: qual:cnca-certification }]
+      review: proposed
+    # 管理体系认证（常见评分项）
+    - code: Q-BM-ISO9001
+      name: 质量管理体系认证
+      aliases: [ISO9001, GB/T 19001, 质量体系认证]
+      kind: management_system
+      holder: organization
+      roles: [ROLE-MFR, ROLE-DEALER, ROLE-BIDDER, ROLE-PRIME]
+      has_validity: true
+      equivalents: [{ scheme: qual:cnca-certification }]
+      review: proposed
+    - code: Q-BM-ISO14001
+      name: 环境管理体系认证
+      aliases: [ISO14001, GB/T 24001, 环境体系认证]
+      kind: management_system
+      holder: organization
+      roles: [ROLE-MFR, ROLE-DEALER, ROLE-BIDDER, ROLE-PRIME]
+      has_validity: true
+      equivalents: [{ scheme: qual:cnca-certification }]
+      review: proposed
+    - code: Q-BM-ISO45001
+      name: 职业健康安全管理体系认证
+      aliases: [ISO45001, GB/T 45001, 职业健康安全体系认证]
+      kind: management_system
+      holder: organization
+      roles: [ROLE-MFR, ROLE-DEALER, ROLE-BIDDER, ROLE-PRIME]
+      has_validity: true
+      equivalents: [{ scheme: qual:cnca-certification }]
+      review: proposed
+    # 施工与安装（总包、直接投标人承接供货并安装的工程）
+    - code: Q-BM-MUNICIPAL-GC
+      name: 市政公用工程施工总承包资质
+      aliases: [市政总承包资质, 市政公用工程总承包]
+      kind: enterprise_qualification
+      holder: organization
+      roles: [ROLE-PRIME, ROLE-BIDDER]
+      grades: [特级, 一级, 二级, 三级]
+      has_validity: true
+      issuer: 住房和城乡建设主管部门
+      equivalents: [{ scheme: qual:mohurd-construction }]
+      review: proposed
+    - code: Q-BM-MEP-SPECIALTY
+      name: 建筑机电安装工程专业承包资质
+      aliases: [机电安装专业承包, 机电安装资质]
+      kind: enterprise_qualification
+      holder: organization
+      roles: [ROLE-PRIME, ROLE-BIDDER]
+      grades: [一级, 二级, 三级]
+      has_validity: true
+      issuer: 住房和城乡建设主管部门
+      equivalents: [{ scheme: qual:mohurd-construction }]
+      review: proposed
+    - code: Q-BM-SAFETY-PRODUCTION
+      name: 安全生产许可证（建筑施工企业）
+      aliases: [安全生产许可证, 安许证]
+      kind: safety_license
+      holder: organization
+      roles: [ROLE-PRIME, ROLE-BIDDER]
+      has_validity: true
+      issuer: 住房和城乡建设主管部门
+      review: proposed
+    - code: Q-BM-PRESSURE-PIPE-INSTALL
+      name: 特种设备安装改造维修许可证（压力管道）
+      aliases: [压力管道安装许可, GB1 燃气管道安装, GA 长输管道, GC 工业管道]
+      say: 燃气等压力管道的安装资质
+      kind: installation_license
+      holder: organization
+      categories: [CAT-PIPE-PE-GAS, CAT-PIPE-STEEL]
+      roles: [ROLE-PRIME, ROLE-BIDDER]
+      grades: [GA, GB, GC, GD]
+      has_validity: true
+      issuer: 市场监督管理部门（特种设备安全监管）
+      equivalents: [{ scheme: qual:samr-special-equipment }]
+      review: proposed

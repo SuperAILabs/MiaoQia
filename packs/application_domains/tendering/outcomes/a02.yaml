@@ -1,0 +1,40 @@
+# A02 跟进的结果类型、原因代码与金额类型（格式：contracts/packs/application-domain.schema.json 的 outcome；mqc P10 校验）。
+# 失败与放弃原因取自 PRD 第6段第13节第8项（2026-10-19 采用）；PRD 要求结果与原因都必填，但未列成功原因，
+# 成功原因为推荐值，待领域负责人核对。relates_to 把原因归到产品、价格、资质、关系或数据等问题，供评估与改进建议。
+# 关闭时成功与失败必填获知时间（可只到日），放弃可不填（第13节第9项）；金额可选，填写时取值性质与币种必填。
+outcome:
+  id: OUT-TENDER-A02
+  version: 0.1.0
+  objective: APP-TENDER.A02
+  results:
+    - type: success
+      say: 成功（已进入供货或已签约）
+      known_at_required: true
+      reasons:
+        - { code: EXISTING_RELATIONSHIP, say: 已有合作关系, relates_to: relationship }
+        - { code: PRICE_COMPETITIVE, say: 价格有竞争力, relates_to: price }
+        - { code: PRODUCT_FIT, say: 产品、品牌或资质符合要求, relates_to: product }
+        - { code: EARLY_CONTACT, say: 在材料采购前接触到决策人, relates_to: timing }
+        - { code: OTHER, say: 其他, note_required: true, relates_to: other }
+    - type: failure
+      say: 失败
+      known_at_required: true
+      reasons:
+        - { code: PRIME_CHOSE_OTHER, say: 总包选择其他供应商, relates_to: relationship }
+        - { code: PRICE_UNCOMPETITIVE, say: 价格不具竞争力, relates_to: price }
+        - { code: BRAND_OR_QUALIFICATION_MISMATCH, say: 品牌或资质不符, relates_to: qualification }
+        - { code: DECISION_MAKER_UNREACHABLE, say: 联系不上决策人, relates_to: relationship }
+        - { code: PROJECT_CANCELLED_OR_CHANGED, say: 项目取消或变更, relates_to: project }
+        - { code: OTHER, say: 其他, note_required: true, relates_to: other }
+    - type: abandoned
+      say: 放弃
+      known_at_required: false
+      reasons:
+        - { code: TOO_SMALL, say: 规模太小, relates_to: project }
+        - { code: PAYMENT_RISK, say: 回款风险, relates_to: risk }
+        - { code: INSUFFICIENT_RESOURCES, say: 资源不足, relates_to: resource }
+        - { code: OTHER, say: 其他, note_required: true, relates_to: other }
+  amount_types:
+    - { code: own_supply_amount, say: 本方供货金额 }
+    - { code: contract_amount, say: 合同金额 }
+    - { code: expected_annual_purchase, say: 预计年采购额 }

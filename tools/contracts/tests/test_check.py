@@ -107,51 +107,95 @@ def test_replace_missing_fixture_path_is_not_a_negative_control():
         _apply({}, {'op':'replace','path':'/missing','value':1})
 
 
-ELIG = """framework:
-  id: AF-TENDER-ELIG
-  version: 0.1.0
-  subject_types: [procurement_project]
-  research: [RT-TENDER-ELIG]
-  dimensions:
-    - id: qualification
-      kind: hard_gate
-      say: 资质要求全部满足
-      when: '!features.qualification_gap'
-      manual: [input]
-    - id: summary
-      kind: ai_summary
-      say: 资格缺口与可补方式
-      manual: [override]
-"""
+T = "packs/application_domains/tendering/"
+IND = "packs/industries/building-materials/"
 
 
-def _define_elig(sandbox, body):
-    pack_dir = sandbox / "packs/application_domains/tendering"
-    (pack_dir / "frameworks").mkdir()
-    (pack_dir / "frameworks/af-elig.yaml").write_text(body, encoding="utf-8")
-    p = pack_dir / "pack.yaml"
-    p.write_text(p.read_text(encoding="utf-8").replace(
-        "    coverage: coverage.yaml\n", "    coverage: coverage.yaml\n    frameworks: [frameworks/af-elig.yaml]\n"), encoding="utf-8")
-    c = pack_dir / "coverage.yaml"
-    c.write_text(c.read_text(encoding="utf-8").replace(
-        "AF-TENDER-ELIG:    { pending: { stage: M2, task: M2-P2, note: A01 规则型资格判断 } }",
-        "AF-TENDER-ELIG:    { defined: [AF-TENDER-ELIG] }"), encoding="utf-8")
-
-
-def test_definition_file_accepted(sandbox, monkeypatch, capsys):
-    _define_elig(sandbox, ELIG)
+def test_repo_definitions_are_checked(sandbox, monkeypatch, capsys):
+    """正例：M2-P2 交付的定义文件全部登记并通过 P9、P10 与行业包检查。"""
     code, out = run_check(sandbox, monkeypatch, capsys)
     assert code == 0, out.err
+    assert "行业包检查：1 个包" in out.out
 
 
-@pytest.mark.parametrize("old,new", [
-    ("      when: '!features.qualification_gap'\n", ""),          # 硬门槛缺条件
-    ("research: [RT-TENDER-ELIG]", "research: [RT-TENDER-NOPE]"),  # 未登记的研究模板
-    ("id: AF-TENDER-ELIG", "id: AF-TENDER-BID"),                    # 矩阵标为已定义的框架没有定义文件
-    ("manual: [input]", "manual: [input, override]"),                # 硬门槛不能人工覆盖
+@pytest.mark.parametrize("rule,rel,old,new", [
+    # P9 判断框架与目标、角色
+    ("P9", T + "frameworks/af-tender-elig.yaml", "      when: features.deadline_days >= 0\n", ""),             # 硬门槛缺条件
+    ("P9", T + "frameworks/af-tender-elig.yaml", "manual: [input, override]", "manual: [input, override]\n      kind: hard_gate"),
+    ("P9", T + "frameworks/af-tender-elig.yaml", "id: AF-TENDER-ELIG", "id: AF-TENDER-BID"),             # 矩阵标为已定义的框架没有定义文件
+    ("P9", T + "frameworks/af-tender-elig.yaml", "'!features.qualification_gap'", "'!features.no_such_feature'"),
+    ("P9", T + "frameworks/af-tender-elig.yaml", "params.min_prep_days\n", "params.min_amount_cny\n"),  # A01 模板没有的参数
+    ("P9", T + "frameworks/af-tender-supply.yaml", "has(fact.winner.org_id)", "has(fact.bid_deadline)"),  # A02 事实类型没有的字段
+    ("P9", T + "frameworks/af-tender-supply.yaml", "tendering.contract.published.v1", "tendering.contract.signed.v1"),
+    ("P9", T + "coverage.yaml", "AF-TENDER-ELIG:    { defined: [AF-TENDER-ELIG]", "AF-TENDER-ELIG:    { pending: { stage: M2, task: M2-P2 }, x: [AF-TENDER-ELIG]"),
+    ("P9", T + "coverage.yaml", "release: { batch: R1, stage: M2 }", "release: { batch: R1, stage: M1 }"),
+    ("P9", T + "coverage.yaml", "    PB-TENDER-A04:\n      objective: APP-TENDER.A04\n      form: transactional\n      release: { batch: R2, stage: M4 }",
+     "    PB-TENDER-A04:\n      objective: APP-TENDER.A04\n      form: transactional\n      release: { batch: R2, stage: M3 }"),  # 进入策略待定到 M4，却在 M3 开放
+    ("P9", T + "objectives/a02.yaml", "form: transactional", "form: continuous"),
+    ("P9", T + "objectives/a02.yaml", "policy_templates: [TPL-TENDER-A02-SUPPLY]", "policy_templates: [TPL-TENDER-A01-BID]"),
+    ("P9", T + "roles/dealer.yaml", "default_objectives: [APP-TENDER.A01", "default_objectives: [APP-TENDER.B03, APP-TENDER.A01"),  # B03 模板不含经销商
+    ("P9", T + "roles/prime.yaml", "APP-TENDER.C03]", "APP-TENDER.E01]"),
+    # P10 卡片
+    ("P10", T + "cards/a02-signal.yaml", "investment.construction_permit: record.project_name.value", "investment.construction_permit: record.title.value"),
+    ("P10", T + "cards/a02-signal.yaml", "source: fact.amount", "source: fact.budget"),
+    ("P10", T + "cards/a02-signal.yaml", "source: signal.unknown_count", "source: signal.unknown_items"),
+    ("P10", T + "cards/a02-signal.yaml", "{ action: create_pursuit, permission: can_assign }", "{ action: create_pursuit, permission: can_feedback }"),
+    ("P10", T + "cards/a02-signal.yaml", "permission: can_feedback, reasons: quick }", "permission: can_feedback }"),
+    ("P10", T + "cards/a02-signal.yaml", "    - { fact_type: investment.construction_permit, label: 施工许可 }\n", ""),
+    ("P10", T + "cards/a02-row.yaml", "fact_types: [tendering.bid_result, tendering.contract_record, investment.construction_permit]",
+     "fact_types: [tendering.bid_result, tendering.contract_record]"),
+    ("P10", T + "cards/b03-signal.yaml", "    - { action: view, permission: can_view_signals }\n", "    - { action: view, permission: can_view_signals }\n    - { action: create_pursuit, permission: can_assign }\n"),
+    ("P10", T + "cards/a01-signal.yaml", "when: 'fact.stage == \"intent\"'", "when: 'fact.winner.org_id == \"x\"'"),
+    # P10 简报、反馈、结果、指标
+    ("P10", T + "briefing.yaml", "quota: { default: 10, min: 5, max: 20 }, merge_window: 30m", "quota: { default: 30, min: 5, max: 20 }, merge_window: 30m"),
+    ("P10", T + "briefing.yaml", "order: 3", "order: 2"),
+    ("P10", T + "briefing.yaml", "card: CARD-TENDER-B03-SIGNAL", "card: CARD-TENDER-B03-ROW"),
+    ("P10", T + "feedback/a02.yaml", "rules: [R-CAT]", "rules: [R-CATEGORY]"),
+    ("P10", T + "feedback/a02.yaml", "lists: [blocked]", "lists: [partners]"),
+    ("P10", T + "feedback/a02.yaml", "  quick: 5", "  quick: 9"),
+    ("P10", T + "feedback/a02.yaml", "    - { code: OTHER, say: 其他, note_required: true }\n  relevant:", "  relevant:"),
+    ("P10", T + "feedback/a01.yaml", "vocab: [exclude_terms]", "vocab: [focus_terms]"),
+    ("P10", T + "outcomes/a02.yaml", "- { code: PAYMENT_RISK, say: 回款风险, relates_to: risk }", "- { code: TOO_SMALL, say: 回款风险, relates_to: risk }"),
+    ("P10", T + "outcomes/a02.yaml", "objective: APP-TENDER.A02", "objective: APP-TENDER.B03"),
+    ("P10", T + "metrics.yaml", "segment_by: [objective, value_nature, contribution]", "segment_by: [objective, contribution]"),
+    ("P10", T + "metrics.yaml", "baseline: { pending: { stage: M2, task: M2-P10 } }", "baseline: { pending: { stage: M2, task: M2-P77 } }"),
+    ("P10", T + "pack.yaml", "      - feedback/b03.yaml\n", ""),                   # M2 目标缺反馈原因
+    ("P10", T + "pack.yaml", "      - outcomes/a01.yaml\n", ""),                   # M2 交易型目标缺结果原因
+    # I1–I5 行业包
+    ("I1", IND + "pack.yaml", "    defaults: defaults.yaml", "    defaults: defaults.yaml\n    policies: x.yaml"),
+    ("I1", IND + "categories.yaml", "scheme: industry:building-materials", "scheme: industry:materials"),
+    ("I1", IND + "qualifications.yaml", "kind: product_permit", "kind: permit"),
+    ("I2", IND + "categories.yaml", "    - { code: CAT-PIPE-PE, name: PE 管, say: 聚乙烯管，含 HDPE、PE80、PE100 }\n", ""),
+    ("I2", IND + "categories.yaml", "    - { code: CAT-PIPE-CU, name: 铜管 }", "    - { code: CAT-PIPE-CU, name: 铜管 }\n    - { code: CAT-PIPE-CU, name: 紫铜管 }"),
+    ("I3", IND + "vocabulary.yaml", "category: CAT-PIPE-CU,", "category: CAT-PIPE-COPPER,"),
+    ("I3", IND + "vocabulary.yaml", "synonyms: [紫铜管, 铜水管]", "synonyms: [紫铜管, 铜水管, 镀锌管]"),
+    ("I3", IND + "vocabulary.yaml", "  brands_pending: { stage: M2, task: M2-P13, note: 品牌词表与带证据的归属声明由领域负责人逐条核对后交付 }\n", ""),
+    ("I3", IND + "categories.yaml", "code: CAT-PIPE-CU, target: C3251", "code: CAT-PIPE-AL, target: C3251"),
+    ("I4", IND + "qualifications.yaml", "code: Q-BM-ISO14001", "code: Q-BM-ISO9001"),
+    ("I5", IND + "defaults.yaml", "    exclude_terms:", "    excluded_terms:"),
+    ("I5", T + "policy/templates/a02-supply.yaml", "code: CAT-PIPE-PE }],\n                amount: { value: \"18000000\", currency: CNY }, winner: { org_id: org_p1",
+     "code: CAT-PIPE-HDPE }],\n                amount: { value: \"18000000\", currency: CNY }, winner: { org_id: org_p1"),
 ])
-def test_definition_file_rules(sandbox, monkeypatch, capsys, old, new):
-    assert old in ELIG
-    _define_elig(sandbox, ELIG.replace(old, new, 1))
+def test_definition_rules(sandbox, monkeypatch, capsys, rule, rel, old, new):
+    p = sandbox / rel
+    s = p.read_text(encoding="utf-8")
+    assert old in s, old
+    p.write_text(s.replace(old, new, 1), encoding="utf-8")
     code, out = run_check(sandbox, monkeypatch, capsys)
-    assert code == 1 and " P9 " in out.err
+    assert code == 1 and f" {rule} " in out.err, out.err
+
+
+def test_industry_codes_unique_across_packs(sandbox, monkeypatch, capsys):
+    """category.any_match 只比较代码：另一个行业包不能定义同名或上下级代码。"""
+    d = sandbox / "packs/industries/water"
+    d.mkdir()
+    (d / "pack.yaml").write_text("pack:\n  id: IND-WATER\n  kind: industry\n  version: 0.1.0\n  platform_api: \">=1.0 <2.0\"\n"
+                                 "  owners: [x]\n  provides:\n    taxonomy: categories.yaml\n", encoding="utf-8")
+    (d / "categories.yaml").write_text("taxonomy:\n  scheme: industry:water\n  scheme_version: 0.1.0\n  categories:\n"
+                                       "    - { code: CAT-WATER, name: 水务设备 }\n", encoding="utf-8")
+    code, out = run_check(sandbox, monkeypatch, capsys)
+    assert code == 0, out.err
+    s = (d / "categories.yaml").read_text(encoding="utf-8")
+    (d / "categories.yaml").write_text(s + "    - { code: CAT-PIPE-PE-HOT, name: 热水管 }\n", encoding="utf-8")
+    code, out = run_check(sandbox, monkeypatch, capsys)
+    assert code == 1 and " I2 " in out.err

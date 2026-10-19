@@ -16,7 +16,14 @@
 应用领域包（其他定义，格式见 contracts/packs/application-domain.schema.json）：
   P9  覆盖矩阵与定义文件符合格式；路径与目标代码一致；已定义/复用的引用存在，策略模板的目标与路径一致、
       每个模板都进入矩阵；框架与研究模板目录无未登记引用、无孤儿；待定项引用的阶段基线任务存在；
-      定义文件之间的引用（目标→路径、阶段→框架/研究、衔接→路径、挂钩→事件）可解析
+      定义文件之间的引用（目标→路径、阶段→框架/研究、衔接→路径、挂钩→事件）可解析；目标与矩阵的路径、形态、
+      进入策略一致；角色可启用目标的策略模板含该角色；判断框架条件只引用使用它的路径的进入策略所提供的字段、
+      参数与特征；进入策略待定的阶段不晚于目标开放阶段（release）
+  P10 卡片、简报分区、反馈原因、结果原因与效果指标：目标已定义；卡片事实类型等于目标策略的事实类型，字段来源
+      在每个事实类型中可解析，动作与权限对应；简报配额 min ≤ default ≤ max、顺序唯一、卡片属于本目标；
+      反馈与结果原因代码唯一、“其他”须说明且在末位，反馈原因关联的规则、参数、清单与词表在本目标策略中；
+      release 为 M2 且由策略进入的目标须具备目标定义、收件箱行卡片、简报分区、反馈原因、效果指标，交易型另需结果原因
+行业包见 industry.py（I1–I5）。
 """
 from __future__ import annotations
 
@@ -326,8 +333,13 @@ def check_application_pack(repo: Repo, pack_dir: Path) -> Report:
 
 
 DEF_KINDS = {"roles": "role", "objectives": "objective", "playbooks": "playbook",
-             "frameworks": "framework", "research_templates": "research_template"}
+             "frameworks": "framework", "research_templates": "research_template",
+             "cards": "card", "briefing": "briefing", "feedback": "feedback", "outcomes": "outcome",
+             "metrics": "metrics"}
 STAGE_BASELINE = "docs/05-delivery/06-stage-baseline.md"
+STAGES = ("M2", "M3", "M4", "M5")
+CARD_PERMISSIONS = {"view": "can_view_signals", "feedback_relevant": "can_feedback", "feedback_irrelevant": "can_feedback",
+                    "exclusion_feedback": "can_feedback", "create_pursuit": "can_assign"}
 
 
 def _definition_validator(repo: Repo) -> Draft202012Validator:
@@ -337,6 +349,57 @@ def _definition_validator(repo: Repo) -> Draft202012Validator:
     Draft202012Validator.check_schema(defs)
     reg = Registry().with_resources([(d["$id"], Resource.from_contents(d)) for d in (defs, pol)])
     return Draft202012Validator(defs, registry=reg, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
+class _Policy:
+    """策略侧的声明（视图目录、特征、模板），供定义文件的引用校验共用。"""
+
+    def __init__(self, pack_dir: Path, prov: dict):
+        pol = prov.get("policy", {})
+        views = load_yaml(pack_dir / pol["views"]) if pol.get("views") else {}
+        self.fact_types = views.get("fact_types", {})
+        self.items = set(views.get("view_items", {}))
+        self.item_roots = {i.split(".")[0] for i in self.items}
+        self.profile = set(views.get("profile_fields", {}))
+        self.features = load_yaml(pack_dir / pol["features"])["features"] if pol.get("features") else {}
+        self.templates, self.texts = {}, {}
+        for tf in pol.get("templates", []):
+            self.templates[load_yaml(pack_dir / tf)["template"]["id"]] = load_yaml(pack_dir / tf)["template"]
+            self.texts[load_yaml(pack_dir / tf)["template"]["id"]] = (pack_dir / tf).read_text(encoding="utf-8")
+
+    def field_ok(self, fld: str, fts, views=None) -> bool:
+        """views 给出时只认这些视图项（使用方策略模板声明的 view），否则认视图目录中的全部视图项。"""
+        roots = self.item_roots if views is None else {i.split(".")[0] for i in views}
+        return fld in roots or any(fld in self.fact_types[t]["fields"] for t in fts if t in self.fact_types)
+
+    def of_objective(self, obj: str) -> list[dict]:
+        return [t for t in self.templates.values() if t["objective"] == obj]
+
+    def rule_ids(self, ts) -> set[str]:
+        return {r["id"] for t in ts for c in CLAUSES for r in t.get(c) or []}
+
+    def used(self, ts, ns: str) -> set[str]:
+        return {x for t in ts for x in re.findall(ns + r"\." + W, self.texts[t["id"]])}
+
+
+def _expr_refs(r: Report, where: str, label: str, expr: str, pol: _Policy, fts, params: set[str] | None, events,
+               views=None, rule: str = "P9") -> None:
+    """表达式中的档案字段、参数、特征、事实字段与事件类型都须已声明（P9 判断框架、P10 卡片条件）。"""
+    for x in re.findall(r"profile\." + W, expr):
+        if x not in pol.profile:
+            r.error(where, f"{rule} {label} 引用未声明的档案字段 {x}")
+    for x in re.findall(r"params\." + W, expr):
+        if params is None or x not in params:
+            r.error(where, f"{rule} {label} 引用的参数 {x} 不是全部相关策略模板都有的参数")
+    for x in re.findall(r"features\." + W, expr):
+        if x not in pol.features:
+            r.error(where, f"{rule} {label} 引用未声明的特征 {x}")
+    for x in re.findall(r"(?<![A-Za-z0-9_])fact\." + W, expr):
+        if not pol.field_ok(x, fts, views):
+            r.error(where, f"{rule} {label} 引用的事实字段 {x} 不在相关事实类型与视图项中")
+    for ev in EVENT_LITERAL.findall(expr):
+        if ev not in events:
+            r.error(where, f"{rule} {label} 的事件类型 {ev} 未在 contracts/events 中定义")
 
 
 def check_definitions(repo: Repo, pack_dir: Path) -> Report:
@@ -374,27 +437,25 @@ def check_definitions(repo: Repo, pack_dir: Path) -> Report:
                 if d["id"] in defined[k]:
                     r.error(rel(f), f"P9 {d['id']} 重复定义")
                 defined[k][d["id"]] = (f, d)
-    templates = {}
-    for tf in prov.get("policy", {}).get("templates", []):
-        t = load_yaml(pack_dir / tf)["template"]
-        templates[t["id"]] = t
+    pol = _Policy(pack_dir, prov)
+    templates = pol.templates
     if cov["pack"] != pack["id"]:
         r.error(where, f"P9 覆盖矩阵的包 {cov['pack']} 与 pack.yaml 的 {pack['id']} 不一致")
     domain = pack["id"].removeprefix("APP-")
     baseline = repo.root / STAGE_BASELINE
     tasks = set(re.findall(r"^\| (M[0-9]-P[0-9]+) ", baseline.read_text(encoding="utf-8"), re.M)) if baseline.exists() else None
 
-    def cell(label: str, c: dict, own: dict, reuse_pool: set[str]):
+    def cell(label: str, c: dict, own: dict, reuse_pool: set[str], at: str = where, rule: str = "P9"):
         task = c.get("pending", {}).get("task")
         if task and tasks is not None and task not in tasks:
-            r.error(where, f"P9 {label} 的待定任务 {task} 不在阶段基线中")
+            r.error(at, f"{rule} {label} 的待定任务 {task} 不在阶段基线中")
         if task and not task.startswith(c["pending"]["stage"] + "-"):
-            r.error(where, f"P9 {label} 的待定任务 {task} 与交付阶段 {c['pending']['stage']} 不一致")
+            r.error(at, f"{rule} {label} 的待定任务 {task} 与交付阶段 {c['pending']['stage']} 不一致")
         for x in c.get("defined", []):
             if x not in own:
-                r.error(where, f"P9 {label} 标为已定义的 {x} 没有登记在 pack.yaml")
+                r.error(at, f"P9 {label} 标为已定义的 {x} 没有登记在 pack.yaml")
         if "reuse" in c and c["reuse"] not in reuse_pool:
-            r.error(where, f"P9 {label} 复用的 {c['reuse']} 不存在")
+            r.error(at, f"P9 {label} 复用的 {c['reuse']} 不存在")
 
     for cat in ("frameworks", "research_templates"):
         used = {x for p in cov["paths"].values() for x in p[cat]}
@@ -425,6 +486,9 @@ def check_definitions(repo: Repo, pack_dir: Path) -> Report:
              {k for k, q in cov["paths"].items() if k != pb and "reuse" not in q["playbook"]})
         if "defined" in p["playbook"] and p["playbook"]["defined"] != [pb]:
             r.error(where, f"P9 {pb} 的机会路径定义应为 {pb}")
+        pend = p["entry"].get("pending", {}).get("stage")
+        if pend and STAGES.index(pend) > STAGES.index(p["release"]["stage"]):
+            r.error(where, f"P9 {pb} 在 {p['release']['stage']} 开放，进入策略却待定到 {pend}")
     for x in templates:
         if x not in entered:
             r.error(where, f"P9 策略模板 {x} 没有进入覆盖矩阵")
@@ -435,17 +499,28 @@ def check_definitions(repo: Repo, pack_dir: Path) -> Report:
     events = event_names(repo)
     known = {"frameworks": set(cov["frameworks"]), "research_templates": set(cov["research_templates"]),
              "paths": set(cov["paths"])}
+    path_of = {p["objective"]: pb for pb, p in cov["paths"].items()}
+    objs = {d["id"]: d for _, d in defined["objectives"].values()}
     for f, d in defined["roles"].values():
-        objs = {cov["paths"][x]["objective"] for x in cov["paths"]}
         for o in d["default_objectives"] + d.get("optional_objectives", []):
-            if o not in objs:
+            if o not in path_of:
                 r.error(rel(f), f"P9 角色 {d['id']} 引用未覆盖的目标 {o}")
+            for t in objs.get(o, {}).get("policy_templates", []):
+                if t in templates and d["id"] not in templates[t].get("roles", []):
+                    r.error(rel(f), f"P9 角色 {d['id']} 可启用 {o}，但策略模板 {t} 的 roles 不含该角色")
     for f, d in defined["objectives"].values():
         if d["playbook"] not in known["paths"]:
             r.error(rel(f), f"P9 目标 {d['id']} 的机会路径 {d['playbook']} 未登记")
+            continue
+        p = cov["paths"][d["playbook"]]
+        if p["objective"] != d["id"] or p["form"] != d["form"]:
+            r.error(rel(f), f"P9 目标 {d['id']} 与覆盖矩阵 {d['playbook']} 的目标或推进形态不一致")
         for t in d.get("policy_templates", []):
             if t not in templates or templates[t]["objective"] != d["id"]:
                 r.error(rel(f), f"P9 目标 {d['id']} 的策略模板 {t} 不存在或属于其他目标")
+        entry = set(p["entry"].get("defined", [])) | ({p["entry"]["reuse"]} if p["entry"].get("reuse") in templates else set())
+        if set(d.get("policy_templates", [])) != entry:
+            r.error(rel(f), f"P9 目标 {d['id']} 的策略模板与覆盖矩阵进入策略不一致")
     for f, d in defined["playbooks"].values():
         if d["objective"] != cov["paths"].get(d["id"], {}).get("objective"):
             r.error(rel(f), f"P9 机会路径 {d['id']} 的目标与覆盖矩阵不一致")
@@ -466,17 +541,202 @@ def check_definitions(repo: Repo, pack_dir: Path) -> Report:
         for h in d.get("domain_event_hooks", []):
             if h["event"] not in events:
                 r.error(rel(f), f"P9 挂钩事件 {h['event']} 未在 contracts/events 中定义")
+        outs = [o for _, o in defined["outcomes"].values() if o["objective"] == d["objective"]]
+        codes = {c["code"] for o in outs for res in o["results"] for c in res["reasons"]}
+        for x in d.get("outcome_reasons", []):
+            if x not in codes:
+                r.error(rel(f), f"P9 机会路径 {d['id']} 的结果原因 {x} 不在该目标的结果定义中")
     for f, d in defined["frameworks"].values():
         for x in d.get("research", []):
             if x not in known["research_templates"]:
                 r.error(rel(f), f"P9 框架 {d['id']} 的研究模板 {x} 未登记")
+        # 框架复用信号的固定输入（assessment 第11节）：条件只能读取使用该框架的路径的进入策略所提供的字段与参数
+        ts = [templates[t] for p in cov["paths"].values() if d["id"] in p["frameworks"]
+              for t in p["entry"].get("defined", []) + [p["entry"].get("reuse", "")] if t in templates]
+        fts = {ft for t in ts for ft in t["fact_types"]}
+        params = set.intersection(*(set(t.get("params", {})) for t in ts)) if ts else None
+        views = {x for t in ts for x in t.get("view", [])}
+        views |= {x for t in ts for fn in re.findall(r"features\." + W, pol.texts[t["id"]]) for x in pol.features.get(fn, {}).get("view", [])}
+        for dim in d["dimensions"]:
+            if "when" in dim:
+                _expr_refs(r, rel(f), f"框架 {d['id']} 维度 {dim['id']}", dim["when"] + " " + dim["say"], pol, fts, params, events, views)
     for f, d in defined["research_templates"].values():
         if not (repo.root / d["output_schema"]).exists():
             r.error(rel(f), f"P9 研究模板 {d['id']} 的输出 Schema 不存在：{d['output_schema']}")
+    r.extend(_check_delivery(repo, rel, where, cov, defined, objs, pol, events, cell))
+    return r
+
+
+def _signal_attrs(repo: Repo) -> set[str]:
+    defs = json.loads((repo.contracts / "packs" / "application-domain.schema.json").read_text(encoding="utf-8"))
+    return set(defs["$defs"]["signal_attr"]["enum"])
+
+
+def _check_delivery(repo: Repo, rel, cov_where: str, cov: dict, defined: dict, objs: dict, pol: _Policy, events, cell) -> Report:
+    """P10：卡片、简报分区、反馈原因、结果原因与效果指标的引用与完整性。"""
+    r = Report()
+    attrs = _signal_attrs(repo)
+    form = {p["objective"]: p["form"] for p in cov["paths"].values()}
+
+    def need_objective(f: str, kind: str, d: dict, o: str) -> bool:
+        if o not in objs:
+            r.error(rel(f), f"P10 {kind} {d['id']} 的目标 {o} 没有目标定义")
+            return False
+        return True
+
+    def source_ok(src: str, ft: str) -> bool:
+        ns, _, rest = src.partition(".")
+        if ns == "signal":
+            return rest in attrs
+        if ns == "fact":
+            return pol.field_ok(rest.split(".")[0], [ft], views)
+        return _schema_node(repo, pol.fact_types[ft]["source"], rest) is not None
+
+    cards = {}
+    for f, d in defined["cards"].values():
+        cards[d["id"]] = d
+        if not need_objective(f, "卡片", d, d["objective"]):
+            continue
+        ts = pol.of_objective(d["objective"])
+        want = {ft for t in ts for ft in t["fact_types"]}
+        if not ts or set(d["fact_types"]) != want:
+            r.error(rel(f), f"P10 卡片 {d['id']} 的事实类型应等于目标策略模板的事实类型 {sorted(want)}")
+        fts = [ft for ft in d["fact_types"] if ft in pol.fact_types]
+        views = {x for t in ts for x in t.get("view", [])}
+        for lb in d["fact_type_labels"] + [lb for fl in d["fields"] for lb in fl.get("labels", [])]:
+            if lb["fact_type"] not in d["fact_types"]:
+                r.error(rel(f), f"P10 卡片 {d['id']} 的标签引用了卡片以外的事实类型 {lb['fact_type']}")
+            elif "when" in lb:
+                _expr_refs(r, rel(f), f"卡片 {d['id']} 标签「{lb['label']}」", lb["when"], pol, [lb["fact_type"]], set(), events,
+                           views, "P10")
+        for ft in fts:
+            if not any(lb["fact_type"] == ft and "when" not in lb for lb in d["fact_type_labels"]):
+                r.error(rel(f), f"P10 卡片 {d['id']} 缺少事实类型 {ft} 的默认展示名")
+        ids = set()
+        for fl in d["fields"]:
+            if fl["id"] in ids:
+                r.error(rel(f), f"P10 卡片 {d['id']} 的字段 {fl['id']} 重复")
+            ids.add(fl["id"])
+            pairs = [(ft, fl["source"]) for ft in fts] if "source" in fl else list(fl["from"].items())
+            for ft, src in pairs:
+                if ft not in pol.fact_types or ft not in d["fact_types"]:
+                    r.error(rel(f), f"P10 卡片 {d['id']} 字段 {fl['id']} 的事实类型 {ft} 不在卡片中")
+                elif not source_ok(src, ft):
+                    r.error(rel(f), f"P10 卡片 {d['id']} 字段 {fl['id']} 的来源 {src} 在 {ft} 中不存在")
+        acts = [a["action"] for a in d["actions"]]
+        if len(acts) != len(set(acts)):
+            r.error(rel(f), f"P10 卡片 {d['id']} 的动作重复")
+        for a in d["actions"]:
+            if a["permission"] != CARD_PERMISSIONS[a["action"]]:
+                r.error(rel(f), f"P10 卡片 {d['id']} 的动作 {a['action']} 应检查 {CARD_PERMISSIONS[a['action']]}")
+            if a["action"] == "feedback_irrelevant" and "reasons" not in a:
+                r.error(rel(f), f"P10 卡片 {d['id']} 的“不相关”须声明原因选择范围 reasons")
+            if a["action"] == "create_pursuit" and form.get(d["objective"]) != "transactional":
+                r.error(rel(f), f"P10 卡片 {d['id']} 的目标不是交易型，不能从卡片创建跟进")
+            if a["action"] == "exclusion_feedback" and d["surfaces"] != ["inbox_row"]:
+                r.error(rel(f), f"P10 卡片 {d['id']}：排除信号不进入简报与通知，排除反馈只在收件箱")
+
+    sections, orders = {}, set()
+    for f, d in defined["briefing"].values():
+        for s in d["sections"]:
+            o = s["objective"]
+            if not need_objective(f, "简报分区", d, o):
+                continue
+            if o in sections:
+                r.error(rel(f), f"P10 目标 {o} 有多个简报分区")
+            sections[o] = s
+            if s["order"] in orders:
+                r.error(rel(f), f"P10 简报分区顺序 {s['order']} 重复")
+            orders.add(s["order"])
+            q = s["quota"]
+            if not q["min"] <= q["default"] <= q["max"]:
+                r.error(rel(f), f"P10 {o} 的配额应满足 min ≤ default ≤ max")
+            c = cards.get(s["card"])
+            if c is None or c["objective"] != o or not {"briefing_item", "channel_card"} & set(c["surfaces"]):
+                r.error(rel(f), f"P10 {o} 的简报卡片 {s['card']} 不存在、属于其他目标或不用于简报")
+
+    fb = {}
+    for f, d in defined["feedback"].values():
+        o = d["objective"]
+        if not need_objective(f, "反馈原因", d, o):
+            continue
+        if o in fb:
+            r.error(rel(f), f"P10 目标 {o} 有多份反馈原因定义")
+        fb[o] = d
+        ts = pol.of_objective(o)
+        pools = {"rules": pol.rule_ids(ts), "params": {p for t in ts for p in t.get("params", {})},
+                 "profile": pol.profile, "lists": pol.used(ts, "lists"), "views": pol.items, "vocab": pol.used(ts, "vocab")}
+        for group in ("irrelevant", "relevant", "exclusion_wrong"):
+            tags = d.get(group, [])
+            codes = [t["code"] for t in tags]
+            if len(codes) != len(set(codes)):
+                r.error(rel(f), f"P10 {d['id']} 的 {group} 原因代码重复")
+            if group != "relevant" and tags and not tags[-1].get("note_required"):
+                r.error(rel(f), f"P10 {d['id']} 的 {group} 最后一项应为须填写说明的“其他”")
+            for t in tags:
+                if t.get("note_required") and t is not tags[-1]:
+                    r.error(rel(f), f"P10 {d['id']} 的 {t['code']} 须说明，应放在 {group} 最后")
+                for k, vals in t.get("relates", {}).items():
+                    for x in vals if isinstance(vals, list) else []:
+                        if x not in pools[k]:
+                            r.error(rel(f), f"P10 {d['id']} 的 {t['code']} 关联的 {k} {x} 不在目标 {o} 的策略中")
+        if d["quick"] >= len(d["irrelevant"]):
+            r.error(rel(f), f"P10 {d['id']} 的 quick 应小于不相关原因数（另加“其他”）")
+
+    outs = {}
+    for f, d in defined["outcomes"].values():
+        o = d["objective"]
+        if not need_objective(f, "结果定义", d, o):
+            continue
+        if o in outs:
+            r.error(rel(f), f"P10 目标 {o} 有多份结果定义")
+        outs[o] = d
+        if form.get(o) != "transactional":
+            r.error(rel(f), f"P10 {d['id']}：只有交易型目标有推进结果")
+        types = [x["type"] for x in d["results"]]
+        if len(types) != len(set(types)):
+            r.error(rel(f), f"P10 {d['id']} 的结果类型重复")
+        for res in d["results"]:
+            codes = [c["code"] for c in res["reasons"]]
+            if len(codes) != len(set(codes)):
+                r.error(rel(f), f"P10 {d['id']} 的 {res['type']} 原因代码重复")
+        amts = [a["code"] for a in d["amount_types"]]
+        if len(amts) != len(set(amts)):
+            r.error(rel(f), f"P10 {d['id']} 的金额类型重复")
+
+    measured = set()
+    for f, d in defined["metrics"].values():
+        ids = set()
+        for m in d["items"]:
+            if m["id"] in ids:
+                r.error(rel(f), f"P10 指标 {m['id']} 重复")
+            ids.add(m["id"])
+            for o in m["objectives"]:
+                if o in objs:
+                    measured.add(o)
+                else:
+                    r.error(rel(f), f"P10 指标 {m['id']} 的目标 {o} 没有目标定义")
+            if "baseline" in m:
+                cell(f"指标 {m['id']} 的基线", m["baseline"], {}, set(), rel(f), "P10")
+                for x in m["baseline"].get("defined", []):
+                    r.error(rel(f), f"P10 指标 {m['id']} 的基线 {x} 未登记")
+
+    # 完整性：release 为 M2、由策略进入的目标，首次启用前须具备 M2-P2 的全部定义
+    for pb, p in cov["paths"].items():
+        o = p["objective"]
+        if p["release"]["stage"] != "M2" or not p["entry"].get("defined"):
+            continue
+        missing = [k for k, ok in [
+            ("目标定义", o in objs), ("收件箱行卡片", any(c["objective"] == o and "inbox_row" in c["surfaces"] for c in cards.values())),
+            ("简报分区", o in sections), ("反馈原因", o in fb), ("效果指标", o in measured),
+            ("结果原因", p["form"] != "transactional" or o in outs)] if not ok]
+        if missing:
+            r.error(cov_where, f"P10 {o} 在 M2 开放，缺少：{'、'.join(missing)}")
     return r
 
 
 def check_packs(repo: Repo) -> Report:
+    from .industry import check_industries
     r = Report()
     n = 0
     for pack_file in sorted((repo.root / "packs").glob("*/*/pack.yaml")):
@@ -487,5 +747,6 @@ def check_packs(repo: Repo) -> Report:
         elif kind == "application_domain":
             r.extend(check_application_pack(repo, pack_file.parent))
             r.extend(check_definitions(repo, pack_file.parent))
+    r.extend(check_industries(repo))
     r.note(f"扩展包一致性检查：{n} 个包")
     return r

@@ -1,0 +1,8 @@
+# 角色模板（格式与说明见 roles/mfr.yaml）。
+role:
+  id: ROLE-BIDDER
+  version: 0.1.0
+  name: 直接投标人
+  say: 直接参与货物、服务或工程投标，例如参加管材集中采购的生产企业或供货安装企业
+  default_objectives: [APP-TENDER.A01, APP-TENDER.B03, APP-TENDER.C01]
+  optional_objectives: [APP-TENDER.A05, APP-TENDER.B01, APP-TENDER.B02, APP-TENDER.B04, APP-TENDER.C02, APP-TENDER.C03]

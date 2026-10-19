@@ -1,0 +1,70 @@
+# 建材管材产品、规格、标签与品牌词表（格式：contracts/packs/industry.schema.json 的 vocabulary；mqc I1–I5 校验）。
+# products 是 rule 增强器的品类分类规则（声明）与检索同义词的共同来源：标的名称命中 term 或 synonyms 时给出该品类，
+# 同时出现 not_when 中的词时不据此判定。规则只给出候选，置信度与发布门槛归增强器版本（evidence.enrichment），
+# 低于模板 evidence_policy 门槛的品类在策略中读取为未知（R-CAT 转复核）。
+# 一个产品词只对应一个品类；需要更宽的匹配时写上级品类的词（如“PE管”→ CAT-PIPE-PE）。
+vocabulary:
+  products:
+    # PE
+    - { term: PE管, synonyms: [聚乙烯管, HDPE管, PE管材, 高密度聚乙烯管], category: CAT-PIPE-PE }
+    - { term: PE给水管, synonyms: [聚乙烯给水管, PE供水管, PE100给水管, HDPE给水管, 给水用聚乙烯管], category: CAT-PIPE-PE-WS }
+    - { term: PE燃气管, synonyms: [燃气用聚乙烯管, 燃气用埋地聚乙烯管, PE燃气管道, 聚乙烯燃气管], category: CAT-PIPE-PE-GAS }
+    - { term: 双壁波纹管, synonyms: [HDPE双壁波纹管, PE双壁波纹管, 聚乙烯双壁波纹管], category: CAT-PIPE-PE-SW, not_when: [PP, 聚丙烯, 电缆, 穿线] }
+    - { term: 缠绕结构壁管, synonyms: [HDPE缠绕结构壁管, 中空壁缠绕管, 克拉管, 钢带增强螺旋波纹管, 钢带管], category: CAT-PIPE-PE-SW }
+    - { term: PE排水管, synonyms: [聚乙烯排水管, HDPE排污管, PE实壁管], category: CAT-PIPE-PE-SOLID }
+    - { term: PE-RT管, synonyms: [耐热聚乙烯管, 地暖管, PERT管], category: CAT-PIPE-PE-RT }
+    # PVC
+    - { term: PVC管, synonyms: [聚氯乙烯管, PVC-U管, UPVC管, 硬聚氯乙烯管], category: CAT-PIPE-PVC }
+    - { term: PVC给水管, synonyms: [PVC-U给水管, UPVC给水管, PVC-M给水管, PVC-O管, 给水用硬聚氯乙烯管], category: CAT-PIPE-PVC-WS }
+    - { term: PVC排水管, synonyms: [PVC-U排水管, UPVC排水管, PVC排污管, 建筑排水用硬聚氯乙烯管], category: CAT-PIPE-PVC-DR }
+    - { term: PVC线管, synonyms: [PVC电工套管, 电线套管, 穿线管, 阻燃PVC管], category: CAT-PIPE-PVC-EC }
+    # PP 与电力通信管
+    - { term: PPR管, synonyms: [PP-R管, 无规共聚聚丙烯管, PPR给水管, PPR热水管], category: CAT-PIPE-PPR }
+    - { term: PP双壁波纹管, synonyms: [聚丙烯双壁波纹管, PP-HM双壁波纹管, PP缠绕管], category: CAT-PIPE-PP }
+    - { term: MPP电力管, synonyms: [MPP管, MPP电缆保护管, 改性聚丙烯电力管, CPVC电力管, CPVC电缆保护管], category: CAT-PIPE-CABLE }
+    - { term: 通信管, synonyms: [硅芯管, 梅花管, 栅格管, 通信塑料管, 电力通信管], category: CAT-PIPE-CABLE, not_when: [光缆] }
+    # 金属与其他材质
+    - { term: 球墨铸铁管, synonyms: [球墨管, 球墨铸铁给水管, 离心球墨铸铁管, 铸铁给水管], category: CAT-PIPE-DI }
+    - { term: 柔性铸铁排水管, synonyms: [铸铁排水管, 机制铸铁排水管, W型铸铁管, A型铸铁管], category: CAT-PIPE-CI }
+    - { term: 钢管, synonyms: [无缝钢管, 碳钢管], category: CAT-PIPE-STEEL }
+    - { term: 螺旋钢管, synonyms: [螺旋焊管, 螺旋埋弧焊钢管, 直缝钢管, 直缝焊管, 防腐钢管, 3PE防腐钢管, 焊接钢管], category: CAT-PIPE-STEEL-WELD }
+    - { term: 镀锌钢管, synonyms: [热镀锌钢管, 镀锌管], category: CAT-PIPE-STEEL-GALV }
+    - { term: 不锈钢管, synonyms: [薄壁不锈钢管, 不锈钢给水管, 不锈钢水管], category: CAT-PIPE-STEEL-SS }
+    - { term: 钢塑复合管, synonyms: [衬塑钢管, 涂塑钢管, 内外涂塑复合钢管, 钢丝网骨架塑料复合管, 钢丝网骨架聚乙烯复合管, 孔网钢带复合管], category: CAT-PIPE-STEEL-COMP }
+    - { term: 玻璃钢管, synonyms: [玻璃钢夹砂管, 玻璃纤维增强塑料夹砂管, FRPM管, 玻璃钢管道], category: CAT-PIPE-GRP }
+    - { term: 混凝土管, synonyms: [钢筋混凝土管, 钢筋混凝土排水管, 水泥管, 承插口混凝土管, PCCP管, 预应力钢筒混凝土管], category: CAT-PIPE-CONC }
+    - { term: 铜管, synonyms: [紫铜管, 铜水管], category: CAT-PIPE-CU, not_when: [空调, 冷凝] }
+    # 管件与附件
+    - { term: PE管件, synonyms: [电熔管件, 热熔管件, PE电熔管件, 聚乙烯管件, 电熔直通, 电熔弯头, 电熔三通, 鞍形管件], category: CAT-FIT-PE }
+    - { term: PVC管件, synonyms: [UPVC管件, PVC-U管件], category: CAT-FIT-PVC }
+    - { term: PPR管件, synonyms: [PP-R管件], category: CAT-FIT-PPR }
+    - { term: 球墨铸铁管件, synonyms: [球墨管件, 铸铁管件], category: CAT-FIT-DI }
+    - { term: 钢制管件, synonyms: [不锈钢管件, 卡压管件, 沟槽管件, 镀锌管件], category: CAT-FIT-STEEL }
+    - { term: 塑料检查井, synonyms: [塑料检查井井座, 一体化检查井, 成品检查井, 塑料井盖], category: CAT-FIT-WELL }
+
+  specs:
+    - { term: DN, synonyms: [公称直径, 公称尺寸], say: 金属管与管件的公称尺寸，单位毫米 }
+    - { term: dn, synonyms: [公称外径, De], say: 塑料管的公称外径，单位毫米 }
+    - { term: PN, synonyms: [公称压力, 压力等级], say: 公称压力，单位 MPa 或 bar }
+    - { term: SDR, synonyms: [标准尺寸比], say: 公称外径与壁厚之比，塑料压力管的壁厚系列, categories: [CAT-PIPE-PE, CAT-PIPE-PVC, CAT-PIPE-PPR] }
+    - { term: S系列, synonyms: [管系列], say: 塑料管的管系列（S5、S4 等）, categories: [CAT-PIPE-PE, CAT-PIPE-PVC, CAT-PIPE-PPR] }
+    - { term: 混配料等级, synonyms: [PE100, PE80], say: 聚乙烯混配料的最小要求强度等级, categories: [CAT-PIPE-PE] }
+    - { term: 环刚度, synonyms: [SN4, SN8, SN12.5, SN16], say: 埋地排水管的环刚度等级（kN/m²）, categories: [CAT-PIPE-PE-SW, CAT-PIPE-PE-SOLID, CAT-PIPE-PP, CAT-PIPE-PVC-DR, CAT-PIPE-GRP] }
+    - { term: 壁厚级别, synonyms: [K9, K8, C40, C30, 压力分级], say: 球墨铸铁管的壁厚级别或压力分级, categories: [CAT-PIPE-DI] }
+    - { term: 接口形式, synonyms: [承插, T型接口, 自锚接口, 热熔, 电熔, 卡压, 沟槽, 法兰, 粘接], say: 管道连接方式 }
+    - { term: 内衬, synonyms: [水泥砂浆内衬, 环氧内衬, 衬塑], say: 金属管内防腐层, categories: [CAT-PIPE-DI, CAT-PIPE-STEEL] }
+
+  tags:
+    - { code: TAG-USE-WS, name: 给水, terms: [给水, 供水, 自来水, 饮用水, 输水, 配水] }
+    - { code: TAG-USE-DR, name: 排水排污, terms: [排水, 排污, 污水, 雨水, 雨污分流, 截污] }
+    - { code: TAG-USE-GAS, name: 燃气, terms: [燃气, 天然气, 煤气] }
+    - { code: TAG-USE-HEAT, name: 供热与地暖, terms: [供热, 供暖, 热力, 地暖, 采暖] }
+    - { code: TAG-USE-CABLE, name: 电力与通信, terms: [电力, 电缆, 通信, 管廊, 弱电] }
+    - { code: TAG-USE-IRR, name: 农业灌溉, terms: [灌溉, 农田水利, 高标准农田, 节水灌溉] }
+    - { code: TAG-USE-BLDG, name: 建筑给排水, terms: [建筑给排水, 室内给水, 室内排水, 住宅, 安置房] }
+    - { code: TAG-USE-FIRE, name: 消防, terms: [消防, 喷淋, 消火栓] }
+
+  # 品牌词表与带证据的归属声明随 M2-P13 交付：归属只来自词表中带证据的声明或运营复核，
+  # 不按公告中的制造商或供应商推断（entity-graph 4.1）。交付前相关视图读取为未知。
+  brands: []
+  brands_pending: { stage: M2, task: M2-P13, note: 品牌词表与带证据的归属声明由领域负责人逐条核对后交付 }

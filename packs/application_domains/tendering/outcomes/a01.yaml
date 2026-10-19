@@ -1,0 +1,40 @@
+# A01 投标的结果类型、原因代码与金额类型（格式与说明见 outcomes/a02.yaml）。M2 跟进切片以 A02 为首条旅程，
+# A01 的跟进同用本格式；原因为推荐值，待领域负责人核对。
+outcome:
+  id: OUT-TENDER-A01
+  version: 0.1.0
+  objective: APP-TENDER.A01
+  results:
+    - type: success
+      say: 中标或成交
+      known_at_required: true
+      reasons:
+        - { code: PRICE_COMPETITIVE, say: 报价有竞争力, relates_to: price }
+        - { code: TECHNICAL_ADVANTAGE, say: 技术与产品得分领先, relates_to: product }
+        - { code: QUALIFICATION_ADVANTAGE, say: 资质与业绩得分领先, relates_to: qualification }
+        - { code: EXISTING_RELATIONSHIP, say: 采购人已有合作, relates_to: relationship }
+        - { code: OTHER, say: 其他, note_required: true, relates_to: other }
+    - type: failure
+      say: 未中标
+      known_at_required: true
+      reasons:
+        - { code: PRICE_UNCOMPETITIVE, say: 报价不具竞争力, relates_to: price }
+        - { code: TECHNICAL_SCORE_LOW, say: 技术或商务得分偏低, relates_to: product }
+        - { code: DISQUALIFIED, say: 资格或符合性审查未通过, relates_to: qualification }
+        - { code: SPEC_FAVORED_OTHERS, say: 参数或品牌倾向他人, relates_to: product }
+        - { code: PROCUREMENT_FAILED, say: 流标、废标或终止, relates_to: project }
+        - { code: OTHER, say: 其他, note_required: true, relates_to: other }
+    - type: abandoned
+      say: 放弃投标
+      known_at_required: false
+      reasons:
+        - { code: QUALIFICATION_GAP, say: 资质或业绩不满足, relates_to: qualification }
+        - { code: NOT_ENOUGH_TIME, say: 准备时间不够, relates_to: timing }
+        - { code: LOW_VALUE, say: 规模或利润太小, relates_to: project }
+        - { code: PAYMENT_RISK, say: 回款风险, relates_to: risk }
+        - { code: INSUFFICIENT_RESOURCES, say: 资源不足, relates_to: resource }
+        - { code: OTHER, say: 其他, note_required: true, relates_to: other }
+  amount_types:
+    - { code: bid_amount, say: 投标报价 }
+    - { code: award_amount, say: 中标金额 }
+    - { code: contract_amount, say: 合同金额 }

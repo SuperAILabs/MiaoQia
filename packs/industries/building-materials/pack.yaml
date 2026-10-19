@@ -1,9 +1,12 @@
-# 行业包清单（骨架）。格式见 docs/03-architecture/04-extensibility.md 2.1、2.4；行业包尚未纳入 mqc 检查。
+# 行业包清单。格式见 docs/03-architecture/04-extensibility.md 2.1、2.4；定义文件格式 contracts/packs/industry.schema.json，mqc I1–I5 校验。
 pack:
   id: IND-BUILDING-MATERIALS
   kind: industry
-  version: 0.1.0                 # 草案：只登记品类分类体系，供策略样例与品类增强器对齐代码
+  version: 0.2.0                 # 草案：建材管材完整样板，推荐值待领域负责人核对（review: proposed）
   platform_api: ">=1.0 <2.0"
   owners: [tendering-domain-team]
   provides:
-    categories: categories.yaml  # 品类分类：scheme industry:building-materials
+    taxonomy: categories.yaml          # 品类分类与跨分类映射：scheme industry:building-materials
+    vocabulary: vocabulary.yaml        # 产品、规格、标签与品牌词表，品类分类规则
+    qualifications: qualifications.yaml  # 能力与资质模板：scheme qual:building-materials
+    defaults: defaults.yaml            # 默认排除与关注词表（策略 vocab）

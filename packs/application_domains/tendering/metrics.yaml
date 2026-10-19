@@ -1,0 +1,173 @@
+# 效果指标与基线引用（格式：contracts/packs/application-domain.schema.json 的 metrics；mqc P10 校验）。
+# platform_metric 指向质量与验收中的平台口径，本包只绑定目标、分层与阶段，不改口径；
+# 金额类指标按取值性质（已发生、估计、客户自报）分列，不相加（learning 8.1）。样本少于 min_sample 时只报告数量。
+# 基线集（目标相关性标注集）随 M2-P10 冻结，冻结前 baseline 为待定，监测层指标只作试点观察，不判定门槛。
+metrics:
+  id: MET-TENDER
+  version: 0.1.0
+  items:
+    - id: topk_precision
+      name: Top-K 精确率
+      objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.B03]
+      layer: monitoring
+      unit: ratio
+      numerator: 每周排序列表前 K 条中经人工或客户确认相关的信号数
+      denominator: 每周排序列表前 K 条的信号数（少于 K 时为实际数量）
+      source: [signal, feedback, label_set]
+      window: 1w
+      segment_by: [objective, fact_type, backfill]
+      min_sample: 20
+      platform_metric: docs/05-delivery/02-quality-and-acceptance.md#4-监测与判断层
+      baseline: { pending: { stage: M2, task: M2-P10, note: K、分母、反馈率与未反馈处理随 M2-P10 冻结 } }
+      stage: M2
+    - id: exclusion_accuracy
+      name: 排除正确率
+      objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.B03]
+      layer: monitoring
+      unit: ratio
+      numerator: 排除信号中经确认确实不相关的数量
+      denominator: 已确认的排除信号数
+      source: [signal, feedback, label_set]
+      window: 30d
+      segment_by: [objective, reason_tag]
+      min_sample: 20
+      platform_metric: docs/05-delivery/02-quality-and-acceptance.md#4-监测与判断层
+      baseline: { pending: { stage: M2, task: M2-P10 } }
+      stage: M2
+    - id: relevant_recall
+      name: 相关信号召回率
+      objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.B03]
+      layer: monitoring
+      unit: ratio
+      numerator: 标注集中相关项被生成为非 no_signal、非 excluded 信号的数量
+      denominator: 标注集中的相关项数
+      source: [label_set, signal]
+      window: 30d
+      segment_by: [objective, fact_type, region, category]
+      min_sample: 20
+      platform_metric: docs/05-delivery/02-quality-and-acceptance.md#4-监测与判断层
+      baseline: { pending: { stage: M2, task: M2-P10, note: 用于模板调试的样本不得充当盲测 } }
+      stage: M2
+    - id: feedback_rate
+      name: 反馈率
+      objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.B03]
+      layer: engagement
+      unit: ratio
+      numerator: 至少有一条当前内容版本相关性反馈的非排除信号数
+      denominator: 窗口内的非排除信号数
+      source: [signal, feedback]
+      window: 30d
+      segment_by: [objective, disposition, backfill]
+      min_sample: 20
+      stage: M2
+    - id: irrelevant_reasons
+      name: 不相关原因分布
+      objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.B03]
+      layer: monitoring
+      unit: distribution
+      numerator: 计为不相关的信号按原因标签计数（同一信号多人选同一原因只计一次）
+      source: [feedback]
+      window: 30d
+      segment_by: [objective, reason_tag]
+      min_sample: 20
+      stage: M2
+    - id: a02_valid_leads
+      name: 有效线索数
+      objectives: [APP-TENDER.A02]
+      layer: value
+      unit: count
+      numerator: 每周被标为相关（新线索）或转为跟进的 A02 信号数
+      source: [signal, feedback, pursuit]
+      window: 1w
+      segment_by: [region, category]
+      stage: M2
+    - id: lead_time
+      name: 发现提前量
+      objectives: [APP-TENDER.A01, APP-TENDER.A02]
+      layer: value
+      unit: duration
+      numerator: 信号生成时间相对公告发布时间，或相对客户经原有渠道的获知时间（结果的 known_at 与获知渠道）的提前量
+      source: [signal, outcome]
+      window: 30d
+      segment_by: [objective, contribution, known_via]
+      platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
+      stage: M2
+    - id: a02_contact_conversion
+      name: 接触转化
+      objectives: [APP-TENDER.A02]
+      layer: value
+      unit: ratio
+      numerator: 由跟进候选信号创建的跟进中，结果为成功的数量
+      denominator: 由跟进候选信号创建且已关闭的跟进数
+      source: [pursuit, outcome]
+      window: 30d
+      segment_by: [result_type]
+      min_sample: 20
+      stage: M2
+    - id: won_amount
+      name: 成交额
+      objectives: [APP-TENDER.A01, APP-TENDER.A02]
+      layer: value
+      unit: money
+      numerator: 结果为成功的跟进记录的金额，按金额类型与取值性质分列
+      source: [outcome]
+      window: 30d
+      segment_by: [objective, value_nature, contribution]
+      platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
+      stage: M2
+    - id: outcome_coverage
+      name: 结果反馈覆盖
+      objectives: [APP-TENDER.A01, APP-TENDER.A02]
+      layer: value
+      unit: ratio
+      numerator: 已关闭的跟进中记录了结果与原因的数量
+      denominator: 已关闭的跟进数
+      source: [pursuit, outcome]
+      window: 30d
+      segment_by: [objective, result_type]
+      platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
+      stage: M2
+    - id: a01_bid_count
+      name: 投标数
+      objectives: [APP-TENDER.A01]
+      layer: value
+      unit: count
+      numerator: 由 A01 信号创建、未在投标前放弃的跟进数
+      source: [pursuit, outcome]
+      window: 30d
+      segment_by: [region, category]
+      stage: M2
+    - id: a01_win_rate
+      name: 中标率（滞后指标）
+      objectives: [APP-TENDER.A01]
+      layer: value
+      unit: ratio
+      numerator: 结果为中标或成交的投标数
+      denominator: 已有结果的投标数（不含放弃）
+      source: [outcome]
+      window: 30d
+      segment_by: [result_type]
+      min_sample: 20
+      stage: M2
+    - id: b03_competitor_coverage
+      name: 竞争对手覆盖
+      objectives: [APP-TENDER.B03]
+      layer: value
+      unit: ratio
+      numerator: 窗口内至少产生一条情报信号的已登记竞争对手数
+      denominator: 已登记的竞争对手数
+      source: [signal]
+      window: 30d
+      stage: M2
+    - id: weekly_active
+      name: 周活跃率
+      objectives: [APP-TENDER.A01, APP-TENDER.A02, APP-TENDER.B03]
+      layer: engagement
+      unit: ratio
+      numerator: 每周至少处理一次信号（反馈、忽略、跟进）的目标参与人数
+      denominator: 目标参与人中有反馈权限的成员数
+      source: [signal, feedback, pursuit]
+      window: 1w
+      segment_by: [objective]
+      platform_metric: docs/05-delivery/02-quality-and-acceptance.md#6-推进与客户价值
+      stage: M2

@@ -1,0 +1,55 @@
+# A02 信号卡片（格式：contracts/packs/application-domain.schema.json 的 card；mqc P10 校验）。
+# 简报条目、企业微信等渠道卡片与即时通知卡片共用（PRD 第5段 F3、F7）。fields 按优先级从高到低；
+# 放不下时按优先级从低到高整项省略（never_omit 除外），文本截断与金额、日期不截断的规则归 channels 渲染。
+# 金额只取本事实的总额并注明类型，未公布显示“未公布”，不用预算或其他金额代替；不同类型、不同标包的金额不相加。
+card:
+  id: CARD-TENDER-A02-SIGNAL
+  version: 0.1.0
+  objective: APP-TENDER.A02
+  surfaces: [briefing_item, channel_card, notification_card]
+  fact_types: [tendering.bid_result, tendering.contract_record, investment.construction_permit]
+  fact_type_labels:
+    - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 候选人公示 }
+    - { fact_type: tendering.bid_result, label: 中标结果 }
+    - { fact_type: tendering.contract_record, label: 合同公告 }
+    - { fact_type: investment.construction_permit, label: 施工许可 }
+  fields:
+    - { id: objective, label: 目标, source: signal.objective, format: label, never_omit: true }
+    - { id: disposition, label: 处置, source: signal.disposition, format: disposition, never_omit: true }
+    - id: project
+      label: 项目
+      from:
+        tendering.bid_result: record.title.value
+        tendering.contract_record: record.title.value
+        investment.construction_permit: record.project_name.value
+      format: text
+    - id: winner
+      label: 中标方
+      labels:
+        - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 中标候选人 }
+        - { fact_type: tendering.contract_record, label: 供应商 }
+        - { fact_type: investment.construction_permit, label: 施工单位 }
+      source: fact.winner
+      format: party
+      missing_text: 未识别
+    - id: amount
+      label: 中标金额
+      labels:
+        - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 投标报价 }
+        - { fact_type: tendering.contract_record, label: 合同金额 }
+        - { fact_type: investment.construction_permit, label: 施工合同金额 }
+      source: fact.amount
+      format: money
+      missing_text: 未公布
+      never_omit: true
+    - { id: region, label: 地区, source: fact.location, format: region }
+    - { id: categories, label: 品类, source: fact.categories, format: categories, missing_text: 未能可靠识别 }
+    - { id: reasons, label: 命中理由, source: signal.reasons, format: reasons, max_items: 2 }
+    - { id: unknown_count, label: 未知项, source: signal.unknown_count, format: count }
+    - { id: created_at, label: 发现时间, source: signal.created_at, format: datetime }
+  markers: [new, updated, overnight, notified, also_matched, same_lot_winners]
+  actions:
+    - { action: view, permission: can_view_signals }
+    - { action: feedback_relevant, permission: can_feedback }
+    - { action: feedback_irrelevant, permission: can_feedback, reasons: quick }
+    - { action: create_pursuit, permission: can_assign }

@@ -1,0 +1,12 @@
+# 简报分区与配额声明（格式：contracts/packs/application-domain.schema.json 的 briefing；mqc P10 校验）。
+# 组装规则归 channels 4.4：每个启用且收件人可看的目标一区，区与区不混排排序分；同一采购项目出现在多个区时
+# 只在 order 靠前的区完整展示，其他区显示引用。quota 为每区条数默认值与成员可调范围（PRD 第5段第13节第2项），
+# 24 小时内截止与更正类变化不受配额截断；“待我处理”“关注变化”是平台跨目标区，不在此声明。
+# B05、C01 的分区随其 M3 交付补入；A01 投标有截止时限，排在 A02 之前。
+briefing:
+  id: BRF-TENDER-DAILY
+  version: 0.1.0
+  sections:
+    - { objective: APP-TENDER.A01, order: 1, title: 直接投标, card: CARD-TENDER-A01-SIGNAL, quota: { default: 10, min: 5, max: 20 }, merge_window: 10m }
+    - { objective: APP-TENDER.A02, order: 2, title: 进入供货, card: CARD-TENDER-A02-SIGNAL, quota: { default: 10, min: 5, max: 20 }, merge_window: 10m }
+    - { objective: APP-TENDER.B03, order: 3, title: 竞争情报, card: CARD-TENDER-B03-SIGNAL, quota: { default: 10, min: 5, max: 20 }, merge_window: 30m }

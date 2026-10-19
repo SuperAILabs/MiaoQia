@@ -1,0 +1,59 @@
+# A02 收件箱行（格式：contracts/packs/application-domain.schema.json 的 card；mqc P10 校验）。字段与第3段 F2 第2条一致；
+# 人工调整的处置显示人工处置并小字标系统原处置（manual_disposition 标记）；已排除分栏显示排除原因代码的说明。
+card:
+  id: CARD-TENDER-A02-ROW
+  version: 0.1.0
+  objective: APP-TENDER.A02
+  surfaces: [inbox_row]
+  fact_types: [tendering.bid_result, tendering.contract_record, investment.construction_permit]
+  fact_type_labels:
+    - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 候选人公示 }
+    - { fact_type: tendering.bid_result, label: 中标结果 }
+    - { fact_type: tendering.contract_record, label: 合同公告 }
+    - { fact_type: investment.construction_permit, label: 施工许可 }
+  fields:
+    - id: project
+      label: 项目
+      from:
+        tendering.bid_result: record.title.value
+        tendering.contract_record: record.title.value
+        investment.construction_permit: record.project_name.value
+      format: text
+      never_omit: true
+    - { id: fact_type, label: 类型, source: signal.fact_type, format: label, never_omit: true }
+    - id: winner
+      label: 中标方
+      labels:
+        - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 中标候选人 }
+        - { fact_type: tendering.contract_record, label: 供应商 }
+        - { fact_type: investment.construction_permit, label: 施工单位 }
+      source: fact.winner
+      format: party
+      missing_text: 未识别
+    - id: amount
+      label: 中标金额
+      labels:
+        - { fact_type: tendering.bid_result, when: 'fact.result_type == "candidate_published"', label: 投标报价 }
+        - { fact_type: tendering.contract_record, label: 合同金额 }
+        - { fact_type: investment.construction_permit, label: 施工合同金额 }
+      source: fact.amount
+      format: money
+      missing_text: 未公布
+      never_omit: true
+    - { id: region, label: 地区, source: fact.location, format: region }
+    - { id: categories, label: 品类, source: fact.categories, format: categories, missing_text: 未能可靠识别 }
+    - { id: disposition, label: 处置, source: signal.disposition, format: disposition, never_omit: true }
+    - { id: manual_disposition, label: 人工处置, source: signal.manual_disposition, format: disposition }
+    - { id: exclusion_reason, label: 排除原因, source: signal.exclusion_reason, format: exclusion_reason }
+    - { id: rank_score, label: 排序分, source: signal.rank_score, format: score }
+    - { id: reasons, label: 命中理由, source: signal.reasons, format: reasons, max_items: 2 }
+    - { id: unknown_count, label: 未知项, source: signal.unknown_count, format: count }
+    - { id: created_at, label: 发现时间, source: signal.created_at, format: datetime }
+    - { id: my_feedback, label: 我的反馈, source: signal.my_feedback, format: feedback }
+  markers: [backfill, updated, my_feedback, same_lot_winners, manual_disposition]
+  actions:
+    - { action: view, permission: can_view_signals }
+    - { action: feedback_relevant, permission: can_feedback }
+    - { action: feedback_irrelevant, permission: can_feedback, reasons: all }
+    - { action: exclusion_feedback, permission: can_feedback }
+    - { action: create_pursuit, permission: can_assign }

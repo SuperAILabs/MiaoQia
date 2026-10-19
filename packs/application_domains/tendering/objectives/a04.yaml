@@ -1,0 +1,12 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.A04
+  version: 0.1.0
+  name: 规格与品牌入围
+  say: 在立项、可研、设计阶段找到设计院与业主，推介产品与样品，进入规格与品牌库
+  catalog_objective: OBJ-A04
+  form: transactional
+  subject_types: [investment_project, organization]
+  playbook: PB-TENDER-A04
+  requires_domains: [INF-INVP, INF-PROC]

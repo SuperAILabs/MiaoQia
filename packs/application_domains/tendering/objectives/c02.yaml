@@ -1,0 +1,12 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.C02
+  version: 0.1.0
+  name: 自身资格维护
+  say: 监测我方资质与证书的有效期和信用记录，避免投标资格失效
+  catalog_objective: OBJ-C02
+  form: continuous
+  subject_types: [tenant_self]
+  playbook: PB-TENDER-C02
+  requires_domains: [INF-QUAL, INF-CRED]

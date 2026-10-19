@@ -1,0 +1,35 @@
+# A01 收件箱行（格式与说明见 cards/a02-row.yaml）。
+card:
+  id: CARD-TENDER-A01-ROW
+  version: 0.1.0
+  objective: APP-TENDER.A01
+  surfaces: [inbox_row]
+  fact_types: [tendering.lot_opportunity]
+  fact_type_labels:
+    - { fact_type: tendering.lot_opportunity, when: 'fact.stage == "intent"', label: 采购意向 }
+    - { fact_type: tendering.lot_opportunity, when: 'fact.stage == "amended"', label: 采购公告（已更正） }
+    - { fact_type: tendering.lot_opportunity, label: 采购公告 }
+  fields:
+    - { id: project, label: 项目, source: fact.title, format: text, never_omit: true }
+    - { id: fact_type, label: 类型, source: signal.fact_type, format: label, never_omit: true }
+    - { id: bid_deadline, label: 投标截止, source: fact.bid_deadline, format: datetime, missing_text: 未公布, never_omit: true }
+    - { id: budget, label: 预算, source: fact.budget, format: money, missing_text: 未公布, never_omit: true }
+    - { id: method, label: 采购方式, source: fact.method, format: label }
+    - { id: buyer, label: 采购人, source: fact.buyer, format: party }
+    - { id: region, label: 地区, source: fact.location, format: region }
+    - { id: categories, label: 品类, source: fact.categories, format: categories, missing_text: 未能可靠识别 }
+    - { id: disposition, label: 处置, source: signal.disposition, format: disposition, never_omit: true }
+    - { id: manual_disposition, label: 人工处置, source: signal.manual_disposition, format: disposition }
+    - { id: exclusion_reason, label: 排除原因, source: signal.exclusion_reason, format: exclusion_reason }
+    - { id: rank_score, label: 排序分, source: signal.rank_score, format: score }
+    - { id: reasons, label: 命中理由, source: signal.reasons, format: reasons, max_items: 2 }
+    - { id: unknown_count, label: 未知项, source: signal.unknown_count, format: count }
+    - { id: created_at, label: 发现时间, source: signal.created_at, format: datetime }
+    - { id: my_feedback, label: 我的反馈, source: signal.my_feedback, format: feedback }
+  markers: [backfill, updated, my_feedback, manual_disposition]
+  actions:
+    - { action: view, permission: can_view_signals }
+    - { action: feedback_relevant, permission: can_feedback }
+    - { action: feedback_irrelevant, permission: can_feedback, reasons: all }
+    - { action: exclusion_feedback, permission: can_feedback }
+    - { action: create_pursuit, permission: can_assign }

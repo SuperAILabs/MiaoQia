@@ -1,0 +1,12 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.A06
+  version: 0.1.0
+  name: 渠道与授权
+  say: 发现要求原厂授权或中标明细出现本品牌的项目，管理经销授权与渠道冲突
+  catalog_objective: OBJ-A06
+  form: transactional
+  subject_types: [relationship, procurement_project]
+  playbook: PB-TENDER-A06
+  requires_domains: [INF-PROC]

@@ -1,0 +1,12 @@
+# 目标实例（格式：contracts/packs/application-domain.schema.json 的 objective；mqc P9 校验）。
+# 可启用阶段、判断框架与研究模板见覆盖矩阵 coverage.yaml；目标规格见 docs/02-business/02-commercial-objectives.md。
+objective:
+  id: APP-TENDER.C03
+  version: 0.1.0
+  name: 履约与回款跟踪
+  say: 中标或成交后跟踪合同、验收、付款与续约机会
+  catalog_objective: OBJ-C03
+  form: transactional
+  subject_types: [procurement_project]
+  playbook: PB-TENDER-C03
+  requires_domains: [INF-PROC]
