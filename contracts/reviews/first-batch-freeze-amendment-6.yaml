@@ -8,7 +8,8 @@ reason: >-
   contracts/identifiers.yaml 新增 ChannelSession 前缀 chs（identity），以及 ChannelInstallation chi、ChannelBinding chb、
   BindingRequest cbr、CardLink lnk（channels）（1.3.0 → 1.4.0）；contracts/apis/identity/openapi.yaml 新增只供 channels 服务主体调用的
   免登会话签发（POST /v1/identity/channel-sessions）、有效会话分页列表（GET，limit/cursor，供对账）与按绑定版本撤销
-  （POST /v1/identity/channel-sessions:revoke）及其类型，并在说明中写明免登会话不满足强认证（1.3.0 → 1.4.0）。
+  （POST /v1/identity/channel-sessions:revoke）及其类型，并在说明中写明免登会话不满足强认证（1.3.0 → 1.4.0）；签发请求带绑定建立时的
+  成员版本 member_version，成员退出后（即使已重新加入）退出前的绑定签发为 409 member_rejoined、其会话核验为 401，退出是不随重新加入撤销的生命周期边界。
   mqc compat 对 origin/main 判定 breaking 0：已有路径与类型不变，新增均为追加。channels 的 OpenAPI（0.1.0）与事件
   channels.binding.changed.v1（0.1.0）是新文件，不在 C4a 冻结范围，只记录。网关对渠道免登来源的令牌新增要求
   miaoqia_channel_session 声明并逐次经 identity 核验，这是令牌校验语义的收紧，不改变任何接口结构。
@@ -19,10 +20,10 @@ files:
   sha256: d6a8da8382ca2f53967faf60df9a1130571acfb7b6e4ef78db70d1c257441e45
 - path: contracts/apis/identity/openapi.yaml
   current_version: 1.4.0
-  sha256: 361ce59ff5a4c092ccd6705cfc402b6b753cc7bdea2760cd92b6fe4211b6b10d
+  sha256: 8e86bb2f0c727bef08595a156a05bda42f7f56acc50e5b84d4b564f41e9916f4
 fixture_artifacts:
 - path: contracts/apis/identity/fixtures.yaml
-  sha256: a405b91da931e281a4ceaa575e5707b3d81e7f3ea4a8709ab0046faf50516822
+  sha256: 6f4ed8f90679f964065c14bb5969bb9c32e61244a734f173c3ce3604411b62bf
 - path: contracts/events/identity/events.asyncapi.yaml
   sha256: 4fdade0a7c7ea13001c6705d1a91afad39378ec5ca50370a01cfc51a2077065c
 - path: contracts/events/identity/fixtures.yaml

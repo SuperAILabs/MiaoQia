@@ -2528,17 +2528,22 @@ func (s *IssueChannelSessionRequest) encodeFields(e *jx.Encoder) {
 		e.Str(s.Subject)
 	}
 	{
+		e.FieldStart("member_version")
+		e.Int64(s.MemberVersion)
+	}
+	{
 		e.FieldStart("credential_expires_at")
 		json.EncodeDateTime(e, s.CredentialExpiresAt)
 	}
 }
 
-var jsonFieldsNameOfIssueChannelSessionRequest = [5]string{
+var jsonFieldsNameOfIssueChannelSessionRequest = [6]string{
 	0: "credential_id",
 	1: "binding_id",
 	2: "binding_version",
 	3: "subject",
-	4: "credential_expires_at",
+	4: "member_version",
+	5: "credential_expires_at",
 }
 
 // Decode decodes IssueChannelSessionRequest from json.
@@ -2596,8 +2601,20 @@ func (s *IssueChannelSessionRequest) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"subject\"")
 			}
-		case "credential_expires_at":
+		case "member_version":
 			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int64()
+				s.MemberVersion = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"member_version\"")
+			}
+		case "credential_expires_at":
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CredentialExpiresAt = v
@@ -2618,7 +2635,7 @@ func (s *IssueChannelSessionRequest) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00011111,
+		0b00111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

@@ -366,6 +366,12 @@ func (d *Directory) writeMember(ctx context.Context, tx pgx.Tx, t *identityapi.T
 	if _, err = tx.Exec(ctx, `INSERT INTO identity_members(tenant_id,subject,state,roles,version) VALUES($1,$2,$3,$4,$5) ON CONFLICT(tenant_id,subject) DO UPDATE SET state=EXCLUDED.state,roles=EXCLUDED.roles,version=EXCLUDED.version`, t.ID, subject, state, roles, result.MemberVersion); err != nil {
 		return false, err
 	}
+	if removed {
+		// 退出是渠道免登的生命周期边界：记录本次退出时的成员版本，重新加入不会撤销它（channelsessions.go）
+		if _, err = tx.Exec(ctx, `UPDATE identity_members SET left_version=$3 WHERE tenant_id=$1 AND subject=$2`, t.ID, subject, result.MemberVersion); err != nil {
+			return false, err
+		}
+	}
 	if _, err = tx.Exec(ctx, `DELETE FROM identity_member_unit_roles WHERE tenant_id=$1 AND subject=$2`, t.ID, subject); err != nil {
 		return false, err
 	}

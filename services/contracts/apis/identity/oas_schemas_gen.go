@@ -1085,6 +1085,9 @@ type IssueChannelSessionRequest struct {
 	BindingVersion int64            `json:"binding_version"`
 	// 绑定的成员.
 	Subject string `json:"subject"`
+	// 绑定建立（绑定请求固定会话）时该成员的成员版本（identity.member.changed.v1
+	// 的 version）.
+	MemberVersion int64 `json:"member_version"`
 	// 凭据到期时间（channels 签发后30秒）.
 	CredentialExpiresAt time.Time `json:"credential_expires_at"`
 }
@@ -1107,6 +1110,11 @@ func (s *IssueChannelSessionRequest) GetBindingVersion() int64 {
 // GetSubject returns the value of Subject.
 func (s *IssueChannelSessionRequest) GetSubject() string {
 	return s.Subject
+}
+
+// GetMemberVersion returns the value of MemberVersion.
+func (s *IssueChannelSessionRequest) GetMemberVersion() int64 {
+	return s.MemberVersion
 }
 
 // GetCredentialExpiresAt returns the value of CredentialExpiresAt.
@@ -1132,6 +1140,11 @@ func (s *IssueChannelSessionRequest) SetBindingVersion(val int64) {
 // SetSubject sets the value of Subject.
 func (s *IssueChannelSessionRequest) SetSubject(val string) {
 	s.Subject = val
+}
+
+// SetMemberVersion sets the value of MemberVersion.
+func (s *IssueChannelSessionRequest) SetMemberVersion(val int64) {
+	s.MemberVersion = val
 }
 
 // SetCredentialExpiresAt sets the value of CredentialExpiresAt.

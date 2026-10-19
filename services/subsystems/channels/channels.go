@@ -54,9 +54,13 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("channels：缺少 %s 绑定", identity.ChannelSessionsBinding)
 			}
+			members, ok := runtime.Lookup[identity.SessionResolver](env.Bindings, identity.SessionBinding)
+			if !ok {
+				return fmt.Errorf("channels：缺少 %s 绑定", identity.SessionBinding)
+			}
 			// 强认证门禁只有本地绑定；取不到时管理动作失败关闭（503 identity_unavailable）
 			guard, _ := runtime.Lookup[identity.Guard](env.Bindings, identity.GuardBinding)
-			svc.DB, svc.Authz, svc.Guard, svc.Sessions, svc.Log = env.DB, a, guard, sessions, env.Log
+			svc.DB, svc.Authz, svc.Guard, svc.Sessions, svc.Members, svc.Log = env.DB, a, guard, sessions, members, env.Log
 			env.Bindings.Provide(api.CallbacksBinding, api.LocalCallbacks(svc))
 			env.Bindings.Provide(api.MessagingBinding, api.LocalMessaging(svc))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(svc))

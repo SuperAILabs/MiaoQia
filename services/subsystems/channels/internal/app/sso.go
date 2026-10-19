@@ -100,12 +100,16 @@ func (s *Service) ChannelSSO(ctx context.Context, channel, oauthCode string) (*a
 		return login("identity_unavailable")
 	}
 	session, err := s.Sessions.IssueChannelSession(cctx, &identityapi.IssueChannelSessionRequest{CredentialID: credential, BindingID: identityapi.ChannelBindingID(b.id),
-		BindingVersion: b.version, Subject: b.subject, CredentialExpiresAt: expires})
+		BindingVersion: b.version, Subject: b.subject, MemberVersion: b.memberVersion, CredentialExpiresAt: expires})
 	if err != nil {
 		var safe *identity.Error
 		switch {
 		case errors.As(err, &safe) && safe.Code == "member_inactive":
 			return login("member_inactive")
+		case errors.As(err, &safe) && safe.Code == "member_rejoined":
+			// 绑定建立后成员退出过（之后又重新加入）：这是退出前的旧绑定，立即以 member_left 失效（不等成员事件），须重新绑定
+			s.retireStaleBinding(tctx, r, b)
+			return login("binding_inactive")
 		case errors.As(err, &safe) && safe.Status < 500:
 			return login("session_rejected")
 		default:
@@ -118,6 +122,24 @@ func (s *Service) ChannelSSO(ctx context.Context, channel, oauthCode string) (*a
 		return login("binding_inactive")
 	}
 	return &api.SSOResult{Outcome: "session", Tenant: r.tenant, Subject: b.subject, Session: session}, nil
+}
+
+// retireStaleBinding 使退出前的旧绑定以 member_left 失效（只在它仍是同一成员版本的有效绑定时），提交后同步撤销。
+// 失败只记录：identity 对它的签发与会话核验都已拒绝，成员事件送达时同样会使它失效。
+func (s *Service) retireStaleBinding(ctx context.Context, r *corpRoute, b *binding) {
+	var retired []*binding
+	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		retired, err = s.invalidate(ctx, tx, `id = $1 AND member_version = $2`, []any{b.id, b.memberVersion}, "member_left", "")
+		return err
+	})
+	if err != nil {
+		s.logger().WarnContext(ctx, "旧绑定失效未完成", "binding", b.id, "error", err.Error())
+		return
+	}
+	for _, x := range retired {
+		s.revokeAfterCommit(ctx, r.tenant, r.cell, x)
+	}
 }
 
 // credentialID 生成签发凭据标识（24字节随机数的 base64url）。

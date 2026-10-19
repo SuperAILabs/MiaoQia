@@ -108,7 +108,7 @@ func TestChannelBindingAndSSO(t *testing.T) {
 	t1, t2 := ids.New("tnt"), ids.New("tnt")
 	suffix := strings.ToLower(iam.Name)
 	user := func(name string) string { return name + "-" + suffix }
-	admin, bd, dm, ex, lv, ra, admin2 := user("admin"), user("bd"), user("dm"), user("ex"), user("lv"), user("ra"), user("admin2")
+	admin, bd, dm, ex, lv, ra, rj, admin2 := user("admin"), user("bd"), user("dm"), user("ex"), user("lv"), user("ra"), user("rj"), user("admin2")
 	iamOwner, err := pgx.Connect(ctx, iam.OwnerDSN)
 	if err != nil {
 		t.Fatal(err)
@@ -121,13 +121,13 @@ func TestChannelBindingAndSSO(t *testing.T) {
 		{`INSERT INTO identity_tenants VALUES ($1,'甲','cell-01','active',1), ($2,'乙','cell-01','active',1)`, []any{t1, t2}},
 		{`INSERT INTO identity_members VALUES ($1,$2,'active',ARRAY['admin'],1), ($1,$3,'active',ARRAY['business_developer'],1),
  ($1,$4,'active',ARRAY['decision_maker'],1), ($1,$5,'active',ARRAY['domain_expert'],1), ($1,$6,'active',ARRAY['business_developer'],1),
- ($1,$7,'active',ARRAY['research_analyst'],1), ($8,$9,'active',ARRAY['admin'],1)`, []any{t1, admin, bd, dm, ex, lv, ra, t2, admin2}},
+ ($1,$7,'active',ARRAY['research_analyst'],1), ($8,$9,'active',ARRAY['admin'],1), ($1,$10,'active',ARRAY['business_developer'],1)`, []any{t1, admin, bd, dm, ex, lv, ra, t2, admin2, rj}},
 	} {
 		if _, err := iamOwner.Exec(ctx, stmt.sql, stmt.args...); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, s := range []string{admin, bd, dm, ex, lv, ra, admin2} {
+	for _, s := range []string{admin, bd, dm, ex, lv, ra, rj, admin2} {
 		idp.Put(idapi.Account{Subject: s, Email: s + "@example.com", EmailVerified: true, TOTPEnrolled: true})
 	}
 	iamApp, err := db.Open(ctx, iam.AppDSN)
@@ -969,8 +969,8 @@ func TestChannelBindingAndSSO(t *testing.T) {
 			t.Fatal(err)
 		}
 		credential := "barrier-credential-" + suffix
-		if _, err := tx.Exec(ctx, `INSERT INTO identity_channel_sessions(id,tenant_id,binding_id,binding_version,subject,credential_id,issued_at,expires_at)
- VALUES($1,$2,$3,1,$4,$5,now(),now()+interval '1 hour')`, ids.New("chs"), t1, other, bd, credential); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO identity_channel_sessions(id,tenant_id,binding_id,binding_version,subject,member_version,credential_id,issued_at,expires_at)
+ VALUES($1,$2,$3,1,$4,1,$5,now(),now()+interval '1 hour')`, ids.New("chs"), t1, other, bd, credential); err != nil {
 			t.Fatal(err)
 		}
 		issued := make(chan error, 1)
@@ -978,7 +978,7 @@ func TestChannelBindingAndSSO(t *testing.T) {
 		go func() {
 			var err error
 			out, err = identitySessions.IssueChannelSession(svc(t1, "svc:channels"), &idapi.IssueChannelSessionRequest{CredentialID: credential,
-				BindingID: identityapi.ChannelBindingID(b.ID), BindingVersion: 1, Subject: bd, CredentialExpiresAt: clock.Now().Add(30 * time.Second)})
+				BindingID: identityapi.ChannelBindingID(b.ID), BindingVersion: 1, Subject: bd, MemberVersion: 1, CredentialExpiresAt: clock.Now().Add(30 * time.Second)})
 			issued <- err
 		}()
 		waitForLockWaiters(t, ctx, iam, 1)
@@ -1009,7 +1009,7 @@ func TestChannelBindingAndSSO(t *testing.T) {
 	run("identity 免登会话接口：服务授权、凭据规则与远程绑定一致", func(t *testing.T) {
 		b := bindAccount(t1, bd, corpA, "u-bd")
 		req := func(credential string, expires time.Time) *idapi.IssueChannelSessionRequest {
-			return &idapi.IssueChannelSessionRequest{CredentialID: credential, BindingID: identityapi.ChannelBindingID(b.ID), BindingVersion: 1, Subject: bd, CredentialExpiresAt: expires}
+			return &idapi.IssueChannelSessionRequest{CredentialID: credential, BindingID: identityapi.ChannelBindingID(b.ID), BindingVersion: 1, Subject: bd, MemberVersion: 1, CredentialExpiresAt: expires}
 		}
 		session(corpA, "u-admin", admin) // 另一条有效会话，用于翻页
 		type named struct {
@@ -1031,6 +1031,11 @@ func TestChannelBindingAndSSO(t *testing.T) {
 			}
 			if _, err := s.IssueChannelSession(svc(t1, "svc:channels"), req(cred, clock.Now().Add(5*time.Minute))); errCode(err) != "invalid_credential" {
 				t.Fatalf("%s：有效期过长的凭据：%v", name, err)
+			}
+			future := req(cred, clock.Now().Add(30*time.Second))
+			future.MemberVersion = 9
+			if _, err := s.IssueChannelSession(svc(t1, "svc:channels"), future); errCode(err) != "invalid_credential" {
+				t.Fatalf("%s：高于当前成员版本的绑定：%v", name, err)
 			}
 			first, err := s.IssueChannelSession(svc(t1, "svc:channels"), req(cred, clock.Now().Add(30*time.Second)))
 			if err != nil || first.Outcome != "issued" {
@@ -1090,8 +1095,8 @@ func TestChannelBindingAndSSO(t *testing.T) {
 		var s identityapi.Session
 		decode(expect(web(admin, t1, "s"), "GET", "/v1/identity/members/"+lv, "", 200, ""), &s)
 		expect(web(admin, t1, "s"), "PUT", "/v1/identity/members/"+lv, fmt.Sprintf(`{"state":"removed","roles":[],"expected_version":%d}`, s.MemberVersion), 200, "")
-		// 事件送达前：identity 已按成员状态拒绝
-		expect(channelTok(lv, t1, chs), "GET", "/v1/channels/bindings", "", 403, "invalid_tenant_context")
+		// 事件送达前：identity 已拒绝——免登会话来自这次退出之前（401），Web 会话按成员状态（403）
+		expect(channelTok(lv, t1, chs), "GET", "/v1/channels/bindings", "", 401, "channel_session_revoked")
 		expect(web(lv, t1, "web-lv"), "GET", "/v1/channels/bindings", "", 403, "invalid_tenant_context")
 		login(sso(corpA, "u-lv"), "member_inactive")
 		// identity.member.changed.v1 送达 channels：绑定以 member_left 失效，固定到该成员的请求作废
@@ -1121,6 +1126,84 @@ func TestChannelBindingAndSSO(t *testing.T) {
 		if state, _, _, _ := bindingRow(string(b.ID)); state != "invalidated" {
 			t.Fatal(state)
 		}
+	})
+
+	run("用例12：退出事件延迟送达时重新加入，旧绑定与旧会话不恢复；重新绑定后迟到的退出事件不影响新绑定", func(t *testing.T) {
+		old := bindAccount(t1, rj, corpA, "u-rj")
+		oldSession := session(corpA, "u-rj", rj)
+		var oldVersion int64
+		if err := chnOwner.QueryRow(ctx, `SELECT member_version FROM chn_bindings WHERE id=$1`, string(old.ID)).Scan(&oldVersion); err != nil || oldVersion != 1 {
+			t.Fatalf("%d %v", oldVersion, err)
+		}
+		member := func() identityapi.Session {
+			var s identityapi.Session
+			decode(expect(web(admin, t1, "s"), "GET", "/v1/identity/members/"+rj, "", 200, ""), &s)
+			return s
+		}
+		// 退出；identity.member.changed.v1 不送达 channels（模拟中继或消费延迟）
+		m := member()
+		expect(web(admin, t1, "s"), "PUT", "/v1/identity/members/"+rj, fmt.Sprintf(`{"state":"removed","roles":[],"expected_version":%d}`, m.MemberVersion), 200, "")
+		envelopes := outboxEnvelopes(iamOwner, "identity.member.changed.v1", t1)
+		leave := envelopes[len(envelopes)-1]
+		expect(channelTok(rj, t1, oldSession), "GET", "/v1/channels/bindings", "", 401, "channel_session_revoked")
+		expect(web(rj, t1, "web-rj"), "GET", "/v1/channels/bindings", "", 403, "invalid_tenant_context")
+		// 同一主体重新加入
+		expect(web(admin, t1, "s"), "PUT", "/v1/identity/members/"+rj, fmt.Sprintf(`{"state":"active","roles":["business_developer"],"expected_version":%d}`, m.MemberVersion+1), 200, "")
+		if state, _, _, _ := bindingRow(string(old.ID)); state != "bound" {
+			t.Fatalf("前提：退出事件尚未送达，channels 中旧绑定仍为有效：%s", state)
+		}
+		// 退出前的会话不随重新加入恢复
+		expect(channelTok(rj, t1, oldSession), "GET", "/v1/channels/bindings", "", 401, "channel_session_revoked")
+		// 旧绑定不能再签发：identity 直接拒绝（不依赖 channels 的事件）
+		if _, err := identitySessions.IssueChannelSession(svc(t1, "svc:channels"), &idapi.IssueChannelSessionRequest{CredentialID: "rejoin-credential-" + suffix,
+			BindingID: identityapi.ChannelBindingID(old.ID), BindingVersion: 1, Subject: rj, MemberVersion: oldVersion, CredentialExpiresAt: clock.Now().Add(30 * time.Second)}); errCode(err) != "member_rejoined" {
+			t.Fatalf("%v", err)
+		}
+		// 经 channels 免登：转登录页，旧绑定随即以 member_left 失效，不产生会话
+		login(sso(corpA, "u-rj"), "binding_inactive")
+		if state, reason, _, _ := bindingRow(string(old.ID)); state != "revoking" || reason != "member_left" {
+			t.Fatalf("%s %s", state, reason)
+		}
+		if n := count(iamOwner, `SELECT count(*) FROM identity_channel_sessions WHERE binding_id=$1`, string(old.ID)); n != 1 || liveSessions(string(old.ID)) != 0 {
+			t.Fatalf("旧绑定不得签发新会话：%d", n)
+		}
+		// 重新走 F5：新绑定正常
+		renewed := bindAccount(t1, rj, corpA, "u-rj")
+		newSession := session(corpA, "u-rj", rj)
+		expect(channelTok(rj, t1, newSession), "GET", "/v1/channels/bindings", "", 200, "")
+		// 迟到的退出事件：只影响退出前建立的绑定与请求，新绑定与新会话不受影响
+		if err := consume(module, env, "channels.member-changes", "identity.member.changed.v1", leave); err != nil {
+			t.Fatal(err)
+		}
+		if state, _, _, _ := bindingRow(string(renewed.ID)); state != "bound" {
+			t.Fatalf("迟到的退出事件不得使重新加入后的绑定失效：%s", state)
+		}
+		expect(channelTok(rj, t1, newSession), "GET", "/v1/channels/bindings", "", 200, "")
+		session(corpA, "u-rj", rj)
+
+		// 另一顺序：再次退出并重新加入，期间没有人尝试免登；迟到的退出事件仍使这次退出之前的绑定失效
+		m = member()
+		expect(web(admin, t1, "s"), "PUT", "/v1/identity/members/"+rj, fmt.Sprintf(`{"state":"removed","roles":[],"expected_version":%d}`, m.MemberVersion), 200, "")
+		envelopes = outboxEnvelopes(iamOwner, "identity.member.changed.v1", t1)
+		leaveAgain := envelopes[len(envelopes)-1]
+		expect(web(admin, t1, "s"), "PUT", "/v1/identity/members/"+rj, fmt.Sprintf(`{"state":"active","roles":["business_developer"],"expected_version":%d}`, m.MemberVersion+1), 200, "")
+		expect(channelTok(rj, t1, newSession), "GET", "/v1/channels/bindings", "", 401, "channel_session_revoked")
+		if err := consume(module, env, "channels.member-changes", "identity.member.changed.v1", leaveAgain); err != nil {
+			t.Fatal(err)
+		}
+		if state, reason, _, _ := bindingRow(string(renewed.ID)); state != "revoking" || reason != "member_left" {
+			t.Fatalf("%s %s", state, reason)
+		}
+		third := bindAccount(t1, rj, corpA, "u-rj")
+		if err := consume(module, env, "channels.member-changes", "identity.member.changed.v1", leave); err != nil {
+			t.Fatal(err)
+		}
+		if state, _, _, _ := bindingRow(string(third.ID)); state != "bound" {
+			t.Fatal(state)
+		}
+		session(corpA, "u-rj", rj)
+		advance(36 * time.Second)
+		retry()
 	})
 
 	run("用例14：卡片链接不切换账号；无权限、不存在与其他租户返回同一通用结果", func(t *testing.T) {

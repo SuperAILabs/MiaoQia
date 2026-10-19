@@ -784,8 +784,20 @@ fixtures:
     binding_id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
     binding_version: 1
     subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    member_version: 3
     credential_expires_at: '2026-10-19T08:00:30Z'
   cases:
+  - name: 缺成员版本
+    valid: false
+    patch:
+    - op: remove
+      path: /member_version
+  - name: 成员版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /member_version
+      value: 0
   - name: 缺凭据到期时间
     valid: false
     patch:

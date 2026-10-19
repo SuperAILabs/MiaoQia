@@ -25,7 +25,7 @@ import (
 
 type binding struct {
 	id, tenant, installation, channel, corpID, userID, displayName, subject, state, reason, note string
-	version, confirmed                                                                           int64
+	version, confirmed, memberVersion                                                            int64
 	lastCredential                                                                               *time.Time
 	boundAt                                                                                      time.Time
 	revokingAt, invalidatedAt                                                                    *time.Time
@@ -33,12 +33,12 @@ type binding struct {
 }
 
 const bindingColumns = `id, tenant_id, installation_id, channel, corp_id, channel_user_id, coalesce(display_name,''), subject, state, coalesce(reason,''), coalesce(note,''),
- version, revoke_confirmed_version, last_credential_expires_at, bound_at, revoking_at, invalidated_at, created_at`
+ version, revoke_confirmed_version, member_version, last_credential_expires_at, bound_at, revoking_at, invalidated_at, created_at`
 
 func scanBinding(row pgx.Row) (*binding, error) {
 	var b binding
 	err := row.Scan(&b.id, &b.tenant, &b.installation, &b.channel, &b.corpID, &b.userID, &b.displayName, &b.subject, &b.state, &b.reason, &b.note,
-		&b.version, &b.confirmed, &b.lastCredential, &b.boundAt, &b.revokingAt, &b.invalidatedAt, &b.createdAt)
+		&b.version, &b.confirmed, &b.memberVersion, &b.lastCredential, &b.boundAt, &b.revokingAt, &b.invalidatedAt, &b.createdAt)
 	return &b, err
 }
 
@@ -102,23 +102,25 @@ func (s *Service) invalidate(ctx context.Context, tx pgx.Tx, where string, args 
 type bindingRequest struct {
 	id, tenant, installation, channel, corpID, userID, displayName, state string
 	pinnedSubject, pinnedSession, bindingID                               string
+	pinnedMemberVersion                                                   int64
 	result                                                                []byte
 	expiresAt                                                             time.Time
 }
 
 func scanRequest(row pgx.Row) (*bindingRequest, error) {
 	var r bindingRequest
-	err := row.Scan(&r.id, &r.tenant, &r.installation, &r.channel, &r.corpID, &r.userID, &r.displayName, &r.state, &r.pinnedSubject, &r.pinnedSession, &r.bindingID, &r.result, &r.expiresAt)
+	err := row.Scan(&r.id, &r.tenant, &r.installation, &r.channel, &r.corpID, &r.userID, &r.displayName, &r.state, &r.pinnedSubject, &r.pinnedSession, &r.pinnedMemberVersion, &r.bindingID, &r.result, &r.expiresAt)
 	return &r, err
 }
 
-const requestColumns = `id, tenant_id, installation_id, channel, corp_id, channel_user_id, coalesce(display_name,''), state, coalesce(pinned_subject,''), coalesce(pinned_session,''), coalesce(binding_id,''), result, expires_at`
+const requestColumns = `id, tenant_id, installation_id, channel, corp_id, channel_user_id, coalesce(display_name,''), state, coalesce(pinned_subject,''), coalesce(pinned_session,''), coalesce(pinned_member_version,0), coalesce(binding_id,''), result, expires_at`
 
 // linkCheck 是打开与确认绑定链接共同的前置核验结果。
 type linkCheck struct {
-	rc      reqctx.Context
-	session string
-	who     *api.ChannelIdentity
+	rc            reqctx.Context
+	session       string
+	memberVersion int64
+	who           *api.ChannelIdentity
 }
 
 // checkLink 核验调用者与当前渠道身份（不访问链接）：有效成员、交互登录的 Web 会话（sid）、渠道网页授权取得的账号所在企业
@@ -150,7 +152,18 @@ func (s *Service) checkLink(ctx context.Context, oauthCode string) (*linkCheck, 
 	if r == nil || r.tenant != rc.Tenant {
 		return nil, failure(403, "channel_tenant_mismatch")
 	}
-	return &linkCheck{rc: rc, session: a.SessionID, who: who}, nil
+	// 当前成员版本：固定会话时记入绑定请求，成为绑定的成员版本。成员此后退出过，这条绑定即为旧绑定（identity 拒绝签发）
+	if s.Members == nil {
+		return nil, failure(503, "identity_unavailable")
+	}
+	current, err := s.Members.Resolve(ctx)
+	if err != nil {
+		return nil, identityError(err)
+	}
+	if current == nil || current.Tenant != rc.Tenant || current.Subject != rc.Principal.ID || current.State != "active" || current.MemberVersion < 1 {
+		return nil, failure(403, "forbidden")
+	}
+	return &linkCheck{rc: rc, session: a.SessionID, memberVersion: current.MemberVersion, who: who}, nil
 }
 
 // openRequest 在事务中锁定链接对应的绑定请求并按状态机核验；需要作废时写入作废并返回 voided 错误（由调用方在提交后返回）。
@@ -186,11 +199,11 @@ func (s *Service) openRequest(ctx context.Context, tx pgx.Tx, token string, c *l
 		return void("channel_identity_mismatch", failure(403, "channel_identity_mismatch"))
 	}
 	if r.state == domain.RequestInitiated {
-		if _, err := tx.Exec(ctx, `UPDATE chn_binding_requests SET state = 'pinned', pinned_subject = $2, pinned_session = $3, updated_at = now() WHERE id = $1`,
-			r.id, c.rc.Principal.ID, c.session); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE chn_binding_requests SET state = 'pinned', pinned_subject = $2, pinned_session = $3, pinned_member_version = $4, updated_at = now() WHERE id = $1`,
+			r.id, c.rc.Principal.ID, c.session, c.memberVersion); err != nil {
 			return nil, nil, err
 		}
-		r.state, r.pinnedSubject, r.pinnedSession = domain.RequestPinned, c.rc.Principal.ID, c.session
+		r.state, r.pinnedSubject, r.pinnedSession, r.pinnedMemberVersion = domain.RequestPinned, c.rc.Principal.ID, c.session, c.memberVersion
 		return r, nil, nil
 	}
 	// 已固定：会话被替换、退出后以他人登录，确认均被拒绝，链接作废
@@ -310,9 +323,9 @@ func (s *Service) ConfirmBinding(ctx context.Context, req *chn.ConfirmBindingReq
 			return failure(409, "member_already_bound")
 		}
 		b := &binding{id: ids.New("chb"), tenant: r.tenant, installation: r.installation, channel: r.channel, corpID: r.corpID, userID: r.userID,
-			displayName: r.displayName, subject: r.pinnedSubject, state: domain.Bound, version: 1, boundAt: s.businessNow()}
-		if _, err := tx.Exec(ctx, `INSERT INTO chn_bindings (id, tenant_id, installation_id, channel, corp_id, channel_user_id, display_name, subject, state, version, bound_at)
- VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, 'bound', 1, $9)`, b.id, b.tenant, b.installation, b.channel, b.corpID, b.userID, b.displayName, b.subject, b.boundAt); err != nil {
+			displayName: r.displayName, subject: r.pinnedSubject, memberVersion: r.pinnedMemberVersion, state: domain.Bound, version: 1, boundAt: s.businessNow()}
+		if _, err := tx.Exec(ctx, `INSERT INTO chn_bindings (id, tenant_id, installation_id, channel, corp_id, channel_user_id, display_name, subject, member_version, state, version, bound_at)
+ VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, $9, 'bound', 1, $10)`, b.id, b.tenant, b.installation, b.channel, b.corpID, b.userID, b.displayName, b.subject, b.memberVersion, b.boundAt); err != nil {
 			if name, ok := uniqueViolation(err); ok {
 				if name == "chn_bindings_member" {
 					return failure(409, "member_already_bound")

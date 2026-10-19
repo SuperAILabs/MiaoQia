@@ -232,13 +232,15 @@ func (s *Service) BindingChangedEvent(ctx context.Context, tx pgx.Tx, env *outbo
 	return s.recordConfirmed(ctx, tx, data.BindingID, data.Version)
 }
 
-// MemberChanged 消费 identity.member.changed.v1：成员停用或退出时，其全部有效绑定以 member_left 失效，固定到该成员的未完成
-// 绑定请求作废。撤销经各绑定的失效事件送达（identity 也会因成员无效拒绝其免登会话）。
+// MemberChanged 消费 identity.member.changed.v1：成员退出时，其在这次退出之前建立的有效绑定（绑定的成员版本低于事件版本）
+// 以 member_left 失效，固定到该成员且早于这次退出的未完成绑定请求作废。迟到的旧退出事件不影响重新加入后建立的绑定与请求。
+// 撤销经各绑定的失效事件送达（identity 已按成员状态与最近一次退出时的成员版本拒绝其免登会话与签发）。
 func (s *Service) MemberChanged(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) error {
 	var data struct {
 		TenantID string `json:"tenant_id"`
 		Subject  string `json:"subject"`
 		State    string `json:"state"`
+		Version  int64  `json:"version"`
 	}
 	if err := json.Unmarshal(env.Data, &data); err != nil {
 		return err
@@ -250,10 +252,13 @@ func (s *Service) MemberChanged(ctx context.Context, tx pgx.Tx, env *outbox.Enve
 		// 不带租户上下文无法按行级安全定位绑定；不静默跳过
 		return fmt.Errorf("channels：成员事件 %s 的租户上下文缺失或不一致", env.ID)
 	}
+	if data.Version < 1 {
+		return fmt.Errorf("channels：成员事件 %s 缺少版本", env.ID)
+	}
 	if _, err := tx.Exec(ctx, `UPDATE chn_binding_requests SET state = 'voided', void_reason = 'member_left', updated_at = now()
- WHERE pinned_subject = $1 AND state IN ('initiated', 'pinned')`, data.Subject); err != nil {
+ WHERE pinned_subject = $1 AND state = 'pinned' AND pinned_member_version < $2`, data.Subject, data.Version); err != nil {
 		return err
 	}
-	_, err := s.invalidate(ctx, tx, `subject = $1`, []any{data.Subject}, "member_left", "")
+	_, err := s.invalidate(ctx, tx, `subject = $1 AND member_version < $2`, []any{data.Subject, data.Version}, "member_left", "")
 	return err
 }

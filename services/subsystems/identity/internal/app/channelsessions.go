@@ -66,9 +66,20 @@ func lockWatermark(ctx context.Context, tx pgx.Tx, tenantID, bindingID string) (
 	return watermark, nil
 }
 
+// leftVersion 是成员最近一次退出时的成员版本（从未退出或不存在时为 0）。绑定建立时的成员版本不高于它的绑定与会话
+// 来自退出之前，重新加入不恢复它们（PRD 第1段 F6）。
+func leftVersion(ctx context.Context, tx pgx.Tx, tenantID, subject string) (int64, error) {
+	var left int64
+	err := tx.QueryRow(ctx, `SELECT left_version FROM identity_members WHERE tenant_id=$1 AND subject=$2`, tenantID, subject).Scan(&left)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	return left, err
+}
+
 type storedSession struct {
 	id, tenant, binding, subject string
-	version                      int64
+	version, memberVersion       int64
 	issuedAt, expiresAt          time.Time
 	revoked                      bool
 }
@@ -99,15 +110,22 @@ func (d *Directory) IssueChannelSession(ctx context.Context, req *identityapi.Is
 			return err
 		}
 		// 同一凭据的重试（例如 channels 侧超时后重试）：返回首次结果；该会话已被撤销时不返回已作废的会话
+		left, err := leftVersion(ctx, tx, rc.Tenant, req.Subject)
+		if err != nil {
+			return err
+		}
 		var s storedSession
-		err = tx.QueryRow(ctx, `SELECT id, tenant_id, binding_id, subject, binding_version, issued_at, expires_at, revoked_at IS NOT NULL
- FROM identity_channel_sessions WHERE credential_id=$1`, req.CredentialID).Scan(&s.id, &s.tenant, &s.binding, &s.subject, &s.version, &s.issuedAt, &s.expiresAt, &s.revoked)
+		err = tx.QueryRow(ctx, `SELECT id, tenant_id, binding_id, subject, binding_version, member_version, issued_at, expires_at, revoked_at IS NOT NULL
+ FROM identity_channel_sessions WHERE credential_id=$1`, req.CredentialID).Scan(&s.id, &s.tenant, &s.binding, &s.subject, &s.version, &s.memberVersion, &s.issuedAt, &s.expiresAt, &s.revoked)
 		if err == nil {
-			if s.tenant != rc.Tenant || s.binding != string(req.BindingID) || s.version != req.BindingVersion || s.subject != req.Subject {
+			if s.tenant != rc.Tenant || s.binding != string(req.BindingID) || s.version != req.BindingVersion || s.subject != req.Subject || s.memberVersion != req.MemberVersion {
 				return failure(409, "credential_conflict")
 			}
 			if s.revoked || s.version <= watermark {
 				return failure(409, "binding_revoked")
+			}
+			if s.memberVersion <= left {
+				return failure(409, "member_rejoined")
 			}
 			out = s.out(identityapi.ChannelSessionOutcomeReplayed)
 			return nil
@@ -122,18 +140,26 @@ func (d *Directory) IssueChannelSession(ctx context.Context, req *identityapi.Is
 		if req.BindingVersion <= watermark {
 			return failure(409, "binding_revoked")
 		}
-		if _, err := session(ctx, tx, rc.Tenant, req.Subject, rc.Cell); err != nil {
+		member, err := session(ctx, tx, rc.Tenant, req.Subject, rc.Cell)
+		if err != nil {
 			var safe *api.Error
 			if errors.As(err, &safe) {
 				return failure(403, "member_inactive")
 			}
 			return err
 		}
+		// 成员退出是生命周期边界：绑定建立后成员退出过（即使已重新加入），这条绑定不能再签发会话，须重新绑定
+		if req.MemberVersion <= left {
+			return failure(409, "member_rejoined")
+		}
+		if req.MemberVersion > member.MemberVersion {
+			return failure(400, "invalid_credential")
+		}
 		issued := d.businessNow()
 		s = storedSession{id: ids.New("chs"), tenant: rc.Tenant, binding: string(req.BindingID), subject: req.Subject, version: req.BindingVersion,
-			issuedAt: issued, expiresAt: issued.Add(ChannelSessionTTL)}
-		if _, err := tx.Exec(ctx, `INSERT INTO identity_channel_sessions(id,tenant_id,binding_id,binding_version,subject,credential_id,issued_at,expires_at)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, s.id, s.tenant, s.binding, s.version, s.subject, req.CredentialID, s.issuedAt, s.expiresAt); err != nil {
+			memberVersion: req.MemberVersion, issuedAt: issued, expiresAt: issued.Add(ChannelSessionTTL)}
+		if _, err := tx.Exec(ctx, `INSERT INTO identity_channel_sessions(id,tenant_id,binding_id,binding_version,subject,member_version,credential_id,issued_at,expires_at)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, s.id, s.tenant, s.binding, s.version, s.subject, s.memberVersion, req.CredentialID, s.issuedAt, s.expiresAt); err != nil {
 			if uniqueViolation(err) {
 				return failure(409, "credential_conflict")
 			}
@@ -220,7 +246,7 @@ func (d *Directory) ChannelBindingChanged(ctx context.Context, tx pgx.Tx, env *o
 }
 
 // ResolveChannelSession 是 api.ChannelSessionResolver：核验令牌中的免登会话（每次请求）。会话不存在、不属于令牌的租户与主体、
-// 已作废、绑定版本不高于水位或已过期时 401；成员已停用或退出时与普通会话相同（403 invalid_tenant_context）。
+// 已作废、绑定版本不高于水位、来自成员最近一次退出之前或已过期时 401；成员已停用或退出时与普通会话相同（403 invalid_tenant_context）。
 func (d *Directory) ResolveChannelSession(ctx context.Context, sessionID string) (*api.Session, error) {
 	rc, err := actor(ctx)
 	if err != nil {
@@ -232,19 +258,21 @@ func (d *Directory) ResolveChannelSession(ctx context.Context, sessionID string)
 	var out *api.Session
 	err = d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		var tenantID, subject string
-		var version, watermark int64
+		var version, watermark, memberVersion, left int64
 		var expires time.Time
 		var revoked bool
-		err := tx.QueryRow(ctx, `SELECT s.tenant_id, s.subject, s.binding_version, r.watermark, s.expires_at, s.revoked_at IS NOT NULL
- FROM identity_channel_sessions s JOIN identity_channel_revocations r ON r.binding_id=s.binding_id WHERE s.id=$1`, sessionID).
-			Scan(&tenantID, &subject, &version, &watermark, &expires, &revoked)
+		err := tx.QueryRow(ctx, `SELECT s.tenant_id, s.subject, s.binding_version, r.watermark, s.member_version, coalesce(m.left_version, 0), s.expires_at, s.revoked_at IS NOT NULL
+ FROM identity_channel_sessions s JOIN identity_channel_revocations r ON r.binding_id=s.binding_id
+ LEFT JOIN identity_members m ON m.tenant_id=s.tenant_id AND m.subject=s.subject WHERE s.id=$1`, sessionID).
+			Scan(&tenantID, &subject, &version, &watermark, &memberVersion, &left, &expires, &revoked)
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && (tenantID != rc.Tenant || subject != rc.Principal.ID)) {
 			return failure(401, "channel_session_invalid")
 		}
 		if err != nil {
 			return err
 		}
-		if revoked || version <= watermark {
+		// 已作废、绑定已失效，或会话来自成员退出之前（重新加入不恢复旧会话）
+		if revoked || version <= watermark || memberVersion <= left {
 			return failure(401, "channel_session_revoked")
 		}
 		if !d.now().Before(expires) {

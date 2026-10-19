@@ -29,12 +29,13 @@ import (
 const Channel = "wecom"
 
 // Service 是 channels 的用例。Authz 是 identity 的授权决策点，Guard 是 identity 的强认证门禁（本地绑定；取不到时管理动作
-// 失败关闭），Sessions 是 identity 的免登会话签发与撤销，WeCom 是企业微信渠道适配器（缺省未接入）。Now 是业务时钟。
+// 失败关闭），Sessions 是 identity 的免登会话签发与撤销，Members 是 identity 的会话核验（取当前成员版本），WeCom 是企业微信渠道适配器（缺省未接入）。Now 是业务时钟。
 type Service struct {
 	DB       *db.DB
 	Authz    authz.Decider
 	Guard    identity.Guard
 	Sessions identity.ChannelSessions
+	Members  identity.SessionResolver
 	WeCom    api.Provider
 	Now      func() time.Time
 	Log      *slog.Logger

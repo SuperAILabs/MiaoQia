@@ -103,13 +103,17 @@ type Invoker interface {
 	// 仅 channels 的服务主体可调用（服务授权
 	// can_issue_channel_sessions），带绑定所在租户的上下文。channels
 	// 在核对绑定有效后签发
-	// 签发凭据（凭据标识、绑定标识、绑定版本、成员、到期时间为签发后30秒），本接口凭它签发不带强认证的免登会话（12小时）。
+	// 签发凭据（凭据标识、绑定标识、绑定版本、成员、绑定建立时的成员版本、到期时间为签发后30秒），本接口凭它签发不带强认证的免登会话（12小时）。
 	// identity 在一个事务中锁定该绑定的撤销水位行，依次核验：凭据未过期（按
 	// identity 时钟与5秒偏差从严：须早于到期前5秒， 否则 410
 	// credential_expired；有效期长于35秒的凭据为 400
 	// invalid_credential）、绑定版本高于撤销水位（否则 409 binding_revoked）、
 	// 成员为本租户有效成员（否则 403
-	// member_inactive），再写入会话并记审计。同一凭据标识重复提交返回同一会话（outcome
+	// member_inactive）、绑定建立后成员没有退出过（成员退出是生命周期边界：绑定建立时的成员版本
+	// 不高于最近一次退出时的成员版本即为 409
+	// member_rejoined，重新加入不恢复旧绑定，须重新绑定），再写入会话并记审计。
+	// 网关每次核验会话时同样核对：会话的成员版本不高于最近一次退出时的成员版本即为
+	// 401 channel_session_revoked。同一凭据标识重复提交返回同一会话（outcome
 	// replayed）， 凭据标识相同而内容不同为 409
 	// credential_conflict；该会话已被撤销时为 409
 	// binding_revoked，不返回已作废的会话。 与 revokeChannelSessions
@@ -1038,13 +1042,17 @@ func (c *Client) sendGetTenant(ctx context.Context, params GetTenantParams) (res
 // 仅 channels 的服务主体可调用（服务授权
 // can_issue_channel_sessions），带绑定所在租户的上下文。channels
 // 在核对绑定有效后签发
-// 签发凭据（凭据标识、绑定标识、绑定版本、成员、到期时间为签发后30秒），本接口凭它签发不带强认证的免登会话（12小时）。
+// 签发凭据（凭据标识、绑定标识、绑定版本、成员、绑定建立时的成员版本、到期时间为签发后30秒），本接口凭它签发不带强认证的免登会话（12小时）。
 // identity 在一个事务中锁定该绑定的撤销水位行，依次核验：凭据未过期（按
 // identity 时钟与5秒偏差从严：须早于到期前5秒， 否则 410
 // credential_expired；有效期长于35秒的凭据为 400
 // invalid_credential）、绑定版本高于撤销水位（否则 409 binding_revoked）、
 // 成员为本租户有效成员（否则 403
-// member_inactive），再写入会话并记审计。同一凭据标识重复提交返回同一会话（outcome
+// member_inactive）、绑定建立后成员没有退出过（成员退出是生命周期边界：绑定建立时的成员版本
+// 不高于最近一次退出时的成员版本即为 409
+// member_rejoined，重新加入不恢复旧绑定，须重新绑定），再写入会话并记审计。
+// 网关每次核验会话时同样核对：会话的成员版本不高于最近一次退出时的成员版本即为
+// 401 channel_session_revoked。同一凭据标识重复提交返回同一会话（outcome
 // replayed）， 凭据标识相同而内容不同为 409
 // credential_conflict；该会话已被撤销时为 409
 // binding_revoked，不返回已作废的会话。 与 revokeChannelSessions

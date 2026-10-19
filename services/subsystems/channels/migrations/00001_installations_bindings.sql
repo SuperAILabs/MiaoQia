@@ -66,6 +66,8 @@ CREATE TABLE chn_bindings (
     channel_user_id            text NOT NULL,
     display_name               text,
     subject                    text NOT NULL,
+    -- 绑定建立（请求固定会话）时成员的成员版本：成员此后退出过即为旧绑定（identity 拒绝签发；成员事件按它判断新旧）
+    member_version             bigint NOT NULL CHECK (member_version >= 1),
     state                      text NOT NULL CHECK (state IN ('bound', 'revoking', 'invalidated')),
     version                    bigint NOT NULL CHECK (version >= 1),
     reason                     text CHECK (reason IN ('member_unbind', 'admin_unbind', 'member_left', 'channel_disabled')),
@@ -100,6 +102,7 @@ CREATE TABLE chn_binding_requests (
     state           text NOT NULL CHECK (state IN ('initiated', 'pinned', 'completed', 'voided')),
     pinned_subject  text,
     pinned_session  text,
+    pinned_member_version bigint CHECK (pinned_member_version >= 1),
     void_reason     text,
     binding_id      text,
     result          jsonb,
@@ -107,7 +110,7 @@ CREATE TABLE chn_binding_requests (
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now(),
     FOREIGN KEY (tenant_id, installation_id) REFERENCES chn_installations (tenant_id, id),
-    CHECK (state IN ('initiated', 'voided') OR (pinned_subject IS NOT NULL AND pinned_session IS NOT NULL)),
+    CHECK (state IN ('initiated', 'voided') OR (pinned_subject IS NOT NULL AND pinned_session IS NOT NULL AND pinned_member_version IS NOT NULL)),
     CHECK ((state = 'completed') = (binding_id IS NOT NULL AND result IS NOT NULL))
 );
 CREATE INDEX chn_binding_requests_account ON chn_binding_requests (tenant_id, corp_id, channel_user_id) WHERE state = 'initiated';
