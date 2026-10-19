@@ -1,0 +1,613 @@
+openapi: 3.1.0
+info:
+  title: channels 渠道安装、绑定与卡片跳转接口
+  version: 0.1.0
+  description: >-
+    channels 的对外接口（经 gateway，令牌派生租户与主体），PRD 第1段 F4–F7 的服务端切片。首批只有企业微信（wecom）；
+    飞书、钉钉随各自适配器追加。租户只来自已验证的令牌，请求体与链接中的租户一律不信任。管理动作（安装、验证、停用、强制解绑）
+    经 identity.Guard 的 RequireAdmin：can_manage_members 与15分钟内的强认证（403 forbidden / mfa_required /
+    totp_enrollment_required）。渠道回调（安装授权回调、消息回调验签）与渠道内置浏览器的免登入口不带妙洽令牌，不在本契约中：
+    它们以 channels 的本地绑定提供，对外路由随网关的未认证入口接入。绑定的权威在 channels：失效即时生效（状态 revoking，
+    界面显示“解绑处理中”），identity 确认撤销免登会话且最后一张签发凭据过期（含5秒偏差）后才变为 invalidated。
+    无权限与不存在使用同一错误（404 content_unavailable），不返回标题、归属、组织单元或负责人。
+servers:
+- url: /
+paths:
+  /v1/channels/installations:
+    get:
+      operationId: listInstallations
+      summary: 本租户的渠道安装（设置 / 渠道）
+      description: >-
+        需要 can_manage_members（只读，不要求强认证）。每个渠道至多一条安装记录，含状态与已绑定人数（状态为 bound 的绑定数）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 安装列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstallationList'
+        default: &problem
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: installChannel
+      summary: 开始安装渠道（InstallChannel）
+      description: >-
+        管理员 + 强认证。创建或重新开始本租户在该渠道的安装：状态 authorizing，返回渠道官方授权页地址（一次性 state，10分钟有效）。
+        已启用或待验证的安装为 409 channel_already_installed；授权中或已停用的安装重新开始授权（版本加一，此前发出的授权 state 失效）。
+        授权回调成功后状态为 pending_verification，并登记安装所属的企业；同一企业同时只能属于一个租户（409 corp_installed_elsewhere，
+        在回调时判断）。渠道适配器未接入时 503 channel_unavailable。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &idempotency
+        name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallChannelRequest'
+      responses:
+        '200':
+          description: 安装记录与授权页地址
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstallationStarted'
+        default: *problem
+  /v1/channels/installations/{installationID}/verify:
+    post:
+      operationId: verifyInstallation
+      summary: 确认测试消息，启用渠道（VerifyInstallation）
+      description: >-
+        管理员 + 强认证。安装须为 pending_verification，且调用者本人已按绑定规则在该安装下完成绑定（状态 bound），
+        否则 409 installation_not_pending / 409 verification_binding_required；之后状态为 enabled。按 expected_version 并发控制。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - &installationID
+        name: installationID
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/InstallationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已启用的安装
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Installation'
+        default: *problem
+  /v1/channels/installations/{installationID}/disable:
+    post:
+      operationId: disableInstallation
+      summary: 停用渠道（UninstallChannel）
+      description: >-
+        管理员 + 强认证。安装变为 disabled，企业登记解除；在同一事务中使该安装下全部 bound 的绑定变为 revoking（原因
+        channel_disabled，版本加一，各发布一条 channels.binding.changed.v1），此后不再投递、不再签发免登，消息改投站内。
+        提交后逐个同步撤销免登会话，失败的由事件与定时重试送达。已投递的消息不撤回。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *installationID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已停用的安装
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Installation'
+        default: *problem
+  /v1/channels/bindings:
+    get:
+      operationId: listBindings
+      summary: 列出渠道绑定（ListBindings）
+      description: >-
+        管理员（can_manage_members）看到本租户全部绑定，其他成员只看到本人的绑定；均不要求强认证。按创建时间倒序（同一时间按标识倒序）
+        分页，每页至多 limit 条（默认且至多500）；还有更早的绑定时 truncated 为 true 并给出 next_cursor（须带相同的 state 过滤，
+        只在签发它的租户与调用者内有效，否则 400 invalid_cursor）。revoking 即“解绑处理中”。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: state
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/BindingState'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 500
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/BindingCursor'
+      responses:
+        '200':
+          description: 绑定列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindingList'
+        default: *problem
+  /v1/channels/bindings:prepare:
+    post:
+      operationId: prepareBinding
+      summary: 打开绑定链接并固定会话（BindAccount 第一步）
+      description: >-
+        成员在渠道内置浏览器中登录后调用。依次核验：带渠道网页授权码（缺少时 400 channel_browser_required，提示在企业微信中打开）；
+        经渠道网页授权取得当前渠道账号（渠道网页授权不可用时 503 channel_oauth_unavailable，授权码无效时 401 channel_oauth_invalid）；
+        该账号所在企业是本租户已安装且未停用的企业（否则 403 channel_tenant_mismatch）；链接存在（404 binding_link_not_found）、
+        未作废（410 binding_link_voided）、未完成（410 binding_link_used）、未过期（10分钟，410 binding_link_expired）；
+        当前渠道账号与链接记录的渠道账号一致（否则 403 channel_identity_mismatch，链接作废）。首次调用把请求固定到本次 Web 会话
+        （令牌的 sid）与成员；已固定到其他会话或成员时 409 binding_session_mismatch（链接作废）。返回确认页内容与内容摘要
+        confirmation，确认时须原样提交。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BindingLinkRequest'
+      responses:
+        '200':
+          description: 确认页内容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindingPreview'
+        default: *problem
+  /v1/channels/bindings:confirm:
+    post:
+      operationId: confirmBinding
+      summary: 确认绑定（BindAccount）
+      description: >-
+        核验同 prepareBinding（未经 prepare 时在此固定会话），另须 confirmation 与固定后的请求内容一致（409 binding_request_changed）。
+        通过后在一个事务中写入绑定（状态 bound，版本1，新的绑定标识）并作废链接，发布 channels.binding.changed.v1，提交后在渠道内发送
+        “绑定成功”。渠道账号已绑定其他成员时 409 channel_account_already_bound，成员在该渠道已绑定其他账号时 409 member_already_bound。
+        已完成的链接：同一固定会话、同一成员、同一渠道账号、同一 confirmation 的重试返回首次结果（outcome already_bound），
+        不新建绑定、不再通知；绑定已不再是 bound 时、或其他会话、其他渠道账号、内容改变的请求一律 410 binding_link_used，不产生绑定或通知。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmBindingRequest'
+      responses:
+        '200':
+          description: 绑定结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindingConfirmation'
+        default: *problem
+  /v1/channels/bindings/{bindingID}/unbind:
+    post:
+      operationId: unbindAccount
+      summary: 解绑（UnbindAccount）
+      description: >-
+        绑定的成员本人可解绑（不要求强认证）；其他调用者须为管理员 + 强认证并给出原因（强制解绑，缺原因 400 reason_required）。
+        其他租户的与不存在的绑定都返回 404 binding_not_found。按 expected_version 并发控制；绑定须为 bound（否则 409 binding_not_bound）。
+        提交后绑定立即为 revoking（版本加一），新的免登在 channels 处即被拒绝；随后同步调用 identity 撤销，失败时经事件与定时重试。
+        identity 确认撤销且最后一张签发凭据过期（加5秒）后，绑定变为 invalidated。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - name: bindingID
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/BindingID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnbindRequest'
+      responses:
+        '200':
+          description: 解绑后的绑定（revoking，或撤销已确认且凭据已过期时 invalidated）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Binding'
+        default: *problem
+  /v1/channels/card-links:open:
+    post:
+      operationId: openCardLink
+      summary: 打开卡片详情链接（F7）
+      description: >-
+        以当前登录成员打开卡片上的短时授权链接，链接只指向对象，不携带登录身份。链接不存在、属于其他租户、对象不存在或当前成员
+        无权查看（identity Check can_view）时，统一为 404 content_unavailable，响应不含标题、归属、组织单元或负责人；
+        链接发给的是另一成员时 409 account_mismatch（recipient 给出链接的收件人），不切换账号；链接过期时 410 card_link_expired。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenCardLinkRequest'
+      responses:
+        '200':
+          description: 可打开的对象
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardTarget'
+        default: *problem
+components:
+  schemas:
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          description: 稳定错误代码
+        recipient:
+          type: string
+          description: 仅 account_mismatch：链接的收件人（成员标识）
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+    ChannelKind:
+      type: string
+      description: 渠道；首批只有企业微信
+      enum:
+      - wecom
+    InstallationID:
+      type: string
+      description: 渠道安装标识 chi_<ULID>（contracts/identifiers.yaml）
+      pattern: ^chi_[0-9A-HJKMNP-TV-Z]{26}$
+    BindingID:
+      type: string
+      description: 渠道绑定标识 chb_<ULID>；重新绑定产生新的标识
+      pattern: ^chb_[0-9A-HJKMNP-TV-Z]{26}$
+    InstallationState:
+      type: string
+      description: >-
+        authorizing 等待渠道官方授权回调；pending_verification 待验证（管理员本人绑定后确认）；enabled 已启用；disabled 已停用。
+        渠道健康检测置位的“异常”尚未实现。
+      enum:
+      - authorizing
+      - pending_verification
+      - enabled
+      - disabled
+    Installation:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - channel
+      - state
+      - version
+      - bound_count
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/InstallationID'
+        channel:
+          $ref: '#/components/schemas/ChannelKind'
+        state:
+          $ref: '#/components/schemas/InstallationState'
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        corp_id:
+          type: string
+          description: 安装所属的企业（授权回调后登记）
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        corp_name:
+          type: string
+          maxLength: 120
+        bound_count:
+          type: integer
+          minimum: 0
+        rejected_callbacks:
+          type: integer
+          minimum: 0
+          description: 被拒绝的回调数（验签失败、重放、超出时间窗），计入渠道健康
+        created_at:
+          type: string
+          format: date-time
+        verified_at:
+          type: string
+          format: date-time
+        disabled_at:
+          type: string
+          format: date-time
+    InstallationList:
+      type: object
+      additionalProperties: false
+      required:
+      - installations
+      properties:
+        installations:
+          type: array
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/Installation'
+    InstallChannelRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - channel
+      properties:
+        channel:
+          $ref: '#/components/schemas/ChannelKind'
+    InstallationStarted:
+      type: object
+      additionalProperties: false
+      required:
+      - installation
+      properties:
+        installation:
+          $ref: '#/components/schemas/Installation'
+        authorize_url:
+          type: string
+          format: uri
+          description: 渠道官方授权页地址（带一次性 state，channels 只保存 state 的摘要），只在首次响应中返回；同一 Idempotency-Key 的重放不含该字段，须以新的键重新开始安装
+    VersionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+    BindingState:
+      type: string
+      description: bound 已绑定；revoking 失效中（界面“解绑处理中”）；invalidated 已失效（撤销已确认且最后一张签发凭据已过期）
+      enum:
+      - bound
+      - revoking
+      - invalidated
+    BindingReason:
+      type: string
+      description: 失效原因：member_unbind 本人解绑；admin_unbind 管理员强制解绑；member_left 成员停用或退出；channel_disabled 渠道停用
+      enum:
+      - member_unbind
+      - admin_unbind
+      - member_left
+      - channel_disabled
+    Binding:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - channel
+      - installation_id
+      - subject
+      - corp_id
+      - channel_user_id
+      - state
+      - version
+      - bound_at
+      properties:
+        id:
+          $ref: '#/components/schemas/BindingID'
+        channel:
+          $ref: '#/components/schemas/ChannelKind'
+        installation_id:
+          $ref: '#/components/schemas/InstallationID'
+        subject:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        corp_id:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        channel_user_id:
+          type: string
+          pattern: ^[A-Za-z0-9_.@-]{1,64}$
+        display_name:
+          type: string
+          maxLength: 120
+          description: 渠道账号显示名；不可得时缺省
+        state:
+          $ref: '#/components/schemas/BindingState'
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          $ref: '#/components/schemas/BindingReason'
+        note:
+          type: string
+          maxLength: 200
+          description: 管理员强制解绑时记录的原因
+        bound_at:
+          type: string
+          format: date-time
+        revoking_at:
+          type: string
+          format: date-time
+        invalidated_at:
+          type: string
+          format: date-time
+    BindingCursor:
+      type: string
+      description: 不透明的翻页游标（base64url），由 BindingList.next_cursor 给出
+      pattern: ^[A-Za-z0-9_-]{1,256}$
+    BindingList:
+      type: object
+      additionalProperties: false
+      required:
+      - bindings
+      - truncated
+      properties:
+        bindings:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Binding'
+        truncated:
+          type: boolean
+        next_cursor:
+          $ref: '#/components/schemas/BindingCursor'
+    LinkToken:
+      type: string
+      description: 一次性链接令牌（43位 base64url），channels 只保存其摘要
+      pattern: ^[A-Za-z0-9_-]{43}$
+    OAuthCode:
+      type: string
+      description: 渠道网页授权码（只在渠道内置浏览器中取得）
+      pattern: ^[A-Za-z0-9_-]{1,256}$
+    BindingLinkRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - link_token
+      properties:
+        link_token:
+          $ref: '#/components/schemas/LinkToken'
+        oauth_code:
+          $ref: '#/components/schemas/OAuthCode'
+    Confirmation:
+      type: string
+      description: 绑定请求内容摘要（请求、渠道账号、成员与固定的会话）
+      pattern: ^[0-9a-f]{64}$
+    BindingPreview:
+      type: object
+      additionalProperties: false
+      required:
+      - channel
+      - corp_id
+      - channel_user_id
+      - subject
+      - expires_at
+      - confirmation
+      properties:
+        channel:
+          $ref: '#/components/schemas/ChannelKind'
+        corp_id:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        corp_name:
+          type: string
+          maxLength: 120
+        channel_user_id:
+          type: string
+          pattern: ^[A-Za-z0-9_.@-]{1,64}$
+        display_name:
+          type: string
+          maxLength: 120
+        subject:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        expires_at:
+          type: string
+          format: date-time
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+    ConfirmBindingRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - link_token
+      - confirmation
+      properties:
+        link_token:
+          $ref: '#/components/schemas/LinkToken'
+        oauth_code:
+          $ref: '#/components/schemas/OAuthCode'
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+    BindingConfirmation:
+      type: object
+      additionalProperties: false
+      required:
+      - binding
+      - outcome
+      properties:
+        binding:
+          $ref: '#/components/schemas/Binding'
+        outcome:
+          type: string
+          description: bound 本次绑定；already_bound 同一请求此前已完成（返回首次结果，不再通知）
+          enum:
+          - bound
+          - already_bound
+    UnbindRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 强制解绑的原因（管理员必填）
+    OpenCardLinkRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - token
+      properties:
+        token:
+          $ref: '#/components/schemas/LinkToken'
+    CardTarget:
+      type: object
+      additionalProperties: false
+      required:
+      - object
+      properties:
+        object:
+          type: string
+          description: 链接指向的对象；客户端按对象所有者的接口读取，读取时仍按当前成员权限判断
+          pattern: ^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$

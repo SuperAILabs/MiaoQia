@@ -9,12 +9,14 @@ import (
 // 清单随代码评审变更，启动时与 OpenFGA 对齐：缺少的写入，清单外的同类关系删除，因此 OpenFGA 中的服务授权只来自本清单。
 //   - context_reader：读取客户上下文版本与快照（customer-context 第6节的读取方：detection 求值、learning 仿真、research 与
 //     assessment 固定引用）；
-//   - <资源>_registrar：同步该类资源的参与关系（SyncResourceParticipants），只授予资源的所属子系统（contracts/identifiers.yaml 的 owner）。
+//   - <资源>_registrar：同步该类资源的参与关系（SyncResourceParticipants），只授予资源的所属子系统（contracts/identifiers.yaml 的 owner）；
+//   - channel_session_issuer：签发、撤销与对账渠道免登会话（IssueChannelSession / RevokeChannelSessions），只授予渠道绑定的权威 channels。
 var ServiceGrants = map[string][]string{
-	"context_reader":      {"assessment", "detection", "learning", "research"},
-	"objective_registrar": {"customer-context"},
-	"pursuit_registrar":   {"pursuit"},
-	"research_registrar":  {"research"},
+	"context_reader":         {"assessment", "detection", "learning", "research"},
+	"objective_registrar":    {"customer-context"},
+	"pursuit_registrar":      {"pursuit"},
+	"research_registrar":     {"research"},
+	"channel_session_issuer": {"channels"},
 }
 
 // PlatformObject 是平台对象，服务授权挂在它上面。

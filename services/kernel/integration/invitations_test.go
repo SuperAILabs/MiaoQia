@@ -323,14 +323,15 @@ func TestInvitationsAndStrongAuth(t *testing.T) {
 		org(tok(admin, t1, authAt(at.Add(-20*time.Minute))), "刷新", 403, "mfa_required")
 		// 只有 amr=mfa 不能证明新鲜度
 		org(tok(admin, t1, map[string]any{"amr": []string{"mfa"}}), "无认证时间", 403, "mfa_required")
-		// 渠道免登会话：即使声明了 amr 与新的 auth_time 也须重新完成 TOTP；未知会话来源同样不满足
-		for _, source := range []string{"channel", "password"} {
-			claims := authAt(at)
-			claims["miaoqia_session_source"] = source
-			org(tok(admin, t1, claims), "免登"+source, 403, "mfa_required")
-		}
-		claims := map[string]any{"miaoqia_session_source": "channel", "auth_time": at.Unix()}
-		org(tok(admin, t1, claims), "免登无MFA", 403, "mfa_required")
+		// 未知会话来源：即使声明了 amr 与新的 auth_time 也不满足强认证
+		claims := authAt(at)
+		claims["miaoqia_session_source"] = "password"
+		org(tok(admin, t1, claims), "未知来源", 403, "mfa_required")
+		// 渠道免登来源的令牌必须带 identity 签发的免登会话，否则网关直接拒绝（带有效免登会话时须重新完成 TOTP，见 channels_test 用例11）
+		claims = authAt(at)
+		claims["miaoqia_session_source"] = "channel"
+		org(tok(admin, t1, claims), "免登无会话", 401, "channel_session_invalid")
+		org(tok(admin, t1, map[string]any{"miaoqia_session_source": "channel", "auth_time": at.Unix()}), "免登无MFA", 401, "channel_session_invalid")
 		// auth_time 晚于 identity 时钟超过容许偏差：不可信
 		org(tok(admin, t1, authAt(at.Add(time.Minute))), "未来", 403, "mfa_required")
 	})

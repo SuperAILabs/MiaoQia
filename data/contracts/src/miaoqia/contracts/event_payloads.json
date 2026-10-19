@@ -362,6 +362,120 @@
       }
     },
     {
+      "event": "channels.binding.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "state": "bound",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "解绑进入失效中",
+      "valid": true,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "reason": "member_unbind",
+        "state": "revoking",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 2
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "失效完成",
+      "valid": true,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "reason": "channel_disabled",
+        "state": "invalidated",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 2
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "失效必须带原因",
+      "valid": false,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "state": "revoking",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 2
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "失效版本须高于建立版本",
+      "valid": false,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "reason": "member_left",
+        "state": "revoking",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "建立不带原因",
+      "valid": false,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "reason": "member_unbind",
+        "state": "bound",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "载荷不得夹带租户",
+      "valid": false,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "state": "bound",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "载荷不得夹带渠道账号",
+      "valid": false,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "channel_user_id": "zhangsan",
+        "state": "bound",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
+      "event": "channels.binding.changed.v1",
+      "name": "未登记的状态",
+      "valid": false,
+      "value": {
+        "binding_id": "chb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "state": "unbound",
+        "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "version": 1
+      }
+    },
+    {
       "event": "customer_context.profile.updated.v1",
       "name": "base",
       "valid": true,
@@ -2472,6 +2586,88 @@
         "resource",
         "result",
         "occurred_at"
+      ],
+      "type": "object"
+    },
+    "channels.binding.changed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "version": {
+                "minimum": 2
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          },
+          "if": {
+            "properties": {
+              "state": {
+                "const": "bound"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "reason"
+              ]
+            },
+            "properties": {
+              "version": {
+                "const": 1
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "binding_id": {
+          "pattern": "^chb_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "member_unbind",
+            "admin_unbind",
+            "member_left",
+            "channel_disabled"
+          ],
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "bound",
+            "revoking",
+            "invalidated"
+          ],
+          "type": "string"
+        },
+        "subject": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "version": {
+          "description": "绑定版本：建立为1，失效时加一；撤销水位抬高到该值",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "binding_id",
+        "channel",
+        "subject",
+        "version",
+        "state"
       ],
       "type": "object"
     },

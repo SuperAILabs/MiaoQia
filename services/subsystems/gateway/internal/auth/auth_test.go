@@ -145,6 +145,24 @@ func TestAssuranceClaims(t *testing.T) {
 			}
 		})
 	}
+	// Web 会话标识（sid）与免登会话标识：后者只在免登来源的令牌上生效
+	for _, c := range []struct {
+		name            string
+		claims          map[string]any
+		sid, channelSID string
+	}{
+		{"交互登录", map[string]any{"sid": "web-1", "miaoqia_channel_session": "chs_01J0000000000000000000000A"}, "web-1", ""},
+		{"免登", map[string]any{"sid": "web-2", "miaoqia_session_source": "channel", "miaoqia_channel_session": "chs_01J0000000000000000000000A"}, "web-2", "chs_01J0000000000000000000000A"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "/", nil)
+			r.Header.Set("Authorization", "Bearer "+issuer.TokenWith(t, "usr_test", "", "", c.claims))
+			_, a, err := v.VerifyAssurance(r)
+			if err != nil || a.SessionID != c.sid || a.ChannelSession != c.channelSID {
+				t.Fatalf("%+v %v", a, err)
+			}
+		})
+	}
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("Authorization", "Bearer "+issuer.TokenWith(t, "usr_test", "", "", map[string]any{"auth_time": "yesterday"}))
 	if _, _, err := v.VerifyAssurance(r); err == nil {

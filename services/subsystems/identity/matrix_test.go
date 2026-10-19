@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -255,7 +256,8 @@ func TestServiceAuthorization(t *testing.T) {
 	grant([3]string{infra.PlatformObject, "platform", "tenant:t"})
 	for relation, services := range infra.ServiceGrants {
 		tenantRelation := map[string]string{"context_reader": "can_read_context", "objective_registrar": "can_sync_objective_participants",
-			"pursuit_registrar": "can_sync_pursuit_participants", "research_registrar": "can_sync_research_case_participants"}[relation]
+			"pursuit_registrar": "can_sync_pursuit_participants", "research_registrar": "can_sync_research_case_participants",
+			"channel_session_issuer": "can_issue_channel_sessions"}[relation]
 		if tenantRelation == "" {
 			t.Fatalf("服务授权 %s 没有对应的租户动作", relation)
 		}
@@ -264,7 +266,10 @@ func TestServiceAuthorization(t *testing.T) {
 				t.Errorf("service:%s 应有 %s", s, tenantRelation)
 			}
 		}
-		for _, other := range []string{"service:channels", "user:ta", "user:dm"} {
+		for _, other := range []string{"service:channels", "service:detection", "user:ta", "user:dm"} {
+			if slices.Contains(services, strings.TrimPrefix(other, "service:")) {
+				continue
+			}
 			if check(other, tenantRelation, "tenant:t") {
 				t.Errorf("%s 不应有 %s", other, tenantRelation)
 			}

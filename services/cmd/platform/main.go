@@ -207,6 +207,11 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 					return fmt.Errorf("identity remote missing directory")
 				}
 				bindings.Provide(identityapi.DirectoryBinding, directory)
+				sessions, ok := c.(identityapi.ChannelSessions)
+				if !ok {
+					return fmt.Errorf("identity remote missing channel sessions")
+				}
+				bindings.Provide(identityapi.ChannelSessionsBinding, sessions)
 			}
 			delete(want, sub)
 			log.Info("远程绑定", "subsystem", sub, "url", os.Getenv(envKey(sub, "URL")))

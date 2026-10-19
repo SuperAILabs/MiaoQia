@@ -1,0 +1,75 @@
+fixtures:
+- event: channels.binding.changed.v1
+  base:
+    binding_id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: wecom
+    subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    state: bound
+  cases:
+  - name: 解绑进入失效中
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: revoking
+    - op: replace
+      path: /version
+      value: 2
+    - op: add
+      path: /reason
+      value: member_unbind
+  - name: 失效完成
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: invalidated
+    - op: replace
+      path: /version
+      value: 2
+    - op: add
+      path: /reason
+      value: channel_disabled
+  - name: 失效必须带原因
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: revoking
+    - op: replace
+      path: /version
+      value: 2
+  - name: 失效版本须高于建立版本
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: revoking
+    - op: add
+      path: /reason
+      value: member_left
+  - name: 建立不带原因
+    valid: false
+    patch:
+    - op: add
+      path: /reason
+      value: member_unbind
+  - name: 载荷不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 载荷不得夹带渠道账号
+    valid: false
+    patch:
+    - op: add
+      path: /channel_user_id
+      value: zhangsan
+  - name: 未登记的状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: unbound

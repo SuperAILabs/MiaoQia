@@ -766,3 +766,179 @@ fixtures:
     patch:
     - op: remove
       path: /member_version
+- schema: ChannelBindingID
+  base: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 其他前缀
+    valid: false
+    instance: inv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: ChannelSessionID
+  base: chs_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 非 ULID
+    valid: false
+    instance: chs_1
+- schema: IssueChannelSessionRequest
+  base:
+    credential_id: 01JA8ZXXXXXXXXXXXXXXXXXXX1
+    binding_id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    binding_version: 1
+    subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    member_version: 3
+    credential_expires_at: '2026-10-19T08:00:30Z'
+  cases:
+  - name: 缺成员版本
+    valid: false
+    patch:
+    - op: remove
+      path: /member_version
+  - name: 成员版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /member_version
+      value: 0
+  - name: 缺凭据到期时间
+    valid: false
+    patch:
+    - op: remove
+      path: /credential_expires_at
+  - name: 绑定版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /binding_version
+      value: 0
+  - name: 凭据标识过短
+    valid: false
+    patch:
+    - op: replace
+      path: /credential_id
+      value: short
+  - name: 请求不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不得自带强认证声明
+    valid: false
+    patch:
+    - op: add
+      path: /mfa
+      value: true
+- schema: ChannelSession
+  base:
+    id: chs_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    binding_id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    binding_version: 1
+    subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    issued_at: '2026-10-19T08:00:00Z'
+    expires_at: '2026-10-19T20:00:00Z'
+    outcome: issued
+  cases:
+  - name: 同一凭据的首次结果
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: replayed
+  - name: 未登记的结果
+    valid: false
+    patch:
+    - op: replace
+      path: /outcome
+      value: refreshed
+  - name: 缺到期时间
+    valid: false
+    patch:
+    - op: remove
+      path: /expires_at
+- schema: RevokeChannelSessionsRequest
+  base:
+    binding_id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    binding_version: 2
+  cases:
+  - name: 缺绑定版本
+    valid: false
+    patch:
+    - op: remove
+      path: /binding_version
+  - name: 绑定标识格式错误
+    valid: false
+    patch:
+    - op: replace
+      path: /binding_id
+      value: chb_1
+- schema: ChannelSessionRevocation
+  base:
+    binding_id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    watermark: 2
+    revoked_sessions: 1
+    outcome: applied
+  cases:
+  - name: 水位已不低于请求版本
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: already_applied
+    - op: replace
+      path: /revoked_sessions
+      value: 0
+  - name: 作废数不能为负
+    valid: false
+    patch:
+    - op: replace
+      path: /revoked_sessions
+      value: -1
+- schema: ChannelSessionCursor
+  base: eyJiIjoiY2hiXzAxIn0
+  cases:
+  - name: 非 base64url
+    valid: false
+    instance: a+b
+- schema: LiveChannelBindingList
+  base:
+    bindings:
+    - binding_id: chb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      binding_version: 1
+      subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    truncated: true
+    next_cursor: eyJiIjoiY2hiXzAxIn0
+  cases:
+  - name: 缺 truncated
+    valid: false
+    patch:
+    - op: remove
+      path: /truncated
+  - name: 条目不得夹带会话标识
+    valid: false
+    patch:
+    - op: add
+      path: /bindings/0/session_id
+      value: chs_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: ChannelMemberLifecycle
+  base:
+    subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    state: active
+    member_version: 5
+    left_version: 2
+  cases:
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: suspended
+  - name: 缺最近退出版本
+    valid: false
+    patch:
+    - op: remove
+      path: /left_version
+  - name: 不在租户中
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: absent

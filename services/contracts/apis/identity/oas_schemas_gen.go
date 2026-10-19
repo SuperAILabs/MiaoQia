@@ -29,6 +29,328 @@ func (s *AcceptInvitationRequest) SetToken(val string) {
 	s.Token = val
 }
 
+type ChannelBindingID string
+
+// Ref: #/components/schemas/ChannelMemberLifecycle
+type ChannelMemberLifecycle struct {
+	Subject string `json:"subject"`
+	// Active 有效成员；removed 已退出；absent 不是本租户成员.
+	State ChannelMemberLifecycleState `json:"state"`
+	// 当前成员版本（absent 为0）.
+	MemberVersion int64 `json:"member_version"`
+	// 最近一次退出时的成员版本（从未退出为0）.
+	LeftVersion int64 `json:"left_version"`
+}
+
+// GetSubject returns the value of Subject.
+func (s *ChannelMemberLifecycle) GetSubject() string {
+	return s.Subject
+}
+
+// GetState returns the value of State.
+func (s *ChannelMemberLifecycle) GetState() ChannelMemberLifecycleState {
+	return s.State
+}
+
+// GetMemberVersion returns the value of MemberVersion.
+func (s *ChannelMemberLifecycle) GetMemberVersion() int64 {
+	return s.MemberVersion
+}
+
+// GetLeftVersion returns the value of LeftVersion.
+func (s *ChannelMemberLifecycle) GetLeftVersion() int64 {
+	return s.LeftVersion
+}
+
+// SetSubject sets the value of Subject.
+func (s *ChannelMemberLifecycle) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetState sets the value of State.
+func (s *ChannelMemberLifecycle) SetState(val ChannelMemberLifecycleState) {
+	s.State = val
+}
+
+// SetMemberVersion sets the value of MemberVersion.
+func (s *ChannelMemberLifecycle) SetMemberVersion(val int64) {
+	s.MemberVersion = val
+}
+
+// SetLeftVersion sets the value of LeftVersion.
+func (s *ChannelMemberLifecycle) SetLeftVersion(val int64) {
+	s.LeftVersion = val
+}
+
+// Active 有效成员；removed 已退出；absent 不是本租户成员.
+type ChannelMemberLifecycleState string
+
+const (
+	ChannelMemberLifecycleStateActive  ChannelMemberLifecycleState = "active"
+	ChannelMemberLifecycleStateRemoved ChannelMemberLifecycleState = "removed"
+	ChannelMemberLifecycleStateAbsent  ChannelMemberLifecycleState = "absent"
+)
+
+// AllValues returns all ChannelMemberLifecycleState values.
+func (ChannelMemberLifecycleState) AllValues() []ChannelMemberLifecycleState {
+	return []ChannelMemberLifecycleState{
+		ChannelMemberLifecycleStateActive,
+		ChannelMemberLifecycleStateRemoved,
+		ChannelMemberLifecycleStateAbsent,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ChannelMemberLifecycleState) MarshalText() ([]byte, error) {
+	switch s {
+	case ChannelMemberLifecycleStateActive:
+		return []byte(s), nil
+	case ChannelMemberLifecycleStateRemoved:
+		return []byte(s), nil
+	case ChannelMemberLifecycleStateAbsent:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ChannelMemberLifecycleState) UnmarshalText(data []byte) error {
+	switch ChannelMemberLifecycleState(data) {
+	case ChannelMemberLifecycleStateActive:
+		*s = ChannelMemberLifecycleStateActive
+		return nil
+	case ChannelMemberLifecycleStateRemoved:
+		*s = ChannelMemberLifecycleStateRemoved
+		return nil
+	case ChannelMemberLifecycleStateAbsent:
+		*s = ChannelMemberLifecycleStateAbsent
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ChannelSession
+type ChannelSession struct {
+	ID             ChannelSessionID `json:"id"`
+	BindingID      ChannelBindingID `json:"binding_id"`
+	BindingVersion int64            `json:"binding_version"`
+	Subject        string           `json:"subject"`
+	// 业务时间（identity 时钟）.
+	IssuedAt time.Time `json:"issued_at"`
+	// 绝对到期时间：签发后12小时，不随使用延长.
+	ExpiresAt time.Time `json:"expires_at"`
+	// Issued 本次签发；replayed 同一凭据此前已签发，返回首次结果.
+	Outcome ChannelSessionOutcome `json:"outcome"`
+}
+
+// GetID returns the value of ID.
+func (s *ChannelSession) GetID() ChannelSessionID {
+	return s.ID
+}
+
+// GetBindingID returns the value of BindingID.
+func (s *ChannelSession) GetBindingID() ChannelBindingID {
+	return s.BindingID
+}
+
+// GetBindingVersion returns the value of BindingVersion.
+func (s *ChannelSession) GetBindingVersion() int64 {
+	return s.BindingVersion
+}
+
+// GetSubject returns the value of Subject.
+func (s *ChannelSession) GetSubject() string {
+	return s.Subject
+}
+
+// GetIssuedAt returns the value of IssuedAt.
+func (s *ChannelSession) GetIssuedAt() time.Time {
+	return s.IssuedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *ChannelSession) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *ChannelSession) GetOutcome() ChannelSessionOutcome {
+	return s.Outcome
+}
+
+// SetID sets the value of ID.
+func (s *ChannelSession) SetID(val ChannelSessionID) {
+	s.ID = val
+}
+
+// SetBindingID sets the value of BindingID.
+func (s *ChannelSession) SetBindingID(val ChannelBindingID) {
+	s.BindingID = val
+}
+
+// SetBindingVersion sets the value of BindingVersion.
+func (s *ChannelSession) SetBindingVersion(val int64) {
+	s.BindingVersion = val
+}
+
+// SetSubject sets the value of Subject.
+func (s *ChannelSession) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetIssuedAt sets the value of IssuedAt.
+func (s *ChannelSession) SetIssuedAt(val time.Time) {
+	s.IssuedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *ChannelSession) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *ChannelSession) SetOutcome(val ChannelSessionOutcome) {
+	s.Outcome = val
+}
+
+type ChannelSessionCursor string
+
+type ChannelSessionID string
+
+// Issued 本次签发；replayed 同一凭据此前已签发，返回首次结果.
+type ChannelSessionOutcome string
+
+const (
+	ChannelSessionOutcomeIssued   ChannelSessionOutcome = "issued"
+	ChannelSessionOutcomeReplayed ChannelSessionOutcome = "replayed"
+)
+
+// AllValues returns all ChannelSessionOutcome values.
+func (ChannelSessionOutcome) AllValues() []ChannelSessionOutcome {
+	return []ChannelSessionOutcome{
+		ChannelSessionOutcomeIssued,
+		ChannelSessionOutcomeReplayed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ChannelSessionOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case ChannelSessionOutcomeIssued:
+		return []byte(s), nil
+	case ChannelSessionOutcomeReplayed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ChannelSessionOutcome) UnmarshalText(data []byte) error {
+	switch ChannelSessionOutcome(data) {
+	case ChannelSessionOutcomeIssued:
+		*s = ChannelSessionOutcomeIssued
+		return nil
+	case ChannelSessionOutcomeReplayed:
+		*s = ChannelSessionOutcomeReplayed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ChannelSessionRevocation
+type ChannelSessionRevocation struct {
+	BindingID ChannelBindingID `json:"binding_id"`
+	Watermark int64            `json:"watermark"`
+	// 本次作废的会话数.
+	RevokedSessions int                             `json:"revoked_sessions"`
+	Outcome         ChannelSessionRevocationOutcome `json:"outcome"`
+}
+
+// GetBindingID returns the value of BindingID.
+func (s *ChannelSessionRevocation) GetBindingID() ChannelBindingID {
+	return s.BindingID
+}
+
+// GetWatermark returns the value of Watermark.
+func (s *ChannelSessionRevocation) GetWatermark() int64 {
+	return s.Watermark
+}
+
+// GetRevokedSessions returns the value of RevokedSessions.
+func (s *ChannelSessionRevocation) GetRevokedSessions() int {
+	return s.RevokedSessions
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *ChannelSessionRevocation) GetOutcome() ChannelSessionRevocationOutcome {
+	return s.Outcome
+}
+
+// SetBindingID sets the value of BindingID.
+func (s *ChannelSessionRevocation) SetBindingID(val ChannelBindingID) {
+	s.BindingID = val
+}
+
+// SetWatermark sets the value of Watermark.
+func (s *ChannelSessionRevocation) SetWatermark(val int64) {
+	s.Watermark = val
+}
+
+// SetRevokedSessions sets the value of RevokedSessions.
+func (s *ChannelSessionRevocation) SetRevokedSessions(val int) {
+	s.RevokedSessions = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *ChannelSessionRevocation) SetOutcome(val ChannelSessionRevocationOutcome) {
+	s.Outcome = val
+}
+
+type ChannelSessionRevocationOutcome string
+
+const (
+	ChannelSessionRevocationOutcomeApplied        ChannelSessionRevocationOutcome = "applied"
+	ChannelSessionRevocationOutcomeAlreadyApplied ChannelSessionRevocationOutcome = "already_applied"
+)
+
+// AllValues returns all ChannelSessionRevocationOutcome values.
+func (ChannelSessionRevocationOutcome) AllValues() []ChannelSessionRevocationOutcome {
+	return []ChannelSessionRevocationOutcome{
+		ChannelSessionRevocationOutcomeApplied,
+		ChannelSessionRevocationOutcomeAlreadyApplied,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ChannelSessionRevocationOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case ChannelSessionRevocationOutcomeApplied:
+		return []byte(s), nil
+	case ChannelSessionRevocationOutcomeAlreadyApplied:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ChannelSessionRevocationOutcome) UnmarshalText(data []byte) error {
+	switch ChannelSessionRevocationOutcome(data) {
+	case ChannelSessionRevocationOutcomeApplied:
+		*s = ChannelSessionRevocationOutcomeApplied
+		return nil
+	case ChannelSessionRevocationOutcomeAlreadyApplied:
+		*s = ChannelSessionRevocationOutcomeAlreadyApplied
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/CheckRequest
 type CheckRequest struct {
 	// 主体，例如 user:usr_…；缺省为请求上下文的调用主体.
@@ -855,6 +1177,201 @@ func (s *InvitationVersionRequest) SetExpectedVersion(val int64) {
 	s.ExpectedVersion = val
 }
 
+// Ref: #/components/schemas/IssueChannelSessionRequest
+type IssueChannelSessionRequest struct {
+	// 签发凭据标识，由 channels 生成；同一凭据的重试使用同一标识.
+	CredentialID   string           `json:"credential_id"`
+	BindingID      ChannelBindingID `json:"binding_id"`
+	BindingVersion int64            `json:"binding_version"`
+	// 绑定的成员.
+	Subject string `json:"subject"`
+	// 绑定建立（绑定请求固定会话）时该成员的成员版本（identity.member.changed.v1
+	// 的 version）.
+	MemberVersion int64 `json:"member_version"`
+	// 凭据到期时间（channels 签发后30秒）.
+	CredentialExpiresAt time.Time `json:"credential_expires_at"`
+}
+
+// GetCredentialID returns the value of CredentialID.
+func (s *IssueChannelSessionRequest) GetCredentialID() string {
+	return s.CredentialID
+}
+
+// GetBindingID returns the value of BindingID.
+func (s *IssueChannelSessionRequest) GetBindingID() ChannelBindingID {
+	return s.BindingID
+}
+
+// GetBindingVersion returns the value of BindingVersion.
+func (s *IssueChannelSessionRequest) GetBindingVersion() int64 {
+	return s.BindingVersion
+}
+
+// GetSubject returns the value of Subject.
+func (s *IssueChannelSessionRequest) GetSubject() string {
+	return s.Subject
+}
+
+// GetMemberVersion returns the value of MemberVersion.
+func (s *IssueChannelSessionRequest) GetMemberVersion() int64 {
+	return s.MemberVersion
+}
+
+// GetCredentialExpiresAt returns the value of CredentialExpiresAt.
+func (s *IssueChannelSessionRequest) GetCredentialExpiresAt() time.Time {
+	return s.CredentialExpiresAt
+}
+
+// SetCredentialID sets the value of CredentialID.
+func (s *IssueChannelSessionRequest) SetCredentialID(val string) {
+	s.CredentialID = val
+}
+
+// SetBindingID sets the value of BindingID.
+func (s *IssueChannelSessionRequest) SetBindingID(val ChannelBindingID) {
+	s.BindingID = val
+}
+
+// SetBindingVersion sets the value of BindingVersion.
+func (s *IssueChannelSessionRequest) SetBindingVersion(val int64) {
+	s.BindingVersion = val
+}
+
+// SetSubject sets the value of Subject.
+func (s *IssueChannelSessionRequest) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetMemberVersion sets the value of MemberVersion.
+func (s *IssueChannelSessionRequest) SetMemberVersion(val int64) {
+	s.MemberVersion = val
+}
+
+// SetCredentialExpiresAt sets the value of CredentialExpiresAt.
+func (s *IssueChannelSessionRequest) SetCredentialExpiresAt(val time.Time) {
+	s.CredentialExpiresAt = val
+}
+
+// Ref: #/components/schemas/LiveChannelBindingList
+type LiveChannelBindingList struct {
+	Bindings   []LiveChannelBindingListBindingsItem `json:"bindings"`
+	Truncated  bool                                 `json:"truncated"`
+	NextCursor OptChannelSessionCursor              `json:"next_cursor"`
+}
+
+// GetBindings returns the value of Bindings.
+func (s *LiveChannelBindingList) GetBindings() []LiveChannelBindingListBindingsItem {
+	return s.Bindings
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *LiveChannelBindingList) GetTruncated() bool {
+	return s.Truncated
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *LiveChannelBindingList) GetNextCursor() OptChannelSessionCursor {
+	return s.NextCursor
+}
+
+// SetBindings sets the value of Bindings.
+func (s *LiveChannelBindingList) SetBindings(val []LiveChannelBindingListBindingsItem) {
+	s.Bindings = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *LiveChannelBindingList) SetTruncated(val bool) {
+	s.Truncated = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *LiveChannelBindingList) SetNextCursor(val OptChannelSessionCursor) {
+	s.NextCursor = val
+}
+
+type LiveChannelBindingListBindingsItem struct {
+	BindingID ChannelBindingID `json:"binding_id"`
+	// 该绑定仍有效的会话中最高的绑定版本.
+	BindingVersion int64  `json:"binding_version"`
+	Subject        string `json:"subject"`
+}
+
+// GetBindingID returns the value of BindingID.
+func (s *LiveChannelBindingListBindingsItem) GetBindingID() ChannelBindingID {
+	return s.BindingID
+}
+
+// GetBindingVersion returns the value of BindingVersion.
+func (s *LiveChannelBindingListBindingsItem) GetBindingVersion() int64 {
+	return s.BindingVersion
+}
+
+// GetSubject returns the value of Subject.
+func (s *LiveChannelBindingListBindingsItem) GetSubject() string {
+	return s.Subject
+}
+
+// SetBindingID sets the value of BindingID.
+func (s *LiveChannelBindingListBindingsItem) SetBindingID(val ChannelBindingID) {
+	s.BindingID = val
+}
+
+// SetBindingVersion sets the value of BindingVersion.
+func (s *LiveChannelBindingListBindingsItem) SetBindingVersion(val int64) {
+	s.BindingVersion = val
+}
+
+// SetSubject sets the value of Subject.
+func (s *LiveChannelBindingListBindingsItem) SetSubject(val string) {
+	s.Subject = val
+}
+
+// NewOptChannelSessionCursor returns new OptChannelSessionCursor with value set to v.
+func NewOptChannelSessionCursor(v ChannelSessionCursor) OptChannelSessionCursor {
+	return OptChannelSessionCursor{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptChannelSessionCursor is optional ChannelSessionCursor.
+type OptChannelSessionCursor struct {
+	Value ChannelSessionCursor
+	Set   bool
+}
+
+// IsSet returns true if OptChannelSessionCursor was set.
+func (o OptChannelSessionCursor) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptChannelSessionCursor) Reset() {
+	var v ChannelSessionCursor
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptChannelSessionCursor) SetTo(v ChannelSessionCursor) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptChannelSessionCursor) Get() (v ChannelSessionCursor, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptChannelSessionCursor) Or(d ChannelSessionCursor) ChannelSessionCursor {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptDateTime returns new OptDateTime with value set to v.
 func NewOptDateTime(v time.Time) OptDateTime {
 	return OptDateTime{
@@ -1536,6 +2053,33 @@ func (s *PutMemberRequestState) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Ref: #/components/schemas/RevokeChannelSessionsRequest
+type RevokeChannelSessionsRequest struct {
+	BindingID ChannelBindingID `json:"binding_id"`
+	// 失效后的绑定版本；水位抬高到该值，版本不高于它的会话全部作废.
+	BindingVersion int64 `json:"binding_version"`
+}
+
+// GetBindingID returns the value of BindingID.
+func (s *RevokeChannelSessionsRequest) GetBindingID() ChannelBindingID {
+	return s.BindingID
+}
+
+// GetBindingVersion returns the value of BindingVersion.
+func (s *RevokeChannelSessionsRequest) GetBindingVersion() int64 {
+	return s.BindingVersion
+}
+
+// SetBindingID sets the value of BindingID.
+func (s *RevokeChannelSessionsRequest) SetBindingID(val ChannelBindingID) {
+	s.BindingID = val
+}
+
+// SetBindingVersion sets the value of BindingVersion.
+func (s *RevokeChannelSessionsRequest) SetBindingVersion(val int64) {
+	s.BindingVersion = val
 }
 
 // Ref: #/components/schemas/Session
