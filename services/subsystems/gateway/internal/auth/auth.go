@@ -26,6 +26,10 @@ type Claims struct {
 	Cell      string   `json:"miaoqia_cell,omitempty"`
 	TokenType string   `json:"typ"`
 	AMR       []string `json:"amr,omitempty"`
+	// AuthTime 是 IdP 签发的最近一次交互认证时间（OIDC auth_time）；刷新令牌沿用原值，不延长强认证窗口。
+	AuthTime *jwt.NumericDate `json:"auth_time,omitempty"`
+	// SessionSource 缺省为 IdP 交互登录；channel 为渠道免登会话（不带强认证），其他取值视为未知来源。
+	SessionSource *string `json:"miaoqia_session_source,omitempty"`
 }
 
 // Verifier 校验令牌。
@@ -75,25 +79,41 @@ func (v *Verifier) Context(r *http.Request) (reqctx.Context, error) {
 
 // Verify returns context and signed MFA assurance; roles are never trusted from the token.
 func (v *Verifier) Verify(r *http.Request) (reqctx.Context, bool, error) {
+	rc, a, err := v.VerifyAssurance(r)
+	return rc, a.MFA, err
+}
+
+// VerifyAssurance returns context and the signed authentication assurance (amr, auth_time, session source).
+// 强认证是否新鲜由 identity 按自身时钟判断（identity.md 第8节），网关只转交已验证的声明。
+func (v *Verifier) VerifyAssurance(r *http.Request) (reqctx.Context, reqctx.Assurance, error) {
 	raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || raw == "" {
-		return reqctx.Context{}, false, ErrUnauthenticated
+		return reqctx.Context{}, reqctx.Assurance{}, ErrUnauthenticated
 	}
 	var c Claims
 	_, err := jwt.ParseWithClaims(raw, &c, v.keys.Keyfunc, jwt.WithIssuer(v.issuer), jwt.WithValidMethods([]string{"RS256"}),
 		jwt.WithExpirationRequired(), jwt.WithAudience(v.audience), jwt.WithIssuedAt())
 	if err != nil || c.Subject == "" || c.TokenType != "Bearer" || c.IssuedAt == nil {
-		return reqctx.Context{}, false, ErrUnauthenticated
+		return reqctx.Context{}, reqctx.Assurance{}, ErrUnauthenticated
 	}
 	rc := reqctx.Context{Tenant: c.Tenant, Cell: c.Cell, Purpose: "interactive", Principal: reqctx.Principal{ID: c.Subject, Kind: "user"}}
 	if err := rc.Validate(); err != nil {
-		return reqctx.Context{}, false, ErrUnauthenticated
+		return reqctx.Context{}, reqctx.Assurance{}, ErrUnauthenticated
 	}
-	mfa := false
+	a := reqctx.Assurance{Source: reqctx.SourceIdP}
 	for _, method := range c.AMR {
 		if method == "mfa" {
-			mfa = true
+			a.MFA = true
 		}
 	}
-	return rc, mfa, nil
+	if c.AuthTime != nil {
+		a.AuthTime = c.AuthTime.Time
+	}
+	if c.SessionSource != nil {
+		a.Source = reqctx.SourceUnknown
+		if *c.SessionSource == reqctx.SourceChannel {
+			a.Source = reqctx.SourceChannel
+		}
+	}
+	return rc, a, nil
 }

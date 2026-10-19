@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: identity 生命周期事件
-  version: 1.1.0
+  version: 1.2.0
 channels:
   platform.identity:
     address: platform.identity
@@ -14,6 +14,8 @@ channels:
         $ref: '#/components/messages/tenantActivated'
       memberChanged:
         $ref: '#/components/messages/memberChanged'
+      invitationChanged:
+        $ref: '#/components/messages/invitationChanged'
 operations:
   publishIdentityEvents:
     action: send
@@ -160,3 +162,144 @@ components:
             properties:
               roles:
                 maxItems: 0
+    invitationChanged:
+      name: identity.invitation.changed.v1
+      x-fixtures-required: true
+      description: >-
+        邀请的状态变化（1.2.0 起）：created 创建、resent 重发（新链接，旧链接失效）、accepted 接受、revoked 撤回、expired 过期。
+        按邀请版本单调递增，消费方按 (invitation_id, version) 去重并忽略低版本。effective_at 是变化在业务上生效的时间：
+        过期为邀请的过期时间（可能早于发布），其余为命令执行时间。载荷不含邮箱与链接令牌。
+      payload:
+        additionalProperties: false
+        type: object
+        required:
+        - tenant_id
+        - invitation_id
+        - change
+        - state
+        - version
+        - link_generation
+        - expires_at
+        - effective_at
+        - roles
+        properties:
+          tenant_id:
+            pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          invitation_id:
+            pattern: ^inv_[0-9A-HJKMNP-TV-Z]{26}$
+            type: string
+          change:
+            type: string
+            enum:
+            - created
+            - resent
+            - accepted
+            - revoked
+            - expired
+          state:
+            type: string
+            enum:
+            - pending
+            - accepted
+            - revoked
+            - expired
+          version:
+            minimum: 1
+            type: integer
+          link_generation:
+            minimum: 1
+            type: integer
+            description: 当前链接的代次，重发加一
+          expires_at:
+            type: string
+            format: date-time
+          effective_at:
+            type: string
+            format: date-time
+          roles:
+            description: 邀请限定的租户角色
+            items:
+              enum:
+              - admin
+              - decision_maker
+              - business_developer
+              - pursuit_lead
+              - research_analyst
+              - domain_expert
+              type: string
+            maxItems: 6
+            type: array
+            uniqueItems: true
+          unit_roles:
+            description: 邀请限定的单元角色
+            type: array
+            maxItems: 50
+            items:
+              additionalProperties: false
+              type: object
+              required:
+              - org_unit_id
+              - roles
+              properties:
+                org_unit_id:
+                  pattern: ^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$
+                  type: string
+                roles:
+                  items:
+                    enum:
+                    - decision_maker
+                    - business_developer
+                    - pursuit_lead
+                    - research_analyst
+                    - domain_expert
+                    type: string
+                  minItems: 1
+                  maxItems: 5
+                  type: array
+                  uniqueItems: true
+          subject:
+            description: 接受人（仅 accepted）
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+            type: string
+        allOf:
+        - if:
+            properties:
+              change:
+                const: accepted
+          then:
+            required:
+            - subject
+            properties:
+              state:
+                const: accepted
+          else:
+            not:
+              required:
+              - subject
+        - if:
+            properties:
+              change:
+                enum:
+                - created
+                - resent
+          then:
+            properties:
+              state:
+                const: pending
+        - if:
+            properties:
+              change:
+                const: revoked
+          then:
+            properties:
+              state:
+                const: revoked
+        - if:
+            properties:
+              change:
+                const: expired
+          then:
+            properties:
+              state:
+                const: expired

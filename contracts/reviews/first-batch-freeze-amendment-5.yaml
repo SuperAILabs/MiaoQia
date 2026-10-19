@@ -1,0 +1,36 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-19T18:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  PRD 第1段邀请（F2）与强认证时效（F3）的服务端切片对 C4a 冻结契约做了追加式修改：contracts/identifiers.yaml 新增
+  Invitation 前缀 inv（1.2.0 → 1.3.0）；contracts/apis/identity/openapi.yaml 新增邀请的创建、列表、重发、撤回与接受路径及其类型，
+  并在说明中写明租户管理命令要求15分钟内的强认证（auth_time）与 403 mfa_required / totp_enrollment_required（1.2.0 → 1.3.0）。
+  mqc compat 对 origin/main 判定 identity 与标识前缀无 breaking，已有路径与类型不变；成员、单元命令从“已签名 amr=mfa”收紧为
+  “15分钟内的强认证”是授权语义的收紧，不改变请求与响应结构，错误仍为 403 mfa_required。identity 事件 1.2.0 新增
+  identity.invitation.changed.v1（该文件不在 C4a 冻结范围，只记录）。contracts/integration.yaml 的 directory.administration
+  （signed amr=mfa required）仍成立且未改动：强认证时效是在其之上的附加要求，规定在 identity OpenAPI 说明与 identity.md 第8节。
+  这里把切片结束时的内容登记为新基线；原冻结记录与修订 1–4 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.3.0
+  sha256: 1594b020c7b5dced23688285795d9a874108ba76728edd8f0366b850900e54c4
+- path: contracts/apis/identity/openapi.yaml
+  current_version: 1.3.0
+  sha256: 91099cfc6d8b136dcec9840e3bad095b240d60d6064bee35b7e3f6327c0edf21
+fixture_artifacts:
+- path: contracts/apis/identity/fixtures.yaml
+  sha256: c04d589d2d344db3ac38a39207f9faf8a82cca0e6ce26bd223c1cec5adccd6ef
+- path: contracts/events/identity/events.asyncapi.yaml
+  sha256: 4fdade0a7c7ea13001c6705d1a91afad39378ec5ca50370a01cfc51a2077065c
+- path: contracts/events/identity/fixtures.yaml
+  sha256: 3518a11622259dbf48c4c8f6c4c859f15dd47d307bf1ca9d99aeb09bbb643170
+verification:
+  base: 3946294
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0、additive 5：identity 与标识前缀均为追加）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；IdP 账号与邮件渠道为内存端口）

@@ -4,12 +4,29 @@ package identityapi
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-faster/errors"
 )
 
 func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
+}
+
+// Ref: #/components/schemas/AcceptInvitationRequest
+type AcceptInvitationRequest struct {
+	// 邀请链接令牌.
+	Token string `json:"token"`
+}
+
+// GetToken returns the value of Token.
+func (s *AcceptInvitationRequest) GetToken() string {
+	return s.Token
+}
+
+// SetToken sets the value of Token.
+func (s *AcceptInvitationRequest) SetToken(val string) {
+	s.Token = val
 }
 
 // Ref: #/components/schemas/CheckRequest
@@ -67,6 +84,56 @@ func (s *CheckResult) SetAllowed(val bool) {
 	s.Allowed = val
 }
 
+// 角色与单元角色至少一项非空.
+// Ref: #/components/schemas/CreateInvitationRequest
+type CreateInvitationRequest struct {
+	// 受邀人邮箱；identity 按小写保存与比较.
+	Email     string          `json:"email"`
+	Name      string          `json:"name"`
+	Roles     InvitationRoles `json:"roles"`
+	UnitRoles UnitRoles       `json:"unit_roles"`
+}
+
+// GetEmail returns the value of Email.
+func (s *CreateInvitationRequest) GetEmail() string {
+	return s.Email
+}
+
+// GetName returns the value of Name.
+func (s *CreateInvitationRequest) GetName() string {
+	return s.Name
+}
+
+// GetRoles returns the value of Roles.
+func (s *CreateInvitationRequest) GetRoles() InvitationRoles {
+	return s.Roles
+}
+
+// GetUnitRoles returns the value of UnitRoles.
+func (s *CreateInvitationRequest) GetUnitRoles() UnitRoles {
+	return s.UnitRoles
+}
+
+// SetEmail sets the value of Email.
+func (s *CreateInvitationRequest) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetName sets the value of Name.
+func (s *CreateInvitationRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *CreateInvitationRequest) SetRoles(val InvitationRoles) {
+	s.Roles = val
+}
+
+// SetUnitRoles sets the value of UnitRoles.
+func (s *CreateInvitationRequest) SetUnitRoles(val UnitRoles) {
+	s.UnitRoles = val
+}
+
 // Ref: #/components/schemas/CreateOrgUnitRequest
 type CreateOrgUnitRequest struct {
 	Name     string    `json:"name"`
@@ -117,6 +184,753 @@ func (s *CreateTenantRequest) SetName(val string) {
 // SetAdminSubject sets the value of AdminSubject.
 func (s *CreateTenantRequest) SetAdminSubject(val string) {
 	s.AdminSubject = val
+}
+
+// Ref: #/components/schemas/Invitation
+type Invitation struct {
+	ID        InvitationID    `json:"id"`
+	Email     string          `json:"email"`
+	Name      string          `json:"name"`
+	Roles     InvitationRoles `json:"roles"`
+	UnitRoles UnitRoles       `json:"unit_roles"`
+	State     InvitationState `json:"state"`
+	Version   int64           `json:"version"`
+	// 最近一次创建或重发该邀请的管理员.
+	Inviter string `json:"inviter"`
+	// 当前链接的过期时间（业务时间：创建或最近一次重发起7天）.
+	ExpiresAt time.Time `json:"expires_at"`
+	// 当前链接的邮件投递结果：pending 尚未确认（含发送结果未知）；sent
+	// 已交给邮件渠道；failed 发送失败，可重发或复制链接.
+	Delivery   InvitationDelivery `json:"delivery"`
+	AcceptedBy OptString          `json:"accepted_by"`
+	AcceptedAt OptDateTime        `json:"accepted_at"`
+	// 记录时间.
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetID returns the value of ID.
+func (s *Invitation) GetID() InvitationID {
+	return s.ID
+}
+
+// GetEmail returns the value of Email.
+func (s *Invitation) GetEmail() string {
+	return s.Email
+}
+
+// GetName returns the value of Name.
+func (s *Invitation) GetName() string {
+	return s.Name
+}
+
+// GetRoles returns the value of Roles.
+func (s *Invitation) GetRoles() InvitationRoles {
+	return s.Roles
+}
+
+// GetUnitRoles returns the value of UnitRoles.
+func (s *Invitation) GetUnitRoles() UnitRoles {
+	return s.UnitRoles
+}
+
+// GetState returns the value of State.
+func (s *Invitation) GetState() InvitationState {
+	return s.State
+}
+
+// GetVersion returns the value of Version.
+func (s *Invitation) GetVersion() int64 {
+	return s.Version
+}
+
+// GetInviter returns the value of Inviter.
+func (s *Invitation) GetInviter() string {
+	return s.Inviter
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *Invitation) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetDelivery returns the value of Delivery.
+func (s *Invitation) GetDelivery() InvitationDelivery {
+	return s.Delivery
+}
+
+// GetAcceptedBy returns the value of AcceptedBy.
+func (s *Invitation) GetAcceptedBy() OptString {
+	return s.AcceptedBy
+}
+
+// GetAcceptedAt returns the value of AcceptedAt.
+func (s *Invitation) GetAcceptedAt() OptDateTime {
+	return s.AcceptedAt
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Invitation) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetID sets the value of ID.
+func (s *Invitation) SetID(val InvitationID) {
+	s.ID = val
+}
+
+// SetEmail sets the value of Email.
+func (s *Invitation) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetName sets the value of Name.
+func (s *Invitation) SetName(val string) {
+	s.Name = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *Invitation) SetRoles(val InvitationRoles) {
+	s.Roles = val
+}
+
+// SetUnitRoles sets the value of UnitRoles.
+func (s *Invitation) SetUnitRoles(val UnitRoles) {
+	s.UnitRoles = val
+}
+
+// SetState sets the value of State.
+func (s *Invitation) SetState(val InvitationState) {
+	s.State = val
+}
+
+// SetVersion sets the value of Version.
+func (s *Invitation) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetInviter sets the value of Inviter.
+func (s *Invitation) SetInviter(val string) {
+	s.Inviter = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *Invitation) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetDelivery sets the value of Delivery.
+func (s *Invitation) SetDelivery(val InvitationDelivery) {
+	s.Delivery = val
+}
+
+// SetAcceptedBy sets the value of AcceptedBy.
+func (s *Invitation) SetAcceptedBy(val OptString) {
+	s.AcceptedBy = val
+}
+
+// SetAcceptedAt sets the value of AcceptedAt.
+func (s *Invitation) SetAcceptedAt(val OptDateTime) {
+	s.AcceptedAt = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Invitation) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// Ref: #/components/schemas/InvitationAcceptance
+type InvitationAcceptance struct {
+	InvitationID  InvitationID    `json:"invitation_id"`
+	Tenant        string          `json:"tenant"`
+	Subject       string          `json:"subject"`
+	Roles         InvitationRoles `json:"roles"`
+	UnitRoles     UnitRoles       `json:"unit_roles"`
+	MemberVersion int64           `json:"member_version"`
+	AcceptedAt    time.Time       `json:"accepted_at"`
+	// Accepted 本次写入；already_accepted
+	// 同一账号此前已用同一链接接受（返回首次结果，未重复写入）.
+	Outcome InvitationAcceptanceOutcome `json:"outcome"`
+	// Ready IdP 中的租户与 cell 归属已写入，重新登录后令牌带租户；provisioning
+	// 尚未写入，identity 重试中.
+	Access InvitationAcceptanceAccess `json:"access"`
+}
+
+// GetInvitationID returns the value of InvitationID.
+func (s *InvitationAcceptance) GetInvitationID() InvitationID {
+	return s.InvitationID
+}
+
+// GetTenant returns the value of Tenant.
+func (s *InvitationAcceptance) GetTenant() string {
+	return s.Tenant
+}
+
+// GetSubject returns the value of Subject.
+func (s *InvitationAcceptance) GetSubject() string {
+	return s.Subject
+}
+
+// GetRoles returns the value of Roles.
+func (s *InvitationAcceptance) GetRoles() InvitationRoles {
+	return s.Roles
+}
+
+// GetUnitRoles returns the value of UnitRoles.
+func (s *InvitationAcceptance) GetUnitRoles() UnitRoles {
+	return s.UnitRoles
+}
+
+// GetMemberVersion returns the value of MemberVersion.
+func (s *InvitationAcceptance) GetMemberVersion() int64 {
+	return s.MemberVersion
+}
+
+// GetAcceptedAt returns the value of AcceptedAt.
+func (s *InvitationAcceptance) GetAcceptedAt() time.Time {
+	return s.AcceptedAt
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *InvitationAcceptance) GetOutcome() InvitationAcceptanceOutcome {
+	return s.Outcome
+}
+
+// GetAccess returns the value of Access.
+func (s *InvitationAcceptance) GetAccess() InvitationAcceptanceAccess {
+	return s.Access
+}
+
+// SetInvitationID sets the value of InvitationID.
+func (s *InvitationAcceptance) SetInvitationID(val InvitationID) {
+	s.InvitationID = val
+}
+
+// SetTenant sets the value of Tenant.
+func (s *InvitationAcceptance) SetTenant(val string) {
+	s.Tenant = val
+}
+
+// SetSubject sets the value of Subject.
+func (s *InvitationAcceptance) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *InvitationAcceptance) SetRoles(val InvitationRoles) {
+	s.Roles = val
+}
+
+// SetUnitRoles sets the value of UnitRoles.
+func (s *InvitationAcceptance) SetUnitRoles(val UnitRoles) {
+	s.UnitRoles = val
+}
+
+// SetMemberVersion sets the value of MemberVersion.
+func (s *InvitationAcceptance) SetMemberVersion(val int64) {
+	s.MemberVersion = val
+}
+
+// SetAcceptedAt sets the value of AcceptedAt.
+func (s *InvitationAcceptance) SetAcceptedAt(val time.Time) {
+	s.AcceptedAt = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *InvitationAcceptance) SetOutcome(val InvitationAcceptanceOutcome) {
+	s.Outcome = val
+}
+
+// SetAccess sets the value of Access.
+func (s *InvitationAcceptance) SetAccess(val InvitationAcceptanceAccess) {
+	s.Access = val
+}
+
+// Ready IdP 中的租户与 cell 归属已写入，重新登录后令牌带租户；provisioning
+// 尚未写入，identity 重试中.
+type InvitationAcceptanceAccess string
+
+const (
+	InvitationAcceptanceAccessReady        InvitationAcceptanceAccess = "ready"
+	InvitationAcceptanceAccessProvisioning InvitationAcceptanceAccess = "provisioning"
+)
+
+// AllValues returns all InvitationAcceptanceAccess values.
+func (InvitationAcceptanceAccess) AllValues() []InvitationAcceptanceAccess {
+	return []InvitationAcceptanceAccess{
+		InvitationAcceptanceAccessReady,
+		InvitationAcceptanceAccessProvisioning,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InvitationAcceptanceAccess) MarshalText() ([]byte, error) {
+	switch s {
+	case InvitationAcceptanceAccessReady:
+		return []byte(s), nil
+	case InvitationAcceptanceAccessProvisioning:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InvitationAcceptanceAccess) UnmarshalText(data []byte) error {
+	switch InvitationAcceptanceAccess(data) {
+	case InvitationAcceptanceAccessReady:
+		*s = InvitationAcceptanceAccessReady
+		return nil
+	case InvitationAcceptanceAccessProvisioning:
+		*s = InvitationAcceptanceAccessProvisioning
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Accepted 本次写入；already_accepted
+// 同一账号此前已用同一链接接受（返回首次结果，未重复写入）.
+type InvitationAcceptanceOutcome string
+
+const (
+	InvitationAcceptanceOutcomeAccepted        InvitationAcceptanceOutcome = "accepted"
+	InvitationAcceptanceOutcomeAlreadyAccepted InvitationAcceptanceOutcome = "already_accepted"
+)
+
+// AllValues returns all InvitationAcceptanceOutcome values.
+func (InvitationAcceptanceOutcome) AllValues() []InvitationAcceptanceOutcome {
+	return []InvitationAcceptanceOutcome{
+		InvitationAcceptanceOutcomeAccepted,
+		InvitationAcceptanceOutcomeAlreadyAccepted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InvitationAcceptanceOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case InvitationAcceptanceOutcomeAccepted:
+		return []byte(s), nil
+	case InvitationAcceptanceOutcomeAlreadyAccepted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InvitationAcceptanceOutcome) UnmarshalText(data []byte) error {
+	switch InvitationAcceptanceOutcome(data) {
+	case InvitationAcceptanceOutcomeAccepted:
+		*s = InvitationAcceptanceOutcomeAccepted
+		return nil
+	case InvitationAcceptanceOutcomeAlreadyAccepted:
+		*s = InvitationAcceptanceOutcomeAlreadyAccepted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 当前链接的邮件投递结果：pending 尚未确认（含发送结果未知）；sent
+// 已交给邮件渠道；failed 发送失败，可重发或复制链接.
+type InvitationDelivery string
+
+const (
+	InvitationDeliveryPending InvitationDelivery = "pending"
+	InvitationDeliverySent    InvitationDelivery = "sent"
+	InvitationDeliveryFailed  InvitationDelivery = "failed"
+)
+
+// AllValues returns all InvitationDelivery values.
+func (InvitationDelivery) AllValues() []InvitationDelivery {
+	return []InvitationDelivery{
+		InvitationDeliveryPending,
+		InvitationDeliverySent,
+		InvitationDeliveryFailed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InvitationDelivery) MarshalText() ([]byte, error) {
+	switch s {
+	case InvitationDeliveryPending:
+		return []byte(s), nil
+	case InvitationDeliverySent:
+		return []byte(s), nil
+	case InvitationDeliveryFailed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InvitationDelivery) UnmarshalText(data []byte) error {
+	switch InvitationDelivery(data) {
+	case InvitationDeliveryPending:
+		*s = InvitationDeliveryPending
+		return nil
+	case InvitationDeliverySent:
+		*s = InvitationDeliverySent
+		return nil
+	case InvitationDeliveryFailed:
+		*s = InvitationDeliveryFailed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type InvitationID string
+
+// Ref: #/components/schemas/InvitationIssued
+type InvitationIssued struct {
+	Invitation Invitation `json:"invitation"`
+	// Created 新建；existing 已有未过期的待接受邀请（未发新链接）；resent 已重发.
+	Outcome InvitationIssuedOutcome `json:"outcome"`
+	// 当前链接令牌（43位 base64url），只在首次响应中返回，identity 不保存原文.
+	LinkToken OptString `json:"link_token"`
+}
+
+// GetInvitation returns the value of Invitation.
+func (s *InvitationIssued) GetInvitation() Invitation {
+	return s.Invitation
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *InvitationIssued) GetOutcome() InvitationIssuedOutcome {
+	return s.Outcome
+}
+
+// GetLinkToken returns the value of LinkToken.
+func (s *InvitationIssued) GetLinkToken() OptString {
+	return s.LinkToken
+}
+
+// SetInvitation sets the value of Invitation.
+func (s *InvitationIssued) SetInvitation(val Invitation) {
+	s.Invitation = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *InvitationIssued) SetOutcome(val InvitationIssuedOutcome) {
+	s.Outcome = val
+}
+
+// SetLinkToken sets the value of LinkToken.
+func (s *InvitationIssued) SetLinkToken(val OptString) {
+	s.LinkToken = val
+}
+
+// Created 新建；existing 已有未过期的待接受邀请（未发新链接）；resent 已重发.
+type InvitationIssuedOutcome string
+
+const (
+	InvitationIssuedOutcomeCreated  InvitationIssuedOutcome = "created"
+	InvitationIssuedOutcomeExisting InvitationIssuedOutcome = "existing"
+	InvitationIssuedOutcomeResent   InvitationIssuedOutcome = "resent"
+)
+
+// AllValues returns all InvitationIssuedOutcome values.
+func (InvitationIssuedOutcome) AllValues() []InvitationIssuedOutcome {
+	return []InvitationIssuedOutcome{
+		InvitationIssuedOutcomeCreated,
+		InvitationIssuedOutcomeExisting,
+		InvitationIssuedOutcomeResent,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InvitationIssuedOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case InvitationIssuedOutcomeCreated:
+		return []byte(s), nil
+	case InvitationIssuedOutcomeExisting:
+		return []byte(s), nil
+	case InvitationIssuedOutcomeResent:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InvitationIssuedOutcome) UnmarshalText(data []byte) error {
+	switch InvitationIssuedOutcome(data) {
+	case InvitationIssuedOutcomeCreated:
+		*s = InvitationIssuedOutcomeCreated
+		return nil
+	case InvitationIssuedOutcomeExisting:
+		*s = InvitationIssuedOutcomeExisting
+		return nil
+	case InvitationIssuedOutcomeResent:
+		*s = InvitationIssuedOutcomeResent
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/InvitationList
+type InvitationList struct {
+	Invitations []Invitation `json:"invitations"`
+	Truncated   bool         `json:"truncated"`
+}
+
+// GetInvitations returns the value of Invitations.
+func (s *InvitationList) GetInvitations() []Invitation {
+	return s.Invitations
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *InvitationList) GetTruncated() bool {
+	return s.Truncated
+}
+
+// SetInvitations sets the value of Invitations.
+func (s *InvitationList) SetInvitations(val []Invitation) {
+	s.Invitations = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *InvitationList) SetTruncated(val bool) {
+	s.Truncated = val
+}
+
+type InvitationRoles []InvitationRolesItem
+
+type InvitationRolesItem string
+
+const (
+	InvitationRolesItemAdmin             InvitationRolesItem = "admin"
+	InvitationRolesItemDecisionMaker     InvitationRolesItem = "decision_maker"
+	InvitationRolesItemBusinessDeveloper InvitationRolesItem = "business_developer"
+	InvitationRolesItemPursuitLead       InvitationRolesItem = "pursuit_lead"
+	InvitationRolesItemResearchAnalyst   InvitationRolesItem = "research_analyst"
+	InvitationRolesItemDomainExpert      InvitationRolesItem = "domain_expert"
+)
+
+// AllValues returns all InvitationRolesItem values.
+func (InvitationRolesItem) AllValues() []InvitationRolesItem {
+	return []InvitationRolesItem{
+		InvitationRolesItemAdmin,
+		InvitationRolesItemDecisionMaker,
+		InvitationRolesItemBusinessDeveloper,
+		InvitationRolesItemPursuitLead,
+		InvitationRolesItemResearchAnalyst,
+		InvitationRolesItemDomainExpert,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InvitationRolesItem) MarshalText() ([]byte, error) {
+	switch s {
+	case InvitationRolesItemAdmin:
+		return []byte(s), nil
+	case InvitationRolesItemDecisionMaker:
+		return []byte(s), nil
+	case InvitationRolesItemBusinessDeveloper:
+		return []byte(s), nil
+	case InvitationRolesItemPursuitLead:
+		return []byte(s), nil
+	case InvitationRolesItemResearchAnalyst:
+		return []byte(s), nil
+	case InvitationRolesItemDomainExpert:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InvitationRolesItem) UnmarshalText(data []byte) error {
+	switch InvitationRolesItem(data) {
+	case InvitationRolesItemAdmin:
+		*s = InvitationRolesItemAdmin
+		return nil
+	case InvitationRolesItemDecisionMaker:
+		*s = InvitationRolesItemDecisionMaker
+		return nil
+	case InvitationRolesItemBusinessDeveloper:
+		*s = InvitationRolesItemBusinessDeveloper
+		return nil
+	case InvitationRolesItemPursuitLead:
+		*s = InvitationRolesItemPursuitLead
+		return nil
+	case InvitationRolesItemResearchAnalyst:
+		*s = InvitationRolesItemResearchAnalyst
+		return nil
+	case InvitationRolesItemDomainExpert:
+		*s = InvitationRolesItemDomainExpert
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Pending 待接受；accepted 已接受；revoked 已撤回；expired 已过期（可重发回到
+// pending）.
+// Ref: #/components/schemas/InvitationState
+type InvitationState string
+
+const (
+	InvitationStatePending  InvitationState = "pending"
+	InvitationStateAccepted InvitationState = "accepted"
+	InvitationStateRevoked  InvitationState = "revoked"
+	InvitationStateExpired  InvitationState = "expired"
+)
+
+// AllValues returns all InvitationState values.
+func (InvitationState) AllValues() []InvitationState {
+	return []InvitationState{
+		InvitationStatePending,
+		InvitationStateAccepted,
+		InvitationStateRevoked,
+		InvitationStateExpired,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InvitationState) MarshalText() ([]byte, error) {
+	switch s {
+	case InvitationStatePending:
+		return []byte(s), nil
+	case InvitationStateAccepted:
+		return []byte(s), nil
+	case InvitationStateRevoked:
+		return []byte(s), nil
+	case InvitationStateExpired:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InvitationState) UnmarshalText(data []byte) error {
+	switch InvitationState(data) {
+	case InvitationStatePending:
+		*s = InvitationStatePending
+		return nil
+	case InvitationStateAccepted:
+		*s = InvitationStateAccepted
+		return nil
+	case InvitationStateRevoked:
+		*s = InvitationStateRevoked
+		return nil
+	case InvitationStateExpired:
+		*s = InvitationStateExpired
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/InvitationVersionRequest
+type InvitationVersionRequest struct {
+	ExpectedVersion int64 `json:"expected_version"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *InvitationVersionRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *InvitationVersionRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// NewOptDateTime returns new OptDateTime with value set to v.
+func NewOptDateTime(v time.Time) OptDateTime {
+	return OptDateTime{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDateTime is optional time.Time.
+type OptDateTime struct {
+	Value time.Time
+	Set   bool
+}
+
+// IsSet returns true if OptDateTime was set.
+func (o OptDateTime) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDateTime) Reset() {
+	var v time.Time
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDateTime) SetTo(v time.Time) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDateTime) Get() (v time.Time, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInvitationState returns new OptInvitationState with value set to v.
+func NewOptInvitationState(v InvitationState) OptInvitationState {
+	return OptInvitationState{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInvitationState is optional InvitationState.
+type OptInvitationState struct {
+	Value InvitationState
+	Set   bool
+}
+
+// IsSet returns true if OptInvitationState was set.
+func (o OptInvitationState) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInvitationState) Reset() {
+	var v InvitationState
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInvitationState) SetTo(v InvitationState) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInvitationState) Get() (v InvitationState, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInvitationState) Or(d InvitationState) InvitationState {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
 }
 
 // NewOptOrgUnitID returns new OptOrgUnitID with value set to v.

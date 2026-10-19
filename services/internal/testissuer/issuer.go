@@ -52,7 +52,21 @@ func (i *Issuer) Rotate(key *rsa.PrivateKey, kid string) {
 	i.Key = key
 	i.kid = kid
 }
+
+// Token signs an access token. mfa=true models a fresh interactive login with a second factor: amr=mfa and auth_time=now.
 func (i *Issuer) Token(t testing.TB, subject, tenant, cell string, mfa bool) string {
+	t.Helper()
+	extra := map[string]any{}
+	if mfa {
+		extra["amr"] = []string{"mfa"}
+		extra["auth_time"] = time.Now().Unix()
+	}
+	return i.TokenWith(t, subject, tenant, cell, extra)
+}
+
+// TokenWith signs an access token with additional claims (for example amr, auth_time, miaoqia_session_source);
+// a nil value removes the claim. iat/exp are always the current time, as for a token obtained by refresh.
+func (i *Issuer) TokenWith(t testing.TB, subject, tenant, cell string, extra map[string]any) string {
 	t.Helper()
 	i.mu.RLock()
 	defer i.mu.RUnlock()
@@ -63,8 +77,12 @@ func (i *Issuer) Token(t testing.TB, subject, tenant, cell string, mfa bool) str
 	if cell != "" {
 		claims["miaoqia_cell"] = cell
 	}
-	if mfa {
-		claims["amr"] = []string{"mfa"}
+	for k, v := range extra {
+		if v == nil {
+			delete(claims, k)
+			continue
+		}
+		claims[k] = v
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	token.Header["kid"] = i.kid

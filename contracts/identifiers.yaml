@@ -1,10 +1,11 @@
 # 标识前缀登记（docs/03-architecture/02-data-architecture.md 第 4 节）。
 # 格式 <前缀>_<ULID>；新增前缀在此登记并经架构评审，禁止重复，分配后永不复用。
-version: 1.2.0
+version: 1.3.0
 prefixes:
   usr: { object: User, owner: identity }
   tnt: { object: Tenant, owner: identity }
   unt: { object: OrgUnit, owner: identity }              # 租户根单元另用保留值 root（每租户一个），不分配 ULID
+  inv: { object: Invitation, owner: identity }
   # 平台
   evt: { object: CloudEvent, owner: kernel }
   prb: { object: PipelineProbe, owner: operations }

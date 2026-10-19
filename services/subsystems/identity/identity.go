@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	identityapi "github.com/superailabs/miaoqia/services/contracts/apis/identity"
 	"github.com/superailabs/miaoqia/services/kernel/binding"
@@ -15,8 +16,19 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/identity/migrations"
 )
 
-// Module 返回 identity 的模块定义。配置：MIAOQIA_IDENTITY_OPENFGA_URL。
-func Module() runtime.Module {
+// Adapters 是 identity 出站端口的适配器与业务时钟。零值字段使用缺省：IdP 与 Notifier 为未接入（api.NotWired，
+// 依赖它们的命令失败关闭），Now 为系统时钟。生产 Keycloak 管理接口与邮件渠道的适配器尚未实现。
+type Adapters struct {
+	IdP      api.IdentityProvider
+	Notifier api.Notifier
+	Now      func() time.Time
+}
+
+// Module 返回 identity 的模块定义（出站端口未接入）。配置：MIAOQIA_IDENTITY_OPENFGA_URL。
+func Module() runtime.Module { return ModuleWith(Adapters{}) }
+
+// ModuleWith 返回使用给定适配器的 identity 模块定义（测试使用内存实现，见 api/idptest）。
+func ModuleWith(adapters Adapters) runtime.Module {
 	var decider app.Decider
 	var directory *app.Directory
 	return runtime.Module{
@@ -32,11 +44,13 @@ func Module() runtime.Module {
 			if err != nil {
 				return err
 			}
-			directory = &app.Directory{DB: env.DB, Authorizer: d, FGA: d}
+			directory = &app.Directory{DB: env.DB, Authorizer: d, FGA: d, IdP: adapters.IdP, Notifier: adapters.Notifier, Now: adapters.Now}
 			decider = app.Decider{Store: d, Directory: directory}
 			env.Bindings.Provide(api.AuthorizerBinding, api.Local(decider))
 			env.Bindings.Provide(api.SessionBinding, api.LocalSession(directory))
 			env.Bindings.Provide(api.DirectoryBinding, api.LocalDirectory(directory))
+			env.Bindings.Provide(api.GuardBinding, api.LocalGuard(directory))
+			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(directory))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
@@ -54,7 +68,9 @@ func Module() runtime.Module {
 				panic(err)
 			}
 			for _, pattern := range []string{"POST /v1/tenants", "GET /v1/tenants/{tenantID}", "GET /v1/identity/members/{subject}", "PUT /v1/tenants/{tenantID}/state", "PUT /v1/identity/members/{subject}", "GET /v1/identity/session",
-				"GET /v1/identity/org-units", "POST /v1/identity/org-units", "GET /v1/identity/org-units/{unitID}", "PUT /v1/identity/org-units/{unitID}"} {
+				"GET /v1/identity/org-units", "POST /v1/identity/org-units", "GET /v1/identity/org-units/{unitID}", "PUT /v1/identity/org-units/{unitID}",
+				"GET /v1/identity/invitations", "POST /v1/identity/invitations", "POST /v1/identity/invitations/{invitationID}/resend",
+				"POST /v1/identity/invitations/{invitationID}/revoke", "POST /v1/identity/invitations:accept"} {
 				public.Handle(pattern, pub)
 			}
 		},

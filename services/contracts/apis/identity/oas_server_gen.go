@@ -8,6 +8,27 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AcceptInvitation implements acceptInvitation operation.
+	//
+	// 受邀人以自己的登录令牌调用，独立授权，不经成员管理接口；令牌通常还不带租户。依次核验：链接存在（404
+	// invitation_not_found）、 邀请未撤回（410
+	// invitation_revoked）、链接是当前这一次发出的（410
+	// invitation_link_superseded）、未过期（410 invitation_expired）； IdP
+	// 中账号的已验证邮箱与邀请一致（403 email_unverified、403
+	// invitation_email_mismatch）；账号不是其他租户的有效成员 （409
+	// account_in_other_tenant），也不是本租户的有效成员（409
+	// already_member）；邀请含租户管理员角色时须有15分钟内的强认证 （403
+	// mfa_required、403
+	// totp_enrollment_required）。通过后在一个事务中按邀请限定的角色与单元角色写入成员资格、把邀请置为已接受，
+	// 发布 identity.member.changed.v1 与 identity.invitation.changed.v1 各一次；随后写入 IdP
+	// 中账号的租户与 cell 归属， 未完成时 access 为
+	// provisioning（令牌暂不带租户，访问失败关闭），identity
+	// 重试写入。同一账号用同一链接重复接受返回首次结果 （outcome
+	// already_accepted），不重复写入或发布；其他账号接受已接受的邀请返回 409
+	// invitation_already_accepted。IdP 不可用时 503。.
+	//
+	// POST /v1/identity/invitations:accept
+	AcceptInvitation(ctx context.Context, req *AcceptInvitationRequest) (*InvitationAcceptance, error)
 	// CheckAuthorization implements checkAuthorization operation.
 	//
 	// 判断主体是否对资源具有关系（动作）。主体缺省为请求上下文中的调用主体；带租户上下文时显式主体只能是调用主体本身。
@@ -17,6 +38,20 @@ type Handler interface {
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, req *CheckRequest) (*CheckResult, error)
+	// CreateInvitation implements createInvitation operation.
+	//
+	// 需要 can_manage_members
+	// 与15分钟内的强认证。邀请不授予任何权限；角色与单元角色限定接受时可写入的成员资格，
+	// 单元须属于本租户（422
+	// org_unit_not_found）。同一邮箱在本租户已有未过期的待接受邀请时返回该邀请（outcome
+	// existing， 不发新链接，可重发）；本租户待接受邀请至多1000条（409
+	// invitation_limit_reached）。邀请7天有效。 链接令牌只出现在首次响应的 link_token
+	// 中，identity 只保存其摘要；同一 Idempotency-Key 的重放返回同一邀请但不含
+	// link_token。 邮件在提交后发送，结果写入 delivery（sent / failed；未知时保持
+	// pending），发送失败不回滚邀请。.
+	//
+	// POST /v1/identity/invitations
+	CreateInvitation(ctx context.Context, req *CreateInvitationRequest, params CreateInvitationParams) (*InvitationIssued, error)
 	// CreateOrgUnit implements createOrgUnit operation.
 	//
 	// 需要 can_manage_members
@@ -43,6 +78,15 @@ type Handler interface {
 	//
 	// GET /v1/tenants/{tenantID}
 	GetTenant(ctx context.Context, params GetTenantParams) (*Tenant, error)
+	// ListInvitations implements listInvitations operation.
+	//
+	// 需要 can_manage_members
+	// 与15分钟内的强认证。按创建时间倒序返回至多500条，truncated
+	// 表示还有更早的邀请未返回； 已到过期时间的待接受邀请先置为
+	// expired（发布 identity.invitation.changed.v1）再返回。可按 state 过滤。.
+	//
+	// GET /v1/identity/invitations
+	ListInvitations(ctx context.Context, params ListInvitationsParams) (*InvitationList, error)
 	// ListOrgUnits implements listOrgUnits operation.
 	//
 	// 当前租户的有效成员可调用。返回全部单元（含根单元
@@ -54,10 +98,30 @@ type Handler interface {
 	//
 	// PUT /v1/identity/members/{subject}
 	PutMember(ctx context.Context, req *PutMemberRequest, params PutMemberParams) (*Session, error)
+	// ResendInvitation implements resendInvitation operation.
+	//
+	// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
+	// 并发控制。待接受或已过期的邀请生成新链接、重新计算7天有效期并发送，
+	// 旧链接立即失效（接受时返回 410
+	// invitation_link_superseded）；已接受或已撤回的返回 409 invitation_not_pending。
+	// 其他租户的或不存在的邀请返回同一 404 invitation_not_found。.
+	//
+	// POST /v1/identity/invitations/{invitationID}/resend
+	ResendInvitation(ctx context.Context, req *InvitationVersionRequest, params ResendInvitationParams) (*InvitationIssued, error)
 	// ResolveSession implements resolveSession operation.
 	//
 	// GET /v1/identity/session
 	ResolveSession(ctx context.Context) (*Session, error)
+	// RevokeInvitation implements revokeInvitation operation.
+	//
+	// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
+	// 并发控制。只有待接受且未过期的邀请可撤回；
+	// 与接受并发时以邀请行锁串行，只有一个生效，失败的一方按最新状态返回
+	// 409 invitation_not_pending 或 version_conflict。 其他租户的或不存在的邀请返回同一
+	// 404 invitation_not_found。.
+	//
+	// POST /v1/identity/invitations/{invitationID}/revoke
+	RevokeInvitation(ctx context.Context, req *InvitationVersionRequest, params RevokeInvitationParams) (*Invitation, error)
 	// SetTenantState implements setTenantState operation.
 	//
 	// PUT /v1/tenants/{tenantID}/state

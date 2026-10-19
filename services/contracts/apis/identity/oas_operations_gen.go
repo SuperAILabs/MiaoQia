@@ -6,15 +6,20 @@ package identityapi
 type OperationName = string
 
 const (
+	AcceptInvitationOperation         OperationName = "AcceptInvitation"
 	CheckAuthorizationOperation       OperationName = "CheckAuthorization"
+	CreateInvitationOperation         OperationName = "CreateInvitation"
 	CreateOrgUnitOperation            OperationName = "CreateOrgUnit"
 	CreateTenantOperation             OperationName = "CreateTenant"
 	GetMemberOperation                OperationName = "GetMember"
 	GetOrgUnitOperation               OperationName = "GetOrgUnit"
 	GetTenantOperation                OperationName = "GetTenant"
+	ListInvitationsOperation          OperationName = "ListInvitations"
 	ListOrgUnitsOperation             OperationName = "ListOrgUnits"
 	PutMemberOperation                OperationName = "PutMember"
+	ResendInvitationOperation         OperationName = "ResendInvitation"
 	ResolveSessionOperation           OperationName = "ResolveSession"
+	RevokeInvitationOperation         OperationName = "RevokeInvitation"
 	SetTenantStateOperation           OperationName = "SetTenantState"
 	SyncResourceParticipantsOperation OperationName = "SyncResourceParticipants"
 	UpdateOrgUnitOperation            OperationName = "UpdateOrgUnit"

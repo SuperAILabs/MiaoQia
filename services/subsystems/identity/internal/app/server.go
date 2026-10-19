@@ -93,3 +93,19 @@ func (s *Server) UpdateOrgUnit(ctx context.Context, req *identityapi.UpdateOrgUn
 func (s *Server) SyncResourceParticipants(ctx context.Context, req *identityapi.SyncParticipantsRequest) (*identityapi.SyncParticipantsResult, error) {
 	return s.Directory.SyncResourceParticipants(ctx, req)
 }
+
+func (s *Server) CreateInvitation(ctx context.Context, req *identityapi.CreateInvitationRequest, params identityapi.CreateInvitationParams) (*identityapi.InvitationIssued, error) {
+	return s.Directory.CreateInvitation(ctx, req, params.IdempotencyKey)
+}
+func (s *Server) ListInvitations(ctx context.Context, params identityapi.ListInvitationsParams) (*identityapi.InvitationList, error) {
+	return s.Directory.ListInvitations(ctx, params.State)
+}
+func (s *Server) ResendInvitation(ctx context.Context, req *identityapi.InvitationVersionRequest, params identityapi.ResendInvitationParams) (*identityapi.InvitationIssued, error) {
+	return s.Directory.ResendInvitation(ctx, string(params.InvitationID), req, params.IdempotencyKey)
+}
+func (s *Server) RevokeInvitation(ctx context.Context, req *identityapi.InvitationVersionRequest, params identityapi.RevokeInvitationParams) (*identityapi.Invitation, error) {
+	return s.Directory.RevokeInvitation(ctx, string(params.InvitationID), req, params.IdempotencyKey)
+}
+func (s *Server) AcceptInvitation(ctx context.Context, req *identityapi.AcceptInvitationRequest) (*identityapi.InvitationAcceptance, error) {
+	return s.Directory.AcceptInvitation(ctx, req)
+}

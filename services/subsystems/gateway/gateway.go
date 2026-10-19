@@ -24,14 +24,14 @@ func Public(ctx context.Context, issuer, audience string, h http.Handler, resolv
 		return nil, err
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rc, mfa, err := v.Verify(r)
+		rc, assurance, err := v.VerifyAssurance(r)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/problem+json")
 			w.WriteHeader(http.StatusUnauthorized)
 			_, _ = w.Write([]byte(`{"type":"https://errors.miaoqia.com/unauthenticated","title":"Unauthorized","status":401,"code":"unauthenticated"}`))
 			return
 		}
-		requestCtx := reqctx.WithMFA(reqctx.With(r.Context(), rc), mfa)
+		requestCtx := reqctx.WithAssurance(reqctx.With(r.Context(), rc), assurance)
 		ctx, span := tracing.Tracer(api.Name).Start(requestCtx, r.Method+" "+r.URL.Path,
 			trace.WithSpanKind(trace.SpanKindServer))
 		defer span.End()

@@ -10,8 +10,36 @@ import (
 	ht "github.com/ogen-go/ogen/http"
 )
 
+func encodeAcceptInvitationRequest(
+	req *AcceptInvitationRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeCheckAuthorizationRequest(
 	req *CheckRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeCreateInvitationRequest(
+	req *CreateInvitationRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
@@ -54,6 +82,34 @@ func encodeCreateTenantRequest(
 
 func encodePutMemberRequest(
 	req *PutMemberRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeResendInvitationRequest(
+	req *InvitationVersionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeRevokeInvitationRequest(
+	req *InvitationVersionRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
