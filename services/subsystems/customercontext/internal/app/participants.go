@@ -19,7 +19,10 @@ import (
 // 同一版本重放返回同一结果，迟到的旧版本不会覆盖新版本。
 //
 // 写入路径：命令提交后立即同步一次（通常即时生效）；失败时由 objective.changed 事件的消费者重试（经发件箱，
-// 按目标当前版本同步）。同步完成前 identity 尚不知道目标所在单元，目标的查看与操作一律拒绝（失败关闭）。
+// 按目标当前版本同步）。identity 中的参与关系因此可能落后于本地目标版本，访问判断按 objectives.go 的
+// objectiveRelations 与本地当前负责人/参与人求交：撤权（移除参与人、改派负责人）在提交后立即生效，
+// 新加入的主体在同步应用前不可见；首个版本同步前 identity 尚未登记目标，目标上的判断一律拒绝（失败关闭）。
+// 关系数上限见 MaxParticipantRelations（命令提交前校验），负责人同时是参与人时只同步负责人关系。
 
 func (s *Service) logger() *slog.Logger {
 	if s.Log != nil {
@@ -35,6 +38,9 @@ func (s *Service) syncObjective(ctx context.Context, o *Objective) error {
 	req := &identityapi.SyncParticipantsRequest{Resource: "objective:" + o.ID, OrgUnitID: identityapi.OrgUnitID(o.OrgUnitID), Version: o.Version,
 		Participants: []identityapi.ParticipantRelation{{Subject: o.Owner, Relation: identityapi.ParticipantRelationRelationOwner}}}
 	for _, p := range o.Participants {
+		if p == o.Owner {
+			continue // 负责人关系已蕴含参与关系
+		}
 		req.Participants = append(req.Participants, identityapi.ParticipantRelation{Subject: p, Relation: identityapi.ParticipantRelationRelationParticipant})
 	}
 	res, err := s.Directory.SyncResourceParticipants(reqctx.Service(ctx, api.Name), req)

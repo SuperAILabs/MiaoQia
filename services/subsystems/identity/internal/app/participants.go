@@ -31,7 +31,8 @@ type rejection = identityapi.SyncParticipantsResultRejectedItem
 // 只接受高于已应用版本的参与版本：期望关系与成员状态及资源所在单元的范围访问求交，在一次 OpenFGA 写入中加上应有的、
 // 删掉多余的关系，在同一 SQL 事务中记录已应用版本与结果；同一版本同一请求返回首次结果，同一版本不同请求冲突，
 // 低于已应用版本返回 stale 且不做修改。资源行在事务中加锁，同一资源的并发同步串行；涉及的成员行加共享锁，
-// 与成员退出串行，退出提交后的清理不会被并发同步重新写入。
+// 与成员命令及退出后的清理（二者对成员行加排他锁，见 purgeAfterLeave）串行：清理不会被并发同步重新写入，
+// 也不会删除成员重新加入后经更高版本写入的关系。
 func (d *Directory) SyncResourceParticipants(ctx context.Context, req *identityapi.SyncParticipantsRequest) (*identityapi.SyncParticipantsResult, error) {
 	if req == nil || req.Validate() != nil {
 		return nil, failure(400, "invalid_request")
@@ -247,7 +248,23 @@ func (d *Directory) admit(ctx context.Context, tx pgx.Tx, tenantID string, chain
 	return accepted, rejected, nil
 }
 
+// purgeAfterLeave 是成员退出提交后的清理。它在新事务中先对成员行加排他锁并重核成员仍未处于有效状态，再读取并删除
+// 参与关系，直到提交才释放锁：重新加入（成员命令对成员行加排他锁）与参与关系同步（admit 对成员行加共享锁）都与清理串行。
+// 清理开始前成员已重新加入时直接跳过（重新加入在自己的事务中已清理过旧关系），因此旧的清理不会删除新一代成员经
+// 更高参与版本写入的关系，同一版本的重放也无需重建。
+func (d *Directory) purgeAfterLeave(ctx context.Context, tenantID, subject string) error {
+	return d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		var state string
+		err := tx.QueryRow(ctx, `SELECT state FROM identity_members WHERE tenant_id=$1 AND subject=$2 FOR UPDATE`, tenantID, subject).Scan(&state)
+		if err != nil || state == "active" {
+			return err
+		}
+		return d.purgeParticipation(ctx, tx, tenantID, subject)
+	})
+}
+
 // purgeParticipation 删除主体在本租户已登记资源上的全部参与关系（成员退出后清理、重新加入前兜底）。
+// 调用方须在同一事务中持有该成员行的排他锁。
 func (d *Directory) purgeParticipation(ctx context.Context, tx pgx.Tx, tenantID, subject string) error {
 	user := "user:" + subject
 	var candidates [][3]string

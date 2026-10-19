@@ -54,7 +54,7 @@ func (s *ConfigureObjectiveRequest) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    200,
+			MaxLength:    50,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Participants)); err != nil {
 			return errors.Wrap(err, "array")
@@ -628,7 +628,7 @@ func (s *EnableObjectiveRequest) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    200,
+			MaxLength:    50,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Participants)); err != nil {
 			return errors.Wrap(err, "array")
@@ -964,7 +964,7 @@ func (s *Objective) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    200,
+			MaxLength:    50,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Participants)); err != nil {
 			return errors.Wrap(err, "array")

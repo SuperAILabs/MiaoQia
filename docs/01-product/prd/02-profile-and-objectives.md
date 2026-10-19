@@ -244,7 +244,7 @@
 | 3 | 快照品类经 A02 模板 `category.any_match` 求值 | `services/subsystems/customercontext/internal/app/policy_test.go` |
 | 4、5、10、11、13、17 | 已覆盖（真实 PostgreSQL、identity 与 OpenFGA） | `services/kernel/integration/customercontext_test.go` |
 | 6 | 部分：保存返回后立即读到新上下文版本，旧版本快照可重放；保存前影响预览（`PreviewProfileImpact`）未实现 | 同上 |
-| 14 | 服务端已覆盖：参与人可查看目标（含列表）且有信号查看权限；非参与业务开拓者不可见；同单元链（含上级继承）非参与的决策者、研究分析者、管理员可查看；管理员查看目标不自动获得信号权限；兄弟单元成员与兄弟单元参与人（identity 拒绝为无范围访问）不可见；单元移动后按新单元链判断。信号列表侧随第3段 | `services/kernel/integration/units_participants_test.go`；`services/kernel/integration/customercontext_test.go` |
+| 14 | 服务端已覆盖：参与人可查看目标（含列表）且有信号查看权限；非参与业务开拓者不可见；同单元链（含上级继承）非参与的决策者、研究分析者、管理员可查看；管理员查看目标不自动获得信号权限；兄弟单元成员与兄弟单元参与人（identity 拒绝为无范围访问）不可见；单元移动后按新单元链判断；移除参与人、改派负责人在 identity 同步失败或重试耗尽时立即撤权（直接读取与列表），新参与人同步应用后才可见；负责人与参与人合计至多 50 个主体，超出在提交前拒绝；成员退出后的清理不会删除重新加入后的新参与关系。信号列表侧随第3段 | `services/kernel/integration/units_participants_test.go`；`services/kernel/integration/purge_rejoin_test.go`；`services/kernel/integration/customercontext_test.go` |
 | 16 | 部分：停用与重新启用的状态转换；信号侧随第3段 | 同上 |
 | 1、7、8、9、12、15、18、19、21、22 | 未实现（依赖企业库解析、清单导入、策略草案、到期提醒、detection 与单元覆盖） | — |
 

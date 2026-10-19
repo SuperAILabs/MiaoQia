@@ -16,7 +16,8 @@ var _ Handler = UnimplementedHandler{}
 // ConfigureObjective implements configureObjective operation.
 //
 // 负责人与参与人需要 can_manage_participants，参数需要 can_edit；整份替换并带
-// expected_version。
+// expected_version。 负责人与参与人合计不超过 50 个不同主体，超出返回 422
+// too_many_participants，命令不生效。
 // 参数是下一份策略草案的输入，不改变已生效的策略版本（第7段）。.
 //
 // PUT /v1/customer-context/objectives/{objectiveID}
@@ -29,7 +30,8 @@ func (UnimplementedHandler) ConfigureObjective(ctx context.Context, req *Configu
 // 需要目标单元上的
 // can_create_objective。创建状态为未激活（inactive）的目标；首次激活经第7段仿真与审批，
 // 激活前不产生信号。同一单元同一模板只启用一次，重复启用返回 409
-// objective_exists 并在 detail 中给出已有目标标识。.
+// objective_exists 并在 detail 中给出已有目标标识。 负责人与参与人合计不超过
+// 50 个不同主体，超出返回 422 too_many_participants，命令不生效。.
 //
 // POST /v1/customer-context/objectives
 func (UnimplementedHandler) EnableObjective(ctx context.Context, req *EnableObjectiveRequest, params EnableObjectiveParams) (r *Objective, _ error) {
@@ -62,7 +64,9 @@ func (UnimplementedHandler) GetContextVersion(ctx context.Context) (r *ContextVe
 
 // GetObjective implements getObjective operation.
 //
-// 需要 can_view；无权限与不存在同样返回 404 objective_not_found。.
+// 需要 can_view；无权限与不存在同样返回 404
+// objective_not_found。单元上的决策者、研究分析者与管理员按目标所在单元判断；
+// 仅凭参与关系的查看还要求调用者是目标当前版本的负责人或参与人，移除或改派在命令提交后立即生效，不等待参与关系同步。.
 //
 // GET /v1/customer-context/objectives/{objectiveID}
 func (UnimplementedHandler) GetObjective(ctx context.Context, params GetObjectiveParams) (r *Objective, _ error) {

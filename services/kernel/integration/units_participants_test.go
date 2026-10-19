@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -34,6 +36,19 @@ import (
 	idapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 	idremote "github.com/superailabs/miaoqia/services/subsystems/identity/api/remote"
 )
+
+// flakyDirectory 在 fail 置位时让 SyncResourceParticipants 失败（identity 不可用），其余调用照常转发。
+type flakyDirectory struct {
+	idapi.Directory
+	fail atomic.Bool
+}
+
+func (f *flakyDirectory) SyncResourceParticipants(ctx context.Context, req *idapi.SyncParticipantsRequest) (*idapi.SyncParticipantsResult, error) {
+	if f.fail.Load() {
+		return nil, errors.New("identity 不可用（测试注入）")
+	}
+	return f.Directory.SyncResourceParticipants(ctx, req)
+}
 
 // identity 组织单元、单元角色、业务资源授权、服务主体授权与 SyncResourceParticipants，以及 customer-context 对它们的使用
 // （PRD 第2段用例 14；identity.md 7.1、7.2、第5节）。真实 PostgreSQL + OpenFGA + 网关令牌校验 + mTLS 内部端口与远程绑定。
@@ -89,6 +104,11 @@ func TestOrgUnitsParticipantsAndServiceAuthorization(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// customer-context 经可注入故障的目录绑定调用 identity，用于模拟命令提交后同步失败与重试耗尽
+	localDir, _ := runtime.Lookup[idapi.Directory](bindings, idapi.DirectoryBinding)
+	flaky := &flakyDirectory{Directory: localDir}
+	bindings.Provide(idapi.DirectoryBinding, idapi.Directory(flaky))
+
 	database := testenv.NewDatabase(t)
 	module := customercontext.Module()
 	if err := db.Migrate(ctx, database.OwnerDSN, database.Name+"_app", module.Migrations); err != nil {
@@ -134,7 +154,6 @@ func TestOrgUnitsParticipantsAndServiceAuthorization(t *testing.T) {
 		t.Fatal(err)
 	}
 	localAuthz, _ := runtime.Lookup[idapi.Authorizer](bindings, idapi.AuthorizerBinding)
-	localDir, _ := runtime.Lookup[idapi.Directory](bindings, idapi.DirectoryBinding)
 	remoteDir := remoteClient.(idapi.Directory)
 	reader, _ := runtime.Lookup[ctxapi.ContextReader](bindings, ctxapi.ContextBinding)
 
@@ -301,6 +320,20 @@ func TestOrgUnitsParticipantsAndServiceAuthorization(t *testing.T) {
 	profile := `{"expected_version":0,"content":{"subject_type":"organization","entities":[],"value_chain_roles":["ROLE-MFR"],"industry_packs":["IND-BUILDING-MATERIALS"],
 "offering_categories":["CAT-PIPE-PE"],"brands":[],"service_regions":["330000"],"qualifications":[]}}`
 	expect(t, admin, t1, false, "PUT", "/v1/customer-context/profile", profile, 200)
+	t.Run("档案：我方主体挂接本租户的非根单元，其他租户与不存在的单元拒绝", func(t *testing.T) {
+		var other identityapi.OrgUnit
+		decode(t, expect(t, admin2, t2, true, "POST", units, `{"name":"乙的事业部","parent_id":"root"}`, 200), &other)
+		attach := func(unit string) string {
+			body := strings.Replace(profile, `"expected_version":0`, `"expected_version":1`, 1)
+			return strings.Replace(body, `"entities":[]`, `"entities":[{"org_id":"org_01JA8ZXXXXXXXXXXXXXXXXXX01","org_unit_id":"`+unit+`","qualifications_complete":false}]`, 1)
+		}
+		expect(t, admin, t1, false, "PUT", "/v1/customer-context/profile", attach(string(other.ID)), 422, "org_unit_not_found")
+		expect(t, admin, t1, false, "PUT", "/v1/customer-context/profile", attach("unt_01JA8ZXXXXXXXXXXXXXXXXXXX9"), 422, "org_unit_not_found")
+		raw := expect(t, admin, t1, false, "PUT", "/v1/customer-context/profile", attach(string(east.ID)), 200)
+		if !strings.Contains(string(raw), `"org_unit_id":"`+string(east.ID)+`"`) {
+			t.Fatalf("档案应保存非根单元：%s", raw)
+		}
+	})
 	var objective cc.Objective
 	objPath := ""
 	t.Run("用例14：目标在单元上授权，参与人经 SyncResourceParticipants 可查看", func(t *testing.T) {
@@ -486,6 +519,127 @@ func TestOrgUnitsParticipantsAndServiceAuthorization(t *testing.T) {
 		}
 		if _, err := reader.ContextVersion(as(t2, "svc:detection", "service")); err == nil {
 			t.Fatal("停用租户的服务读取应失败")
+		}
+	})
+
+	retry := func() error {
+		handler := module.Consumers(env)[0].Handlers["customer_context.objective.changed.v1"]
+		data, _ := json.Marshal(map[string]any{"objective_id": objective.ID})
+		ectx := reqctx.With(ctx, reqctx.Context{Tenant: t1, Cell: "cell-01", Principal: reqctx.Principal{ID: "svc:customer-context", Kind: "service"}, Purpose: "event"})
+		return appDB.Tx(ectx, func(tx pgx.Tx) error {
+			return handler(ectx, tx, &outbox.Envelope{Type: "customer_context.objective.changed.v1", Tenant: t1, Cell: "cell-01", Data: data})
+		})
+	}
+	configure := func(version int64, owner string, participants []string) string {
+		b, _ := json.Marshal(map[string]any{"expected_version": version, "owner": owner, "participants": participants, "params": map[string]any{}})
+		return string(b)
+	}
+	listed := func(t *testing.T, who string) int {
+		var list cc.ObjectiveList
+		decode(t, expect(t, who, t1, false, "GET", objectives, "", 200), &list)
+		return len(list.Objectives)
+	}
+
+	t.Run("用例14：移除参与人、改派负责人在同步失败时立即撤权，新主体同步应用后才可见", func(t *testing.T) {
+		bdGas2, bdGas3 := user("bd-gas2"), user("bd-gas3")
+		for _, who := range []string{bdGas2, bdGas3} {
+			expect(t, admin, t1, true, "PUT", "/v1/identity/members/"+who, `{"state":"active","roles":[],"expected_version":0,"unit_roles":[{"org_unit_id":"`+string(gas.ID)+`","roles":["business_developer"]}]}`, 200)
+		}
+		var o cc.Objective
+		decode(t, expect(t, dmGas, t1, false, "GET", objPath, "", 200), &o)
+		decode(t, expect(t, dmGas, t1, false, "PUT", objPath, configure(o.Version, bdGas, []string{bdGas2}), 200), &o)
+		for _, who := range []string{bdGas, bdGas2} {
+			expect(t, who, t1, false, "GET", objPath, "", 200)
+		}
+		expect(t, bdGas3, t1, false, "GET", objPath, "", 404, "objective_not_found")
+
+		// identity 不可用：改派负责人（bdGas → dmGas）、移除参与人 bdGas2、加入 bdGas3；命令照常提交，提交后的同步失败
+		flaky.fail.Store(true)
+		defer flaky.fail.Store(false)
+		decode(t, expect(t, dmGas, t1, false, "PUT", objPath, configure(o.Version, dmGas, []string{bdGas3}), 200), &o)
+		if err := retry(); err == nil {
+			t.Fatal("identity 不可用时事件重试应失败")
+		}
+		obj := "objective:" + objective.ID
+		if !check(t, localAuthz, bdGas, "can_view", obj) || !check(t, localAuthz, bdGas2, "can_view", obj) || check(t, localAuthz, bdGas3, "can_view", obj) {
+			t.Fatal("同步失败时 identity 中应仍是旧版本的参与关系")
+		}
+		// 旧负责人、被移除的参与人直接读取已知目标被拒（与不存在相同），列表也不再列出；新参与人同步前不可见
+		for _, who := range []string{bdGas, bdGas2, bdGas3} {
+			expect(t, who, t1, false, "GET", objPath, "", 404, "objective_not_found")
+			if n := listed(t, who); n != 0 {
+				t.Fatalf("%s 列表 %d 个，期望 0", who, n)
+			}
+		}
+		// 单元权限不受参与关系同步影响
+		expect(t, dmGas, t1, false, "GET", objPath, "", 200)
+		expect(t, ra, t1, false, "GET", objPath, "", 200)
+
+		flaky.fail.Store(false)
+		if err := retry(); err != nil {
+			t.Fatal(err)
+		}
+		expect(t, bdGas3, t1, false, "GET", objPath, "", 200)
+		if n := listed(t, bdGas3); n != 1 {
+			t.Fatalf("新参与人同步后列表 %d 个，期望 1", n)
+		}
+		for _, who := range []string{bdGas, bdGas2} {
+			expect(t, who, t1, false, "GET", objPath, "", 404, "objective_not_found")
+			if check(t, localAuthz, who, "can_view", obj) {
+				t.Fatalf("%s 的旧参与关系应在同步后删除", who)
+			}
+		}
+	})
+
+	t.Run("参与人上限：负责人与参与人合计不同主体至多 50，提交前校验", func(t *testing.T) {
+		people := func(n int) []string {
+			out := make([]string, n)
+			for i := range out {
+				out[i] = fmt.Sprintf("cap-%02d-%s", i, suffix)
+			}
+			return out
+		}
+		iamOwner, err := pgx.Connect(ctx, iam.OwnerDSN)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer iamOwner.Close(ctx)
+		ctxOwner, err := pgx.Connect(ctx, database.OwnerDSN)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ctxOwner.Close(ctx)
+		state := func(t *testing.T) (version, events, applied int64) {
+			t.Helper()
+			if err := ctxOwner.QueryRow(ctx, `SELECT version, (SELECT count(*) FROM kernel_outbox WHERE envelope->'data'->>'objective_id' = $1) FROM ctx_objectives WHERE id = $1`,
+				objective.ID).Scan(&version, &events); err != nil {
+				t.Fatal(err)
+			}
+			if err := iamOwner.QueryRow(ctx, `SELECT applied_version FROM identity_resources WHERE object = $1`, "objective:"+objective.ID).Scan(&applied); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+		var o cc.Objective
+		decode(t, expect(t, dmGas, t1, false, "GET", objPath, "", 200), &o)
+		version, events, _ := state(t)
+		// 50 名参与人且不含负责人：51 个关系，提交前拒绝；51 名参与人由契约拒绝。均不入库、不产生事件
+		expect(t, dmGas, t1, false, "PUT", objPath, configure(o.Version, dmGas, people(50)), 422, "too_many_participants")
+		expect(t, dmGas, t1, false, "PUT", objPath, configure(o.Version, dmGas, people(51)), 400)
+		enable := fmt.Sprintf(`{"template_id":"APP-TENDER.A02","org_unit_id":%q,"participants":%s}`, water.ID, func() string { b, _ := json.Marshal(people(50)); return string(b) }())
+		expect(t, dm, t1, false, "POST", objectives, enable, 422, "too_many_participants")
+		if v, e, _ := state(t); v != version || e != events {
+			t.Fatalf("超限命令不得提交：版本 %d→%d，事件 %d→%d", version, v, events, e)
+		}
+		// 边界：49 名参与人 + 负责人 = 50 个关系，提交并同步应用
+		decode(t, expect(t, dmGas, t1, false, "PUT", objPath, configure(o.Version, dmGas, people(49)), 200), &o)
+		if _, _, applied := state(t); applied != o.Version {
+			t.Fatalf("49 + 负责人应同步应用：已应用 %d，目标版本 %d", applied, o.Version)
+		}
+		// 负责人同时是参与人只计一次：50 名参与人（含负责人）= 50 个关系
+		decode(t, expect(t, dmGas, t1, false, "PUT", objPath, configure(o.Version, dmGas, append(people(49), dmGas)), 200), &o)
+		if _, _, applied := state(t); applied != o.Version {
+			t.Fatalf("负责人兼参与人应同步应用：已应用 %d，目标版本 %d", applied, o.Version)
 		}
 	})
 }

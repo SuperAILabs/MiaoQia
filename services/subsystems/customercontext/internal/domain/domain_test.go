@@ -75,6 +75,12 @@ func TestProfileValidate(t *testing.T) {
 	if err := valid().Validate(c); err != nil {
 		t.Fatal(err)
 	}
+	// 非根单元只校验格式，归属由应用层经 identity 核对
+	nonRoot := valid()
+	nonRoot.Entities[0].OrgUnitID = "unt_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+	if err := nonRoot.Validate(c); err != nil {
+		t.Fatalf("合法的非根单元标识应通过领域校验：%v", err)
+	}
 	cases := []struct {
 		name, want string
 		mutate     func(*Profile)

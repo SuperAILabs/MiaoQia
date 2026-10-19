@@ -277,7 +277,8 @@ func (d *Directory) Put(ctx context.Context, subject string, req *identityapi.Pu
 			var version int64
 			var oldState string
 			var oldRoles []string
-			err = tx.QueryRow(ctx, `SELECT state,roles,version FROM identity_members WHERE tenant_id=$1 AND subject=$2`, rc.Tenant, subject).Scan(&oldState, &oldRoles, &version)
+			// 成员行加排他锁：与退出后的清理（purgeAfterLeave）及参与关系同步（admit 的共享锁）按成员串行。
+			err = tx.QueryRow(ctx, `SELECT state,roles,version FROM identity_members WHERE tenant_id=$1 AND subject=$2 FOR UPDATE`, rc.Tenant, subject).Scan(&oldState, &oldRoles, &version)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				return err
 			}
@@ -343,7 +344,7 @@ func (d *Directory) Put(ctx context.Context, subject string, req *identityapi.Pu
 	})
 	if err == nil && removed {
 		// 退出后的参与关系已因成员资格求交而失效；提交后尽力清理，失败时由重新加入前的清理兜底。
-		_ = d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error { return d.purgeParticipation(ctx, tx, rc.Tenant, subject) })
+		_ = d.purgeAfterLeave(ctx, rc.Tenant, subject)
 	}
 	return result, err
 }
