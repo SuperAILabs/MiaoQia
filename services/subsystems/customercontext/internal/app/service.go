@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"regexp"
 	"time"
 
@@ -27,6 +28,7 @@ type Service struct {
 	Authz   authz.Decider
 	Catalog *domain.Catalog
 	Now     func() time.Time // 缺省 time.Now；测试注入以验证有效期跨日
+	Log     *slog.Logger     // 运行告警（快照超出规模上界）；缺省 slog.Default()
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }

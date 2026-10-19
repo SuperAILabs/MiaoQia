@@ -175,11 +175,14 @@ func categoryCovers(parent, child string) bool {
 	return parent == child || strings.HasPrefix(child, parent+"-")
 }
 
-// RegionCovers：GB/T 2260 区划代码上级包含全部下级（省 XX0000、市 XXXX00）。
+// RegionCovers：GB/T 2260 区划代码上级包含全部下级（全国 000000 含全部，省 XX0000、市 XXXX00），
+// 与策略求值 region.within（kernel/policy）的语义一致。两个参数都须是 ValidRegion 通过的代码。
 func RegionCovers(parent, child string) bool {
 	switch {
-	case parent == child:
+	case parent == child, parent == NationalRegion:
 		return true
+	case child == NationalRegion:
+		return false
 	case strings.HasSuffix(parent, "0000"):
 		return parent[:2] == child[:2]
 	case strings.HasSuffix(parent, "00"):

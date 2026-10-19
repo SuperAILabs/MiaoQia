@@ -89,6 +89,8 @@ func TestProfileValidate(t *testing.T) {
 		{"未选行业包不能选品类", "unknown_category", func(p *Profile) { p.Industries = []string{}; p.Qualifications = nil }},
 		{"区划代码无效", "invalid_region", func(p *Profile) { p.Regions = []string{"330012"[:4] + "AB"} }},
 		{"市级为零县级非零", "invalid_region", func(p *Profile) { p.Regions = []string{"330001"} }},
+		{"省级为零而非全国", "invalid_region", func(p *Profile) { p.Regions = []string{"000100"} }},
+		{"省级为零的县级代码", "invalid_region", func(p *Profile) { p.Regions = []string{"001234"} }},
 		{"品牌首尾空白", "invalid_brand", func(p *Profile) { p.Brands = []string{" 示例"} }},
 		{"品类重复", "duplicate_value", func(p *Profile) { p.Categories = []string{"CAT-PIPE", "CAT-PIPE"} }},
 		{"资质属于未关联主体", "qualification_entity_unknown", func(p *Profile) { p.Qualifications[0].OrgID = org(9) }},
@@ -321,9 +323,39 @@ func TestRegions(t *testing.T) {
 	for _, tc := range []struct {
 		parent, child string
 		want          bool
-	}{{"330000", "330106", true}, {"330100", "330106", true}, {"330100", "330200", false}, {"330106", "330106", true}, {"330106", "330100", false}, {"330000", "320000", false}} {
+	}{{"330000", "330106", true}, {"330100", "330106", true}, {"330100", "330200", false}, {"330106", "330106", true}, {"330106", "330100", false}, {"330000", "320000", false},
+		{"000000", "000000", true}, {"000000", "330000", true}, {"000000", "330100", true}, {"000000", "110105", true},
+		{"330000", "000000", false}, {"330100", "000000", false}} {
 		if RegionCovers(tc.parent, tc.child) != tc.want {
 			t.Errorf("%s ⊇ %s 应为 %v", tc.parent, tc.child, tc.want)
 		}
+	}
+	for code, want := range map[string]bool{"000000": true, "330000": true, "330100": true, "330106": true,
+		"000100": false, "001234": false, "330001": false, "33010A": false, "33000": false, "": false} {
+		if ValidRegion(code) != want {
+			t.Errorf("ValidRegion(%q) 应为 %v", code, want)
+		}
+	}
+}
+
+// 全国档案：保存通过，目标可以选择全国、任一省或市县作为子集；非全国档案不能选择全国。
+func TestNationalProfile(t *testing.T) {
+	c := catalog()
+	p := valid()
+	p.Regions = []string{NationalRegion}
+	if err := p.Validate(c); err != nil {
+		t.Fatalf("全国档案应可保存：%v", err)
+	}
+	tpl := c.PolicyTemplates["TPL-A02"]
+	for _, sub := range [][]string{{"000000"}, {"330000"}, {"330100"}, {"330106", "110105"}} {
+		if _, err := ResolveParams(c, tpl, map[string]Param{"regions": {Source: FromObjective, Values: sub}}, p, nil); err != nil {
+			t.Errorf("全国档案下选择 %v：%v", sub, err)
+		}
+	}
+	if _, err := ResolveParams(c, tpl, map[string]Param{"regions": {Source: FromObjective, Values: []string{"000100"}}}, p, nil); code(err) != "param_not_subset" {
+		t.Errorf("无效代码在全国档案下仍应拒绝：%v", err)
+	}
+	if _, err := ResolveParams(c, tpl, map[string]Param{"regions": {Source: FromObjective, Values: []string{NationalRegion}}}, valid(), nil); code(err) != "param_not_subset" {
+		t.Errorf("省级档案不能选择全国：%v", err)
 	}
 }

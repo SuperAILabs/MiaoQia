@@ -25,6 +25,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/internal/testenv"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
+	"github.com/superailabs/miaoqia/services/kernel/policy"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext"
@@ -40,8 +41,12 @@ import (
 // 生成的 HTTP 服务端 + mTLS 内部端口与远程绑定。用例编号对应 PRD 第12节。
 func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 	fga := os.Getenv("MIAOQIA_TEST_OPENFGA")
-	if fga == "" {
-		t.Skip("MIAOQIA_TEST_OPENFGA not set")
+	if fga == "" || os.Getenv("MIAOQIA_TEST_PG") == "" {
+		// CI（GitHub Actions 设置 CI=true）提供真实 PostgreSQL 与 OpenFGA（.github/workflows/services.yml），缺少时失败而不是静默跳过。
+		if os.Getenv("CI") != "" {
+			t.Fatal("CI 中必须设置 MIAOQIA_TEST_PG 与 MIAOQIA_TEST_OPENFGA")
+		}
+		t.Skip("MIAOQIA_TEST_PG 或 MIAOQIA_TEST_OPENFGA 未设置")
 	}
 	t.Setenv("MIAOQIA_ENV", "production")
 	ctx, cancel := context.WithCancel(context.Background())
@@ -53,11 +58,11 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 	if err := db.Migrate(ctx, iam.OwnerDSN, iam.Name+"_app", idModule.Migrations); err != nil {
 		t.Fatal(err)
 	}
-	t1, t2 := ids.New("tnt"), ids.New("tnt")
+	t1, t2, t3 := ids.New("tnt"), ids.New("tnt"), ids.New("tnt")
 	suffix := strings.ToLower(iam.Name)
 	user := func(role string) string { return role + "-" + suffix }
 	admin, expert, dm, bd, ra := user("admin"), user("expert"), user("dm"), user("bd"), user("ra")
-	admin2 := user("admin2")
+	admin2, admin3 := user("admin2"), user("admin3")
 	owner, err := pgx.Connect(ctx, iam.OwnerDSN)
 	if err != nil {
 		t.Fatal(err)
@@ -66,10 +71,11 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 		sql  string
 		args []any
 	}{
-		{`INSERT INTO identity_tenants VALUES ($1,'甲','cell-01','active',1), ($2,'乙','cell-01','active',1)`, []any{t1, t2}},
+		{`INSERT INTO identity_tenants VALUES ($1,'甲','cell-01','active',1), ($2,'乙','cell-01','active',1), ($3,'丙','cell-01','active',1)`, []any{t1, t2, t3}},
 		{`INSERT INTO identity_members VALUES ($1,$2,'active',ARRAY['admin'],1), ($1,$3,'active',ARRAY['domain_expert'],1), ($1,$4,'active',ARRAY['decision_maker'],1),
- ($1,$5,'active',ARRAY['business_developer'],1), ($1,$6,'active',ARRAY['research_analyst'],1), ($7,$8,'active',ARRAY['admin','domain_expert','decision_maker'],1)`,
-			[]any{t1, admin, expert, dm, bd, ra, t2, admin2}},
+ ($1,$5,'active',ARRAY['business_developer'],1), ($1,$6,'active',ARRAY['research_analyst'],1), ($7,$8,'active',ARRAY['admin','domain_expert','decision_maker'],1),
+ ($9,$10,'active',ARRAY['admin','domain_expert','decision_maker'],1)`,
+			[]any{t1, admin, expert, dm, bd, ra, t2, admin2, t3, admin3}},
 	} {
 		if _, err := owner.Exec(ctx, stmt.sql, stmt.args...); err != nil {
 			t.Fatal(err)
@@ -101,7 +107,9 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 	}
 	defer appDB.Close()
 	packs, _ := filepath.Abs(filepath.Join("..", "..", "..", "packs"))
-	env := &runtime.Env{DB: appDB, Bindings: bindings, Log: quiet, Config: func(k string) string {
+	// customer-context 的运行日志被捕获，用于核对快照超出规模上界的告警。
+	logs := &syncBuffer{}
+	env := &runtime.Env{DB: appDB, Bindings: bindings, Log: slog.New(slog.NewJSONHandler(logs, nil)), Config: func(k string) string {
 		if k == "PACKS_DIR" {
 			return packs
 		}
@@ -488,6 +496,102 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 		})
 	})
 
+	t.Run("全国档案：000000 可保存，目标可选任一省市作为子集", func(t *testing.T) {
+		national := strings.Replace(content(`[]`, `[]`, `["CAT-PIPE"]`), `["330000"]`, `["000000"]`, 1)
+		var p cc.Profile
+		decode(t, expect(t, admin3, t3, "PUT", profilePath, put(0, national), 200), &p)
+		s, err := local.ContextSnapshot(readerCtx(t3, "svc:detection", "service"), ctxapi.RootUnit, 0)
+		if err != nil || len(s.PolicyView.ServiceRegions) != 1 || s.PolicyView.ServiceRegions[0] != "000000" {
+			t.Fatalf("%+v %v", s, err)
+		}
+		problem(t, expect(t, admin3, t3, "PUT", profilePath, put(1, strings.Replace(national, "000000", "000100", 1)), 422), "invalid_region")
+		regions := func(v ...string) string {
+			b, _ := json.Marshal(v)
+			return `{"template_id":"APP-TENDER.A02","org_unit_id":"root","params":{"regions":{"source":"objective","values":` + string(b) + `}}}`
+		}
+		problem(t, expect(t, admin3, t3, "POST", objectives, regions("000100"), 422), "param_not_subset")
+		var o cc.Objective
+		decode(t, expect(t, admin3, t3, "POST", objectives, regions("330000", "330100", "110105"), 200), &o)
+		if got := o.Params["regions"]; got.Source != "objective" || len(got.Values) != 3 {
+			t.Fatalf("%+v", o.Params)
+		}
+	})
+
+	t.Run("我方主体超过上界：快照省略主体、X-SELF 为未知，每个上下文版本告警一次", func(t *testing.T) {
+		var entities []string
+		for i := range 11 {
+			entities = append(entities, fmt.Sprintf(`{"org_id":"org_01JA8ZXXXXXXXXXXXXXXXXXX%02d","qualifications_complete":false}`, i))
+		}
+		var p cc.Profile
+		decode(t, expect(t, admin3, t3, "PUT", profilePath, put(1, content("["+strings.Join(entities, ",")+"]", `[]`, `["CAT-PIPE-PE"]`)), 200), &p)
+		reader := readerCtx(t3, "svc:detection", "service")
+		rem, err := ctxremote.NewContextReader(intern.URL + "/internal")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var s *ctxapi.Snapshot
+		for _, r := range []ctxapi.ContextReader{local, rem, local} { // 重复读取不重复告警
+			if _, err := r.ContextVersion(reader); err != nil {
+				t.Fatal(err)
+			}
+			if s, err = r.ContextSnapshot(reader, ctxapi.RootUnit, 0); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if s.ContextVersion != p.ContextVersion || s.PolicyView.OrgIds != nil || s.PolicyView.Entities.Set {
+			t.Fatalf("超过上界应省略主体而不截断：%+v", s.PolicyView)
+		}
+		// 未知传播：快照原样作为 A02 策略的 profile 变量，任一我方主体中标时 X-SELF 为未知、不排除。
+		pack, err := policy.LoadPack(filepath.Join(packs, "application_domains", "tendering"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tpl := pack.Templates["TPL-TENDER-A02-SUPPLY"]
+		compiled, issues := policy.Compile(tpl, pack.Features, policy.DefaultLimits())
+		if issues != nil {
+			t.Fatal(issues)
+		}
+		in, err := tpl.ExampleInput(tpl.Examples[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := s.PolicyView.MarshalJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		in.Profile = map[string]any{}
+		decode(t, raw, &in.Profile)
+		in.Fact["winner"] = map[string]any{"org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXX00"}
+		in.Lists = map[string]any{"customers": []any{}, "blocked": []any{}, "competitors": []any{}}
+		r, err := compiled.Evaluate(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		self := policy.RuleTrace{}
+		for _, tr := range r.Trace {
+			if tr.ID == "X-SELF" {
+				self = tr
+			}
+		}
+		if self.ID == "" || self.Result != policy.Unknown {
+			t.Fatalf("X-SELF 应为未知：%+v", self)
+		}
+		if r.Disposition == policy.Excluded {
+			t.Fatalf("主体被省略时不应排除：%s %s", r.Disposition, r.Reason)
+		}
+		var warnings []map[string]any
+		for _, line := range strings.Split(strings.TrimSpace(logs.String()), "\n") {
+			var entry map[string]any
+			if json.Unmarshal([]byte(line), &entry) == nil && entry["level"] == "WARN" && strings.Contains(fmt.Sprint(entry["msg"]), "超出规模上界") {
+				warnings = append(warnings, entry)
+			}
+		}
+		if len(warnings) != 1 || warnings[0]["tenant"] != t3 || warnings[0]["context_version"] != float64(p.ContextVersion) ||
+			warnings[0]["entities"] != float64(11) || warnings[0]["subsystem"] != "customer-context" {
+			t.Fatalf("应恰好告警一次：%v", warnings)
+		}
+	})
+
 	t.Run("事件载荷符合契约，审计同事务写入", func(t *testing.T) {
 		rows, err := appDB.Pool.Query(ctx, `SELECT topic, envelope FROM kernel_outbox ORDER BY seq`)
 		if err != nil {
@@ -517,9 +621,10 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 			}
 			counts[envelope.Type]++
 		}
-		// 档案：t1 保存 3 次（含并发胜出的一次）+ 刷新 1 次，t2 保存 1 次；目标：启用、调整、停用、重新启用。
-		if counts["customer_context.profile.updated.v1"] != 5 || counts["customer_context.objective.changed.v1"] != 4 ||
-			counts["audit.entry.recorded.v1"] != 9 {
+		// 档案：t1 保存 3 次（含并发胜出的一次）+ 刷新 1 次，t2 保存 1 次，t3 保存 2 次；
+		// 目标：t1 启用、调整、停用、重新启用，t3 启用 1 次。
+		if counts["customer_context.profile.updated.v1"] != 7 || counts["customer_context.objective.changed.v1"] != 5 ||
+			counts["audit.entry.recorded.v1"] != 12 {
 			t.Fatalf("%v", counts)
 		}
 	})
@@ -543,4 +648,22 @@ func asError(err error, target **ctxapi.Error) bool {
 		err = u.Unwrap()
 	}
 	return false
+}
+
+// syncBuffer 是并发安全的日志缓冲：HTTP 处理协程写入，测试协程读取。
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }

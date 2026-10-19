@@ -69,6 +69,13 @@ func RunContextReader(t *testing.T, r api.ContextReader, f Fixture) {
 			t.Fatalf("得到 %v", err)
 		}
 	})
+	t.Run("负版本是无效请求，不退化为当前版本", func(t *testing.T) {
+		s, err := r.ContextSnapshot(f.Reader, api.RootUnit, -1)
+		var e *api.Error
+		if !errors.As(err, &e) || e.Status != 400 || e.Code != "invalid_request" {
+			t.Fatalf("得到 %+v %v，期望 400 invalid_request", s, err)
+		}
+	})
 	t.Run("未登记的组织单元", func(t *testing.T) {
 		if _, err := r.ContextSnapshot(f.Reader, "unit-gas", 0); code(err) != "org_unit_not_found" {
 			t.Fatalf("得到 %v", err)

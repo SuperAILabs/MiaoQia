@@ -81,6 +81,37 @@ func TestSnapshotDrivesA02Evaluation(t *testing.T) {
 			t.Fatalf("未关联时不应排除：%s", r.Disposition)
 		}
 	})
+	t.Run("区划包含与策略 region.within 一致（含全国 000000）", func(t *testing.T) {
+		for _, region := range []string{"000000", "330000", "330100", "330106"} {
+			for _, loc := range []string{"330106", "330100", "110105", "000000"} {
+				p := linked
+				p.Regions = []string{region}
+				in, err := tpl.ExampleInput(tpl.Examples[0])
+				if err != nil {
+					t.Fatal(err)
+				}
+				in.Profile = profileView(p)
+				fact := map[string]any{"location": loc} // 样例输入的映射在调用间共享，复制后修改
+				for k, v := range in.Fact {
+					if k != "location" {
+						fact[k] = v
+					}
+				}
+				in.Fact = fact
+				r, err := compiled.Evaluate(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := policy.False
+				if domain.RegionCovers(region, loc) {
+					want = policy.True
+				}
+				if got := trace(r, "R-REGION").Result; got != want {
+					t.Errorf("档案 %s、地点 %s：策略 %s，档案子集判断 %s", region, loc, got, want)
+				}
+			}
+		}
+	})
 	t.Run("用例20：任一我方主体中标都被 X-SELF 排除", func(t *testing.T) {
 		for _, winner := range []string{me, me2} {
 			if r := evaluate(linked, winner, []any{winner}); r.Disposition != policy.Excluded || r.Reason != "SELF_IS_WINNER" {

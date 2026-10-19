@@ -64,6 +64,10 @@ func (c client) ContextVersion(ctx context.Context) (*api.Version, error) {
 func (c client) ContextSnapshot(ctx context.Context, orgUnit string, version int64) (*api.Snapshot, error) {
 	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetContextSnapshot", Idempotent: true},
 		func(ctx context.Context) (*api.Snapshot, error) {
+			// 0 为当前版本（不带参数），正数为指定版本；负数与本地绑定一样是无效请求，不能退化为当前版本。
+			if version < 0 {
+				return nil, &api.Error{Status: http.StatusBadRequest, Code: "invalid_request", Detail: "context_version 不能为负数"}
+			}
 			params := cc.GetContextSnapshotParams{OrgUnitID: orgUnit}
 			if version > 0 {
 				params.ContextVersion = cc.NewOptInt64(version)

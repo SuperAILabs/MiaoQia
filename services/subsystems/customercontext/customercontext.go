@@ -49,7 +49,7 @@ func Module() runtime.Module {
 			if !ok {
 				return fmt.Errorf("customer-context：缺少 %s 绑定", identity.AuthorizerBinding)
 			}
-			svc.DB, svc.Authz, svc.Catalog = env.DB, a, catalog
+			svc.DB, svc.Authz, svc.Catalog, svc.Log = env.DB, a, catalog, env.Log
 			env.Bindings.Provide(api.ContextBinding, api.Local(app.Reader{Service: svc}))
 			return nil
 		},

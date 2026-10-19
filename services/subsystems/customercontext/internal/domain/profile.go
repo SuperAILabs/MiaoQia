@@ -91,9 +91,15 @@ var (
 	regionPattern = regexp.MustCompile(`^[0-9]{6}$`)
 )
 
-// ValidRegion 判断 GB/T 2260 行政区划代码的形式：六位数字，省级两位不为 00，市级为 00 时县级也为 00。
+// NationalRegion 是全国（contracts/policy/cel-environment.yaml 中 region.within 的约定：000000 为全国，包含全部区划）。
+const NationalRegion = "000000"
+
+// ValidRegion 判断 GB/T 2260 行政区划代码的形式：全国 000000，或六位数字、省级两位不为 00、市级为 00 时县级也为 00。
 // 代码是否真实存在需要区划数据集，随区划代码表交付后校验（实现中发现的设计缺口）。
 func ValidRegion(code string) bool {
+	if code == NationalRegion {
+		return true
+	}
 	return regionPattern.MatchString(code) && code[:2] != "00" && (code[2:4] != "00" || code[4:] == "00")
 }
 
