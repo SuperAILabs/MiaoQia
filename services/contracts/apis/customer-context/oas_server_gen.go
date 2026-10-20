@@ -64,6 +64,20 @@ type Handler interface {
 	//
 	// POST /v1/customer-context/objectives
 	EnableObjective(ctx context.Context, req *EnableObjectiveRequest, params EnableObjectiveParams) (*Objective, error)
+	// GetActivePolicies implements getActivePolicies operation.
+	//
+	// 只经 mTLS 内部端口，供有 can_read_context
+	// 的服务主体（detection）每批求值前读取（用户主体 403 forbidden）。读主库，
+	// 返回本租户每个有生效版本的目标：目标状态、所在单元、策略标识、策略代次、生效版本的合成文档与固定的启用领域集合，以及
+	// 本代次的生效时间（激活或回滚的业务时间）。激活与回滚在同一事务中写入生效版本并递增代次，因此本调用返回后开始的求值
+	// 使用新代次（PRD 第7段第5节生效边界）；policy.activated / rolled_back
+	// 事件只用于提前刷新。只有目标状态为 active 的条目
+	// 产生新信号：停用（disabled）与重新启用后尚未再次激活（inactive）的目标保留原生效版本，调用方不得据此求值。
+	// 按目标标识升序分页，每页至多 limit 条（默认且至多
+	// 200）；还有更多时给出 next_cursor（游标为上一页最后一个目标标识）。.
+	//
+	// GET /v1/customer-context/active-policies
+	GetActivePolicies(ctx context.Context, params GetActivePoliciesParams) (*ActivePolicyList, error)
 	// GetContextSnapshot implements getContextSnapshot operation.
 	//
 	// 按（租户、组织单元、上下文版本）返回合成快照，同一键永远返回同一结果；缺省版本为当前版本。
@@ -93,7 +107,8 @@ type Handler interface {
 	// GetObjectiveAccess implements getObjectiveAccess operation.
 	//
 	// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
-	// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+	// 的仿真接口、detection
+	// 的信号收件箱与反馈）按本子系统的口径判断用户对目标的关系：
 	// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
 	// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
 	// 同步。调用者须为用户主体（否则 403

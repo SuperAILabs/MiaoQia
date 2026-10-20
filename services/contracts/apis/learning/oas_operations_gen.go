@@ -6,6 +6,7 @@ package learningapi
 type OperationName = string
 
 const (
-	GetSimulationOperation  OperationName = "GetSimulation"
-	SimulatePolicyOperation OperationName = "SimulatePolicy"
+	GetFeedbackSummaryOperation OperationName = "GetFeedbackSummary"
+	GetSimulationOperation      OperationName = "GetSimulation"
+	SimulatePolicyOperation     OperationName = "SimulatePolicy"
 )

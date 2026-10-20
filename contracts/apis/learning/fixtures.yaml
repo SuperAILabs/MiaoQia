@@ -247,3 +247,97 @@ fixtures:
     - op: replace
       path: /failure_reason
       value: oops
+- schema: FeedbackReasonCount
+  base:
+    result: irrelevant
+    code: CATEGORY_MISMATCH
+    signals: 3
+    rules:
+    - R-CAT
+    params:
+    - categories
+  cases:
+  - name: 数据质量原因没有规则
+    valid: true
+    patch:
+    - op: replace
+      path: /rules
+      value: []
+    - op: replace
+      path: /params
+      value: []
+  - name: 相关不计原因分布
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: relevant
+  - name: 零条信号不列出
+    valid: false
+    patch:
+    - op: replace
+      path: /signals
+      value: 0
+- schema: FeedbackSummary
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    as_of: '2026-10-19T08:00:00Z'
+    window_start: '2026-09-19T08:00:00Z'
+    window_end: '2026-10-19T08:00:00Z'
+    last_feedback_at: '2026-10-19T07:00:00Z'
+    min_sample: 20
+    sample: 3
+    sample_sufficient: false
+    signals:
+      total: 12
+      with_feedback: 3
+      without_feedback: 9
+    relevance:
+      relevant: 1
+      irrelevant: 1
+      disagreement: 1
+    stale_feedback: 1
+    exclusions:
+      total: 1
+      with_feedback: 0
+      correct: 0
+      wrong: 0
+      disagreement: 0
+    reasons:
+    - result: irrelevant
+      code: CATEGORY_MISMATCH
+      signals: 1
+      rules:
+      - R-CAT
+      params:
+      - categories
+  cases:
+  - name: 样本足够时给出比例
+    valid: true
+    patch:
+    - op: replace
+      path: /sample_sufficient
+      value: true
+    - op: add
+      path: /signals/feedback_rate
+      value: 0.25
+    - op: add
+      path: /relevance/relevant_ratio
+      value: 0.5
+  - name: 比例不超过一
+    valid: false
+    patch:
+    - op: add
+      path: /signals/feedback_rate
+      value: 1.5
+  - name: 缺统计截至时间
+    valid: false
+    patch:
+    - op: remove
+      path: /as_of
+  - name: 不含逐条反馈
+    valid: false
+    patch:
+    - op: add
+      path: /feedback
+      value: []

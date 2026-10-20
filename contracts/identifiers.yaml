@@ -1,6 +1,6 @@
 # 标识前缀登记（docs/03-architecture/02-data-architecture.md 第 4 节）。
 # 格式 <前缀>_<ULID>；新增前缀在此登记并经架构评审，禁止重复，分配后永不复用。
-version: 1.5.0
+version: 1.6.0
 prefixes:
   usr: { object: User, owner: identity }
   tnt: { object: Tenant, owner: identity }
@@ -48,6 +48,7 @@ prefixes:
   pol: { object: Policy, owner: customer-context }
   mkt: { object: Market, owner: customer-context }        # 租户定义的市场：区域 × 品类 × 时间窗 × 主体类型（草案）
   sig: { object: Signal, owner: detection }
+  sgb: { object: SignalBatch, owner: detection }         # 信号批量处理作业（PRD 第3段 F6）
   rsc: { object: ResearchCase, owner: research }
   asm: { object: Assessment, owner: assessment }
   dec: { object: Decision, owner: assessment }

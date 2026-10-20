@@ -40,6 +40,7 @@ var regexMap = map[string]ogenregex.Regexp{
 	"^apr_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^apr_[0-9A-HJKMNP-TV-Z]{26}$"),
 	"^obj_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^obj_[0-9A-HJKMNP-TV-Z]{26}$"),
 	"^org_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^org_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^pol_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^pol_[0-9A-HJKMNP-TV-Z]{26}$"),
 	"^sim_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^sim_[0-9A-HJKMNP-TV-Z]{26}$"),
 	"^tnt_[0-9A-HJKMNP-TV-Z]{26}$":          ogenregex.MustCompile("^tnt_[0-9A-HJKMNP-TV-Z]{26}$"),
 }

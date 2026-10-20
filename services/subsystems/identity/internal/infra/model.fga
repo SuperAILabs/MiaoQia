@@ -80,6 +80,9 @@ type org_unit
     define can_list_objectives: decision_maker or research_analyst or admin
     # 单元级策略起草关系（identity.md 7.7）：objective#can_draft_policy 去掉参与关系的部分
     define can_draft_unit_policies: decision_maker
+    # 单元级信号关系（identity.md 7.7）：objective#can_view_signals 与 objective#can_feedback 去掉参与关系的部分
+    define can_view_unit_signals: decision_maker or research_analyst
+    define can_feedback_unit_signals: decision_maker or research_analyst
 
 # 租户启用的商业目标：策略、信号、判断与决策都归属目标
 type objective

@@ -14,6 +14,218 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// 一个目标的生效策略（读取时的当前代次）.
+// Ref: #/components/schemas/ActivePolicy
+type ActivePolicy struct {
+	ObjectiveID     string                     `json:"objective_id"`
+	ObjectiveCode   string                     `json:"objective_code"`
+	ObjectiveState  ActivePolicyObjectiveState `json:"objective_state"`
+	OrgUnitID       string                     `json:"org_unit_id"`
+	PolicyID        string                     `json:"policy_id"`
+	Generation      int64                      `json:"generation"`
+	Version         int64                      `json:"version"`
+	TemplateID      string                     `json:"template_id"`
+	TemplateVersion string                     `json:"template_version"`
+	EnabledDomains  []DomainCode               `json:"enabled_domains"`
+	Document        PolicyDocument             `json:"document"`
+	// 本代次生效（激活或回滚执行）的业务时间.
+	EffectiveAt time.Time `json:"effective_at"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *ActivePolicy) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetObjectiveCode returns the value of ObjectiveCode.
+func (s *ActivePolicy) GetObjectiveCode() string {
+	return s.ObjectiveCode
+}
+
+// GetObjectiveState returns the value of ObjectiveState.
+func (s *ActivePolicy) GetObjectiveState() ActivePolicyObjectiveState {
+	return s.ObjectiveState
+}
+
+// GetOrgUnitID returns the value of OrgUnitID.
+func (s *ActivePolicy) GetOrgUnitID() string {
+	return s.OrgUnitID
+}
+
+// GetPolicyID returns the value of PolicyID.
+func (s *ActivePolicy) GetPolicyID() string {
+	return s.PolicyID
+}
+
+// GetGeneration returns the value of Generation.
+func (s *ActivePolicy) GetGeneration() int64 {
+	return s.Generation
+}
+
+// GetVersion returns the value of Version.
+func (s *ActivePolicy) GetVersion() int64 {
+	return s.Version
+}
+
+// GetTemplateID returns the value of TemplateID.
+func (s *ActivePolicy) GetTemplateID() string {
+	return s.TemplateID
+}
+
+// GetTemplateVersion returns the value of TemplateVersion.
+func (s *ActivePolicy) GetTemplateVersion() string {
+	return s.TemplateVersion
+}
+
+// GetEnabledDomains returns the value of EnabledDomains.
+func (s *ActivePolicy) GetEnabledDomains() []DomainCode {
+	return s.EnabledDomains
+}
+
+// GetDocument returns the value of Document.
+func (s *ActivePolicy) GetDocument() PolicyDocument {
+	return s.Document
+}
+
+// GetEffectiveAt returns the value of EffectiveAt.
+func (s *ActivePolicy) GetEffectiveAt() time.Time {
+	return s.EffectiveAt
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *ActivePolicy) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetObjectiveCode sets the value of ObjectiveCode.
+func (s *ActivePolicy) SetObjectiveCode(val string) {
+	s.ObjectiveCode = val
+}
+
+// SetObjectiveState sets the value of ObjectiveState.
+func (s *ActivePolicy) SetObjectiveState(val ActivePolicyObjectiveState) {
+	s.ObjectiveState = val
+}
+
+// SetOrgUnitID sets the value of OrgUnitID.
+func (s *ActivePolicy) SetOrgUnitID(val string) {
+	s.OrgUnitID = val
+}
+
+// SetPolicyID sets the value of PolicyID.
+func (s *ActivePolicy) SetPolicyID(val string) {
+	s.PolicyID = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *ActivePolicy) SetGeneration(val int64) {
+	s.Generation = val
+}
+
+// SetVersion sets the value of Version.
+func (s *ActivePolicy) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetTemplateID sets the value of TemplateID.
+func (s *ActivePolicy) SetTemplateID(val string) {
+	s.TemplateID = val
+}
+
+// SetTemplateVersion sets the value of TemplateVersion.
+func (s *ActivePolicy) SetTemplateVersion(val string) {
+	s.TemplateVersion = val
+}
+
+// SetEnabledDomains sets the value of EnabledDomains.
+func (s *ActivePolicy) SetEnabledDomains(val []DomainCode) {
+	s.EnabledDomains = val
+}
+
+// SetDocument sets the value of Document.
+func (s *ActivePolicy) SetDocument(val PolicyDocument) {
+	s.Document = val
+}
+
+// SetEffectiveAt sets the value of EffectiveAt.
+func (s *ActivePolicy) SetEffectiveAt(val time.Time) {
+	s.EffectiveAt = val
+}
+
+// Ref: #/components/schemas/ActivePolicyList
+type ActivePolicyList struct {
+	Policies   []ActivePolicy `json:"policies"`
+	NextCursor OptString      `json:"next_cursor"`
+}
+
+// GetPolicies returns the value of Policies.
+func (s *ActivePolicyList) GetPolicies() []ActivePolicy {
+	return s.Policies
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ActivePolicyList) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetPolicies sets the value of Policies.
+func (s *ActivePolicyList) SetPolicies(val []ActivePolicy) {
+	s.Policies = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ActivePolicyList) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+type ActivePolicyObjectiveState string
+
+const (
+	ActivePolicyObjectiveStateInactive ActivePolicyObjectiveState = "inactive"
+	ActivePolicyObjectiveStateActive   ActivePolicyObjectiveState = "active"
+	ActivePolicyObjectiveStateDisabled ActivePolicyObjectiveState = "disabled"
+)
+
+// AllValues returns all ActivePolicyObjectiveState values.
+func (ActivePolicyObjectiveState) AllValues() []ActivePolicyObjectiveState {
+	return []ActivePolicyObjectiveState{
+		ActivePolicyObjectiveStateInactive,
+		ActivePolicyObjectiveStateActive,
+		ActivePolicyObjectiveStateDisabled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ActivePolicyObjectiveState) MarshalText() ([]byte, error) {
+	switch s {
+	case ActivePolicyObjectiveStateInactive:
+		return []byte(s), nil
+	case ActivePolicyObjectiveStateActive:
+		return []byte(s), nil
+	case ActivePolicyObjectiveStateDisabled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ActivePolicyObjectiveState) UnmarshalText(data []byte) error {
+	switch ActivePolicyObjectiveState(data) {
+	case ActivePolicyObjectiveStateInactive:
+		*s = ActivePolicyObjectiveStateInactive
+		return nil
+	case ActivePolicyObjectiveStateActive:
+		*s = ActivePolicyObjectiveStateActive
+		return nil
+	case ActivePolicyObjectiveStateDisabled:
+		*s = ActivePolicyObjectiveStateDisabled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/ConfigureObjectiveRequest
 type ConfigureObjectiveRequest struct {
 	ExpectedVersion int64   `json:"expected_version"`
@@ -698,6 +910,8 @@ const (
 	ObjectiveRelationCanManageParticipants ObjectiveRelation = "can_manage_participants"
 	ObjectiveRelationCanDraftPolicy        ObjectiveRelation = "can_draft_policy"
 	ObjectiveRelationCanRequestActivation  ObjectiveRelation = "can_request_activation"
+	ObjectiveRelationCanViewSignals        ObjectiveRelation = "can_view_signals"
+	ObjectiveRelationCanFeedback           ObjectiveRelation = "can_feedback"
 )
 
 // AllValues returns all ObjectiveRelation values.
@@ -708,6 +922,8 @@ func (ObjectiveRelation) AllValues() []ObjectiveRelation {
 		ObjectiveRelationCanManageParticipants,
 		ObjectiveRelationCanDraftPolicy,
 		ObjectiveRelationCanRequestActivation,
+		ObjectiveRelationCanViewSignals,
+		ObjectiveRelationCanFeedback,
 	}
 }
 
@@ -723,6 +939,10 @@ func (s ObjectiveRelation) MarshalText() ([]byte, error) {
 	case ObjectiveRelationCanDraftPolicy:
 		return []byte(s), nil
 	case ObjectiveRelationCanRequestActivation:
+		return []byte(s), nil
+	case ObjectiveRelationCanViewSignals:
+		return []byte(s), nil
+	case ObjectiveRelationCanFeedback:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -746,6 +966,12 @@ func (s *ObjectiveRelation) UnmarshalText(data []byte) error {
 		return nil
 	case ObjectiveRelationCanRequestActivation:
 		*s = ObjectiveRelationCanRequestActivation
+		return nil
+	case ObjectiveRelationCanViewSignals:
+		*s = ObjectiveRelationCanViewSignals
+		return nil
+	case ObjectiveRelationCanFeedback:
+		*s = ObjectiveRelationCanFeedback
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

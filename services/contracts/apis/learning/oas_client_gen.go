@@ -28,6 +28,21 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// GetFeedbackSummary invokes getFeedbackSummary operation.
+	//
+	// 需要目标的 can_view_signals（按 customer-context
+	// 的当前口径）；不能查看目标与不存在同为 404
+	// objective_not_found，能查看而没有 can_view_signals 为 403 forbidden，授权不可用为
+	// 503。口径（PRD 第3段 F7 第1条）：窗口为发现时间在统计截至时间之前 30
+	// 天内的信号；
+	// 取各成员的当前反馈（撤回的不计）；只有基于信号当前内容版本的反馈参与计数，基于更新前版本的单列（stale_feedback）。反馈率的
+	// 分子为至少有一条当前版本相关性反馈的非排除信号数，分母为窗口内的非排除信号数；相关、不相关与分歧按信号计（同时有相关与
+	// 不相关为分歧）；原因分布在计为不相关（排除有误）的信号中按原因标签计信号数。样本（相关
+	// + 不相关 + 分歧）少于 20 时不给出 比例（ratio
+	// 字段不出现），只给数量。反馈只用于评估与改进建议，不会自动修改策略。.
+	//
+	// GET /v1/learning/objectives/{objectiveID}/feedback-summary
+	GetFeedbackSummary(ctx context.Context, params GetFeedbackSummaryParams) (*FeedbackSummary, error)
 	// GetSimulation invokes getSimulation operation.
 	//
 	// 需要目标的 can_view（同样按 customer-context 的当前口径）；授权或
@@ -88,6 +103,114 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// GetFeedbackSummary invokes getFeedbackSummary operation.
+//
+// 需要目标的 can_view_signals（按 customer-context
+// 的当前口径）；不能查看目标与不存在同为 404
+// objective_not_found，能查看而没有 can_view_signals 为 403 forbidden，授权不可用为
+// 503。口径（PRD 第3段 F7 第1条）：窗口为发现时间在统计截至时间之前 30
+// 天内的信号；
+// 取各成员的当前反馈（撤回的不计）；只有基于信号当前内容版本的反馈参与计数，基于更新前版本的单列（stale_feedback）。反馈率的
+// 分子为至少有一条当前版本相关性反馈的非排除信号数，分母为窗口内的非排除信号数；相关、不相关与分歧按信号计（同时有相关与
+// 不相关为分歧）；原因分布在计为不相关（排除有误）的信号中按原因标签计信号数。样本（相关
+// + 不相关 + 分歧）少于 20 时不给出 比例（ratio
+// 字段不出现），只给数量。反馈只用于评估与改进建议，不会自动修改策略。.
+//
+// GET /v1/learning/objectives/{objectiveID}/feedback-summary
+func (c *Client) GetFeedbackSummary(ctx context.Context, params GetFeedbackSummaryParams) (*FeedbackSummary, error) {
+	res, err := c.sendGetFeedbackSummary(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetFeedbackSummary(ctx context.Context, params GetFeedbackSummaryParams) (res *FeedbackSummary, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getFeedbackSummary"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/learning/objectives/{objectiveID}/feedback-summary"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetFeedbackSummaryOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/learning/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/feedback-summary"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetFeedbackSummaryResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // GetSimulation invokes getSimulation operation.

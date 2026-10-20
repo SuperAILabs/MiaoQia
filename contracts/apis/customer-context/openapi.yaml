@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: customer-context 接口
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     客户档案、上下文版本与快照、目标配置（PRD 第2段，docs/01-product/prd/02-profile-and-objectives.md；
     规格见 docs/03-architecture/subsystems/customer-context.md）。草案：随第2段首个实现切片提交，未冻结。
@@ -12,6 +12,8 @@ info:
     SyncResourceParticipants 同步。错误为 application/problem+json 与稳定 code。
     0.3.0 起提供策略（PRD 第7段）：策略页、草案保存与放弃、版本历史与规则级差异、激活与回滚申请（经 identity 审批，
     批准后由本子系统消费 identity.approval.decided.v1 执行），以及供 learning 读取的仿真输入（内部端口）。
+    0.4.0 起（PRD 第3段）：内部端口的生效策略读取（GetActivePolicies，detection 每批求值前读取策略代次）；目标访问判断追加
+    can_view_signals 与 can_feedback（detection 的信号收件箱与反馈按本子系统的口径授权）；策略状态带策略标识 pol_。
 servers:
 - url: /internal
 paths:
@@ -502,12 +504,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/PolicySimulationInput'
         default: *problem
+  /v1/customer-context/active-policies:
+    get:
+      operationId: getActivePolicies
+      summary: 生效策略与策略代次（内部，GetActivePolicies）
+      description: >-
+        只经 mTLS 内部端口，供有 can_read_context 的服务主体（detection）每批求值前读取（用户主体 403 forbidden）。读主库，
+        返回本租户每个有生效版本的目标：目标状态、所在单元、策略标识、策略代次、生效版本的合成文档与固定的启用领域集合，以及
+        本代次的生效时间（激活或回滚的业务时间）。激活与回滚在同一事务中写入生效版本并递增代次，因此本调用返回后开始的求值
+        使用新代次（PRD 第7段第5节生效边界）；policy.activated / rolled_back 事件只用于提前刷新。只有目标状态为 active 的条目
+        产生新信号：停用（disabled）与重新启用后尚未再次激活（inactive）的目标保留原生效版本，调用方不得据此求值。
+        按目标标识升序分页，每页至多 limit 条（默认且至多 200）；还有更多时给出 next_cursor（游标为上一页最后一个目标标识）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 200
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+      responses:
+        '200':
+          description: 生效策略
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivePolicyList'
+        default: *problem
   /v1/customer-context/objectives/{objectiveID}/access:
     get:
       operationId: getObjectiveAccess
       summary: 目标访问判断（内部）
       description: >-
-        只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning 的仿真接口）按本子系统的口径判断用户对目标的关系：
+        只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning 的仿真接口、detection 的信号收件箱与反馈）按本子系统的口径判断用户对目标的关系：
         可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且 identity 判断通过”放行，移除参与人在本地提交后立即撤权，
         不等待 identity 同步。调用者须为用户主体（否则 403 forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
         授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation 中被允许的部分（总含 can_view）。
@@ -523,7 +561,7 @@ paths:
         schema:
           type: array
           minItems: 1
-          maxItems: 5
+          maxItems: 7
           items:
             $ref: '#/components/schemas/ObjectiveRelation'
       responses:
@@ -566,6 +604,8 @@ components:
       - can_manage_participants
       - can_draft_policy
       - can_request_activation
+      - can_view_signals
+      - can_feedback
     ObjectiveAccess:
       type: object
       additionalProperties: false
@@ -1775,6 +1815,79 @@ components:
         version:
           type: string
           pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+    ActivePolicyList:
+      type: object
+      additionalProperties: false
+      required:
+      - policies
+      properties:
+        policies:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ActivePolicy'
+        next_cursor:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+    ActivePolicy:
+      type: object
+      additionalProperties: false
+      description: 一个目标的生效策略（读取时的当前代次）
+      required:
+      - objective_id
+      - objective_code
+      - objective_state
+      - org_unit_id
+      - policy_id
+      - generation
+      - version
+      - template_id
+      - template_version
+      - enabled_domains
+      - document
+      - effective_at
+      properties:
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        objective_code:
+          type: string
+          pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+        objective_state:
+          type: string
+          enum:
+          - inactive
+          - active
+          - disabled
+        org_unit_id: *unit
+        policy_id:
+          type: string
+          pattern: ^pol_[0-9A-HJKMNP-TV-Z]{26}$
+        generation:
+          type: integer
+          format: int64
+          minimum: 1
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        template_id:
+          type: string
+          pattern: ^TPL-[A-Z0-9-]{1,64}$
+        template_version:
+          type: string
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        enabled_domains:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/DomainCode'
+        document:
+          $ref: '#/components/schemas/PolicyDocument'
+        effective_at:
+          type: string
+          format: date-time
+          description: 本代次生效（激活或回滚执行）的业务时间
     PolicySimulationInput:
       type: object
       additionalProperties: false

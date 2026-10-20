@@ -1,0 +1,1473 @@
+openapi: 3.1.0
+info:
+  title: detection 接口
+  version: 0.1.0
+  description: >-
+    信号收件箱、命中理由与反馈（PRD 第3段，docs/01-product/prd/03-signal-inbox-feedback.md；规格见
+    docs/03-architecture/subsystems/detection.md 第5、12节）。草案：随第3段首个实现切片提交，未冻结。租户、cell 与调用主体来自
+    请求上下文。授权按目标所有者 customer-context 的当前口径（ObjectiveAccess）：查看信号与命中理由需要目标的 can_view_signals，
+    反馈、忽略、恢复与调整处置需要 can_feedback（每次提交实时判断，批量逐项判断）；移除参与人在 customer-context 提交后立即撤权，
+    决策者与研究分析者经单元关系，不需要是参与人。不属于本租户、不存在与无权查看的信号返回同一 404 signal_not_found；授权或
+    customer-context 不可用时 503（失败关闭，不当作无权限）。错误为 application/problem+json 与稳定 code。
+    写操作区分操作与尝试（F9）：operation_id 是一次用户意图的固定标识（批量中每项为“批次标识:信号标识”），同一操作最多提交一次，
+    提交后的结果（成功、无变化或确定失败）固定在操作标识上；Idempotency-Key 是一次尝试的键，同键重发返回该尝试的结果（含失败），
+    暂时失败（503，未提交）只是该尝试的结果，用新键、同一操作标识重试。
+servers:
+- url: /internal
+paths:
+  /v1/detection/objectives/{objectiveID}/signals:
+    get:
+      operationId: listSignals
+      summary: 收件箱（ListSignals）
+      description: >-
+        一次只看一个目标（不跨目标混排）。分栏：open 待处理（待处理或已调整处置，非排除）、handled 已处理（已忽略、已转跟进，非排除）、
+        excluded 已排除（未关闭）、closed 已关闭。默认按排序分降序、同分按发现时间新到旧；可按发现时间或金额（未公布的在后）排序。
+        游标分页，每页至多 limit 条（默认且至多 50）；游标绑定目标、分栏、筛选与排序，不一致时 400 invalid_cursor。
+        不能查看目标与目标不存在同为 404 objective_not_found；能查看目标而没有 can_view_signals（例如不是参与人的管理员）为 403 forbidden。
+        viewer_can_feedback 为假时界面不提供反馈与勾选入口。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &objectiveID
+        name: objectiveID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+      - name: tab
+        in: query
+        required: false
+        schema: &tab
+          type: string
+          enum:
+          - open
+          - handled
+          - excluded
+          - closed
+          default: open
+      - &filterDisposition
+        name: disposition
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Disposition'
+      - &filterFactType
+        name: fact_type
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^[a-z]+\.[a-z_]+$
+      - &filterRegion
+        name: region
+        in: query
+        required: false
+        description: 行政区划代码，含下级（XX0000 为全省，XXXX00 为全市）
+        schema:
+          type: string
+          pattern: ^[0-9]{6}$
+      - &filterCategory
+        name: category
+        in: query
+        required: false
+        description: 品类代码，含下级（CAT-PIPE 含 CAT-PIPE-PE）
+        schema:
+          type: string
+          pattern: ^CAT-[A-Z0-9-]{1,60}$
+      - &filterAmountMin
+        name: amount_min
+        in: query
+        required: false
+        description: 金额下限（人民币元）；金额未公布的信号不进入金额区间筛选的结果
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+      - &filterAmountMax
+        name: amount_max
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+      - &filterFrom
+        name: discovered_from
+        in: query
+        required: false
+        description: 发现时间（信号写入时间）下限，含
+        schema:
+          type: string
+          format: date-time
+      - &filterTo
+        name: discovered_to
+        in: query
+        required: false
+        description: 发现时间上限，不含
+        schema:
+          type: string
+          format: date-time
+      - &filterFeedback
+        name: my_feedback
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - none
+          - relevant
+          - irrelevant
+          - exclusion_correct
+          - exclusion_wrong
+      - &filterMarker
+        name: marker
+        in: query
+        required: false
+        description: backfill 回填；updated 7 天内有实质更新；unknown 有未知项
+        schema:
+          type: string
+          enum:
+          - backfill
+          - updated
+          - unknown
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - score
+          - discovered
+          - amount
+          default: score
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 50
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: 一页信号
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalPage'
+        default: &problem
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/detection/objectives/{objectiveID}/signal-selection:
+    get:
+      operationId: selectSignals
+      summary: 固定“全部符合筛选”的选中清单
+      description: >-
+        与 listSignals 相同的分栏与筛选，返回全部符合的信号标识及其选中时的内容版本、状态版本与本人反馈版本，供批量操作固定选中清单
+        （之后筛选变化或新信号到达不扩大范围）。超过批量上限 200 条时 exceeds_limit 为真且 items 为空，提示收窄筛选，不截断。
+        授权同 listSignals，另需 can_feedback（批量只对能反馈的成员开放）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *objectiveID
+      - name: tab
+        in: query
+        required: false
+        schema: *tab
+      - *filterDisposition
+      - *filterFactType
+      - *filterRegion
+      - *filterCategory
+      - *filterAmountMin
+      - *filterAmountMax
+      - *filterFrom
+      - *filterTo
+      - *filterFeedback
+      - *filterMarker
+      responses:
+        '200':
+          description: 选中清单
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalSelection'
+        default: *problem
+  /v1/detection/signals/{signalID}:
+    get:
+      operationId: getSignal
+      summary: 信号详情（GetSignal）
+      description: >-
+        需要信号所属目标的 can_view_signals；不属于本租户、不存在与无权查看同为 404 signal_not_found。含命中理由（与 explainSignal 相同）、
+        团队成员的当前反馈（能看信号的成员都可见）、更新历史与最近的处理记录；后两者超过 50 条时 truncated 为真，完整处理记录经
+        listSignalTriage 分页读取。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &signalID
+        name: signalID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+      responses:
+        '200':
+          description: 信号详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalDetail'
+        default: *problem
+  /v1/detection/signals/{signalID}/explanation:
+    get:
+      operationId: explainSignal
+      summary: 命中理由与固定的求值输入（ExplainSignal）
+      description: >-
+        基于信号记录（策略 DSL 4.3），不重新求值：处置结论、逐条规则轨迹（满足 / 不满足 / 未知及未知原因码）与分值、特征快照，以及
+        固定的求值输入（求值单位与版本、视图快照哈希与各视图项、上下文快照版本、策略标识、版本、代次、模板与启用领域集合、
+        evaluated_at 逻辑求值时间、created_at 信号写入时间、触发事件）。对象页的“信号判断时”视角先读这些固定版本。授权同 getSignal。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *signalID
+      responses:
+        '200':
+          description: 命中理由
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Explanation'
+        default: *problem
+  /v1/detection/signals/{signalID}/triage-records:
+    get:
+      operationId: listSignalTriage
+      summary: 处理与反馈记录（分页）
+      description: >-
+        信号的处理与反馈记录（追加式，只含至少改变了一个部分的操作），按时间倒序；每页至多 50 条，游标绑定信号。授权同 getSignal。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *signalID
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: 一页记录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriageRecordPage'
+        default: *problem
+  /v1/detection/signals/{signalID}/triage:
+    post:
+      operationId: triageSignal
+      summary: 单条反馈、忽略、恢复或调整处置（TriageSignal）
+      description: >-
+        需要 can_feedback（提交时实时判断）。一个动作最多改变三个部分：本人反馈、处理状态、人工处置。请求的效果已成立的部分为无变化，
+        不写记录、不校验版本；其余部分须所带版本（反馈为本人的 feedback_version，处理状态与人工处置共用 state_version）等于当前值，
+        否则整个动作 409 conflict（current 为当前值），不覆盖前者。seen_content_version 与当前内容版本不一致时 409 signal_updated。
+        已关闭的信号：只含处理状态的动作 409 signal_closed，带反馈的动作照常写入反馈、处理状态部分为 not_applicable；已转跟进的信号：
+        处理状态部分 not_applicable，只含处理状态的动作 422 not_applicable。排除信号只接受 exclusion_correct / exclusion_wrong，
+        不能忽略、恢复或调整（422 not_applicable）；非排除信号不接受排除反馈。不相关至少一个原因、“其他”须写说明、调整处置须写原因
+        （422 invalid_feedback）。成功（任一部分改变）与无变化返回 200；这些结果与确定失败都固定在 operation_id 上：同一操作标识的
+        新尝试直接返回已固定的结果，不再执行；同一操作标识用于不同的请求或由他人使用时 409 operation_conflict。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *signalID
+      - &idempotency
+        name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriageRequest'
+      responses:
+        '200':
+          description: 成功或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriageResult'
+        default: *problem
+  /v1/detection/objectives/{objectiveID}/signal-batches:
+    post:
+      operationId: triageSignals
+      summary: 批量反馈与忽略（TriageSignals）
+      description: >-
+        需要目标的 can_feedback（不能查看目标为 404，能查看不能反馈为 403）；items 为固定的信号标识清单（1–200，不重复），每项带选中时的
+        内容版本、状态版本与本人反馈版本。返回 202 作业：每项的操作标识为“批次标识:信号标识”，逐项按 triageSignal 的规则执行（实时判断
+        can_feedback、信号属于本租户与所选目标、内容版本一致、无变化与冲突按部分判断），逐项结果为成功 / 无变化 / 确定失败 / 暂时失败 /
+        未处理。M2 在请求内逐项执行（不经工作流），请求结束时作业已完成或因取消、超时、进程中断留有未处理项；之后经 getSignalBatch 读取，
+        经 retrySignalBatchItems 继续。同一 Idempotency-Key 重放返回同一作业。
+      x-timeout-ms: 60000
+      x-idempotent: true
+      parameters:
+      - *objectiveID
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriageSignalsRequest'
+      responses:
+        '202':
+          description: 批量作业
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalBatch'
+        default: *problem
+  /v1/detection/signal-batches/{batchID}:
+    get:
+      operationId: getSignalBatch
+      summary: 批量作业与逐项结果（GetSignalBatch）
+      description: >-
+        只有发起人可读（其他人、其他租户与不存在同为 404 signal_batch_not_found）。执行者的租约过期而仍有未处理项时状态为 interrupted。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &batchID
+        name: batchID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^sgb_[0-9A-HJKMNP-TV-Z]{26}$
+      responses:
+        '200':
+          description: 批量作业
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalBatch'
+        default: *problem
+  /v1/detection/signal-batches/{batchID}/cancel:
+    post:
+      operationId: cancelSignalBatch
+      summary: 取消批量作业（CancelSignalBatch）
+      description: >-
+        只有发起人可取消。取消后不再发起新的尝试，进行中的尝试照常结束；尚未尝试的项为未处理，可经 retrySignalBatchItems 继续。
+        作业已结束时为无操作，返回当前作业。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *batchID
+      - *idempotency
+      responses:
+        '200':
+          description: 批量作业
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalBatch'
+        default: *problem
+  /v1/detection/signal-batches/{batchID}/retry:
+    post:
+      operationId: retrySignalBatchItems
+      summary: 重试暂时失败项、继续未处理项（RetrySignalBatchItems）
+      description: >-
+        只有发起人可操作。为暂时失败项与未处理项发起新的尝试（同一操作标识、新的尝试键），已提交的项不会重复执行，确定失败项不在其中。
+        另一执行者仍持有有效租约时 409 signal_batch_running。返回 202 作业。
+      x-timeout-ms: 60000
+      x-idempotent: true
+      parameters:
+      - *batchID
+      - *idempotency
+      responses:
+        '202':
+          description: 批量作业
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalBatch'
+        default: *problem
+  /v1/detection/triage-undos:
+    post:
+      operationId: undoSignalTriage
+      summary: 撤销一次单条操作或一个批次（UndoSignalTriage）
+      description: >-
+        撤销是新的操作（operation_id），只能由原操作者发起，撤销不能再撤销。范围：单条操作，或批次中已提交且至少一个部分发生改变的全部项。
+        每项只补偿原操作实际改变的部分：反馈原来没有则撤回、原来有则恢复原结果、原因、说明及其所基于的内容版本；忽略回到原处理状态；
+        恢复重新忽略；调整处置恢复原人工处置（原来没有时回到待处理）。补偿前逐部分核对当前版本仍等于原操作写入后的版本，不等时该项
+        conflict（之后有人改过，包括本人）；原操作之后内容已更新为 signal_updated，信号已关闭为 signal_closed；一项内各部分一起提交。
+        每项实时判断 can_feedback。逐项结果同步返回；每项的操作标识为“撤销操作标识:信号标识”，结果同样固定在操作标识上。
+      x-timeout-ms: 60000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UndoRequest'
+      responses:
+        '200':
+          description: 逐项结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UndoResult'
+        default: *problem
+components:
+  schemas:
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          description: 稳定错误代码
+        current:
+          $ref: '#/components/schemas/SignalState'
+          description: conflict 与 signal_updated 时为信号的当前值（他人或本人之后的修改）
+    Disposition:
+      type: string
+      description: 系统处置（no_signal 不产生信号）
+      enum:
+      - pursue_candidate
+      - review_candidate
+      - watch_signal
+      - excluded
+    ManualDisposition:
+      type: string
+      description: 人工处置（只在三者之间调整；排除信号不能调整）
+      enum:
+      - pursue_candidate
+      - review_candidate
+      - watch_signal
+    SignalStatus:
+      type: string
+      description: open 待处理；triaged 已调整处置；converted 已转跟进；dismissed 已忽略；closed 已关闭
+      enum:
+      - open
+      - triaged
+      - converted
+      - dismissed
+      - closed
+    Feedback:
+      type: object
+      additionalProperties: false
+      description: 一名成员对信号的当前反馈（结果与原因标签取自应用领域包，例如 packs/application_domains/tendering/feedback/a02.yaml）
+      required:
+      - result
+      - reasons
+      - based_on_content_version
+      properties:
+        result: &feedbackResult
+          type: string
+          enum:
+          - relevant
+          - irrelevant
+          - exclusion_correct
+          - exclusion_wrong
+        reasons: &reasons
+          type: array
+          maxItems: 9
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[A-Z][A-Z0-9_]{1,63}$
+        note: &note
+          type: string
+          minLength: 1
+          maxLength: 500
+        based_on_content_version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 反馈所基于的信号内容版本；小于当前内容版本时为“基于更新前的版本”
+    MemberFeedback:
+      type: object
+      additionalProperties: false
+      required:
+      - member
+      - feedback
+      - feedback_version
+      - updated_at
+      properties:
+        member:
+          type: string
+          minLength: 1
+          maxLength: 128
+        feedback:
+          $ref: '#/components/schemas/Feedback'
+        feedback_version:
+          type: integer
+          format: int64
+          minimum: 1
+        updated_at:
+          type: string
+          format: date-time
+    PolicyRef:
+      type: object
+      additionalProperties: false
+      description: 产生信号的策略版本（固定输入；新版本激活或回滚后不随之重算）
+      required:
+      - policy_id
+      - version
+      - generation
+      - template_id
+      - template_version
+      - enabled_domains
+      properties:
+        policy_id:
+          type: string
+          pattern: ^pol_[0-9A-HJKMNP-TV-Z]{26}$
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        generation:
+          type: integer
+          format: int64
+          minimum: 1
+        template_id:
+          type: string
+          pattern: ^TPL-[A-Z0-9-]{1,64}$
+        template_version:
+          type: string
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        enabled_domains:
+          type: array
+          maxItems: 32
+          items:
+            type: string
+            pattern: ^INF-[A-Z0-9]{2,16}$
+    SubjectRef:
+      type: object
+      additionalProperties: false
+      description: 求值单位（contracts/schemas/intelligence/defs.schema.json 的 subject_ref）；version 为求值时读取的版本
+      required:
+      - type
+      - id
+      - version
+      properties:
+        type:
+          type: string
+          enum:
+          - domain_fact
+        id:
+          type: string
+          pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        part_id:
+          type: string
+          pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+    SignalRow:
+      type: object
+      additionalProperties: false
+      description: >-
+        收件箱的一行。amount 不出现表示金额未公布（不以预算或其他金额代替）；same_lot_count 为本目标中同一标包的中标信号数；
+        reasons 为至多两条为真的规则说明（say）；my_feedback 与 feedback_version 为查看者本人的当前反馈与反馈版本（0 为从未反馈）。
+      required:
+      - id
+      - objective_id
+      - fact_type
+      - subject
+      - title
+      - categories
+      - same_lot_count
+      - disposition
+      - score
+      - needs_review
+      - reasons
+      - unknown_count
+      - status
+      - state_version
+      - content_version
+      - feedback_version
+      - backfill
+      - updated_recently
+      - policy
+      - evaluated_at
+      - created_at
+      properties:
+        id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        fact_type:
+          type: string
+          pattern: ^[a-z]+\.[a-z_]+$
+        subject:
+          $ref: '#/components/schemas/SubjectRef'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        winner:
+          type: object
+          additionalProperties: false
+          properties:
+            org_id:
+              type: string
+              pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+            name:
+              type: string
+              minLength: 1
+              maxLength: 200
+        amount:
+          type: object
+          additionalProperties: false
+          required:
+          - value
+          - currency
+          properties:
+            value:
+              type: string
+              pattern: ^[0-9]+(\.[0-9]{1,2})?$
+            currency:
+              type: string
+              pattern: ^[A-Z]{3}$
+        location:
+          type: string
+          pattern: ^[0-9]{6}$
+        categories:
+          type: array
+          maxItems: 64
+          items:
+            type: string
+            pattern: ^CAT-[A-Z0-9-]{1,60}$
+        same_lot_count:
+          type: integer
+          minimum: 1
+        disposition:
+          $ref: '#/components/schemas/Disposition'
+        manual_disposition:
+          $ref: '#/components/schemas/ManualDisposition'
+        score:
+          type: integer
+        needs_review:
+          type: boolean
+        reason_code:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]*$
+        reasons:
+          type: array
+          maxItems: 2
+          items:
+            type: string
+            minLength: 1
+            maxLength: 500
+        unknown_count:
+          type: integer
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/SignalStatus'
+        state_version:
+          type: integer
+          format: int64
+          minimum: 0
+        content_version:
+          type: integer
+          format: int64
+          minimum: 0
+        my_feedback:
+          $ref: '#/components/schemas/Feedback'
+        feedback_version:
+          type: integer
+          format: int64
+          minimum: 0
+        backfill:
+          type: boolean
+        updated_recently:
+          type: boolean
+          description: 7 天内有实质更新
+        policy:
+          $ref: '#/components/schemas/PolicyRef'
+        evaluated_at:
+          type: string
+          format: date-time
+          description: 逻辑求值时间（触发事件的时间）
+        created_at:
+          type: string
+          format: date-time
+          description: 发现时间（信号写入时间）
+    SignalPage:
+      type: object
+      additionalProperties: false
+      required:
+      - objective_id
+      - signals
+      - viewer_can_feedback
+      properties:
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        signals:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SignalRow'
+        next_cursor:
+          type: string
+          minLength: 1
+          maxLength: 512
+        viewer_can_feedback:
+          type: boolean
+    SignalSelection:
+      type: object
+      additionalProperties: false
+      required:
+      - total
+      - exceeds_limit
+      - items
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        exceeds_limit:
+          type: boolean
+          description: 符合的信号超过 200 条（items 为空，提示收窄筛选）
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/BatchItemInput'
+    RuleTrace:
+      type: object
+      additionalProperties: false
+      description: >-
+        一条规则的求值结果。unknown_reason：DOMAIN_NOT_ENABLED 数据未接入（启用领域集合外）、FIELD_MISSING 公告未公布该字段、
+        BELOW_EVIDENCE 低于证据门槛、CATEGORY_UNCERTAIN 品类未能可靠识别、SELF_NOT_LINKED 未关联本企业；未知不显示为满足或不满足。
+      required:
+      - id
+      - clause
+      - result
+      properties:
+        id:
+          type: string
+          pattern: ^[RXWBP]-[A-Z0-9-]+$
+        clause:
+          type: string
+          enum:
+          - require
+          - exclude
+          - watch
+          - boost
+          - penalize
+        result:
+          type: string
+          enum:
+          - 'true'
+          - 'false'
+          - unknown
+        say:
+          type: string
+          maxLength: 500
+        weight:
+          type: integer
+          minimum: 1
+        unknown_reason:
+          type: string
+          enum:
+          - DOMAIN_NOT_ENABLED
+          - FIELD_MISSING
+          - BELOW_EVIDENCE
+          - CATEGORY_UNCERTAIN
+          - SELF_NOT_LINKED
+        unknown_fields:
+          type: array
+          maxItems: 32
+          items:
+            type: string
+            maxLength: 200
+    Explanation:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_id
+      - disposition
+      - needs_review
+      - score
+      - conclusion
+      - trace
+      - features
+      - inputs
+      properties:
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        disposition:
+          $ref: '#/components/schemas/Disposition'
+        needs_review:
+          type: boolean
+        score:
+          type: integer
+        reason_code:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]*$
+        conclusion:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: 一句话的处置结论与原因
+        trace:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/RuleTrace'
+        features:
+          type: object
+          additionalProperties: true
+          description: 特征快照（未知的特征不出现）
+        inputs:
+          type: object
+          additionalProperties: false
+          description: 固定的求值输入（策略 DSL 4.3）
+          required:
+          - subject
+          - view_snapshot_hash
+          - view_items
+          - context_snapshot_version
+          - org_unit_id
+          - policy
+          - evaluated_at
+          - created_at
+          - trigger_event_id
+          - snapshot_available
+          properties:
+            subject:
+              $ref: '#/components/schemas/SubjectRef'
+            view_snapshot_hash:
+              type: string
+              pattern: ^sha256:[0-9a-f]{64}$
+            view_items:
+              type: array
+              maxItems: 64
+              description: 视图快照中各项的对象与版本（快照已过保存期时为空，snapshot_available 为假）
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - name
+                properties:
+                  name:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  id:
+                    type: string
+                    pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+                  version:
+                    type: integer
+                    format: int64
+                    minimum: 1
+                  domain:
+                    type: string
+                    pattern: ^INF-[A-Z0-9]{2,16}$
+            context_snapshot_version:
+              type: integer
+              format: int64
+              minimum: 1
+            org_unit_id:
+              type: string
+              minLength: 1
+              maxLength: 64
+            policy:
+              $ref: '#/components/schemas/PolicyRef'
+            evaluated_at:
+              type: string
+              format: date-time
+            created_at:
+              type: string
+              format: date-time
+            trigger_event_id:
+              type: string
+              pattern: ^evt_[0-9A-HJKMNP-TV-Z]{26}$
+            snapshot_available:
+              type: boolean
+    SignalUpdate:
+      type: object
+      additionalProperties: false
+      description: 信号对应求值单位变化后的重新求值记录（追加式）；material 为实质更新（处置上调或中标方、金额、品类被更正）
+      required:
+      - content_version
+      - trigger
+      - changed_fields
+      - disposition_before
+      - disposition_after
+      - material
+      - recorded_at
+      properties:
+        content_version:
+          type: integer
+          format: int64
+          minimum: 1
+        trigger:
+          type: string
+          minLength: 1
+          maxLength: 128
+        changed_fields:
+          type: array
+          maxItems: 64
+          items:
+            type: string
+            maxLength: 128
+        disposition_before:
+          $ref: '#/components/schemas/Disposition'
+        disposition_after:
+          $ref: '#/components/schemas/Disposition'
+        material:
+          type: boolean
+        recorded_at:
+          type: string
+          format: date-time
+    TriageParts:
+      type: object
+      additionalProperties: false
+      description: >-
+        一个动作的各部分。change：changed 已改变（带前后值与写入后的版本）、unchanged 请求的效果已成立、not_applicable 不适用（如已关闭信号
+        的处理状态）。feedback 的 before / after 不出现表示没有反馈；manual_disposition 的 none 表示没有人工处置。
+      properties:
+        feedback:
+          type: object
+          additionalProperties: false
+          required:
+          - change
+          properties:
+            change: &change
+              type: string
+              enum:
+              - changed
+              - unchanged
+              - not_applicable
+            before:
+              $ref: '#/components/schemas/Feedback'
+            after:
+              $ref: '#/components/schemas/Feedback'
+            feedback_version:
+              type: integer
+              format: int64
+              minimum: 1
+        status:
+          type: object
+          additionalProperties: false
+          required:
+          - change
+          properties:
+            change: *change
+            before:
+              $ref: '#/components/schemas/SignalStatus'
+            after:
+              $ref: '#/components/schemas/SignalStatus'
+            state_version:
+              type: integer
+              format: int64
+              minimum: 1
+        manual_disposition:
+          type: object
+          additionalProperties: false
+          required:
+          - change
+          properties:
+            change: *change
+            before: &manualValue
+              type: string
+              enum:
+              - none
+              - pursue_candidate
+              - review_candidate
+              - watch_signal
+            after: *manualValue
+            state_version:
+              type: integer
+              format: int64
+              minimum: 1
+    TriageRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - actor
+      - action
+      - parts
+      - seen_content_version
+      - channel
+      - occurred_at
+      properties:
+        operation_id: &operationID
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+        action: &action
+          type: string
+          enum:
+          - feedback
+          - withdraw_feedback
+          - dismiss
+          - restore
+          - adjust
+          - undo
+        parts:
+          $ref: '#/components/schemas/TriageParts'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        seen_content_version:
+          type: integer
+          format: int64
+          minimum: 0
+        channel: &channel
+          type: string
+          enum:
+          - web
+          - wecom
+        batch_id:
+          type: string
+          pattern: ^sgb_[0-9A-HJKMNP-TV-Z]{26}$
+        undo_of:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$
+        occurred_at:
+          type: string
+          format: date-time
+    TriageRecordPage:
+      type: object
+      additionalProperties: false
+      required:
+      - records
+      properties:
+        records:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/TriageRecord'
+        next_cursor:
+          type: string
+          minLength: 1
+          maxLength: 512
+    SignalDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - signal
+      - explanation
+      - feedback
+      - feedback_truncated
+      - updates
+      - updates_truncated
+      - records
+      - records_truncated
+      - viewer_can_feedback
+      properties:
+        signal:
+          $ref: '#/components/schemas/SignalRow'
+        explanation:
+          $ref: '#/components/schemas/Explanation'
+        manual_reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        feedback:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/MemberFeedback'
+        feedback_truncated:
+          type: boolean
+        updates:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SignalUpdate'
+        updates_truncated:
+          type: boolean
+        records:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/TriageRecord'
+        records_truncated:
+          type: boolean
+        viewer_can_feedback:
+          type: boolean
+    TriageRequest:
+      type: object
+      additionalProperties: false
+      description: >-
+        action：feedback 反馈（feedback 必填；dismiss 为真时同时忽略，“不相关”默认由界面勾选）、withdraw_feedback 撤回本人反馈、dismiss 忽略、
+        restore 恢复、adjust 调整处置（manual_disposition 与 reason 必填）。三个版本都是用户看到的值：内容版本、状态版本与本人反馈版本（0 为从未反馈）。
+      required:
+      - operation_id
+      - action
+      - seen_content_version
+      - state_version
+      - feedback_version
+      properties:
+        operation_id: *operationID
+        action:
+          type: string
+          enum:
+          - feedback
+          - withdraw_feedback
+          - dismiss
+          - restore
+          - adjust
+        seen_content_version:
+          type: integer
+          format: int64
+          minimum: 0
+        state_version:
+          type: integer
+          format: int64
+          minimum: 0
+        feedback_version:
+          type: integer
+          format: int64
+          minimum: 0
+        feedback:
+          $ref: '#/components/schemas/FeedbackInput'
+        dismiss:
+          type: boolean
+          default: false
+        manual_disposition:
+          $ref: '#/components/schemas/ManualDisposition'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        channel:
+          type: string
+          enum:
+          - web
+          - wecom
+          default: web
+    FeedbackInput:
+      type: object
+      additionalProperties: false
+      required:
+      - result
+      properties:
+        result: *feedbackResult
+        reasons: *reasons
+        note: *note
+    SignalState:
+      type: object
+      additionalProperties: false
+      description: 信号的当前处理状态与本人反馈（冲突时供用户查看他人或本人之后的修改）
+      required:
+      - status
+      - manual_disposition
+      - state_version
+      - content_version
+      - feedback_version
+      properties:
+        status:
+          $ref: '#/components/schemas/SignalStatus'
+        manual_disposition: *manualValue
+        state_version:
+          type: integer
+          format: int64
+          minimum: 0
+        content_version:
+          type: integer
+          format: int64
+          minimum: 0
+        feedback:
+          $ref: '#/components/schemas/Feedback'
+        feedback_version:
+          type: integer
+          format: int64
+          minimum: 0
+    TriageResult:
+      type: object
+      additionalProperties: false
+      description: result：succeeded 任一部分改变；no_change 请求的效果全部已经成立
+      required:
+      - operation_id
+      - signal_id
+      - action
+      - result
+      - parts
+      - state
+      properties:
+        operation_id: *operationID
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        action: *action
+        result:
+          type: string
+          enum:
+          - succeeded
+          - no_change
+        parts:
+          $ref: '#/components/schemas/TriageParts'
+        state:
+          $ref: '#/components/schemas/SignalState'
+    BatchItemInput:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_id
+      - seen_content_version
+      - state_version
+      - feedback_version
+      properties:
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        seen_content_version:
+          type: integer
+          format: int64
+          minimum: 0
+        state_version:
+          type: integer
+          format: int64
+          minimum: 0
+        feedback_version:
+          type: integer
+          format: int64
+          minimum: 0
+    TriageSignalsRequest:
+      type: object
+      additionalProperties: false
+      description: >-
+        批量动作：relevant 标相关、irrelevant 标不相关（reasons 必填，dismiss 缺省为真即同时忽略）、dismiss 忽略、restore 恢复、
+        exclusion_correct / exclusion_wrong 排除信号的反馈。批量不调整处置。与动作不适用的信号逐项为 not_applicable，未处理。
+      required:
+      - action
+      - items
+      properties:
+        action: &batchAction
+          type: string
+          enum:
+          - relevant
+          - irrelevant
+          - dismiss
+          - restore
+          - exclusion_correct
+          - exclusion_wrong
+        reasons: *reasons
+        note: *note
+        dismiss:
+          type: boolean
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/BatchItemInput'
+    BatchItem:
+      type: object
+      additionalProperties: false
+      description: >-
+        逐项结果：succeeded 成功（parts 标出改变的部分，例如处理状态无变化、反馈已记录）、no_change 无变化、failed 失败（failure 为
+        definite 确定失败，固定在操作标识上，不在重试中；transient 暂时失败，未提交，可重试）、unprocessed 未处理（尚未尝试）。
+        他租户或不存在的信号以 signal_not_found 逐项失败，不返回其内容。
+      required:
+      - signal_id
+      - operation_id
+      - result
+      - attempts
+      properties:
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        operation_id: *operationID
+        result:
+          type: string
+          enum:
+          - succeeded
+          - no_change
+          - failed
+          - unprocessed
+        failure:
+          type: string
+          enum:
+          - definite
+          - transient
+        code:
+          type: string
+          minLength: 1
+          maxLength: 64
+        parts:
+          $ref: '#/components/schemas/TriageParts'
+        attempts:
+          type: integer
+          minimum: 0
+    SignalBatch:
+      type: object
+      additionalProperties: false
+      description: >-
+        批量作业：running 执行中、completed 全部成功或无变化、partial 部分成功、failed 全部失败、cancelled 已取消（仍有未处理项）、
+        interrupted 执行中断（执行者租约过期，仍有未处理项）。
+      required:
+      - id
+      - objective_id
+      - action
+      - state
+      - summary
+      - items
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          pattern: ^sgb_[0-9A-HJKMNP-TV-Z]{26}$
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        action: *batchAction
+        reasons: *reasons
+        note: *note
+        dismiss:
+          type: boolean
+        state:
+          type: string
+          enum:
+          - running
+          - completed
+          - partial
+          - failed
+          - cancelled
+          - interrupted
+        summary:
+          type: object
+          additionalProperties: false
+          required:
+          - total
+          - succeeded
+          - no_change
+          - failed_definite
+          - failed_transient
+          - unprocessed
+          properties:
+            total:
+              type: integer
+              minimum: 1
+            succeeded:
+              type: integer
+              minimum: 0
+            no_change:
+              type: integer
+              minimum: 0
+            failed_definite:
+              type: integer
+              minimum: 0
+            failed_transient:
+              type: integer
+              minimum: 0
+            unprocessed:
+              type: integer
+              minimum: 0
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/BatchItem'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UndoRequest:
+      type: object
+      additionalProperties: false
+      description: target_operation_id（单条操作）与 target_batch_id（整批）二选一，都给或都不给时 400 invalid_request
+      required:
+      - operation_id
+      properties:
+        operation_id: *operationID
+        target_operation_id: *operationID
+        target_batch_id:
+          type: string
+          pattern: ^sgb_[0-9A-HJKMNP-TV-Z]{26}$
+    UndoItem:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_id
+      - target_operation_id
+      - operation_id
+      - result
+      properties:
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        target_operation_id: *operationID
+        operation_id: *operationID
+        result:
+          type: string
+          enum:
+          - succeeded
+          - failed
+        failure:
+          type: string
+          enum:
+          - definite
+          - transient
+        code:
+          type: string
+          minLength: 1
+          maxLength: 64
+        parts:
+          $ref: '#/components/schemas/TriageParts'
+        current:
+          $ref: '#/components/schemas/SignalState'
+    UndoResult:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - items
+      properties:
+        operation_id: *operationID
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/UndoItem'

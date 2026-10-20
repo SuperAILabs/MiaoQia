@@ -141,3 +141,23 @@ type ObjectiveAccessor struct{ Service *Service }
 func (a ObjectiveAccessor) Access(ctx context.Context, objective string, relations []string) ([]string, error) {
 	return a.Service.ObjectiveAccess(ctx, objective, relations)
 }
+
+func (s *Server) GetActivePolicies(ctx context.Context, params cc.GetActivePoliciesParams) (*cc.ActivePolicyList, error) {
+	return s.Service.ActivePolicyList(ctx, params.Limit.Or(0), params.Cursor.Or(""))
+}
+
+// ActivePolicyList 读取生效策略并转换为契约类型（本地绑定与内部接口共用）。
+func (s *Service) ActivePolicyList(ctx context.Context, limit int, cursor string) (*cc.ActivePolicyList, error) {
+	page, err := s.ActivePolicies(ctx, limit, cursor)
+	if err != nil {
+		return nil, err
+	}
+	return convert[cc.ActivePolicyList](page)
+}
+
+// ActivePolicyReader 实现 api.ActivePolicies（本地绑定）。
+type ActivePolicyReader struct{ Service *Service }
+
+func (r ActivePolicyReader) ActivePolicies(ctx context.Context, limit int, cursor string) (*cc.ActivePolicyList, error) {
+	return r.Service.ActivePolicyList(ctx, limit, cursor)
+}

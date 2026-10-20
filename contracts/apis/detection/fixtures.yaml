@@ -1,0 +1,818 @@
+fixtures:
+- schema: Problem
+  base:
+    type: https://errors.miaoqia.com/conflict
+    title: conflict
+    status: 409
+    code: conflict
+    current:
+      status: dismissed
+      manual_disposition: none
+      state_version: 3
+      content_version: 0
+      feedback_version: 0
+  cases:
+  - name: 非错误HTTP状态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: 200
+  - name: 未知错误字段
+    valid: false
+    patch:
+    - op: add
+      path: /signal
+      value: {}
+- schema: Disposition
+  base: excluded
+  cases:
+  - name: 无信号不产生信号
+    valid: false
+    instance: no_signal
+- schema: ManualDisposition
+  base: watch_signal
+  cases:
+  - name: 不能人工调整为排除
+    valid: false
+    instance: excluded
+- schema: SignalStatus
+  base: dismissed
+  cases:
+  - name: 未知状态
+    valid: false
+    instance: ignored
+- schema: Feedback
+  base:
+    result: irrelevant
+    reasons:
+    - CATEGORY_MISMATCH
+    based_on_content_version: 0
+  cases:
+  - name: 带说明的其他
+    valid: true
+    patch:
+    - op: replace
+      path: /reasons
+      value:
+      - OTHER
+    - op: add
+      path: /note
+      value: 项目已由其他事业部跟进
+  - name: 原因重复
+    valid: false
+    patch:
+    - op: add
+      path: /reasons/-
+      value: CATEGORY_MISMATCH
+  - name: 原因代码须大写
+    valid: false
+    patch:
+    - op: replace
+      path: /reasons/0
+      value: category_mismatch
+  - name: 未知结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: maybe
+- schema: MemberFeedback
+  base:
+    member: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    feedback:
+      result: relevant
+      reasons:
+      - ALREADY_KNOWN
+      based_on_content_version: 1
+    feedback_version: 2
+    updated_at: '2026-10-20T09:12:00Z'
+  cases:
+  - name: 反馈版本从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /feedback_version
+      value: 0
+- schema: PolicyRef
+  base:
+    policy_id: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 3
+    generation: 4
+    template_id: TPL-TENDER-A02-SUPPLY
+    template_version: 0.3.0
+    enabled_domains:
+    - INF-PROC
+    - INF-ORG
+  cases:
+  - name: 缺策略代次
+    valid: false
+    patch:
+    - op: remove
+      path: /generation
+  - name: 策略标识前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /policy_id
+      value: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: SubjectRef
+  base:
+    type: domain_fact
+    id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    part_id: lot_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 领域事实须带版本
+    valid: false
+    patch:
+    - op: remove
+      path: /version
+  - name: 信号的求值单位是领域事实
+    valid: false
+    patch:
+    - op: replace
+      path: /type
+      value: project
+- schema: SignalRow
+  base: &row
+    id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    fact_type: tendering.bid_result
+    subject:
+      type: domain_fact
+      id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      version: 1
+    title: 某市政管网改造工程中标结果公告
+    winner:
+      org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      name: 某建设集团有限公司
+    amount:
+      value: '18000000'
+      currency: CNY
+    location: '330106'
+    categories:
+    - CAT-PIPE-PE
+    same_lot_count: 1
+    disposition: pursue_candidate
+    score: 75
+    needs_review: false
+    reasons:
+    - 中标方近三年项目中出现过我方品类
+    - 金额不低于 5000000 元
+    unknown_count: 0
+    status: open
+    state_version: 0
+    content_version: 0
+    feedback_version: 0
+    backfill: false
+    updated_recently: false
+    policy:
+      policy_id: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      version: 1
+      generation: 1
+      template_id: TPL-TENDER-A02-SUPPLY
+      template_version: 0.3.0
+      enabled_domains:
+      - INF-PROC
+    evaluated_at: '2026-10-17T08:40:00Z'
+    created_at: '2026-10-17T08:40:03Z'
+  cases:
+  - name: 金额未公布时不出现
+    valid: true
+    patch:
+    - op: remove
+      path: /amount
+  - name: 人工处置与本人反馈
+    valid: true
+    patch:
+    - op: add
+      path: /manual_disposition
+      value: review_candidate
+    - op: replace
+      path: /status
+      value: triaged
+    - op: add
+      path: /my_feedback
+      value:
+        result: relevant
+        reasons: []
+        based_on_content_version: 0
+    - op: replace
+      path: /feedback_version
+      value: 1
+  - name: 至多两条命中理由
+    valid: false
+    patch:
+    - op: add
+      path: /reasons/-
+      value: 第三条
+  - name: 金额不得以预算代替（无金额性质字段）
+    valid: false
+    patch:
+    - op: add
+      path: /amount/kind
+      value: budget
+  - name: 缺发现时间
+    valid: false
+    patch:
+    - op: remove
+      path: /created_at
+- schema: SignalPage
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signals:
+    - *row
+    next_cursor: c2NvcmUuNzUuc2lnXzAx
+    viewer_can_feedback: true
+  cases:
+  - name: 只读成员
+    valid: true
+    patch:
+    - op: replace
+      path: /viewer_can_feedback
+      value: false
+  - name: 缺只读标记
+    valid: false
+    patch:
+    - op: remove
+      path: /viewer_can_feedback
+- schema: SignalSelection
+  base:
+    total: 1
+    exceeds_limit: false
+    items:
+    - signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      seen_content_version: 0
+      state_version: 1
+      feedback_version: 0
+  cases:
+  - name: 超过上限时不截断
+    valid: true
+    patch:
+    - op: replace
+      path: /total
+      value: 230
+    - op: replace
+      path: /exceeds_limit
+      value: true
+    - op: replace
+      path: /items
+      value: []
+  - name: 缺超限标记
+    valid: false
+    patch:
+    - op: remove
+      path: /exceeds_limit
+- schema: RuleTrace
+  base:
+    id: R-CAT
+    clause: require
+    result: unknown
+    say: 项目标的包含我方产品品类
+    unknown_reason: CATEGORY_UNCERTAIN
+    unknown_fields:
+    - fact.categories
+  cases:
+  - name: 加分规则带权重
+    valid: true
+    patch:
+    - op: replace
+      path: /id
+      value: B-LARGE
+    - op: replace
+      path: /clause
+      value: boost
+    - op: replace
+      path: /result
+      value: 'true'
+    - op: remove
+      path: /unknown_reason
+    - op: remove
+      path: /unknown_fields
+    - op: add
+      path: /weight
+      value: 10
+  - name: 未登记的未知原因
+    valid: false
+    patch:
+    - op: replace
+      path: /unknown_reason
+      value: UNKNOWN
+  - name: 结果不能是布尔
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: true
+- schema: Explanation
+  base: &explanation
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    disposition: review_candidate
+    needs_review: true
+    score: 50
+    conclusion: 复核候选：“项目标的包含我方产品品类”未能确定，需人工复核
+    trace:
+    - id: R-CAT
+      clause: require
+      result: unknown
+      unknown_reason: CATEGORY_UNCERTAIN
+      unknown_fields:
+      - fact.categories
+    features: {}
+    inputs:
+      subject:
+        type: domain_fact
+        id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        version: 1
+      view_snapshot_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+      view_items:
+      - name: fact
+        id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        version: 1
+        domain: INF-PROC
+      context_snapshot_version: 3
+      org_unit_id: root
+      policy:
+        policy_id: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        version: 1
+        generation: 1
+        template_id: TPL-TENDER-A02-SUPPLY
+        template_version: 0.3.0
+        enabled_domains:
+        - INF-PROC
+      evaluated_at: '2026-10-17T08:40:00Z'
+      created_at: '2026-10-17T08:40:03Z'
+      trigger_event_id: evt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      snapshot_available: true
+  cases:
+  - name: 排除带原因代码
+    valid: true
+    patch:
+    - op: replace
+      path: /disposition
+      value: excluded
+    - op: add
+      path: /reason_code
+      value: SELF_IS_WINNER
+  - name: 缺逻辑求值时间
+    valid: false
+    patch:
+    - op: remove
+      path: /inputs/evaluated_at
+  - name: 视图快照哈希格式
+    valid: false
+    patch:
+    - op: replace
+      path: /inputs/view_snapshot_hash
+      value: md5:00
+- schema: SignalUpdate
+  base:
+    content_version: 1
+    trigger: tendering.notice.amended.v1
+    changed_fields:
+    - amount
+    disposition_before: review_candidate
+    disposition_after: pursue_candidate
+    material: true
+    recorded_at: '2026-10-18T10:00:00Z'
+  cases:
+  - name: 内容版本从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /content_version
+      value: 0
+- schema: TriageParts
+  base:
+    feedback:
+      change: changed
+      after:
+        result: irrelevant
+        reasons:
+        - CATEGORY_MISMATCH
+        based_on_content_version: 0
+      feedback_version: 1
+    status:
+      change: unchanged
+  cases:
+  - name: 人工处置的前后值
+    valid: true
+    patch:
+    - op: add
+      path: /manual_disposition
+      value:
+        change: changed
+        before: none
+        after: pursue_candidate
+        state_version: 2
+  - name: 未知变化类型
+    valid: false
+    patch:
+    - op: replace
+      path: /status/change
+      value: skipped
+  - name: 未知部分
+    valid: false
+    patch:
+    - op: add
+      path: /priority
+      value:
+        change: changed
+- schema: TriageRecord
+  base: &record
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    actor: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    action: dismiss
+    parts:
+      status:
+        change: changed
+        before: open
+        after: dismissed
+        state_version: 1
+    seen_content_version: 0
+    channel: web
+    occurred_at: '2026-10-20T09:12:00Z'
+  cases:
+  - name: 撤销引用被撤销的操作
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: undo
+    - op: add
+      path: /undo_of
+      value: op-01JA8ZXXXXXXXXXXXXXXXXXXX0
+  - name: 批量中的一项
+    valid: true
+    patch:
+    - op: replace
+      path: /operation_id
+      value: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1:sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - op: add
+      path: /batch_id
+      value: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 操作标识过短
+    valid: false
+    patch:
+    - op: replace
+      path: /operation_id
+      value: op1
+  - name: 未知渠道
+    valid: false
+    patch:
+    - op: replace
+      path: /channel
+      value: email
+- schema: TriageRecordPage
+  base:
+    records:
+    - *record
+  cases:
+  - name: 缺记录
+    valid: false
+    patch:
+    - op: remove
+      path: /records
+- schema: SignalDetail
+  base:
+    signal: *row
+    explanation: *explanation
+    feedback: []
+    feedback_truncated: false
+    updates: []
+    updates_truncated: false
+    records:
+    - *record
+    records_truncated: false
+    viewer_can_feedback: false
+  cases:
+  - name: 人工处置的原因
+    valid: true
+    patch:
+    - op: add
+      path: /manual_reason
+      value: 总包与我方有合作，值得跟进
+  - name: 缺截断标记
+    valid: false
+    patch:
+    - op: remove
+      path: /records_truncated
+- schema: TriageRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    action: feedback
+    seen_content_version: 0
+    state_version: 0
+    feedback_version: 0
+    feedback:
+      result: irrelevant
+      reasons:
+      - CATEGORY_MISMATCH
+    dismiss: true
+  cases:
+  - name: 调整处置
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: adjust
+    - op: remove
+      path: /feedback
+    - op: remove
+      path: /dismiss
+    - op: add
+      path: /manual_disposition
+      value: pursue_candidate
+    - op: add
+      path: /reason
+      value: 总包与我方有合作
+  - name: 渠道卡片的动作
+    valid: true
+    patch:
+    - op: add
+      path: /channel
+      value: wecom
+  - name: 缺所见内容版本
+    valid: false
+    patch:
+    - op: remove
+      path: /seen_content_version
+  - name: 批量动作不能单条提交
+    valid: false
+    patch:
+    - op: replace
+      path: /action
+      value: irrelevant
+  - name: 不能调整为排除
+    valid: false
+    patch:
+    - op: add
+      path: /manual_disposition
+      value: excluded
+- schema: FeedbackInput
+  base:
+    result: relevant
+    reasons:
+    - NEW_LEAD
+  cases:
+  - name: 缺结果
+    valid: false
+    patch:
+    - op: remove
+      path: /result
+- schema: SignalState
+  base:
+    status: triaged
+    manual_disposition: pursue_candidate
+    state_version: 2
+    content_version: 0
+    feedback:
+      result: relevant
+      reasons: []
+      based_on_content_version: 0
+    feedback_version: 1
+  cases:
+  - name: 缺人工处置
+    valid: false
+    patch:
+    - op: remove
+      path: /manual_disposition
+- schema: TriageResult
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    action: feedback
+    result: succeeded
+    parts:
+      feedback:
+        change: changed
+        after:
+          result: irrelevant
+          reasons:
+          - CATEGORY_MISMATCH
+          based_on_content_version: 0
+        feedback_version: 1
+      status:
+        change: unchanged
+    state:
+      status: dismissed
+      manual_disposition: none
+      state_version: 1
+      content_version: 0
+      feedback:
+        result: irrelevant
+        reasons:
+        - CATEGORY_MISMATCH
+        based_on_content_version: 0
+      feedback_version: 1
+  cases:
+  - name: 无变化
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: no_change
+  - name: 确定失败不以 200 返回
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: failed
+- schema: BatchItemInput
+  base:
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    seen_content_version: 0
+    state_version: 0
+    feedback_version: 0
+  cases:
+  - name: 缺状态版本
+    valid: false
+    patch:
+    - op: remove
+      path: /state_version
+- schema: TriageSignalsRequest
+  base:
+    action: irrelevant
+    reasons:
+    - CATEGORY_MISMATCH
+    dismiss: true
+    items:
+    - signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      seen_content_version: 0
+      state_version: 0
+      feedback_version: 0
+  cases:
+  - name: 批量忽略
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: dismiss
+    - op: remove
+      path: /reasons
+    - op: remove
+      path: /dismiss
+  - name: 批量不调整处置
+    valid: false
+    patch:
+    - op: replace
+      path: /action
+      value: adjust
+  - name: 空清单
+    valid: false
+    patch:
+    - op: replace
+      path: /items
+      value: []
+- schema: BatchItem
+  base:
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    operation_id: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1:sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    result: failed
+    failure: transient
+    code: customer_context_unavailable
+    attempts: 1
+  cases:
+  - name: 状态无变化、反馈已记录
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: succeeded
+    - op: remove
+      path: /failure
+    - op: remove
+      path: /code
+    - op: add
+      path: /parts
+      value:
+        feedback:
+          change: changed
+          feedback_version: 1
+        status:
+          change: unchanged
+  - name: 未处理
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: unprocessed
+    - op: remove
+      path: /failure
+    - op: remove
+      path: /code
+    - op: replace
+      path: /attempts
+      value: 0
+  - name: 未知失败类别
+    valid: false
+    patch:
+    - op: replace
+      path: /failure
+      value: final
+- schema: SignalBatch
+  base:
+    id: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    action: irrelevant
+    reasons:
+    - CATEGORY_MISMATCH
+    dismiss: true
+    state: partial
+    summary:
+      total: 1
+      succeeded: 0
+      no_change: 0
+      failed_definite: 0
+      failed_transient: 1
+      unprocessed: 0
+    items:
+    - signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      operation_id: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1:sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      result: failed
+      failure: transient
+      code: customer_context_unavailable
+      attempts: 1
+    created_at: '2026-10-20T09:12:00Z'
+    updated_at: '2026-10-20T09:12:03Z'
+  cases:
+  - name: 执行中断
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: interrupted
+  - name: 未知作业状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: done
+  - name: 批量上限
+    valid: false
+    patch:
+    - op: replace
+      path: /items
+      value: []
+- schema: UndoRequest
+  base:
+    operation_id: undo-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    target_batch_id: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 撤销单条操作
+    valid: true
+    patch:
+    - op: remove
+      path: /target_batch_id
+    - op: add
+      path: /target_operation_id
+      value: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 缺撤销操作标识
+    valid: false
+    patch:
+    - op: remove
+      path: /operation_id
+- schema: UndoItem
+  base:
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    target_operation_id: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1:sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    operation_id: undo-01JA8ZXXXXXXXXXXXXXXXXXXX1:sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    result: failed
+    failure: definite
+    code: conflict
+    current:
+      status: triaged
+      manual_disposition: pursue_candidate
+      state_version: 3
+      content_version: 0
+      feedback_version: 0
+  cases:
+  - name: 已撤销
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: succeeded
+    - op: remove
+      path: /failure
+    - op: remove
+      path: /code
+    - op: remove
+      path: /current
+  - name: 撤销没有无变化
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: no_change
+- schema: UndoResult
+  base:
+    operation_id: undo-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    items: []
+  cases:
+  - name: 缺逐项结果
+    valid: false
+    patch:
+    - op: remove
+      path: /items

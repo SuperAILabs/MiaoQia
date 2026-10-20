@@ -13,6 +13,24 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
+// GetFeedbackSummary implements getFeedbackSummary operation.
+//
+// 需要目标的 can_view_signals（按 customer-context
+// 的当前口径）；不能查看目标与不存在同为 404
+// objective_not_found，能查看而没有 can_view_signals 为 403 forbidden，授权不可用为
+// 503。口径（PRD 第3段 F7 第1条）：窗口为发现时间在统计截至时间之前 30
+// 天内的信号；
+// 取各成员的当前反馈（撤回的不计）；只有基于信号当前内容版本的反馈参与计数，基于更新前版本的单列（stale_feedback）。反馈率的
+// 分子为至少有一条当前版本相关性反馈的非排除信号数，分母为窗口内的非排除信号数；相关、不相关与分歧按信号计（同时有相关与
+// 不相关为分歧）；原因分布在计为不相关（排除有误）的信号中按原因标签计信号数。样本（相关
+// + 不相关 + 分歧）少于 20 时不给出 比例（ratio
+// 字段不出现），只给数量。反馈只用于评估与改进建议，不会自动修改策略。.
+//
+// GET /v1/learning/objectives/{objectiveID}/feedback-summary
+func (UnimplementedHandler) GetFeedbackSummary(ctx context.Context, params GetFeedbackSummaryParams) (r *FeedbackSummary, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetSimulation implements getSimulation operation.
 //
 // 需要目标的 can_view（同样按 customer-context 的当前口径）；授权或

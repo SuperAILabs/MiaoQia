@@ -65,11 +65,18 @@
 - **端口与夹具**：数据集（`api.Dataset`）与信息领域服务状态（`api.DomainStatus`）是端口。生产适配器未接入：`learning.Module()` 使用 `api.NotWired`，运行以 `dataset_unavailable` / `domain_status_unavailable` 失败并登记为失败的运行，不能用于申请。测试与演示使用 `api/datasettest` 的内存夹具，事实全部虚构、标为夹具；夹具的事实类型与视图项到信息领域的对应是测试数据，生产对应随 domain-intelligence 的覆盖接口；
 - **未实现**：样本按查看者权限过滤（当前样本只含夹具事实的标题与金额）、历史实况回放与漏报诊断、客户清单（`lists.*` 在仿真中为空）。
 
+**实现状况（PRD 第3段反馈汇总，契约 0.2.0 草案）**：
+
+- **接口**：`GetFeedbackSummary`（`GET /v1/learning/objectives/{objectiveID}/feedback-summary`），经 customer-context 的 `ObjectiveAccess` 判断 `can_view_signals`（不能查看目标与不存在同为 404 `objective_not_found`，能查看目标而不能看信号为 403，授权不可用为 503）。只读，不创建草案或提案；
+- **反馈集**：消费 `detection.signal.detected.v1`（登记信号、目标、处置、发现时间与内容版本）与 `detection.signal.triaged.v1`（按操作标识幂等，重复投递不重复计入；成员的当前反馈只被更高的反馈版本替换，乱序不回退；信号的当前内容版本取事件中内容版本的最大值）。表为 `lrn_signals`、`lrn_feedback`、`lrn_feedback_ops`（行级安全）。detection 不同步调用本子系统：learning 不可用时反馈照常提交，恢复后由事件补齐；
+- **口径**：按上表 `GetFeedbackSummary` 的口径，窗口为发现时间近 30 天；样本为相关、不相关与分歧之和，少于 20 时不给比例（`sample_sufficient` 为假）。原因分布按不相关信号计数，并按应用领域包反馈原因的 `relates` 给出相关的规则、参数与画像字段提示；
+- **缺省与缺口**：信号的内容版本只从 `triaged` 事件得知（`signal.updated` 尚未发布），信号更新后在有人基于新版本处理之前，旧版本反馈仍按当前版本计入；`learning.feedback.recorded.v1` 未发布。
+
 ## 6. 事件
 
 **发布**：`learning.feedback.recorded.v1`、`learning.miss.diagnosed.v1`（随漏报功能实现）、`learning.simulation.completed.v1`、`learning.evaluation.completed.v1`、`learning.drift.detected.v1`、`learning.policy.proposal_created.v1`。
 
-已实现发布 `learning.simulation.completed.v1`（[事件契约](../../../contracts/events/learning/events.asyncapi.yaml) 0.1.0 草案）与消费 `customer_context.policy.drafted.v1`。
+已实现发布 `learning.simulation.completed.v1`（[事件契约](../../../contracts/events/learning/events.asyncapi.yaml) 0.1.0 草案）与消费 `customer_context.policy.drafted.v1`、`detection.signal.detected.v1` 与 `detection.signal.triaged.v1`（第5节实现状况）。
 
 **消费**：`detection.signal.triaged.v1`、`assessment.assessment.created.v1`、`assessment.decision.recorded.v1`、`pursuit.outcome.recorded.v1`、`customer_context.policy.drafted.v1`（自动触发仿真）。
 

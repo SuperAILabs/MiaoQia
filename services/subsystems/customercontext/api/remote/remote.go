@@ -49,6 +49,15 @@ func NewObjectiveAccess(baseURL string) (api.ObjectiveAccess, error) {
 	return r.(client), nil
 }
 
+// NewActivePolicies 返回远程生效策略读取接口；baseURL 同 NewContextReader（以服务主体调用）。
+func NewActivePolicies(baseURL string) (api.ActivePolicies, error) {
+	r, err := NewContextReader(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return r.(client), nil
+}
+
 // refuseRedirect 拒绝重定向：重定向后的请求会重新附加请求上下文头，且目标未经入口校验。
 func refuseRedirect(*http.Request, []*http.Request) error {
 	return errors.New("customer-context remote refuses redirects")
@@ -125,5 +134,23 @@ func (c client) Access(ctx context.Context, objective string, relations []string
 				out = append(out, string(r))
 			}
 			return out, nil
+		})
+}
+
+func (c client) ActivePolicies(ctx context.Context, limit int, cursor string) (*api.ActivePolicyList, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetActivePolicies", Idempotent: true},
+		func(ctx context.Context) (*api.ActivePolicyList, error) {
+			params := cc.GetActivePoliciesParams{}
+			if limit > 0 {
+				params.Limit = cc.NewOptInt(limit)
+			}
+			if cursor != "" {
+				params.Cursor = cc.NewOptString(cursor)
+			}
+			res, err := c.c.GetActivePolicies(ctx, params)
+			if err != nil {
+				return nil, translate(err)
+			}
+			return res, nil
 		})
 }

@@ -1,0 +1,324 @@
+asyncapi: 3.0.0
+info:
+  title: detection 监测与匹配事件
+  version: 0.1.0
+  description: >-
+    由 detection 经发件箱发布（PRD 第3段第8节；docs/03-architecture/subsystems/detection.md 第6节）。信封为 CloudEvents 1.0，约定见
+    docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。
+    草案：随第3段首个实现切片提交，未冻结。0.1.0 有信号生成 signal.detected 与处理和反馈 signal.triaged（learning 据此写入反馈集，
+    以操作标识幂等）；signal.updated（重新求值）与 pursuit_related_event 随所属功能追加。
+channels:
+  tenantDetection:
+    address: cell-{cell}.detection
+    parameters:
+      cell:
+        description: 租户所在 cell，例如 cell-01
+    messages:
+      signalDetected:
+        $ref: '#/components/messages/signalDetected'
+      signalTriaged:
+        $ref: '#/components/messages/signalTriaged'
+operations:
+  publishDetectionEvents:
+    action: send
+    channel:
+      $ref: '#/channels/tenantDetection'
+components:
+  schemas:
+    Feedback:
+      type: object
+      additionalProperties: false
+      description: 一名成员的反馈值（结果与原因标签取自应用领域包）；说明文字不进入事件
+      required:
+      - result
+      - reasons
+      - based_on_content_version
+      properties:
+        result:
+          type: string
+          enum:
+          - relevant
+          - irrelevant
+          - exclusion_correct
+          - exclusion_wrong
+        reasons:
+          type: array
+          maxItems: 9
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[A-Z][A-Z0-9_]{1,63}$
+        based_on_content_version:
+          type: integer
+          minimum: 0
+    ManualValue:
+      type: string
+      enum:
+      - none
+      - pursue_candidate
+      - review_candidate
+      - watch_signal
+    Status:
+      type: string
+      enum:
+      - open
+      - triaged
+      - converted
+      - dismissed
+      - closed
+  messages:
+    signalDetected:
+      name: detection.signal.detected.v1
+      x-fixtures-required: true
+      summary: 生成一条新信号
+      description: >-
+        一个求值单位按目标的生效策略（读取时的代次）求值后首次产生信号（处置不是 no_signal）。evaluated_at 为逻辑求值时间（触发事件的
+        业务时间），created_at 为发现时间（信号写入时间）；backfill 为回填信号。策略激活或回滚后已有信号不重算，因此不会因此再次发布。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - signal_id
+        - objective_id
+        - objective_code
+        - policy_id
+        - policy_version
+        - policy_generation
+        - template_id
+        - template_version
+        - subject
+        - fact_type
+        - disposition
+        - score
+        - needs_review
+        - context_snapshot_version
+        - evaluated_at
+        - created_at
+        - backfill
+        properties:
+          signal_id:
+            type: string
+            pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+          objective_id:
+            type: string
+            pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+          objective_code:
+            type: string
+            pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+          policy_id:
+            type: string
+            pattern: ^pol_[0-9A-HJKMNP-TV-Z]{26}$
+          policy_version:
+            type: integer
+            minimum: 1
+          policy_generation:
+            type: integer
+            minimum: 1
+          template_id:
+            type: string
+            pattern: ^TPL-[A-Z0-9-]{1,64}$
+          template_version:
+            type: string
+            pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+          subject:
+            type: object
+            additionalProperties: false
+            required:
+            - type
+            - id
+            - version
+            properties:
+              type:
+                type: string
+                enum:
+                - domain_fact
+              id:
+                type: string
+                pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+              version:
+                type: integer
+                minimum: 1
+              part_id:
+                type: string
+                pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+          fact_type:
+            type: string
+            pattern: ^[a-z]+\.[a-z_]+$
+          disposition:
+            type: string
+            enum:
+            - pursue_candidate
+            - review_candidate
+            - watch_signal
+            - excluded
+          score:
+            type: integer
+          needs_review:
+            type: boolean
+          reason_code:
+            type: string
+            pattern: ^[A-Z][A-Z0-9_]*$
+          context_snapshot_version:
+            type: integer
+            minimum: 1
+          evaluated_at:
+            type: string
+            format: date-time
+          created_at:
+            type: string
+            format: date-time
+          backfill:
+            type: boolean
+        allOf:
+        - if:
+            properties:
+              disposition:
+                const: excluded
+          then:
+            required:
+            - reason_code
+    signalTriaged:
+      name: detection.signal.triaged.v1
+      x-fixtures-required: true
+      summary: 一次处理或反馈操作提交（至少一个部分改变）
+      description: >-
+        TriageSignal、批量中的一项或撤销中的一项提交后发布，只在至少一个部分（本人反馈、处理状态、人工处置）改变时发布；无变化与失败不发布。
+        parts 只含改变的部分及其前后值与写入后的版本：feedback 的 before / after 不出现表示没有反馈。content_version 为提交时信号的
+        内容版本，learning 据此判断反馈是否基于当前内容版本。撤销的 action 为 undo 并带 undo_of（被撤销的操作标识）。
+        occurred_at 为业务时间。learning 以 operation_id 幂等写入反馈集。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - operation_id
+        - signal_id
+        - objective_id
+        - actor
+        - action
+        - seen_content_version
+        - content_version
+        - disposition
+        - signal_created_at
+        - parts
+        - channel
+        - occurred_at
+        properties:
+          operation_id:
+            type: string
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$
+          signal_id:
+            type: string
+            pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+          objective_id:
+            type: string
+            pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+          actor:
+            type: string
+            description: 操作者（用户主体）；撤销与原操作为同一操作者
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+          action:
+            type: string
+            enum:
+            - feedback
+            - withdraw_feedback
+            - dismiss
+            - restore
+            - adjust
+            - undo
+          seen_content_version:
+            type: integer
+            minimum: 0
+          content_version:
+            type: integer
+            minimum: 0
+          disposition:
+            type: string
+            description: 信号的系统处置（排除信号的反馈单独统计）
+            enum:
+            - pursue_candidate
+            - review_candidate
+            - watch_signal
+            - excluded
+          signal_created_at:
+            type: string
+            format: date-time
+            description: 信号的发现时间（反馈汇总的窗口按它计）
+          parts:
+            type: object
+            additionalProperties: false
+            minProperties: 1
+            properties:
+              feedback:
+                type: object
+                additionalProperties: false
+                required:
+                - version
+                properties:
+                  before:
+                    $ref: '#/components/schemas/Feedback'
+                  after:
+                    $ref: '#/components/schemas/Feedback'
+                  version:
+                    type: integer
+                    minimum: 1
+              status:
+                type: object
+                additionalProperties: false
+                required:
+                - before
+                - after
+                - version
+                properties:
+                  before:
+                    $ref: '#/components/schemas/Status'
+                  after:
+                    $ref: '#/components/schemas/Status'
+                  version:
+                    type: integer
+                    minimum: 1
+              manual_disposition:
+                type: object
+                additionalProperties: false
+                required:
+                - before
+                - after
+                - version
+                properties:
+                  before:
+                    $ref: '#/components/schemas/ManualValue'
+                  after:
+                    $ref: '#/components/schemas/ManualValue'
+                  version:
+                    type: integer
+                    minimum: 1
+          reason:
+            type: string
+            minLength: 1
+            maxLength: 500
+            description: 调整处置的原因
+          channel:
+            type: string
+            enum:
+            - web
+            - wecom
+          batch_id:
+            type: string
+            pattern: ^sgb_[0-9A-HJKMNP-TV-Z]{26}$
+          undo_of:
+            type: string
+            pattern: ^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$
+          occurred_at:
+            type: string
+            format: date-time
+        allOf:
+        - if:
+            properties:
+              action:
+                const: undo
+          then:
+            required:
+            - undo_of
+          else:
+            not:
+              required:
+              - undo_of

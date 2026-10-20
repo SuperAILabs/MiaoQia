@@ -169,6 +169,8 @@
 | 申请批量导出租户产物 | org_unit | can_request_export | ✓ | ✓ | ✓ | ✓ | — | ✓ | — |
 | 列出单元内目标（范围内可见） | org_unit | can_list_objectives | ✓ | — | — | ✓ | — | ✓ | — |
 | 起草单元内全部目标的策略（不经参与关系） | org_unit | can_draft_unit_policies | ✓ | — | — | — | — | — | — |
+| 查看单元内全部目标的信号（不经参与关系） | org_unit | can_view_unit_signals | ✓ | — | — | ✓ | — | — | — |
+| 反馈单元内全部目标的信号（不经参与关系） | org_unit | can_feedback_unit_signals | ✓ | — | — | ✓ | — | — | — |
 | 查看一般知识资产 | knowledge_asset | can_view | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | 查看受限知识资产 | knowledge_asset:restricted | can_view | ◐ | ◐ | ◐ | ◐ | ✓ | ◐ | — |
 | 授予受限知识资产 | knowledge_asset:restricted | can_grant | — | — | — | — | ✓ | ✓ | — |

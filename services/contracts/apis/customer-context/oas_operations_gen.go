@@ -11,6 +11,7 @@ const (
 	DiscardPolicyDraftOperation       OperationName = "DiscardPolicyDraft"
 	DraftPolicyChangeOperation        OperationName = "DraftPolicyChange"
 	EnableObjectiveOperation          OperationName = "EnableObjective"
+	GetActivePoliciesOperation        OperationName = "GetActivePolicies"
 	GetContextSnapshotOperation       OperationName = "GetContextSnapshot"
 	GetContextVersionOperation        OperationName = "GetContextVersion"
 	GetObjectiveOperation             OperationName = "GetObjective"

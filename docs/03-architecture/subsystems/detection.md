@@ -62,9 +62,21 @@
 | `DryRunPolicy` | 查询 | 给定完整输入快照的诊断求值；调用共享 kernel/policy，不是 learning 仿真的依赖 |
 | `DiagnoseMiss` | 查询 | 供 learning 的漏报诊断调用：给定对象、目标与时点，返回当时是否生成候选、用当时固定的事实版本、生效策略与上下文重新求值的处置及命中/排除规则（与 `DryRunPolicy` 同一求值器）、信号与投递引用；无法恢复当时输入时返回“输入不足”。求值结果不是 `no_signal`（包括 `excluded`）而没有候选时标记为召回缺陷；不改写信号（[learning 第 11 节](learning.md#11-漏报反馈与诊断)） |
 
+**实现状况（PRD 第3段信号收件箱与反馈的服务端切片，契约 [`contracts/apis/detection/openapi.yaml`](../../../contracts/apis/detection/openapi.yaml) 0.1.0 草案）**：
+
+- **接口**：`ListSignals`（`GET /v1/detection/objectives/{objectiveID}/signals`）、`SelectSignals`（`…/signal-selection`，“全部符合筛选”的固定清单）、`GetSignal`、`ExplainSignal`、`ListSignalTriage`（处理记录，每页 50 条）、`TriageSignal`、`TriageSignals` / `GetSignalBatch` / `CancelSignalBatch` / `RetrySignalBatchItems` 与 `UndoSignalTriage`。`ListSignalsForObject`、简报取数、关注、`RunBackfill`、`DryRunPolicy` 与 `DiagnoseMiss` 未实现；
+- **授权**：每个用户入口都经 customer-context 的 `ObjectiveAccess` 绑定（远程时为内部接口 `GET /internal/v1/customer-context/objectives/{objectiveID}/access`）按目标所有者的口径判断 `can_view_signals` 与 `can_feedback`（identity 模型：目标的参与人、决策者与研究分析者可看；决策者、研究分析者以及身为参与人的业务开拓者可反馈，[identity 第7.2节](identity.md#72-权限矩阵)）。移除参与人在 customer-context 提交后立即撤权，即使 identity 的参与关系同步失败；授权服务或 customer-context 不可用时 503，不当作无权限。收件箱：不能查看目标与目标不存在同为 404 `objective_not_found`，能查看目标而不能看信号（不是参与人的管理员）为 403；单条信号：不存在、他租户与无权查看同为 404 `signal_not_found`，不返回内容。处理提交时实时判断，批量与撤销逐项判断；
+- **收件箱**：一次只看一个目标；分栏、处置、事实类型、区域（含下级）、品类（含下级）、金额区间（未公布的不进入金额筛选）、发现时间、本人反馈与标记（回填、7 天内实质更新、有未知项）筛选；按排序分、发现时间或金额（未公布的在后）键集分页，每页至多 50 条，游标绑定目标、分栏、筛选与排序（不一致 400 `invalid_cursor`）。行内带同标包中标信号数与至多两条为真的规则说明；金额未公布时不出现金额。`SelectSignals` 超过 200 条时只返回数量与 `exceeds_limit`，不返回清单。详情的成员反馈、更新与处理记录各有上限并标明截断，处理记录全量经 `ListSignalTriage` 翻页；
+- **处理与反馈**：按第 12 节的部分判断（反馈、处理状态、人工处置）实现无变化、冲突（409 带当前值）、`signal_updated`、`signal_closed` 与 `not_applicable`；反馈原因取自应用领域包（`packs/application_domains/*/feedback/*.yaml`，按目标代码），不相关与排除有误至少一个原因，标为须说明的原因须写说明，调整处置须写原因（422 `invalid_feedback`）。操作结果（成功、无变化、确定失败）固定在操作标识上（`det_triage_ops`，追加式）：同一操作标识的新尝试直接返回已固定的结果，用于不同请求或由他人使用时 409 `operation_conflict`；尝试按（调用者、接口、幂等键）保存（`det_triage_attempts`），同键重发返回该尝试的结果，包括 503 等暂时失败，同键不同请求 409 `idempotency_conflict`；暂时失败不固定在操作标识上，新键同一操作标识可再次尝试。每个改变了部分的操作发布 `detection.signal.triaged.v1` 并写一条审计（资源为信号、操作、内容版本与状态版本的引用；原因与说明只留在处理记录）；
+- **批量**：请求内逐项同步执行（不经工作流），作业以数据库时钟的租约（缺省 2 分钟，每项前续租并检查取消）防止两个执行者同时处理；执行者中断而租约过期、仍有未处理项时为 `interrupted`，`RetrySignalBatchItems` 只为暂时失败项与未处理项发起新的尝试，已提交与确定失败的项不在其中。只有发起人可读、取消、继续（其他人与不存在同为 404）。批量“不相关”缺省同时忽略；
+- **撤销**：撤销是新的操作，每项的操作标识为“撤销操作标识:信号标识”。按第 12 节逐部分补偿并核对版本；整批撤销的范围是已提交且至少一个部分改变的项（含“状态无变化，反馈已记录”的项）。撤销调整处置恢复原人工处置，但不恢复原调整原因（缺口）；
+- **未实现**：重新求值与撤回关闭的生产者（`SignalUpdate` 与 `closed` 的写入方随视图触发与撤回识别实现，测试以拥有者账号写入）、`converted`（随推进）、回填执行、`signal.updated` 事件、来源中断与展示级别、漏报（随 learning 第11节）。
+
 ## 6. 事件
 
 **发布**：`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（载荷含操作标识、动作、反馈结果与原因标签、所见内容版本、各被改变部分的前后值、渠道与批次标识；撤销同样发布并引用被撤销的操作，`learning` 据此写入反馈集，以操作标识幂等）、`detection.pursuit_related_event.v1`。
+
+已实现发布 `detection.signal.detected.v1`（带固定的求值输入：策略标识、版本与代次、模板版本、上下文快照版本、`evaluated_at` 与 `created_at`）与 `detection.signal.triaged.v1`（载荷不含说明），契约见 [`contracts/events/detection/events.asyncapi.yaml`](../../../contracts/events/detection/events.asyncapi.yaml) 0.1.0 草案；已实现消费 `domain.fact.upserted.v1`（第8节实现状况）。策略与上下文的变更事件不消费：正确性只依赖每批读取。
 
 **消费**：领域事件（`domain.fact.upserted.v1` 及各领域事件）、`entity.merge.applied.v1`、`customer_context.policy.activated.v1` 与 `customer_context.policy.rolled_back.v1`（按策略代次提前刷新策略缓存）、`customer_context.objective.changed.v1`、`customer_context.profile.updated.v1` 与 `customer_context.entity_list.changed.v1`（按上下文版本提前刷新快照缓存）、`pursuit.pursuit.created.v1`（建立推进索引，不改变处理状态）、`pursuit.pursuit.signal_linked.v1` / `pursuit.pursuit.signal_unlinked.v1`（按关联标识加入或移除信号的有效关联，派生已转跟进，见第 4 节处理状态）。
 
@@ -81,6 +93,8 @@
 - 每批求值前读取 `customer-context.GetContextVersion`，按目标所属组织单元加载快照（缓存键含租户、组织单元与上下文版本），缓存较旧时先重新加载；读取失败时该批重试，不用可能过期的缓存求值；版本不高于缓存的事件被忽略（[PRD 第2段 第5节](../../01-product/prd/02-profile-and-objectives.md#5-业务与权限规则)）；
 - 每批求值前同样读取各目标的策略代次（`GetActivePolicies`），缓存较旧时先重新加载；读取失败时该批重试。激活或回滚返回后开始的批次一律使用新版本，事件只用于提前刷新（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节）；
 - 延迟目标：领域事件到信号生成 P95 < 1 分钟（规模化后的目标，具体见 [质量与验收](../../05-delivery/02-quality-and-acceptance.md)）。
+
+**实现状况（生效边界上的匹配，PRD 第7段第5节）**：消费公共域的 `domain.fact.upserted.v1`，经订阅反查端口（`api.Candidates`）得到候选租户、经事实视图端口（`api.Facts`）得到求值单位（A02 结果视图为“公告 + 一条中标结果”，`subject` 为 `ntc_` 与 `part_id` `bdr_`），每个候选租户在各自的租户事务中处理。每批开始时以服务主体经 `customer-context.ActivePolicies` 读取全部生效策略（按目标分页读完）与 `GetContextVersion`，任一读取失败时事件返回错误、按消费框架退避重试，不用缓存求值；编译结果与上下文快照只按不可变的键缓存（目标、版本与文档摘要；租户、组织单元与上下文版本），不决定使用哪个版本。只对状态为生效的目标、范围内的事实类型与启用领域内的事实求值；启用领域外的关联视图项不进入求值输入（读为未知，`DOMAIN_NOT_ENABLED`）。匹配记录 `det_matches` 以（目标、求值单位、事实版本）为主键、不含代次：同一事实版本最多求值一次，激活或回滚后的重复投递不按新代次重算，已有信号保留原策略版本与解释（PRD 第7段用例 16）。每条信号固定策略标识、版本与代次、模板版本、启用领域集合、上下文版本、视图快照哈希（快照按哈希保存）、触发事件与 `evaluated_at`（业务时间，触发事件时间），`created_at` 为写入时间。未知原因按“数据未接入 > 品类未能可靠识别 > 低于证据门槛 > 未关联本企业 > 字段缺失”取一个。缺省与缺口：同一求值单位的后续版本记为 `not_triggered`（A02 结果视图没有声明重新求值的触发字段，重新求值未实现）；客户、禁合作与竞争对手清单为空；`HISTORY_INSUFFICIENT` 不产生；规则到信息领域的生产对应未接入，B-PERMIT 在结果视图上按事件类型判为不满足而不是“数据未接入”。两个端口的生产适配器（按视图声明向数据所有者 domain-intelligence 与 entity-graph 组装视图、search 的订阅反查，[策略 DSL 5.1](../11-policy-dsl.md#51-变量)）未接入：`detection.Module()` 使用 `api.NotWired`，事件处理失败并重试、转入死信；测试使用 `api/facttest` 的内存夹具，事实全部虚构。
 
 ## 9. 安全要点
 

@@ -39,6 +39,7 @@ type Service struct {
 	Dataset  api.Dataset
 	Domains  api.DomainStatus
 	Features map[string]policy.Feature
+	Hints    map[string]*ReasonHint // 键为“目标编号/反馈结果/原因标签”
 	Now      func() time.Time
 	Log      *slog.Logger
 }
