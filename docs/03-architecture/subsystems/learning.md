@@ -56,7 +56,7 @@
 
 **实现状况（PRD 第7段策略仿真，契约 [`contracts/apis/learning/openapi.yaml`](../../../contracts/apis/learning/openapi.yaml) 0.1.0 草案）**：
 
-- **接口**：`SimulatePolicy`（`POST /v1/learning/simulations`）与 `GetSimulationReport`（`GET /v1/learning/simulations/{simulationID}`）。发起需要目标的 `can_draft_policy`；能查看而不能起草为 403，不能查看与修订不存在同为 404 `simulation_target_not_found`；读取报告需要 `can_view`，无权、其他租户与不存在同为 404 `simulation_not_found`。草案保存后消费 `customer_context.policy.drafted.v1` 自动仿真；运行结束发布 `learning.simulation.completed.v1`，customer-context 据此把运行附在修订上。运行记录在 `lrn_simulation_runs`（行级安全，只追加）；
+- **接口**：`SimulatePolicy`（`POST /v1/learning/simulations`）与 `GetSimulationReport`（`GET /v1/learning/simulations/{simulationID}`）。发起需要目标的 `can_draft_policy`，读取需要 `can_view`，两者都经 customer-context 的 `ObjectiveAccess` 绑定（远程时为内部接口 `GET /internal/v1/customer-context/objectives/{objectiveID}/access`，以用户请求上下文转交）按目标所有者的当前口径判断：移除参与人在 customer-context 提交后立即撤权，即使 identity 的参与关系同步失败或延迟；决策者与研究分析者经单元关系访问，不需要是参与人；授权服务或 customer-context 不可用时 503（失败关闭）。能查看而不能起草为 403，不能查看与修订不存在同为 404 `simulation_target_not_found`；读取报告需要 `can_view`，无权、其他租户与不存在同为 404 `simulation_not_found`。草案保存后消费 `customer_context.policy.drafted.v1` 自动仿真；运行结束发布 `learning.simulation.completed.v1`，customer-context 据此把运行附在修订上。运行记录在 `lrn_simulation_runs`（行级安全，只追加）；
 - **运行方式**：本切片在请求或事件消费中同步运行，不经 Temporal；数据集读取一次、在内存中回放，规模以夹具为准，生产规模的批处理与资源隔离随生产数据集；
 - **输入**：仿真输入以服务主体 `service:learning` 从 customer-context 读取（第 6 节的 `PolicyReader`），两侧都用 `kernel/policy` 编译；启用领域集合为目标需要的领域中服务状态为 `live` 的，`not_live` 与读不到状态（unknown）都排除并在报告中列出，不把未知当作已上线；客户上下文取仿真时的当前版本，两侧共用同一快照；窗口为截至业务日期零时（UTC）的近 90 天，可得历史不足时截断到可得起点并给出提示。窗口终点取整到日，使同一天内相同草案的重跑命中同一输入键（PRD 用例 10）；
 - **时点正确**：每条事实取逻辑求值时间（事件时间）之前已可得（`known_at`）的最新版本，事件时还没有可得版本的事实不回放；未启用领域提供的关联视图项不进入求值输入（读为未知），未启用领域的事实类型不回放；

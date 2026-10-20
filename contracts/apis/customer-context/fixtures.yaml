@@ -18,6 +18,37 @@ fixtures:
     - op: add
       path: /current
       value: 3
+- schema: ObjectiveRelation
+  base: can_draft_policy
+  cases:
+  - name: 批准关系不由本接口判断
+    valid: false
+    patch: []
+    instance: can_approve_activation
+- schema: ObjectiveAccess
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    allowed:
+    - can_view
+    - can_draft_policy
+  cases:
+  - name: 未登记的关系
+    valid: false
+    patch:
+    - op: add
+      path: /allowed/-
+      value: can_approve_activation
+  - name: 允许列表必填
+    valid: false
+    patch:
+    - op: remove
+      path: /allowed
+  - name: 未知字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
 - schema: ProfileEntity
   base:
     org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1

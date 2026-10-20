@@ -10,15 +10,18 @@ import (
 type Handler interface {
 	// GetSimulation implements getSimulation operation.
 	//
-	// 需要目标的 can_view；无权限、其他租户的与不存在的运行返回同一 404
+	// 需要目标的 can_view（同样按 customer-context 的当前口径）；授权或
+	// customer-context 不可用时
+	// 503，不当作无权限；无权限、其他租户的与不存在的运行返回同一 404
 	// simulation_not_found。.
 	//
 	// GET /v1/learning/simulations/{simulationID}
 	GetSimulation(ctx context.Context, params GetSimulationParams) (*SimulationRun, error)
 	// SimulatePolicy implements simulatePolicy operation.
 	//
-	// 需要目标的
-	// can_draft_policy。按（目标、草案修订、对比版本与策略代次、上下文版本、数据集版本、启用领域集合、窗口）计算输入键：
+	// 需要目标的 can_draft_policy，按目标所有者 customer-context
+	// 的当前口径判断（移除参与人在其本地提交后立即撤权，不等待 identity
+	// 同步）。按（目标、草案修订、对比版本与策略代次、上下文版本、数据集版本、启用领域集合、窗口）计算输入键：
 	// 已有相同输入的完成运行时直接返回它（相同输入的重试不重复计算）；否则同步运行并返回结果。修订未通过校验时
 	// 409 policy_invalid； 修订不存在或目标无权查看时 404
 	// simulation_target_not_found。草案保存后 learning 也会消费

@@ -17,7 +17,6 @@ import (
 
 	cc "github.com/superailabs/miaoqia/services/contracts/apis/customer-context"
 	"github.com/superailabs/miaoqia/services/kernel/audit"
-	"github.com/superailabs/miaoqia/services/kernel/authz"
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
@@ -34,7 +33,7 @@ const SimulationCompleted = "learning.simulation.completed.v1"
 // （均经绑定，以 svc:learning 读取）；Dataset 与 Domains 是仿真端口（api.NotWired 为未接入）；Features 是应用领域包的共享特征。
 type Service struct {
 	DB       *db.DB
-	Authz    authz.Decider
+	Access   customercontext.ObjectiveAccess
 	Context  customercontext.ContextReader
 	Policies customercontext.PolicyReader
 	Dataset  api.Dataset
@@ -87,16 +86,27 @@ func tenantContext(ctx context.Context) (reqctx.Context, error) {
 	return rc, nil
 }
 
-// allowed 经 identity 判断用户主体对目标的关系；决策失败按失败关闭处理（503，不当作无权限）。
-func (s *Service) allowed(ctx context.Context, rc reqctx.Context, relation, objective string) (bool, error) {
-	if s.Authz == nil {
-		return false, failure(503, "identity_unavailable")
+// access 经 customer-context（目标的所有者）按其当前口径判断用户主体对目标的关系：可经参与关系获得的权限与本地当前的
+// 负责人/参与人集合取交集，移除参与人在 customer-context 提交后立即撤权，不等待 identity 同步；决策者、研究分析者等单元角色
+// 不需要是参与人。返回被允许的关系；不能查看与不存在时 visible 为假。判断失败按失败关闭处理（503，不当作无权限）。
+func (s *Service) access(ctx context.Context, objective, relation string) (visible, allowed bool, err error) {
+	if s.Access == nil {
+		return false, false, failure(503, "customer_context_unavailable")
 	}
-	ok, err := s.Authz.Check(ctx, authz.Request{Subject: authz.Subject(rc.Principal), Relation: relation, Object: "objective:" + objective})
+	granted, err := s.Access.Access(ctx, objective, []string{relation})
 	if err != nil {
-		return false, failure(503, "identity_unavailable")
+		var safe *customercontext.Error
+		switch {
+		case errors.As(err, &safe) && safe.Status == 404:
+			return false, false, nil
+		case errors.As(err, &safe) && safe.Status == 503 && safe.Code != "":
+			return false, false, failure(503, safe.Code)
+		case errors.As(err, &safe) && safe.Status < 500:
+			return false, false, failure(safe.Status, safe.Code)
+		}
+		return false, false, failure(503, "customer_context_unavailable")
 	}
-	return ok, nil
+	return true, slices.Contains(granted, relation), nil
 }
 
 // Inputs 是报告的固定输入（契约 SimulationInputs）。
@@ -433,7 +443,7 @@ func (s *Service) simulate(ctx context.Context, rc reqctx.Context, objective str
 	return s.record(ctx, rc, objective, revision, p, p.comp.run(), "")
 }
 
-// SimulatePolicy 对草案修订运行仿真（目标的 can_draft_policy；契约 simulatePolicy）。无权查看目标时与修订不存在同样 404。
+// SimulatePolicy 对草案修订运行仿真（目标的 can_draft_policy，按 customer-context 的当前口径；契约 simulatePolicy）。无权查看目标时与修订不存在同样 404。
 func (s *Service) SimulatePolicy(ctx context.Context, objective string, revision int64) (*Run, error) {
 	rc, err := tenantContext(ctx)
 	if err != nil {
@@ -442,24 +452,20 @@ func (s *Service) SimulatePolicy(ctx context.Context, objective string, revision
 	if rc.Principal.Kind != "user" {
 		return nil, failure(403, "forbidden")
 	}
-	ok, err := s.allowed(ctx, rc, "can_draft_policy", objective)
+	visible, ok, err := s.access(ctx, objective, "can_draft_policy")
 	if err != nil {
 		return nil, err
 	}
+	if !visible {
+		return nil, failure(404, "simulation_target_not_found")
+	}
 	if !ok {
-		viewer, err := s.allowed(ctx, rc, "can_view", objective)
-		if err != nil {
-			return nil, err
-		}
-		if !viewer {
-			return nil, failure(404, "simulation_target_not_found")
-		}
 		return nil, failure(403, "forbidden")
 	}
 	return s.simulate(ctx, rc, objective, revision)
 }
 
-// GetSimulation 读取运行（目标的 can_view）；无权限、其他租户的与不存在的运行返回同一 404。
+// GetSimulation 读取运行（目标的 can_view，按 customer-context 的当前口径）；无权限、其他租户的与不存在的运行返回同一 404。
 func (s *Service) GetSimulation(ctx context.Context, id string) (*Run, error) {
 	rc, err := tenantContext(ctx)
 	if err != nil {
@@ -480,11 +486,11 @@ func (s *Service) GetSimulation(ctx context.Context, id string) (*Run, error) {
 	if err != nil {
 		return nil, err
 	}
-	ok, err := s.allowed(ctx, rc, "can_view", out.ObjectiveID)
+	visible, _, err := s.access(ctx, out.ObjectiveID, "can_view")
 	if err != nil {
 		return nil, err
 	}
-	if !ok {
+	if !visible {
 		return nil, failure(404, "simulation_not_found")
 	}
 	return out, nil

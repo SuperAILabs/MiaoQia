@@ -139,6 +139,9 @@ func TestPolicySimulationApproval(t *testing.T) {
 	localAuthz, _ := runtime.Lookup[idapi.Authorizer](bindings, idapi.AuthorizerBinding)
 	decider := &flakyAuthz{Authorizer: localAuthz}
 	bindings.Provide(idapi.AuthorizerBinding, idapi.Authorizer(decider))
+	localDirectory, _ := runtime.Lookup[idapi.Directory](bindings, idapi.DirectoryBinding)
+	syncDir := &flakyDirectory{Directory: localDirectory}
+	bindings.Provide(idapi.DirectoryBinding, idapi.Directory(syncDir))
 
 	packs, _ := filepath.Abs(filepath.Join("..", "..", "..", "packs"))
 	config := func(k string) string {
@@ -254,6 +257,8 @@ func TestPolicySimulationApproval(t *testing.T) {
 		"identity.approval.closed.v1":        {{ccModule, ccEnv, "customer-context.policy-approvals"}},
 		"customer_context.policy.drafted.v1": {{lrnModule, lrnEnv, "learning.policy-simulations"}},
 		"learning.simulation.completed.v1":   {{ccModule, ccEnv, "customer-context.policy-simulations"}},
+		// 参与关系同步的重试（命令提交后的同步失败时由事件补做）
+		"customer_context.objective.changed.v1": {{ccModule, ccEnv, "customer-context.objective-participants"}},
 	}
 	var delivered []outbox.Envelope // 已投递的事件（全部，按投递顺序）
 	deliver := func(t *testing.T, envelope outbox.Envelope) {
@@ -1175,6 +1180,42 @@ func TestPolicySimulationApproval(t *testing.T) {
 		}
 	})
 
+	t.Run("决定时发现申请人已失权：失效随事务提交，同一幂等键重试仍返回 approval_invalidated，不产生决定", func(t *testing.T) {
+		p := freshDraft(t)
+		r := request(t, dm, activation(p, "失权后再决定"), 200)
+		a := getApproval(t, admin, r.ApprovalID)
+		// 绕过成员命令直接去掉申请人的角色，构造“失权未经成员命令送达审批”的情形（例如授权模型变化）
+		if _, err := iamOwner.Exec(ctx, `UPDATE identity_members SET roles = ARRAY['research_analyst'] WHERE tenant_id = $1 AND subject = $2`, t1, dm); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if _, err := iamOwner.Exec(ctx, `UPDATE identity_members SET roles = ARRAY['decision_maker'] WHERE tenant_id = $1 AND subject = $2`, t1, dm); err != nil {
+				t.Fatal(err)
+			}
+		}()
+		body := fmt.Sprintf(`{"expected_version":%d,"decision":"approve"}`, a.Version)
+		key := "decide-after-lost-permission-01"
+		expectKey(t, dm2, t1, true, "POST", "/v1/identity/approvals/"+r.ApprovalID+"/decide", body, key, 409, "approval_invalidated")
+		expectKey(t, dm2, t1, true, "POST", "/v1/identity/approvals/"+r.ApprovalID+"/decide", body, key, 409, "approval_invalidated")
+		if got := getApproval(t, admin, r.ApprovalID); got.State != "invalidated" || got.ClosedReason.Or("") != "applicant_lost_permission" || got.DecidedBy.Set {
+			t.Fatalf("%+v", got)
+		}
+		count := func(typ string) int {
+			var n int
+			if err := iamOwner.QueryRow(ctx, `SELECT count(*) FROM kernel_outbox WHERE envelope->>'type' = $1 AND envelope->'data'->>'approval_id' = $2`, typ, r.ApprovalID).Scan(&n); err != nil {
+				t.Fatal(err)
+			}
+			return n
+		}
+		if c, d := count("identity.approval.closed.v1"), count("identity.approval.decided.v1"); c != 1 || d != 0 {
+			t.Fatalf("closed %d decided %d", c, d)
+		}
+		pump(t)
+		if q := getPolicy(t, dm2).Request.Or(cc.PolicyRequest{}); q.ApprovalID != r.ApprovalID || q.State != "invalidated" {
+			t.Fatalf("%+v", q)
+		}
+	})
+
 	t.Run("审批列表分页：每页至多 limit 条，游标只对签发它的角色与状态有效", func(t *testing.T) {
 		var page identityapi.ApprovalList
 		decode(t, expect(t, dm, false, "GET", "/v1/identity/approvals?role=applicant&limit=2", "", 200), &page)
@@ -1202,6 +1243,56 @@ func TestPolicySimulationApproval(t *testing.T) {
 		decode(t, expect(t, dm, false, "GET", "/v1/identity/approvals?role=applicant", "", 200), &all)
 		if total != len(all.Approvals) || total < 5 || all.Truncated {
 			t.Fatalf("%d %d", total, len(all.Approvals))
+		}
+	})
+
+	t.Run("仿真接口按目标所有者的当前参与人集合判断：移除参与人后即使 identity 同步失败也立即撤权；单元角色不受影响", func(t *testing.T) {
+		setParticipants := func(participants string) {
+			t.Helper()
+			var o cc.Objective
+			decode(t, expect(t, dm, false, "GET", objPath, "", 200), &o)
+			params, _ := json.Marshal(o.Params)
+			expect(t, dm, false, "PUT", objPath, fmt.Sprintf(`{"expected_version":%d,"owner":"%s","participants":[%s],"params":%s}`, o.Version, dm, participants, params), 200)
+		}
+		setParticipants(`"` + bd + `"`)
+		pump(t)
+		p := getPolicy(t, dm)
+		rev := p.Draft.Or(cc.PolicyDraft{}).Revision
+		body := fmt.Sprintf(`{"objective_id":"%s","revision":%d}`, objective.ID, rev)
+		getRun(t, bd, string(firstRun.ID))
+		expect(t, bd, false, "POST", "/v1/learning/simulations", body, 200)
+		// 移除参与人：customer-context 本地提交，identity 同步失败（重试事件暂不投递）
+		syncDir.fail.Store(true)
+		hold["customer_context.objective.changed.v1"] = true
+		setParticipants("")
+		pump(t)
+		stale, err := localAuthz.Check(userCtx(bd), authz.Request{Relation: "can_view", Object: "objective:" + objective.ID})
+		if err != nil || !stale {
+			t.Fatalf("前提：identity 中仍应保留旧的参与关系（%v %v）", stale, err)
+		}
+		expect(t, bd, false, "GET", "/v1/learning/simulations/"+string(firstRun.ID), "", 404, "simulation_not_found")
+		expect(t, bd, false, "POST", "/v1/learning/simulations", body, 404, "simulation_target_not_found")
+		expect(t, bd, false, "GET", policyPath, "", 404, "objective_not_found")
+		// 决策者与研究分析者经单元角色访问，不需要是参与人
+		getRun(t, dm, string(firstRun.ID))
+		getRun(t, ra, string(firstRun.ID))
+		expect(t, dm, false, "POST", "/v1/learning/simulations", body, 200)
+		expect(t, ra, false, "POST", "/v1/learning/simulations", body, 403, "forbidden")
+		// 授权服务不可用：失败关闭
+		decider.fail.Store(true)
+		expect(t, dm, false, "POST", "/v1/learning/simulations", body, 503, "identity_unavailable")
+		decider.fail.Store(false)
+		// 恢复同步：迟到的重试应用后 identity 也撤权
+		syncDir.fail.Store(false)
+		delete(hold, "customer_context.objective.changed.v1")
+		for _, e := range pending {
+			delivered = append(delivered, e)
+			deliver(t, e)
+		}
+		pending = nil
+		pump(t)
+		if still, err := localAuthz.Check(userCtx(bd), authz.Request{Relation: "can_view", Object: "objective:" + objective.ID}); err != nil || still {
+			t.Fatalf("同步应用后仍可查看（%v %v）", still, err)
 		}
 	})
 

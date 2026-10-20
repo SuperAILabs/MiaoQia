@@ -110,6 +110,19 @@ type Invoker interface {
 	//
 	// GET /v1/customer-context/objectives/{objectiveID}
 	GetObjective(ctx context.Context, params GetObjectiveParams) (*Objective, error)
+	// GetObjectiveAccess invokes getObjectiveAccess operation.
+	//
+	// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
+	// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+	// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
+	// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
+	// 同步。调用者须为用户主体（否则 403
+	// forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
+	// 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
+	// 中被允许的部分（总含 can_view）。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/access
+	GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (*ObjectiveAccess, error)
 	// GetPolicy invokes getPolicy operation.
 	//
 	// 需要目标的 can_view（与 GetObjective 同一口径，无权限与不存在同样 404
@@ -1151,6 +1164,139 @@ func (c *Client) sendGetObjective(ctx context.Context, params GetObjectiveParams
 
 	stage = "DecodeResponse"
 	result, err := decodeGetObjectiveResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetObjectiveAccess invokes getObjectiveAccess operation.
+//
+// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
+// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
+// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
+// 同步。调用者须为用户主体（否则 403
+// forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
+// 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
+// 中被允许的部分（总含 can_view）。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/access
+func (c *Client) GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (*ObjectiveAccess, error) {
+	res, err := c.sendGetObjectiveAccess(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (res *ObjectiveAccess, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getObjectiveAccess"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/access"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetObjectiveAccessOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/access"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "relation" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "relation",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeArray(func(e uri.Encoder) error {
+				for i, item := range params.Relation {
+					if err := func() error {
+						return e.EncodeValue(conv.StringToString(string(item)))
+					}(); err != nil {
+						return errors.Wrapf(err, "[%d]", i)
+					}
+				}
+				return nil
+			})
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetObjectiveAccessResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

@@ -34,6 +34,6 @@ verification:
   commands:
   - mqc check
   - mqc freeze-check
-  - mqc compat --base origin/main（breaking 0、additive 24、doc 1：identity 六条新路径与三个审批事件、customer-context 九条策略路径与四个策略事件、learning.simulation.completed.v1、objective.changed.v1 的 change 枚举追加 activated 均为追加）
+  - mqc compat --base origin/main（breaking 0、additive 25、doc 1：identity 六条新路径与三个审批事件、customer-context 九条策略路径、一条目标访问判断内部路径与四个策略事件、learning.simulation.completed.v1、objective.changed.v1 的 change 枚举追加 activated 均为追加）
   - mqc generate --check --lang go --lang python
   - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；仿真数据集与信息领域状态为内存夹具 datasettest，生产适配器未接入）

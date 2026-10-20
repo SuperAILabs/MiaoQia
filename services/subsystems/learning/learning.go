@@ -17,7 +17,6 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
-	identity "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/api"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/internal/app"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/migrations"
@@ -59,9 +58,9 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if err != nil {
 				return err
 			}
-			a, ok := runtime.Lookup[identity.Authorizer](env.Bindings, identity.AuthorizerBinding)
+			access, ok := runtime.Lookup[customercontext.ObjectiveAccess](env.Bindings, customercontext.AccessBinding)
 			if !ok {
-				return fmt.Errorf("learning：缺少 %s 绑定", identity.AuthorizerBinding)
+				return fmt.Errorf("learning：缺少 %s 绑定", customercontext.AccessBinding)
 			}
 			reader, ok := runtime.Lookup[customercontext.ContextReader](env.Bindings, customercontext.ContextBinding)
 			if !ok {
@@ -71,7 +70,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("learning：缺少 %s 绑定", customercontext.PolicyBinding)
 			}
-			svc.DB, svc.Authz, svc.Context, svc.Policies, svc.Features, svc.Log = env.DB, a, reader, policies, features, env.Log
+			svc.DB, svc.Access, svc.Context, svc.Policies, svc.Features, svc.Log = env.DB, access, reader, policies, features, env.Log
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {

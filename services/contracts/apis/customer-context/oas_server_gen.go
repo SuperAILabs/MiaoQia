@@ -90,6 +90,19 @@ type Handler interface {
 	//
 	// GET /v1/customer-context/objectives/{objectiveID}
 	GetObjective(ctx context.Context, params GetObjectiveParams) (*Objective, error)
+	// GetObjectiveAccess implements getObjectiveAccess operation.
+	//
+	// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
+	// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+	// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
+	// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
+	// 同步。调用者须为用户主体（否则 403
+	// forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
+	// 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
+	// 中被允许的部分（总含 can_view）。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/access
+	GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (*ObjectiveAccess, error)
 	// GetPolicy implements getPolicy operation.
 	//
 	// 需要目标的 can_view（与 GetObjective 同一口径，无权限与不存在同样 404

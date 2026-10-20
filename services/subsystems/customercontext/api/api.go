@@ -69,6 +69,28 @@ func (l localPolicy) SimulationInput(ctx context.Context, objective string, revi
 		})
 }
 
+// AccessBinding 是目标访问判断接口在绑定表中的名称。
+const AccessBinding = "customer-context.ObjectiveAccess"
+
+// ObjectiveAccess 以请求上下文中的用户主体判断其对目标的关系（本子系统的口径：移除参与人在本地提交后立即撤权，
+// 不等待 identity 同步）。返回被允许的关系（总含 can_view）；不能查看与不存在同样返回 404 objective_not_found 的 *Error；
+// 授权服务不可用为 503。只读、幂等。
+type ObjectiveAccess interface {
+	Access(ctx context.Context, objective string, relations []string) ([]string, error)
+}
+
+// LocalAccess 把本地实现包装为经调用管线的接口。
+func LocalAccess(impl ObjectiveAccess) ObjectiveAccess { return localAccess{impl} }
+
+type localAccess struct{ impl ObjectiveAccess }
+
+func (l localAccess) Access(ctx context.Context, objective string, relations []string) ([]string, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetObjectiveAccess", Idempotent: true},
+		func(ctx context.Context) ([]string, error) {
+			return l.impl.Access(ctx, objective, relations)
+		})
+}
+
 // Error 是可在传输边界暴露的错误（稳定 code）；基础设施错误不直接暴露。
 type Error struct {
 	Status int

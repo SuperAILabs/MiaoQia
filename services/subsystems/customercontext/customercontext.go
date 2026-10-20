@@ -39,7 +39,8 @@ var (
 		"POST /v1/customer-context/objectives/{objectiveID}/policy/rollback-requests",
 	}
 	internalRoutes = []string{"GET /internal/v1/customer-context/context-version", "GET /internal/v1/customer-context/context-snapshot",
-		"GET /internal/v1/customer-context/objectives/{objectiveID}/policy/simulation-input"}
+		"GET /internal/v1/customer-context/objectives/{objectiveID}/policy/simulation-input",
+		"GET /internal/v1/customer-context/objectives/{objectiveID}/access"}
 )
 
 // Module 返回 customer-context 的模块定义。配置：MIAOQIA_CUSTOMER_CONTEXT_PACKS_DIR（扩展包目录，默认 packs）。
@@ -78,6 +79,7 @@ func Module() runtime.Module {
 			svc.Policies, svc.Features, svc.Approvals = policies.Templates, policies.Features, approvals
 			env.Bindings.Provide(api.ContextBinding, api.Local(app.Reader{Service: svc}))
 			env.Bindings.Provide(api.PolicyBinding, api.LocalPolicy(app.PolicyReader{Service: svc}))
+			env.Bindings.Provide(api.AccessBinding, api.LocalAccess(app.ObjectiveAccessor{Service: svc}))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {

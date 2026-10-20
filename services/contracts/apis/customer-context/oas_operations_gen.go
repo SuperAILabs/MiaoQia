@@ -14,6 +14,7 @@ const (
 	GetContextSnapshotOperation       OperationName = "GetContextSnapshot"
 	GetContextVersionOperation        OperationName = "GetContextVersion"
 	GetObjectiveOperation             OperationName = "GetObjective"
+	GetObjectiveAccessOperation       OperationName = "GetObjectiveAccess"
 	GetPolicyOperation                OperationName = "GetPolicy"
 	GetPolicySimulationInputOperation OperationName = "GetPolicySimulationInput"
 	GetPolicyVersionOperation         OperationName = "GetPolicyVersion"

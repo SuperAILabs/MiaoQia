@@ -502,6 +502,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/PolicySimulationInput'
         default: *problem
+  /v1/customer-context/objectives/{objectiveID}/access:
+    get:
+      operationId: getObjectiveAccess
+      summary: 目标访问判断（内部）
+      description: >-
+        只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning 的仿真接口）按本子系统的口径判断用户对目标的关系：
+        可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且 identity 判断通过”放行，移除参与人在本地提交后立即撤权，
+        不等待 identity 同步。调用者须为用户主体（否则 403 forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
+        授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation 中被允许的部分（总含 can_view）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *objectiveID
+      - name: relation
+        in: query
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/ObjectiveRelation'
+      responses:
+        '200':
+          description: 被允许的关系
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectiveAccess'
+        default: *problem
 components:
   schemas:
     Problem:
@@ -525,6 +557,31 @@ components:
         code:
           type: string
           description: 稳定错误代码
+    ObjectiveRelation:
+      type: string
+      description: 目标上可判断的关系（customer-context.md 第6节，口径见 objectiveRelations）
+      enum:
+      - can_view
+      - can_edit
+      - can_manage_participants
+      - can_draft_policy
+      - can_request_activation
+    ObjectiveAccess:
+      type: object
+      additionalProperties: false
+      required:
+      - objective_id
+      - allowed
+      properties:
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        allowed:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ObjectiveRelation'
     ProfileEntity:
       type: object
       additionalProperties: false

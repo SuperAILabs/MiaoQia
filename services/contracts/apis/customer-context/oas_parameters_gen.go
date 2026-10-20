@@ -3,6 +3,7 @@
 package customercontextapi
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -979,6 +980,179 @@ func decodeGetObjectiveParams(args [1]string, argsEscaped bool, r *http.Request)
 		return params, &ogenerrors.DecodeParamError{
 			Name: "objectiveID",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// GetObjectiveAccessParams is parameters of getObjectiveAccess operation.
+type GetObjectiveAccessParams struct {
+	ObjectiveID string
+	Relation    []ObjectiveRelation `json:",omitempty"`
+}
+
+func unpackGetObjectiveAccessParams(packed middleware.Parameters) (params GetObjectiveAccessParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "objectiveID",
+			In:   "path",
+		}
+		params.ObjectiveID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "relation",
+			In:   "query",
+		}
+		params.Relation = packed[key].([]ObjectiveRelation)
+	}
+	return params
+}
+
+func decodeGetObjectiveAccessParams(args [1]string, argsEscaped bool, r *http.Request) (params GetObjectiveAccessParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode path: objectiveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "objectiveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ObjectiveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^obj_[0-9A-HJKMNP-TV-Z]{26}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.ObjectiveID)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "objectiveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode query: relation.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "relation",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				params.Relation = nil
+				return d.DecodeArray(func(d uri.Decoder) error {
+					var paramsDotRelationVal ObjectiveRelation
+					if err := func() error {
+						val, err := d.DecodeValue()
+						if err != nil {
+							return err
+						}
+
+						c, err := conv.ToString(val)
+						if err != nil {
+							return err
+						}
+
+						paramsDotRelationVal = ObjectiveRelation(c)
+						return nil
+					}(); err != nil {
+						return err
+					}
+					params.Relation = append(params.Relation, paramsDotRelationVal)
+					return nil
+				})
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if params.Relation == nil {
+					return errors.New("nil is invalid value")
+				}
+				if err := (validate.Array{
+					MinLength:    1,
+					MinLengthSet: true,
+					MaxLength:    5,
+					MaxLengthSet: true,
+				}).ValidateLength(len(params.Relation)); err != nil {
+					return errors.Wrap(err, "array")
+				}
+				var failures []validate.FieldError
+				for i, elem := range params.Relation {
+					if err := func() error {
+						if err := elem.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						failures = append(failures, validate.FieldError{
+							Name:  fmt.Sprintf("[%d]", i),
+							Error: err,
+						})
+					}
+				}
+				if len(failures) > 0 {
+					return &validate.Error{Fields: failures}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "relation",
+			In:   "query",
 			Err:  err,
 		}
 	}

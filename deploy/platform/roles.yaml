@@ -9,7 +9,7 @@ roles:
   consumer:
     data_scopes: {search: tenant}
     cell: cell-01
-    subsystems: [search, detection, assessment, pursuit, learning, channels, commerce, governance, operations]
+    subsystems: [search, detection, assessment, pursuit, customer-context, learning, channels, commerce, governance, operations]
   workflow-worker:
     data_scopes: {search: tenant}
     cell: cell-01

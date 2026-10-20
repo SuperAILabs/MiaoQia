@@ -40,6 +40,15 @@ func NewPolicyReader(baseURL string) (api.PolicyReader, error) {
 	return r.(client), nil
 }
 
+// NewObjectiveAccess 返回远程目标访问判断接口；baseURL 同 NewContextReader。调用以请求上下文中的用户主体转交。
+func NewObjectiveAccess(baseURL string) (api.ObjectiveAccess, error) {
+	r, err := NewContextReader(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return r.(client), nil
+}
+
 // refuseRedirect 拒绝重定向：重定向后的请求会重新附加请求上下文头，且目标未经入口校验。
 func refuseRedirect(*http.Request, []*http.Request) error {
 	return errors.New("customer-context remote refuses redirects")
@@ -97,5 +106,24 @@ func (c client) SimulationInput(ctx context.Context, objective string, revision 
 				return nil, translate(err)
 			}
 			return in, nil
+		})
+}
+
+func (c client) Access(ctx context.Context, objective string, relations []string) ([]string, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetObjectiveAccess", Idempotent: true},
+		func(ctx context.Context) ([]string, error) {
+			params := cc.GetObjectiveAccessParams{ObjectiveID: objective}
+			for _, r := range relations {
+				params.Relation = append(params.Relation, cc.ObjectiveRelation(r))
+			}
+			res, err := c.c.GetObjectiveAccess(ctx, params)
+			if err != nil {
+				return nil, translate(err)
+			}
+			out := make([]string, 0, len(res.Allowed))
+			for _, r := range res.Allowed {
+				out = append(out, string(r))
+			}
+			return out, nil
 		})
 }

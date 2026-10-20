@@ -118,3 +118,26 @@ type PolicyReader struct{ Service *Service }
 func (r PolicyReader) SimulationInput(ctx context.Context, objective string, revision int64) (*cc.PolicySimulationInput, error) {
 	return r.Service.PolicySimulationInput(ctx, objective, revision)
 }
+
+func (s *Server) GetObjectiveAccess(ctx context.Context, params cc.GetObjectiveAccessParams) (*cc.ObjectiveAccess, error) {
+	relations := make([]string, 0, len(params.Relation))
+	for _, r := range params.Relation {
+		relations = append(relations, string(r))
+	}
+	allowed, err := s.Service.ObjectiveAccess(ctx, params.ObjectiveID, relations)
+	if err != nil {
+		return nil, err
+	}
+	out := &cc.ObjectiveAccess{ObjectiveID: params.ObjectiveID, Allowed: []cc.ObjectiveRelation{}}
+	for _, r := range allowed {
+		out.Allowed = append(out.Allowed, cc.ObjectiveRelation(r))
+	}
+	return out, nil
+}
+
+// ObjectiveAccessor 实现 api.ObjectiveAccess（本地绑定）。
+type ObjectiveAccessor struct{ Service *Service }
+
+func (a ObjectiveAccessor) Access(ctx context.Context, objective string, relations []string) ([]string, error) {
+	return a.Service.ObjectiveAccess(ctx, objective, relations)
+}

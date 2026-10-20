@@ -506,13 +506,13 @@ func (d *Directory) DecideApproval(ctx context.Context, id string, req *identity
 		return nil, err
 	}
 	out := &identityapi.ApprovalRequest{}
-	invalidated := false
+	var invalidated *committedFailure
 	request := struct {
 		ID  string                             `json:"id"`
 		Req *identityapi.DecideApprovalRequest `json:"request"`
 	}{id, req}
 	err = d.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return command(ctx, tx, key, "approval.decide", request, out, func() error {
+		err := command(ctx, tx, key, "approval.decide", request, out, func() error {
 			// 锁顺序：申请人与决定人的成员行（共享）→ 资源登记行（共享）→ 请求行
 			if _, err := tx.Exec(ctx, `SELECT 1 FROM identity_members WHERE tenant_id=$1 AND subject = ANY($2) ORDER BY subject FOR SHARE`, rc.Tenant, []string{applicant, rc.Principal.ID}); err != nil {
 				return err
@@ -547,9 +547,11 @@ func (d *Directory) DecideApproval(ctx context.Context, id string, req *identity
 				return err
 			}
 			if why != "" {
-				// 失效在本事务中提交，本次决定不作出（返回 409 approval_invalidated，不记录回执）
-				invalidated = true
-				return closeLocked(ctx, tx, a, "invalidated", why, d.businessNow(), "approval_applicant_check")
+				// 失效在本事务中提交，本次决定不作出：返回 409 approval_invalidated，并记为失败回执（同一键重试返回同一错误）
+				if err := closeLocked(ctx, tx, a, "invalidated", why, d.businessNow(), "approval_applicant_check"); err != nil {
+					return err
+				}
+				return &committedFailure{Err: &api.Error{Status: 409, Code: "approval_invalidated"}}
 			}
 			now := d.businessNow()
 			state := "approved"
@@ -575,12 +577,17 @@ func (d *Directory) DecideApproval(ctx context.Context, id string, req *identity
 			*out = *a.out()
 			return nil
 		})
+		// 失权导致的失效随事务提交（含失败回执），再把错误返回给调用者
+		if errors.As(err, &invalidated) {
+			return nil
+		}
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	if invalidated {
-		return nil, failure(409, "approval_invalidated")
+	if invalidated != nil {
+		return nil, invalidated.Err
 	}
 	return out, nil
 }

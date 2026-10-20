@@ -546,6 +546,32 @@ func (s *Objective) SetVersion(val int64) {
 	s.Version = val
 }
 
+// Ref: #/components/schemas/ObjectiveAccess
+type ObjectiveAccess struct {
+	ObjectiveID string              `json:"objective_id"`
+	Allowed     []ObjectiveRelation `json:"allowed"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *ObjectiveAccess) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetAllowed returns the value of Allowed.
+func (s *ObjectiveAccess) GetAllowed() []ObjectiveRelation {
+	return s.Allowed
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *ObjectiveAccess) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetAllowed sets the value of Allowed.
+func (s *ObjectiveAccess) SetAllowed(val []ObjectiveRelation) {
+	s.Allowed = val
+}
+
 // Ref: #/components/schemas/ObjectiveList
 type ObjectiveList struct {
 	Objectives []Objective `json:"objectives"`
@@ -660,6 +686,70 @@ func (s *ObjectiveParams) init() ObjectiveParams {
 		*s = m
 	}
 	return m
+}
+
+// 目标上可判断的关系（customer-context.md 第6节，口径见 objectiveRelations）.
+// Ref: #/components/schemas/ObjectiveRelation
+type ObjectiveRelation string
+
+const (
+	ObjectiveRelationCanView               ObjectiveRelation = "can_view"
+	ObjectiveRelationCanEdit               ObjectiveRelation = "can_edit"
+	ObjectiveRelationCanManageParticipants ObjectiveRelation = "can_manage_participants"
+	ObjectiveRelationCanDraftPolicy        ObjectiveRelation = "can_draft_policy"
+	ObjectiveRelationCanRequestActivation  ObjectiveRelation = "can_request_activation"
+)
+
+// AllValues returns all ObjectiveRelation values.
+func (ObjectiveRelation) AllValues() []ObjectiveRelation {
+	return []ObjectiveRelation{
+		ObjectiveRelationCanView,
+		ObjectiveRelationCanEdit,
+		ObjectiveRelationCanManageParticipants,
+		ObjectiveRelationCanDraftPolicy,
+		ObjectiveRelationCanRequestActivation,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ObjectiveRelation) MarshalText() ([]byte, error) {
+	switch s {
+	case ObjectiveRelationCanView:
+		return []byte(s), nil
+	case ObjectiveRelationCanEdit:
+		return []byte(s), nil
+	case ObjectiveRelationCanManageParticipants:
+		return []byte(s), nil
+	case ObjectiveRelationCanDraftPolicy:
+		return []byte(s), nil
+	case ObjectiveRelationCanRequestActivation:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ObjectiveRelation) UnmarshalText(data []byte) error {
+	switch ObjectiveRelation(data) {
+	case ObjectiveRelationCanView:
+		*s = ObjectiveRelationCanView
+		return nil
+	case ObjectiveRelationCanEdit:
+		*s = ObjectiveRelationCanEdit
+		return nil
+	case ObjectiveRelationCanManageParticipants:
+		*s = ObjectiveRelationCanManageParticipants
+		return nil
+	case ObjectiveRelationCanDraftPolicy:
+		*s = ObjectiveRelationCanDraftPolicy
+		return nil
+	case ObjectiveRelationCanRequestActivation:
+		*s = ObjectiveRelationCanRequestActivation
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // 未激活 / 生效 / 已停用.
