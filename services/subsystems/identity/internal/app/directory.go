@@ -380,7 +380,18 @@ func (d *Directory) writeMember(ctx context.Context, tx pgx.Tx, t *identityapi.T
 			return false, err
 		}
 	}
-	return removed, emit(ctx, tx, "identity.member.changed.v1", t.ID, memberEvent(result))
+	if err := emit(ctx, tx, "identity.member.changed.v1", t.ID, memberEvent(result)); err != nil {
+		return false, err
+	}
+	// 审批请求的申请人边界（PRD 第7段第9节）：退出使其全部待审批请求失效；角色或单元角色变化时逐个重核申请关系，
+	// 失权的请求失效。在持有成员行排他锁的同一事务中执行，与决定（对申请人成员行加共享锁后重核）串行。
+	switch {
+	case removed:
+		err = d.invalidatePending(ctx, tx, t.ID, string(t.Cell), subject, "", true)
+	case state == "active" && oldState == "active":
+		err = d.invalidatePending(ctx, tx, t.ID, string(t.Cell), subject, "", false)
+	}
+	return removed, err
 }
 
 // oneTenantPerAccount 确认账号不是其他租户的有效成员（PRD 第1段第13节第2项）。按账号加事务级咨询锁，

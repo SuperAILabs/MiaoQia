@@ -29,6 +29,492 @@ func (s *AcceptInvitationRequest) SetToken(val string) {
 	s.Token = val
 }
 
+// 请求绑定的不可变对象版本与依据，批准只针对它：策略激活为草案修订（object_version）、该修订的仿真运行（evidence_ref）与
+// 申请时的生效版本和策略代次（baseline）；策略回滚为目标版本、其激活时的仿真运行与申请时的基准。执行方在执行前核验绑定仍成立.
+// Ref: #/components/schemas/ApprovalBinding
+type ApprovalBinding struct {
+	// 激活为草案修订号；回滚为目标策略版本号.
+	ObjectVersion int64 `json:"object_version"`
+	// 依据：仿真运行标识 sim_.
+	EvidenceRef string `json:"evidence_ref"`
+	// 申请时的生效版本（0 为首次激活，尚无生效版本）.
+	BaselineVersion int64 `json:"baseline_version"`
+	// 申请时目标的策略代次.
+	BaselineGeneration int64 `json:"baseline_generation"`
+	// 仅首次激活：批准后回填的天数（0
+	// 为不回填）；审批人可见，执行时按此固定窗口.
+	BackfillDays OptInt `json:"backfill_days"`
+}
+
+// GetObjectVersion returns the value of ObjectVersion.
+func (s *ApprovalBinding) GetObjectVersion() int64 {
+	return s.ObjectVersion
+}
+
+// GetEvidenceRef returns the value of EvidenceRef.
+func (s *ApprovalBinding) GetEvidenceRef() string {
+	return s.EvidenceRef
+}
+
+// GetBaselineVersion returns the value of BaselineVersion.
+func (s *ApprovalBinding) GetBaselineVersion() int64 {
+	return s.BaselineVersion
+}
+
+// GetBaselineGeneration returns the value of BaselineGeneration.
+func (s *ApprovalBinding) GetBaselineGeneration() int64 {
+	return s.BaselineGeneration
+}
+
+// GetBackfillDays returns the value of BackfillDays.
+func (s *ApprovalBinding) GetBackfillDays() OptInt {
+	return s.BackfillDays
+}
+
+// SetObjectVersion sets the value of ObjectVersion.
+func (s *ApprovalBinding) SetObjectVersion(val int64) {
+	s.ObjectVersion = val
+}
+
+// SetEvidenceRef sets the value of EvidenceRef.
+func (s *ApprovalBinding) SetEvidenceRef(val string) {
+	s.EvidenceRef = val
+}
+
+// SetBaselineVersion sets the value of BaselineVersion.
+func (s *ApprovalBinding) SetBaselineVersion(val int64) {
+	s.BaselineVersion = val
+}
+
+// SetBaselineGeneration sets the value of BaselineGeneration.
+func (s *ApprovalBinding) SetBaselineGeneration(val int64) {
+	s.BaselineGeneration = val
+}
+
+// SetBackfillDays sets the value of BackfillDays.
+func (s *ApprovalBinding) SetBackfillDays(val OptInt) {
+	s.BackfillDays = val
+}
+
+type ApprovalCursor string
+
+type ApprovalID string
+
+// Ref: #/components/schemas/ApprovalList
+type ApprovalList struct {
+	Approvals []ApprovalRequest `json:"approvals"`
+	// 还有更早的请求未返回，此时给出 next_cursor.
+	Truncated  bool              `json:"truncated"`
+	NextCursor OptApprovalCursor `json:"next_cursor"`
+}
+
+// GetApprovals returns the value of Approvals.
+func (s *ApprovalList) GetApprovals() []ApprovalRequest {
+	return s.Approvals
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *ApprovalList) GetTruncated() bool {
+	return s.Truncated
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ApprovalList) GetNextCursor() OptApprovalCursor {
+	return s.NextCursor
+}
+
+// SetApprovals sets the value of Approvals.
+func (s *ApprovalList) SetApprovals(val []ApprovalRequest) {
+	s.Approvals = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *ApprovalList) SetTruncated(val bool) {
+	s.Truncated = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ApprovalList) SetNextCursor(val OptApprovalCursor) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/ApprovalRequest
+type ApprovalRequest struct {
+	ID        ApprovalID      `json:"id"`
+	Type      ApprovalType    `json:"type"`
+	Resource  string          `json:"resource"`
+	Applicant string          `json:"applicant"`
+	Note      string          `json:"note"`
+	Binding   ApprovalBinding `json:"binding"`
+	State     ApprovalState   `json:"state"`
+	Version   int64           `json:"version"`
+	// 提交时间（业务时间）.
+	SubmittedAt time.Time `json:"submitted_at"`
+	// 最长有效期（业务时间：提交起7天）.
+	ExpiresAt time.Time `json:"expires_at"`
+	// 批准或驳回的成员（approved、rejected）.
+	DecidedBy      OptString   `json:"decided_by"`
+	DecidedAt      OptDateTime `json:"decided_at"`
+	DecisionReason OptString   `json:"decision_reason"`
+	// 关闭原因（withdrawn、expired、invalidated）.
+	ClosedReason OptApprovalRequestClosedReason `json:"closed_reason"`
+	ClosedAt     OptDateTime                    `json:"closed_at"`
+}
+
+// GetID returns the value of ID.
+func (s *ApprovalRequest) GetID() ApprovalID {
+	return s.ID
+}
+
+// GetType returns the value of Type.
+func (s *ApprovalRequest) GetType() ApprovalType {
+	return s.Type
+}
+
+// GetResource returns the value of Resource.
+func (s *ApprovalRequest) GetResource() string {
+	return s.Resource
+}
+
+// GetApplicant returns the value of Applicant.
+func (s *ApprovalRequest) GetApplicant() string {
+	return s.Applicant
+}
+
+// GetNote returns the value of Note.
+func (s *ApprovalRequest) GetNote() string {
+	return s.Note
+}
+
+// GetBinding returns the value of Binding.
+func (s *ApprovalRequest) GetBinding() ApprovalBinding {
+	return s.Binding
+}
+
+// GetState returns the value of State.
+func (s *ApprovalRequest) GetState() ApprovalState {
+	return s.State
+}
+
+// GetVersion returns the value of Version.
+func (s *ApprovalRequest) GetVersion() int64 {
+	return s.Version
+}
+
+// GetSubmittedAt returns the value of SubmittedAt.
+func (s *ApprovalRequest) GetSubmittedAt() time.Time {
+	return s.SubmittedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *ApprovalRequest) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetDecidedBy returns the value of DecidedBy.
+func (s *ApprovalRequest) GetDecidedBy() OptString {
+	return s.DecidedBy
+}
+
+// GetDecidedAt returns the value of DecidedAt.
+func (s *ApprovalRequest) GetDecidedAt() OptDateTime {
+	return s.DecidedAt
+}
+
+// GetDecisionReason returns the value of DecisionReason.
+func (s *ApprovalRequest) GetDecisionReason() OptString {
+	return s.DecisionReason
+}
+
+// GetClosedReason returns the value of ClosedReason.
+func (s *ApprovalRequest) GetClosedReason() OptApprovalRequestClosedReason {
+	return s.ClosedReason
+}
+
+// GetClosedAt returns the value of ClosedAt.
+func (s *ApprovalRequest) GetClosedAt() OptDateTime {
+	return s.ClosedAt
+}
+
+// SetID sets the value of ID.
+func (s *ApprovalRequest) SetID(val ApprovalID) {
+	s.ID = val
+}
+
+// SetType sets the value of Type.
+func (s *ApprovalRequest) SetType(val ApprovalType) {
+	s.Type = val
+}
+
+// SetResource sets the value of Resource.
+func (s *ApprovalRequest) SetResource(val string) {
+	s.Resource = val
+}
+
+// SetApplicant sets the value of Applicant.
+func (s *ApprovalRequest) SetApplicant(val string) {
+	s.Applicant = val
+}
+
+// SetNote sets the value of Note.
+func (s *ApprovalRequest) SetNote(val string) {
+	s.Note = val
+}
+
+// SetBinding sets the value of Binding.
+func (s *ApprovalRequest) SetBinding(val ApprovalBinding) {
+	s.Binding = val
+}
+
+// SetState sets the value of State.
+func (s *ApprovalRequest) SetState(val ApprovalState) {
+	s.State = val
+}
+
+// SetVersion sets the value of Version.
+func (s *ApprovalRequest) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetSubmittedAt sets the value of SubmittedAt.
+func (s *ApprovalRequest) SetSubmittedAt(val time.Time) {
+	s.SubmittedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *ApprovalRequest) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetDecidedBy sets the value of DecidedBy.
+func (s *ApprovalRequest) SetDecidedBy(val OptString) {
+	s.DecidedBy = val
+}
+
+// SetDecidedAt sets the value of DecidedAt.
+func (s *ApprovalRequest) SetDecidedAt(val OptDateTime) {
+	s.DecidedAt = val
+}
+
+// SetDecisionReason sets the value of DecisionReason.
+func (s *ApprovalRequest) SetDecisionReason(val OptString) {
+	s.DecisionReason = val
+}
+
+// SetClosedReason sets the value of ClosedReason.
+func (s *ApprovalRequest) SetClosedReason(val OptApprovalRequestClosedReason) {
+	s.ClosedReason = val
+}
+
+// SetClosedAt sets the value of ClosedAt.
+func (s *ApprovalRequest) SetClosedAt(val OptDateTime) {
+	s.ClosedAt = val
+}
+
+// 关闭原因（withdrawn、expired、invalidated）.
+type ApprovalRequestClosedReason string
+
+const (
+	ApprovalRequestClosedReasonWithdrawn               ApprovalRequestClosedReason = "withdrawn"
+	ApprovalRequestClosedReasonExpired                 ApprovalRequestClosedReason = "expired"
+	ApprovalRequestClosedReasonApplicantLeft           ApprovalRequestClosedReason = "applicant_left"
+	ApprovalRequestClosedReasonApplicantLostPermission ApprovalRequestClosedReason = "applicant_lost_permission"
+	ApprovalRequestClosedReasonBaselineChanged         ApprovalRequestClosedReason = "baseline_changed"
+	ApprovalRequestClosedReasonObjectChanged           ApprovalRequestClosedReason = "object_changed"
+)
+
+// AllValues returns all ApprovalRequestClosedReason values.
+func (ApprovalRequestClosedReason) AllValues() []ApprovalRequestClosedReason {
+	return []ApprovalRequestClosedReason{
+		ApprovalRequestClosedReasonWithdrawn,
+		ApprovalRequestClosedReasonExpired,
+		ApprovalRequestClosedReasonApplicantLeft,
+		ApprovalRequestClosedReasonApplicantLostPermission,
+		ApprovalRequestClosedReasonBaselineChanged,
+		ApprovalRequestClosedReasonObjectChanged,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ApprovalRequestClosedReason) MarshalText() ([]byte, error) {
+	switch s {
+	case ApprovalRequestClosedReasonWithdrawn:
+		return []byte(s), nil
+	case ApprovalRequestClosedReasonExpired:
+		return []byte(s), nil
+	case ApprovalRequestClosedReasonApplicantLeft:
+		return []byte(s), nil
+	case ApprovalRequestClosedReasonApplicantLostPermission:
+		return []byte(s), nil
+	case ApprovalRequestClosedReasonBaselineChanged:
+		return []byte(s), nil
+	case ApprovalRequestClosedReasonObjectChanged:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ApprovalRequestClosedReason) UnmarshalText(data []byte) error {
+	switch ApprovalRequestClosedReason(data) {
+	case ApprovalRequestClosedReasonWithdrawn:
+		*s = ApprovalRequestClosedReasonWithdrawn
+		return nil
+	case ApprovalRequestClosedReasonExpired:
+		*s = ApprovalRequestClosedReasonExpired
+		return nil
+	case ApprovalRequestClosedReasonApplicantLeft:
+		*s = ApprovalRequestClosedReasonApplicantLeft
+		return nil
+	case ApprovalRequestClosedReasonApplicantLostPermission:
+		*s = ApprovalRequestClosedReasonApplicantLostPermission
+		return nil
+	case ApprovalRequestClosedReasonBaselineChanged:
+		*s = ApprovalRequestClosedReasonBaselineChanged
+		return nil
+	case ApprovalRequestClosedReasonObjectChanged:
+		*s = ApprovalRequestClosedReasonObjectChanged
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Pending 待审批；approved 已批准；rejected 已驳回；withdrawn 申请人已撤回；expired
+// 超过有效期未决定； invalidated
+// 已失效（申请人退出或失去申请关系、所属子系统报告绑定的对象版本或基准已不成立）.
+// Ref: #/components/schemas/ApprovalState
+type ApprovalState string
+
+const (
+	ApprovalStatePending     ApprovalState = "pending"
+	ApprovalStateApproved    ApprovalState = "approved"
+	ApprovalStateRejected    ApprovalState = "rejected"
+	ApprovalStateWithdrawn   ApprovalState = "withdrawn"
+	ApprovalStateExpired     ApprovalState = "expired"
+	ApprovalStateInvalidated ApprovalState = "invalidated"
+)
+
+// AllValues returns all ApprovalState values.
+func (ApprovalState) AllValues() []ApprovalState {
+	return []ApprovalState{
+		ApprovalStatePending,
+		ApprovalStateApproved,
+		ApprovalStateRejected,
+		ApprovalStateWithdrawn,
+		ApprovalStateExpired,
+		ApprovalStateInvalidated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ApprovalState) MarshalText() ([]byte, error) {
+	switch s {
+	case ApprovalStatePending:
+		return []byte(s), nil
+	case ApprovalStateApproved:
+		return []byte(s), nil
+	case ApprovalStateRejected:
+		return []byte(s), nil
+	case ApprovalStateWithdrawn:
+		return []byte(s), nil
+	case ApprovalStateExpired:
+		return []byte(s), nil
+	case ApprovalStateInvalidated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ApprovalState) UnmarshalText(data []byte) error {
+	switch ApprovalState(data) {
+	case ApprovalStatePending:
+		*s = ApprovalStatePending
+		return nil
+	case ApprovalStateApproved:
+		*s = ApprovalStateApproved
+		return nil
+	case ApprovalStateRejected:
+		*s = ApprovalStateRejected
+		return nil
+	case ApprovalStateWithdrawn:
+		*s = ApprovalStateWithdrawn
+		return nil
+	case ApprovalStateExpired:
+		*s = ApprovalStateExpired
+		return nil
+	case ApprovalStateInvalidated:
+		*s = ApprovalStateInvalidated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 已登记的审批类型（identity.md 7.3）：policy_activation 策略激活、policy_rollback
+// 策略回滚；资源均为目标 objective:obj_…， 申请关系
+// can_request_activation，批准关系 can_approve_activation，所属子系统
+// customer-context，有效期7天，申请与决定都要求强认证.
+// Ref: #/components/schemas/ApprovalType
+type ApprovalType string
+
+const (
+	ApprovalTypePolicyActivation ApprovalType = "policy_activation"
+	ApprovalTypePolicyRollback   ApprovalType = "policy_rollback"
+)
+
+// AllValues returns all ApprovalType values.
+func (ApprovalType) AllValues() []ApprovalType {
+	return []ApprovalType{
+		ApprovalTypePolicyActivation,
+		ApprovalTypePolicyRollback,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ApprovalType) MarshalText() ([]byte, error) {
+	switch s {
+	case ApprovalTypePolicyActivation:
+		return []byte(s), nil
+	case ApprovalTypePolicyRollback:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ApprovalType) UnmarshalText(data []byte) error {
+	switch ApprovalType(data) {
+	case ApprovalTypePolicyActivation:
+		*s = ApprovalTypePolicyActivation
+		return nil
+	case ApprovalTypePolicyRollback:
+		*s = ApprovalTypePolicyRollback
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ApprovalVersionRequest
+type ApprovalVersionRequest struct {
+	ExpectedVersion int64 `json:"expected_version"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *ApprovalVersionRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *ApprovalVersionRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
 type ChannelBindingID string
 
 // Ref: #/components/schemas/ChannelMemberLifecycle
@@ -406,6 +892,66 @@ func (s *CheckResult) SetAllowed(val bool) {
 	s.Allowed = val
 }
 
+// Ref: #/components/schemas/CloseApprovalRequest
+type CloseApprovalRequest struct {
+	// Baseline_changed 生效版本或策略代次已变；object_changed
+	// 绑定的对象（草案修订、目标状态）已变.
+	Reason CloseApprovalRequestReason `json:"reason"`
+}
+
+// GetReason returns the value of Reason.
+func (s *CloseApprovalRequest) GetReason() CloseApprovalRequestReason {
+	return s.Reason
+}
+
+// SetReason sets the value of Reason.
+func (s *CloseApprovalRequest) SetReason(val CloseApprovalRequestReason) {
+	s.Reason = val
+}
+
+// Baseline_changed 生效版本或策略代次已变；object_changed
+// 绑定的对象（草案修订、目标状态）已变.
+type CloseApprovalRequestReason string
+
+const (
+	CloseApprovalRequestReasonBaselineChanged CloseApprovalRequestReason = "baseline_changed"
+	CloseApprovalRequestReasonObjectChanged   CloseApprovalRequestReason = "object_changed"
+)
+
+// AllValues returns all CloseApprovalRequestReason values.
+func (CloseApprovalRequestReason) AllValues() []CloseApprovalRequestReason {
+	return []CloseApprovalRequestReason{
+		CloseApprovalRequestReasonBaselineChanged,
+		CloseApprovalRequestReasonObjectChanged,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CloseApprovalRequestReason) MarshalText() ([]byte, error) {
+	switch s {
+	case CloseApprovalRequestReasonBaselineChanged:
+		return []byte(s), nil
+	case CloseApprovalRequestReasonObjectChanged:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CloseApprovalRequestReason) UnmarshalText(data []byte) error {
+	switch CloseApprovalRequestReason(data) {
+	case CloseApprovalRequestReasonBaselineChanged:
+		*s = CloseApprovalRequestReasonBaselineChanged
+		return nil
+	case CloseApprovalRequestReasonObjectChanged:
+		*s = CloseApprovalRequestReasonObjectChanged
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // 角色与单元角色至少一项非空.
 // Ref: #/components/schemas/CreateInvitationRequest
 type CreateInvitationRequest struct {
@@ -506,6 +1052,85 @@ func (s *CreateTenantRequest) SetName(val string) {
 // SetAdminSubject sets the value of AdminSubject.
 func (s *CreateTenantRequest) SetAdminSubject(val string) {
 	s.AdminSubject = val
+}
+
+// Ref: #/components/schemas/DecideApprovalRequest
+type DecideApprovalRequest struct {
+	ExpectedVersion int64                         `json:"expected_version"`
+	Decision        DecideApprovalRequestDecision `json:"decision"`
+	// 决定理由；驳回必填.
+	Reason OptString `json:"reason"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *DecideApprovalRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// GetDecision returns the value of Decision.
+func (s *DecideApprovalRequest) GetDecision() DecideApprovalRequestDecision {
+	return s.Decision
+}
+
+// GetReason returns the value of Reason.
+func (s *DecideApprovalRequest) GetReason() OptString {
+	return s.Reason
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *DecideApprovalRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// SetDecision sets the value of Decision.
+func (s *DecideApprovalRequest) SetDecision(val DecideApprovalRequestDecision) {
+	s.Decision = val
+}
+
+// SetReason sets the value of Reason.
+func (s *DecideApprovalRequest) SetReason(val OptString) {
+	s.Reason = val
+}
+
+type DecideApprovalRequestDecision string
+
+const (
+	DecideApprovalRequestDecisionApprove DecideApprovalRequestDecision = "approve"
+	DecideApprovalRequestDecisionReject  DecideApprovalRequestDecision = "reject"
+)
+
+// AllValues returns all DecideApprovalRequestDecision values.
+func (DecideApprovalRequestDecision) AllValues() []DecideApprovalRequestDecision {
+	return []DecideApprovalRequestDecision{
+		DecideApprovalRequestDecisionApprove,
+		DecideApprovalRequestDecisionReject,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DecideApprovalRequestDecision) MarshalText() ([]byte, error) {
+	switch s {
+	case DecideApprovalRequestDecisionApprove:
+		return []byte(s), nil
+	case DecideApprovalRequestDecisionReject:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DecideApprovalRequestDecision) UnmarshalText(data []byte) error {
+	switch DecideApprovalRequestDecision(data) {
+	case DecideApprovalRequestDecisionApprove:
+		*s = DecideApprovalRequestDecisionApprove
+		return nil
+	case DecideApprovalRequestDecisionReject:
+		*s = DecideApprovalRequestDecisionReject
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/Invitation
@@ -1252,6 +1877,47 @@ func (s *IssueChannelSessionRequest) SetCredentialExpiresAt(val time.Time) {
 	s.CredentialExpiresAt = val
 }
 
+type ListApprovalsRole string
+
+const (
+	ListApprovalsRoleApprover  ListApprovalsRole = "approver"
+	ListApprovalsRoleApplicant ListApprovalsRole = "applicant"
+)
+
+// AllValues returns all ListApprovalsRole values.
+func (ListApprovalsRole) AllValues() []ListApprovalsRole {
+	return []ListApprovalsRole{
+		ListApprovalsRoleApprover,
+		ListApprovalsRoleApplicant,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListApprovalsRole) MarshalText() ([]byte, error) {
+	switch s {
+	case ListApprovalsRoleApprover:
+		return []byte(s), nil
+	case ListApprovalsRoleApplicant:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListApprovalsRole) UnmarshalText(data []byte) error {
+	switch ListApprovalsRole(data) {
+	case ListApprovalsRoleApprover:
+		*s = ListApprovalsRoleApprover
+		return nil
+	case ListApprovalsRoleApplicant:
+		*s = ListApprovalsRoleApplicant
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/LiveChannelBindingList
 type LiveChannelBindingList struct {
 	Bindings   []LiveChannelBindingListBindingsItem `json:"bindings"`
@@ -1324,6 +1990,144 @@ func (s *LiveChannelBindingListBindingsItem) SetBindingVersion(val int64) {
 // SetSubject sets the value of Subject.
 func (s *LiveChannelBindingListBindingsItem) SetSubject(val string) {
 	s.Subject = val
+}
+
+// NewOptApprovalCursor returns new OptApprovalCursor with value set to v.
+func NewOptApprovalCursor(v ApprovalCursor) OptApprovalCursor {
+	return OptApprovalCursor{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptApprovalCursor is optional ApprovalCursor.
+type OptApprovalCursor struct {
+	Value ApprovalCursor
+	Set   bool
+}
+
+// IsSet returns true if OptApprovalCursor was set.
+func (o OptApprovalCursor) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptApprovalCursor) Reset() {
+	var v ApprovalCursor
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptApprovalCursor) SetTo(v ApprovalCursor) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptApprovalCursor) Get() (v ApprovalCursor, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptApprovalCursor) Or(d ApprovalCursor) ApprovalCursor {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptApprovalRequestClosedReason returns new OptApprovalRequestClosedReason with value set to v.
+func NewOptApprovalRequestClosedReason(v ApprovalRequestClosedReason) OptApprovalRequestClosedReason {
+	return OptApprovalRequestClosedReason{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptApprovalRequestClosedReason is optional ApprovalRequestClosedReason.
+type OptApprovalRequestClosedReason struct {
+	Value ApprovalRequestClosedReason
+	Set   bool
+}
+
+// IsSet returns true if OptApprovalRequestClosedReason was set.
+func (o OptApprovalRequestClosedReason) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptApprovalRequestClosedReason) Reset() {
+	var v ApprovalRequestClosedReason
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptApprovalRequestClosedReason) SetTo(v ApprovalRequestClosedReason) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptApprovalRequestClosedReason) Get() (v ApprovalRequestClosedReason, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptApprovalRequestClosedReason) Or(d ApprovalRequestClosedReason) ApprovalRequestClosedReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptApprovalState returns new OptApprovalState with value set to v.
+func NewOptApprovalState(v ApprovalState) OptApprovalState {
+	return OptApprovalState{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptApprovalState is optional ApprovalState.
+type OptApprovalState struct {
+	Value ApprovalState
+	Set   bool
+}
+
+// IsSet returns true if OptApprovalState was set.
+func (o OptApprovalState) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptApprovalState) Reset() {
+	var v ApprovalState
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptApprovalState) SetTo(v ApprovalState) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptApprovalState) Get() (v ApprovalState, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptApprovalState) Or(d ApprovalState) ApprovalState {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
 }
 
 // NewOptChannelSessionCursor returns new OptChannelSessionCursor with value set to v.
@@ -1550,6 +2354,52 @@ func (o OptInvitationState) Get() (v InvitationState, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInvitationState) Or(d InvitationState) InvitationState {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptListApprovalsRole returns new OptListApprovalsRole with value set to v.
+func NewOptListApprovalsRole(v ListApprovalsRole) OptListApprovalsRole {
+	return OptListApprovalsRole{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListApprovalsRole is optional ListApprovalsRole.
+type OptListApprovalsRole struct {
+	Value ListApprovalsRole
+	Set   bool
+}
+
+// IsSet returns true if OptListApprovalsRole was set.
+func (o OptListApprovalsRole) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListApprovalsRole) Reset() {
+	var v ListApprovalsRole
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListApprovalsRole) SetTo(v ListApprovalsRole) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListApprovalsRole) Get() (v ListApprovalsRole, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListApprovalsRole) Or(d ListApprovalsRole) ListApprovalsRole {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -2053,6 +2903,56 @@ func (s *PutMemberRequestState) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Ref: #/components/schemas/RequestApprovalRequest
+type RequestApprovalRequest struct {
+	Type ApprovalType `json:"type"`
+	// 请求资源，须为类型登记的资源类型（策略为 objective:obj_…）.
+	Resource string `json:"resource"`
+	// 申请说明（为什么改、希望审批人关注什么）.
+	Note    string          `json:"note"`
+	Binding ApprovalBinding `json:"binding"`
+}
+
+// GetType returns the value of Type.
+func (s *RequestApprovalRequest) GetType() ApprovalType {
+	return s.Type
+}
+
+// GetResource returns the value of Resource.
+func (s *RequestApprovalRequest) GetResource() string {
+	return s.Resource
+}
+
+// GetNote returns the value of Note.
+func (s *RequestApprovalRequest) GetNote() string {
+	return s.Note
+}
+
+// GetBinding returns the value of Binding.
+func (s *RequestApprovalRequest) GetBinding() ApprovalBinding {
+	return s.Binding
+}
+
+// SetType sets the value of Type.
+func (s *RequestApprovalRequest) SetType(val ApprovalType) {
+	s.Type = val
+}
+
+// SetResource sets the value of Resource.
+func (s *RequestApprovalRequest) SetResource(val string) {
+	s.Resource = val
+}
+
+// SetNote sets the value of Note.
+func (s *RequestApprovalRequest) SetNote(val string) {
+	s.Note = val
+}
+
+// SetBinding sets the value of Binding.
+func (s *RequestApprovalRequest) SetBinding(val ApprovalBinding) {
+	s.Binding = val
 }
 
 // Ref: #/components/schemas/RevokeChannelSessionsRequest

@@ -51,6 +51,8 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/channels"
 	"github.com/superailabs/miaoqia/services/subsystems/commerce"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext"
+	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
+	ccremote "github.com/superailabs/miaoqia/services/subsystems/customercontext/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/detection"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway"
 	"github.com/superailabs/miaoqia/services/subsystems/governance"
@@ -71,12 +73,61 @@ var modules = []func() runtime.Module{
 	learning.Module, channels.Module, search.Module, operations.Module,
 }
 
-// remotes 是可切换为远程绑定的接口：子系统 → 绑定名与远程客户端构造。
-var remotes = map[string]struct {
-	binding string
-	client  func(url string) (any, error)
-}{
-	identityapi.Name: {identityapi.AuthorizerBinding, func(u string) (any, error) { return identityremote.NewAuthorizer(u) }},
+// remote 是可切换为远程绑定的子系统：provide 以远程客户端登记它提供的全部绑定；autoload 为真时，
+// 未配置为远程的该子系统随任何角色在本进程加载（identity 是全部子系统的授权依赖）。
+type remote struct {
+	autoload bool
+	provide  func(url string, b *runtime.Bindings) error
+}
+
+// remotes 是可切换为远程绑定的接口：子系统 → 远程客户端与登记。远程客户端经内部 mTLS 接口以服务主体调用。
+var remotes = map[string]remote{
+	identityapi.Name: {autoload: true, provide: func(u string, b *runtime.Bindings) error {
+		c, err := identityremote.NewAuthorizer(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(identityapi.AuthorizerBinding, c)
+		resolver, ok := c.(identityapi.SessionResolver)
+		if !ok {
+			return fmt.Errorf("identity remote missing session resolver")
+		}
+		b.Provide(identityapi.SessionBinding, resolver)
+		directory, ok := c.(identityapi.Directory)
+		if !ok {
+			return fmt.Errorf("identity remote missing directory")
+		}
+		b.Provide(identityapi.DirectoryBinding, directory)
+		sessions, ok := c.(identityapi.ChannelSessions)
+		if !ok {
+			return fmt.Errorf("identity remote missing channel sessions")
+		}
+		b.Provide(identityapi.ChannelSessionsBinding, sessions)
+		approvals, ok := c.(identityapi.Approvals)
+		if !ok {
+			return fmt.Errorf("identity remote missing approvals")
+		}
+		b.Provide(identityapi.ApprovalsBinding, approvals)
+		return nil
+	}},
+	ccapi.Name: {provide: func(u string, b *runtime.Bindings) error {
+		reader, err := ccremote.NewContextReader(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(ccapi.ContextBinding, reader)
+		policies, err := ccremote.NewPolicyReader(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(ccapi.PolicyBinding, policies)
+		access, err := ccremote.NewObjectiveAccess(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(ccapi.AccessBinding, access)
+		return nil
+	}},
 }
 
 func envKey(sub, key string) string {
@@ -178,84 +229,10 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 	if role == "outbox-relay" {
 		return runRelay(ctx, log, brokers)
 	}
-	spec, scopes, inventory, err := loadRole(role)
+	loaded, envs, closeAll, err := assemble(ctx, log, role, brokers)
+	defer closeAll()
 	if err != nil {
 		return err
-	}
-	want := map[string]bool{}
-	for _, s := range spec.Subsystems {
-		want[s] = true
-	}
-	// 被加载子系统依赖的接口：本地绑定由提供方子系统随本进程启动时登记；配置为远程绑定的子系统视为已拆出，
-	// 不在本进程加载，调用经其远程客户端
-	bindings := runtime.NewBindings()
-	for sub, r := range remotes {
-		if os.Getenv("MIAOQIA_BINDING_"+strings.ToUpper(strings.ReplaceAll(sub, "-", "_"))) == "remote" {
-			c, err := r.client(os.Getenv(envKey(sub, "URL")))
-			if err != nil {
-				return err
-			}
-			bindings.Provide(r.binding, c)
-			if sub == identityapi.Name {
-				resolver, ok := c.(identityapi.SessionResolver)
-				if !ok {
-					return fmt.Errorf("identity remote missing session resolver")
-				}
-				bindings.Provide(identityapi.SessionBinding, resolver)
-				directory, ok := c.(identityapi.Directory)
-				if !ok {
-					return fmt.Errorf("identity remote missing directory")
-				}
-				bindings.Provide(identityapi.DirectoryBinding, directory)
-				sessions, ok := c.(identityapi.ChannelSessions)
-				if !ok {
-					return fmt.Errorf("identity remote missing channel sessions")
-				}
-				bindings.Provide(identityapi.ChannelSessionsBinding, sessions)
-			}
-			delete(want, sub)
-			log.Info("远程绑定", "subsystem", sub, "url", os.Getenv(envKey(sub, "URL")))
-		} else {
-			want[sub] = true
-		}
-	}
-	for name := range want {
-		if _, exists := scopes[name]; exists {
-			continue
-		}
-		entry := inventory.Subsystems[name]
-		if entry.Unit != "platform" {
-			return fmt.Errorf("本地绑定 %s 不属于 platform", name)
-		}
-		scope, err := runtime.InstanceScope(name, nil, spec.Cell, entry.DataScopes)
-		if err != nil {
-			return err
-		}
-		scopes[name] = scope
-	}
-	var loaded []runtime.Module
-	var envs []*runtime.Env
-	for _, mk := range modules {
-		m := mk()
-		if !want[m.Name] {
-			continue
-		}
-		env := &runtime.Env{DataScope: scopes[m.Name], Cell: spec.Cell, Role: role, Brokers: brokers, Log: log.With("subsystem", m.Name), Bindings: bindings,
-			Config: func(k string) string { return os.Getenv(envKey(m.Name, k)) }}
-		if m.Database != "" && (m.Consumers != nil || m.Routes != nil || m.Start != nil) {
-			d, err := db.Open(ctx, os.Getenv(envKey(m.Name, "DB_DSN")))
-			if err != nil {
-				return fmt.Errorf("%s 数据库：%w", m.Name, err)
-			}
-			defer d.Close()
-			env.DB = d
-		}
-		if m.Start != nil {
-			if err := m.Start(ctx, env); err != nil {
-				return fmt.Errorf("%s 启动失败：%w", m.Name, err)
-			}
-		}
-		loaded, envs = append(loaded, m), append(envs, env)
 	}
 	names := make([]string, 0, len(loaded))
 	for _, m := range loaded {
@@ -291,6 +268,81 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 		<-ctx.Done() // scheduler、workflow-worker 的任务随所属里程碑加入
 		return nil
 	}
+}
+
+// openDB 打开子系统数据库（测试替换为不连接的实现）。
+var openDB = db.Open
+
+// assemble 按角色与绑定配置加载并启动子系统（登记绑定），不开始服务或消费；返回的 closeAll 关闭已打开的数据库。
+// 被加载子系统所依赖的绑定在这里必须全部可解析，否则子系统的 Start 返回错误，进程不启动。
+func assemble(ctx context.Context, log *slog.Logger, role string, brokers []string) ([]runtime.Module, []*runtime.Env, func(), error) {
+	var closers []func()
+	closeAll := func() {
+		for _, c := range closers {
+			c()
+		}
+	}
+	spec, scopes, inventory, err := loadRole(role)
+	if err != nil {
+		return nil, nil, closeAll, err
+	}
+	want := map[string]bool{}
+	for _, s := range spec.Subsystems {
+		want[s] = true
+	}
+	// 被加载子系统依赖的接口：本地绑定由提供方子系统随本进程启动时登记；配置为远程绑定的子系统视为已拆出，
+	// 不在本进程加载，调用经其远程客户端
+	bindings := runtime.NewBindings()
+	for sub, r := range remotes {
+		if os.Getenv("MIAOQIA_BINDING_"+strings.ToUpper(strings.ReplaceAll(sub, "-", "_"))) == "remote" {
+			if err := r.provide(os.Getenv(envKey(sub, "URL")), bindings); err != nil {
+				return nil, nil, closeAll, err
+			}
+			delete(want, sub)
+			log.Info("远程绑定", "subsystem", sub, "url", os.Getenv(envKey(sub, "URL")))
+		} else if r.autoload {
+			want[sub] = true
+		}
+	}
+	for name := range want {
+		if _, exists := scopes[name]; exists {
+			continue
+		}
+		entry := inventory.Subsystems[name]
+		if entry.Unit != "platform" {
+			return nil, nil, closeAll, fmt.Errorf("本地绑定 %s 不属于 platform", name)
+		}
+		scope, err := runtime.InstanceScope(name, nil, spec.Cell, entry.DataScopes)
+		if err != nil {
+			return nil, nil, closeAll, err
+		}
+		scopes[name] = scope
+	}
+	var loaded []runtime.Module
+	var envs []*runtime.Env
+	for _, mk := range modules {
+		m := mk()
+		if !want[m.Name] {
+			continue
+		}
+		env := &runtime.Env{DataScope: scopes[m.Name], Cell: spec.Cell, Role: role, Brokers: brokers, Log: log.With("subsystem", m.Name), Bindings: bindings,
+			Config: func(k string) string { return os.Getenv(envKey(m.Name, k)) }}
+		if m.Database != "" && (m.Consumers != nil || m.Routes != nil || m.Start != nil) {
+			d, err := openDB(ctx, os.Getenv(envKey(m.Name, "DB_DSN")))
+			if err != nil {
+				return nil, nil, closeAll, fmt.Errorf("%s 数据库：%w", m.Name, err)
+			}
+			closers = append(closers, d.Close)
+			env.DB = d
+		}
+		if m.Start != nil {
+			if err := m.Start(ctx, env); err != nil {
+				return nil, nil, closeAll, fmt.Errorf("%s 启动失败：%w", m.Name, err)
+			}
+		}
+		loaded, envs = append(loaded, m), append(envs, env)
+	}
+	return loaded, envs, closeAll, nil
 }
 
 func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, envs []*runtime.Env) error {

@@ -85,6 +85,15 @@ fixtures:
     - op: replace
       path: /change
       value: configured
+  - name: 首次激活进入生效
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: active
+    - op: replace
+      path: /change
+      value: activated
   - name: 启用即生效不允许
     valid: false
     patch:
@@ -114,3 +123,121 @@ fixtures:
     - op: add
       path: /participants
       value: []
+- event: customer_context.policy.drafted.v1
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    revision: 2
+    draft_version: 2
+    base_version: 0
+    generation: 0
+    template_id: TPL-TENDER-A02-SUPPLY
+    template_version: 0.3.0
+    valid: true
+  cases:
+  - name: 未通过校验的修订
+    valid: true
+    patch:
+    - op: replace
+      path: /valid
+      value: false
+  - name: 修订从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /revision
+      value: 0
+  - name: 不带草案内容
+    valid: false
+    patch:
+    - op: add
+      path: /form
+      value: {}
+- event: customer_context.policy.activated.v1
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    generation: 1
+    previous_version: 0
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    source_revision: 2
+    template_id: TPL-TENDER-A02-SUPPLY
+    template_version: 0.3.0
+    enabled_domains:
+    - INF-PROC
+    - INF-ORG
+    backfill_days: 30
+    effective_at: '2026-10-19T09:00:00Z'
+  cases:
+  - name: 非首次激活不回填
+    valid: true
+    patch:
+    - op: replace
+      path: /previous_version
+      value: 1
+    - op: replace
+      path: /version
+      value: 2
+    - op: replace
+      path: /backfill_days
+      value: 0
+  - name: 代次从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /generation
+      value: 0
+  - name: 回填超过30天
+    valid: false
+    patch:
+    - op: replace
+      path: /backfill_days
+      value: 31
+  - name: 缺少审批依据
+    valid: false
+    patch:
+    - op: remove
+      path: /approval_id
+- event: customer_context.policy.rolled_back.v1
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 1
+    generation: 3
+    previous_version: 2
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    effective_at: '2026-10-20T09:00:00Z'
+  cases:
+  - name: 回滚前须已有生效版本
+    valid: false
+    patch:
+    - op: replace
+      path: /previous_version
+      value: 0
+  - name: 回滚不带回填
+    valid: false
+    patch:
+    - op: add
+      path: /backfill_days
+      value: 30
+- event: customer_context.policy.execution_failed.v1
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    kind: activation
+    reason: baseline_changed
+    effective_at: '2026-10-19T09:00:00Z'
+  cases:
+  - name: 回滚目标版本不存在
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: rollback
+    - op: replace
+      path: /reason
+      value: version_missing
+  - name: 未知原因
+    valid: false
+    patch:
+    - op: replace
+      path: /reason
+      value: rejected

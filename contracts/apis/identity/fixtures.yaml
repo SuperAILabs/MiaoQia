@@ -942,3 +942,219 @@ fixtures:
     - op: replace
       path: /state
       value: absent
+- schema: ApprovalID
+  base: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 其他前缀
+    valid: false
+    instance: inv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: ApprovalType
+  base: policy_activation
+  cases:
+  - name: 回滚
+    valid: true
+    instance: policy_rollback
+  - name: 未登记的类型
+    valid: false
+    instance: decision_approval
+- schema: ApprovalState
+  base: pending
+  cases:
+  - name: 已失效
+    valid: true
+    instance: invalidated
+  - name: 未知状态
+    valid: false
+    instance: executed
+- schema: ApprovalBinding
+  base:
+    object_version: 3
+    evidence_ref: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    baseline_version: 0
+    baseline_generation: 0
+    backfill_days: 30
+  cases:
+  - name: 回滚不带回填
+    valid: true
+    patch:
+    - op: remove
+      path: /backfill_days
+  - name: 回填超过30天
+    valid: false
+    patch:
+    - op: replace
+      path: /backfill_days
+      value: 31
+  - name: 缺少基准代次
+    valid: false
+    patch:
+    - op: remove
+      path: /baseline_generation
+  - name: 依据不是仿真运行
+    valid: false
+    patch:
+    - op: replace
+      path: /evidence_ref
+      value: rpt_1
+  - name: 对象版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /object_version
+      value: 0
+- schema: RequestApprovalRequest
+  base:
+    type: policy_activation
+    resource: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    note: 调整大额阈值，请关注每周信号数
+    binding:
+      object_version: 3
+      evidence_ref: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      baseline_version: 0
+      baseline_generation: 0
+      backfill_days: 30
+  cases:
+  - name: 说明必填
+    valid: false
+    patch:
+    - op: replace
+      path: /note
+      value: ''
+  - name: 资源须为目标
+    valid: false
+    patch:
+    - op: replace
+      path: /resource
+      value: pursuit:pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不得携带申请人
+    valid: false
+    patch:
+    - op: add
+      path: /applicant
+      value: someone
+- schema: DecideApprovalRequest
+  base:
+    expected_version: 1
+    decision: approve
+  cases:
+  - name: 驳回带原因
+    valid: true
+    patch:
+    - op: replace
+      path: /decision
+      value: reject
+    - op: add
+      path: /reason
+      value: 阈值过低
+  - name: 未知决定
+    valid: false
+    patch:
+    - op: replace
+      path: /decision
+      value: defer
+  - name: 原因不能为空串
+    valid: false
+    patch:
+    - op: add
+      path: /reason
+      value: ''
+- schema: ApprovalVersionRequest
+  base:
+    expected_version: 1
+  cases:
+  - name: 版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+- schema: CloseApprovalRequest
+  base:
+    reason: baseline_changed
+  cases:
+  - name: 对象已变
+    valid: true
+    patch:
+    - op: replace
+      path: /reason
+      value: object_changed
+  - name: 所属子系统不能以撤回关闭
+    valid: false
+    patch:
+    - op: replace
+      path: /reason
+      value: withdrawn
+- schema: ApprovalRequest
+  base:
+    id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    type: policy_activation
+    resource: objective:obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    applicant: dm-1
+    note: 调整大额阈值
+    binding:
+      object_version: 3
+      evidence_ref: sim_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      baseline_version: 0
+      baseline_generation: 0
+    state: pending
+    version: 1
+    submitted_at: '2026-10-19T08:00:00Z'
+    expires_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 已批准
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: approved
+    - op: add
+      path: /decided_by
+      value: admin-1
+    - op: add
+      path: /decided_at
+      value: '2026-10-19T09:00:00Z'
+  - name: 申请人失权失效
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: invalidated
+    - op: add
+      path: /closed_reason
+      value: applicant_lost_permission
+  - name: 未知关闭原因
+    valid: false
+    patch:
+    - op: add
+      path: /closed_reason
+      value: timeout
+  - name: 缺少绑定
+    valid: false
+    patch:
+    - op: remove
+      path: /binding
+- schema: ApprovalList
+  base:
+    approvals: []
+    truncated: false
+  cases:
+  - name: 带翻页游标
+    valid: true
+    patch:
+    - op: replace
+      path: /truncated
+      value: true
+    - op: add
+      path: /next_cursor
+      value: eyJ0IjoxfQ
+  - name: 缺少截断标记
+    valid: false
+    patch:
+    - op: remove
+      path: /truncated
+- schema: ApprovalCursor
+  base: eyJ0IjoxfQ
+  cases:
+  - name: 非 base64url 字符
+    valid: false
+    instance: a+b/c

@@ -56,7 +56,7 @@
 | 进程角色 | 加载的子系统 | 职责 | 伸缩依据 |
 |---|---|---|---|
 | `api` | gateway + 本单元全部子系统的接口实现 | 处理同步请求（REST、BFF、MCP） | 请求速率、延迟 |
-| `consumer` | search、detection、assessment、pursuit、learning、channels、commerce、governance 等的事件消费者 | 事件处理、索引投影、读模型更新、匹配 | 消费延迟 |
+| `consumer` | search、detection、assessment、pursuit、customer-context、learning、channels、commerce、governance 等的事件消费者 | 事件处理、索引投影、读模型更新、匹配 | 消费延迟 |
 | `workflow-worker` | research、learning、customer-context、pursuit、governance、search 等的 Temporal worker | 研究运行、仿真、回填、索引构建、删除编排、推进时限 | 工作流任务队列深度 |
 | `outbox-relay` | 全部子系统（含 Python 子系统）的发件箱中继 | 发件箱 → Kafka | 发件箱积压 |
 | `scheduler` | 周期性任务（摘要、统计、健康检查） | 定时任务 | 固定副本（主备） |

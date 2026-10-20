@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: identity 内部接口
-  version: 1.4.0
+  version: 1.5.0
   description: >-
     identity接口。授权Check、会话核验、组织单元读取与资源参与关系同步经mTLS内部端口；生命周期、组织单元、成员与邀请命令仅经外部网关。
     平台运营命令与成员读取要求已签名的 amr=mfa；租户管理命令（成员、单元、邀请）要求15分钟内的强认证：访问令牌带 amr=mfa 与
@@ -10,6 +10,8 @@ info:
     TOTP 时为 403 totp_enrollment_required（客户端先引导登记，原动作不执行）。租户来自上下文，cell归属来自identity目录。组织单元标识为租户根单元的保留值 root 或 unt_<ULID>
     （contracts/identifiers.yaml）；Check 的资源可为本租户的 tenant、org_unit 与已登记的业务资源（objective、pursuit、research_case）。
     渠道免登会话的签发、撤销与对账列表（1.4.0）只经内部端口、只供 channels 的服务主体调用，按每个渠道绑定的撤销水位串行。
+    审批（1.5.0）：审批请求的列表、读取、决定与撤回经外部网关；提交（RequestApproval）与所属子系统使请求失效（CloseApproval）
+    经本地绑定与内部端口。申请人不能批准自己的请求；策略激活与回滚的提交与决定都要求15分钟内的强认证；请求绑定不可变的对象版本与基准。
 servers:
 - url: /internal
 paths:
@@ -674,6 +676,237 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChannelSessionRevocation'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/approvals:
+    get:
+      operationId: listApprovals
+      summary: 列出审批请求（ListPendingApprovals）
+      description: >-
+        role=approver（缺省）列出调用者当前有资格决定的请求：按请求类型的批准关系（策略激活与回滚为目标上的 can_approve_activation）
+        逐个资源实时判断，不含调用者本人提交的请求；state 缺省为 pending。role=applicant 列出调用者本人提交的请求（任意状态，可按 state 过滤）。
+        按提交记录时间倒序（同一时间按标识倒序）分页，每页至多 limit 条（默认且至多100）；还有更早的请求时 truncated 为 true 并给出
+        next_cursor（须带相同的 role 与 state，否则 400 invalid_cursor；只在签发它的租户与调用者内有效）。到期的待审批请求先置为
+        expired（发布 identity.approval.closed.v1）再返回。不要求强认证。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: role
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - approver
+          - applicant
+          default: approver
+      - name: state
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ApprovalState'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 100
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ApprovalCursor'
+      responses:
+        '200':
+          description: 审批请求列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalList'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/approvals/{approvalID}:
+    get:
+      operationId: getApproval
+      summary: 读取审批请求
+      description: >-
+        申请人本人与对请求资源有批准关系的成员可读取（含已由他人处理、已关闭的请求）；其他成员、其他租户的与不存在的请求返回同一
+        404 approval_not_found。已到期的待审批请求先置为 expired。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - &approvalParam
+        name: approvalID
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/ApprovalID'
+      responses:
+        '200':
+          description: 审批请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalRequest'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/approvals/{approvalID}/decide:
+    post:
+      operationId: decideApproval
+      summary: 批准或驳回（DecideApproval）
+      description: >-
+        依次核验：调用者能看到该请求（否则 404 approval_not_found）；调用者不是申请人（申请人本人 403 self_approval_forbidden）；
+        调用者此刻对请求资源有批准关系（实时经授权模型判断；策略激活与回滚为 can_approve_activation，即目标所在范围的决策者或租户管理员）；
+        15分钟内的强认证（403 mfa_required / totp_enrollment_required）；请求仍待审批且未到期（409 approval_not_pending，到期的先置为
+        expired）；expected_version 等于当前版本（409 version_conflict）；申请人仍是有效成员且仍有申请关系（否则请求置为 invalidated、
+        发布 identity.approval.closed.v1，本次决定 409 approval_invalidated）。授权服务不可用时 503，不当作已失权，也不作出决定。
+        驳回必须写原因。决定后发布 identity.approval.decided.v1，请求关闭，其他审批人看到已由谁处理；批准只针对请求绑定的对象版本
+        （binding），执行方在执行前核验绑定仍成立。同一 Idempotency-Key 的重放返回首次结果。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *approvalParam
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecideApprovalRequest'
+      responses:
+        '200':
+          description: 决定后的审批请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalRequest'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/approvals/{approvalID}/withdraw:
+    post:
+      operationId: withdrawApproval
+      summary: 撤回审批请求（WithdrawApproval）
+      description: >-
+        只有申请人本人可在决定前撤回（能看到请求的审批人 403 forbidden；其他成员 404 approval_not_found），按 expected_version 并发控制。
+        已决定、已关闭或已到期的请求 409 approval_not_pending。撤回后发布 identity.approval.closed.v1（state withdrawn）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *approvalParam
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalVersionRequest'
+      responses:
+        '200':
+          description: 撤回后的审批请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalRequest'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/approvals:request:
+    post:
+      operationId: requestApproval
+      summary: 提交审批请求（RequestApproval）
+      description: >-
+        由审批类型的所属子系统代申请人调用（策略激活与回滚为 customer-context 的 RequestPolicyActivation / RequestPolicyRollback），
+        请求上下文的主体即申请人。经本地绑定 identity.Approvals 与内部端口提供；申请要求15分钟内的强认证，而认证保证只在网关进程内传递、
+        不进内部调用头，因此经内部端口的调用一律 403 mfa_required（失败关闭），需要强认证的类型只能经本地绑定提交。
+        核验：类型已登记、资源类型与类型一致（400 invalid_request）；申请人此刻对资源有申请关系（策略为 can_request_activation，
+        否则 403 forbidden）；强认证（403 mfa_required）；同一资源没有进行中的请求（409 approval_in_progress）。
+        有效期7天（业务时间），到期自动置为 expired。同一申请人、租户与 Idempotency-Key 的重放返回首次结果，不产生第二个请求。
+        创建后发布 identity.approval.requested.v1。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestApprovalRequest'
+      responses:
+        '200':
+          description: 新建或重放的审批请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalRequest'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/identity/approvals/{approvalID}:close:
+    post:
+      operationId: closeApproval
+      summary: 所属子系统使请求失效（CloseApproval）
+      description: >-
+        只接受审批类型所属子系统的服务主体（策略激活与回滚为 service:customer-context），其他主体 403 forbidden。
+        所属子系统发现请求绑定的对象版本或基准已不成立（策略草案已变、生效版本或策略代次已变、目标已停用）时调用：
+        待审批的请求置为 invalidated（reason 记录原因）并发布 identity.approval.closed.v1；已决定或已关闭的请求原样返回（outcome
+        已由状态表示），重复调用无副作用。经本地绑定 identity.Approvals 与内部端口提供，二者行为一致。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *approvalParam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseApprovalRequest'
+      responses:
+        '200':
+          description: 当前的审批请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalRequest'
         default:
           description: 失败关闭，稳定错误码
           content:
@@ -1454,3 +1687,218 @@ components:
           format: int64
           minimum: 0
           description: 最近一次退出时的成员版本（从未退出为0）
+    ApprovalID:
+      type: string
+      description: 审批请求标识 apr_<ULID>（contracts/identifiers.yaml）
+      pattern: ^apr_[0-9A-HJKMNP-TV-Z]{26}$
+    ApprovalType:
+      type: string
+      description: >-
+        已登记的审批类型（identity.md 7.3）：policy_activation 策略激活、policy_rollback 策略回滚；资源均为目标 objective:obj_…，
+        申请关系 can_request_activation，批准关系 can_approve_activation，所属子系统 customer-context，有效期7天，申请与决定都要求强认证
+      enum:
+      - policy_activation
+      - policy_rollback
+    ApprovalState:
+      type: string
+      description: >-
+        pending 待审批；approved 已批准；rejected 已驳回；withdrawn 申请人已撤回；expired 超过有效期未决定；
+        invalidated 已失效（申请人退出或失去申请关系、所属子系统报告绑定的对象版本或基准已不成立）
+      enum:
+      - pending
+      - approved
+      - rejected
+      - withdrawn
+      - expired
+      - invalidated
+    ApprovalBinding:
+      type: object
+      additionalProperties: false
+      description: >-
+        请求绑定的不可变对象版本与依据，批准只针对它：策略激活为草案修订（object_version）、该修订的仿真运行（evidence_ref）与
+        申请时的生效版本和策略代次（baseline）；策略回滚为目标版本、其激活时的仿真运行与申请时的基准。执行方在执行前核验绑定仍成立
+      required:
+      - object_version
+      - evidence_ref
+      - baseline_version
+      - baseline_generation
+      properties:
+        object_version:
+          type: integer
+          format: int64
+          minimum: 1
+          description: 激活为草案修订号；回滚为目标策略版本号
+        evidence_ref:
+          type: string
+          description: 依据：仿真运行标识 sim_<ULID>
+          pattern: ^sim_[0-9A-HJKMNP-TV-Z]{26}$
+        baseline_version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 申请时的生效版本（0 为首次激活，尚无生效版本）
+        baseline_generation:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 申请时目标的策略代次
+        backfill_days:
+          type: integer
+          minimum: 0
+          maximum: 30
+          description: 仅首次激活：批准后回填的天数（0 为不回填）；审批人可见，执行时按此固定窗口
+    RequestApprovalRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - resource
+      - note
+      - binding
+      properties:
+        type:
+          $ref: '#/components/schemas/ApprovalType'
+        resource:
+          type: string
+          description: 请求资源，须为类型登记的资源类型（策略为 objective:obj_…）
+          pattern: ^objective:obj_[0-9A-HJKMNP-TV-Z]{26}$
+        note:
+          type: string
+          description: 申请说明（为什么改、希望审批人关注什么）
+          minLength: 1
+          maxLength: 2000
+        binding:
+          $ref: '#/components/schemas/ApprovalBinding'
+    DecideApprovalRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - decision
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+        decision:
+          type: string
+          enum:
+          - approve
+          - reject
+        reason:
+          type: string
+          description: 决定理由；驳回必填
+          minLength: 1
+          maxLength: 2000
+    ApprovalVersionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+    CloseApprovalRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - reason
+      properties:
+        reason:
+          type: string
+          description: baseline_changed 生效版本或策略代次已变；object_changed 绑定的对象（草案修订、目标状态）已变
+          enum:
+          - baseline_changed
+          - object_changed
+    ApprovalRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - type
+      - resource
+      - applicant
+      - note
+      - binding
+      - state
+      - version
+      - submitted_at
+      - expires_at
+      properties:
+        id:
+          $ref: '#/components/schemas/ApprovalID'
+        type:
+          $ref: '#/components/schemas/ApprovalType'
+        resource:
+          type: string
+          pattern: ^objective:obj_[0-9A-HJKMNP-TV-Z]{26}$
+        applicant:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        note:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        binding:
+          $ref: '#/components/schemas/ApprovalBinding'
+        state:
+          $ref: '#/components/schemas/ApprovalState'
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        submitted_at:
+          type: string
+          format: date-time
+          description: 提交时间（业务时间）
+        expires_at:
+          type: string
+          format: date-time
+          description: 最长有效期（业务时间：提交起7天）
+        decided_by:
+          type: string
+          description: 批准或驳回的成员（approved、rejected）
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        decided_at:
+          type: string
+          format: date-time
+        decision_reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        closed_reason:
+          type: string
+          description: 关闭原因（withdrawn、expired、invalidated）
+          enum:
+          - withdrawn
+          - expired
+          - applicant_left
+          - applicant_lost_permission
+          - baseline_changed
+          - object_changed
+        closed_at:
+          type: string
+          format: date-time
+    ApprovalList:
+      type: object
+      additionalProperties: false
+      required:
+      - approvals
+      - truncated
+      properties:
+        approvals:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ApprovalRequest'
+        truncated:
+          type: boolean
+          description: 还有更早的请求未返回，此时给出 next_cursor
+        next_cursor:
+          $ref: '#/components/schemas/ApprovalCursor'
+    ApprovalCursor:
+      type: string
+      description: 不透明的翻页游标（base64url），由 ApprovalList.next_cursor 给出，客户端不得解析或构造
+      pattern: ^[A-Za-z0-9_-]{1,256}$

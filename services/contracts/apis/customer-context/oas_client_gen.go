@@ -37,6 +37,43 @@ type Invoker interface {
 	//
 	// PUT /v1/customer-context/objectives/{objectiveID}
 	ConfigureObjective(ctx context.Context, request *ConfigureObjectiveRequest, params ConfigureObjectiveParams) (*Objective, error)
+	// DiffPolicyVersions invokes diffPolicyVersions operation.
+	//
+	// 需要 can_view。from 与 to 为 v<版本号> 或 draft（当前草案）；不存在时 404
+	// policy_version_not_found / no_draft。
+	// 给出模板版本、规则（新增、删除、启停、权重）、参数、阈值、通知与启用领域集合的差异；停用的硬条件（require）标
+	// highlight。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/policy/diff
+	DiffPolicyVersions(ctx context.Context, params DiffPolicyVersionsParams) (*PolicyDiff, error)
+	// DiscardPolicyDraft invokes discardPolicyDraft operation.
+	//
+	// 需要
+	// can_draft_policy。删除当前草案（修订保留供审计），不影响生效版本；草案被进行中的激活申请锁定时
+	// 409 draft_locked， 没有草案时 409 no_draft，expected_version 不一致时 409
+	// version_conflict。.
+	//
+	// POST /v1/customer-context/objectives/{objectiveID}/policy/draft:discard
+	DiscardPolicyDraft(ctx context.Context, request *DiscardPolicyDraftRequest, params DiscardPolicyDraftParams) (*Policy, error)
+	// DraftPolicyChange invokes draftPolicyChange operation.
+	//
+	// 需要
+	// can_draft_policy（目标所在范围的决策者，或参与本目标的业务开拓者；参与关系按本地当前负责人与参与人求交）。
+	// 整份表单替换草案并形成新修订：expected_version 为策略页的
+	// draft_version（每次保存或放弃加一，0 表示从未有过草案）， 不一致返回 409
+	// version_conflict，不覆盖他人修改；草案被进行中的激活申请锁定时 409
+	// draft_locked；目标已停用时 409 objective_disabled。表单中未知规则 422
+	// unknown_rule、改动锁定规则 422 rule_locked、给非加减分规则设权重 422
+	// invalid_weight、参数不合法按第2段参数规则
+	// 422；这些情况不保存。编译失败、drop_below 不小于 pursue_at 时草案照常保存，
+	// valid 为 false 并逐条给出
+	// issues，不能仿真与申请。编译通过后运行模板样例，期望不一致的列在
+	// example_mismatches，不阻止保存。 每次保存发布
+	// customer_context.policy.drafted.v1（learning 据此自动仿真）。同一 Idempotency-Key
+	// 重放返回首次结果。.
+	//
+	// PUT /v1/customer-context/objectives/{objectiveID}/policy/draft
+	DraftPolicyChange(ctx context.Context, request *DraftPolicyRequest, params DraftPolicyChangeParams) (*Policy, error)
 	// EnableObjective invokes enableObjective operation.
 	//
 	// 需要目标单元上的
@@ -73,6 +110,43 @@ type Invoker interface {
 	//
 	// GET /v1/customer-context/objectives/{objectiveID}
 	GetObjective(ctx context.Context, params GetObjectiveParams) (*Objective, error)
+	// GetObjectiveAccess invokes getObjectiveAccess operation.
+	//
+	// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
+	// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+	// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
+	// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
+	// 同步。调用者须为用户主体（否则 403
+	// forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
+	// 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
+	// 中被允许的部分（总含 can_view）。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/access
+	GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (*ObjectiveAccess, error)
+	// GetPolicy invokes getPolicy operation.
+	//
+	// 需要目标的 can_view（与 GetObjective 同一口径，无权限与不存在同样 404
+	// objective_not_found）。返回策略代次、生效版本、
+	// 当前草案（修订、表单、逐条规则、编译与样例结果、最近一次仿真及是否过期、是否被进行中的激活申请锁定）与最近一次申请。
+	// 草案的仿真在“草案再保存或生效版本、策略代次在仿真后变化”时标为过期（stale）。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/policy
+	GetPolicy(ctx context.Context, params GetPolicyParams) (*Policy, error)
+	// GetPolicySimulationInput invokes getPolicySimulationInput operation.
+	//
+	// 只经 mTLS 内部端口，供有 can_read_context
+	// 的服务主体（learning）读取：草案修订的合成文档与校验结果，以及读取时的
+	// 生效版本（对比一侧，含其合成文档与启用领域集合）与策略代次。修订不存在时
+	// 404 policy_revision_not_found。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/policy/simulation-input
+	GetPolicySimulationInput(ctx context.Context, params GetPolicySimulationInputParams) (*PolicySimulationInput, error)
+	// GetPolicyVersion invokes getPolicyVersion operation.
+	//
+	// 需要 can_view。不存在的版本 404 policy_version_not_found。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/policy/versions/{version}
+	GetPolicyVersion(ctx context.Context, params GetPolicyVersionParams) (*PolicyVersion, error)
 	// GetProfile invokes getProfile operation.
 	//
 	// 需要 can_view_profile。从未保存过档案时返回版本 0 与空内容。.
@@ -96,6 +170,45 @@ type Invoker interface {
 	//
 	// GET /v1/customer-context/objectives
 	ListObjectives(ctx context.Context) (*ObjectiveList, error)
+	// ListPolicyVersions invokes listPolicyVersions operation.
+	//
+	// 需要 can_view。按版本号倒序分页，每页至多 limit 条（默认且至多
+	// 100）；还有更早的版本时 truncated 为 true 并给出
+	// next_cursor（只对同一目标有效，否则 400 invalid_cursor）。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/policy/versions
+	ListPolicyVersions(ctx context.Context, params ListPolicyVersionsParams) (*PolicyVersionList, error)
+	// RequestPolicyActivation invokes requestPolicyActivation operation.
+	//
+	// 需要 can_request_activation（参与关系口径同
+	// can_draft_policy）与15分钟内的强认证（由 identity 核对，403 mfa_required）。
+	// 核对：目标未停用（409 objective_disabled）；草案存在、expected_version 与 revision
+	// 是当前草案（409 version_conflict）、 已通过校验（409
+	// draft_invalid）、未被锁定（409 draft_locked）；simulation_id
+	// 是该修订已完成的仿真（409 simulation_not_ready，
+	// 失败的仿真同样不能用），且其对比版本与策略代次等于当前生效版本与代次（409
+	// simulation_stale）；目标没有进行中的申请 （409 approval_in_progress）。backfill_days
+	// 只用于首次激活（尚无生效版本），缺省为 30；非首次激活给出时 422
+	// backfill_not_allowed。 之后经 identity.RequestApproval 创建审批（类型
+	// policy_activation，绑定草案修订、仿真运行与申请时的生效版本和策略代次），
+	// 草案锁定为待审批。同一 Idempotency-Key
+	// 的重放返回首次结果，不产生第二个审批请求。草案在提交期间被他人改动时，
+	// 已创建的审批请求随即失效（identity CloseApproval，object_changed），本次返回 409
+	// version_conflict。.
+	//
+	// POST /v1/customer-context/objectives/{objectiveID}/policy/activation-requests
+	RequestPolicyActivation(ctx context.Context, request *RequestPolicyActivationRequest, params RequestPolicyActivationParams) (*PolicyRequest, error)
+	// RequestPolicyRollback invokes requestPolicyRollback operation.
+	//
+	// 需要 can_request_activation 与强认证。target_version
+	// 须是曾经生效过、且不是当前生效版本的版本（404 policy_version_not_found、 409
+	// already_active）；目标未停用；没有进行中的申请（409
+	// approval_in_progress，含草案的激活申请）。绑定目标版本、
+	// 该版本激活时的仿真运行与申请时的生效版本和策略代次；不绑定、不锁定草案。同一
+	// Idempotency-Key 重放返回首次结果。.
+	//
+	// POST /v1/customer-context/objectives/{objectiveID}/policy/rollback-requests
+	RequestPolicyRollback(ctx context.Context, request *RequestPolicyRollbackRequest, params RequestPolicyRollbackParams) (*PolicyRequest, error)
 	// SetObjectiveState invokes setObjectiveState operation.
 	//
 	// 需要 can_edit。disabled
@@ -267,6 +380,388 @@ func (c *Client) sendConfigureObjective(ctx context.Context, request *ConfigureO
 
 	stage = "DecodeResponse"
 	result, err := decodeConfigureObjectiveResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DiffPolicyVersions invokes diffPolicyVersions operation.
+//
+// 需要 can_view。from 与 to 为 v<版本号> 或 draft（当前草案）；不存在时 404
+// policy_version_not_found / no_draft。
+// 给出模板版本、规则（新增、删除、启停、权重）、参数、阈值、通知与启用领域集合的差异；停用的硬条件（require）标
+// highlight。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/diff
+func (c *Client) DiffPolicyVersions(ctx context.Context, params DiffPolicyVersionsParams) (*PolicyDiff, error) {
+	res, err := c.sendDiffPolicyVersions(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDiffPolicyVersions(ctx context.Context, params DiffPolicyVersionsParams) (res *PolicyDiff, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("diffPolicyVersions"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/diff"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DiffPolicyVersionsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/diff"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "from" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "from",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.From))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "to" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "to",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.To))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDiffPolicyVersionsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DiscardPolicyDraft invokes discardPolicyDraft operation.
+//
+// 需要
+// can_draft_policy。删除当前草案（修订保留供审计），不影响生效版本；草案被进行中的激活申请锁定时
+// 409 draft_locked， 没有草案时 409 no_draft，expected_version 不一致时 409
+// version_conflict。.
+//
+// POST /v1/customer-context/objectives/{objectiveID}/policy/draft:discard
+func (c *Client) DiscardPolicyDraft(ctx context.Context, request *DiscardPolicyDraftRequest, params DiscardPolicyDraftParams) (*Policy, error) {
+	res, err := c.sendDiscardPolicyDraft(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendDiscardPolicyDraft(ctx context.Context, request *DiscardPolicyDraftRequest, params DiscardPolicyDraftParams) (res *Policy, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("discardPolicyDraft"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/draft:discard"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DiscardPolicyDraftOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/draft:discard"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeDiscardPolicyDraftRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDiscardPolicyDraftResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DraftPolicyChange invokes draftPolicyChange operation.
+//
+// 需要
+// can_draft_policy（目标所在范围的决策者，或参与本目标的业务开拓者；参与关系按本地当前负责人与参与人求交）。
+// 整份表单替换草案并形成新修订：expected_version 为策略页的
+// draft_version（每次保存或放弃加一，0 表示从未有过草案）， 不一致返回 409
+// version_conflict，不覆盖他人修改；草案被进行中的激活申请锁定时 409
+// draft_locked；目标已停用时 409 objective_disabled。表单中未知规则 422
+// unknown_rule、改动锁定规则 422 rule_locked、给非加减分规则设权重 422
+// invalid_weight、参数不合法按第2段参数规则
+// 422；这些情况不保存。编译失败、drop_below 不小于 pursue_at 时草案照常保存，
+// valid 为 false 并逐条给出
+// issues，不能仿真与申请。编译通过后运行模板样例，期望不一致的列在
+// example_mismatches，不阻止保存。 每次保存发布
+// customer_context.policy.drafted.v1（learning 据此自动仿真）。同一 Idempotency-Key
+// 重放返回首次结果。.
+//
+// PUT /v1/customer-context/objectives/{objectiveID}/policy/draft
+func (c *Client) DraftPolicyChange(ctx context.Context, request *DraftPolicyRequest, params DraftPolicyChangeParams) (*Policy, error) {
+	res, err := c.sendDraftPolicyChange(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendDraftPolicyChange(ctx context.Context, request *DraftPolicyRequest, params DraftPolicyChangeParams) (res *Policy, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("draftPolicyChange"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/draft"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DraftPolicyChangeOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/draft"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PUT", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeDraftPolicyChangeRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDraftPolicyChangeResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -676,6 +1171,478 @@ func (c *Client) sendGetObjective(ctx context.Context, params GetObjectiveParams
 	return result, nil
 }
 
+// GetObjectiveAccess invokes getObjectiveAccess operation.
+//
+// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
+// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
+// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
+// 同步。调用者须为用户主体（否则 403
+// forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
+// 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
+// 中被允许的部分（总含 can_view）。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/access
+func (c *Client) GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (*ObjectiveAccess, error) {
+	res, err := c.sendGetObjectiveAccess(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (res *ObjectiveAccess, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getObjectiveAccess"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/access"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetObjectiveAccessOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/access"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "relation" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "relation",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeArray(func(e uri.Encoder) error {
+				for i, item := range params.Relation {
+					if err := func() error {
+						return e.EncodeValue(conv.StringToString(string(item)))
+					}(); err != nil {
+						return errors.Wrapf(err, "[%d]", i)
+					}
+				}
+				return nil
+			})
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetObjectiveAccessResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetPolicy invokes getPolicy operation.
+//
+// 需要目标的 can_view（与 GetObjective 同一口径，无权限与不存在同样 404
+// objective_not_found）。返回策略代次、生效版本、
+// 当前草案（修订、表单、逐条规则、编译与样例结果、最近一次仿真及是否过期、是否被进行中的激活申请锁定）与最近一次申请。
+// 草案的仿真在“草案再保存或生效版本、策略代次在仿真后变化”时标为过期（stale）。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy
+func (c *Client) GetPolicy(ctx context.Context, params GetPolicyParams) (*Policy, error) {
+	res, err := c.sendGetPolicy(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetPolicy(ctx context.Context, params GetPolicyParams) (res *Policy, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getPolicy"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetPolicyOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetPolicyResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetPolicySimulationInput invokes getPolicySimulationInput operation.
+//
+// 只经 mTLS 内部端口，供有 can_read_context
+// 的服务主体（learning）读取：草案修订的合成文档与校验结果，以及读取时的
+// 生效版本（对比一侧，含其合成文档与启用领域集合）与策略代次。修订不存在时
+// 404 policy_revision_not_found。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/simulation-input
+func (c *Client) GetPolicySimulationInput(ctx context.Context, params GetPolicySimulationInputParams) (*PolicySimulationInput, error) {
+	res, err := c.sendGetPolicySimulationInput(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetPolicySimulationInput(ctx context.Context, params GetPolicySimulationInputParams) (res *PolicySimulationInput, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getPolicySimulationInput"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/simulation-input"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetPolicySimulationInputOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/simulation-input"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "revision" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "revision",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.Int64ToString(params.Revision))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetPolicySimulationInputResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetPolicyVersion invokes getPolicyVersion operation.
+//
+// 需要 can_view。不存在的版本 404 policy_version_not_found。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/versions/{version}
+func (c *Client) GetPolicyVersion(ctx context.Context, params GetPolicyVersionParams) (*PolicyVersion, error) {
+	res, err := c.sendGetPolicyVersion(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetPolicyVersion(ctx context.Context, params GetPolicyVersionParams) (res *PolicyVersion, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getPolicyVersion"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/versions/{version}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetPolicyVersionOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/versions/"
+	{
+		// Encode "version" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "version",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.Version))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetPolicyVersionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetProfile invokes getProfile operation.
 //
 // 需要 can_view_profile。从未保存过档案时返回版本 0 与空内容。.
@@ -914,6 +1881,399 @@ func (c *Client) sendListObjectives(ctx context.Context) (res *ObjectiveList, er
 
 	stage = "DecodeResponse"
 	result, err := decodeListObjectivesResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListPolicyVersions invokes listPolicyVersions operation.
+//
+// 需要 can_view。按版本号倒序分页，每页至多 limit 条（默认且至多
+// 100）；还有更早的版本时 truncated 为 true 并给出
+// next_cursor（只对同一目标有效，否则 400 invalid_cursor）。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/versions
+func (c *Client) ListPolicyVersions(ctx context.Context, params ListPolicyVersionsParams) (*PolicyVersionList, error) {
+	res, err := c.sendListPolicyVersions(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListPolicyVersions(ctx context.Context, params ListPolicyVersionsParams) (res *PolicyVersionList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listPolicyVersions"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/versions"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListPolicyVersionsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/versions"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListPolicyVersionsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RequestPolicyActivation invokes requestPolicyActivation operation.
+//
+// 需要 can_request_activation（参与关系口径同
+// can_draft_policy）与15分钟内的强认证（由 identity 核对，403 mfa_required）。
+// 核对：目标未停用（409 objective_disabled）；草案存在、expected_version 与 revision
+// 是当前草案（409 version_conflict）、 已通过校验（409
+// draft_invalid）、未被锁定（409 draft_locked）；simulation_id
+// 是该修订已完成的仿真（409 simulation_not_ready，
+// 失败的仿真同样不能用），且其对比版本与策略代次等于当前生效版本与代次（409
+// simulation_stale）；目标没有进行中的申请 （409 approval_in_progress）。backfill_days
+// 只用于首次激活（尚无生效版本），缺省为 30；非首次激活给出时 422
+// backfill_not_allowed。 之后经 identity.RequestApproval 创建审批（类型
+// policy_activation，绑定草案修订、仿真运行与申请时的生效版本和策略代次），
+// 草案锁定为待审批。同一 Idempotency-Key
+// 的重放返回首次结果，不产生第二个审批请求。草案在提交期间被他人改动时，
+// 已创建的审批请求随即失效（identity CloseApproval，object_changed），本次返回 409
+// version_conflict。.
+//
+// POST /v1/customer-context/objectives/{objectiveID}/policy/activation-requests
+func (c *Client) RequestPolicyActivation(ctx context.Context, request *RequestPolicyActivationRequest, params RequestPolicyActivationParams) (*PolicyRequest, error) {
+	res, err := c.sendRequestPolicyActivation(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendRequestPolicyActivation(ctx context.Context, request *RequestPolicyActivationRequest, params RequestPolicyActivationParams) (res *PolicyRequest, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("requestPolicyActivation"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/activation-requests"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RequestPolicyActivationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/activation-requests"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeRequestPolicyActivationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRequestPolicyActivationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RequestPolicyRollback invokes requestPolicyRollback operation.
+//
+// 需要 can_request_activation 与强认证。target_version
+// 须是曾经生效过、且不是当前生效版本的版本（404 policy_version_not_found、 409
+// already_active）；目标未停用；没有进行中的申请（409
+// approval_in_progress，含草案的激活申请）。绑定目标版本、
+// 该版本激活时的仿真运行与申请时的生效版本和策略代次；不绑定、不锁定草案。同一
+// Idempotency-Key 重放返回首次结果。.
+//
+// POST /v1/customer-context/objectives/{objectiveID}/policy/rollback-requests
+func (c *Client) RequestPolicyRollback(ctx context.Context, request *RequestPolicyRollbackRequest, params RequestPolicyRollbackParams) (*PolicyRequest, error) {
+	res, err := c.sendRequestPolicyRollback(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendRequestPolicyRollback(ctx context.Context, request *RequestPolicyRollbackRequest, params RequestPolicyRollbackParams) (res *PolicyRequest, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("requestPolicyRollback"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/policy/rollback-requests"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RequestPolicyRollbackOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/policy/rollback-requests"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeRequestPolicyRollbackRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRequestPolicyRollbackResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

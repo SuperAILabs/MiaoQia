@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.9 · 更新：2026-10-19 · 平面：平台
+> 状态：评审中 · 版本：1.10 · 更新：2026-10-19 · 平面：平台
 
 ## 1. 使命
 
@@ -115,11 +115,21 @@
 - **撤销的重试与对账**：identity 消费 `channels.binding.changed.v1`（`revoking` 与 `invalidated`），按事件版本撤销；`ListLiveChannelSessions` 按绑定标识分页（每页至多 500，游标绑定租户）列出仍有有效会话的绑定及其中最高版本，channels 据此对账（channels.md 第6节实现状况）；
 - 尚未实现：IdP 按免登会话铸造令牌（测试由测试签发方按 identity 返回的会话标识签发）、免登会话的单独登出、按成员批量撤销（成员停用或退出时会话由成员核验拒绝，绑定失效由 channels 消费成员事件完成）。
 
-内部授权Check契约见[`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。目录核验租户/成员当前状态及单元；当前SQL角色经同一OpenFGA模型做隔离contextual tuples求值，持久化旧角色关系不恢复被撤销权限。上下文提供租户不等于已获得资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
+**实现状况（PRD 第7段审批服务，契约 1.5.0，事件契约 1.3.0）**：
+
+- **接口**：`RequestApproval`（`POST /v1/identity/approvals:request`）、`GetApproval`、`ListApprovals`、`DecideApproval`、`WithdrawApproval` 与所属子系统的 `CloseApproval`（`POST /v1/identity/approvals/{approvalID}:close`），本地绑定与远程绑定（`MIAOQIA_BINDING_IDENTITY=remote` 时经内部 mTLS 接口）的 `identity.Approvals` 提供 `RequestApproval` 与 `CloseApproval`；强认证保证不进入内部调用头，远程绑定下的提交一律 403 `mfa_required`（失败关闭），需要强认证的审批只能在与 identity 同进程的角色提交。审批请求 `apr_<ULID>` 保存在 iam 的 `identity_approvals`。已登记的审批类型只有 `policy_activation` 与 `policy_rollback`：资源为 `objective:<id>`，申请关系 `can_request_activation`，批准关系 `can_approve_activation`，所属子系统 customer-context；
+- **提交**：由所属子系统以申请人的请求上下文转交（不是服务主体），要求申请关系与 15 分钟内的强认证，带幂等键（相同键与内容返回首次结果，内容不同 409）。绑定 `ApprovalBinding` 固定对象版本（激活为草案修订、回滚为目标版本）、证据（仿真运行标识）、申请时的生效版本与策略代次，以及只用于首次激活的回填天数：激活带回填而基准版本不为 0、回滚带回填、回滚的基准版本为 0 或目标版本等于基准版本时 400。回滚目标可以是比基准新的曾生效版本（先回滚再回到较新版本，PRD 用例 26），identity 只判断绑定形式，版本是否曾经生效由 customer-context 核验。同一资源同时只有一个待审批请求（咨询锁与部分唯一索引，409 `approval_in_progress`）；
+- **决定**：顺序为申请人本人 403 `self_approval_forbidden` → 无批准关系与不存在同为 404 `approval_not_found` → 强认证 → 幂等回执 → 锁内重核批准关系 → 非待审批或已到期 409 `approval_not_pending` → `expected_version` 不符 409 `version_conflict` → 重核申请人（已退出或失去申请关系时本事务内失效，返回 409 `approval_invalidated`，不作出决定；失效与一条失败回执同事务提交，同一幂等键重试返回同一 409，不返回空的成功结果）。驳回必须写原因。并发的两个决定在请求行锁上串行，只有一个生效；
+- **撤回与失效**：只有申请人能撤回（有批准关系的他人 403，其余 404），带 `expected_version`。成员退出、角色或单元角色变化（成员行排他锁内）与参与关系同步（资源登记行排他锁内）时逐个重核申请人，失权的请求以 `applicant_left` / `applicant_lost_permission` 失效；决定对申请人成员行与资源登记行加共享锁，因此失权与批准不会交错。所属子系统以服务主体调用 `CloseApproval` 报告绑定不成立（`object_changed`、`baseline_changed`、`objective_disabled`），其他服务主体 403；
+- **到期**：7 天（PRD 第13节第3项），按业务时钟判断。读取、列表、决定、撤回与提交前先在独立事务中把到期的请求置为已过期，`effective_at` 为到期时间；`ExpireDueApprovals` 供定时任务批量处理，本切片未接入调度器，到期请求在下一次被访问时关闭并发布事件；
+- **列表**：`role=approver`（缺省）逐个资源实时判断批准关系（同一资源只判断一次，一次至多检查 500 条，达到时返回已找到的部分与游标），`role=applicant` 只列本人申请；每页缺省与上限 100，游标绑定租户、调用者、角色与状态，换用于其他角色或状态 400 `invalid_cursor`；
+- **事件**：`identity.approval.requested.v1`、`identity.approval.decided.v1`、`identity.approval.closed.v1` 的信封带租户与 cell，载荷带类型、资源、申请人、绑定、请求版本与生效时间，按请求版本单调递增；所有状态变化写审计（`identity.approval.*`）；
+- 尚未实现：审批通知（只发给当时有批准权的成员，不含申请人，随 channels）、个人租户的免审批例外、额度条件。
+[`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。目录核验租户/成员当前状态及单元；当前SQL角色经同一OpenFGA模型做隔离contextual tuples求值，持久化旧角色关系不恢复被撤销权限。上下文提供租户不等于已获得资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
 
 ## 6. 事件
 
-**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`、`identity.invitation.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批事件随策略激活审批实现：`identity.approval.requested.v1`（通知有资格的审批人）、`identity.approval.decided.v1`（批准或驳回）、`identity.approval.closed.v1`（撤回或失效）；策略激活与回滚申请超过 7 天未决定、申请人失去申请权或目标的生效版本与策略代次不再等于申请时的基准时失效（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) F5，时限由项目负责人确认）。支持访问与服务委托事件随对应功能实现（服务委托发布 `identity.service_delegation.changed.v1`：授予、到期、撤销、终止）；邀请事件 `identity.invitation.changed.v1`（创建、重发、接受、撤回、过期；事件契约 1.2.0）已随邀请实现，载荷不含邮箱与链接令牌，按邀请版本单调递增。消费 `channels.binding.changed.v1`（契约 1.4.0 起，失效中与已失效的绑定按事件版本撤销免登会话，第 5 节实现状况）。
+**已实现生命周期发布**：`identity.tenant.created.v1`、`identity.tenant.suspended.v1`、`identity.tenant.activated.v1`、`identity.member.changed.v1`、`identity.invitation.changed.v1`，载荷见[identity事件契约](../../../contracts/events/identity/events.asyncapi.yaml)。审批事件已随策略激活审批实现（事件契约 1.3.0，第 5 节实现状况）：`identity.approval.requested.v1`（通知有资格的审批人）、`identity.approval.decided.v1`（批准或驳回）、`identity.approval.closed.v1`（撤回或失效）；策略激活与回滚申请超过 7 天未决定、申请人失去申请权或目标的生效版本与策略代次不再等于申请时的基准时失效（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) F5，时限由项目负责人确认）。支持访问与服务委托事件随对应功能实现（服务委托发布 `identity.service_delegation.changed.v1`：授予、到期、撤销、终止）；邀请事件 `identity.invitation.changed.v1`（创建、重发、接受、撤回、过期；事件契约 1.2.0）已随邀请实现，载荷不含邮箱与链接令牌，按邀请版本单调递增。消费 `channels.binding.changed.v1`（契约 1.4.0 起，失效中与已失效的绑定按事件版本撤销免登会话，第 5 节实现状况）。
 
 ## 7. 授权模型
 
@@ -158,6 +168,7 @@
 | 上传与维护知识资产 | org_unit | can_manage_knowledge | — | — | — | — | ✓ | ✓ | — |
 | 申请批量导出租户产物 | org_unit | can_request_export | ✓ | ✓ | ✓ | ✓ | — | ✓ | — |
 | 列出单元内目标（范围内可见） | org_unit | can_list_objectives | ✓ | — | — | ✓ | — | ✓ | — |
+| 起草单元内全部目标的策略（不经参与关系） | org_unit | can_draft_unit_policies | ✓ | — | — | — | — | — | — |
 | 查看一般知识资产 | knowledge_asset | can_view | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | 查看受限知识资产 | knowledge_asset:restricted | can_view | ◐ | ◐ | ◐ | ◐ | ✓ | ◐ | — |
 | 授予受限知识资产 | knowledge_asset:restricted | can_grant | — | — | — | — | ✓ | ✓ | — |

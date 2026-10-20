@@ -49,6 +49,21 @@ func (UnimplementedHandler) CheckAuthorization(ctx context.Context, req *CheckRe
 	return r, ht.ErrNotImplemented
 }
 
+// CloseApproval implements closeApproval operation.
+//
+// 只接受审批类型所属子系统的服务主体（策略激活与回滚为
+// service:customer-context），其他主体 403 forbidden。
+// 所属子系统发现请求绑定的对象版本或基准已不成立（策略草案已变、生效版本或策略代次已变、目标已停用）时调用：
+// 待审批的请求置为 invalidated（reason 记录原因）并发布
+// identity.approval.closed.v1；已决定或已关闭的请求原样返回（outcome
+// 已由状态表示），重复调用无副作用。经本地绑定 identity.Approvals
+// 与内部端口提供，二者行为一致。.
+//
+// POST /v1/identity/approvals/{approvalID}:close
+func (UnimplementedHandler) CloseApproval(ctx context.Context, req *CloseApprovalRequest, params CloseApprovalParams) (r *ApprovalRequest, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // CreateInvitation implements createInvitation operation.
 //
 // 需要 can_manage_members
@@ -80,6 +95,38 @@ func (UnimplementedHandler) CreateOrgUnit(ctx context.Context, req *CreateOrgUni
 //
 // POST /v1/tenants
 func (UnimplementedHandler) CreateTenant(ctx context.Context, req *CreateTenantRequest, params CreateTenantParams) (r *Tenant, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// DecideApproval implements decideApproval operation.
+//
+// 依次核验：调用者能看到该请求（否则 404
+// approval_not_found）；调用者不是申请人（申请人本人 403 self_approval_forbidden）；
+// 调用者此刻对请求资源有批准关系（实时经授权模型判断；策略激活与回滚为
+// can_approve_activation，即目标所在范围的决策者或租户管理员）；
+// 15分钟内的强认证（403 mfa_required /
+// totp_enrollment_required）；请求仍待审批且未到期（409
+// approval_not_pending，到期的先置为 expired）；expected_version 等于当前版本（409
+// version_conflict）；申请人仍是有效成员且仍有申请关系（否则请求置为
+// invalidated、 发布 identity.approval.closed.v1，本次决定 409
+// approval_invalidated）。授权服务不可用时 503，不当作已失权，也不作出决定。
+// 驳回必须写原因。决定后发布
+// identity.approval.decided.v1，请求关闭，其他审批人看到已由谁处理；批准只针对请求绑定的对象版本
+// （binding），执行方在执行前核验绑定仍成立。同一 Idempotency-Key
+// 的重放返回首次结果。.
+//
+// POST /v1/identity/approvals/{approvalID}/decide
+func (UnimplementedHandler) DecideApproval(ctx context.Context, req *DecideApprovalRequest, params DecideApprovalParams) (r *ApprovalRequest, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetApproval implements getApproval operation.
+//
+// 申请人本人与对请求资源有批准关系的成员可读取（含已由他人处理、已关闭的请求）；其他成员、其他租户的与不存在的请求返回同一
+// 404 approval_not_found。已到期的待审批请求先置为 expired。.
+//
+// GET /v1/identity/approvals/{approvalID}
+func (UnimplementedHandler) GetApproval(ctx context.Context, params GetApprovalParams) (r *ApprovalRequest, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -152,6 +199,22 @@ func (UnimplementedHandler) IssueChannelSession(ctx context.Context, req *IssueC
 	return r, ht.ErrNotImplemented
 }
 
+// ListApprovals implements listApprovals operation.
+//
+// Role=approver（缺省）列出调用者当前有资格决定的请求：按请求类型的批准关系（策略激活与回滚为目标上的
+// can_approve_activation） 逐个资源实时判断，不含调用者本人提交的请求；state
+// 缺省为 pending。role=applicant 列出调用者本人提交的请求（任意状态，可按
+// state 过滤）。 按提交记录时间倒序（同一时间按标识倒序）分页，每页至多
+// limit 条（默认且至多100）；还有更早的请求时 truncated 为 true 并给出
+// next_cursor（须带相同的 role 与 state，否则 400
+// invalid_cursor；只在签发它的租户与调用者内有效）。到期的待审批请求先置为
+// expired（发布 identity.approval.closed.v1）再返回。不要求强认证。.
+//
+// GET /v1/identity/approvals
+func (UnimplementedHandler) ListApprovals(ctx context.Context, params ListApprovalsParams) (r *ApprovalList, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListInvitations implements listInvitations operation.
 //
 // 需要 can_manage_members
@@ -194,6 +257,27 @@ func (UnimplementedHandler) ListOrgUnits(ctx context.Context) (r *OrgUnitList, _
 //
 // PUT /v1/identity/members/{subject}
 func (UnimplementedHandler) PutMember(ctx context.Context, req *PutMemberRequest, params PutMemberParams) (r *Session, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// RequestApproval implements requestApproval operation.
+//
+// 由审批类型的所属子系统代申请人调用（策略激活与回滚为 customer-context 的
+// RequestPolicyActivation / RequestPolicyRollback），
+// 请求上下文的主体即申请人。经本地绑定 identity.Approvals
+// 与内部端口提供；申请要求15分钟内的强认证，而认证保证只在网关进程内传递、
+// 不进内部调用头，因此经内部端口的调用一律 403
+// mfa_required（失败关闭），需要强认证的类型只能经本地绑定提交。
+// 核验：类型已登记、资源类型与类型一致（400
+// invalid_request）；申请人此刻对资源有申请关系（策略为 can_request_activation，
+// 否则 403 forbidden）；强认证（403
+// mfa_required）；同一资源没有进行中的请求（409 approval_in_progress）。
+// 有效期7天（业务时间），到期自动置为 expired。同一申请人、租户与
+// Idempotency-Key 的重放返回首次结果，不产生第二个请求。 创建后发布
+// identity.approval.requested.v1。.
+//
+// POST /v1/identity/approvals:request
+func (UnimplementedHandler) RequestApproval(ctx context.Context, req *RequestApprovalRequest, params RequestApprovalParams) (r *ApprovalRequest, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -279,6 +363,18 @@ func (UnimplementedHandler) SyncResourceParticipants(ctx context.Context, req *S
 //
 // PUT /v1/identity/org-units/{unitID}
 func (UnimplementedHandler) UpdateOrgUnit(ctx context.Context, req *UpdateOrgUnitRequest, params UpdateOrgUnitParams) (r *OrgUnit, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// WithdrawApproval implements withdrawApproval operation.
+//
+// 只有申请人本人可在决定前撤回（能看到请求的审批人 403
+// forbidden；其他成员 404 approval_not_found），按 expected_version 并发控制。
+// 已决定、已关闭或已到期的请求 409 approval_not_pending。撤回后发布
+// identity.approval.closed.v1（state withdrawn）。.
+//
+// POST /v1/identity/approvals/{approvalID}/withdraw
+func (UnimplementedHandler) WithdrawApproval(ctx context.Context, req *ApprovalVersionRequest, params WithdrawApprovalParams) (r *ApprovalRequest, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

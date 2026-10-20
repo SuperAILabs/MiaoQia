@@ -15,7 +15,7 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/internal/domain"
 )
 
-// Objective 是一个租户目标（TenantObjective）。首版策略草案随第7段的策略草案实现创建（实现中发现的设计缺口）。
+// Objective 是一个租户目标（TenantObjective）。启用时在同一事务中创建首版策略草案（第7段）。
 type Objective struct {
 	ID                    string                  `json:"id"`
 	TemplateID            string                  `json:"template_id"`
@@ -170,7 +170,11 @@ func (s *Service) EnableObjective(ctx context.Context, in ObjectiveInput, key st
 				out.Participants, out.Params, out.Version, rc.Tenant, rc.Principal.ID); err != nil {
 				return err
 			}
-			return emitObjective(ctx, tx, out, "enabled", "can_create_objective")
+			if err := emitObjective(ctx, tx, out, "enabled", "can_create_objective"); err != nil {
+				return err
+			}
+			// 首版策略草案（模板缺省 + 目标参数）与目标在同一事务中创建（第7段）
+			return s.createFirstDraft(ctx, tx, rc.Tenant, rc.Principal.ID, out)
 		})
 	})
 	if err != nil {
@@ -293,6 +297,7 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 		Expected int64  `json:"expected_version"`
 		State    string `json:"state"`
 	}{id, expected, target}
+	var pending string
 	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return command(ctx, tx, key, "objective.state", request, out, func() error {
 			o, err := lockObjective(ctx, tx, id, expected)
@@ -308,6 +313,11 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 			if _, err := tx.Exec(ctx, `UPDATE ctx_objectives SET state = $2, version = $3, updated_at = now() WHERE id = $1`, o.ID, o.State, o.Version); err != nil {
 				return err
 			}
+			if target == domain.StateDisabled {
+				if pending, err = pendingRequest(ctx, tx, id); err != nil {
+					return err
+				}
+			}
 			*out = *o
 			return emitObjective(ctx, tx, o, change, "can_edit")
 		})
@@ -316,6 +326,10 @@ func (s *Service) SetObjectiveState(ctx context.Context, id string, expected int
 		return nil, err
 	}
 	s.syncAfterCommit(ctx, out)
+	if pending != "" {
+		// 停用后进行中的激活或回滚申请随即失效（尽力而为；未完成时批准后的执行前核验以 objective_disabled 拒绝执行）
+		s.closeApproval(ctx, pending, "objective_disabled")
+	}
 	return out, nil
 }
 
@@ -329,6 +343,8 @@ var objectiveRelations = map[string]string{
 	"can_view":                "can_list_objectives",
 	"can_edit":                "",
 	"can_manage_participants": "",
+	"can_draft_policy":        "can_draft_unit_policies",
+	"can_request_activation":  "can_draft_unit_policies",
 }
 
 // allowedObjective 判断用户主体对目标（本地当前版本）是否具有关系，见 objectiveRelations。
@@ -389,6 +405,35 @@ func (s *Service) requireObjective(ctx context.Context, id string, relations ...
 		return rc, nil, failure(403, "forbidden")
 	}
 	return rc, o, nil
+}
+
+// ObjectiveAccess 以调用者（用户主体）身份按本子系统的口径（objectiveRelations）判断目标关系，返回被允许的部分（总含 can_view）。
+// 供以用户请求上下文转交的子系统（learning 的仿真接口）使用，使移除参与人在本地提交后立即对其生效，不等待 identity 同步。
+// 不能查看与不存在同样 404 objective_not_found；授权服务不可用为 503（失败关闭）。
+func (s *Service) ObjectiveAccess(ctx context.Context, id string, relations []string) ([]string, error) {
+	for _, r := range relations {
+		if _, known := objectiveRelations[r]; !known {
+			return nil, failure(400, "invalid_request")
+		}
+	}
+	rc, o, err := s.requireObjective(ctx, id, "can_view")
+	if err != nil {
+		return nil, err
+	}
+	out := []string{"can_view"}
+	for _, r := range relations {
+		if slices.Contains(out, r) {
+			continue
+		}
+		ok, err := s.allowedObjective(ctx, rc, o, r)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out = append(out, r)
+		}
+	}
+	return out, nil
 }
 
 // GetObjective 读取目标（can_view，见 objectiveRelations）；无权限与不存在同样返回 404。

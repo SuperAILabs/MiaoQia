@@ -1,0 +1,39 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-19T23:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  PRD 第7段策略编辑、仿真与审批的服务端切片对 C4a 冻结契约做了追加式修改：contracts/identifiers.yaml 新增 ApprovalRequest 前缀 apr
+  （identity）与 SimulationRun 前缀 sim（learning）（1.4.0 → 1.5.0）；contracts/apis/identity/openapi.yaml 新增审批服务：
+  提交（POST /v1/identity/approvals:request，只供所属子系统以用户上下文转交，带幂等键）、读取、分页列表（GET /v1/identity/approvals，
+  role=approver|applicant、state、limit/cursor，游标绑定角色与状态）、决定（decide，带 expected_version，驳回必须写原因，申请人本人
+  403 self_approval_forbidden，无批准权与不存在同为 404）、撤回（withdraw）与所属子系统的失效（:close）及其类型（1.4.0 → 1.5.0）；
+  审批绑定 ApprovalBinding 固定对象版本（激活为草案修订，回滚为目标版本）、证据（仿真运行标识）、申请时的生效版本与策略代次及可选的
+  首次激活回填天数；identity 事件契约新增 identity.approval.requested/decided/closed.v1（1.2.0 → 1.3.0）。
+  mqc compat 对 origin/main 判定 breaking 0：已有路径、类型与事件不变，新增均为追加（customer_context.objective.changed.v1 的
+  change 枚举追加 activated，消费者须容忍未知值）。customer-context 的 OpenAPI（0.2.0 → 0.3.0）与事件（0.1.0 → 0.2.0）、
+  learning 的 OpenAPI 与事件（新文件 0.1.0）是草案，不在 C4a 冻结范围，只记录。
+  这里把切片结束时的内容登记为新基线；原冻结记录与修订 1–6 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.5.0
+  sha256: 2e87f9fe24b167392b50d77f4df77b0f0d8d24ecb5f65a8feed8799c05d40596
+- path: contracts/apis/identity/openapi.yaml
+  current_version: 1.5.0
+  sha256: d92cd03d0b12be1c01404b17faa8dde39940fa6b327f517247d938e16b793ba0
+fixture_artifacts:
+- path: contracts/apis/identity/fixtures.yaml
+  sha256: c6d40741618040deac12b1064369e8ec21c20f6e1ed3e4195b16a2ad540430b0
+- path: contracts/events/identity/events.asyncapi.yaml
+  sha256: 3042fbba46b92023797b4160c3219bfbf6134121ee76f7b1e26c86d962ccbe58
+- path: contracts/events/identity/fixtures.yaml
+  sha256: 926f512bafba42fd719b69b5a26c9cce2146027b4da4b28d90112a7f500597b5
+verification:
+  base: bbea184
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0、additive 25、doc 1：identity 六条新路径与三个审批事件、customer-context 九条策略路径、一条目标访问判断内部路径与四个策略事件、learning.simulation.completed.v1、objective.changed.v1 的 change 枚举追加 activated 均为追加）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；仿真数据集与信息领域状态为内存夹具 datasettest，生产适配器未接入）

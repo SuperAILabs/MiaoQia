@@ -25,6 +25,52 @@ func (UnimplementedHandler) ConfigureObjective(ctx context.Context, req *Configu
 	return r, ht.ErrNotImplemented
 }
 
+// DiffPolicyVersions implements diffPolicyVersions operation.
+//
+// 需要 can_view。from 与 to 为 v<版本号> 或 draft（当前草案）；不存在时 404
+// policy_version_not_found / no_draft。
+// 给出模板版本、规则（新增、删除、启停、权重）、参数、阈值、通知与启用领域集合的差异；停用的硬条件（require）标
+// highlight。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/diff
+func (UnimplementedHandler) DiffPolicyVersions(ctx context.Context, params DiffPolicyVersionsParams) (r *PolicyDiff, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// DiscardPolicyDraft implements discardPolicyDraft operation.
+//
+// 需要
+// can_draft_policy。删除当前草案（修订保留供审计），不影响生效版本；草案被进行中的激活申请锁定时
+// 409 draft_locked， 没有草案时 409 no_draft，expected_version 不一致时 409
+// version_conflict。.
+//
+// POST /v1/customer-context/objectives/{objectiveID}/policy/draft:discard
+func (UnimplementedHandler) DiscardPolicyDraft(ctx context.Context, req *DiscardPolicyDraftRequest, params DiscardPolicyDraftParams) (r *Policy, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// DraftPolicyChange implements draftPolicyChange operation.
+//
+// 需要
+// can_draft_policy（目标所在范围的决策者，或参与本目标的业务开拓者；参与关系按本地当前负责人与参与人求交）。
+// 整份表单替换草案并形成新修订：expected_version 为策略页的
+// draft_version（每次保存或放弃加一，0 表示从未有过草案）， 不一致返回 409
+// version_conflict，不覆盖他人修改；草案被进行中的激活申请锁定时 409
+// draft_locked；目标已停用时 409 objective_disabled。表单中未知规则 422
+// unknown_rule、改动锁定规则 422 rule_locked、给非加减分规则设权重 422
+// invalid_weight、参数不合法按第2段参数规则
+// 422；这些情况不保存。编译失败、drop_below 不小于 pursue_at 时草案照常保存，
+// valid 为 false 并逐条给出
+// issues，不能仿真与申请。编译通过后运行模板样例，期望不一致的列在
+// example_mismatches，不阻止保存。 每次保存发布
+// customer_context.policy.drafted.v1（learning 据此自动仿真）。同一 Idempotency-Key
+// 重放返回首次结果。.
+//
+// PUT /v1/customer-context/objectives/{objectiveID}/policy/draft
+func (UnimplementedHandler) DraftPolicyChange(ctx context.Context, req *DraftPolicyRequest, params DraftPolicyChangeParams) (r *Policy, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // EnableObjective implements enableObjective operation.
 //
 // 需要目标单元上的
@@ -73,6 +119,55 @@ func (UnimplementedHandler) GetObjective(ctx context.Context, params GetObjectiv
 	return r, ht.ErrNotImplemented
 }
 
+// GetObjectiveAccess implements getObjectiveAccess operation.
+//
+// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
+// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
+// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
+// 同步。调用者须为用户主体（否则 403
+// forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
+// 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
+// 中被允许的部分（总含 can_view）。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/access
+func (UnimplementedHandler) GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (r *ObjectiveAccess, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetPolicy implements getPolicy operation.
+//
+// 需要目标的 can_view（与 GetObjective 同一口径，无权限与不存在同样 404
+// objective_not_found）。返回策略代次、生效版本、
+// 当前草案（修订、表单、逐条规则、编译与样例结果、最近一次仿真及是否过期、是否被进行中的激活申请锁定）与最近一次申请。
+// 草案的仿真在“草案再保存或生效版本、策略代次在仿真后变化”时标为过期（stale）。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy
+func (UnimplementedHandler) GetPolicy(ctx context.Context, params GetPolicyParams) (r *Policy, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetPolicySimulationInput implements getPolicySimulationInput operation.
+//
+// 只经 mTLS 内部端口，供有 can_read_context
+// 的服务主体（learning）读取：草案修订的合成文档与校验结果，以及读取时的
+// 生效版本（对比一侧，含其合成文档与启用领域集合）与策略代次。修订不存在时
+// 404 policy_revision_not_found。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/simulation-input
+func (UnimplementedHandler) GetPolicySimulationInput(ctx context.Context, params GetPolicySimulationInputParams) (r *PolicySimulationInput, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetPolicyVersion implements getPolicyVersion operation.
+//
+// 需要 can_view。不存在的版本 404 policy_version_not_found。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/versions/{version}
+func (UnimplementedHandler) GetPolicyVersion(ctx context.Context, params GetPolicyVersionParams) (r *PolicyVersion, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetProfile implements getProfile operation.
 //
 // 需要 can_view_profile。从未保存过档案时返回版本 0 与空内容。.
@@ -102,6 +197,54 @@ func (UnimplementedHandler) ListObjectiveTemplates(ctx context.Context) (r *Obje
 //
 // GET /v1/customer-context/objectives
 func (UnimplementedHandler) ListObjectives(ctx context.Context) (r *ObjectiveList, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ListPolicyVersions implements listPolicyVersions operation.
+//
+// 需要 can_view。按版本号倒序分页，每页至多 limit 条（默认且至多
+// 100）；还有更早的版本时 truncated 为 true 并给出
+// next_cursor（只对同一目标有效，否则 400 invalid_cursor）。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/policy/versions
+func (UnimplementedHandler) ListPolicyVersions(ctx context.Context, params ListPolicyVersionsParams) (r *PolicyVersionList, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// RequestPolicyActivation implements requestPolicyActivation operation.
+//
+// 需要 can_request_activation（参与关系口径同
+// can_draft_policy）与15分钟内的强认证（由 identity 核对，403 mfa_required）。
+// 核对：目标未停用（409 objective_disabled）；草案存在、expected_version 与 revision
+// 是当前草案（409 version_conflict）、 已通过校验（409
+// draft_invalid）、未被锁定（409 draft_locked）；simulation_id
+// 是该修订已完成的仿真（409 simulation_not_ready，
+// 失败的仿真同样不能用），且其对比版本与策略代次等于当前生效版本与代次（409
+// simulation_stale）；目标没有进行中的申请 （409 approval_in_progress）。backfill_days
+// 只用于首次激活（尚无生效版本），缺省为 30；非首次激活给出时 422
+// backfill_not_allowed。 之后经 identity.RequestApproval 创建审批（类型
+// policy_activation，绑定草案修订、仿真运行与申请时的生效版本和策略代次），
+// 草案锁定为待审批。同一 Idempotency-Key
+// 的重放返回首次结果，不产生第二个审批请求。草案在提交期间被他人改动时，
+// 已创建的审批请求随即失效（identity CloseApproval，object_changed），本次返回 409
+// version_conflict。.
+//
+// POST /v1/customer-context/objectives/{objectiveID}/policy/activation-requests
+func (UnimplementedHandler) RequestPolicyActivation(ctx context.Context, req *RequestPolicyActivationRequest, params RequestPolicyActivationParams) (r *PolicyRequest, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// RequestPolicyRollback implements requestPolicyRollback operation.
+//
+// 需要 can_request_activation 与强认证。target_version
+// 须是曾经生效过、且不是当前生效版本的版本（404 policy_version_not_found、 409
+// already_active）；目标未停用；没有进行中的申请（409
+// approval_in_progress，含草案的激活申请）。绑定目标版本、
+// 该版本激活时的仿真运行与申请时的生效版本和策略代次；不绑定、不锁定草案。同一
+// Idempotency-Key 重放返回首次结果。.
+//
+// POST /v1/customer-context/objectives/{objectiveID}/policy/rollback-requests
+func (UnimplementedHandler) RequestPolicyRollback(ctx context.Context, req *RequestPolicyRollbackRequest, params RequestPolicyRollbackParams) (r *PolicyRequest, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

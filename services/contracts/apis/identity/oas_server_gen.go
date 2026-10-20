@@ -38,6 +38,18 @@ type Handler interface {
 	//
 	// POST /v1/authz:check
 	CheckAuthorization(ctx context.Context, req *CheckRequest) (*CheckResult, error)
+	// CloseApproval implements closeApproval operation.
+	//
+	// 只接受审批类型所属子系统的服务主体（策略激活与回滚为
+	// service:customer-context），其他主体 403 forbidden。
+	// 所属子系统发现请求绑定的对象版本或基准已不成立（策略草案已变、生效版本或策略代次已变、目标已停用）时调用：
+	// 待审批的请求置为 invalidated（reason 记录原因）并发布
+	// identity.approval.closed.v1；已决定或已关闭的请求原样返回（outcome
+	// 已由状态表示），重复调用无副作用。经本地绑定 identity.Approvals
+	// 与内部端口提供，二者行为一致。.
+	//
+	// POST /v1/identity/approvals/{approvalID}:close
+	CloseApproval(ctx context.Context, req *CloseApprovalRequest, params CloseApprovalParams) (*ApprovalRequest, error)
 	// CreateInvitation implements createInvitation operation.
 	//
 	// 需要 can_manage_members
@@ -63,6 +75,32 @@ type Handler interface {
 	//
 	// POST /v1/tenants
 	CreateTenant(ctx context.Context, req *CreateTenantRequest, params CreateTenantParams) (*Tenant, error)
+	// DecideApproval implements decideApproval operation.
+	//
+	// 依次核验：调用者能看到该请求（否则 404
+	// approval_not_found）；调用者不是申请人（申请人本人 403 self_approval_forbidden）；
+	// 调用者此刻对请求资源有批准关系（实时经授权模型判断；策略激活与回滚为
+	// can_approve_activation，即目标所在范围的决策者或租户管理员）；
+	// 15分钟内的强认证（403 mfa_required /
+	// totp_enrollment_required）；请求仍待审批且未到期（409
+	// approval_not_pending，到期的先置为 expired）；expected_version 等于当前版本（409
+	// version_conflict）；申请人仍是有效成员且仍有申请关系（否则请求置为
+	// invalidated、 发布 identity.approval.closed.v1，本次决定 409
+	// approval_invalidated）。授权服务不可用时 503，不当作已失权，也不作出决定。
+	// 驳回必须写原因。决定后发布
+	// identity.approval.decided.v1，请求关闭，其他审批人看到已由谁处理；批准只针对请求绑定的对象版本
+	// （binding），执行方在执行前核验绑定仍成立。同一 Idempotency-Key
+	// 的重放返回首次结果。.
+	//
+	// POST /v1/identity/approvals/{approvalID}/decide
+	DecideApproval(ctx context.Context, req *DecideApprovalRequest, params DecideApprovalParams) (*ApprovalRequest, error)
+	// GetApproval implements getApproval operation.
+	//
+	// 申请人本人与对请求资源有批准关系的成员可读取（含已由他人处理、已关闭的请求）；其他成员、其他租户的与不存在的请求返回同一
+	// 404 approval_not_found。已到期的待审批请求先置为 expired。.
+	//
+	// GET /v1/identity/approvals/{approvalID}
+	GetApproval(ctx context.Context, params GetApprovalParams) (*ApprovalRequest, error)
 	// GetChannelMemberLifecycle implements getChannelMemberLifecycle operation.
 	//
 	// 仅 channels 的服务主体可调用（服务授权
@@ -117,6 +155,19 @@ type Handler interface {
 	//
 	// POST /v1/identity/channel-sessions
 	IssueChannelSession(ctx context.Context, req *IssueChannelSessionRequest) (*ChannelSession, error)
+	// ListApprovals implements listApprovals operation.
+	//
+	// Role=approver（缺省）列出调用者当前有资格决定的请求：按请求类型的批准关系（策略激活与回滚为目标上的
+	// can_approve_activation） 逐个资源实时判断，不含调用者本人提交的请求；state
+	// 缺省为 pending。role=applicant 列出调用者本人提交的请求（任意状态，可按
+	// state 过滤）。 按提交记录时间倒序（同一时间按标识倒序）分页，每页至多
+	// limit 条（默认且至多100）；还有更早的请求时 truncated 为 true 并给出
+	// next_cursor（须带相同的 role 与 state，否则 400
+	// invalid_cursor；只在签发它的租户与调用者内有效）。到期的待审批请求先置为
+	// expired（发布 identity.approval.closed.v1）再返回。不要求强认证。.
+	//
+	// GET /v1/identity/approvals
+	ListApprovals(ctx context.Context, params ListApprovalsParams) (*ApprovalList, error)
 	// ListInvitations implements listInvitations operation.
 	//
 	// 需要 can_manage_members
@@ -150,6 +201,24 @@ type Handler interface {
 	//
 	// PUT /v1/identity/members/{subject}
 	PutMember(ctx context.Context, req *PutMemberRequest, params PutMemberParams) (*Session, error)
+	// RequestApproval implements requestApproval operation.
+	//
+	// 由审批类型的所属子系统代申请人调用（策略激活与回滚为 customer-context 的
+	// RequestPolicyActivation / RequestPolicyRollback），
+	// 请求上下文的主体即申请人。经本地绑定 identity.Approvals
+	// 与内部端口提供；申请要求15分钟内的强认证，而认证保证只在网关进程内传递、
+	// 不进内部调用头，因此经内部端口的调用一律 403
+	// mfa_required（失败关闭），需要强认证的类型只能经本地绑定提交。
+	// 核验：类型已登记、资源类型与类型一致（400
+	// invalid_request）；申请人此刻对资源有申请关系（策略为 can_request_activation，
+	// 否则 403 forbidden）；强认证（403
+	// mfa_required）；同一资源没有进行中的请求（409 approval_in_progress）。
+	// 有效期7天（业务时间），到期自动置为 expired。同一申请人、租户与
+	// Idempotency-Key 的重放返回首次结果，不产生第二个请求。 创建后发布
+	// identity.approval.requested.v1。.
+	//
+	// POST /v1/identity/approvals:request
+	RequestApproval(ctx context.Context, req *RequestApprovalRequest, params RequestApprovalParams) (*ApprovalRequest, error)
 	// ResendInvitation implements resendInvitation operation.
 	//
 	// 需要 can_manage_members 与15分钟内的强认证，按 expected_version
@@ -214,6 +283,15 @@ type Handler interface {
 	//
 	// PUT /v1/identity/org-units/{unitID}
 	UpdateOrgUnit(ctx context.Context, req *UpdateOrgUnitRequest, params UpdateOrgUnitParams) (*OrgUnit, error)
+	// WithdrawApproval implements withdrawApproval operation.
+	//
+	// 只有申请人本人可在决定前撤回（能看到请求的审批人 403
+	// forbidden；其他成员 404 approval_not_found），按 expected_version 并发控制。
+	// 已决定、已关闭或已到期的请求 409 approval_not_pending。撤回后发布
+	// identity.approval.closed.v1（state withdrawn）。.
+	//
+	// POST /v1/identity/approvals/{approvalID}/withdraw
+	WithdrawApproval(ctx context.Context, req *ApprovalVersionRequest, params WithdrawApprovalParams) (*ApprovalRequest, error)
 	// NewError creates *ProblemStatusCode from error returned by handler.
 	//
 	// Used for common default response.

@@ -1,12 +1,13 @@
 # 标识前缀登记（docs/03-architecture/02-data-architecture.md 第 4 节）。
 # 格式 <前缀>_<ULID>；新增前缀在此登记并经架构评审，禁止重复，分配后永不复用。
-version: 1.4.0
+version: 1.5.0
 prefixes:
   usr: { object: User, owner: identity }
   tnt: { object: Tenant, owner: identity }
   unt: { object: OrgUnit, owner: identity }              # 租户根单元另用保留值 root（每租户一个），不分配 ULID
   inv: { object: Invitation, owner: identity }
   chs: { object: ChannelSession, owner: identity }        # 渠道免登会话（按渠道绑定的撤销水位作废）
+  apr: { object: ApprovalRequest, owner: identity }       # 高影响动作的审批请求（策略激活与回滚，PRD 第7段）
   # 平台
   evt: { object: CloudEvent, owner: kernel }
   prb: { object: PipelineProbe, owner: operations }
@@ -51,6 +52,7 @@ prefixes:
   asm: { object: Assessment, owner: assessment }
   dec: { object: Decision, owner: assessment }
   pur: { object: Pursuit, owner: pursuit }
+  sim: { object: SimulationRun, owner: learning }         # 策略候选变更仿真运行（PRD 第7段 F3）
   # 交互平面
   chi: { object: ChannelInstallation, owner: channels }
   chb: { object: ChannelBinding, owner: channels }        # 重新绑定产生新的标识

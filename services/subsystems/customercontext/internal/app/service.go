@@ -17,6 +17,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/authz"
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
+	"github.com/superailabs/miaoqia/services/kernel/policy"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext/internal/domain"
@@ -30,6 +31,10 @@ type Service struct {
 	Authz     authz.Decider
 	Directory identity.Directory
 	Catalog   *domain.Catalog
+	// Policies 与 Features 是策略模板（完整文档）与特征定义（kernel/policy），Approvals 是 identity 的审批提交与失效（经绑定）。
+	Policies  map[string]*policy.Policy
+	Features  map[string]policy.Feature
+	Approvals identity.Approvals
 	Now       func() time.Time // 缺省 time.Now；测试注入以验证有效期跨日
 	Log       *slog.Logger     // 运行告警（快照超出规模上界）；缺省 slog.Default()
 }
@@ -171,12 +176,35 @@ func command(ctx context.Context, tx pgx.Tx, key, operation string, request, res
 		return failure(400, "invalid_idempotency_key")
 	}
 	rc, _ := reqctx.From(ctx)
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "ctx-command/"+rc.Tenant+"/"+rc.Principal.ID+"/"+key); err != nil {
+	fingerprint, found, err := replay(ctx, tx, key, operation, request, response)
+	if err != nil || found {
 		return err
+	}
+	if err := apply(); err != nil {
+		return err
+	}
+	encoded, err := json.Marshal(response)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO ctx_commands (tenant_id, actor, request_key, operation, fingerprint, response) VALUES ($1, $2, $3, $4, $5, $6)`,
+		rc.Tenant, rc.Principal.ID, key, operation, fingerprint, encoded)
+	return err
+}
+
+// replay 按（租户、主体、键）加事务级咨询锁并查找已登记的命令结果：找到时填入 response；键相同而操作或请求不同返回
+// 409 idempotency_conflict。返回请求指纹供登记使用。
+func replay(ctx context.Context, tx pgx.Tx, key, operation string, request, response any) (string, bool, error) {
+	if !commandKey.MatchString(key) {
+		return "", false, failure(400, "invalid_idempotency_key")
+	}
+	rc, _ := reqctx.From(ctx)
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "ctx-command/"+rc.Tenant+"/"+rc.Principal.ID+"/"+key); err != nil {
+		return "", false, err
 	}
 	encoded, err := json.Marshal(request)
 	if err != nil {
-		return err
+		return "", false, err
 	}
 	digest := sha256.Sum256(encoded)
 	fingerprint := hex.EncodeToString(digest[:])
@@ -186,23 +214,14 @@ func command(ctx context.Context, tx pgx.Tx, key, operation string, request, res
 		rc.Tenant, rc.Principal.ID, key).Scan(&previousOperation, &previousHash, &previous)
 	if err == nil {
 		if previousOperation != operation || previousHash != fingerprint {
-			return failure(409, "idempotency_conflict")
+			return "", false, failure(409, "idempotency_conflict")
 		}
-		return json.Unmarshal(previous, response)
+		return fingerprint, true, json.Unmarshal(previous, response)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return err
+		return "", false, err
 	}
-	if err := apply(); err != nil {
-		return err
-	}
-	encoded, err = json.Marshal(response)
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(ctx, `INSERT INTO ctx_commands (tenant_id, actor, request_key, operation, fingerprint, response) VALUES ($1, $2, $3, $4, $5, $6)`,
-		rc.Tenant, rc.Principal.ID, key, operation, fingerprint, encoded)
-	return err
+	return fingerprint, false, nil
 }
 
 var (

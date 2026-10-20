@@ -455,7 +455,7 @@ func TestOrgUnitsParticipantsAndServiceAuthorization(t *testing.T) {
 		}
 		expect(t, bdGas, t1, false, "GET", objPath, "", 404, "objective_not_found")
 		consumers := module.Consumers(env)
-		if len(consumers) != 1 || consumers[0].Topics[0] != "cell-cell-01.customer_context" {
+		if len(consumers) != 3 || consumers[0].Topics[0] != "cell-cell-01.customer_context" {
 			t.Fatalf("%+v", consumers)
 		}
 		handler := consumers[0].Handlers["customer_context.objective.changed.v1"]

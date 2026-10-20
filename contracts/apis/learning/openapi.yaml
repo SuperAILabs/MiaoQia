@@ -1,0 +1,486 @@
+openapi: 3.1.0
+info:
+  title: learning 接口
+  version: 0.1.0
+  description: >-
+    策略仿真（PRD 第7段 F3，docs/01-product/prd/07-policy-simulation-approval.md；规格见 docs/03-architecture/subsystems/learning.md）。
+    草案：随第7段首个实现切片提交，未冻结。租户、cell 与调用主体来自请求上下文。仿真是候选变更仿真（反事实）：回答“如果当时就按这份
+    草案和现在的档案运行，会产生哪些信号”，结果不是当时实际产生的信号，不进入收件箱与历史信号。数据集与信息领域服务状态经端口读取；
+    生产数据集（M1 已启用来源的公共事实）与领域状态（domain-intelligence GetCoverage）适配器尚未接入，缺省“未接入”实现使仿真失败
+    （dataset_unavailable / domain_status_unavailable）；测试与演示使用标明为夹具的内存数据集（inputs.dataset_fixture 为 true）。
+    授权经 identity 的 Check：查看报告为目标的 can_view，发起仿真为目标的 can_draft_policy。错误为 application/problem+json 与稳定 code。
+servers:
+- url: /internal
+paths:
+  /v1/learning/simulations:
+    post:
+      operationId: simulatePolicy
+      summary: 发起或复用仿真（SimulatePolicy）
+      description: >-
+        需要目标的 can_draft_policy，按目标所有者 customer-context 的当前口径判断（移除参与人在其本地提交后立即撤权，不等待 identity 同步）。按（目标、草案修订、对比版本与策略代次、上下文版本、数据集版本、启用领域集合、窗口）计算输入键：
+        已有相同输入的完成运行时直接返回它（相同输入的重试不重复计算）；否则同步运行并返回结果。修订未通过校验时 409 policy_invalid；
+        修订不存在或目标无权查看时 404 simulation_target_not_found。草案保存后 learning 也会消费 customer_context.policy.drafted.v1 自动仿真。
+      x-timeout-ms: 60000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulatePolicyRequest'
+      responses:
+        '200':
+          description: 仿真运行
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationRun'
+        default: &problem
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/learning/simulations/{simulationID}:
+    get:
+      operationId: getSimulation
+      summary: 仿真报告（GetSimulationReport）
+      description: >-
+        需要目标的 can_view（同样按 customer-context 的当前口径）；授权或 customer-context 不可用时 503，不当作无权限；无权限、其他租户的与不存在的运行返回同一 404 simulation_not_found。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: simulationID
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/SimulationID'
+      responses:
+        '200':
+          description: 仿真运行与报告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationRun'
+        default: *problem
+components:
+  schemas:
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          description: 稳定错误代码
+    SimulationID:
+      type: string
+      pattern: ^sim_[0-9A-HJKMNP-TV-Z]{26}$
+    SimulatePolicyRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - objective_id
+      - revision
+      properties:
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+    Disposition:
+      type: string
+      enum:
+      - no_signal
+      - excluded
+      - watch_signal
+      - review_candidate
+      - pursue_candidate
+    DomainCode:
+      type: string
+      pattern: ^INF-[A-Z0-9]{2,16}$
+    SimulationInputs:
+      type: object
+      additionalProperties: false
+      description: >-
+        报告的固定输入。purpose 恒为 counterfactual_candidate（候选变更仿真，非当时实际信号）。窗口默认近90天，可得历史不足时按实际可得截断，
+        window_start/window_end 为实际覆盖起止；两侧共用同一数据集版本、上下文快照版本与逐个事件的逻辑求值时间。对比一侧为仿真时的
+        生效版本（首次激活时 compare_version 为 0，没有对比一侧）。enabled_domains 为按仿真时各信息领域服务状态确定的草案启用领域集合，
+        随草案保存；excluded_domains 为目标需要但未启用的领域及其状态。
+      required:
+      - purpose
+      - dataset_version
+      - dataset_fixture
+      - window_days
+      - window_start
+      - window_end
+      - context_version
+      - org_unit_id
+      - revision
+      - template_id
+      - template_version
+      - generation
+      - enabled_domains
+      - excluded_domains
+      - compare_version
+      properties:
+        purpose:
+          type: string
+          const: counterfactual_candidate
+        dataset_version:
+          type: string
+          minLength: 1
+          maxLength: 64
+        dataset_fixture:
+          type: boolean
+          description: 为 true 时数据集是夹具（测试与演示），不是生产公共事实
+        window_days:
+          type: integer
+          minimum: 1
+          maximum: 366
+        window_start:
+          type: string
+          format: date-time
+        window_end:
+          type: string
+          format: date-time
+        context_version:
+          type: integer
+          format: int64
+          minimum: 1
+        org_unit_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        template_id:
+          type: string
+          pattern: ^TPL-[A-Z0-9-]{1,64}$
+        template_version:
+          type: string
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+        generation:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 仿真时目标的策略代次（对比一侧的基准）
+        enabled_domains:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/DomainCode'
+        excluded_domains:
+          type: array
+          maxItems: 32
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - domain
+            - status
+            properties:
+              domain:
+                $ref: '#/components/schemas/DomainCode'
+              status:
+                type: string
+                enum:
+                - not_live
+                - unknown
+        compare_version:
+          type: integer
+          format: int64
+          minimum: 0
+        compare_enabled_domains:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/DomainCode'
+    DispositionCounts:
+      type: object
+      additionalProperties: false
+      required:
+      - pursue_candidate
+      - review_candidate
+      - watch_signal
+      - excluded
+      - no_signal
+      properties:
+        pursue_candidate:
+          type: integer
+          minimum: 0
+        review_candidate:
+          type: integer
+          minimum: 0
+        watch_signal:
+          type: integer
+          minimum: 0
+        excluded:
+          type: integer
+          minimum: 0
+        no_signal:
+          type: integer
+          minimum: 0
+    WeeklyRates:
+      type: object
+      additionalProperties: false
+      description: 平均每周数量（窗口实际天数折算，保留两位小数）
+      required:
+      - pursue_candidate
+      - review_candidate
+      - watch_signal
+      properties:
+        pursue_candidate:
+          type: number
+          minimum: 0
+        review_candidate:
+          type: number
+          minimum: 0
+        watch_signal:
+          type: number
+          minimum: 0
+    SimulationSample:
+      type: object
+      additionalProperties: false
+      description: 代表样本（公共事实）。按金额倒序、时间倒序、事实标识确定性抽样
+      required:
+      - fact_id
+      - fact_type
+      - occurred_at
+      - draft
+      properties:
+        fact_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+        fact_type:
+          type: string
+          pattern: ^[a-z]+\.[a-z_]+$
+        occurred_at:
+          type: string
+          format: date-time
+        title:
+          type: string
+          maxLength: 500
+        amount_cny:
+          type: integer
+          format: int64
+          minimum: 0
+        draft:
+          $ref: '#/components/schemas/Disposition'
+        active:
+          $ref: '#/components/schemas/Disposition'
+    SimulationDiff:
+      type: object
+      additionalProperties: false
+      description: >-
+        相对生效版本的差异：added 草案产生信号（跟进候选、复核候选、观察）而生效版本没有；removed 反之；changed 两侧都产生信号但处置不同。
+        排除与无信号都不算信号。各附至多20条代表样本
+      required:
+      - added
+      - removed
+      - changed
+      - added_samples
+      - removed_samples
+      - changed_samples
+      properties:
+        added:
+          type: integer
+          minimum: 0
+        removed:
+          type: integer
+          minimum: 0
+        changed:
+          type: integer
+          minimum: 0
+        added_samples: &samples
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/SimulationSample'
+        removed_samples: *samples
+        changed_samples: *samples
+    UnknownReason:
+      type: string
+      description: >-
+        规则未知的原因：data_not_connected 所需数据的信息领域未启用；below_evidence_threshold 字段证据低于模板门槛；
+        not_linked 未关联本企业（档案没有我方主体）；field_missing 事实中缺少该字段
+      enum:
+      - data_not_connected
+      - below_evidence_threshold
+      - not_linked
+      - field_missing
+    RuleStats:
+      type: object
+      additionalProperties: false
+      description: 草案一侧逐条规则的命中比例（在范围内被求值的事件中，三者之和为1）与未知原因计数
+      required:
+      - id
+      - clause
+      - true_ratio
+      - false_ratio
+      - unknown_ratio
+      - unknown_reasons
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Z][A-Z0-9-]{0,63}$
+        clause:
+          type: string
+          enum:
+          - require
+          - exclude
+          - watch
+          - boost
+          - penalize
+        true_ratio:
+          type: number
+          minimum: 0
+          maximum: 1
+        false_ratio:
+          type: number
+          minimum: 0
+          maximum: 1
+        unknown_ratio:
+          type: number
+          minimum: 0
+          maximum: 1
+        unknown_reasons:
+          type: array
+          maxItems: 4
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - reason
+            - count
+            properties:
+              reason:
+                $ref: '#/components/schemas/UnknownReason'
+              count:
+                type: integer
+                minimum: 1
+    SimulationHint:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      properties:
+        code:
+          type: string
+          enum:
+          - example_mismatch
+          - hard_condition_disabled
+          - review_majority
+          - zero_results
+          - coverage_insufficient
+          - fact_types_not_connected
+        detail:
+          type: string
+          maxLength: 2000
+    SimulationReport:
+      type: object
+      additionalProperties: false
+      required:
+      - evaluated
+      - distribution
+      - weekly
+      - rules
+      - top_unknown_rules
+      - hints
+      properties:
+        evaluated:
+          type: integer
+          minimum: 0
+          description: 窗口内被回放的事件数
+        distribution:
+          $ref: '#/components/schemas/DispositionCounts'
+        weekly:
+          $ref: '#/components/schemas/WeeklyRates'
+        compare_distribution:
+          $ref: '#/components/schemas/DispositionCounts'
+        diff:
+          $ref: '#/components/schemas/SimulationDiff'
+        samples:
+          type: array
+          maxItems: 20
+          description: 首次激活（没有对比一侧）时草案产生信号的代表样本
+          items:
+            $ref: '#/components/schemas/SimulationSample'
+        rules:
+          type: array
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/RuleStats'
+        top_unknown_rules:
+          type: array
+          maxItems: 5
+          description: 未知比例最高的规则（未知比例为0的不列）
+          items:
+            type: string
+            pattern: ^[A-Z][A-Z0-9-]{0,63}$
+        hints:
+          type: array
+          maxItems: 16
+          items:
+            $ref: '#/components/schemas/SimulationHint'
+    SimulationRun:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - objective_id
+      - revision
+      - status
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/SimulationID'
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - running
+          - completed
+          - failed
+        failure_reason:
+          type: string
+          enum:
+          - dataset_unavailable
+          - domain_status_unavailable
+          - context_unavailable
+          - policy_unavailable
+          - timeout
+        inputs:
+          $ref: '#/components/schemas/SimulationInputs'
+        report:
+          $ref: '#/components/schemas/SimulationReport'
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time

@@ -43,12 +43,14 @@ const MaintenanceBinding = "identity.Maintenance"
 
 // Maintenance 是 identity 的定时维护：
 //   - ExpireDueInvitations 把到期的待接受邀请置为已过期（每条发布一次 identity.invitation.changed.v1），返回处理数量；
-//   - RetryTenantBindings 重试接受邀请后尚未写入 IdP 的租户与 cell 归属，返回本次写入成功的数量。
+//   - RetryTenantBindings 重试接受邀请后尚未写入 IdP 的租户与 cell 归属，返回本次写入成功的数量；
+//   - ExpireDueApprovals 把到期的待审批请求置为已过期（每条发布一次 identity.approval.closed.v1），返回处理数量。
 //
-// 两者都可重复执行，以服务主体的请求上下文调用。
+// 均可重复执行，以服务主体的请求上下文调用。
 type Maintenance interface {
 	ExpireDueInvitations(ctx context.Context, limit int) (int, error)
 	RetryTenantBindings(ctx context.Context, limit int) (int, error)
+	ExpireDueApprovals(ctx context.Context, limit int) (int, error)
 }
 
 func LocalMaintenance(impl Maintenance) Maintenance { return localMaintenance{impl} }
@@ -63,4 +65,9 @@ func (m localMaintenance) ExpireDueInvitations(ctx context.Context, limit int) (
 func (m localMaintenance) RetryTenantBindings(ctx context.Context, limit int) (int, error) {
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "RetryTenantBindings", Timeout: 30 * time.Second},
 		func(ctx context.Context) (int, error) { return m.impl.RetryTenantBindings(ctx, limit) })
+}
+
+func (m localMaintenance) ExpireDueApprovals(ctx context.Context, limit int) (int, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ExpireDueApprovals", Timeout: 30 * time.Second},
+		func(ctx context.Context) (int, error) { return m.impl.ExpireDueApprovals(ctx, limit) })
 }

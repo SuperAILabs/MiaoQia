@@ -38,6 +38,20 @@ func encodeCheckAuthorizationRequest(
 	return nil
 }
 
+func encodeCloseApprovalRequest(
+	req *CloseApprovalRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeCreateInvitationRequest(
 	req *CreateInvitationRequest,
 	r *http.Request,
@@ -80,6 +94,20 @@ func encodeCreateTenantRequest(
 	return nil
 }
 
+func encodeDecideApprovalRequest(
+	req *DecideApprovalRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeIssueChannelSessionRequest(
 	req *IssueChannelSessionRequest,
 	r *http.Request,
@@ -96,6 +124,20 @@ func encodeIssueChannelSessionRequest(
 
 func encodePutMemberRequest(
 	req *PutMemberRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeRequestApprovalRequest(
+	req *RequestApprovalRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
@@ -180,6 +222,20 @@ func encodeSyncResourceParticipantsRequest(
 
 func encodeUpdateOrgUnitRequest(
 	req *UpdateOrgUnitRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeWithdrawApprovalRequest(
+	req *ApprovalVersionRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

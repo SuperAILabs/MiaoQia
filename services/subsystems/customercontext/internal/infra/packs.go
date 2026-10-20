@@ -195,3 +195,37 @@ func loadIndustry(c *domain.Catalog, dir string) error {
 	c.Industries[ind.ID] = ind
 	return nil
 }
+
+// PolicyPack 是全部应用领域包的完整策略模板（按模板标识）与共享特征，供草案合成、编译与样例校验（PRD 第7段 F2）。
+type PolicyPack struct {
+	Templates map[string]*policy.Policy
+	Features  map[string]policy.Feature
+}
+
+// LoadPolicies 读取 dir 下全部应用领域包的 policy/templates 与 policy/features.yaml。不同包的模板标识或特征名重复时报错。
+func LoadPolicies(dir string) (*PolicyPack, error) {
+	out := &PolicyPack{Templates: map[string]*policy.Policy{}, Features: map[string]policy.Feature{}}
+	apps, err := filepath.Glob(filepath.Join(dir, "application_domains", "*", "pack.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	for _, manifest := range apps {
+		pack, err := policy.LoadPack(filepath.Dir(manifest))
+		if err != nil {
+			return nil, fmt.Errorf("%s：%w", manifest, err)
+		}
+		for id, t := range pack.Templates {
+			if _, dup := out.Templates[id]; dup {
+				return nil, fmt.Errorf("%s：策略模板 %s 重复", manifest, id)
+			}
+			out.Templates[id] = t
+		}
+		for name, f := range pack.Features {
+			if _, dup := out.Features[name]; dup {
+				return nil, fmt.Errorf("%s：特征 %s 重复", manifest, name)
+			}
+			out.Features[name] = f
+		}
+	}
+	return out, nil
+}
