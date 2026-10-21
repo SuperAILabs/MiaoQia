@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: learning 接口
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     策略仿真（PRD 第7段 F3，docs/01-product/prd/07-policy-simulation-approval.md；规格见 docs/03-architecture/subsystems/learning.md）。
     草案：随第7段首个实现切片提交，未冻结。租户、cell 与调用主体来自请求上下文。仿真是候选变更仿真（反事实）：回答“如果当时就按这份
@@ -9,6 +9,8 @@ info:
     生产数据集（M1 已启用来源的公共事实）与领域状态（domain-intelligence GetCoverage）适配器尚未接入，缺省“未接入”实现使仿真失败
     （dataset_unavailable / domain_status_unavailable）；测试与演示使用标明为夹具的内存数据集（inputs.dataset_fixture 为 true）。
     授权经 identity 的 Check：查看报告为目标的 can_view，发起仿真为目标的 can_draft_policy。错误为 application/problem+json 与稳定 code。
+    0.2.0 起提供反馈汇总（PRD 第3段 F7）：learning 消费 detection.signal.detected.v1 与 detection.signal.triaged.v1 维护租户反馈集
+    （以操作标识幂等），汇总只读、不创建草案或提案。
 servers:
 - url: /internal
 paths:
@@ -62,6 +64,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SimulationRun'
+        default: *problem
+  /v1/learning/objectives/{objectiveID}/feedback-summary:
+    get:
+      operationId: getFeedbackSummary
+      summary: 反馈汇总（GetFeedbackSummary）
+      description: >-
+        需要目标的 can_view_signals（按 customer-context 的当前口径）；不能查看目标与不存在同为 404 objective_not_found，能查看而没有
+        can_view_signals 为 403 forbidden，授权不可用为 503。口径（PRD 第3段 F7 第1条）：窗口为发现时间在统计截至时间之前 30 天内的信号；
+        取各成员的当前反馈（撤回的不计）；只有基于信号当前内容版本的反馈参与计数，基于更新前版本的单列（stale_feedback）。反馈率的
+        分子为至少有一条当前版本相关性反馈的非排除信号数，分母为窗口内的非排除信号数；相关、不相关与分歧按信号计（同时有相关与
+        不相关为分歧）；原因分布在计为不相关（排除有误）的信号中按原因标签计信号数。样本（相关 + 不相关 + 分歧）少于 20 时不给出
+        比例（ratio 字段不出现），只给数量。反馈只用于评估与改进建议，不会自动修改策略。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: objectiveID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+      responses:
+        '200':
+          description: 反馈汇总
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackSummary'
         default: *problem
 components:
   schemas:
@@ -484,3 +514,165 @@ components:
         completed_at:
           type: string
           format: date-time
+    FeedbackReasonCount:
+      type: object
+      additionalProperties: false
+      description: 一个原因标签的信号数与可能相关的规则、参数（取自应用领域包的 relates，只作提示）
+      required:
+      - result
+      - code
+      - signals
+      - rules
+      - params
+      properties:
+        result:
+          type: string
+          enum:
+          - irrelevant
+          - exclusion_wrong
+        code:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]{1,63}$
+        signals:
+          type: integer
+          minimum: 1
+        rules:
+          type: array
+          maxItems: 16
+          items:
+            type: string
+            pattern: ^[RXWBP]-[A-Z0-9-]+$
+        params:
+          type: array
+          maxItems: 16
+          items:
+            type: string
+            pattern: ^[a-z][a-z0-9_]{0,63}$
+    FeedbackSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - objective_id
+      - as_of
+      - window_start
+      - window_end
+      - min_sample
+      - sample
+      - sample_sufficient
+      - signals
+      - relevance
+      - stale_feedback
+      - exclusions
+      - reasons
+      properties:
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        as_of:
+          type: string
+          format: date-time
+          description: 统计截至时间
+        window_start:
+          type: string
+          format: date-time
+        window_end:
+          type: string
+          format: date-time
+        last_feedback_at:
+          type: string
+          format: date-time
+          description: 已计入的最近一次反馈的提交时间（事件处理滞后时早于最新反馈）
+        min_sample:
+          type: integer
+          minimum: 1
+        sample:
+          type: integer
+          minimum: 0
+        sample_sufficient:
+          type: boolean
+        signals:
+          type: object
+          additionalProperties: false
+          description: 窗口内的非排除信号
+          required:
+          - total
+          - with_feedback
+          - without_feedback
+          properties:
+            total:
+              type: integer
+              minimum: 0
+            with_feedback:
+              type: integer
+              minimum: 0
+            without_feedback:
+              type: integer
+              minimum: 0
+            feedback_rate:
+              type: number
+              minimum: 0
+              maximum: 1
+        relevance:
+          type: object
+          additionalProperties: false
+          required:
+          - relevant
+          - irrelevant
+          - disagreement
+          properties:
+            relevant:
+              type: integer
+              minimum: 0
+            irrelevant:
+              type: integer
+              minimum: 0
+            disagreement:
+              type: integer
+              minimum: 0
+            relevant_ratio:
+              type: number
+              minimum: 0
+              maximum: 1
+            irrelevant_ratio:
+              type: number
+              minimum: 0
+              maximum: 1
+            disagreement_ratio:
+              type: number
+              minimum: 0
+              maximum: 1
+        stale_feedback:
+          type: integer
+          minimum: 0
+          description: 基于更新前内容版本的当前反馈条数（不计入相关、不相关与反馈率）
+        exclusions:
+          type: object
+          additionalProperties: false
+          description: 窗口内的排除信号
+          required:
+          - total
+          - with_feedback
+          - correct
+          - wrong
+          - disagreement
+          properties:
+            total:
+              type: integer
+              minimum: 0
+            with_feedback:
+              type: integer
+              minimum: 0
+            correct:
+              type: integer
+              minimum: 0
+            wrong:
+              type: integer
+              minimum: 0
+            disagreement:
+              type: integer
+              minimum: 0
+        reasons:
+          type: array
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/FeedbackReasonCount'

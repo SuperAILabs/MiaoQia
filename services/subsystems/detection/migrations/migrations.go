@@ -1,0 +1,7 @@
+// Package migrations owns detection database migrations.
+package migrations
+
+import "embed"
+
+//go:embed *.sql
+var FS embed.FS

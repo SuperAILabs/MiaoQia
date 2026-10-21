@@ -126,6 +126,11 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(ccapi.AccessBinding, access)
+		active, err := ccremote.NewActivePolicies(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(ccapi.ActivePoliciesBinding, active)
 		return nil
 	}},
 }

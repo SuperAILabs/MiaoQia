@@ -909,6 +909,172 @@ func (s *Server) handleEnableObjectiveRequest(args [0]string, argsEscaped bool, 
 	}
 }
 
+// handleGetActivePoliciesRequest handles getActivePolicies operation.
+//
+// 只经 mTLS 内部端口，供有 can_read_context
+// 的服务主体（detection）每批求值前读取（用户主体 403 forbidden）。读主库，
+// 返回本租户每个有生效版本的目标：目标状态、所在单元、策略标识、策略代次、生效版本的合成文档与固定的启用领域集合，以及
+// 本代次的生效时间（激活或回滚的业务时间）。激活与回滚在同一事务中写入生效版本并递增代次，因此本调用返回后开始的求值
+// 使用新代次（PRD 第7段第5节生效边界）；policy.activated / rolled_back
+// 事件只用于提前刷新。只有目标状态为 active 的条目
+// 产生新信号：停用（disabled）与重新启用后尚未再次激活（inactive）的目标保留原生效版本，调用方不得据此求值。
+// 按目标标识升序分页，每页至多 limit 条（默认且至多
+// 200）；还有更多时给出 next_cursor（游标为上一页最后一个目标标识）。.
+//
+// GET /v1/customer-context/active-policies
+func (s *Server) handleGetActivePoliciesRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getActivePolicies"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/v1/customer-context/active-policies"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GetActivePoliciesOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: GetActivePoliciesOperation,
+			ID:   "getActivePolicies",
+		}
+	)
+	params, err := decodeGetActivePoliciesParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response *ActivePolicyList
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    GetActivePoliciesOperation,
+			OperationSummary: "生效策略与策略代次（内部，GetActivePolicies）",
+			OperationID:      "getActivePolicies",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "limit",
+					In:   "query",
+				}: params.Limit,
+				{
+					Name: "cursor",
+					In:   "query",
+				}: params.Cursor,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = GetActivePoliciesParams
+			Response = *ActivePolicyList
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackGetActivePoliciesParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.GetActivePolicies(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.GetActivePolicies(ctx, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeGetActivePoliciesResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleGetContextSnapshotRequest handles getContextSnapshot operation.
 //
 // 按（租户、组织单元、上下文版本）返回合成快照，同一键永远返回同一结果；缺省版本为当前版本。
@@ -1367,7 +1533,8 @@ func (s *Server) handleGetObjectiveRequest(args [1]string, argsEscaped bool, w h
 // handleGetObjectiveAccessRequest handles getObjectiveAccess operation.
 //
 // 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
-// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+// 的仿真接口、detection
+// 的信号收件箱与反馈）按本子系统的口径判断用户对目标的关系：
 // 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
 // identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
 // 同步。调用者须为用户主体（否则 403

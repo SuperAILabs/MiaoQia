@@ -38,6 +38,15 @@ fixtures:
     - op: add
       path: /allowed/-
       value: can_approve_activation
+  - name: 信号的查看与反馈关系（第3段）
+    valid: true
+    patch:
+    - op: add
+      path: /allowed/-
+      value: can_view_signals
+    - op: add
+      path: /allowed/-
+      value: can_feedback
   - name: 允许列表必填
     valid: false
     patch:
@@ -1176,3 +1185,90 @@ fixtures:
     patch:
     - op: remove
       path: /compare/document
+- schema: ActivePolicyList
+  base:
+    policies:
+    - objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      objective_code: APP-TENDER.A02
+      objective_state: active
+      org_unit_id: root
+      policy_id: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      generation: 2
+      version: 2
+      template_id: TPL-TENDER-A02-SUPPLY
+      template_version: 0.3.0
+      enabled_domains:
+      - INF-PROC
+      - INF-ORG
+      document:
+        id: TPL-TENDER-A02-SUPPLY
+        version: 0.3.0
+      effective_at: '2026-10-19T08:00:00Z'
+    next_cursor: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 停用目标保留生效版本
+    valid: true
+    patch:
+    - op: replace
+      path: /policies/0/objective_state
+      value: disabled
+  - name: 代次从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /policies/0/generation
+      value: 0
+  - name: 策略标识前缀
+    valid: false
+    patch:
+    - op: replace
+      path: /policies/0/policy_id
+      value: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 缺生效时间
+    valid: false
+    patch:
+    - op: remove
+      path: /policies/0/effective_at
+  - name: 未知目标状态
+    valid: false
+    patch:
+    - op: replace
+      path: /policies/0/objective_state
+      value: archived
+  - name: 游标为目标标识
+    valid: false
+    patch:
+    - op: replace
+      path: /next_cursor
+      value: '2'
+- schema: ActivePolicy
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_code: APP-TENDER.A02
+    objective_state: active
+    org_unit_id: root
+    policy_id: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    generation: 3
+    version: 1
+    template_id: TPL-TENDER-A02-SUPPLY
+    template_version: 0.3.0
+    enabled_domains:
+    - INF-PROC
+    document:
+      id: TPL-TENDER-A02-SUPPLY
+      version: 0.3.0
+    effective_at: '2026-10-19T08:00:00Z'
+  cases:
+  - name: 回滚后代次大于版本
+    valid: true
+  - name: 缺策略文档
+    valid: false
+    patch:
+    - op: remove
+      path: /document
+  - name: 版本从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0

@@ -74,3 +74,19 @@ func (s *Server) GetSimulation(ctx context.Context, params lrn.GetSimulationPara
 	}
 	return RunOut(r)
 }
+
+func (s *Server) GetFeedbackSummary(ctx context.Context, params lrn.GetFeedbackSummaryParams) (*lrn.FeedbackSummary, error) {
+	sum, err := s.Service.GetFeedbackSummary(ctx, params.ObjectiveID)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(sum)
+	if err != nil {
+		return nil, err
+	}
+	var out lrn.FeedbackSummary
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

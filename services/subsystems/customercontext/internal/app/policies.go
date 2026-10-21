@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/superailabs/miaoqia/services/kernel/audit"
+	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/policy"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
@@ -134,7 +135,8 @@ func readPolicyRow(ctx context.Context, tx pgx.Tx, objective string, lock bool) 
 
 // lockPolicy 建立（第2段已启用、尚无策略状态的目标）并锁定策略状态行。
 func lockPolicy(ctx context.Context, tx pgx.Tx, tenant, objective string) (*policyRow, error) {
-	if _, err := tx.Exec(ctx, `INSERT INTO ctx_policies (objective_id, tenant_id) VALUES ($1, $2) ON CONFLICT (objective_id) DO NOTHING`, objective, tenant); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO ctx_policies (objective_id, tenant_id, policy_id) VALUES ($1, $2, $3) ON CONFLICT (objective_id) DO NOTHING`,
+		objective, tenant, ids.New("pol")); err != nil {
 		return nil, err
 	}
 	return readPolicyRow(ctx, tx, objective, true)

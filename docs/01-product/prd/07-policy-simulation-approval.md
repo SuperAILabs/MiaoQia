@@ -242,11 +242,11 @@
 
 证据位置在实现时逐条填入：自动化用例写测试文件与用例名，走查写记录链接。
 
-服务端切片：identity 契约 1.5.0（事件契约 1.3.0）实现审批服务（提交、读取、列表、决定、撤回、所属子系统失效与到期），见 [identity 第5节实现状况](../../03-architecture/subsystems/identity.md#5-接口)；customer-context 契约 0.3.0 草案（事件 0.2.0）实现策略草案、版本、差异与激活和回滚申请及其执行，见 [customer-context 第6节实现状况](../../03-architecture/subsystems/customer-context.md#6-接口)；learning 契约 0.1.0 草案实现仿真与报告，见 [learning 第5节实现状况](../../03-architecture/subsystems/learning.md#5-接口)。仿真的数据集与信息领域服务状态以端口的内存夹具（`datasettest`，事实均为虚构，报告标 `dataset_fixture`）测试，生产适配器未接入（运行以 `dataset_unavailable` 失败）；强认证时间来自测试签发方签名的 `auth_time`。detection 的生效边界与回填执行、channels 的通知、升级草案（F7）与 Web 页面未实现。下表“全部”只指服务端可自动化的部分，走查与界面状态仍待实现。当前自动化证据（均在 `services/kernel/integration/policy_approval_test.go` 的 `TestPolicySimulationApproval` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，并发用例以屏障同时放行）：
+服务端切片：identity 契约 1.5.0（事件契约 1.3.0）实现审批服务（提交、读取、列表、决定、撤回、所属子系统失效与到期），见 [identity 第5节实现状况](../../03-architecture/subsystems/identity.md#5-接口)；customer-context 契约 0.3.0 草案（事件 0.2.0）实现策略草案、版本、差异与激活和回滚申请及其执行，见 [customer-context 第6节实现状况](../../03-architecture/subsystems/customer-context.md#6-接口)；learning 契约 0.1.0 草案实现仿真与报告，见 [learning 第5节实现状况](../../03-architecture/subsystems/learning.md#5-接口)。第3段切片（customer-context 契约 0.4.0 草案的 `GetActivePolicies`，detection 契约 0.1.0 草案）实现生效边界上的匹配，见 [detection 第8节实现状况](../../03-architecture/subsystems/detection.md#8-伸缩与可靠性)；事实视图与订阅反查以端口的内存夹具（`facttest`，事实均为虚构）测试，生产适配器未接入。仿真的数据集与信息领域服务状态以端口的内存夹具（`datasettest`，事实均为虚构，报告标 `dataset_fixture`）测试，生产适配器未接入（运行以 `dataset_unavailable` 失败）；强认证时间来自测试签发方签名的 `auth_time`。detection 的回填执行、channels 的通知、升级草案（F7）与 Web 页面未实现。下表“全部”只指服务端可自动化的部分，走查与界面状态仍待实现。当前自动化证据（均在 `services/kernel/integration/policy_approval_test.go` 的 `TestPolicySimulationApproval` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，并发用例以屏障同时放行）：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|
-| 1 | 部分：启用即有首版草案并自动仿真；首次激活前目标为未激活、无生效版本；批准后新版本生效、代次加一、目标变为生效、草案清除，`policy.activated` 带版本与代次；重复投递 `decided` 不重复执行。“之后开始的匹配批次产生信号”随 detection | 子测试“用例1、23：…”“用例1：批准后执行激活：…” |
+| 1 | 全部（服务端）：启用即有首版草案并自动仿真；首次激活前目标为未激活、无生效版本；批准后新版本生效、代次加一、目标变为生效、草案清除，`policy.activated` 带版本与代次；重复投递 `decided` 不重复执行。detection 在首次激活前不产生信号与匹配记录（收件箱为空），激活后之后开始的匹配批次产生信号并固定策略版本 1、代次 1 | 子测试“用例1、23：…”“用例1：批准后执行激活：…”；`services/kernel/integration/signal_inbox_test.go` 的 `TestSignalInboxFeedback` 子测试“第7段用例1、第3段用例1：…” |
 | 2 | 全部（服务端）：申请人批准 403 `self_approval_forbidden`；无批准权（研究分析者、未参与的业务开拓者）直接调用 404，待我审批列表中看不到；申请人在待我审批中看不到自己的请求；批准缺少强认证 403 `mfa_required` | 子测试“用例2：…” |
 | 3 | 全部（服务端）：未参与目标的业务开拓者 404、研究分析者 403；参与的业务开拓者可起草与申请、不能批准；表单约束（未知规则、对非加减分规则设权重、权重超范围、通知受众含管理员）在服务端拒绝且不改变草案 | 子测试“用例3：…”“用例4、7、12：…”“用例2：…” |
 | 4 | 部分（服务端）：提交申请与批准都要求 15 分钟内的强认证（403 `mfa_required`）；identity 不可用时 503 且不留下请求与锁定。弹出强认证与“已填内容不丢”随 Web | 子测试“用例4、7、12：…”“用例2：…” |
@@ -260,8 +260,8 @@
 | 12 | 全部（服务端）：同一目标已有进行中的申请时再提交 409（`draft_locked` / `approval_in_progress`），回滚同样；同一幂等键重复提交返回同一请求，identity 中只有一个 | 子测试“用例4、7、12：…”“用例8、17、25：…” |
 | 13 | 部分：撤回、驳回（必须写原因）、超过 7 天（业务时钟）、申请人退出参与、离开租户、改为无申请权的角色时请求关闭或失效，草案解锁可编辑；目标停用时失效。“生效版本变化时失效”经执行前核验与 `CloseApproval` 实现（用例14、对账子测试）。通知申请人随 channels | 子测试“用例13：…”（三个）“目标停用：…” |
 | 14 | 部分：批准后、执行前基准代次已变（测试直接改写代次构造竞态）时不执行，记为 `failed`（`baseline_changed`），原生效版本不变，发布 `policy.execution_failed`；草案修订不一致时 identity 中的审批以 `object_changed` 失效、不登记。通知双方随 channels | 子测试“用例14：…”“对账：…” |
-| 15 | 未实现：detection 未读取策略代次，`GetActivePolicies` 未实现。`policy.activated` / `rolled_back` 已带代次 | — |
-| 16 | 部分：激活与回滚只写入策略版本与代次，不触及信号；信号保留原版本随 detection | — |
+| 15 | 全部（服务端）：detection 每批经远程绑定（mTLS 内部端口）读取 `GetActivePolicies`，读取失败时该批返回错误重试，不产出信号与匹配记录，恢复后同一事件产生信号；激活返回后、`policy.activated` 尚未送达时到达的公告按新版本（v2、代次 2）求值。detection 不消费激活与回滚事件，事件丢失或乱序不影响结果 | `services/kernel/integration/signal_inbox_test.go` 的 `TestSignalInboxFeedback` 子测试“第7段用例15：…” |
+| 16 | 全部（服务端）：匹配记录以（目标、求值单位、事实版本）唯一、不含代次；激活 v2 与回滚到 v1（代次 3）后重复投递同一事实版本不产生新的匹配记录，已有信号保留原策略版本、代次与逐字节相同的解释；回滚后新到达的事实按 v1、代次 3 求值 | `services/kernel/integration/signal_inbox_test.go` 的 `TestSignalInboxFeedback` 子测试“第7段用例16、第3段用例8：…” |
 | 17 | 全部（服务端）：回滚恢复目标版本原来的合成文档与启用领域集合（INF-CRED 已下线时仍为原来的 4 个领域），不按当前领域状态扩展 | 子测试“用例8、17、25：…” |
 | 18 | 部分：首次激活的申请与审批绑定回填天数（默认 30，审批人可见），之后的激活传入回填 422 `backfill_not_allowed`，`policy.activated` 只在首次激活带 `backfill_days`。回填执行、标记与去重随 detection | 子测试“用例4、7、12：…”“用例1：批准后执行激活：…”“用例7、8、25：…” |
 | 19 | 未实现：升级草案（F7） | — |

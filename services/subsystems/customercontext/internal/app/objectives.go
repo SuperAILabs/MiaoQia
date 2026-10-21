@@ -345,6 +345,9 @@ var objectiveRelations = map[string]string{
 	"can_manage_participants": "",
 	"can_draft_policy":        "can_draft_unit_policies",
 	"can_request_activation":  "can_draft_unit_policies",
+	// 信号（PRD 第3段，detection 经 ObjectiveAccess 判断）：决策者与研究分析者经单元关系，业务开拓者、项目推进者等经参与关系
+	"can_view_signals": "can_view_unit_signals",
+	"can_feedback":     "can_feedback_unit_signals",
 }
 
 // allowedObjective 判断用户主体对目标（本地当前版本）是否具有关系，见 objectiveRelations。

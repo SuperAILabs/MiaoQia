@@ -84,6 +84,20 @@ type Invoker interface {
 	//
 	// POST /v1/customer-context/objectives
 	EnableObjective(ctx context.Context, request *EnableObjectiveRequest, params EnableObjectiveParams) (*Objective, error)
+	// GetActivePolicies invokes getActivePolicies operation.
+	//
+	// 只经 mTLS 内部端口，供有 can_read_context
+	// 的服务主体（detection）每批求值前读取（用户主体 403 forbidden）。读主库，
+	// 返回本租户每个有生效版本的目标：目标状态、所在单元、策略标识、策略代次、生效版本的合成文档与固定的启用领域集合，以及
+	// 本代次的生效时间（激活或回滚的业务时间）。激活与回滚在同一事务中写入生效版本并递增代次，因此本调用返回后开始的求值
+	// 使用新代次（PRD 第7段第5节生效边界）；policy.activated / rolled_back
+	// 事件只用于提前刷新。只有目标状态为 active 的条目
+	// 产生新信号：停用（disabled）与重新启用后尚未再次激活（inactive）的目标保留原生效版本，调用方不得据此求值。
+	// 按目标标识升序分页，每页至多 limit 条（默认且至多
+	// 200）；还有更多时给出 next_cursor（游标为上一页最后一个目标标识）。.
+	//
+	// GET /v1/customer-context/active-policies
+	GetActivePolicies(ctx context.Context, params GetActivePoliciesParams) (*ActivePolicyList, error)
 	// GetContextSnapshot invokes getContextSnapshot operation.
 	//
 	// 按（租户、组织单元、上下文版本）返回合成快照，同一键永远返回同一结果；缺省版本为当前版本。
@@ -113,7 +127,8 @@ type Invoker interface {
 	// GetObjectiveAccess invokes getObjectiveAccess operation.
 	//
 	// 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
-	// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+	// 的仿真接口、detection
+	// 的信号收件箱与反馈）按本子系统的口径判断用户对目标的关系：
 	// 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
 	// identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
 	// 同步。调用者须为用户主体（否则 403
@@ -870,6 +885,132 @@ func (c *Client) sendEnableObjective(ctx context.Context, request *EnableObjecti
 	return result, nil
 }
 
+// GetActivePolicies invokes getActivePolicies operation.
+//
+// 只经 mTLS 内部端口，供有 can_read_context
+// 的服务主体（detection）每批求值前读取（用户主体 403 forbidden）。读主库，
+// 返回本租户每个有生效版本的目标：目标状态、所在单元、策略标识、策略代次、生效版本的合成文档与固定的启用领域集合，以及
+// 本代次的生效时间（激活或回滚的业务时间）。激活与回滚在同一事务中写入生效版本并递增代次，因此本调用返回后开始的求值
+// 使用新代次（PRD 第7段第5节生效边界）；policy.activated / rolled_back
+// 事件只用于提前刷新。只有目标状态为 active 的条目
+// 产生新信号：停用（disabled）与重新启用后尚未再次激活（inactive）的目标保留原生效版本，调用方不得据此求值。
+// 按目标标识升序分页，每页至多 limit 条（默认且至多
+// 200）；还有更多时给出 next_cursor（游标为上一页最后一个目标标识）。.
+//
+// GET /v1/customer-context/active-policies
+func (c *Client) GetActivePolicies(ctx context.Context, params GetActivePoliciesParams) (*ActivePolicyList, error) {
+	res, err := c.sendGetActivePolicies(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetActivePolicies(ctx context.Context, params GetActivePoliciesParams) (res *ActivePolicyList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getActivePolicies"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/active-policies"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetActivePoliciesOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/customer-context/active-policies"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetActivePoliciesResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetContextSnapshot invokes getContextSnapshot operation.
 //
 // 按（租户、组织单元、上下文版本）返回合成快照，同一键永远返回同一结果；缺省版本为当前版本。
@@ -1174,7 +1315,8 @@ func (c *Client) sendGetObjective(ctx context.Context, params GetObjectiveParams
 // GetObjectiveAccess invokes getObjectiveAccess operation.
 //
 // 只经 mTLS 内部端口，供以用户请求上下文转交的子系统（learning
-// 的仿真接口）按本子系统的口径判断用户对目标的关系：
+// 的仿真接口、detection
+// 的信号收件箱与反馈）按本子系统的口径判断用户对目标的关系：
 // 可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且
 // identity 判断通过”放行，移除参与人在本地提交后立即撤权， 不等待 identity
 // 同步。调用者须为用户主体（否则 403

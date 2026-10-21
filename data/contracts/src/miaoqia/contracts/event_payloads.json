@@ -953,6 +953,411 @@
       }
     },
     {
+      "event": "detection.signal.detected.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "backfill": false,
+        "context_snapshot_version": 4,
+        "created_at": "2026-10-19T08:00:05Z",
+        "disposition": "pursue_candidate",
+        "evaluated_at": "2026-10-19T08:00:00Z",
+        "fact_type": "tendering.bid_result",
+        "needs_review": false,
+        "objective_code": "APP-TENDER.A02",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_generation": 3,
+        "policy_id": "pol_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_version": 2,
+        "score": 75,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "subject": {
+          "id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "type": "domain_fact",
+          "version": 1
+        },
+        "template_id": "TPL-TENDER-A02-SUPPLY",
+        "template_version": "0.3.0"
+      }
+    },
+    {
+      "event": "detection.signal.detected.v1",
+      "name": "排除带原因代码",
+      "valid": true,
+      "value": {
+        "backfill": false,
+        "context_snapshot_version": 4,
+        "created_at": "2026-10-19T08:00:05Z",
+        "disposition": "excluded",
+        "evaluated_at": "2026-10-19T08:00:00Z",
+        "fact_type": "tendering.bid_result",
+        "needs_review": false,
+        "objective_code": "APP-TENDER.A02",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_generation": 3,
+        "policy_id": "pol_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_version": 2,
+        "reason_code": "SELF_IS_WINNER",
+        "score": 75,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "subject": {
+          "id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "type": "domain_fact",
+          "version": 1
+        },
+        "template_id": "TPL-TENDER-A02-SUPPLY",
+        "template_version": "0.3.0"
+      }
+    },
+    {
+      "event": "detection.signal.detected.v1",
+      "name": "排除缺原因代码",
+      "valid": false,
+      "value": {
+        "backfill": false,
+        "context_snapshot_version": 4,
+        "created_at": "2026-10-19T08:00:05Z",
+        "disposition": "excluded",
+        "evaluated_at": "2026-10-19T08:00:00Z",
+        "fact_type": "tendering.bid_result",
+        "needs_review": false,
+        "objective_code": "APP-TENDER.A02",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_generation": 3,
+        "policy_id": "pol_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_version": 2,
+        "score": 75,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "subject": {
+          "id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "type": "domain_fact",
+          "version": 1
+        },
+        "template_id": "TPL-TENDER-A02-SUPPLY",
+        "template_version": "0.3.0"
+      }
+    },
+    {
+      "event": "detection.signal.detected.v1",
+      "name": "无信号不发布",
+      "valid": false,
+      "value": {
+        "backfill": false,
+        "context_snapshot_version": 4,
+        "created_at": "2026-10-19T08:00:05Z",
+        "disposition": "no_signal",
+        "evaluated_at": "2026-10-19T08:00:00Z",
+        "fact_type": "tendering.bid_result",
+        "needs_review": false,
+        "objective_code": "APP-TENDER.A02",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_generation": 3,
+        "policy_id": "pol_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_version": 2,
+        "score": 75,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "subject": {
+          "id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "type": "domain_fact",
+          "version": 1
+        },
+        "template_id": "TPL-TENDER-A02-SUPPLY",
+        "template_version": "0.3.0"
+      }
+    },
+    {
+      "event": "detection.signal.detected.v1",
+      "name": "缺策略代次",
+      "valid": false,
+      "value": {
+        "backfill": false,
+        "context_snapshot_version": 4,
+        "created_at": "2026-10-19T08:00:05Z",
+        "disposition": "pursue_candidate",
+        "evaluated_at": "2026-10-19T08:00:00Z",
+        "fact_type": "tendering.bid_result",
+        "needs_review": false,
+        "objective_code": "APP-TENDER.A02",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_id": "pol_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_version": 2,
+        "score": 75,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "subject": {
+          "id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "type": "domain_fact",
+          "version": 1
+        },
+        "template_id": "TPL-TENDER-A02-SUPPLY",
+        "template_version": "0.3.0"
+      }
+    },
+    {
+      "event": "detection.signal.detected.v1",
+      "name": "求值单位缺版本",
+      "valid": false,
+      "value": {
+        "backfill": false,
+        "context_snapshot_version": 4,
+        "created_at": "2026-10-19T08:00:05Z",
+        "disposition": "pursue_candidate",
+        "evaluated_at": "2026-10-19T08:00:00Z",
+        "fact_type": "tendering.bid_result",
+        "needs_review": false,
+        "objective_code": "APP-TENDER.A02",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_generation": 3,
+        "policy_id": "pol_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "policy_version": 2,
+        "score": 75,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "subject": {
+          "id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "type": "domain_fact"
+        },
+        "template_id": "TPL-TENDER-A02-SUPPLY",
+        "template_version": "0.3.0"
+      }
+    },
+    {
+      "event": "detection.signal.triaged.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "action": "feedback",
+        "actor": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "web",
+        "content_version": 0,
+        "disposition": "review_candidate",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "occurred_at": "2026-10-19T09:00:00Z",
+        "operation_id": "op-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": {
+            "after": {
+              "based_on_content_version": 0,
+              "reasons": [
+                "CATEGORY_MISMATCH"
+              ],
+              "result": "irrelevant"
+            },
+            "version": 1
+          },
+          "status": {
+            "after": "dismissed",
+            "before": "open",
+            "version": 1
+          }
+        },
+        "seen_content_version": 0,
+        "signal_created_at": "2026-10-19T08:00:05Z",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "detection.signal.triaged.v1",
+      "name": "批量中的一项",
+      "valid": true,
+      "value": {
+        "action": "feedback",
+        "actor": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "batch_id": "sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "web",
+        "content_version": 0,
+        "disposition": "review_candidate",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "occurred_at": "2026-10-19T09:00:00Z",
+        "operation_id": "sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1:sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": {
+            "after": {
+              "based_on_content_version": 0,
+              "reasons": [
+                "CATEGORY_MISMATCH"
+              ],
+              "result": "irrelevant"
+            },
+            "version": 1
+          },
+          "status": {
+            "after": "dismissed",
+            "before": "open",
+            "version": 1
+          }
+        },
+        "seen_content_version": 0,
+        "signal_created_at": "2026-10-19T08:00:05Z",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "detection.signal.triaged.v1",
+      "name": "撤销引用原操作",
+      "valid": true,
+      "value": {
+        "action": "undo",
+        "actor": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "web",
+        "content_version": 0,
+        "disposition": "review_candidate",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "occurred_at": "2026-10-19T09:00:00Z",
+        "operation_id": "op-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": {
+            "after": {
+              "based_on_content_version": 0,
+              "reasons": [
+                "CATEGORY_MISMATCH"
+              ],
+              "result": "irrelevant"
+            },
+            "version": 1
+          },
+          "status": {
+            "after": "dismissed",
+            "before": "open",
+            "version": 1
+          }
+        },
+        "seen_content_version": 0,
+        "signal_created_at": "2026-10-19T08:00:05Z",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "undo_of": "op-01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "detection.signal.triaged.v1",
+      "name": "撤销缺原操作",
+      "valid": false,
+      "value": {
+        "action": "undo",
+        "actor": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "web",
+        "content_version": 0,
+        "disposition": "review_candidate",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "occurred_at": "2026-10-19T09:00:00Z",
+        "operation_id": "op-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": {
+            "after": {
+              "based_on_content_version": 0,
+              "reasons": [
+                "CATEGORY_MISMATCH"
+              ],
+              "result": "irrelevant"
+            },
+            "version": 1
+          },
+          "status": {
+            "after": "dismissed",
+            "before": "open",
+            "version": 1
+          }
+        },
+        "seen_content_version": 0,
+        "signal_created_at": "2026-10-19T08:00:05Z",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "detection.signal.triaged.v1",
+      "name": "没有改变的部分",
+      "valid": false,
+      "value": {
+        "action": "feedback",
+        "actor": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "web",
+        "content_version": 0,
+        "disposition": "review_candidate",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "occurred_at": "2026-10-19T09:00:00Z",
+        "operation_id": "op-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {},
+        "seen_content_version": 0,
+        "signal_created_at": "2026-10-19T08:00:05Z",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "detection.signal.triaged.v1",
+      "name": "操作者格式",
+      "valid": false,
+      "value": {
+        "action": "feedback",
+        "actor": " 王磊",
+        "channel": "web",
+        "content_version": 0,
+        "disposition": "review_candidate",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "occurred_at": "2026-10-19T09:00:00Z",
+        "operation_id": "op-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": {
+            "after": {
+              "based_on_content_version": 0,
+              "reasons": [
+                "CATEGORY_MISMATCH"
+              ],
+              "result": "irrelevant"
+            },
+            "version": 1
+          },
+          "status": {
+            "after": "dismissed",
+            "before": "open",
+            "version": 1
+          }
+        },
+        "seen_content_version": 0,
+        "signal_created_at": "2026-10-19T08:00:05Z",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "detection.signal.triaged.v1",
+      "name": "反馈说明不进入事件",
+      "valid": false,
+      "value": {
+        "action": "feedback",
+        "actor": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "web",
+        "content_version": 0,
+        "disposition": "review_candidate",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "occurred_at": "2026-10-19T09:00:00Z",
+        "operation_id": "op-01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": {
+            "after": {
+              "based_on_content_version": 0,
+              "note": "说明",
+              "reasons": [
+                "CATEGORY_MISMATCH"
+              ],
+              "result": "irrelevant"
+            },
+            "version": 1
+          },
+          "status": {
+            "after": "dismissed",
+            "before": "open",
+            "version": 1
+          }
+        },
+        "seen_content_version": 0,
+        "signal_created_at": "2026-10-19T08:00:05Z",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
       "event": "domain.fact.upserted.v1",
       "name": "base",
       "valid": true,
@@ -3745,6 +4150,421 @@
         "profile_version",
         "cause",
         "changed"
+      ],
+      "type": "object"
+    },
+    "detection.signal.detected.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "excluded"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "reason_code"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "backfill": {
+          "type": "boolean"
+        },
+        "context_snapshot_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "pursue_candidate",
+            "review_candidate",
+            "watch_signal",
+            "excluded"
+          ],
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fact_type": {
+          "pattern": "^[a-z]+\\.[a-z_]+$",
+          "type": "string"
+        },
+        "needs_review": {
+          "type": "boolean"
+        },
+        "objective_code": {
+          "pattern": "^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$",
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "policy_generation": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "policy_id": {
+          "pattern": "^pol_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "policy_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "reason_code": {
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        "score": {
+          "type": "integer"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "subject": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "pattern": "^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "part_id": {
+              "pattern": "^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "domain_fact"
+              ],
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "template_id": {
+          "pattern": "^TPL-[A-Z0-9-]{1,64}$",
+          "type": "string"
+        },
+        "template_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signal_id",
+        "objective_id",
+        "objective_code",
+        "policy_id",
+        "policy_version",
+        "policy_generation",
+        "template_id",
+        "template_version",
+        "subject",
+        "fact_type",
+        "disposition",
+        "score",
+        "needs_review",
+        "context_snapshot_version",
+        "evaluated_at",
+        "created_at",
+        "backfill"
+      ],
+      "type": "object"
+    },
+    "detection.signal.triaged.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "undo_of"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "action": {
+                "const": "undo"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "undo_of"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "feedback",
+            "withdraw_feedback",
+            "dismiss",
+            "restore",
+            "adjust",
+            "undo"
+          ],
+          "type": "string"
+        },
+        "actor": {
+          "description": "操作者（用户主体）；撤销与原操作为同一操作者",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "batch_id": {
+          "pattern": "^sgb_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "web",
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "content_version": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disposition": {
+          "description": "信号的系统处置（排除信号的反馈单独统计）",
+          "enum": [
+            "pursue_candidate",
+            "review_candidate",
+            "watch_signal",
+            "excluded"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$",
+          "type": "string"
+        },
+        "parts": {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "feedback": {
+              "additionalProperties": false,
+              "properties": {
+                "after": {
+                  "additionalProperties": false,
+                  "description": "一名成员的反馈值（结果与原因标签取自应用领域包）；说明文字不进入事件",
+                  "properties": {
+                    "based_on_content_version": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reasons": {
+                      "items": {
+                        "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+                        "type": "string"
+                      },
+                      "maxItems": 9,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "result": {
+                      "enum": [
+                        "relevant",
+                        "irrelevant",
+                        "exclusion_correct",
+                        "exclusion_wrong"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "result",
+                    "reasons",
+                    "based_on_content_version"
+                  ],
+                  "type": "object"
+                },
+                "before": {
+                  "additionalProperties": false,
+                  "description": "一名成员的反馈值（结果与原因标签取自应用领域包）；说明文字不进入事件",
+                  "properties": {
+                    "based_on_content_version": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reasons": {
+                      "items": {
+                        "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+                        "type": "string"
+                      },
+                      "maxItems": 9,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "result": {
+                      "enum": [
+                        "relevant",
+                        "irrelevant",
+                        "exclusion_correct",
+                        "exclusion_wrong"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "result",
+                    "reasons",
+                    "based_on_content_version"
+                  ],
+                  "type": "object"
+                },
+                "version": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "version"
+              ],
+              "type": "object"
+            },
+            "manual_disposition": {
+              "additionalProperties": false,
+              "properties": {
+                "after": {
+                  "enum": [
+                    "none",
+                    "pursue_candidate",
+                    "review_candidate",
+                    "watch_signal"
+                  ],
+                  "type": "string"
+                },
+                "before": {
+                  "enum": [
+                    "none",
+                    "pursue_candidate",
+                    "review_candidate",
+                    "watch_signal"
+                  ],
+                  "type": "string"
+                },
+                "version": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "before",
+                "after",
+                "version"
+              ],
+              "type": "object"
+            },
+            "status": {
+              "additionalProperties": false,
+              "properties": {
+                "after": {
+                  "enum": [
+                    "open",
+                    "triaged",
+                    "converted",
+                    "dismissed",
+                    "closed"
+                  ],
+                  "type": "string"
+                },
+                "before": {
+                  "enum": [
+                    "open",
+                    "triaged",
+                    "converted",
+                    "dismissed",
+                    "closed"
+                  ],
+                  "type": "string"
+                },
+                "version": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "before",
+                "after",
+                "version"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "reason": {
+          "description": "调整处置的原因",
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "seen_content_version": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "signal_created_at": {
+          "description": "信号的发现时间（反馈汇总的窗口按它计）",
+          "format": "date-time",
+          "type": "string"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "undo_of": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "signal_id",
+        "objective_id",
+        "actor",
+        "action",
+        "seen_content_version",
+        "content_version",
+        "disposition",
+        "signal_created_at",
+        "parts",
+        "channel",
+        "occurred_at"
       ],
       "type": "object"
     },

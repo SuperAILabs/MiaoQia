@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/superailabs/miaoqia/services/kernel/db"
+	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 )
 
 func TestMigrationRejectsInvalidRoleBeforeDatabase(t *testing.T) {
@@ -78,6 +80,7 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 	packs := filepath.Join(filepath.Dir(deploy), "packs")
 	t.Setenv("MIAOQIA_CUSTOMER_CONTEXT_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_LEARNING_PACKS_DIR", packs)
+	t.Setenv("MIAOQIA_DETECTION_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_ENV", "development")
 	t.Setenv("MIAOQIA_IDENTITY_OPENFGA_URL", fga)
 	t.Setenv("MIAOQIA_IDENTITY_URL", "http://127.0.0.1:1/internal")
@@ -95,15 +98,25 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 				for _, k := range []string{"MIAOQIA_BINDING_IDENTITY", "MIAOQIA_BINDING_CUSTOMER_CONTEXT"} {
 					t.Setenv(k, v[k])
 				}
-				loaded, _, closeAll, err := assemble(context.Background(), log, role, nil)
+				loaded, envs, closeAll, err := assemble(context.Background(), log, role, nil)
 				defer closeAll()
 				if err != nil {
 					t.Fatal(err)
 				}
-				for _, m := range loaded {
+				for i, m := range loaded {
 					if (m.Name == "identity" && v["MIAOQIA_BINDING_IDENTITY"] == "remote") ||
 						(m.Name == "customer-context" && v["MIAOQIA_BINDING_CUSTOMER_CONTEXT"] == "remote") {
 						t.Fatalf("远程绑定的 %s 仍在本地加载", m.Name)
+					}
+					// 第3段新增的跨子系统绑定：detection 每批读取生效策略与上下文，用户入口经 ObjectiveAccess 判断
+					if m.Name == "detection" {
+						b := envs[i].Bindings
+						_, access := runtime.Lookup[ccapi.ObjectiveAccess](b, ccapi.AccessBinding)
+						_, reader := runtime.Lookup[ccapi.ContextReader](b, ccapi.ContextBinding)
+						_, active := runtime.Lookup[ccapi.ActivePolicies](b, ccapi.ActivePoliciesBinding)
+						if !access || !reader || !active {
+							t.Fatalf("detection 的绑定不完整：access=%v context=%v active=%v", access, reader, active)
+						}
 					}
 				}
 			})

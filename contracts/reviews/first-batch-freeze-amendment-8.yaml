@@ -1,0 +1,28 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-20T12:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  PRD 第3段信号收件箱与反馈的服务端切片（含第7段留给 detection 的生效边界上的匹配）对 C4a 冻结契约做了追加式修改：
+  contracts/identifiers.yaml 新增 SignalBatch 前缀 sgb（detection，批量处理作业）（1.5.0 → 1.6.0）。identity 的 OpenAPI 与事件契约
+  不变（只在 OpenFGA 模型与 identity.md 第7.2节权限矩阵中追加目标的 can_view_signals / can_feedback 与组织单元的
+  can_view_unit_signals / can_feedback_unit_signals，见 services/subsystems/identity/internal/infra/model.fga）。
+  mqc compat 对 origin/main 判定 breaking 0：detection.signal.detected.v1 与 detection.signal.triaged.v1 为新增事件类型；
+  customer-context 新增内部路径 GET /v1/customer-context/active-policies（GetActivePolicies），目标访问判断的 allowed 枚举追加
+  can_view_signals 与 can_feedback（消费者须容忍未知值）；learning 新增 GET /v1/learning/objectives/{objectiveID}/feedback-summary。
+  detection 的 OpenAPI 与事件（新文件 0.1.0）、customer-context 的 OpenAPI（0.3.0 → 0.4.0）、learning 的 OpenAPI（0.1.0 → 0.2.0）
+  是草案，不在 C4a 冻结范围，只记录。
+  这里把切片结束时的内容登记为新基线；原冻结记录与修订 1–7 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.6.0
+  sha256: 37ecae6166a08e4d9bfdafda2b5b812f3b464ccb6a56804138eef44eef4d8881
+verification:
+  base: 661d115
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0、additive 5、doc 0：两个 detection 事件、customer-context 的生效策略内部路径与访问判断枚举追加、learning 的反馈汇总路径均为追加）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；事实视图与订阅反查为内存夹具 facttest，仿真数据集为 datasettest，生产适配器未接入）

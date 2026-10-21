@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	rn3AllowedHeaders = map[string]string{
+	rn7AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
 )
@@ -55,64 +55,128 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/v1/learning/simulations"
+		case '/': // Prefix: "/v1/learning/"
 
-			if l := len("/v1/learning/simulations"); len(elem) >= l && elem[0:l] == "/v1/learning/simulations" {
+			if l := len("/v1/learning/"); len(elem) >= l && elem[0:l] == "/v1/learning/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				switch r.Method {
-				case "POST":
-					s.handleSimulatePolicyRequest([0]string{}, elemIsEscaped, w, r)
-				default:
-					s.notAllowed(w, r, notAllowedParams{
-						allowedMethods: "POST",
-						allowedHeaders: rn3AllowedHeaders,
-						acceptPost:     "application/json",
-						acceptPatch:    "",
-					})
-				}
-
-				return
+				break
 			}
 			switch elem[0] {
-			case '/': // Prefix: "/"
+			case 'o': // Prefix: "objectives/"
 
-				if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+				if l := len("objectives/"); len(elem) >= l && elem[0:l] == "objectives/" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
-				// Param: "simulationID"
-				// Leaf parameter, slashes are prohibited
+				// Param: "objectiveID"
+				// Match until "/"
 				idx := strings.IndexByte(elem, '/')
-				if idx >= 0 {
-					break
+				if idx < 0 {
+					idx = len(elem)
 				}
-				args[0] = elem
-				elem = ""
+				args[0] = elem[:idx]
+				elem = elem[idx:]
 
 				if len(elem) == 0 {
-					// Leaf node.
+					break
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/feedback-summary"
+
+					if l := len("/feedback-summary"); len(elem) >= l && elem[0:l] == "/feedback-summary" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleGetFeedbackSummaryRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
+				}
+
+			case 's': // Prefix: "simulations"
+
+				if l := len("simulations"); len(elem) >= l && elem[0:l] == "simulations" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
 					switch r.Method {
-					case "GET":
-						s.handleGetSimulationRequest([1]string{
-							args[0],
-						}, elemIsEscaped, w, r)
+					case "POST":
+						s.handleSimulatePolicyRequest([0]string{}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "GET",
-							allowedHeaders: nil,
-							acceptPost:     "",
+							allowedMethods: "POST",
+							allowedHeaders: rn7AllowedHeaders,
+							acceptPost:     "application/json",
 							acceptPatch:    "",
 						})
 					}
 
 					return
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "simulationID"
+					// Leaf parameter, slashes are prohibited
+					idx := strings.IndexByte(elem, '/')
+					if idx >= 0 {
+						break
+					}
+					args[0] = elem
+					elem = ""
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleGetSimulationRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
 				}
 
 			}
@@ -203,62 +267,124 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/v1/learning/simulations"
+		case '/': // Prefix: "/v1/learning/"
 
-			if l := len("/v1/learning/simulations"); len(elem) >= l && elem[0:l] == "/v1/learning/simulations" {
+			if l := len("/v1/learning/"); len(elem) >= l && elem[0:l] == "/v1/learning/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				switch method {
-				case "POST":
-					r.name = SimulatePolicyOperation
-					r.summary = "发起或复用仿真（SimulatePolicy）"
-					r.operationID = "simulatePolicy"
-					r.operationGroup = ""
-					r.pathPattern = "/v1/learning/simulations"
-					r.args = args
-					r.count = 0
-					return r, true
-				default:
-					return
-				}
+				break
 			}
 			switch elem[0] {
-			case '/': // Prefix: "/"
+			case 'o': // Prefix: "objectives/"
 
-				if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+				if l := len("objectives/"); len(elem) >= l && elem[0:l] == "objectives/" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
-				// Param: "simulationID"
-				// Leaf parameter, slashes are prohibited
+				// Param: "objectiveID"
+				// Match until "/"
 				idx := strings.IndexByte(elem, '/')
-				if idx >= 0 {
-					break
+				if idx < 0 {
+					idx = len(elem)
 				}
-				args[0] = elem
-				elem = ""
+				args[0] = elem[:idx]
+				elem = elem[idx:]
 
 				if len(elem) == 0 {
-					// Leaf node.
+					break
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/feedback-summary"
+
+					if l := len("/feedback-summary"); len(elem) >= l && elem[0:l] == "/feedback-summary" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = GetFeedbackSummaryOperation
+							r.summary = "反馈汇总（GetFeedbackSummary）"
+							r.operationID = "getFeedbackSummary"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/learning/objectives/{objectiveID}/feedback-summary"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+
+				}
+
+			case 's': // Prefix: "simulations"
+
+				if l := len("simulations"); len(elem) >= l && elem[0:l] == "simulations" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
 					switch method {
-					case "GET":
-						r.name = GetSimulationOperation
-						r.summary = "仿真报告（GetSimulationReport）"
-						r.operationID = "getSimulation"
+					case "POST":
+						r.name = SimulatePolicyOperation
+						r.summary = "发起或复用仿真（SimulatePolicy）"
+						r.operationID = "simulatePolicy"
 						r.operationGroup = ""
-						r.pathPattern = "/v1/learning/simulations/{simulationID}"
+						r.pathPattern = "/v1/learning/simulations"
 						r.args = args
-						r.count = 1
+						r.count = 0
 						return r, true
 					default:
 						return
 					}
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "simulationID"
+					// Leaf parameter, slashes are prohibited
+					idx := strings.IndexByte(elem, '/')
+					if idx >= 0 {
+						break
+					}
+					args[0] = elem
+					elem = ""
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = GetSimulationOperation
+							r.summary = "仿真报告（GetSimulationReport）"
+							r.operationID = "getSimulation"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/learning/simulations/{simulationID}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+
 				}
 
 			}

@@ -69,6 +69,28 @@ func (l localPolicy) SimulationInput(ctx context.Context, objective string, revi
 		})
 }
 
+// ActivePoliciesBinding 是生效策略读取接口在绑定表中的名称。
+const ActivePoliciesBinding = "customer-context.ActivePolicies"
+
+// ActivePolicyList 是契约生成类型（ActivePolicyList）。
+type ActivePolicyList = customercontextapi.ActivePolicyList
+
+// ActivePolicies 是生效策略与策略代次的读取接口（detection 每批求值前读取；有 tenant#can_read_context 的服务主体）。只读、幂等：
+// 读主库，按目标标识升序分页（limit 0 为缺省 200，cursor 为上一页的 next_cursor）。读取失败时调用方该批重试，不用可能过期的缓存求值。
+type ActivePolicies interface {
+	ActivePolicies(ctx context.Context, limit int, cursor string) (*ActivePolicyList, error)
+}
+
+// LocalActivePolicies 把本地实现包装为经调用管线的接口。
+func LocalActivePolicies(impl ActivePolicies) ActivePolicies { return localActive{impl} }
+
+type localActive struct{ impl ActivePolicies }
+
+func (l localActive) ActivePolicies(ctx context.Context, limit int, cursor string) (*ActivePolicyList, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetActivePolicies", Idempotent: true},
+		func(ctx context.Context) (*ActivePolicyList, error) { return l.impl.ActivePolicies(ctx, limit, cursor) })
+}
+
 // AccessBinding 是目标访问判断接口在绑定表中的名称。
 const AccessBinding = "customer-context.ObjectiveAccess"
 

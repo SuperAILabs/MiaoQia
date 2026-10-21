@@ -137,6 +137,436 @@ func (s *DispositionCounts) SetNoSignal(val int) {
 
 type DomainCode string
 
+// 一个原因标签的信号数与可能相关的规则、参数（取自应用领域包的
+// relates，只作提示）.
+// Ref: #/components/schemas/FeedbackReasonCount
+type FeedbackReasonCount struct {
+	Result  FeedbackReasonCountResult `json:"result"`
+	Code    string                    `json:"code"`
+	Signals int                       `json:"signals"`
+	Rules   []string                  `json:"rules"`
+	Params  []string                  `json:"params"`
+}
+
+// GetResult returns the value of Result.
+func (s *FeedbackReasonCount) GetResult() FeedbackReasonCountResult {
+	return s.Result
+}
+
+// GetCode returns the value of Code.
+func (s *FeedbackReasonCount) GetCode() string {
+	return s.Code
+}
+
+// GetSignals returns the value of Signals.
+func (s *FeedbackReasonCount) GetSignals() int {
+	return s.Signals
+}
+
+// GetRules returns the value of Rules.
+func (s *FeedbackReasonCount) GetRules() []string {
+	return s.Rules
+}
+
+// GetParams returns the value of Params.
+func (s *FeedbackReasonCount) GetParams() []string {
+	return s.Params
+}
+
+// SetResult sets the value of Result.
+func (s *FeedbackReasonCount) SetResult(val FeedbackReasonCountResult) {
+	s.Result = val
+}
+
+// SetCode sets the value of Code.
+func (s *FeedbackReasonCount) SetCode(val string) {
+	s.Code = val
+}
+
+// SetSignals sets the value of Signals.
+func (s *FeedbackReasonCount) SetSignals(val int) {
+	s.Signals = val
+}
+
+// SetRules sets the value of Rules.
+func (s *FeedbackReasonCount) SetRules(val []string) {
+	s.Rules = val
+}
+
+// SetParams sets the value of Params.
+func (s *FeedbackReasonCount) SetParams(val []string) {
+	s.Params = val
+}
+
+type FeedbackReasonCountResult string
+
+const (
+	FeedbackReasonCountResultIrrelevant     FeedbackReasonCountResult = "irrelevant"
+	FeedbackReasonCountResultExclusionWrong FeedbackReasonCountResult = "exclusion_wrong"
+)
+
+// AllValues returns all FeedbackReasonCountResult values.
+func (FeedbackReasonCountResult) AllValues() []FeedbackReasonCountResult {
+	return []FeedbackReasonCountResult{
+		FeedbackReasonCountResultIrrelevant,
+		FeedbackReasonCountResultExclusionWrong,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s FeedbackReasonCountResult) MarshalText() ([]byte, error) {
+	switch s {
+	case FeedbackReasonCountResultIrrelevant:
+		return []byte(s), nil
+	case FeedbackReasonCountResultExclusionWrong:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *FeedbackReasonCountResult) UnmarshalText(data []byte) error {
+	switch FeedbackReasonCountResult(data) {
+	case FeedbackReasonCountResultIrrelevant:
+		*s = FeedbackReasonCountResultIrrelevant
+		return nil
+	case FeedbackReasonCountResultExclusionWrong:
+		*s = FeedbackReasonCountResultExclusionWrong
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/FeedbackSummary
+type FeedbackSummary struct {
+	ObjectiveID string `json:"objective_id"`
+	// 统计截至时间.
+	AsOf        time.Time `json:"as_of"`
+	WindowStart time.Time `json:"window_start"`
+	WindowEnd   time.Time `json:"window_end"`
+	// 已计入的最近一次反馈的提交时间（事件处理滞后时早于最新反馈）.
+	LastFeedbackAt   OptDateTime `json:"last_feedback_at"`
+	MinSample        int         `json:"min_sample"`
+	Sample           int         `json:"sample"`
+	SampleSufficient bool        `json:"sample_sufficient"`
+	// 窗口内的非排除信号.
+	Signals   FeedbackSummarySignals   `json:"signals"`
+	Relevance FeedbackSummaryRelevance `json:"relevance"`
+	// 基于更新前内容版本的当前反馈条数（不计入相关、不相关与反馈率）.
+	StaleFeedback int `json:"stale_feedback"`
+	// 窗口内的排除信号.
+	Exclusions FeedbackSummaryExclusions `json:"exclusions"`
+	Reasons    []FeedbackReasonCount     `json:"reasons"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *FeedbackSummary) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetAsOf returns the value of AsOf.
+func (s *FeedbackSummary) GetAsOf() time.Time {
+	return s.AsOf
+}
+
+// GetWindowStart returns the value of WindowStart.
+func (s *FeedbackSummary) GetWindowStart() time.Time {
+	return s.WindowStart
+}
+
+// GetWindowEnd returns the value of WindowEnd.
+func (s *FeedbackSummary) GetWindowEnd() time.Time {
+	return s.WindowEnd
+}
+
+// GetLastFeedbackAt returns the value of LastFeedbackAt.
+func (s *FeedbackSummary) GetLastFeedbackAt() OptDateTime {
+	return s.LastFeedbackAt
+}
+
+// GetMinSample returns the value of MinSample.
+func (s *FeedbackSummary) GetMinSample() int {
+	return s.MinSample
+}
+
+// GetSample returns the value of Sample.
+func (s *FeedbackSummary) GetSample() int {
+	return s.Sample
+}
+
+// GetSampleSufficient returns the value of SampleSufficient.
+func (s *FeedbackSummary) GetSampleSufficient() bool {
+	return s.SampleSufficient
+}
+
+// GetSignals returns the value of Signals.
+func (s *FeedbackSummary) GetSignals() FeedbackSummarySignals {
+	return s.Signals
+}
+
+// GetRelevance returns the value of Relevance.
+func (s *FeedbackSummary) GetRelevance() FeedbackSummaryRelevance {
+	return s.Relevance
+}
+
+// GetStaleFeedback returns the value of StaleFeedback.
+func (s *FeedbackSummary) GetStaleFeedback() int {
+	return s.StaleFeedback
+}
+
+// GetExclusions returns the value of Exclusions.
+func (s *FeedbackSummary) GetExclusions() FeedbackSummaryExclusions {
+	return s.Exclusions
+}
+
+// GetReasons returns the value of Reasons.
+func (s *FeedbackSummary) GetReasons() []FeedbackReasonCount {
+	return s.Reasons
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *FeedbackSummary) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetAsOf sets the value of AsOf.
+func (s *FeedbackSummary) SetAsOf(val time.Time) {
+	s.AsOf = val
+}
+
+// SetWindowStart sets the value of WindowStart.
+func (s *FeedbackSummary) SetWindowStart(val time.Time) {
+	s.WindowStart = val
+}
+
+// SetWindowEnd sets the value of WindowEnd.
+func (s *FeedbackSummary) SetWindowEnd(val time.Time) {
+	s.WindowEnd = val
+}
+
+// SetLastFeedbackAt sets the value of LastFeedbackAt.
+func (s *FeedbackSummary) SetLastFeedbackAt(val OptDateTime) {
+	s.LastFeedbackAt = val
+}
+
+// SetMinSample sets the value of MinSample.
+func (s *FeedbackSummary) SetMinSample(val int) {
+	s.MinSample = val
+}
+
+// SetSample sets the value of Sample.
+func (s *FeedbackSummary) SetSample(val int) {
+	s.Sample = val
+}
+
+// SetSampleSufficient sets the value of SampleSufficient.
+func (s *FeedbackSummary) SetSampleSufficient(val bool) {
+	s.SampleSufficient = val
+}
+
+// SetSignals sets the value of Signals.
+func (s *FeedbackSummary) SetSignals(val FeedbackSummarySignals) {
+	s.Signals = val
+}
+
+// SetRelevance sets the value of Relevance.
+func (s *FeedbackSummary) SetRelevance(val FeedbackSummaryRelevance) {
+	s.Relevance = val
+}
+
+// SetStaleFeedback sets the value of StaleFeedback.
+func (s *FeedbackSummary) SetStaleFeedback(val int) {
+	s.StaleFeedback = val
+}
+
+// SetExclusions sets the value of Exclusions.
+func (s *FeedbackSummary) SetExclusions(val FeedbackSummaryExclusions) {
+	s.Exclusions = val
+}
+
+// SetReasons sets the value of Reasons.
+func (s *FeedbackSummary) SetReasons(val []FeedbackReasonCount) {
+	s.Reasons = val
+}
+
+// 窗口内的排除信号.
+type FeedbackSummaryExclusions struct {
+	Total        int `json:"total"`
+	WithFeedback int `json:"with_feedback"`
+	Correct      int `json:"correct"`
+	Wrong        int `json:"wrong"`
+	Disagreement int `json:"disagreement"`
+}
+
+// GetTotal returns the value of Total.
+func (s *FeedbackSummaryExclusions) GetTotal() int {
+	return s.Total
+}
+
+// GetWithFeedback returns the value of WithFeedback.
+func (s *FeedbackSummaryExclusions) GetWithFeedback() int {
+	return s.WithFeedback
+}
+
+// GetCorrect returns the value of Correct.
+func (s *FeedbackSummaryExclusions) GetCorrect() int {
+	return s.Correct
+}
+
+// GetWrong returns the value of Wrong.
+func (s *FeedbackSummaryExclusions) GetWrong() int {
+	return s.Wrong
+}
+
+// GetDisagreement returns the value of Disagreement.
+func (s *FeedbackSummaryExclusions) GetDisagreement() int {
+	return s.Disagreement
+}
+
+// SetTotal sets the value of Total.
+func (s *FeedbackSummaryExclusions) SetTotal(val int) {
+	s.Total = val
+}
+
+// SetWithFeedback sets the value of WithFeedback.
+func (s *FeedbackSummaryExclusions) SetWithFeedback(val int) {
+	s.WithFeedback = val
+}
+
+// SetCorrect sets the value of Correct.
+func (s *FeedbackSummaryExclusions) SetCorrect(val int) {
+	s.Correct = val
+}
+
+// SetWrong sets the value of Wrong.
+func (s *FeedbackSummaryExclusions) SetWrong(val int) {
+	s.Wrong = val
+}
+
+// SetDisagreement sets the value of Disagreement.
+func (s *FeedbackSummaryExclusions) SetDisagreement(val int) {
+	s.Disagreement = val
+}
+
+type FeedbackSummaryRelevance struct {
+	Relevant          int        `json:"relevant"`
+	Irrelevant        int        `json:"irrelevant"`
+	Disagreement      int        `json:"disagreement"`
+	RelevantRatio     OptFloat64 `json:"relevant_ratio"`
+	IrrelevantRatio   OptFloat64 `json:"irrelevant_ratio"`
+	DisagreementRatio OptFloat64 `json:"disagreement_ratio"`
+}
+
+// GetRelevant returns the value of Relevant.
+func (s *FeedbackSummaryRelevance) GetRelevant() int {
+	return s.Relevant
+}
+
+// GetIrrelevant returns the value of Irrelevant.
+func (s *FeedbackSummaryRelevance) GetIrrelevant() int {
+	return s.Irrelevant
+}
+
+// GetDisagreement returns the value of Disagreement.
+func (s *FeedbackSummaryRelevance) GetDisagreement() int {
+	return s.Disagreement
+}
+
+// GetRelevantRatio returns the value of RelevantRatio.
+func (s *FeedbackSummaryRelevance) GetRelevantRatio() OptFloat64 {
+	return s.RelevantRatio
+}
+
+// GetIrrelevantRatio returns the value of IrrelevantRatio.
+func (s *FeedbackSummaryRelevance) GetIrrelevantRatio() OptFloat64 {
+	return s.IrrelevantRatio
+}
+
+// GetDisagreementRatio returns the value of DisagreementRatio.
+func (s *FeedbackSummaryRelevance) GetDisagreementRatio() OptFloat64 {
+	return s.DisagreementRatio
+}
+
+// SetRelevant sets the value of Relevant.
+func (s *FeedbackSummaryRelevance) SetRelevant(val int) {
+	s.Relevant = val
+}
+
+// SetIrrelevant sets the value of Irrelevant.
+func (s *FeedbackSummaryRelevance) SetIrrelevant(val int) {
+	s.Irrelevant = val
+}
+
+// SetDisagreement sets the value of Disagreement.
+func (s *FeedbackSummaryRelevance) SetDisagreement(val int) {
+	s.Disagreement = val
+}
+
+// SetRelevantRatio sets the value of RelevantRatio.
+func (s *FeedbackSummaryRelevance) SetRelevantRatio(val OptFloat64) {
+	s.RelevantRatio = val
+}
+
+// SetIrrelevantRatio sets the value of IrrelevantRatio.
+func (s *FeedbackSummaryRelevance) SetIrrelevantRatio(val OptFloat64) {
+	s.IrrelevantRatio = val
+}
+
+// SetDisagreementRatio sets the value of DisagreementRatio.
+func (s *FeedbackSummaryRelevance) SetDisagreementRatio(val OptFloat64) {
+	s.DisagreementRatio = val
+}
+
+// 窗口内的非排除信号.
+type FeedbackSummarySignals struct {
+	Total           int        `json:"total"`
+	WithFeedback    int        `json:"with_feedback"`
+	WithoutFeedback int        `json:"without_feedback"`
+	FeedbackRate    OptFloat64 `json:"feedback_rate"`
+}
+
+// GetTotal returns the value of Total.
+func (s *FeedbackSummarySignals) GetTotal() int {
+	return s.Total
+}
+
+// GetWithFeedback returns the value of WithFeedback.
+func (s *FeedbackSummarySignals) GetWithFeedback() int {
+	return s.WithFeedback
+}
+
+// GetWithoutFeedback returns the value of WithoutFeedback.
+func (s *FeedbackSummarySignals) GetWithoutFeedback() int {
+	return s.WithoutFeedback
+}
+
+// GetFeedbackRate returns the value of FeedbackRate.
+func (s *FeedbackSummarySignals) GetFeedbackRate() OptFloat64 {
+	return s.FeedbackRate
+}
+
+// SetTotal sets the value of Total.
+func (s *FeedbackSummarySignals) SetTotal(val int) {
+	s.Total = val
+}
+
+// SetWithFeedback sets the value of WithFeedback.
+func (s *FeedbackSummarySignals) SetWithFeedback(val int) {
+	s.WithFeedback = val
+}
+
+// SetWithoutFeedback sets the value of WithoutFeedback.
+func (s *FeedbackSummarySignals) SetWithoutFeedback(val int) {
+	s.WithoutFeedback = val
+}
+
+// SetFeedbackRate sets the value of FeedbackRate.
+func (s *FeedbackSummarySignals) SetFeedbackRate(val OptFloat64) {
+	s.FeedbackRate = val
+}
+
 // NewOptDateTime returns new OptDateTime with value set to v.
 func NewOptDateTime(v time.Time) OptDateTime {
 	return OptDateTime{
@@ -269,6 +699,52 @@ func (o OptDispositionCounts) Get() (v DispositionCounts, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDispositionCounts) Or(d DispositionCounts) DispositionCounts {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptFloat64 returns new OptFloat64 with value set to v.
+func NewOptFloat64(v float64) OptFloat64 {
+	return OptFloat64{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptFloat64 is optional float64.
+type OptFloat64 struct {
+	Value float64
+	Set   bool
+}
+
+// IsSet returns true if OptFloat64 was set.
+func (o OptFloat64) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptFloat64) Reset() {
+	var v float64
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptFloat64) SetTo(v float64) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptFloat64) Get() (v float64, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptFloat64) Or(d float64) float64 {
 	if v, ok := o.Get(); ok {
 		return v
 	}

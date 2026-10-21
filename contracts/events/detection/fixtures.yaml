@@ -1,0 +1,124 @@
+fixtures:
+- event: detection.signal.detected.v1
+  base:
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_code: APP-TENDER.A02
+    policy_id: pol_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    policy_version: 2
+    policy_generation: 3
+    template_id: TPL-TENDER-A02-SUPPLY
+    template_version: 0.3.0
+    subject:
+      type: domain_fact
+      id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      version: 1
+      part_id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    fact_type: tendering.bid_result
+    disposition: pursue_candidate
+    score: 75
+    needs_review: false
+    context_snapshot_version: 4
+    evaluated_at: '2026-10-19T08:00:00Z'
+    created_at: '2026-10-19T08:00:05Z'
+    backfill: false
+  cases:
+  - name: 排除带原因代码
+    valid: true
+    patch:
+    - op: replace
+      path: /disposition
+      value: excluded
+    - op: add
+      path: /reason_code
+      value: SELF_IS_WINNER
+  - name: 排除缺原因代码
+    valid: false
+    patch:
+    - op: replace
+      path: /disposition
+      value: excluded
+  - name: 无信号不发布
+    valid: false
+    patch:
+    - op: replace
+      path: /disposition
+      value: no_signal
+  - name: 缺策略代次
+    valid: false
+    patch:
+    - op: remove
+      path: /policy_generation
+  - name: 求值单位缺版本
+    valid: false
+    patch:
+    - op: remove
+      path: /subject/version
+- event: detection.signal.triaged.v1
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    actor: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    action: feedback
+    seen_content_version: 0
+    content_version: 0
+    disposition: review_candidate
+    signal_created_at: '2026-10-19T08:00:05Z'
+    parts:
+      feedback:
+        after:
+          result: irrelevant
+          reasons:
+          - CATEGORY_MISMATCH
+          based_on_content_version: 0
+        version: 1
+      status:
+        before: open
+        after: dismissed
+        version: 1
+    channel: web
+    occurred_at: '2026-10-19T09:00:00Z'
+  cases:
+  - name: 批量中的一项
+    valid: true
+    patch:
+    - op: replace
+      path: /operation_id
+      value: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1:sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - op: add
+      path: /batch_id
+      value: sgb_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 撤销引用原操作
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: undo
+    - op: add
+      path: /undo_of
+      value: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 撤销缺原操作
+    valid: false
+    patch:
+    - op: replace
+      path: /action
+      value: undo
+  - name: 没有改变的部分
+    valid: false
+    patch:
+    - op: replace
+      path: /parts
+      value: {}
+  - name: 操作者格式
+    valid: false
+    patch:
+    - op: replace
+      path: /actor
+      value: ' 王磊'
+  - name: 反馈说明不进入事件
+    valid: false
+    patch:
+    - op: add
+      path: /parts/feedback/after/note
+      value: 说明
