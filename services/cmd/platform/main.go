@@ -50,10 +50,14 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/assessment"
 	"github.com/superailabs/miaoqia/services/subsystems/channels"
 	"github.com/superailabs/miaoqia/services/subsystems/commerce"
+	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
+	commerceremote "github.com/superailabs/miaoqia/services/subsystems/commerce/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext"
 	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	ccremote "github.com/superailabs/miaoqia/services/subsystems/customercontext/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/detection"
+	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
+	detectionremote "github.com/superailabs/miaoqia/services/subsystems/detection/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway"
 	"github.com/superailabs/miaoqia/services/subsystems/governance"
 	"github.com/superailabs/miaoqia/services/subsystems/identity"
@@ -66,10 +70,10 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/search"
 )
 
-// modules 是本单元全部子系统；顺序即启动顺序（提供绑定的子系统在前）。
+// modules 是本单元全部子系统；顺序即启动顺序（提供绑定的子系统在前：gateway 的对象页依赖 commerce、customer-context 与 detection）。
 var modules = []func() runtime.Module{
-	identity.Module, governance.Module, commerce.Module, aiplatform.Module, gateway.Module,
-	customercontext.Module, detection.Module, research.Module, assessment.Module, pursuit.Module,
+	identity.Module, governance.Module, commerce.Module, aiplatform.Module,
+	customercontext.Module, detection.Module, gateway.Module, research.Module, assessment.Module, pursuit.Module,
 	learning.Module, channels.Module, search.Module, operations.Module,
 }
 
@@ -131,6 +135,23 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(ccapi.ActivePoliciesBinding, active)
+		return nil
+	}},
+	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看、经 detection 读取信号固定的求值输入（均以用户主体转交）
+	commerceapi.Name: {provide: func(u string, b *runtime.Bindings) error {
+		meter, err := commerceremote.NewMetering(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(commerceapi.MeteringBinding, meter)
+		return nil
+	}},
+	detectionapi.Name: {provide: func(u string, b *runtime.Bindings) error {
+		explainer, err := detectionremote.NewExplainer(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(detectionapi.ExplainerBinding, explainer)
 		return nil
 	}},
 }

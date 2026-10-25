@@ -1754,6 +1754,146 @@ func (s *MemberFeedback) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode implements json.Marshaler.
+func (s *ObjectSignalPage) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ObjectSignalPage) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("object_id")
+		e.Str(s.ObjectID)
+	}
+	{
+		e.FieldStart("signals")
+		e.ArrStart()
+		for _, elem := range s.Signals {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+	{
+		if s.NextCursor.Set {
+			e.FieldStart("next_cursor")
+			s.NextCursor.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfObjectSignalPage = [3]string{
+	0: "object_id",
+	1: "signals",
+	2: "next_cursor",
+}
+
+// Decode decodes ObjectSignalPage from json.
+func (s *ObjectSignalPage) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ObjectSignalPage to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "object_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.ObjectID = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"object_id\"")
+			}
+		case "signals":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				s.Signals = make([]SignalRow, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem SignalRow
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Signals = append(s.Signals, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"signals\"")
+			}
+		case "next_cursor":
+			if err := func() error {
+				s.NextCursor.Reset()
+				if err := s.NextCursor.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"next_cursor\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ObjectSignalPage")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfObjectSignalPage) {
+					name = jsonFieldsNameOfObjectSignalPage[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ObjectSignalPage) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ObjectSignalPage) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes BatchItemFailure as json.
 func (o OptBatchItemFailure) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -1818,6 +1958,39 @@ func (s OptBool) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptBool) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes Disposition as json.
+func (o OptDisposition) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes Disposition from json.
+func (o *OptDisposition) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptDisposition to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptDisposition) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptDisposition) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -2053,6 +2226,39 @@ func (s OptSignalRowAmount) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptSignalRowAmount) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SignalRowBuyer as json.
+func (o OptSignalRowBuyer) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes SignalRowBuyer from json.
+func (o *OptSignalRowBuyer) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSignalRowBuyer to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSignalRowBuyer) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSignalRowBuyer) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -4206,6 +4412,18 @@ func (s *SignalRow) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.ProcurementProjectID.Set {
+			e.FieldStart("procurement_project_id")
+			s.ProcurementProjectID.Encode(e)
+		}
+	}
+	{
+		if s.Buyer.Set {
+			e.FieldStart("buyer")
+			s.Buyer.Encode(e)
+		}
+	}
+	{
 		if s.Location.Set {
 			e.FieldStart("location")
 			s.Location.Encode(e)
@@ -4303,7 +4521,7 @@ func (s *SignalRow) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSignalRow = [27]string{
+var jsonFieldsNameOfSignalRow = [29]string{
 	0:  "id",
 	1:  "objective_id",
 	2:  "fact_type",
@@ -4311,26 +4529,28 @@ var jsonFieldsNameOfSignalRow = [27]string{
 	4:  "title",
 	5:  "winner",
 	6:  "amount",
-	7:  "location",
-	8:  "categories",
-	9:  "same_lot_count",
-	10: "disposition",
-	11: "manual_disposition",
-	12: "score",
-	13: "needs_review",
-	14: "reason_code",
-	15: "reasons",
-	16: "unknown_count",
-	17: "status",
-	18: "state_version",
-	19: "content_version",
-	20: "my_feedback",
-	21: "feedback_version",
-	22: "backfill",
-	23: "updated_recently",
-	24: "policy",
-	25: "evaluated_at",
-	26: "created_at",
+	7:  "procurement_project_id",
+	8:  "buyer",
+	9:  "location",
+	10: "categories",
+	11: "same_lot_count",
+	12: "disposition",
+	13: "manual_disposition",
+	14: "score",
+	15: "needs_review",
+	16: "reason_code",
+	17: "reasons",
+	18: "unknown_count",
+	19: "status",
+	20: "state_version",
+	21: "content_version",
+	22: "my_feedback",
+	23: "feedback_version",
+	24: "backfill",
+	25: "updated_recently",
+	26: "policy",
+	27: "evaluated_at",
+	28: "created_at",
 }
 
 // Decode decodes SignalRow from json.
@@ -4420,6 +4640,26 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"amount\"")
 			}
+		case "procurement_project_id":
+			if err := func() error {
+				s.ProcurementProjectID.Reset()
+				if err := s.ProcurementProjectID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"procurement_project_id\"")
+			}
+		case "buyer":
+			if err := func() error {
+				s.Buyer.Reset()
+				if err := s.Buyer.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"buyer\"")
+			}
 		case "location":
 			if err := func() error {
 				s.Location.Reset()
@@ -4431,7 +4671,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"location\"")
 			}
 		case "categories":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				s.Categories = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -4451,7 +4691,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"categories\"")
 			}
 		case "same_lot_count":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Int()
 				s.SameLotCount = int(v)
@@ -4463,7 +4703,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"same_lot_count\"")
 			}
 		case "disposition":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				if err := s.Disposition.Decode(d); err != nil {
 					return err
@@ -4483,7 +4723,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"manual_disposition\"")
 			}
 		case "score":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.Score = int(v)
@@ -4495,7 +4735,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"score\"")
 			}
 		case "needs_review":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := d.Bool()
 				s.NeedsReview = bool(v)
@@ -4517,7 +4757,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"reason_code\"")
 			}
 		case "reasons":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				s.Reasons = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -4537,7 +4777,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"reasons\"")
 			}
 		case "unknown_count":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.UnknownCount = int(v)
@@ -4549,7 +4789,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"unknown_count\"")
 			}
 		case "status":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 3
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -4559,7 +4799,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status\"")
 			}
 		case "state_version":
-			requiredBitSet[2] |= 1 << 2
+			requiredBitSet[2] |= 1 << 4
 			if err := func() error {
 				v, err := d.Int64()
 				s.StateVersion = int64(v)
@@ -4571,7 +4811,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"state_version\"")
 			}
 		case "content_version":
-			requiredBitSet[2] |= 1 << 3
+			requiredBitSet[2] |= 1 << 5
 			if err := func() error {
 				v, err := d.Int64()
 				s.ContentVersion = int64(v)
@@ -4593,7 +4833,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"my_feedback\"")
 			}
 		case "feedback_version":
-			requiredBitSet[2] |= 1 << 5
+			requiredBitSet[2] |= 1 << 7
 			if err := func() error {
 				v, err := d.Int64()
 				s.FeedbackVersion = int64(v)
@@ -4605,7 +4845,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"feedback_version\"")
 			}
 		case "backfill":
-			requiredBitSet[2] |= 1 << 6
+			requiredBitSet[3] |= 1 << 0
 			if err := func() error {
 				v, err := d.Bool()
 				s.Backfill = bool(v)
@@ -4617,7 +4857,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"backfill\"")
 			}
 		case "updated_recently":
-			requiredBitSet[2] |= 1 << 7
+			requiredBitSet[3] |= 1 << 1
 			if err := func() error {
 				v, err := d.Bool()
 				s.UpdatedRecently = bool(v)
@@ -4629,7 +4869,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"updated_recently\"")
 			}
 		case "policy":
-			requiredBitSet[3] |= 1 << 0
+			requiredBitSet[3] |= 1 << 2
 			if err := func() error {
 				if err := s.Policy.Decode(d); err != nil {
 					return err
@@ -4639,7 +4879,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"policy\"")
 			}
 		case "evaluated_at":
-			requiredBitSet[3] |= 1 << 1
+			requiredBitSet[3] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.EvaluatedAt = v
@@ -4651,7 +4891,7 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"evaluated_at\"")
 			}
 		case "created_at":
-			requiredBitSet[3] |= 1 << 2
+			requiredBitSet[3] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -4673,9 +4913,9 @@ func (s *SignalRow) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [4]uint8{
 		0b00011111,
-		0b10110111,
-		0b11101111,
-		0b00000111,
+		0b11011100,
+		0b10111110,
+		0b00011111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -4830,6 +5070,86 @@ func (s *SignalRowAmount) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *SignalRowAmount) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *SignalRowBuyer) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SignalRowBuyer) encodeFields(e *jx.Encoder) {
+	{
+		if s.OrgID.Set {
+			e.FieldStart("org_id")
+			s.OrgID.Encode(e)
+		}
+	}
+	{
+		if s.Name.Set {
+			e.FieldStart("name")
+			s.Name.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfSignalRowBuyer = [2]string{
+	0: "org_id",
+	1: "name",
+}
+
+// Decode decodes SignalRowBuyer from json.
+func (s *SignalRowBuyer) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SignalRowBuyer to nil")
+	}
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "org_id":
+			if err := func() error {
+				s.OrgID.Reset()
+				if err := s.OrgID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"org_id\"")
+			}
+		case "name":
+			if err := func() error {
+				s.Name.Reset()
+				if err := s.Name.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SignalRowBuyer")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SignalRowBuyer) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SignalRowBuyer) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

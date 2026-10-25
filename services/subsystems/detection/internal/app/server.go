@@ -103,6 +103,25 @@ func (s *Server) SelectSignals(ctx context.Context, p det.SelectSignalsParams) (
 	return convert[det.SignalSelection](sel)
 }
 
+func (s *Server) ListObjectSignals(ctx context.Context, p det.ListObjectSignalsParams) (*det.ObjectSignalPage, error) {
+	page, err := s.Service.ListObjectSignals(ctx, p.ObjectID, string(p.Role.Or(det.ListObjectSignalsRoleAny)), p.Limit.Or(objectPageSize), p.Cursor.Or(""))
+	if err != nil {
+		return nil, err
+	}
+	return convert[det.ObjectSignalPage](page)
+}
+
+// Explainer 是 api.SignalExplainer 的本地实现（gateway 对象页读取信号固定的求值输入；授权与 explainSignal 相同）。
+type Explainer struct{ Service *Service }
+
+func (e Explainer) Explain(ctx context.Context, signalID string) (*api.Explanation, error) {
+	out, err := e.Service.ExplainSignal(ctx, signalID)
+	if err != nil {
+		return nil, err
+	}
+	return convert[api.Explanation](out)
+}
+
 func (s *Server) GetSignal(ctx context.Context, p det.GetSignalParams) (*det.SignalDetail, error) {
 	d, err := s.Service.GetSignal(ctx, p.SignalID)
 	if err != nil {

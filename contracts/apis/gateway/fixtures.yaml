@@ -1,0 +1,321 @@
+fixtures:
+- schema: Problem
+  base:
+    type: https://errors.miaoqia.com/entitlement.coverage_insufficient
+    title: entitlement.coverage_insufficient
+    status: 403
+    code: entitlement.coverage_insufficient
+    object:
+      id: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      type: procurement_project
+      name: 某市政管网改造工程
+  cases:
+  - name: 额度用完带已用量与重置时间
+    valid: true
+    instance:
+      type: https://errors.miaoqia.com/quota.exhausted
+      title: quota.exhausted
+      status: 429
+      code: quota.exhausted
+      used: 2000
+      limit: 2000
+      resets_at: '2026-10-25T16:00:00Z'
+  - name: 覆盖不足不返回内容
+    valid: false
+    patch:
+    - op: add
+      path: /sections
+      value: []
+- schema: View
+  base: signal_time
+  cases:
+  - name: 未知视角
+    valid: false
+    instance: as_of
+- schema: ObjectType
+  base: organization
+  cases:
+  - name: 不提供自然人对象
+    valid: false
+    instance: person
+- schema: ObjectName
+  base:
+    id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    type: organization
+    name: 某建设集团有限公司
+  cases:
+  - name: 缺名称
+    valid: false
+    patch:
+    - op: remove
+      path: /name
+- schema: MergeEvent
+  base:
+    state: merged
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    at: '2026-10-18T01:30:00Z'
+    basis: 统一社会信用代码一致
+  cases:
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: split
+- schema: ObjectRef
+  base:
+    id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    requested_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    type: organization
+    name: 某建设集团有限公司
+    merged_from:
+    - state: merged
+      org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+      at: '2026-10-18T01:30:00Z'
+  cases:
+  - name: 历史视角另行提示当前合并
+    valid: true
+    patch:
+    - op: add
+      path: /current_merge
+      value:
+        state: reverted
+        org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        at: '2026-10-19T01:30:00Z'
+  - name: 公告不是对象页
+    valid: false
+    patch:
+    - op: replace
+      path: /id
+      value: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: PinnedItem
+  base:
+    name: fact
+    id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 2
+  cases:
+  - name: 版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+- schema: Basis
+  base:
+    view: signal_time
+    recorded_cutoff: '2026-10-16T14:10:00Z'
+    pinned:
+    - name: fact
+      id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      version: 2
+  cases:
+  - name: 当前视角
+    valid: true
+    instance:
+      view: current
+  - name: 缺视角
+    valid: false
+    patch:
+    - op: remove
+      path: /view
+- schema: SignalContext
+  base:
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    disposition: pursue_candidate
+    subject_id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    subject_version: 2
+    part_id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    evaluated_at: '2026-10-16T14:10:00Z'
+    created_at: '2026-10-16T14:11:00Z'
+    context_snapshot_version: 4
+    snapshot_available: true
+  cases:
+  - name: 缺生成时间（求值时间与生成时间须分别标注）
+    valid: false
+    patch:
+    - op: remove
+      path: /created_at
+- schema: MeterReceipt
+  base:
+    kind: object_view
+    outcome: deferred
+  cases:
+  - name: 已计过带用量
+    valid: true
+    instance:
+      kind: evidence_view
+      outcome: unchanged
+      metering_day: '2026-10-25'
+      used: 3
+      limit: 2000
+      resets_at: '2026-10-25T16:00:00Z'
+  - name: 未知结果
+    valid: false
+    patch:
+    - op: replace
+      path: /outcome
+      value: skipped
+- schema: Watermark
+  base:
+    tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    member: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    issued_at: '2026-10-25T02:10:00Z'
+  cases:
+  - name: 缺成员
+    valid: false
+    patch:
+    - op: remove
+      path: /member
+- schema: SectionName
+  base: won_history
+  cases:
+  - name: 不提供研究报告分区
+    valid: false
+    instance: research
+- schema: SectionStatus
+  base: history_unavailable
+  cases:
+  - name: 未知不显示为空
+    valid: false
+    instance: none
+- schema: ObjectPage
+  base:
+    object:
+      id: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      requested_id: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      type: procurement_project
+      name: 某市政管网改造工程
+    basis:
+      view: current
+    sections:
+    - summary
+    - lots
+    - parent_projects
+    - notice_timeline
+    meter:
+      kind: object_view
+      outcome: counted
+      metering_day: '2026-10-25'
+      used: 1
+      limit: 2000
+      resets_at: '2026-10-25T16:00:00Z'
+    watermark:
+      tenant_id: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      member: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      issued_at: '2026-10-25T02:10:00Z'
+  cases:
+  - name: 带信号上下文
+    valid: true
+    patch:
+    - op: add
+      path: /signal_context
+      value:
+        signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        disposition: pursue_candidate
+        subject_id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        subject_version: 2
+        evaluated_at: '2026-10-16T14:10:00Z'
+        created_at: '2026-10-16T14:11:00Z'
+        context_snapshot_version: 4
+        snapshot_available: true
+  - name: 缺水印
+    valid: false
+    patch:
+    - op: remove
+      path: /watermark
+- schema: ObjectSection
+  base:
+    object_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    section: won_history
+    status: ok
+    basis:
+      view: current
+    as_of: '2026-10-17T03:00:00Z'
+    time_axis: source_published
+    coverage_start: '2024-01-01'
+    items:
+    - project: 某市政管网改造工程
+      amount:
+        state: value
+        value: '18000000'
+        kind: award
+    next_cursor: eyJvIjoyMH0
+    meter:
+      kind: object_view
+      outcome: unchanged
+  cases:
+  - name: 历史不可用
+    valid: true
+    instance:
+      object_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      section: statistics
+      status: history_unavailable
+      reason_code: history_not_supported
+      basis:
+        view: signal_time
+        recorded_cutoff: '2026-10-16T14:10:00Z'
+      items: []
+  - name: 每页至多20条
+    valid: false
+    patch:
+    - op: replace
+      path: /items
+      value: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]
+- schema: DisplayLevel
+  base: citation_only
+  cases:
+  - name: 未知级别
+    valid: false
+    instance: partial
+- schema: EvidenceSource
+  base:
+    name: 某省公共资源交易平台
+    title: 某市政管网改造工程中标结果公告
+    url: https://example.invalid/notice/1
+    reachable: false
+    unreachable_since: '2026-10-17T00:00:00Z'
+  cases:
+  - name: 链接不是URI
+    valid: false
+    patch:
+    - op: replace
+      path: /url
+      value: 不是链接
+- schema: EvidenceView
+  base:
+    evidence_id: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    kind: document
+    display_level: full_text
+    object_id: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    source:
+      name: 某省公共资源交易平台
+      reachable: true
+    snapshot_saved_at: '2026-10-16T13:05:00Z'
+    metadata_only: false
+    retracted: false
+    snippet: 中标金额：壹仟捌佰万元整
+    context: 第一标包 中标人：某建设集团有限公司 中标金额：壹仟捌佰万元整
+    locator: 第2页第3段
+    meter:
+      kind: evidence_view
+      outcome: counted
+  cases:
+  - name: 不展示时带原因
+    valid: true
+    instance:
+      evidence_id: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      kind: record
+      display_level: none
+      reason_code: rights.restricted
+      source:
+        url: https://example.invalid/notice/1
+      metadata_only: true
+      retracted: false
+      meter:
+        kind: evidence_view
+        outcome: counted
+  - name: 缺计量
+    valid: false
+    patch:
+    - op: remove
+      path: /meter

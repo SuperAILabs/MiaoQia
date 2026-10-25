@@ -64,13 +64,19 @@
 
 **实现状况（PRD 第3段信号收件箱与反馈的服务端切片，契约 [`contracts/apis/detection/openapi.yaml`](../../../contracts/apis/detection/openapi.yaml) 0.1.0 草案）**：
 
-- **接口**：`ListSignals`（`GET /v1/detection/objectives/{objectiveID}/signals`）、`SelectSignals`（`…/signal-selection`，“全部符合筛选”的固定清单）、`GetSignal`、`ExplainSignal`、`ListSignalTriage`（处理记录，每页 50 条）、`TriageSignal`、`TriageSignals` / `GetSignalBatch` / `CancelSignalBatch` / `RetrySignalBatchItems` 与 `UndoSignalTriage`。`ListSignalsForObject`、简报取数、关注、`RunBackfill`、`DryRunPolicy` 与 `DiagnoseMiss` 未实现；
+- **接口**：`ListSignals`（`GET /v1/detection/objectives/{objectiveID}/signals`）、`SelectSignals`（`…/signal-selection`，“全部符合筛选”的固定清单）、`GetSignal`、`ExplainSignal`、`ListSignalTriage`（处理记录，每页 50 条）、`TriageSignal`、`TriageSignals` / `GetSignalBatch` / `CancelSignalBatch` / `RetrySignalBatchItems` 与 `UndoSignalTriage`。`ListSignalsForObject` 见下文第4段的实现状况。简报取数、关注、`RunBackfill`、`DryRunPolicy` 与 `DiagnoseMiss` 未实现；
 - **授权**：每个用户入口都经 customer-context 的 `ObjectiveAccess` 绑定（远程时为内部接口 `GET /internal/v1/customer-context/objectives/{objectiveID}/access`）按目标所有者的口径判断 `can_view_signals` 与 `can_feedback`（identity 模型：目标的参与人、决策者与研究分析者可看；决策者、研究分析者以及身为参与人的业务开拓者可反馈，[identity 第7.2节](identity.md#72-权限矩阵)）。移除参与人在 customer-context 提交后立即撤权，即使 identity 的参与关系同步失败；授权服务或 customer-context 不可用时 503，不当作无权限。收件箱：不能查看目标与目标不存在同为 404 `objective_not_found`，能查看目标而不能看信号（不是参与人的管理员）为 403；单条信号：不存在、他租户与无权查看同为 404 `signal_not_found`，不返回内容。处理提交时实时判断，批量与撤销逐项判断；
 - **收件箱**：一次只看一个目标；分栏、处置、事实类型、区域（含下级）、品类（含下级）、金额区间（未公布的不进入金额筛选）、发现时间、本人反馈与标记（回填、7 天内实质更新、有未知项）筛选；按排序分、发现时间或金额（未公布的在后）键集分页，每页至多 50 条，游标绑定目标、分栏、筛选与排序（不一致 400 `invalid_cursor`）。行内带同标包中标信号数与至多两条为真的规则说明；金额未公布时不出现金额。`SelectSignals` 超过 200 条时只返回数量与 `exceeds_limit`，不返回清单。详情的成员反馈、更新与处理记录各有上限并标明截断，处理记录全量经 `ListSignalTriage` 翻页；
 - **处理与反馈**：按第 12 节的部分判断（反馈、处理状态、人工处置）实现无变化、冲突（409 带当前值）、`signal_updated`、`signal_closed` 与 `not_applicable`；反馈原因取自应用领域包（`packs/application_domains/*/feedback/*.yaml`，按目标代码），不相关与排除有误至少一个原因，标为须说明的原因须写说明，调整处置须写原因（422 `invalid_feedback`）。操作结果（成功、无变化、确定失败）固定在操作标识上（`det_triage_ops`，追加式）：同一操作标识的新尝试直接返回已固定的结果，用于不同请求或由他人使用时 409 `operation_conflict`；尝试按（调用者、接口、幂等键）保存（`det_triage_attempts`），同键重发返回该尝试的结果，包括 503 等暂时失败，同键不同请求 409 `idempotency_conflict`；暂时失败不固定在操作标识上，新键同一操作标识可再次尝试。每个改变了部分的操作发布 `detection.signal.triaged.v1` 并写一条审计（资源为信号、操作、内容版本与状态版本的引用；原因与说明只留在处理记录）；
 - **批量**：请求内逐项同步执行（不经工作流），作业以数据库时钟的租约（缺省 2 分钟，每项前续租并检查取消）防止两个执行者同时处理；执行者中断而租约过期、仍有未处理项时为 `interrupted`，`RetrySignalBatchItems` 只为暂时失败项与未处理项发起新的尝试，已提交与确定失败的项不在其中。只有发起人可读、取消、继续（其他人与不存在同为 404）。批量“不相关”缺省同时忽略；
 - **撤销**：撤销是新的操作，每项的操作标识为“撤销操作标识:信号标识”。按第 12 节逐部分补偿并核对版本；整批撤销的范围是已提交且至少一个部分改变的项（含“状态无变化，反馈已记录”的项）。撤销调整处置恢复原人工处置，但不恢复原调整原因（缺口）；
 - **未实现**：重新求值与撤回关闭的生产者（`SignalUpdate` 与 `closed` 的写入方随视图触发与撤回识别实现，测试以拥有者账号写入）、`converted`（随推进）、回填执行、`signal.updated` 事件、来源中断与展示级别、漏报（随 learning 第11节）。
+
+**实现状况（PRD 第4段对象页的服务端切片，契约 0.2.0 草案）**：
+
+- **`ListSignalsForObject`**：`GET /v1/detection/object-signals?object_id=…`，对象为采购项目（`pp_`）、项目（`prj_`，经 `api.ProjectLinks` 端口按归属边展开到采购项目，读取失败 503 `project_links_unavailable`）或组织（`org_`，`role` 为 `winner` / `buyer` / `any`，按信号视图中的中标方与采购人）。先取命中的目标，再逐目标经 `ObjectiveAccess` 判断 `can_view_signals`，只返回可看目标的信号；判断失败时 503，不当作无权限。每页至多 20 条，按（生成时间、标识）倒序键集分页，游标绑定对象、角色与调用者。信号写入时从结果视图记录采购项目与采购人（`det_signals.procurement_project_id`、`buyer_org_id`、`buyer_name`，迁移 00002），`SignalRow` 追加这两个可选字段；之前写入的信号没有这两列，不出现在按采购项目或采购人的查询中（中标方照常）；
+- **信号解释的内部绑定**：`SignalExplainer`（本地为 `ExplainSignal` 的同一实现，远程为内部接口 `GET /internal/v1/detection/signals/{signalID}/explanation`）供 gateway 读取固定的求值输入，按用户主体判断，与公共接口的结果一致；
+- **缺省**：归属边端口的生产适配器（entity-graph 的 `part_of`）未接入，`detection.Module()` 使用 `api.NotWired`，项目页的信号分区 503；测试使用 `api/facttest`。
 
 ## 6. 事件
 

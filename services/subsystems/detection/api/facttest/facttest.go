@@ -29,6 +29,7 @@ var ItemDomains = map[string]string{
 type Store struct {
 	mu       sync.Mutex
 	units    map[string][]api.Unit
+	links    map[string][]string
 	tenants  []string
 	fail     bool
 	requests int
@@ -36,7 +37,24 @@ type Store struct {
 
 // New 返回空的夹具；tenants 是订阅反查返回的租户（夹具不按事实筛选租户，进入租户处理后仍按生效策略判断）。
 func New(tenants ...string) *Store {
-	return &Store{units: map[string][]api.Unit{}, tenants: tenants}
+	return &Store{units: map[string][]api.Unit{}, links: map[string][]string{}, tenants: tenants}
+}
+
+// Link 登记项目 prj_ 的归属采购项目（夹具的 part_of 边，全部视为已确认）。
+func (s *Store) Link(project string, procurementProjects ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.links[project] = append([]string(nil), procurementProjects...)
+}
+
+// ProcurementProjects 实现 api.ProjectLinks。
+func (s *Store) ProcurementProjects(_ context.Context, project string) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.fail {
+		return nil, ErrInjected
+	}
+	return append([]string(nil), s.links[project]...), nil
 }
 
 func key(id string, version int64) string { return id + "@" + strconv.FormatInt(version, 10) }
@@ -93,6 +111,8 @@ func (s *Store) Tenants(context.Context, string, api.FactRef) ([]string, error) 
 // Bid 描述一条夹具中标结果（tendering.bid_result 的求值单位：结果公告 ntc_ 中的一条结果 bdr_）。
 type Bid struct {
 	Notice, Result, Lot string // ntc_、bdr_ 与标包键
+	Project             string // 所在的采购项目 pp_（可为空）
+	Buyer, BuyerName    string // 采购人 org_（可为空）
 	Version             int64  // 公告版本，缺省 1
 	Title               string
 	Winner, WinnerName  string // org_；Winner 为空时视图中没有中标方
@@ -116,7 +136,7 @@ func BidResult(b Bid) api.Unit {
 		fields["result_type"] = "candidate_published"
 	}
 	display := api.Display{Title: b.Title, WinnerOrgID: b.Winner, WinnerName: b.WinnerName, Location: b.Location, LotKey: b.Lot,
-		Categories: append([]string{}, b.Categories...)}
+		Categories: append([]string{}, b.Categories...), ProcurementProjectID: b.Project, BuyerOrgID: b.Buyer, BuyerName: b.BuyerName}
 	if b.Categories != nil {
 		cats := []any{}
 		for _, c := range b.Categories {

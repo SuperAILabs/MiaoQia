@@ -1,0 +1,26 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-25T12:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  PRD 第4段对象页与证据的服务端切片没有修改 C4a 冻结契约：contracts/identifiers.yaml 不变（仍为 1.6.0；对象页使用既有前缀
+  pp、prj、org、ev，计量操作标识 mtr:<sha256> 不是类型化标识，不登记前缀），identity 的 OpenAPI、事件契约与 OpenFGA 模型不变
+  （对象页的成员检查复用 tenant#can_search_public，信号分区复用目标的 can_view_signals）。
+  mqc compat 对 origin/main 判定 breaking 0：gateway.view_meter.deferred.v1 为新增事件类型（计量服务不可用时放行后的补记，
+  commerce 消费），detection 新增 GET /v1/detection/object-signals（对象页的本租户信号分区），SignalRow 追加可选字段
+  procurement_project_id 与 buyer。detection 的 OpenAPI（0.1.0 → 0.2.0）、commerce 的 OpenAPI（新文件 0.1.0，内部计量接口）、
+  gateway 的 OpenAPI（新文件 0.1.0，对象页与证据面板 BFF）与 gateway 的事件（新文件 0.1.0）是草案，不在 C4a 冻结范围，只记录。
+  这里重新登记切片结束时冻结文件的内容（与修订 8 相同），原冻结记录与修订 1–8 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.6.0
+  sha256: 37ecae6166a08e4d9bfdafda2b5b812f3b464ccb6a56804138eef44eef4d8881
+verification:
+  base: c1a5f6d
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0、additive 6、doc 0：gateway 计量补记事件、detection 对象信号路径与 SignalRow 的两个可选字段均为追加）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；公共数据、证据与权益覆盖为内存夹具 publictest，生产适配器未接入）

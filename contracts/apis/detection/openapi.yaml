@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: detection 接口
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     信号收件箱、命中理由与反馈（PRD 第3段，docs/01-product/prd/03-signal-inbox-feedback.md；规格见
     docs/03-architecture/subsystems/detection.md 第5、12节）。草案：随第3段首个实现切片提交，未冻结。租户、cell 与调用主体来自
@@ -12,6 +12,8 @@ info:
     写操作区分操作与尝试（F9）：operation_id 是一次用户意图的固定标识（批量中每项为“批次标识:信号标识”），同一操作最多提交一次，
     提交后的结果（成功、无变化或确定失败）固定在操作标识上；Idempotency-Key 是一次尝试的键，同键重发返回该尝试的结果（含失败），
     暂时失败（503，未提交）只是该尝试的结果，用新键、同一操作标识重试。
+    0.2.0（PRD 第4段对象页）：追加 listObjectSignals（对象页的本租户信号分区）与 SignalRow 的 procurement_project_id、buyer；
+    explainSignal 另经内部端口（/internal 前缀）供 gateway 的对象页读取信号固定的求值输入，以请求上下文中的用户主体判断。
 servers:
 - url: /internal
 paths:
@@ -203,6 +205,62 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SignalSelection'
+        default: *problem
+  /v1/detection/object-signals:
+    get:
+      operationId: listObjectSignals
+      summary: 对象页的本租户信号（ListSignalsForObject）
+      description: >-
+        对象页的本租户信号分区（PRD 第4段 F3–F5）：按采购项目（pp_，信号求值单位所在的采购项目）、项目（prj_，经当前有效且已确认或
+        置信度不低于 0.9 的 part_of 归属边展开到采购项目，归属边由 entity-graph 提供；未接入时 503 project_links_unavailable）或组织
+        （org_，信号视图中的中标方或采购人，role 筛选）列出本租户信号，跨目标按发现时间（信号写入时间）新到旧排列。只返回用户有
+        can_view_signals 的目标的信号：每个目标经其所有者 customer-context 的 ObjectiveAccess 按当前口径判断（移除参与人立即撤权），
+        不能查看的目标的信号不出现，也不提示其存在；授权或 customer-context 不可用时 503（失败关闭）。租户来自请求上下文，
+        其他租户的信号不出现。游标分页，每页至多 20 条；游标绑定查看者、对象与角色，不一致时 400 invalid_cursor。
+        信号记录的中标方不因之后的合并改写；按组织查询时匹配信号记录中的组织标识。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: object_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+      - name: role
+        in: query
+        required: false
+        description: 只用于组织：winner 作为中标方；buyer 作为采购人；any 两者之一
+        schema:
+          type: string
+          enum:
+          - any
+          - winner
+          - buyer
+          default: any
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 20
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: 一页本租户信号
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectSignalPage'
         default: *problem
   /v1/detection/signals/{signalID}:
     get:
@@ -665,6 +723,22 @@ components:
             currency:
               type: string
               pattern: ^[A-Z]{3}$
+        procurement_project_id:
+          type: string
+          pattern: ^pp_[0-9A-HJKMNP-TV-Z]{26}$
+          description: 求值单位所在的采购项目（0.2.0 起记录；之前生成的信号不出现）
+        buyer:
+          type: object
+          additionalProperties: false
+          description: 采购人（来自信号视图；0.2.0 起记录）
+          properties:
+            org_id:
+              type: string
+              pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+            name:
+              type: string
+              minLength: 1
+              maxLength: 200
         location:
           type: string
           pattern: ^[0-9]{6}$
@@ -751,6 +825,26 @@ components:
           maxLength: 512
         viewer_can_feedback:
           type: boolean
+    ObjectSignalPage:
+      type: object
+      additionalProperties: false
+      description: 对象页的一页本租户信号（按发现时间新到旧；时间轴为信号写入时间）
+      required:
+      - object_id
+      - signals
+      properties:
+        object_id:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+        signals:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/SignalRow'
+        next_cursor:
+          type: string
+          minLength: 1
+          maxLength: 512
     SignalSelection:
       type: object
       additionalProperties: false

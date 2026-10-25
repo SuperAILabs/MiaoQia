@@ -1,0 +1,84 @@
+fixtures:
+- schema: Problem
+  base:
+    type: https://errors.miaoqia.com/quota.exhausted
+    title: quota.exhausted
+    status: 429
+    code: quota.exhausted
+    used: 2000
+    limit: 2000
+    resets_at: '2026-10-25T16:00:00Z'
+  cases:
+  - name: 非错误HTTP状态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: 200
+  - name: 不提示升级套餐（无升级字段）
+    valid: false
+    patch:
+    - op: add
+      path: /upgrade_url
+      value: https://example.invalid/upgrade
+- schema: ViewKind
+  base: evidence_view
+  cases:
+  - name: 未知种类
+    valid: false
+    instance: export
+- schema: ViewMeterRequest
+  base:
+    kind: object_view
+    target: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 证据查看
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: evidence_view
+    - op: replace
+      path: /target
+      value: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不接受请求体中的租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 公告不是计量对象
+    valid: false
+    patch:
+    - op: replace
+      path: /target
+      value: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: ViewMeterReceipt
+  base:
+    meter_key: mtr:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    kind: object_view
+    target: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    metering_day: '2026-10-25'
+    time_zone: Asia/Shanghai
+    outcome: counted
+    used: 1
+    limit: 2000
+    resets_at: '2026-10-25T16:00:00Z'
+  cases:
+  - name: 已计过
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: unchanged
+  - name: 未知结果
+    valid: false
+    patch:
+    - op: replace
+      path: /outcome
+      value: deferred
+  - name: 缺计量日
+    valid: false
+    patch:
+    - op: remove
+      path: /metering_day

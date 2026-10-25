@@ -11,19 +11,19 @@ import (
 )
 
 var (
-	rn20AllowedHeaders = map[string]string{
+	rn22AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn3AllowedHeaders = map[string]string{
 		"POST": "Idempotency-Key",
 	}
-	rn15AllowedHeaders = map[string]string{
+	rn17AllowedHeaders = map[string]string{
 		"POST": "Idempotency-Key",
 	}
-	rn18AllowedHeaders = map[string]string{
+	rn20AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn21AllowedHeaders = map[string]string{
+	rn23AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 )
@@ -79,42 +79,67 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			switch elem[0] {
-			case 'o': // Prefix: "objectives/"
+			case 'o': // Prefix: "object"
 
-				if l := len("objectives/"); len(elem) >= l && elem[0:l] == "objectives/" {
+				if l := len("object"); len(elem) >= l && elem[0:l] == "object" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
-				// Param: "objectiveID"
-				// Match until "/"
-				idx := strings.IndexByte(elem, '/')
-				if idx < 0 {
-					idx = len(elem)
-				}
-				args[0] = elem[:idx]
-				elem = elem[idx:]
-
 				if len(elem) == 0 {
 					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/signal"
+				case '-': // Prefix: "-signals"
 
-					if l := len("/signal"); len(elem) >= l && elem[0:l] == "/signal" {
+					if l := len("-signals"); len(elem) >= l && elem[0:l] == "-signals" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleListObjectSignalsRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
+				case 'i': // Prefix: "ives/"
+
+					if l := len("ives/"); len(elem) >= l && elem[0:l] == "ives/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "objectiveID"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
 						break
 					}
 					switch elem[0] {
-					case '-': // Prefix: "-"
+					case '/': // Prefix: "/signal"
 
-						if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
+						if l := len("/signal"); len(elem) >= l && elem[0:l] == "/signal" {
 							elem = elem[l:]
 						} else {
 							break
@@ -124,36 +149,77 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							break
 						}
 						switch elem[0] {
-						case 'b': // Prefix: "batches"
+						case '-': // Prefix: "-"
 
-							if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
+							if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
 							if len(elem) == 0 {
-								// Leaf node.
-								switch r.Method {
-								case "POST":
-									s.handleTriageSignalsRequest([1]string{
-										args[0],
-									}, elemIsEscaped, w, r)
-								default:
-									s.notAllowed(w, r, notAllowedParams{
-										allowedMethods: "POST",
-										allowedHeaders: rn20AllowedHeaders,
-										acceptPost:     "application/json",
-										acceptPatch:    "",
-									})
+								break
+							}
+							switch elem[0] {
+							case 'b': // Prefix: "batches"
+
+								if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
+									elem = elem[l:]
+								} else {
+									break
 								}
 
-								return
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleTriageSignalsRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "POST",
+											allowedHeaders: rn22AllowedHeaders,
+											acceptPost:     "application/json",
+											acceptPatch:    "",
+										})
+									}
+
+									return
+								}
+
+							case 's': // Prefix: "selection"
+
+								if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "GET":
+										s.handleSelectSignalsRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "GET",
+											allowedHeaders: nil,
+											acceptPost:     "",
+											acceptPatch:    "",
+										})
+									}
+
+									return
+								}
+
 							}
 
-						case 's': // Prefix: "selection"
+						case 's': // Prefix: "s"
 
-							if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
+							if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 								elem = elem[l:]
 							} else {
 								break
@@ -163,7 +229,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								// Leaf node.
 								switch r.Method {
 								case "GET":
-									s.handleSelectSignalsRequest([1]string{
+									s.handleListSignalsRequest([1]string{
 										args[0],
 									}, elemIsEscaped, w, r)
 								default:
@@ -178,33 +244,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								return
 							}
 
-						}
-
-					case 's': // Prefix: "s"
-
-						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "GET":
-								s.handleListSignalsRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "GET",
-									allowedHeaders: nil,
-									acceptPost:     "",
-									acceptPatch:    "",
-								})
-							}
-
-							return
 						}
 
 					}
@@ -315,7 +354,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "POST",
-										allowedHeaders: rn15AllowedHeaders,
+										allowedHeaders: rn17AllowedHeaders,
 										acceptPost:     "",
 										acceptPatch:    "",
 									})
@@ -419,7 +458,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "POST",
-										allowedHeaders: rn18AllowedHeaders,
+										allowedHeaders: rn20AllowedHeaders,
 										acceptPost:     "application/json",
 										acceptPatch:    "",
 									})
@@ -479,7 +518,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "POST",
-							allowedHeaders: rn21AllowedHeaders,
+							allowedHeaders: rn23AllowedHeaders,
 							acceptPost:     "application/json",
 							acceptPatch:    "",
 						})
@@ -588,42 +627,67 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				break
 			}
 			switch elem[0] {
-			case 'o': // Prefix: "objectives/"
+			case 'o': // Prefix: "object"
 
-				if l := len("objectives/"); len(elem) >= l && elem[0:l] == "objectives/" {
+				if l := len("object"); len(elem) >= l && elem[0:l] == "object" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
-				// Param: "objectiveID"
-				// Match until "/"
-				idx := strings.IndexByte(elem, '/')
-				if idx < 0 {
-					idx = len(elem)
-				}
-				args[0] = elem[:idx]
-				elem = elem[idx:]
-
 				if len(elem) == 0 {
 					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/signal"
+				case '-': // Prefix: "-signals"
 
-					if l := len("/signal"); len(elem) >= l && elem[0:l] == "/signal" {
+					if l := len("-signals"); len(elem) >= l && elem[0:l] == "-signals" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = ListObjectSignalsOperation
+							r.summary = "对象页的本租户信号（ListSignalsForObject）"
+							r.operationID = "listObjectSignals"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/detection/object-signals"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+				case 'i': // Prefix: "ives/"
+
+					if l := len("ives/"); len(elem) >= l && elem[0:l] == "ives/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "objectiveID"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
 						break
 					}
 					switch elem[0] {
-					case '-': // Prefix: "-"
+					case '/': // Prefix: "/signal"
 
-						if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
+						if l := len("/signal"); len(elem) >= l && elem[0:l] == "/signal" {
 							elem = elem[l:]
 						} else {
 							break
@@ -633,34 +697,73 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							break
 						}
 						switch elem[0] {
-						case 'b': // Prefix: "batches"
+						case '-': // Prefix: "-"
 
-							if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
+							if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
 							if len(elem) == 0 {
-								// Leaf node.
-								switch method {
-								case "POST":
-									r.name = TriageSignalsOperation
-									r.summary = "批量反馈与忽略（TriageSignals）"
-									r.operationID = "triageSignals"
-									r.operationGroup = ""
-									r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-batches"
-									r.args = args
-									r.count = 1
-									return r, true
-								default:
-									return
+								break
+							}
+							switch elem[0] {
+							case 'b': // Prefix: "batches"
+
+								if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
+									elem = elem[l:]
+								} else {
+									break
 								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = TriageSignalsOperation
+										r.summary = "批量反馈与忽略（TriageSignals）"
+										r.operationID = "triageSignals"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-batches"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							case 's': // Prefix: "selection"
+
+								if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "GET":
+										r.name = SelectSignalsOperation
+										r.summary = "固定“全部符合筛选”的选中清单"
+										r.operationID = "selectSignals"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-selection"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
 							}
 
-						case 's': // Prefix: "selection"
+						case 's': // Prefix: "s"
 
-							if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
+							if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 								elem = elem[l:]
 							} else {
 								break
@@ -670,11 +773,11 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								// Leaf node.
 								switch method {
 								case "GET":
-									r.name = SelectSignalsOperation
-									r.summary = "固定“全部符合筛选”的选中清单"
-									r.operationID = "selectSignals"
+									r.name = ListSignalsOperation
+									r.summary = "收件箱（ListSignals）"
+									r.operationID = "listSignals"
 									r.operationGroup = ""
-									r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-selection"
+									r.pathPattern = "/v1/detection/objectives/{objectiveID}/signals"
 									r.args = args
 									r.count = 1
 									return r, true
@@ -683,31 +786,6 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								}
 							}
 
-						}
-
-					case 's': // Prefix: "s"
-
-						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "GET":
-								r.name = ListSignalsOperation
-								r.summary = "收件箱（ListSignals）"
-								r.operationID = "listSignals"
-								r.operationGroup = ""
-								r.pathPattern = "/v1/detection/objectives/{objectiveID}/signals"
-								r.args = args
-								r.count = 1
-								return r, true
-							default:
-								return
-							}
 						}
 
 					}

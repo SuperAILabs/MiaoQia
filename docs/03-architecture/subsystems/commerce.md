@@ -76,3 +76,13 @@ M1最小模型网关与任务执行器记录技术用量，M2的gateway/search�
 | 服务委托的妙洽分析师 | 不计入 | 托管服务按工时计量（第 2 节） |
 
 调整生效：增加席位立即生效；减少席位在当前计费周期结束时生效。达到上限时阻止新的邀请接受与新增服务账号，不自动停用已有成员；降级后超出的部分由租户管理员选择停用对象，平台不替租户挑选。具体计价档位仍由商务确定（[商业模式第 4 节](../../01-product/02-business-model.md#4-计价结构)）。
+
+## 10. 查看计量的实现状况
+
+**实现状况（PRD 第4段 F9，契约 [`contracts/apis/commerce/openapi.yaml`](../../../contracts/apis/commerce/openapi.yaml) 0.1.0 草案）**：
+
+- **接口**：内部接口 `POST /internal/v1/commerce/view-meters`（`RecordView`，经 `ViewMetering` 绑定由 gateway 以用户主体调用），请求为查看类型（`object_view` / `evidence_view`）与被查看的对象或证据，必须带 `Idempotency-Key`（尝试键）。回执给出计量操作标识（`mtr:` 加（租户、用户、类型、对象、计量日）的 SHA-256）、计量日与时区、`counted` / `unchanged`、已用量、额度与重置时间；
+- **去重与额度**：同一尝试以咨询锁串行，同一租户、类型与计量日的用量行以行锁串行，同一事务内依次：按（调用者、尝试键）重放已保存的尝试结果（含 429；同键不同请求 409 `idempotency_conflict`）→ 锁定当日用量 → 计量操作已存在为 `unchanged` → 用量达到额度为 429 `quota.exhausted`（带已用量、额度与重置时间，保存该尝试，不写计量）→ 否则写入计量并加一。额度为每租户每计量日每类型，权益接入前来自配置 `MIAOQIA_COMMERCE_OBJECT_VIEW_DAILY_QUOTA` 与 `MIAOQIA_COMMERCE_EVIDENCE_VIEW_DAILY_QUOTA`（缺省 2000）；计量日按 `MIAOQIA_COMMERCE_METERING_TZ`（缺省 Asia/Shanghai；租户时区随租户设置接入）；
+- **补记**：消费 `gateway.view_meter.deferred.v1`（consumer `commerce.view-backfill`），按同一计量操作标识写入（`source = backfill`），已存在则不计，只在新写入时加用量；补记不检查额度，不补授权；
+- **数据**：`com_view_usage`、`com_view_meters`、`com_view_attempts`，均按租户行级隔离；
+- **未实现**：产品目录、订阅、权益与覆盖判断（`GetEntitlements`，gateway 的覆盖端口未接入）、`commerce.quota.exceeded.v1`、用量报表与账单。

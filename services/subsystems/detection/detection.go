@@ -1,7 +1,8 @@
 // Package detection 组装 detection 监测与匹配 子系统。M2 第3段提供生效边界上的匹配（消费 domain.fact.upserted.v1，每批读取
 // 生效策略与策略代次）、信号收件箱、处理与反馈、批量与撤销（docs/01-product/prd/03-signal-inbox-feedback.md）：视图组装与订阅反查
 // 尚未接入（api.NotWired，事件处理失败并重试、转入死信），测试与演示使用标明为夹具的内存实现（api/facttest）。
-// 关注、回填、对象页分区、重新求值与漏报诊断随所属段落实现。
+// 第4段提供对象页的本租户信号分区（listObjectSignals；项目经归属边展开，归属边读取 api.ProjectLinks 尚未接入）与供 gateway
+// 读取信号固定求值输入的绑定（api.ExplainerBinding，内部端口为 explainSignal）。关注、回填、重新求值与漏报诊断随所属段落实现。
 package detection
 
 import (
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	det "github.com/superailabs/miaoqia/services/contracts/apis/detection"
+	"github.com/superailabs/miaoqia/services/kernel/binding"
 	"github.com/superailabs/miaoqia/services/kernel/consumer"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
@@ -34,16 +36,21 @@ var publicRoutes = []string{
 	"POST /v1/detection/signal-batches/{batchID}/cancel",
 	"POST /v1/detection/signal-batches/{batchID}/retry",
 	"POST /v1/detection/triage-undos",
+	"GET /v1/detection/object-signals",
 }
+
+// 内部接口（mTLS 内部端口）的路由：gateway 以用户主体读取信号固定的求值输入（远程绑定）。
+var internalRoutes = []string{"GET /internal/v1/detection/signals/{signalID}/explanation"}
 
 // Adapters 是匹配端口的适配器、业务时钟与批量作业的测试钩子。零值字段使用缺省：Facts 与 Candidates 为未接入（api.NotWired），
 // Now 为系统时钟，LeaseTTL 为 2 分钟，BatchHook 为空。
 type Adapters struct {
-	Facts      api.Facts
-	Candidates api.Candidates
-	Now        func() time.Time
-	LeaseTTL   time.Duration
-	BatchHook  func(ctx context.Context, batchID string, position int) error
+	Facts        api.Facts
+	Candidates   api.Candidates
+	ProjectLinks api.ProjectLinks
+	Now          func() time.Time
+	LeaseTTL     time.Duration
+	BatchHook    func(ctx context.Context, batchID string, position int) error
 }
 
 // Module 返回 detection 的模块定义（匹配适配器未接入）。
@@ -51,7 +58,7 @@ func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
 // ModuleWith 返回使用给定适配器的 detection 模块定义。配置：MIAOQIA_DETECTION_PACKS_DIR（扩展包目录，默认 packs）。
 func ModuleWith(adapters Adapters) runtime.Module {
-	svc := &app.Service{Facts: adapters.Facts, Candidates: adapters.Candidates, Now: adapters.Now, LeaseTTL: adapters.LeaseTTL}
+	svc := &app.Service{Facts: adapters.Facts, Candidates: adapters.Candidates, Links: adapters.ProjectLinks, Now: adapters.Now, LeaseTTL: adapters.LeaseTTL}
 	if adapters.BatchHook != nil {
 		svc.Hook = adapters.BatchHook
 	}
@@ -60,6 +67,9 @@ func ModuleWith(adapters Adapters) runtime.Module {
 	}
 	if svc.Candidates == nil {
 		svc.Candidates = api.NotWired{}
+	}
+	if svc.Links == nil {
+		svc.Links = api.NotWired{}
 	}
 	return runtime.Module{
 		Name:       api.Name,
@@ -87,10 +97,19 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				return fmt.Errorf("detection：缺少 %s 绑定", customercontext.ActivePoliciesBinding)
 			}
 			svc.DB, svc.Access, svc.Context, svc.Policies, svc.Packs, svc.Cell, svc.Log = env.DB, access, reader, policies, packs, env.Cell, env.Log
+			env.Bindings.Provide(api.ExplainerBinding, api.LocalExplainer(app.Explainer{Service: svc}))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
-			pub, err := det.NewServer(&app.Server{Service: svc}, det.WithErrorHandler(app.WriteProtocolError))
+			handler := &app.Server{Service: svc}
+			in, err := det.NewServer(handler, det.WithPathPrefix("/internal"), det.WithErrorHandler(app.WriteProtocolError))
+			if err != nil {
+				panic(err)
+			}
+			for _, pattern := range internalRoutes {
+				internal.Handle(pattern, binding.InternalServer(api.Name, in))
+			}
+			pub, err := det.NewServer(handler, det.WithErrorHandler(app.WriteProtocolError))
 			if err != nil {
 				panic(err)
 			}

@@ -218,6 +218,50 @@ fixtures:
     patch:
     - op: remove
       path: /created_at
+  - name: 记录采购项目与采购人（0.2.0）
+    valid: true
+    patch:
+    - op: add
+      path: /procurement_project_id
+      value: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - op: add
+      path: /buyer
+      value:
+        org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+        name: 某市水务集团有限公司
+  - name: 采购项目前缀错误
+    valid: false
+    patch:
+    - op: add
+      path: /procurement_project_id
+      value: prj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: ObjectSignalPage
+  base:
+    object_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signals:
+    - *row
+    next_cursor: eyJiIjoiYWJjIn0
+  cases:
+  - name: 没有本租户信号
+    valid: true
+    patch:
+    - op: replace
+      path: /signals
+      value: []
+    - op: remove
+      path: /next_cursor
+  - name: 对象类型不支持（公告）
+    valid: false
+    patch:
+    - op: replace
+      path: /object_id
+      value: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不暴露目标可见性
+    valid: false
+    patch:
+    - op: add
+      path: /hidden_objectives
+      value: 1
 - schema: SignalPage
   base:
     objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1

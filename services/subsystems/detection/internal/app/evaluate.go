@@ -556,13 +556,15 @@ func (s *Service) match(ctx context.Context, ref api.FactRef, a active, snap *cu
 		if _, err := tx.Exec(ctx, `INSERT INTO det_signals (id, tenant_id, objective_id, objective_code, org_unit_id, policy_id, policy_version, generation,
  template_id, template_version, enabled_domains, unit_key, fact_type, subject_id, subject_version, part_id, title, winner_org_id, winner_name,
  amount_value, amount_currency, amount_cny, location, categories, lot_key, disposition, score, needs_review, reason_code, conclusion, reasons,
- unknown_count, trace, features, view_snapshot_hash, context_version, trigger_event_id, evaluated_at, created_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39)`,
+ unknown_count, trace, features, view_snapshot_hash, context_version, trigger_event_id, evaluated_at, created_at,
+ procurement_project_id, buyer_org_id, buyer_name)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
+ $40,$41,$42)`,
 			id, rc.Tenant, p.ObjectiveID, p.ObjectiveCode, p.OrgUnitID, p.PolicyID, p.Version, p.Generation, p.TemplateID, p.TemplateVersion, enabled,
 			u.Key, u.FactType, u.Subject.ID, u.Subject.Version, part, title, null(d.WinnerOrgID), null(d.WinnerName), null(d.AmountValue),
 			null(d.AmountCurrency), d.AmountCNY, null(d.Location), categories, lot, string(res.Disposition), res.Score, res.NeedsReview, reason,
 			conclusion(a.compiled, res, trace), rowReasons(trace, res.Disposition), unknown, traceJSON, features, hash, snap.ContextVersion,
-			ref.EventID, ref.EventTime, created); err != nil {
+			ref.EventID, ref.EventTime, created, idOrNil(d.ProcurementProjectID, "pp"), idOrNil(d.BuyerOrgID, "org"), null(d.BuyerName)); err != nil {
 			return err
 		}
 		subject := map[string]any{"type": "domain_fact", "id": u.Subject.ID, "version": u.Subject.Version}
@@ -580,4 +582,14 @@ func (s *Service) match(ctx context.Context, ref api.FactRef, a active, snap *cu
 		_, err = writer.Append(ctx, tx, outbox.Event{Type: SignalDetected, Subject: id, PartitionKey: p.ObjectiveID, Data: data})
 		return err
 	})
+}
+
+var typedID = regexp.MustCompile(`^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$`)
+
+// idOrNil 返回符合登记前缀格式的标识；视图中缺失或格式不符的标识不记录（不让展示字段的问题阻断信号写入）。
+func idOrNil(id, prefix string) *string {
+	if !typedID.MatchString(id) || !strings.HasPrefix(id, prefix+"_") {
+		return nil
+	}
+	return &id
 }
