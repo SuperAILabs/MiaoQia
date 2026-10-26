@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+import time
 from importlib import resources
 from typing import Iterator
 
@@ -21,18 +22,35 @@ def _url(dsn: str) -> str:
 
 
 class Database:
-    def __init__(self, dsn: str, pool_size: int = 5):
-        self.engine: Engine = create_engine(_url(dsn), pool_size=pool_size, pool_pre_ping=True)
+    def __init__(self, dsn: str, pool_size: int = 5, *, pool_timeout: float = 5.0):
+        if type(pool_timeout) not in (int, float) or not 0 < pool_timeout <= 30:
+            raise ValueError("invalid pool timeout")
+        self.pool_timeout = float(pool_timeout)
+        self.engine: Engine = create_engine(_url(dsn), pool_size=pool_size,
+                                             pool_timeout=pool_timeout, pool_pre_ping=True)
 
     def close(self) -> None:
         self.engine.dispose()
 
     @contextlib.contextmanager
-    def tx(self) -> Iterator[Connection]:
+    def tx(self, *, deadline: float | None = None, statement_cap_ms: int = 5000) -> Iterator[Connection]:
         """事务：开始时把请求上下文写入事务级会话变量；没有请求上下文时拒绝执行。"""
         c = reqctx.current()
         c.validate()
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("request deadline expired")
+            # SQLAlchemy's QueuePool timeout is configured at engine creation;
+            # fail before checkout when the request cannot afford that wait.
+            if remaining < min(self.pool_timeout, 0.1):
+                raise TimeoutError("request deadline shorter than pool checkout bound")
         with self.engine.begin() as conn:
+            if deadline is not None:
+                remaining_ms = max(1, min(statement_cap_ms, int((deadline - time.monotonic()) * 1000)))
+                conn.execute(text("SET LOCAL statement_timeout = :ms"), {"ms": f"{remaining_ms}ms"})
+                conn.execute(text("SET LOCAL idle_in_transaction_session_timeout = :ms"), {"ms": f"{remaining_ms}ms"})
+                conn.execute(text("SET TRANSACTION READ ONLY"))
             conn.execute(
                 text("SELECT set_config('app.tenant_id', :t, true), set_config('app.cell', :c, true), "
                      "set_config('app.principal', :p, true)"),

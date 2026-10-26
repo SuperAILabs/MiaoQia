@@ -26,6 +26,19 @@ class Problem(Exception):
         super().__init__("internal request rejected")
 
 
+@dataclass(frozen=True)
+class PreparedResponse:
+    """A response and its last-moment authorization confirmation.
+
+    The callback runs while the original request context is still installed,
+    immediately before headers are emitted.  It must raise ``Problem`` on
+    revocation, expiry, or dependency failure.
+    """
+
+    payload: object
+    before_send: object | None = None
+
+
 def _interrupt(connection):
     try:
         connection.shutdown(socket.SHUT_RDWR)
@@ -181,6 +194,11 @@ class Identity:
             )
         ):
             raise Problem(403)
+        if "unit_roles" in v and (not isinstance(v["unit_roles"], list) or
+                any(not isinstance(r, str) or not r for r in v["unit_roles"])):
+            raise Problem(503)
+        return {"tenant": v["tenant"], "cell": v["cell"], "subject": v["subject"],
+                "tenant_version": v["tenant_version"], "member_version": v["member_version"]}
 
 
 class Server(ThreadingHTTPServer):
@@ -266,6 +284,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _post(self, deadline):
         status, result = 503, {"title": "unavailable", "status": 503}
+        finalizer = None
+        context = None
         try:
             if len(str(self.headers)) > 16384 or self.headers.get("Transfer-Encoding"):
                 raise ValueError("invalid headers")
@@ -289,23 +309,24 @@ class Handler(BaseHTTPRequestHandler):
                 not in self.server.delegations
             ):
                 raise Problem(403)
-            with reqctx.use(c):
-                self.server.identity.resolve(deadline=deadline)
-                lengths = self.headers.get_all("Content-Length", [])
-                if (
-                    len(lengths) != 1
-                    or not lengths[0].isdigit()
-                    or not 0 < int(lengths[0]) <= MAX_BODY
-                ):
-                    raise ValueError("invalid body length")
-                self.connection.settimeout(max(0.001, deadline - time.monotonic()))
-                raw = self.rfile.read(int(lengths[0]))
-                if len(raw) != int(lengths[0]):
-                    raise ValueError("incomplete body")
-                result = fn(loads(raw), deadline)
-                if time.monotonic() >= deadline:
-                    raise Problem(503)
-                status = 200
+            context = reqctx.use(c)
+            context.__enter__()
+            self.server.identity.resolve(deadline=deadline)
+            lengths = self.headers.get_all("Content-Length", [])
+            if (len(lengths) != 1 or not lengths[0].isdigit() or
+                    not 0 < int(lengths[0]) <= MAX_BODY):
+                raise ValueError("invalid body length")
+            self.connection.settimeout(max(0.001, deadline - time.monotonic()))
+            raw = self.rfile.read(int(lengths[0]))
+            if len(raw) != int(lengths[0]):
+                raise ValueError("incomplete body")
+            result = fn(loads(raw), deadline)
+            if isinstance(result, PreparedResponse):
+                finalizer = result.before_send
+                result = result.payload
+            if time.monotonic() >= deadline:
+                raise Problem(503)
+            status = 200
         except Problem as e:
             status = e.status
         except (ValueError, TypeError, RecursionError):
@@ -317,14 +338,40 @@ class Handler(BaseHTTPRequestHandler):
                 "title": "unavailable" if status == 503 else "request rejected",
                 "status": status,
             }
-        self.close_connection = True
-        raw = json.dumps(result, separators=(",", ":"), allow_nan=False).encode()
-        self.send_response(status)
-        self.send_header(
-            "Content-Type",
-            "application/json" if status == 200 else "application/problem+json",
-        )
-        self.send_header("Content-Length", str(len(raw)))
-        self.send_header("Connection", "close")
-        self.end_headers()
-        self.wfile.write(raw)
+        # Serialize and validate exactly once before any header.  Re-parse with
+        # the strict codec to reject NaN, duplicate keys, and excessive depth.
+        try:
+            raw = json.dumps(result, separators=(",", ":"), allow_nan=False).encode()
+            if len(raw) > MAX_BODY:
+                raise ValueError("JSON too large")
+            loads(raw)
+            if status == 200 and finalizer is not None:
+                if context is None:
+                    raise Problem(503)
+                # The request context is already installed and remains so until
+                # the final finally block below; do not re-enter its manager.
+                finalizer(deadline)
+                if time.monotonic() >= deadline:
+                    raise Problem(503)
+            if time.monotonic() >= deadline:
+                raise Problem(503)
+        except Problem as e:
+            status, result = e.status, {"title": "unavailable", "status": e.status}
+            raw = json.dumps(result, separators=(",", ":"), allow_nan=False).encode()
+        except PermissionError:
+            status, result = 403, {"title": "request rejected", "status": 403}
+            raw = json.dumps(result, separators=(",", ":"), allow_nan=False).encode()
+        except (ValueError, TypeError, RecursionError, OverflowError):
+            status, result = 503, {"title": "unavailable", "status": 503}
+            raw = json.dumps(result, separators=(",", ":"), allow_nan=False).encode()
+        try:
+            self.close_connection = True
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json" if status == 200 else "application/problem+json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(raw)
+        finally:
+            if context is not None:
+                context.__exit__(None, None, None)
