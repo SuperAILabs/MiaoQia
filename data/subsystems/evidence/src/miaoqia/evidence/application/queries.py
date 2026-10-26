@@ -33,14 +33,18 @@ def load_document(store, row):
 
 class Resolver:
     def __init__(self, database: db.Database, store: ObjectStore,
-                 display: Callable[[tuple[str, ...], str], str] | None = None, *, enrichments=None):
+                 display: Callable[[tuple[str, ...], str], str] | None = None, *, enrichments=None, authorize=None):
+        if display is not None and authorize is not None:
+            raise ValueError("choose one authorization mode")
+        from .provenance import Provenance
+        self.provenance, self.authorize = Provenance(database), authorize
         self.database, self.store, self.display = database, store, display
         self.enrichments = enrichments
 
     def resolve(self, evidence_ref: str) -> ResolvedEvidence | None:
         ctx = reqctx.current()
         ctx.validate()
-        if not ctx.purpose or self.display is None:
+        if not ctx.purpose or (self.display is None and self.authorize is None):
             raise PermissionError("未装配展示权利判定或缺少用途")
         with self.database.tx() as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
@@ -51,7 +55,15 @@ class Resolver:
                                         WHERE r.id = :id"""), {"id": evidence_ref}).mappings().one_or_none()
         if row is None:
             return self.enrichments.resolve(evidence_ref) if self.enrichments else None
-        level = self.display(tuple(row["rights_tags"]), ctx.purpose)
+        if self.authorize is not None:
+            from ..api import Unbound
+            try:
+                groups = self.provenance.resolve(self.provenance.evidence(evidence_ref))
+            except Unbound:
+                return None
+            level = self.authorize(groups, ctx.purpose)
+        else:
+            level = self.display(tuple(row["rights_tags"]), ctx.purpose)
         if level not in ("none", "citation_only", "excerpt", "full_text"):
             raise PermissionError("展示策略返回未知级别")
         if level == "none":

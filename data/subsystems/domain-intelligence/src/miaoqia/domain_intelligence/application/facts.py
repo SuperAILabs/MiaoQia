@@ -92,7 +92,7 @@ class Materializer:
 
 
 def write_version(conn, revision, fact, *, fact_id, version, prev, object_type, model, schema_version,
-                  source_id, source_key, ordinal=0, derivation_key="base", rights_tags=None, compare_evidence=False):
+                  source_id, source_key, ordinal=0, derivation_key="base", rights_tags=None, compare_evidence=False, source_closure=None, defer_closure=False):
     """共用事实版本写入；调用者先持有来源/聚合事务锁。"""
     rights_tags = list(revision.rights_tags) if rights_tags is None else rights_tags
     digest = value_hash(fact)
@@ -133,6 +133,9 @@ def write_version(conn, revision, fact, *, fact_id, version, prev, object_type, 
                  {"f": fact_id, "v": version + 1, "c": json.dumps(full, ensure_ascii=False), "h": digest,
                   "sv": schema_version, "dk": derivation_key, "snp": revision.snapshot_ref, "exr": revision.id, "cf": json.dumps(fields),
                   "r": json.dumps(rights_tags), "o": revision.observed_at, "rec": now})
+    if not defer_closure:
+        from . import requirements
+        requirements.put(conn, full, source_closure if source_closure is not None else requirements.base(revision))
     data = {
         "info_domain": info_domain, "fact_id": fact_id, "changed_fields": fields,
         "rights_tags": rights_tags, "snapshot_ref": revision.snapshot_ref, "revision_ref": revision.id,

@@ -19,19 +19,45 @@ from .facts import fact_version
 
 
 class Queries:
-    def __init__(self, database: db.Database, allowed: Callable[[tuple[str, ...], str], bool] | None = None):
+    def __init__(self, database: db.Database, allowed: Callable[[tuple[str, ...], str], bool] | None = None, *, authorize=None, provenance=None):
+        if allowed is not None and authorize is not None:
+            raise ValueError("choose one authorization mode")
+        self.authorize, self.provenance = authorize, provenance
         self.database = database
         self.allowed = allowed
 
     def _require_access(self):
         context = reqctx.current()
         context.validate()
-        if not context.purpose or self.allowed is None:
+        if not context.purpose or (self.allowed is None and self.authorize is None):
             raise PermissionError("未装配来源权利判定或缺少用途")
         return context
 
-    def _allowed(self, fact):
+    def requirements(self, fact_id, version):
+        """Return the owner-verified immutable closure for one fixed version."""
+        from . import requirements
+        from miaoqia.evidence.api import Unbound
+        if type(version) is not int or version < 1:
+            raise ValueError("fixed positive version required")
+        with self.database.tx() as conn:
+            conn.execute(text("SET TRANSACTION READ ONLY"))
+            fact = fact_version(conn, fact_id, version)
+            if fact is None:
+                raise Unbound("fact unavailable")
+            return requirements.read(conn, fact).with_dependency("fact", fact["id"]+":"+str(fact["version"]), fingerprint(fact))
+
+    def _allowed(self, conn, fact):
         context = self._require_access()
+        if self.authorize is not None:
+            from miaoqia.evidence.api import Unbound
+            if self.provenance is None:
+                return False
+            try:
+                from . import requirements
+                groups = self.provenance.resolve(requirements.read(conn, fact))
+            except Unbound:
+                return False
+            return self.authorize(groups, context.purpose) is True
         return self.allowed(tuple(fact["rights_tags"]), context.purpose) is True
 
     @staticmethod
@@ -50,7 +76,7 @@ class Queries:
         if fact is not None and basis.view == "known_at":
             if datetime.fromisoformat(fact["recorded_at"].replace("Z", "+00:00")) > basis.recorded_cutoff:
                 return None
-        return fact if fact is not None and self._allowed(fact) else None
+        return fact if fact is not None and self._allowed(conn, fact) else None
 
     def get_fact(self, fact_id: str, basis: Basis, *, version: int | None = None) -> FactRead | None:
         self._require_access()
@@ -67,7 +93,7 @@ class Queries:
             while len(permitted) <= limit:
                 rows = result.fetchmany(100)
                 for row in rows:
-                    if self._allowed(row[0]):
+                    if self._allowed(conn, row[0]):
                         permitted.append(row)
                         if len(permitted) > limit:
                             break

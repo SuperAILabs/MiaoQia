@@ -115,7 +115,7 @@ L1-2a 交付 `api.Facts` 的本地绑定 `domain_intelligence.queries(database, 
 
 - `get_fact`、`get_fact_history`、`query_facts` 与 `bid_result_units` 必须显式指定 `Basis`，响应回带同一口径；`current` 读取当前记录版本，`known_at` 只选 `recorded_at` 不晚于带时区截止时点的版本；固定版本同样不能越过截止时点；
 - 读取使用数据库只读事务，参数化 SQL；查询只支持登记字段（信息领域、对象类型），每页 1–100 条。单条 SELECT 流式扫描同一数据库快照，先按来源权利过滤，再分页，不返回权限外的计数或对象标识游标；
-- 部署单元必须注入 `allowed(rights_tags, purpose)`，回调通过当前请求上下文核验调用者、租户、单元、用途与当前来源权利。查询执行前统一核验请求上下文、策略装配与用途，未注入或缺少用途时拒绝读取，不依赖是否命中事实；无权与不存在同形；选中版本无权时不回退到旧版本；
+- 部署单元注入旧 `allowed(rights_tags, purpose)`，或互斥的新 keyword-only `authorize(groups,purpose)` 加 evidence `provenance` 元数据端口；结构化模式核验固定版本完整来源闭包后判断全部原始组，缺证明拒绝，不从聚合 tags 反推来源（[闭包与绑定](source-rights-runtime.md#固定版本可信来源闭包)）。原回调通过当前请求上下文核验调用者、租户、单元、用途与当前来源权利。查询执行前统一核验请求上下文、策略装配与用途，未注入或缺少用途时拒绝读取，不依赖是否命中事实；无权与不存在同形；选中版本无权时不回退到旧版本；
 - `known_at` 当前只实现记录时间选择，尚无业务有效区间和撤回识别，不能据此宣称第11节双时间语义已完成。当前口径同样只代表已物化的记录值。
 
 L1-2b 在 `application/projects.py` 实现冻结来源的局部采购项目聚合：
@@ -127,9 +127,9 @@ L1-2b 在 `application/projects.py` 实现冻结来源的局部采购项目聚�
 - 复用事实版本链、查询与 kernel 发件箱；Notice 保留 `base` 推导键，聚合使用规则版本与成员固定版本的指纹，不伪造解析修订。身份唯一约束、稳定顺序事务锁、关联/依赖与发件箱保证同事务及重复/并发幂等。项目权利标签取所有依赖的并集，读取策略必须全数许可；固定版本与 `known_at` 继续检查当前权利。
 - 首版发布 `tendering.notice.published.v1`；成功首次关联发布 `tendering.project.linked.v1`；项目阶段变化发布 `tendering.project.stage_changed.v1`；明确中标发布 `tendering.result.published.v1`（未知标包为 `lot_ids=[]`）。这些事件的 `fact_version` 都指 `notice_id` 的 Notice 版本，项目版本保存在内部关联依据中。新公告与修订、晚到关联不同，修订不会重复发首发事件。所有业务载荷先按既有契约校验，再写发件箱；relay 仍为至少一次投递。迁移 `0002` 支持已有 Notice 数据升级为 `base` 推导键；已有聚合/关联数据或同修订多推导版本时拒绝有损回退，须保留数据并前向迁移。
 
-存量升级后的有界补物化入口为 `mq-project-backfill ntc_<ID> [ntc_<ID> ...]`（在 `data/` 下运行 `uv run --locked --all-packages mq-project-backfill ...`）。命令由 data 部署单元装配两个子系统的本地依赖，领域应用仅接收注入的解析读取端口。部署先执行 `0002` 迁移，并配置现有 `MIAOQIA_DOMAIN_INTELLIGENCE_DB_DSN` 与 `MIAOQIA_EVIDENCE_DB_DSN` 本地绑定；使用子系统 app 账号，命令通过既有公共服务上下文执行，不经过用户读取接口或消费 inbox。操作员必须显式指定 1–100 个公告 ID，不能全库扫描或指定历史版本。命令固定来源锁下的当前 Notice 版本，校验契约、真实解析修订、来源/快照/权利、字段及证据一致性，复用同一聚合原语。整个批次原子提交，输出每个目标的 `processed`/`unchanged`、关联状态与项目 ID；未知来源保留 `pending_namespace`，当前版本大于 1 保留 `pending_revision`。已有当前版本关联只读返回 `unchanged`。合法 ID 不存在、错误对象、无效修订或载荷校验失败会拒绝整个批次。
+存量升级后的有界补物化入口为 `mq-project-backfill ntc_<ID> [ntc_<ID> ...]`（在 `data/` 下运行 `uv run --locked --all-packages mq-project-backfill ...`）。命令由 data 部署单元装配两个子系统的本地依赖，领域应用仅接收注入的解析读取端口。部署先将 evidence/domain 迁移至当前 head（分别为 `0003`/`0004`），并配置现有 `MIAOQIA_DOMAIN_INTELLIGENCE_DB_DSN` 与 `MIAOQIA_EVIDENCE_DB_DSN` 本地绑定；使用子系统 app 账号，命令通过既有公共服务上下文执行，不经过用户读取接口或消费 inbox。操作员必须显式指定 1–100 个公告 ID，不能全库扫描或指定历史版本。命令固定来源锁下的当前 Notice 版本，校验契约、真实解析修订、来源/快照/权利、字段及证据一致性，复用同一聚合原语。旧成员缺少完整闭包证明时仍可补建项目，结果仅可走原本地 callback 读取路径；结构化读取须另行按[显式 owner 回填顺序](source-rights-runtime.md#离线绑定与显式回填)补齐可证明的来源闭包，本命令不会自动回填证明。整个批次原子提交，输出每个目标的 `processed`/`unchanged`、关联状态与项目 ID；未知来源保留 `pending_namespace`，当前版本大于 1 保留 `pending_revision`。已有当前版本关联只读返回 `unchanged`。合法 ID 不存在、错误对象、无效修订或载荷校验失败会拒绝整个批次。
 
-普通解析事件回放对已物化 revision 保持原幂等，不会替代这条补物化命令；consumer inbox 去重也不影响本地命令。补物化不改 Notice 内容/版本或原 `domain.fact.upserted.v1` 条目，不假造 revision；它首次补建关联/项目并发布本批尚不存在的 tendering 事件，项目新版本仍使用现有 `domain.fact.upserted.v1`。重复执行不产生新版本或事件。关联后的修订仍须复核，不因此扩大自动乱序处理。旧库回归夹具冻结自 `c0694cf` 的旧物化写入，带 SHA-256 校验，只证明旧持久化形态/事务写入升级路径，复用当前纯版本规则，不代证完整旧运行环境。
+普通解析事件回放对已物化 revision 保持原幂等，不会替代这条补物化命令；consumer inbox 去重也不影响本地命令。补物化不改 Notice 内容/版本或原 `domain.fact.upserted.v1` 条目，不假造 revision；它首次补建关联/项目并发布本批尚不存在的 tendering 事件，项目新版本仍使用现有 `domain.fact.upserted.v1`。重复执行不产生新版本或事件。关联后的修订仍须复核，不因此扩大自动乱序处理。旧库回归夹具冻结自 `c0694cf` 的0001写入及 `70e5f927` 的0002 facts/projects writer，均带 SHA-256 校验，只证明旧持久化形态/事务写入升级路径，复用当前纯版本规则，不代证完整旧运行环境。
 
 受控增强复用相同事实writer、查询、项目投影及发件箱。data部署单元提供显式目标命令：
 
@@ -137,9 +137,9 @@ L1-2b 在 `application/projects.py` 实现冻结来源的局部采购项目聚�
 uv run --locked --all-packages mq-notice-enrich --enable-test-recipe --recipe test.buyer-provenance@0.1.0 ntc_<ID>
 ```
 
-先执行 evidence `0002` 与 domain `0003` 迁移，配置两个已有 `DB_DSN` 和 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR`；对象目录须与原公共文档管线相同。命令仅接收1–100个明确Notice ID，按目标逐个提交，两阶段之间不宣称跨库原子事务。默认拒绝所有recipe，显式测试模式仅授权本地 `svc:notice-enrich-test`、`enrichment_test` 用途、无租户/单元，以及 `public-official-review`、`corpus:*`、`test:identity-policy` 和 `review:building-topic-pair` 标签；此装配不代替远程用户认证或生产来源权利治理。`--enable-building-topic --recipe proc.building-topic@0.1.0 --packs <packs目录>` 单独启用固定官方pair主题；无此开关不装配行业recipe。单事实及recipe限制见 [evidence实现状况](evidence.md#12-实现状况)。
+先执行 evidence `0003` 与 domain `0004` 迁移，配置两个已有 `DB_DSN` 和 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR`；对象目录须与原公共文档管线相同。命令仅接收1–100个明确Notice ID，按目标逐个提交，两阶段之间不宣称跨库原子事务。默认拒绝所有recipe，显式测试模式仅授权本地 `svc:notice-enrich-test`、`enrichment_test` 用途、无租户/单元，以及 `public-official-review`、`corpus:*`、`test:identity-policy` 和 `review:building-topic-pair` 标签；此装配不代替远程用户认证或生产来源权利治理。`--enable-building-topic --recipe proc.building-topic@0.1.0 --packs <packs目录>` 单独启用固定官方pair主题；无此开关不装配行业recipe。单事实及recipe限制见 [evidence实现状况](evidence.md#12-实现状况)。
 
-准备阶段复用来源一致性校验，固定原始source-base；evidence先提交可重算结果，domain再验证结果与实际源修订。domain持来源锁后比较current与expected_parent、核验source-base指纹，已推进的旧任务报stale；后续按身份锁、pp锁顺序提交。`dom_enrichment_receipts` 不可变地记录固定source-base、父/输出版本、recipe、输入/输出/参考指纹及补丁依据；重复run复用receipt。测试路径仅可替换buyer或bidder的 `prov`。主题路径只允许替换/删除整个owned `/subject_categories`，无候选时清除旧主题，按固定source-base重算而不累加；Notice使用1.2.0兼容契约，封闭category/prov/scope/source_field包装，code不可重复，Project不复制主题。两种路径均保留原名、金额、编号等取值。真实prov或rights变化产生新Notice版本及真实顶层changed_fields；只改内部recipe且公开值/依据未变只登记receipt，不发布新领域事件。源路径的prov-only/rights-only同值去重保持原规则。权利标签保守保留当前版本及所有新增输入的并集，当前策略须全部许可；本切片不回收先前已加入的权利要求。
+准备阶段复用来源一致性校验，固定原始source-base；evidence先提交可重算结果，domain再验证结果与实际源修订。domain持来源锁后比较current与expected_parent、核验source-base指纹，已推进的旧任务报stale；后续按身份锁、pp锁顺序提交。`dom_enrichment_receipts` 不可变地记录固定source-base、父/输出版本、recipe、输入/输出/参考指纹及补丁依据；重复run复用receipt。测试路径仅可替换buyer或bidder的 `prov`。主题路径只允许替换/删除整个owned `/subject_categories`，无候选时清除旧主题，按固定source-base重算而不累加；Notice使用1.2.0兼容契约，封闭category/prov/scope/source_field包装，code不可重复，Project不复制主题。两种路径均保留原名、金额、编号等取值。真实prov或rights变化产生新Notice版本及真实顶层changed_fields；只改内部recipe且公开值/依据未变只登记receipt，不发布新领域事件。源路径的prov-only/rights-only同值去重保持原规则。公开权利标签保守保留当前版本及所有新增输入的并集；内部不可变闭包继承父版本并保留所有完整原始分组及参考句柄，结构化当前策略须全部许可；本切片不回收先前已加入的权利要求。
 
 只有receipt指向已确认source-base成员时才刷新同一个pp ID；来源新修订及其增强仍为 `pending_revision`。刷新以Notice ID替换成员，不重复追加。Project 1.3.0新增可选 `notice_refs:[{id,version}]`，新写入版本始终携带，与同事务的 `dom_project_dependencies` 逐值一致，`notice_ids` 保持相同ID集合；旧版本缺省合法。即使仅winner依据变化、pp展示字段相同，`notice_refs`也会产生真实变化并更新依赖。Notice、receipt、pp版本、link、deps和发件箱同事务；载荷或模型校验失败全部回滚，已提交evidence结果可重试。增强不重发四种tendering首发/阶段事件。recorded_at取实际领域写入时间，observed_at保持来源时间；fixed/known_at不被新规则改写，所有读取持续使用当前权利。
 

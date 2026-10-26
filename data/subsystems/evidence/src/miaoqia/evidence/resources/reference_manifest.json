@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "references": [
+    {
+      "name": "proc-building-topic",
+      "version": "0.1.0",
+      "content_hash": "sha256:2c9665eddde185bfde5a5cff31e18ba9cee34435c8c4ec279f1127aac1d95178",
+      "rights_tags": [
+        "review:building-topic-pair"
+      ],
+      "source_kind": "reference",
+      "source_id": "reference-proc-building-topic-v0-1"
+    }
+  ]
+}
