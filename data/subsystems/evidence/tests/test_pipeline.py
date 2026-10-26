@@ -57,7 +57,7 @@ def test_replay_creates_snapshot_revision_evidence_and_valid_events(evd):
     reader = SqlExtractions(dsns["app"])
     revision = reader.revision(result.revisions[0])
     reader.close()
-    assert revision.pack_id == "INF-PROC" and revision.extractor == "proc.result-notice@0.1.0"
+    assert revision.pack_id == "INF-PROC" and revision.extractor == "proc.result-notice@0.2.0"
     assert revision.source_key.startswith("https://www.ccgp.gov.cn/")
     # 每个字段的证据引用都已登记，并指向本快照
     refs = set()
@@ -145,7 +145,7 @@ def test_object_store_never_overwrites_and_rejects_escaping_keys(tmp_path):
 def test_failed_semantic_validation_is_recorded_as_suspect(evd):
     """领域语义校验不通过的解析结果记为 suspect（进入复核），下游不物化。"""
     database, pipeline, _ = evd
-    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.1.0")]
+    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.0")]
 
     def reject(document, facts, evidence):
         return ["人为注入的语义错误"]
@@ -162,7 +162,7 @@ def test_failed_semantic_validation_is_recorded_as_suspect(evd):
 def test_extractor_fields_without_matching_quote_are_suspect(evd):
     """解析器伪造的证据（定位处原文与取值不一致）被证据完整性校验拦下。"""
     database, pipeline, _ = evd
-    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.1.0")]
+    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.0")]
 
     class Forger:
         id, version, fact_types = "proc.forger", "0.0.1", ("tendering.notice",)
@@ -224,3 +224,89 @@ def test_replay_events_carry_a_contract_valid_root_traceparent_inherited_downstr
         tracing.shutdown()
     assert child.split("-")[1] == events[-1]["traceparent"].split("-")[1]
     outbox.validate({**events[-1], "traceparent": child})
+
+
+def test_resolve_evidence_clips_by_current_rights_before_reading_objects(evd):
+    from miaoqia import evidence
+    database, pipeline, _ = evd
+    replay(database, pipeline, [CORPUS / "official-award-20261014"])
+    with reqctx.use(reqctx.service("test")), database.tx() as conn:
+        ref = conn.execute(text("SELECT id FROM evd_evidence_refs ORDER BY id LIMIT 1")).scalar_one()
+
+    class NoRead:
+        def get(self, key):
+            raise AssertionError("被拒绝或仅引证时不能访问正文")
+
+    ctx = dataclasses.replace(reqctx.service("test"), purpose="object_page")
+    with reqctx.use(ctx):
+        assert evidence.resolver(database, NoRead(), display=lambda tags, purpose: "none").resolve(ref) is None
+        citation = evidence.resolver(database, NoRead(), display=lambda tags, purpose: "citation_only").resolve(ref)
+        assert citation.source_key.startswith("https://") and citation.snippet is None and citation.context is None and citation.locator is None
+        excerpt = evidence.resolver(database, pipeline.store, display=lambda tags, purpose: "excerpt").resolve(ref)
+        full = evidence.resolver(database, pipeline.store, display=lambda tags, purpose: "full_text").resolve(ref)
+        assert excerpt.snippet and excerpt.context is None
+        assert full.snippet.startswith(excerpt.snippet) and full.snippet in full.context
+        assert excerpt.locator == full.locator
+        assert evidence.resolver(database, NoRead(), display=lambda tags, purpose: "full_text").resolve("ev_" + "Z" * 26) is None
+        with pytest.raises(PermissionError):
+            evidence.resolver(database, NoRead()).resolve(ref)
+        with pytest.raises(PermissionError):
+            evidence.resolver(database, NoRead(), display=lambda tags, purpose: "typo").resolve(ref)
+    with reqctx.use(reqctx.service("test")), pytest.raises(PermissionError):
+        evidence.resolver(database, NoRead(), display=lambda tags, purpose: "full_text").resolve(ref)
+
+
+def test_resolve_rechecks_current_caller_and_does_not_cache_permission(evd):
+    from miaoqia import evidence
+    database, pipeline, _ = evd
+    replay(database, pipeline, [CORPUS / "official-consortium-20261014"])
+    with reqctx.use(reqctx.service("test")), database.tx() as conn:
+        ref = conn.execute(text("SELECT id FROM evd_evidence_refs LIMIT 1")).scalar_one()
+    allowed_tenant = "tnt_01J0000000000000000000000A"
+    rights = {"active": True}
+
+    def display(tags, purpose):
+        assert "public-official-review" in tags and "corpus:official-consortium-20261014" in tags
+        return "full_text" if rights["active"] and reqctx.current().tenant == allowed_tenant and purpose == "object_page" else "none"
+
+    reader = evidence.resolver(database, pipeline.store, display=display)
+    ctx = reqctx.Context(reqctx.Principal("usr_test", "user"), tenant=allowed_tenant, cell="cell-01", purpose="object_page")
+    with reqctx.use(ctx):
+        assert reader.resolve(ref).snippet
+        rights["active"] = False
+        assert reader.resolve(ref) is None
+    rights["active"] = True
+    with reqctx.use(dataclasses.replace(ctx, tenant="tnt_01J0000000000000000000000B")):
+        assert reader.resolve(ref) is None
+
+
+@pytest.mark.parametrize("level", ["excerpt", "full_text"])
+@pytest.mark.parametrize("tamper", ["snapshot", "quote", "context"])
+def test_resolve_reuses_sdk_integrity_checks_for_tampered_objects(evd, level, tamper):
+    from miaoqia import evidence
+    from miaoqia.evidence.application.queries import EvidenceIntegrityError
+    from miaoqia.sdk import Document
+    database, pipeline, _ = evd
+    replay(database, pipeline, [CORPUS / "official-consortium-20261014"])
+    with reqctx.use(reqctx.service("test")), database.tx() as conn:
+        ref, loc = conn.execute(text("SELECT id, locator FROM evd_evidence_refs LIMIT 1")).one()
+
+    class Tampered:
+        def get(self, key):
+            doc = json.loads(pipeline.store.get(key))
+            if tamper == "snapshot":
+                doc["snapshot_ref"] = "snp_" + "Z" * 26
+            else:
+                original_quote = Document(doc).quote(loc)
+                block = doc["blocks"][loc.get("block_end", loc["block"])]
+                unit = block["rows"][loc["row"]][loc["col"]] if "row" in loc else block
+                if tamper == "quote":
+                    unit["text"] = "伪" * len(unit["text"])
+                    assert Document(doc).quote(loc) != original_quote
+                else:
+                    unit["text"] += "\n伪造的上下文"
+                    assert Document(doc).quote(loc) == original_quote
+            return json.dumps(doc).encode()
+
+    with reqctx.use(dataclasses.replace(reqctx.service("test"), purpose="object_page")), pytest.raises(EvidenceIntegrityError):
+        evidence.resolver(database, Tampered(), display=lambda tags, purpose: level).resolve(ref)

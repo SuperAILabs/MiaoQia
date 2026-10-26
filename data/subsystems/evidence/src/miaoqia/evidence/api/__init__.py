@@ -33,3 +33,20 @@ class Extractions(Protocol):
     """解析修订的读取。修订不可变；不存在时返回 None。"""
 
     def revision(self, revision_ref: str) -> Revision | None: ...
+
+
+@dataclass(frozen=True)
+class ResolvedEvidence:
+    id: str
+    display_level: str
+    snapshot_ref: str | None = None
+    source_id: str | None = None
+    source_key: str | None = None
+    observed_at: datetime | None = None
+    locator: dict | None = None
+    snippet: str | None = None
+    context: str | None = None
+
+
+class EvidenceResolver(Protocol):
+    def resolve(self, evidence_ref: str) -> ResolvedEvidence | None: ...

@@ -1,0 +1,10 @@
+source_id: official-qzygjy
+source_url: https://qzygjy.com/jyxx/001004/001004001/001004001003/20251222/3413d275-d1e8-4f45-a91c-6f0f9b739af2.html
+fetched_at: '2026-10-26'
+rights_tag: public-official-review
+review_mode: manual
+body_selector: //*[@id="infoContentM"]
+response_charset: utf-8
+notes: 官方交易平台同项目 XCXCG-2025-008 的招标与中标结果；中标金额以折扣率计，不是总价。测试材料，不构成来源启用。
+response_sha256: 9cae7b42d6a0e5208b1b70259117294dc7967b500fc01745313be9dd743b4eb6
+raw_sha256: 33ec4c2e0d2ed1f5301140c85a13ad39c7b495d8bcd2b3be84afdc8e22c368e9

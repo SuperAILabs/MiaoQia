@@ -28,3 +28,10 @@ def module() -> Module:
                          handlers={probe.EMITTED: probe.on_emitted}, db=env.db)]
 
     return Module(name=NAME, database="evd", migrations=MIGRATIONS, consumers=consumers)
+
+
+def resolver(database, store, *, display=None):
+    """api.EvidenceResolver 的本地绑定；必须注入按当前请求上下文判定展示级别的策略。"""
+    from .application.queries import Resolver
+
+    return Resolver(database, store, display)
