@@ -56,6 +56,34 @@ type Invoker interface {
 	//
 	// POST /v1/channels/installations/{installationID}/disable
 	DisableInstallation(ctx context.Context, request *VersionRequest, params DisableInstallationParams) (*Installation, error)
+	// GetBriefing invokes getBriefing operation.
+	//
+	// 只属本人：他人的、其他租户的与不存在的简报同为 404
+	// briefing_not_found（管理员也看不到他人的简报内容）。条目内容为组装时的快照
+	// （content_as_of 为组装时间）；每条的当前处理状态经 detection
+	// 以调用者的权限读取，按“当前”叠加（status_as_of）。读取时逐区 再检查
+	// can_view_signals：已失去访问的区 state 为
+	// no_permission，不返回条目与标题；授权不可用时 503。.
+	//
+	// GET /v1/channels/briefings/{briefingID}
+	GetBriefing(ctx context.Context, params GetBriefingParams) (*Briefing, error)
+	// GetBriefingPreferences invokes getBriefingPreferences operation.
+	//
+	// 有效成员读取本人的简报偏好；从未保存时返回缺省值（version 0）：工作日
+	// 07:30、租户时区 Asia/Shanghai、安静时段 21:00–07:00、
+	// 空简报不推送、各目标区条数取应用领域包的缺省值。effective_from
+	// 为当前版本开始生效的周期起点（修改从下一期生效）。.
+	//
+	// GET /v1/channels/briefing-preferences
+	GetBriefingPreferences(ctx context.Context) (*BriefingPreferences, error)
+	// GetDeliveryStats invokes getDeliveryStats operation.
+	//
+	// 需要 can_manage_members（不要求强认证）。按投递状态与失败原因统计本租户
+	// since 起（默认 7 天内）的投递次数与空简报、部分简报期数，
+	// 不含任何简报条目、标题或收件人。.
+	//
+	// GET /v1/channels/delivery-stats
+	GetDeliveryStats(ctx context.Context, params GetDeliveryStatsParams) (*DeliveryStats, error)
 	// InstallChannel invokes installChannel operation.
 	//
 	// 管理员 + 强认证。创建或重新开始本租户在该渠道的安装：状态
@@ -79,6 +107,16 @@ type Invoker interface {
 	//
 	// GET /v1/channels/bindings
 	ListBindings(ctx context.Context, params ListBindingsParams) (*BindingList, error)
+	// ListBriefings invokes listBriefings operation.
+	//
+	// 只列出调用者本人的简报，按周期终点新到旧；每页至多 limit
+	// 条（默认且至多 30）。还有更早的简报时给出 next_cursor：游标是 channels
+	// 签发的不透明值（整个位置载荷连同其 HMAC-SHA256
+	// 签名，绑定租户与调用者），签名不符或绑定不一致时 400 invalid_cursor，
+	// 在任何读取之前判断。每期显示周期、组装时间、各区条目数与推送状态。.
+	//
+	// GET /v1/channels/briefings
+	ListBriefings(ctx context.Context, params ListBriefingsParams) (*BriefingList, error)
 	// ListInstallations invokes listInstallations operation.
 	//
 	// 需要
@@ -87,6 +125,19 @@ type Invoker interface {
 	//
 	// GET /v1/channels/installations
 	ListInstallations(ctx context.Context) (*InstallationList, error)
+	// OpenBriefingLink invokes openBriefingLink operation.
+	//
+	// 链接只指向对象（信号、完整简报、审批），不携带登录身份，7
+	// 天有效。以当前登录成员打开：链接发给的是另一成员时 409 account_mismatch
+	// （不切换账号）；过期时 410
+	// card_link_expired（登录后按当前权限打开同一对象）；链接不存在、属于其他租户、对象不存在或当前成员
+	// 无权查看时统一为 404
+	// content_unavailable，不返回标题、目标归属或负责人。授权按对象所有者：信号经
+	// detection（所属目标的 can_view_signals），审批经
+	// identity（申请人或批准人），简报为本人。打开后的页面按第4段计量对象查看，链接本身不计量。.
+	//
+	// POST /v1/channels/briefing-links:open
+	OpenBriefingLink(ctx context.Context, request *OpenCardLinkRequest) (*BriefingLinkTarget, error)
 	// OpenCardLink invokes openCardLink operation.
 	//
 	// 以当前登录成员打开卡片上的短时授权链接，链接只指向对象，不携带登录身份。链接不存在、属于其他租户、对象不存在或当前成员
@@ -114,6 +165,17 @@ type Invoker interface {
 	//
 	// POST /v1/channels/bindings:prepare
 	PrepareBinding(ctx context.Context, request *BindingLinkRequest) (*BindingPreview, error)
+	// ResendBriefing invokes resendBriefing operation.
+	//
+	// 本人对当日一期（周期终点在成员时区的今天）发起新的投递，不重新组装简报；往期为
+	// 409 resend_not_allowed。推送前按当前状态再检查：
+	// 成员有效、绑定为“已绑定”（否则 409 not_bound）、各目标的
+	// can_view_signals（失去访问的区不发送）。新卡片使用新的动作令牌，
+	// 新令牌上的点击是新的操作。同一 Idempotency-Key
+	// 重放返回首次的投递。写入审计。.
+	//
+	// POST /v1/channels/briefings/{briefingID}/resend
+	ResendBriefing(ctx context.Context, params ResendBriefingParams) (*DeliverySummary, error)
 	// UnbindAccount invokes unbindAccount operation.
 	//
 	// 绑定的成员本人可解绑（不要求强认证）；其他调用者须为管理员 +
@@ -126,6 +188,19 @@ type Invoker interface {
 	//
 	// POST /v1/channels/bindings/{bindingID}/unbind
 	UnbindAccount(ctx context.Context, request *UnbindRequest, params UnbindAccountParams) (*Binding, error)
+	// UpdateBriefingPreferences invokes updateBriefingPreferences operation.
+	//
+	// 按 expected_version 并发控制（从未保存时为 0；不一致时 409
+	// version_conflict，即“偏好已在其他设备修改”）。发送时间为 06:00–10:00
+	// 的整点或半点；时区为 IANA 时区名；发送日为
+	// 1（周一）–7（周日）的非空集合；安静时段为整点或半点；各目标区条数须在应用领域包
+	// 声明的范围内（A02 为 5–20），否则 422
+	// invalid_preferences。新版本从“修改时所在周期”的下一期生效：effective_from
+	// 为旧偏好下
+	// 修改时刻之后的第一个计划发送时间，新旧周期首尾相接。写入偏好版本与审计。.
+	//
+	// PUT /v1/channels/briefing-preferences
+	UpdateBriefingPreferences(ctx context.Context, request *UpdateBriefingPreferencesRequest, params UpdateBriefingPreferencesParams) (*BriefingPreferences, error)
 	// VerifyInstallation invokes verifyInstallation operation.
 	//
 	// 管理员 + 强认证。安装须为
@@ -394,6 +469,298 @@ func (c *Client) sendDisableInstallation(ctx context.Context, request *VersionRe
 	return result, nil
 }
 
+// GetBriefing invokes getBriefing operation.
+//
+// 只属本人：他人的、其他租户的与不存在的简报同为 404
+// briefing_not_found（管理员也看不到他人的简报内容）。条目内容为组装时的快照
+// （content_as_of 为组装时间）；每条的当前处理状态经 detection
+// 以调用者的权限读取，按“当前”叠加（status_as_of）。读取时逐区 再检查
+// can_view_signals：已失去访问的区 state 为
+// no_permission，不返回条目与标题；授权不可用时 503。.
+//
+// GET /v1/channels/briefings/{briefingID}
+func (c *Client) GetBriefing(ctx context.Context, params GetBriefingParams) (*Briefing, error) {
+	res, err := c.sendGetBriefing(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetBriefing(ctx context.Context, params GetBriefingParams) (res *Briefing, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getBriefing"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/channels/briefings/{briefingID}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetBriefingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/v1/channels/briefings/"
+	{
+		// Encode "briefingID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "briefingID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.BriefingID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetBriefingResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetBriefingPreferences invokes getBriefingPreferences operation.
+//
+// 有效成员读取本人的简报偏好；从未保存时返回缺省值（version 0）：工作日
+// 07:30、租户时区 Asia/Shanghai、安静时段 21:00–07:00、
+// 空简报不推送、各目标区条数取应用领域包的缺省值。effective_from
+// 为当前版本开始生效的周期起点（修改从下一期生效）。.
+//
+// GET /v1/channels/briefing-preferences
+func (c *Client) GetBriefingPreferences(ctx context.Context) (*BriefingPreferences, error) {
+	res, err := c.sendGetBriefingPreferences(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetBriefingPreferences(ctx context.Context) (res *BriefingPreferences, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getBriefingPreferences"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/channels/briefing-preferences"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetBriefingPreferencesOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/channels/briefing-preferences"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetBriefingPreferencesResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetDeliveryStats invokes getDeliveryStats operation.
+//
+// 需要 can_manage_members（不要求强认证）。按投递状态与失败原因统计本租户
+// since 起（默认 7 天内）的投递次数与空简报、部分简报期数，
+// 不含任何简报条目、标题或收件人。.
+//
+// GET /v1/channels/delivery-stats
+func (c *Client) GetDeliveryStats(ctx context.Context, params GetDeliveryStatsParams) (*DeliveryStats, error) {
+	res, err := c.sendGetDeliveryStats(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetDeliveryStats(ctx context.Context, params GetDeliveryStatsParams) (res *DeliveryStats, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getDeliveryStats"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/channels/delivery-stats"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetDeliveryStatsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/channels/delivery-stats"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "since" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "since",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Since.Get(); ok {
+				return e.EncodeValue(conv.DateTimeToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetDeliveryStatsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // InstallChannel invokes installChannel operation.
 //
 // 管理员 + 强认证。创建或重新开始本租户在该渠道的安装：状态
@@ -640,6 +1007,131 @@ func (c *Client) sendListBindings(ctx context.Context, params ListBindingsParams
 	return result, nil
 }
 
+// ListBriefings invokes listBriefings operation.
+//
+// 只列出调用者本人的简报，按周期终点新到旧；每页至多 limit
+// 条（默认且至多 30）。还有更早的简报时给出 next_cursor：游标是 channels
+// 签发的不透明值（整个位置载荷连同其 HMAC-SHA256
+// 签名，绑定租户与调用者），签名不符或绑定不一致时 400 invalid_cursor，
+// 在任何读取之前判断。每期显示周期、组装时间、各区条目数与推送状态。.
+//
+// GET /v1/channels/briefings
+func (c *Client) ListBriefings(ctx context.Context, params ListBriefingsParams) (*BriefingList, error) {
+	res, err := c.sendListBriefings(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListBriefings(ctx context.Context, params ListBriefingsParams) (res *BriefingList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listBriefings"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/channels/briefings"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListBriefingsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/channels/briefings"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListBriefingsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListInstallations invokes listInstallations operation.
 //
 // 需要
@@ -715,6 +1207,96 @@ func (c *Client) sendListInstallations(ctx context.Context) (res *InstallationLi
 
 	stage = "DecodeResponse"
 	result, err := decodeListInstallationsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// OpenBriefingLink invokes openBriefingLink operation.
+//
+// 链接只指向对象（信号、完整简报、审批），不携带登录身份，7
+// 天有效。以当前登录成员打开：链接发给的是另一成员时 409 account_mismatch
+// （不切换账号）；过期时 410
+// card_link_expired（登录后按当前权限打开同一对象）；链接不存在、属于其他租户、对象不存在或当前成员
+// 无权查看时统一为 404
+// content_unavailable，不返回标题、目标归属或负责人。授权按对象所有者：信号经
+// detection（所属目标的 can_view_signals），审批经
+// identity（申请人或批准人），简报为本人。打开后的页面按第4段计量对象查看，链接本身不计量。.
+//
+// POST /v1/channels/briefing-links:open
+func (c *Client) OpenBriefingLink(ctx context.Context, request *OpenCardLinkRequest) (*BriefingLinkTarget, error) {
+	res, err := c.sendOpenBriefingLink(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendOpenBriefingLink(ctx context.Context, request *OpenCardLinkRequest) (res *BriefingLinkTarget, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("openBriefingLink"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/channels/briefing-links:open"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, OpenBriefingLinkOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/channels/briefing-links:open"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeOpenBriefingLinkRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeOpenBriefingLinkResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -903,6 +1485,127 @@ func (c *Client) sendPrepareBinding(ctx context.Context, request *BindingLinkReq
 	return result, nil
 }
 
+// ResendBriefing invokes resendBriefing operation.
+//
+// 本人对当日一期（周期终点在成员时区的今天）发起新的投递，不重新组装简报；往期为
+// 409 resend_not_allowed。推送前按当前状态再检查：
+// 成员有效、绑定为“已绑定”（否则 409 not_bound）、各目标的
+// can_view_signals（失去访问的区不发送）。新卡片使用新的动作令牌，
+// 新令牌上的点击是新的操作。同一 Idempotency-Key
+// 重放返回首次的投递。写入审计。.
+//
+// POST /v1/channels/briefings/{briefingID}/resend
+func (c *Client) ResendBriefing(ctx context.Context, params ResendBriefingParams) (*DeliverySummary, error) {
+	res, err := c.sendResendBriefing(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendResendBriefing(ctx context.Context, params ResendBriefingParams) (res *DeliverySummary, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("resendBriefing"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/channels/briefings/{briefingID}/resend"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ResendBriefingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/channels/briefings/"
+	{
+		// Encode "briefingID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "briefingID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.BriefingID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/resend"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeResendBriefingResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // UnbindAccount invokes unbindAccount operation.
 //
 // 绑定的成员本人可解绑（不要求强认证）；其他调用者须为管理员 +
@@ -1021,6 +1724,110 @@ func (c *Client) sendUnbindAccount(ctx context.Context, request *UnbindRequest, 
 
 	stage = "DecodeResponse"
 	result, err := decodeUnbindAccountResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdateBriefingPreferences invokes updateBriefingPreferences operation.
+//
+// 按 expected_version 并发控制（从未保存时为 0；不一致时 409
+// version_conflict，即“偏好已在其他设备修改”）。发送时间为 06:00–10:00
+// 的整点或半点；时区为 IANA 时区名；发送日为
+// 1（周一）–7（周日）的非空集合；安静时段为整点或半点；各目标区条数须在应用领域包
+// 声明的范围内（A02 为 5–20），否则 422
+// invalid_preferences。新版本从“修改时所在周期”的下一期生效：effective_from
+// 为旧偏好下
+// 修改时刻之后的第一个计划发送时间，新旧周期首尾相接。写入偏好版本与审计。.
+//
+// PUT /v1/channels/briefing-preferences
+func (c *Client) UpdateBriefingPreferences(ctx context.Context, request *UpdateBriefingPreferencesRequest, params UpdateBriefingPreferencesParams) (*BriefingPreferences, error) {
+	res, err := c.sendUpdateBriefingPreferences(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateBriefingPreferences(ctx context.Context, request *UpdateBriefingPreferencesRequest, params UpdateBriefingPreferencesParams) (res *BriefingPreferences, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updateBriefingPreferences"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.URLTemplateKey.String("/v1/channels/briefing-preferences"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UpdateBriefingPreferencesOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/channels/briefing-preferences"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PUT", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateBriefingPreferencesRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeUpdateBriefingPreferencesResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

@@ -19,6 +19,7 @@ type UndoRequest struct {
 	OperationID string `json:"operation_id"`
 	TargetOp    string `json:"target_operation_id,omitempty"`
 	TargetBatch string `json:"target_batch_id,omitempty"`
+	Channel     string `json:"channel,omitempty"` // web（缺省）/ wecom（简报卡片上的撤销，PRD 第5段 F4 第5条）
 }
 
 // UndoItem 是一项的撤销结果（契约 UndoItem）。
@@ -116,7 +117,7 @@ func (s *Service) UndoSignalTriage(ctx context.Context, key string, req UndoRequ
 		}
 		out := &UndoResult{OperationID: req.OperationID, Items: []UndoItem{}}
 		for _, t := range targets {
-			out.Items = append(out.Items, s.undoOne(ctx, rc, req.OperationID, t))
+			out.Items = append(out.Items, s.undoOne(ctx, rc, req.OperationID, req.Channel, t))
 		}
 		return out, nil
 	})
@@ -143,9 +144,9 @@ func failedItem(item UndoItem, err error) UndoItem {
 }
 
 // undoOne 撤销一项。操作标识为“撤销操作标识:信号标识”，结果（成功或确定失败）固定在它上面。
-func (s *Service) undoOne(ctx context.Context, rc reqctx.Context, undoID string, t target) UndoItem {
+func (s *Service) undoOne(ctx context.Context, rc reqctx.Context, undoID, channel string, t target) UndoItem {
 	o := op{id: undoID + ":" + t.signal, fingerprint: fingerprint("undo", undoID, t.id), signal: t.signal,
-		req: Request{OperationID: undoID + ":" + t.signal, Action: "undo", SeenContent: t.content}}
+		req: Request{OperationID: undoID + ":" + t.signal, Action: "undo", SeenContent: t.content, Channel: channel}}
 	item := UndoItem{SignalID: t.signal, TargetOp: t.id, OperationID: o.id}
 	undoOf := t.id
 	var prev *stored

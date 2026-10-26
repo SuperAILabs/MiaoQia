@@ -108,7 +108,7 @@ Skills 是组合这些工具的工作流说明（如“每日信号评审”“�
 
 Web 应用的浏览器端流程与 BFF 契约见 [Web 专项设计](../14-web-application.md)，本节只列 gateway 的职责，尚未实现（[贯通验收线 W-04](../../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)）：
 
-- **会话**：`web_session` 完成 OIDC 授权码 + PKCE 登录，刷新令牌加密保存在本子系统数据库（接入凭证），浏览器只持有 `__Host-mq_sid` 会话 Cookie；带 Cookie 的请求取出会话的访问令牌交给现有令牌校验，派生的请求上下文与 Bearer 请求相同，之后的租户路由与成员核对不变。免登会话（`channel` 来源）直接引用 identity 的 `chs_`，每次请求经本地 `ResolveChannelSession` 核验，远程绑定时失败关闭（Web 专项设计 WD2 推荐方案，待确认）。同一请求同时带 Cookie 与 `Authorization` 时拒绝；
+- **会话**：`web_session` 完成 OIDC 授权码 + PKCE 登录，刷新令牌加密保存在本子系统数据库（接入凭证），浏览器只持有 `__Host-mq_sid` 会话 Cookie；带 Cookie 的请求取出会话的访问令牌交给现有令牌校验，派生的请求上下文与 Bearer 请求相同，之后的租户路由与成员核对不变。免登会话（`channel` 来源）直接引用 identity 的 `chs_`，每次请求经本地 `ResolveChannelSession` 核验，远程绑定时失败关闭（Web 专项设计 WD2，2026-10-26 确认）。同一请求同时带 Cookie 与 `Authorization` 时拒绝；
 - **浏览器端点**：`/auth/login`、`/auth/callback`、`/auth/step-up`、`/auth/logout`、`/auth/backchannel-logout`、`/auth/channel/sso`、`/auth/channel/callback`、`/auth/channel/oauth`（[Web 专项设计第7.4节](../14-web-application.md#74-网关-auth-端点)）；带会话 Cookie 的非 GET 浏览器请求要求 CSRF 头与同源 `Origin`；登录、免登与强认证事务以事务 Cookie 绑定发起的浏览器；`/auth/backchannel-logout` 是 IdP 服务器调用，不适用浏览器 CSRF 规则，以完整校验的 `logout_token` 认证（签名、`iss`、`aud`、时间、`events`、`sid`/`sub`、`jti` 防重放）；
 - **页面聚合**：`/v1/web/*` 只组合各子系统接口，逐分区返回状态，不缓存，不实现业务规则（[Web 专项设计第7节](../14-web-application.md#7-bff-契约)）；对象页增加版本检查 `GET /v1/objects/{objectID}/versions`；
 - **配置**：`MIAOQIA_GATEWAY_SESSION_KEY`（刷新令牌加密密钥，非开发环境缺省不启动）、Keycloak 保密客户端 `miaoqia-web` 的凭证与回调地址。

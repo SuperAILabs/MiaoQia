@@ -14,6 +14,10 @@
   mq-corpus check DIR --reviewed --schema PATH [--export DIR]
       人工映射的原件哈希、证据、Schema与语义验证；不计算解析准确率。
       人工样本使用reviewed.json（facts/evidence），扫描PDF另提供经复核的normalized.json。
+  mq-corpus check DIR --extractor 模块:类 --gold reviewed --schema PATH [--min-accuracy 0.95]
+      以人工映射（reviewed.json）为黄金标注评测解析器：只取 notice_type 属于解析器 gold_notice_types 的人工样本，
+      逐个比对解析器 gold_fields 声明的关键字段（JSON Pointer，* 匹配数组下标）中人工映射给出的值；
+      标识、证据与人工映射未给出的字段不计分，十进制金额按数值比较。解析结果同样经过 Schema、证据与领域语义校验。
 """
 from __future__ import annotations
 
@@ -21,8 +25,10 @@ import argparse
 import importlib
 import hashlib
 import json
+import re
 import sys
 from collections import defaultdict
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import yaml
@@ -142,9 +148,45 @@ def _load_document(sample: Path, meta: dict) -> Document:
     return Document(html_to_document(raw.read_text(), snapshot, meta.get("source_url")))
 
 
+def _gold_pointers(fact, patterns: tuple[str, ...]) -> dict[str, object]:
+    """人工映射中与关键字段模式匹配、且有取值的叶子（模式中的 * 展开为实际下标）。"""
+    out: dict[str, object] = {}
+
+    def walk(node, parts: list[str], pointer: str) -> None:
+        if not parts:
+            if not isinstance(node, (dict, list)):
+                out[pointer] = node
+            return
+        head, rest = parts[0], parts[1:]
+        if head == "*":
+            if isinstance(node, list):
+                for i, item in enumerate(node):
+                    walk(item, rest, f"{pointer}/{i}")
+        elif isinstance(node, dict) and head in node:
+            walk(node[head], rest, f"{pointer}/{head}")
+
+    for pattern in patterns:
+        walk(fact, pattern.lstrip("/").split("/"), "")
+    return out
+
+
+def _same(got, want) -> bool:
+    if got == want:
+        return True
+    if isinstance(got, str) and isinstance(want, str):
+        try:
+            return Decimal(got) == Decimal(want)
+        except InvalidOperation:
+            return False
+    return False
+
+
 def check(corpus: Path, extractor_ref: str | None, schema_rel: str,
-          min_accuracy: float | None, reviewed: bool = False, export: Path | None = None) -> int:
+          min_accuracy: float | None, reviewed: bool = False, export: Path | None = None,
+          gold_reviewed: bool = False) -> int:
     extractor = None
+    if gold_reviewed and (reviewed or not extractor_ref):
+        raise ValueError("--gold reviewed 评测解析器，必须指定extractor且不能与--reviewed混用")
     if not reviewed:
         if not extractor_ref:
             raise ValueError("自动解析评测必须指定extractor")
@@ -165,7 +207,12 @@ def check(corpus: Path, extractor_ref: str | None, schema_rel: str,
         meta = yaml.safe_load((sample / "meta.yaml").read_text())
         if meta.get("schema", schema_rel) != schema_rel:
             continue
-        if (meta.get("review_mode") == "manual") == reviewed:
+        if gold_reviewed:
+            if meta.get("review_mode") == "manual":
+                types = {f.get("notice_type") for f in json.loads((sample / "reviewed.json").read_text())["facts"]}
+                if types & set(getattr(extractor, "gold_notice_types", ())):
+                    samples.append((sample, meta))
+        elif (meta.get("review_mode") == "manual") == reviewed:
             samples.append((sample, meta))
     if not samples:
         print("✗ 没有匹配模式的样本，不能空跑通过")
@@ -185,7 +232,13 @@ def check(corpus: Path, extractor_ref: str | None, schema_rel: str,
                     raise ValueError("人工映射必须包含事实与可验证证据")
                 expected = None
             else:
-                expected = yaml.safe_load((sample / "expected.yaml").read_text())
+                if gold_reviewed:
+                    gold = json.loads((sample / "reviewed.json").read_text())["facts"]
+                    expected = {"facts": [{"fields": _gold_pointers(f, tuple(extractor.gold_fields))} for f in gold]}
+                    if not extractor.applies(doc, meta):
+                        raise ValueError("解析器不接受该样本")
+                else:
+                    expected = yaml.safe_load((sample / "expected.yaml").read_text())
                 if not expected.get("facts") or not any(f.get("fields") for f in expected["facts"]):
                     raise ValueError("黄金标注为空，不能证明准确率")
                 ctx = ExtractionContext(doc, f"{extractor.id}@{extractor.version}")
@@ -216,13 +269,16 @@ def check(corpus: Path, extractor_ref: str | None, schema_rel: str,
                 if expected is None:
                     continue
                 for pointer, want in expected["facts"][i]["fields"].items():
+                    key = re.sub(r"/\d+(?=/|$)", "/*", pointer) if gold_reviewed else pointer
                     try:
                         val = _get(got, pointer)
                     except (KeyError, IndexError, ValueError, TypeError):
-                        field_stats[pointer]["missing"] += 1
+                        field_stats[key]["missing"] += 1
+                        print(f"  {sample.name}#{i} {pointer}：期望 {want!r}，缺失")
                         continue
-                    field_stats[pointer]["correct" if val == want else "wrong"] += 1
-                    if val != want:
+                    ok = _same(val, want)
+                    field_stats[key]["correct" if ok else "wrong"] += 1
+                    if not ok:
                         print(f"  {sample.name}#{i} {pointer}：期望 {want!r}，实际 {val!r}")
         except (ValueError, KeyError, IndexError, TypeError, OSError) as exc:
             invalid += 1
@@ -253,6 +309,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("corpus")
     c.add_argument("--extractor")
     c.add_argument("--reviewed", action="store_true", help="验证人工事实映射与证据，不评估解析器准确率")
+    c.add_argument("--gold", choices=["reviewed"], help="以人工映射为黄金标注评测解析器")
     c.add_argument("--export", type=Path, help="人工映射全部通过后导出正例，用于现有契约测试")
     c.add_argument("--schema", required=True, action="append", help="人工语料可重复指定，以验证各Schema分组")
     c.add_argument("--path", action="append", default=[], help="解析器所在的导入路径（可重复）")
@@ -266,9 +323,12 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--export只用于人工契约映射")
     if not a.reviewed and not a.extractor:
         ap.error("自动解析评测需要--extractor")
+    if a.gold and (a.reviewed or not a.extractor):
+        ap.error("--gold reviewed 需要--extractor，且不能与--reviewed混用")
     if not a.reviewed and len(a.schema) > 1:
         ap.error("多个Schema只用于按元数据分组的人工映射")
-    return max(check(Path(a.corpus), a.extractor, schema, a.min_accuracy, a.reviewed, a.export)
+    gold = {"gold_reviewed": True} if a.gold == "reviewed" else {}
+    return max(check(Path(a.corpus), a.extractor, schema, a.min_accuracy, a.reviewed, a.export, **gold)
                for schema in a.schema)
 
 

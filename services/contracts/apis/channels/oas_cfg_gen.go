@@ -18,16 +18,28 @@ import (
 )
 
 var regexMap = map[string]ogenregex.Regexp{
+	"^([01][0-9]|2[0-3]):[0-5][0-9]$":                                        ogenregex.MustCompile("^([01][0-9]|2[0-3]):[0-5][0-9]$"),
 	"^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$": ogenregex.MustCompile("^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$"),
-	"^[0-9a-f]{64}$":                       ogenregex.MustCompile("^[0-9a-f]{64}$"),
-	"^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$": ogenregex.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$"),
-	"^[A-Za-z0-9_-]{1,256}$":               ogenregex.MustCompile("^[A-Za-z0-9_-]{1,256}$"),
-	"^[A-Za-z0-9_-]{1,64}$":                ogenregex.MustCompile("^[A-Za-z0-9_-]{1,64}$"),
-	"^[A-Za-z0-9_-]{16,128}$":              ogenregex.MustCompile("^[A-Za-z0-9_-]{16,128}$"),
-	"^[A-Za-z0-9_-]{43}$":                  ogenregex.MustCompile("^[A-Za-z0-9_-]{43}$"),
-	"^[A-Za-z0-9_.@-]{1,64}$":              ogenregex.MustCompile("^[A-Za-z0-9_.@-]{1,64}$"),
-	"^chb_[0-9A-HJKMNP-TV-Z]{26}$":         ogenregex.MustCompile("^chb_[0-9A-HJKMNP-TV-Z]{26}$"),
-	"^chi_[0-9A-HJKMNP-TV-Z]{26}$":         ogenregex.MustCompile("^chi_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^(sig|brf|apr)_[0-9A-HJKMNP-TV-Z]{26}$":                                 ogenregex.MustCompile("^(sig|brf|apr)_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$":                                  ogenregex.MustCompile("^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$"),
+	"^BRF-[A-Z0-9-]{1,64}$":                                                  ogenregex.MustCompile("^BRF-[A-Z0-9-]{1,64}$"),
+	"^INF-[A-Z0-9-]{1,32}$":                                                  ogenregex.MustCompile("^INF-[A-Z0-9-]{1,32}$"),
+	"^[0-9a-f]{64}$":                                                         ogenregex.MustCompile("^[0-9a-f]{64}$"),
+	"^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$":                                   ogenregex.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$"),
+	"^[A-Za-z0-9_-]{1,256}$":                                                 ogenregex.MustCompile("^[A-Za-z0-9_-]{1,256}$"),
+	"^[A-Za-z0-9_-]{1,512}$":                                                 ogenregex.MustCompile("^[A-Za-z0-9_-]{1,512}$"),
+	"^[A-Za-z0-9_-]{1,64}$":                                                  ogenregex.MustCompile("^[A-Za-z0-9_-]{1,64}$"),
+	"^[A-Za-z0-9_-]{16,128}$":                                                ogenregex.MustCompile("^[A-Za-z0-9_-]{16,128}$"),
+	"^[A-Za-z0-9_-]{43}$":                                                    ogenregex.MustCompile("^[A-Za-z0-9_-]{43}$"),
+	"^[A-Za-z0-9_.@-]{1,64}$":                                                ogenregex.MustCompile("^[A-Za-z0-9_.@-]{1,64}$"),
+	"^[A-Za-z_]+(/[A-Za-z0-9_+-]+){0,2}$":                                    ogenregex.MustCompile("^[A-Za-z_]+(/[A-Za-z0-9_+-]+){0,2}$"),
+	"^apr_[0-9A-HJKMNP-TV-Z]{26}$":                                           ogenregex.MustCompile("^apr_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^brf_[0-9A-HJKMNP-TV-Z]{26}$":                                           ogenregex.MustCompile("^brf_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^chb_[0-9A-HJKMNP-TV-Z]{26}$":                                           ogenregex.MustCompile("^chb_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^chi_[0-9A-HJKMNP-TV-Z]{26}$":                                           ogenregex.MustCompile("^chi_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^dlv_[0-9A-HJKMNP-TV-Z]{26}$":                                           ogenregex.MustCompile("^dlv_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^obj_[0-9A-HJKMNP-TV-Z]{26}$":                                           ogenregex.MustCompile("^obj_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^sig_[0-9A-HJKMNP-TV-Z]{26}$":                                           ogenregex.MustCompile("^sig_[0-9A-HJKMNP-TV-Z]{26}$"),
 }
 var (
 	// Allocate option closure once.

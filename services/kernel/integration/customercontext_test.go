@@ -475,7 +475,7 @@ func TestCustomerContextProfileObjectivesAndSnapshot(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		fx := apitest.Fixture{Reader: reader, Stranger: readerCtx(t1, "svc:channels", "service"), Other: readerCtx(t2, "svc:research", "service"),
+		fx := apitest.Fixture{Reader: reader, Stranger: readerCtx(t1, "svc:commerce", "service"), Other: readerCtx(t2, "svc:research", "service"),
 			Current: cur.ContextVersion, Want: want}
 		t.Run("本地绑定", func(t *testing.T) { apitest.RunContextReader(t, local, fx) })
 		rem, err := ctxremote.NewContextReader(intern.URL + "/internal")

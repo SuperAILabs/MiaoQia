@@ -12,6 +12,13 @@ from .application import probe
 MIGRATIONS = str(resources.files(__name__) / "migrations")  # Alembic 迁移随包分发，安装后同样可定位
 
 
+def extractions(dsn: str):
+    """api.Extractions 的本地绑定：数据单元内以 evidence 自己的数据库账号只读解析修订（由部署单元组装注入）。"""
+    from .infrastructure.store import SqlExtractions
+
+    return SqlExtractions(dsn)
+
+
 def module() -> Module:
     def consumers(env: Env) -> list[Consumer]:
         # 租户文档业务管线尚未实现；不能复用公共探针主题/发件箱。

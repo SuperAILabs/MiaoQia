@@ -817,6 +817,18 @@ fixtures:
     patch:
     - op: remove
       path: /operation_id
+  - name: 卡片上的撤销（0.3.0）
+    valid: true
+    patch:
+    - op: add
+      path: /channel
+      value: wecom
+  - name: 未登记的渠道
+    valid: false
+    patch:
+    - op: add
+      path: /channel
+      value: email
 - schema: UndoItem
   base:
     signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
@@ -860,3 +872,102 @@ fixtures:
     patch:
     - op: remove
       path: /items
+- schema: BriefingSignal
+  base: &briefingSignal
+    signal: *row
+    category: updated
+    correction: true
+    updates:
+    - content_version: 1
+      trigger: tendering.notice.amended
+      changed_fields:
+      - /results/0/amount
+      disposition_before: pursue_candidate
+      disposition_after: pursue_candidate
+      material: true
+      recorded_at: '2026-10-19T14:05:00Z'
+  cases:
+  - name: 窗口内新发现
+    valid: true
+    patch:
+    - op: replace
+      path: /category
+      value: new
+    - op: replace
+      path: /correction
+      value: false
+    - op: replace
+      path: /updates
+      value: []
+  - name: 回填不是类别
+    valid: false
+    patch:
+    - op: replace
+      path: /category
+      value: backfill
+- schema: BriefingSignalPage
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    from: '2026-10-19T07:30:00+08:00'
+    to: '2026-10-20T07:30:00+08:00'
+    signals:
+    - *briefingSignal
+    pending_total: 1
+    new_count: 12
+    updated_count: 2
+    handled_count: 3
+    backfill_count: 86
+    viewer_can_feedback: true
+  cases:
+  - name: 计数不得为负
+    valid: false
+    patch:
+    - op: replace
+      path: /handled_count
+      value: -1
+  - name: 不暴露其他目标
+    valid: false
+    patch:
+    - op: add
+      path: /other_objectives
+      value: 1
+- schema: StatusChange
+  base:
+    actor: usr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    status: dismissed
+    at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 缺时间
+    valid: false
+    patch:
+    - op: remove
+      path: /at
+- schema: SignalCard
+  base:
+    signal: *row
+    last_status_change:
+      actor: usr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+      status: dismissed
+      at: '2026-10-20T00:12:00Z'
+    viewer_can_feedback: false
+  cases:
+  - name: 从未处理过
+    valid: true
+    patch:
+    - op: remove
+      path: /last_status_change
+  - name: 缺反馈权限
+    valid: false
+    patch:
+    - op: remove
+      path: /viewer_can_feedback
+- schema: SignalCardList
+  base:
+    cards: []
+  cases:
+  - name: 至多50条
+    valid: false
+    patch:
+    - op: replace
+      path: /cards
+      value: [{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}]

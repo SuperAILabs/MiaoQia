@@ -205,3 +205,46 @@ func (s *Server) UndoSignalTriage(ctx context.Context, req *det.UndoRequest, p d
 	}
 	return convert[det.UndoResult](res)
 }
+
+func (s *Server) ListBriefingSignals(ctx context.Context, p det.ListBriefingSignalsParams) (*det.BriefingSignalPage, error) {
+	page, err := s.Service.BriefingSignals(ctx, p.ObjectiveID, p.From, p.To)
+	if err != nil {
+		return nil, err
+	}
+	return convert[det.BriefingSignalPage](page)
+}
+
+func (s *Server) ListSignalCards(ctx context.Context, p det.ListSignalCardsParams) (*det.SignalCardList, error) {
+	list, err := s.Service.SignalCards(ctx, p.Ids)
+	if err != nil {
+		return nil, err
+	}
+	return convert[det.SignalCardList](list)
+}
+
+// Briefing 是 api.Briefing 的本地实现（channels 以收件人或点击者的用户主体调用；授权与对应的公开接口相同）。
+type Briefing struct{ Service *Service }
+
+func (b Briefing) BriefingSignals(ctx context.Context, objective string, from, to time.Time) (*api.BriefingSignalPage, error) {
+	page, err := b.Service.BriefingSignals(ctx, objective, from, to)
+	if err != nil {
+		return nil, err
+	}
+	return convert[api.BriefingSignalPage](page)
+}
+
+func (b Briefing) SignalCards(ctx context.Context, ids []string) (*api.SignalCardList, error) {
+	list, err := b.Service.SignalCards(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	return convert[api.SignalCardList](list)
+}
+
+func (b Briefing) Triage(ctx context.Context, signal, key string, req *api.TriageRequest) (*api.TriageResult, error) {
+	return (&Server{Service: b.Service}).TriageSignal(ctx, req, det.TriageSignalParams{SignalID: signal, IdempotencyKey: key})
+}
+
+func (b Briefing) Undo(ctx context.Context, key string, req *api.UndoRequest) (*api.UndoResult, error) {
+	return (&Server{Service: b.Service}).UndoSignalTriage(ctx, req, det.UndoSignalTriageParams{IdempotencyKey: key})
+}

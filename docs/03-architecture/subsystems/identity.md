@@ -113,7 +113,7 @@
 - **成员退出是生命周期边界**：成员每次从有效变为退出时，在成员行记录这次退出时的成员版本（`left_version`），重新加入只会继续增加成员版本，不改变它。channels 在绑定请求固定会话时取当前成员版本，记为绑定的成员版本，签发请求带上它（`member_version`），会话也记录它。绑定的成员版本不高于 `left_version` 即为退出之前的旧绑定：签发 409 `member_rejoined`，该绑定的会话在核验时 401 `channel_session_revoked`。这项判断只依赖 identity 自己的成员行，不依赖 channels 是否已收到 `identity.member.changed.v1`，因此退出事件延迟时重新加入的成员也不能沿用旧绑定或旧会话，须重新绑定（PRD 第1段 F6）。`MemberLifecycle` 返回成员当前状态（`active` / `removed` / `absent`）、成员版本与 `left_version`，channels 在消息回调判断“已绑定”与选择投递目标时据此核对：成员有效且绑定的成员版本高于 `left_version` 才是当前绑定（普通的角色变化只增加成员版本，不使绑定过时）；
 - **会话**：`chs_<ULID>`，绝对时长 12 小时（identity 业务时钟），不带强认证，不因使用而延长。网关对 `miaoqia_session_source=channel` 的令牌要求 `miaoqia_channel_session` 声明，缺失为 401 `channel_session_invalid`；每次请求经本地 `ResolveChannelSession` 核验会话存在且属于令牌的租户与主体（否则 401 `channel_session_invalid`）、未作废、版本高于水位且来自成员最近一次退出之后（401 `channel_session_revoked`）、未过期（401 `channel_session_expired`），再按普通会话核对成员与租户状态（成员停用或退出 403 `invalid_tenant_context`）。远程会话核验绑定不提供这项核验，渠道免登令牌在 identity 拆为远程时失败关闭（503 `identity_unavailable`）；
 - **撤销的重试与对账**：identity 消费 `channels.binding.changed.v1`（`revoking` 与 `invalidated`），按事件版本撤销；`ListLiveChannelSessions` 按绑定标识分页（每页至多 500，游标绑定租户）列出仍有有效会话的绑定及其中最高版本，channels 据此对账（channels.md 第6节实现状况）；
-- 浏览器中的免登会话由 gateway 的 Web 会话直接引用 `chs_`、每次请求经 `ResolveChannelSession` 核验（[Web 专项设计第4.5节](../14-web-application.md#45-渠道免登与卡片落地)），因此不需要 IdP 按免登会话铸造令牌（WD2 推荐方案，待确认）；带 `miaoqia_channel_session` 声明的 Bearer 令牌路径保留给测试签发方与非浏览器客户端；
+- 浏览器中的免登会话由 gateway 的 Web 会话直接引用 `chs_`、每次请求经 `ResolveChannelSession` 核验（[Web 专项设计第4.5节](../14-web-application.md#45-渠道免登与卡片落地)），因此不需要 IdP 按免登会话铸造令牌（Web 专项设计 WD2，2026-10-26 确认）；带 `miaoqia_channel_session` 声明的 Bearer 令牌路径保留给测试签发方与非浏览器客户端；
 - 尚未实现：免登会话的单独登出、按成员批量撤销（成员停用或退出时会话由成员核验拒绝，绑定失效由 channels 消费成员事件完成）；Web 页面需要的 `ListMembers`、`PreviewInvitation` 与受邀新用户的 IdP 账号准备（[贯通验收线 W-05](../../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)）。
 
 **实现状况（PRD 第7段审批服务，契约 1.5.0，事件契约 1.3.0）**：
@@ -125,6 +125,7 @@
 - **到期**：7 天（PRD 第13节第3项），按业务时钟判断。读取、列表、决定、撤回与提交前先在独立事务中把到期的请求置为已过期，`effective_at` 为到期时间；`ExpireDueApprovals` 供定时任务批量处理，本切片未接入调度器，到期请求在下一次被访问时关闭并发布事件；
 - **列表**：`role=approver`（缺省）逐个资源实时判断批准关系（同一资源只判断一次，一次至多检查 500 条，达到时返回已找到的部分与游标），`role=applicant` 只列本人申请；每页缺省与上限 100，游标绑定租户、调用者、角色与状态，换用于其他角色或状态 400 `invalid_cursor`；
 - **事件**：`identity.approval.requested.v1`、`identity.approval.decided.v1`、`identity.approval.closed.v1` 的信封带租户与 cell，载荷带类型、资源、申请人、绑定、请求版本与生效时间，按请求版本单调递增；所有状态变化写审计（`identity.approval.*`）；
+- **读取绑定**（PRD 第5段）：`identity.ApprovalReader` 提供 `ListApprovals` 与 `GetApproval`，本地与远程（内部接口 `GET /internal/v1/identity/approvals`、`GET /internal/v1/identity/approvals/{approvalID}`）行为一致，以调用者的用户主体判断可见性，与公共接口相同；channels 以简报收件人本人的身份读取待其批准的审批（“待我处理”区）与简报链接指向的审批；
 - 尚未实现：审批通知（只发给当时有批准权的成员，不含申请人，随 channels）、个人租户的免审批例外、额度条件。
 [`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。目录核验租户/成员当前状态及单元；当前SQL角色经同一OpenFGA模型做隔离contextual tuples求值，持久化旧角色关系不恢复被撤销权限。上下文提供租户不等于已获得资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
 

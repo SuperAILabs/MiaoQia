@@ -11,25 +11,34 @@ import (
 )
 
 var (
-	rn13AllowedHeaders = map[string]string{
+	rn23AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn1AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
+	rn19AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
+	rn16AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
 	rn10AllowedHeaders = map[string]string{
+		"PUT": "Content-Type,Idempotency-Key",
+	}
+	rn20AllowedHeaders = map[string]string{
+		"POST": "Idempotency-Key",
+	}
+	rn17AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
-	rn8AllowedHeaders = map[string]string{
-		"POST": "Content-Type",
-	}
-	rn6AllowedHeaders = map[string]string{
+	rn12AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn5AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn15AllowedHeaders = map[string]string{
+	rn25AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 )
@@ -85,140 +94,324 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			switch elem[0] {
-			case 'b': // Prefix: "bindings"
+			case 'b': // Prefix: "b"
 
-				if l := len("bindings"); len(elem) >= l && elem[0:l] == "bindings" {
+				if l := len("b"); len(elem) >= l && elem[0:l] == "b" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					switch r.Method {
-					case "GET":
-						s.handleListBindingsRequest([0]string{}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "GET",
-							allowedHeaders: nil,
-							acceptPost:     "",
-							acceptPatch:    "",
-						})
-					}
-
-					return
+					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case 'i': // Prefix: "indings"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					// Param: "bindingID"
-					// Match until "/"
-					idx := strings.IndexByte(elem, '/')
-					if idx < 0 {
-						idx = len(elem)
-					}
-					args[0] = elem[:idx]
-					elem = elem[idx:]
-
-					if len(elem) == 0 {
-						break
-					}
-					switch elem[0] {
-					case '/': // Prefix: "/unbind"
-
-						if l := len("/unbind"); len(elem) >= l && elem[0:l] == "/unbind" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleUnbindAccountRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn13AllowedHeaders,
-									acceptPost:     "application/json",
-									acceptPatch:    "",
-								})
-							}
-
-							return
-						}
-
-					}
-
-				case ':': // Prefix: ":"
-
-					if l := len(":"); len(elem) >= l && elem[0:l] == ":" {
+					if l := len("indings"); len(elem) >= l && elem[0:l] == "indings" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListBindingsRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "bindingID"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/unbind"
+
+							if l := len("/unbind"); len(elem) >= l && elem[0:l] == "/unbind" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleUnbindAccountRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn23AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						}
+
+					case ':': // Prefix: ":"
+
+						if l := len(":"); len(elem) >= l && elem[0:l] == ":" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "confirm"
+
+							if l := len("confirm"); len(elem) >= l && elem[0:l] == "confirm" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleConfirmBindingRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn1AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						case 'p': // Prefix: "prepare"
+
+							if l := len("prepare"); len(elem) >= l && elem[0:l] == "prepare" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handlePrepareBindingRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn19AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						}
+
+					}
+
+				case 'r': // Prefix: "riefing"
+
+					if l := len("riefing"); len(elem) >= l && elem[0:l] == "riefing" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
 						break
 					}
 					switch elem[0] {
-					case 'c': // Prefix: "confirm"
+					case '-': // Prefix: "-"
 
-						if l := len("confirm"); len(elem) >= l && elem[0:l] == "confirm" {
+						if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleConfirmBindingRequest([0]string{}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn1AllowedHeaders,
-									acceptPost:     "application/json",
-									acceptPatch:    "",
-								})
+							break
+						}
+						switch elem[0] {
+						case 'l': // Prefix: "links:open"
+
+							if l := len("links:open"); len(elem) >= l && elem[0:l] == "links:open" {
+								elem = elem[l:]
+							} else {
+								break
 							}
 
-							return
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleOpenBriefingLinkRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn16AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						case 'p': // Prefix: "preferences"
+
+							if l := len("preferences"); len(elem) >= l && elem[0:l] == "preferences" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "GET":
+									s.handleGetBriefingPreferencesRequest([0]string{}, elemIsEscaped, w, r)
+								case "PUT":
+									s.handleUpdateBriefingPreferencesRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "GET,PUT",
+										allowedHeaders: rn10AllowedHeaders,
+										acceptPost:     "",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
 						}
 
-					case 'p': // Prefix: "prepare"
+					case 's': // Prefix: "s"
 
-						if l := len("prepare"); len(elem) >= l && elem[0:l] == "prepare" {
+						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
 							switch r.Method {
-							case "POST":
-								s.handlePrepareBindingRequest([0]string{}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleListBriefingsRequest([0]string{}, elemIsEscaped, w, r)
 							default:
 								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn10AllowedHeaders,
-									acceptPost:     "application/json",
+									allowedMethods: "GET",
+									allowedHeaders: nil,
+									acceptPost:     "",
 									acceptPatch:    "",
 								})
 							}
 
 							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "briefingID"
+							// Match until "/"
+							idx := strings.IndexByte(elem, '/')
+							if idx < 0 {
+								idx = len(elem)
+							}
+							args[0] = elem[:idx]
+							elem = elem[idx:]
+
+							if len(elem) == 0 {
+								switch r.Method {
+								case "GET":
+									s.handleGetBriefingRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "GET",
+										allowedHeaders: nil,
+										acceptPost:     "",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+							switch elem[0] {
+							case '/': // Prefix: "/resend"
+
+								if l := len("/resend"); len(elem) >= l && elem[0:l] == "/resend" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleResendBriefingRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "POST",
+											allowedHeaders: rn20AllowedHeaders,
+											acceptPost:     "",
+											acceptPatch:    "",
+										})
+									}
+
+									return
+								}
+
+							}
+
 						}
 
 					}
@@ -241,8 +434,33 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "POST",
-							allowedHeaders: rn8AllowedHeaders,
+							allowedHeaders: rn17AllowedHeaders,
 							acceptPost:     "application/json",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
+			case 'd': // Prefix: "delivery-stats"
+
+				if l := len("delivery-stats"); len(elem) >= l && elem[0:l] == "delivery-stats" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleGetDeliveryStatsRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
 							acceptPatch:    "",
 						})
 					}
@@ -267,7 +485,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET,POST",
-							allowedHeaders: rn6AllowedHeaders,
+							allowedHeaders: rn12AllowedHeaders,
 							acceptPost:     "application/json",
 							acceptPatch:    "",
 						})
@@ -354,7 +572,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "POST",
-										allowedHeaders: rn15AllowedHeaders,
+										allowedHeaders: rn25AllowedHeaders,
 										acceptPost:     "application/json",
 										acceptPatch:    "",
 									})
@@ -469,81 +687,159 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				break
 			}
 			switch elem[0] {
-			case 'b': // Prefix: "bindings"
+			case 'b': // Prefix: "b"
 
-				if l := len("bindings"); len(elem) >= l && elem[0:l] == "bindings" {
+				if l := len("b"); len(elem) >= l && elem[0:l] == "b" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					switch method {
-					case "GET":
-						r.name = ListBindingsOperation
-						r.summary = "列出渠道绑定（ListBindings）"
-						r.operationID = "listBindings"
-						r.operationGroup = ""
-						r.pathPattern = "/v1/channels/bindings"
-						r.args = args
-						r.count = 0
-						return r, true
-					default:
-						return
-					}
+					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case 'i': // Prefix: "indings"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("indings"); len(elem) >= l && elem[0:l] == "indings" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "bindingID"
-					// Match until "/"
-					idx := strings.IndexByte(elem, '/')
-					if idx < 0 {
-						idx = len(elem)
-					}
-					args[0] = elem[:idx]
-					elem = elem[idx:]
-
 					if len(elem) == 0 {
-						break
+						switch method {
+						case "GET":
+							r.name = ListBindingsOperation
+							r.summary = "列出渠道绑定（ListBindings）"
+							r.operationID = "listBindings"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/channels/bindings"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/unbind"
+					case '/': // Prefix: "/"
 
-						if l := len("/unbind"); len(elem) >= l && elem[0:l] == "/unbind" {
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
+						// Param: "bindingID"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
 						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = UnbindAccountOperation
-								r.summary = "解绑（UnbindAccount）"
-								r.operationID = "unbindAccount"
-								r.operationGroup = ""
-								r.pathPattern = "/v1/channels/bindings/{bindingID}/unbind"
-								r.args = args
-								r.count = 1
-								return r, true
-							default:
-								return
+							break
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/unbind"
+
+							if l := len("/unbind"); len(elem) >= l && elem[0:l] == "/unbind" {
+								elem = elem[l:]
+							} else {
+								break
 							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = UnbindAccountOperation
+									r.summary = "解绑（UnbindAccount）"
+									r.operationID = "unbindAccount"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/channels/bindings/{bindingID}/unbind"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					case ':': // Prefix: ":"
+
+						if l := len(":"); len(elem) >= l && elem[0:l] == ":" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "confirm"
+
+							if l := len("confirm"); len(elem) >= l && elem[0:l] == "confirm" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = ConfirmBindingOperation
+									r.summary = "确认绑定（BindAccount）"
+									r.operationID = "confirmBinding"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/channels/bindings:confirm"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'p': // Prefix: "prepare"
+
+							if l := len("prepare"); len(elem) >= l && elem[0:l] == "prepare" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = PrepareBindingOperation
+									r.summary = "打开绑定链接并固定会话（BindAccount 第一步）"
+									r.operationID = "prepareBinding"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/channels/bindings:prepare"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
 						}
 
 					}
 
-				case ':': // Prefix: ":"
+				case 'r': // Prefix: "riefing"
 
-					if l := len(":"); len(elem) >= l && elem[0:l] == ":" {
+					if l := len("riefing"); len(elem) >= l && elem[0:l] == "riefing" {
 						elem = elem[l:]
 					} else {
 						break
@@ -553,23 +849,95 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						break
 					}
 					switch elem[0] {
-					case 'c': // Prefix: "confirm"
+					case '-': // Prefix: "-"
 
-						if l := len("confirm"); len(elem) >= l && elem[0:l] == "confirm" {
+						if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
+							break
+						}
+						switch elem[0] {
+						case 'l': // Prefix: "links:open"
+
+							if l := len("links:open"); len(elem) >= l && elem[0:l] == "links:open" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = OpenBriefingLinkOperation
+									r.summary = "打开简报或卡片上的链接（F6）"
+									r.operationID = "openBriefingLink"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/channels/briefing-links:open"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'p': // Prefix: "preferences"
+
+							if l := len("preferences"); len(elem) >= l && elem[0:l] == "preferences" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "GET":
+									r.name = GetBriefingPreferencesOperation
+									r.summary = "本人的简报偏好（GetPreferences）"
+									r.operationID = "getBriefingPreferences"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/channels/briefing-preferences"
+									r.args = args
+									r.count = 0
+									return r, true
+								case "PUT":
+									r.name = UpdateBriefingPreferencesOperation
+									r.summary = "修改本人的简报偏好（UpdatePreferences）"
+									r.operationID = "updateBriefingPreferences"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/channels/briefing-preferences"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					case 's': // Prefix: "s"
+
+						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
 							switch method {
-							case "POST":
-								r.name = ConfirmBindingOperation
-								r.summary = "确认绑定（BindAccount）"
-								r.operationID = "confirmBinding"
+							case "GET":
+								r.name = ListBriefingsOperation
+								r.summary = "本人的简报历史（ListBriefings）"
+								r.operationID = "listBriefings"
 								r.operationGroup = ""
-								r.pathPattern = "/v1/channels/bindings:confirm"
+								r.pathPattern = "/v1/channels/briefings"
 								r.args = args
 								r.count = 0
 								return r, true
@@ -577,30 +945,67 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return
 							}
 						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
 
-					case 'p': // Prefix: "prepare"
-
-						if l := len("prepare"); len(elem) >= l && elem[0:l] == "prepare" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = PrepareBindingOperation
-								r.summary = "打开绑定链接并固定会话（BindAccount 第一步）"
-								r.operationID = "prepareBinding"
-								r.operationGroup = ""
-								r.pathPattern = "/v1/channels/bindings:prepare"
-								r.args = args
-								r.count = 0
-								return r, true
-							default:
-								return
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
 							}
+
+							// Param: "briefingID"
+							// Match until "/"
+							idx := strings.IndexByte(elem, '/')
+							if idx < 0 {
+								idx = len(elem)
+							}
+							args[0] = elem[:idx]
+							elem = elem[idx:]
+
+							if len(elem) == 0 {
+								switch method {
+								case "GET":
+									r.name = GetBriefingOperation
+									r.summary = "完整简报（GetBriefing）"
+									r.operationID = "getBriefing"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/channels/briefings/{briefingID}"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+							switch elem[0] {
+							case '/': // Prefix: "/resend"
+
+								if l := len("/resend"); len(elem) >= l && elem[0:l] == "/resend" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = ResendBriefingOperation
+										r.summary = "重新推送到企业微信（ResendBriefing）"
+										r.operationID = "resendBriefing"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/channels/briefings/{briefingID}/resend"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							}
+
 						}
 
 					}
@@ -624,6 +1029,31 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						r.operationID = "openCardLink"
 						r.operationGroup = ""
 						r.pathPattern = "/v1/channels/card-links:open"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+			case 'd': // Prefix: "delivery-stats"
+
+				if l := len("delivery-stats"); len(elem) >= l && elem[0:l] == "delivery-stats" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = GetDeliveryStatsOperation
+						r.summary = "投递统计（设置 / 渠道）"
+						r.operationID = "getDeliveryStats"
+						r.operationGroup = ""
+						r.pathPattern = "/v1/channels/delivery-stats"
 						r.args = args
 						r.count = 0
 						return r, true
