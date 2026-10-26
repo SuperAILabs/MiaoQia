@@ -12,6 +12,7 @@ import (
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	detection "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	identity "github.com/superailabs/miaoqia/services/subsystems/identity/api"
+	pursuit "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 )
 
 // 简报快照的存储形状与契约 Briefing / BriefingSection / BriefingItem 一致（字段同名，经 JSON 转换为生成类型）。
@@ -194,6 +195,10 @@ func dependencyTransient(err error) bool {
 	var id *identity.Error
 	if errors.As(err, &id) {
 		return id.Status >= 500
+	}
+	var pe *pursuit.Error
+	if errors.As(err, &pe) {
+		return pe.Status >= 500
 	}
 	var own *api.Error
 	if errors.As(err, &own) {

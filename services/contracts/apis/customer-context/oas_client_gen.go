@@ -134,7 +134,8 @@ type Invoker interface {
 	// 同步。调用者须为用户主体（否则 403
 	// forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
 	// 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
-	// 中被允许的部分（总含 can_view）。.
+	// 中被允许的部分（总含 can_view）。 0.5.0 起响应带目标所在单元
+	// org_unit_id、模板 template_id 与状态 state（调用者能查看目标时才返回）。.
 	//
 	// GET /v1/customer-context/objectives/{objectiveID}/access
 	GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (*ObjectiveAccess, error)
@@ -1322,7 +1323,8 @@ func (c *Client) sendGetObjective(ctx context.Context, params GetObjectiveParams
 // 同步。调用者须为用户主体（否则 403
 // forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
 // 授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation
-// 中被允许的部分（总含 can_view）。.
+// 中被允许的部分（总含 can_view）。 0.5.0 起响应带目标所在单元
+// org_unit_id、模板 template_id 与状态 state（调用者能查看目标时才返回）。.
 //
 // GET /v1/customer-context/objectives/{objectiveID}/access
 func (c *Client) GetObjectiveAccess(ctx context.Context, params GetObjectiveAccessParams) (*ObjectiveAccess, error) {

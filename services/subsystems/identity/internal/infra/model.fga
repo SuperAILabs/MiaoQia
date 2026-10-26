@@ -83,6 +83,12 @@ type org_unit
     # 单元级信号关系（identity.md 7.7）：objective#can_view_signals 与 objective#can_feedback 去掉参与关系的部分
     define can_view_unit_signals: decision_maker or research_analyst
     define can_feedback_unit_signals: decision_maker or research_analyst
+    # 单元级跟进关系（identity.md 7.7，PRD 第6段）：objective#can_assign 去掉参与关系的部分；pursuit#can_view 与 pursuit#can_edit
+    # 去掉参与关系的部分。推进的参与关系经授权同步写入、可能落后于 pursuit 本地的期望关系，pursuit 按“单元关系，或本地期望关系中的
+    # 负责人/协作者且 identity 判断推进通过”放行（决策者不受同步影响，原负责人在本地改派后立即失去以负责人身份的操作）
+    define can_assign_unit_objectives: decision_maker
+    define can_view_unit_pursuits: decision_maker or business_developer or pursuit_lead or research_analyst or domain_expert
+    define can_edit_unit_pursuits: decision_maker
 
 # 租户启用的商业目标：策略、信号、判断与决策都归属目标
 type objective

@@ -18,6 +18,7 @@ import (
 	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	idapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
+	pursuitapi "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 )
 
 func TestMigrationRejectsInvalidRoleBeforeDatabase(t *testing.T) {
@@ -86,15 +87,18 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 	t.Setenv("MIAOQIA_LEARNING_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_DETECTION_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_CHANNELS_PACKS_DIR", packs)
+	t.Setenv("MIAOQIA_PURSUIT_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_ENV", "development")
 	t.Setenv("MIAOQIA_IDENTITY_OPENFGA_URL", fga)
 	t.Setenv("MIAOQIA_IDENTITY_URL", "http://127.0.0.1:1/internal")
 	t.Setenv("MIAOQIA_CUSTOMER_CONTEXT_URL", "http://127.0.0.1:1/internal")
 	t.Setenv("MIAOQIA_COMMERCE_URL", "http://127.0.0.1:1/internal")
 	t.Setenv("MIAOQIA_DETECTION_URL", "http://127.0.0.1:1/internal")
-	keys := []string{"MIAOQIA_BINDING_IDENTITY", "MIAOQIA_BINDING_CUSTOMER_CONTEXT", "MIAOQIA_BINDING_COMMERCE", "MIAOQIA_BINDING_DETECTION"}
+	t.Setenv("MIAOQIA_PURSUIT_URL", "http://127.0.0.1:1/internal")
+	keys := []string{"MIAOQIA_BINDING_IDENTITY", "MIAOQIA_BINDING_CUSTOMER_CONTEXT", "MIAOQIA_BINDING_COMMERCE", "MIAOQIA_BINDING_DETECTION",
+		"MIAOQIA_BINDING_PURSUIT"}
 	subsystemOf := map[string]string{"MIAOQIA_BINDING_IDENTITY": "identity", "MIAOQIA_BINDING_CUSTOMER_CONTEXT": "customer-context",
-		"MIAOQIA_BINDING_COMMERCE": "commerce", "MIAOQIA_BINDING_DETECTION": "detection"}
+		"MIAOQIA_BINDING_COMMERCE": "commerce", "MIAOQIA_BINDING_DETECTION": "detection", "MIAOQIA_BINDING_PURSUIT": "pursuit"}
 	variants := []map[string]string{
 		{},
 		{"MIAOQIA_BINDING_IDENTITY": "remote"},
@@ -102,7 +106,10 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 		{"MIAOQIA_BINDING_IDENTITY": "remote", "MIAOQIA_BINDING_CUSTOMER_CONTEXT": "remote"},
 		{"MIAOQIA_BINDING_COMMERCE": "remote"},
 		{"MIAOQIA_BINDING_DETECTION": "remote"},
+		{"MIAOQIA_BINDING_PURSUIT": "remote"},
 		{"MIAOQIA_BINDING_IDENTITY": "remote", "MIAOQIA_BINDING_CUSTOMER_CONTEXT": "remote", "MIAOQIA_BINDING_COMMERCE": "remote", "MIAOQIA_BINDING_DETECTION": "remote"},
+		{"MIAOQIA_BINDING_IDENTITY": "remote", "MIAOQIA_BINDING_CUSTOMER_CONTEXT": "remote", "MIAOQIA_BINDING_COMMERCE": "remote", "MIAOQIA_BINDING_DETECTION": "remote",
+			"MIAOQIA_BINDING_PURSUIT": "remote"},
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for role := range mf.Roles {
@@ -153,8 +160,26 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, active := runtime.Lookup[ccapi.ActivePolicies](b, ccapi.ActivePoliciesBinding)
 						_, approvals := runtime.Lookup[idapi.ApprovalReader](b, idapi.ApprovalReaderBinding)
 						_, own := runtime.Lookup[chnapi.Briefings](b, chnapi.BriefingsBinding)
-						if !briefing || !access || !active || !approvals || !own {
-							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v", briefing, access, active, approvals, own)
+						_, pursuits := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
+						if !briefing || !access || !active || !approvals || !own || !pursuits {
+							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v pursuit=%v", briefing, access, active,
+								approvals, own, pursuits)
+						}
+					}
+					// 第6段新增的跨子系统绑定：pursuit 经 identity 授权、同步参与关系与核验成员，经 customer-context 判断成员的目标访问；
+					// 服务对外接口的 api 角色经 detection 核对信号；并提供 Actions 与 Reminders
+					if m.Name == "pursuit" {
+						b := envs[i].Bindings
+						_, authz := runtime.Lookup[idapi.Authorizer](b, idapi.AuthorizerBinding)
+						_, directory := runtime.Lookup[idapi.Directory](b, idapi.DirectoryBinding)
+						_, members := runtime.Lookup[idapi.SessionResolver](b, idapi.SessionBinding)
+						_, scope := runtime.Lookup[ccapi.ObjectiveScope](b, ccapi.ScopeBinding)
+						_, briefing := runtime.Lookup[detectionapi.Briefing](b, detectionapi.BriefingBinding)
+						_, actions := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
+						_, reminders := runtime.Lookup[pursuitapi.Reminders](b, pursuitapi.RemindersBinding)
+						if !authz || !directory || !members || !scope || (role == "api" && !briefing) || !actions || !reminders {
+							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v actions=%v reminders=%v", authz, directory,
+								members, scope, briefing, actions, reminders)
 						}
 					}
 				}

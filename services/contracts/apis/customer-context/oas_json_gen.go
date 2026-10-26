@@ -2134,11 +2134,32 @@ func (s *ObjectiveAccess) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		if s.OrgUnitID.Set {
+			e.FieldStart("org_unit_id")
+			s.OrgUnitID.Encode(e)
+		}
+	}
+	{
+		if s.TemplateID.Set {
+			e.FieldStart("template_id")
+			s.TemplateID.Encode(e)
+		}
+	}
+	{
+		if s.State.Set {
+			e.FieldStart("state")
+			s.State.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfObjectiveAccess = [2]string{
+var jsonFieldsNameOfObjectiveAccess = [5]string{
 	0: "objective_id",
 	1: "allowed",
+	2: "org_unit_id",
+	3: "template_id",
+	4: "state",
 }
 
 // Decode decodes ObjectiveAccess from json.
@@ -2179,6 +2200,36 @@ func (s *ObjectiveAccess) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"allowed\"")
+			}
+		case "org_unit_id":
+			if err := func() error {
+				s.OrgUnitID.Reset()
+				if err := s.OrgUnitID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"org_unit_id\"")
+			}
+		case "template_id":
+			if err := func() error {
+				s.TemplateID.Reset()
+				if err := s.TemplateID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"template_id\"")
+			}
+		case "state":
+			if err := func() error {
+				s.State.Reset()
+				if err := s.State.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"state\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
@@ -2232,6 +2283,48 @@ func (s *ObjectiveAccess) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *ObjectiveAccess) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ObjectiveAccessState as json.
+func (s ObjectiveAccessState) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes ObjectiveAccessState from json.
+func (s *ObjectiveAccessState) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ObjectiveAccessState to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch ObjectiveAccessState(v) {
+	case ObjectiveAccessStateInactive:
+		*s = ObjectiveAccessStateInactive
+	case ObjectiveAccessStateActive:
+		*s = ObjectiveAccessStateActive
+	case ObjectiveAccessStateDisabled:
+		*s = ObjectiveAccessStateDisabled
+	default:
+		*s = ObjectiveAccessState(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s ObjectiveAccessState) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ObjectiveAccessState) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -2620,6 +2713,8 @@ func (s *ObjectiveRelation) Decode(d *jx.Decoder) error {
 		*s = ObjectiveRelationCanViewSignals
 	case ObjectiveRelationCanFeedback:
 		*s = ObjectiveRelationCanFeedback
+	case ObjectiveRelationCanAssign:
+		*s = ObjectiveRelationCanAssign
 	default:
 		*s = ObjectiveRelation(v)
 	}
@@ -3507,6 +3602,39 @@ func (s OptInt64) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptInt64) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ObjectiveAccessState as json.
+func (o OptObjectiveAccessState) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes ObjectiveAccessState from json.
+func (o *OptObjectiveAccessState) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptObjectiveAccessState to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptObjectiveAccessState) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptObjectiveAccessState) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

@@ -133,6 +133,11 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				Name: "detection.fact-matching", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
 				Topics:   []string{outbox.Topic(reqctx.ZonePublic, "", "domain")},
 				Handlers: map[string]consumer.Handler{"domain.fact.upserted.v1": svc.FactUpserted},
+			}, {
+				// 信号的“已转跟进”：按 pursuit 的关联事件维护有效关联集合与转换基线（PRD 第6段 F3 第1条）
+				Name: "detection.pursuit-links", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+				Topics:   []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "pursuit")},
+				Handlers: map[string]consumer.Handler{app.PursuitSignalLinked: svc.PursuitLinked, app.PursuitSignalUnlinked: svc.PursuitUnlinked},
 			}}
 		},
 	}

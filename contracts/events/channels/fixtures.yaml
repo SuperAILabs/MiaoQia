@@ -163,6 +163,26 @@ fixtures:
     - op: replace
       path: /result
       value: failed
+  - name: 卡片跟进带跟进标识
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: pursue
+    - op: remove
+      path: /parts
+    - op: add
+      path: /pursuit_id
+      value: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 跟进标识格式不符
+    valid: false
+    patch:
+    - op: replace
+      path: /action
+      value: pursue
+    - op: add
+      path: /pursuit_id
+      value: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
   - name: 成功不带错误代码
     valid: false
     patch:

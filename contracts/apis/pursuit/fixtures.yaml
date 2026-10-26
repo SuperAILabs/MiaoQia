@@ -1,0 +1,849 @@
+fixtures:
+- schema: Problem
+  base:
+    type: https://errors.miaoqia.com/conflict
+    title: conflict
+    status: 409
+    code: conflict
+    current:
+      pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      state: open
+      version: 2
+      owner: bd-2
+      changed_by: dm-1
+      changed_at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 信号已更新带信号当前值
+    valid: true
+    patch:
+    - op: remove
+      path: /current
+    - op: replace
+      path: /code
+      value: signal_updated
+    - op: add
+      path: /signal_current
+      value:
+        content_version: 2
+        status: open
+  - name: 非错误HTTP状态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: 200
+  - name: 未知字段
+    valid: false
+    patch:
+    - op: add
+      path: /pursuit
+      value: {}
+- schema: PursuitID
+  base: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 前缀或格式不符
+    valid: false
+    instance: pur_abc
+- schema: TaskID
+  base: tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 前缀或格式不符
+    valid: false
+    instance: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: OutcomeID
+  base: otc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 前缀或格式不符
+    valid: false
+    instance: otc_
+- schema: ObjectiveID
+  base: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 前缀或格式不符
+    valid: false
+    instance: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: SignalID
+  base: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 前缀或格式不符
+    valid: false
+    instance: sig-1
+- schema: Subject
+  base: bd-1
+  cases:
+  - name: 含空格
+    valid: false
+    instance: bd 1
+- schema: OperationID
+  base: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 过短
+    valid: false
+    instance: op-1
+- schema: Cursor
+  base: eyJ0IjoxfQ
+  cases:
+  - name: 非 base64url 字符
+    valid: false
+    instance: a+b/c
+- schema: ListView
+  base: team
+  cases:
+  - name: 未知视图
+    valid: false
+    instance: all
+- schema: Channel
+  base: wecom
+  cases:
+  - name: 未知渠道
+    valid: false
+    instance: sms
+- schema: PursuitStatus
+  base: voided
+  cases:
+  - name: 未知状态
+    valid: false
+    instance: archived
+- schema: Contribution
+  base: first_alert
+  cases:
+  - name: 不计算妙洽带来的金额
+    valid: false
+    instance: attributed_value
+- schema: LocalTime
+  base: &id001
+    value: '2026-10-25'
+    precision: day
+    timezone: Asia/Shanghai
+  cases:
+  - name: 精确到分钟
+    valid: true
+    patch:
+    - op: replace
+      path: /value
+      value: 2026-10-25T09:30
+    - op: replace
+      path: /precision
+      value: minute
+  - name: 缺少时区
+    valid: false
+    patch:
+    - op: remove
+      path: /timezone
+  - name: 未知精度
+    valid: false
+    patch:
+    - op: replace
+      path: /precision
+      value: hour
+  - name: 带秒与偏移
+    valid: false
+    patch:
+    - op: replace
+      path: /value
+      value: '2026-10-25T09:30:00+08:00'
+- schema: Target
+  base: &id002
+    fact_type: tendering.bid_result
+    subject_id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    part_id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    winner_org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 没有中标方与部分
+    valid: true
+    patch:
+    - op: remove
+      path: /winner_org_id
+    - op: remove
+      path: /part_id
+  - name: 中标方前缀不符
+    valid: false
+    patch:
+    - op: replace
+      path: /winner_org_id
+      value: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 缺少主体
+    valid: false
+    patch:
+    - op: remove
+      path: /subject_id
+- schema: TaskInput
+  base:
+    title: 联系总包采购
+    due: *id001
+  cases:
+  - name: 指定负责人与说明
+    valid: true
+    patch:
+    - op: add
+      path: /assignee
+      value: pl-1
+    - op: add
+      path: /note
+      value: 先问材料采购计划
+  - name: 空标题
+    valid: false
+    patch:
+    - op: replace
+      path: /title
+      value: ''
+  - name: 未知字段
+    valid: false
+    patch:
+    - op: add
+      path: /bound_deadline
+      value: bid_submission
+- schema: CreatePursuitRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    seen_content_version: 0
+    owner: bd-1
+    first_task:
+      title: 联系总包采购
+      due: *id001
+  cases:
+  - name: 手动创建
+    valid: true
+    patch:
+    - op: remove
+      path: /signal_id
+    - op: remove
+      path: /seen_content_version
+    - op: add
+      path: /target
+      value: *id002
+  - name: 卡片创建
+    valid: true
+    patch:
+    - op: remove
+      path: /owner
+    - op: remove
+      path: /first_task
+    - op: add
+      path: /channel
+      value: wecom
+  - name: 缺少目标
+    valid: false
+    patch:
+    - op: remove
+      path: /objective_id
+  - name: 负版本
+    valid: false
+    patch:
+    - op: replace
+      path: /seen_content_version
+      value: -1
+  - name: 协作者重复
+    valid: false
+    patch:
+    - op: add
+      path: /collaborators
+      value:
+      - pl-1
+      - pl-1
+- schema: VersionRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    expected_version: 1
+  cases:
+  - name: 版本为零
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+  - name: 缺少操作标识
+    valid: false
+    patch:
+    - op: remove
+      path: /operation_id
+- schema: AssignRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    expected_version: 1
+    owner: pl-1
+    collaborators:
+    - bd-1
+    reason: 按区域分工
+  cases:
+  - name: 清空协作者
+    valid: true
+    patch:
+    - op: replace
+      path: /collaborators
+      value: []
+  - name: 缺少负责人
+    valid: false
+    patch:
+    - op: remove
+      path: /owner
+  - name: 协作者超过上限
+    valid: false
+    patch:
+    - op: replace
+      path: /collaborators
+      value:
+      - m0
+      - m1
+      - m2
+      - m3
+      - m4
+      - m5
+      - m6
+      - m7
+      - m8
+      - m9
+      - m10
+      - m11
+      - m12
+      - m13
+      - m14
+      - m15
+      - m16
+      - m17
+      - m18
+      - m19
+      - m20
+- schema: CreateTaskRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    expected_version: 1
+    task:
+      title: 准备报价
+  cases:
+  - name: 缺少任务
+    valid: false
+    patch:
+    - op: remove
+      path: /task
+- schema: UpdateTaskRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    expected_version: 1
+    due:
+      value: 2026-10-25T09:30
+      precision: minute
+      timezone: Asia/Shanghai
+    reason: 总包推迟
+  cases:
+  - name: 只改标题
+    valid: true
+    patch:
+    - op: remove
+      path: /due
+    - op: add
+      path: /title
+      value: 提交报价
+  - name: 删除截止
+    valid: true
+    patch:
+    - op: remove
+      path: /due
+    - op: add
+      path: /clear_due
+      value: true
+  - name: 未知字段
+    valid: false
+    patch:
+    - op: add
+      path: /status
+      value: done
+- schema: CompleteTaskRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    expected_version: 1
+  cases:
+  - name: 卡片完成
+    valid: true
+    patch:
+    - op: add
+      path: /channel
+      value: wecom
+  - name: 版本为零
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+- schema: ReopenTaskRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    target_operation_id: atk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 缺少被撤销的操作
+    valid: false
+    patch:
+    - op: remove
+      path: /target_operation_id
+- schema: Amount
+  base: &id003
+    type: own_supply_amount
+    currency: CNY
+    value: '1200000'
+    nature: estimate
+    source: verbal
+  cases:
+  - name: 已发生的合同金额
+    valid: true
+    patch:
+    - op: replace
+      path: /type
+      value: contract_amount
+    - op: replace
+      path: /nature
+      value: actual
+    - op: replace
+      path: /source
+      value: public_fact
+    - op: add
+      path: /source_ref
+      value: fact:ntc/v3
+  - name: 缺少取值性质
+    valid: false
+    patch:
+    - op: remove
+      path: /nature
+  - name: 缺少币种
+    valid: false
+    patch:
+    - op: remove
+      path: /currency
+  - name: 数值不是十进制文本
+    valid: false
+    patch:
+    - op: replace
+      path: /value
+      value: 1.2e6
+  - name: 币种小写
+    valid: false
+    patch:
+    - op: replace
+      path: /currency
+      value: cny
+- schema: OutcomeInput
+  base: &id004
+    result: success
+    reason_code: EXISTING_RELATIONSHIP
+    known_at: &id005
+      value: '2026-11-03'
+      precision: day
+      timezone: Asia/Shanghai
+    known_channel: buyer_or_prime_notice
+    amounts: &id007
+    - *id003
+  cases:
+  - name: 放弃可不填获知时间
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: abandoned
+    - op: replace
+      path: /reason_code
+      value: TOO_SMALL
+    - op: remove
+      path: /known_at
+    - op: remove
+      path: /known_channel
+    - op: replace
+      path: /amounts
+      value: []
+  - name: 未知结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: won
+  - name: 缺少原因
+    valid: false
+    patch:
+    - op: remove
+      path: /reason_code
+  - name: 未知获知渠道
+    valid: false
+    patch:
+    - op: replace
+      path: /known_channel
+      value: rumor
+- schema: CloseRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    expected_version: 3
+    outcome: *id004
+  cases:
+  - name: 缺少结果
+    valid: false
+    patch:
+    - op: remove
+      path: /outcome
+- schema: ReviseOutcomeRequest
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    supersedes: otc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    outcome:
+      result: success
+      reason_code: EXISTING_RELATIONSHIP
+      known_at: *id005
+      known_channel: buyer_or_prime_notice
+      amounts:
+      - type: own_supply_amount
+        currency: CNY
+        value: '1200000'
+        nature: actual
+        source: verbal
+    reason: 总包已签合同
+  cases:
+  - name: 缺少原因
+    valid: false
+    patch:
+    - op: remove
+      path: /reason
+  - name: 引用不是结果记录
+    valid: false
+    patch:
+    - op: replace
+      path: /supersedes
+      value: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: Authorization
+  base: &id008
+    state: effective
+    desired_version: 1
+    applied_version: 1
+  cases:
+  - name: 授权同步中
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: syncing
+    - op: replace
+      path: /desired_version
+      value: 2
+    - op: add
+      path: /pending_since
+      value: '2026-10-20T00:12:00Z'
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: pending
+- schema: Task
+  base: &id006
+    id: tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    title: 联系总包采购
+    assignee: bd-1
+    due: *id001
+    due_at: '2026-10-25T16:00:00Z'
+    status: todo
+    version: 1
+    deadline_version: 1
+    created_at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 已完成
+    valid: true
+    patch:
+    - op: replace
+      path: /status
+      value: done
+    - op: add
+      path: /completed_at
+      value: '2026-10-20T00:12:00Z'
+    - op: replace
+      path: /version
+      value: 2
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: doing
+  - name: 缺少截止版本
+    valid: false
+    patch:
+    - op: remove
+      path: /deadline_version
+- schema: TaskView
+  base:
+    task: *id006
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    pursuit_state: open
+    viewer_can_edit: true
+    viewer_is_assignee: true
+  cases:
+  - name: 缺少权限判断
+    valid: false
+    patch:
+    - op: remove
+      path: /viewer_can_edit
+- schema: SignalLink
+  base: &id009
+    link_id: psl_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    seen_content_version: 0
+    method: create
+    state: active
+    linked_at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 已解除
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: removed
+  - name: 未知建立方式
+    valid: false
+    patch:
+    - op: replace
+      path: /method
+      value: manual
+- schema: Outcome
+  base: &id010
+    result: success
+    reason_code: EXISTING_RELATIONSHIP
+    known_at: *id005
+    known_channel: buyer_or_prime_notice
+    amounts: *id007
+    id: otc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    contribution: first_alert
+    recorded_by: pl-1
+    recorded_at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 修订记录
+    valid: true
+    patch:
+    - op: add
+      path: /supersedes
+      value: otc_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    - op: add
+      path: /revision_reason
+      value: 估计转为已发生
+  - name: 缺少贡献关系
+    valid: false
+    patch:
+    - op: remove
+      path: /contribution
+  - name: 缺少记录时间
+    valid: false
+    patch:
+    - op: remove
+      path: /recorded_at
+- schema: TimelineEntry
+  base:
+    kind: reassigned
+    actor: dm-1
+    detail: bd-1 → pl-1
+    recorded_at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 未知种类
+    valid: false
+    patch:
+    - op: replace
+      path: /kind
+      value: deleted
+- schema: PursuitSummary
+  base: &id011
+    id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    target: *id002
+    state: open
+    owner: bd-1
+    owner_valid: true
+    version: 1
+    authorization: *id008
+    created_at: '2026-10-20T00:12:00Z'
+    updated_at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 无有效负责人且有下一个截止
+    valid: true
+    patch:
+    - op: replace
+      path: /owner_valid
+      value: false
+    - op: add
+      path: /next_due
+      value: *id001
+    - op: add
+      path: /next_due_at
+      value: '2026-10-25T16:00:00Z'
+  - name: 缺少授权状态
+    valid: false
+    patch:
+    - op: remove
+      path: /authorization
+- schema: Pursuit
+  base:
+    id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    kind: deal
+    target: *id002
+    source:
+      kind: signal
+      signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      seen_content_version: 0
+      channel: web
+    state: open
+    owner: bd-1
+    owner_valid: true
+    collaborators: []
+    created_by: bd-1
+    created_at: '2026-10-20T00:12:00Z'
+    version: 1
+    authorization: *id008
+    tasks:
+    - *id006
+    links:
+    - *id009
+    outcomes: []
+    timeline:
+    - kind: created
+      actor: bd-1
+      recorded_at: '2026-10-20T00:12:00Z'
+  cases:
+  - name: 手动创建
+    valid: true
+    patch:
+    - op: replace
+      path: /source
+      value:
+        kind: manual
+        channel: web
+    - op: replace
+      path: /links
+      value: []
+  - name: 已关闭并有结果
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: closed
+    - op: add
+      path: /closed_at
+      value: '2026-10-20T00:12:00Z'
+    - op: replace
+      path: /outcomes
+      value:
+      - *id010
+  - name: 未知形态
+    valid: false
+    patch:
+    - op: replace
+      path: /kind
+      value: continuous
+  - name: 缺少时间线
+    valid: false
+    patch:
+    - op: remove
+      path: /timeline
+- schema: PursuitList
+  base:
+    items:
+    - *id011
+    next_cursor: eyJ0IjoxfQ
+  cases:
+  - name: 缺少条目
+    valid: false
+    patch:
+    - op: remove
+      path: /items
+- schema: MyTask
+  base:
+    task: *id006
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    escalated: false
+  cases:
+  - name: 缺少目标
+    valid: false
+    patch:
+    - op: remove
+      path: /objective_id
+- schema: MyTaskList
+  base:
+    items:
+    - task: *id006
+      objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      escalated: true
+  cases:
+  - name: 未知字段
+    valid: false
+    patch:
+    - op: add
+      path: /total
+      value: 1
+- schema: PursuitState
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    state: open
+    version: 2
+    owner: pl-1
+    task_id: tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    task_status: done
+    task_version: 2
+  cases:
+  - name: 缺少版本
+    valid: false
+    patch:
+    - op: remove
+      path: /version
+- schema: SignalVersion
+  base:
+    content_version: 2
+    status: converted
+  cases:
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /status
+      value: pursued
+- schema: CommandResult
+  base:
+    operation_id: op-01JA8ZXXXXXXXXXXXXXXXXXXX1
+    result: created
+    pursuit: *id011
+    authorization: syncing
+  cases:
+  - name: 已存在且无权查看只给负责人
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: existing
+    - op: remove
+      path: /pursuit
+    - op: remove
+      path: /authorization
+    - op: add
+      path: /existing_owner
+      value: bd-2
+    - op: add
+      path: /not_written
+      value:
+      - owner
+      - first_task
+  - name: 撤销后授权清理中
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: succeeded
+    - op: replace
+      path: /authorization
+      value: cleaning
+  - name: 未知结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: duplicate
+  - name: 未写入项未登记
+    valid: false
+    patch:
+    - op: add
+      path: /not_written
+      value:
+      - deadline
