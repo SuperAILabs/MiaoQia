@@ -7540,14 +7540,21 @@ func (s *TaskView) encodeFields(e *jx.Encoder) {
 		e.FieldStart("viewer_is_assignee")
 		e.Bool(s.ViewerIsAssignee)
 	}
+	{
+		if s.ViewerEscalated.Set {
+			e.FieldStart("viewer_escalated")
+			s.ViewerEscalated.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfTaskView = [5]string{
+var jsonFieldsNameOfTaskView = [6]string{
 	0: "task",
 	1: "objective_id",
 	2: "pursuit_state",
 	3: "viewer_can_edit",
 	4: "viewer_is_assignee",
+	5: "viewer_escalated",
 }
 
 // Decode decodes TaskView from json.
@@ -7612,6 +7619,16 @@ func (s *TaskView) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"viewer_is_assignee\"")
+			}
+		case "viewer_escalated":
+			if err := func() error {
+				s.ViewerEscalated.Reset()
+				if err := s.ViewerEscalated.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"viewer_escalated\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)

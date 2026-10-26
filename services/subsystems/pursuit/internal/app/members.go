@@ -124,7 +124,7 @@ func (s *Service) revalidate(ctx context.Context, tx pgx.Tx, tenant, cell, where
 		collaborators := slices.DeleteFunc(slices.Clone(p.Collaborators), func(c string) bool { return slices.Contains(removed, c) })
 		pv := p.Participation + 1
 		if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET owner_valid = owner_valid AND NOT $2, collaborators = $3, participation_version = $4, version = version + 1,
- sync_pending_since = COALESCE(sync_pending_since, now()), changed_by = $5, updated_at = now() WHERE id = $1`, p.ID, ownerInvalid, collaborators, pv, "svc:pursuit"); err != nil {
+ sync_pending_since = COALESCE(sync_pending_since, now()), changed_by = $5, team_changed_by = $5, updated_at = now() WHERE id = $1`, p.ID, ownerInvalid, collaborators, pv, "svc:pursuit"); err != nil {
 			return err
 		}
 		reason := "team_changed"

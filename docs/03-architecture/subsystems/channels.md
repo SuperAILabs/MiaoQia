@@ -173,7 +173,7 @@
 - **对账**：`api.Maintenance.ReconcileChannelSessions` 分页读取 identity 中仍有有效会话的全部绑定，对本子系统中不是有效绑定的（含不存在的）撤销到两边版本的较大者；本子系统查询失败或 identity 不可用时中止并返回错误，不把未知当作失效；
 - **卡片跳转**（`POST /v1/channels/card-links:open`）：出站编排经本地绑定 `api.Messaging.CreateCardLink` 为收件人与对象生成链接（只保存令牌摘要）。打开时不切换账号：链接收件人不是当前成员时 409 `account_mismatch` 并带出收件人，由客户端提示切换；链接不存在、属于其他租户、对象不存在与无权查看（实时 `Check can_view`）都是同一个 404 `content_unavailable`，响应不含标题、归属或负责人；过期 410 `card_link_expired`。`api.Messaging.DeliveryTarget` 只在渠道已启用、绑定有效且经上述核对仍属于成员当前的成员资格时投到渠道，否则改投站内并给出原因；查询失败或 identity 不可用时返回错误，不当作“未绑定”；
 - **回调**：先验签（失败 401 `callback_signature_invalid`），再核对时间戳在业务时钟前后 5 分钟内（否则 401 `callback_replayed`），再按（渠道、企业、渠道事件标识）去重，去重与业务写入在同一事务中；被拒绝与重复的回调不改变任何业务状态，计入该企业路由上的被拒回调数（安装列表的 `rejected_callbacks`）；
-- 尚未实现：网关的未认证入口（安装回调、消息回调与免登目前只以本地绑定提供）、生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态“异常”（只有被拒回调计数）、渠道内对话、即时通知、定时任务角色（`api.Maintenance` 与 `api.Briefings` 由其调用）、飞书、钉钉与 Telegram。简报、偏好与卡片快捷动作见下文第5段实现状况。
+- 尚未实现：网关的未认证入口（安装回调、消息回调与免登目前只以本地绑定提供）、生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态“异常”（只有被拒回调计数）、渠道内对话、即时通知、定时任务角色（`api.Maintenance`、`api.Briefings` 与 `api.Notices` 由其调用）、飞书、钉钉与 Telegram。简报、偏好与卡片快捷动作见下文第5段实现状况。
 
 本切片选定的缺省值（规格未定处）：
 
@@ -217,7 +217,18 @@
 | 卡片数 | 每区前 3 条、每期至多 6 张信号卡片 |
 | 签名密钥 | `MIAOQIA_CHANNELS_SIGNING_KEY`，至少 32 字节；动作令牌与历史游标共用、按用途分隔 |
 
-**实现状况（PRD 第6段卡片“跟进”，[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.3.0）**：信号卡片在租户已开启跟进入口（发布开关 `MIAOQIA_CHANNELS_PURSUE_TENANTS`，逗号分隔的租户，缺省为空即不显示）、pursuit 的 `Actions` 绑定可用、且收件人本人在目标上有 `can_assign`（经 customer-context `ObjectiveAccess` 以收件人本人判断，判断失败不显示）时带“跟进”按钮；排除信号不显示。点击沿用第5段的令牌、回调与执行检查（签名、租户、卡片、绑定、收件人、已固定结果、到期），之后以点击者的用户主体调用 pursuit `CreatePursuit`（`channel` 为 `wecom`，负责人为点击者本人、没有任务；操作标识为令牌标识，每次尝试的幂等键为“令牌标识-序号”）；已创建与“已存在 · 已关联”为成功、“已存在”为无变化，pursuit 的确定失败（4xx）固定在令牌上，暂时失败不作废令牌；`channels.action.executed.v1` 的 `action` 为 `pursue` 并带 `pursuit_id`。卡片“跟进”不提供撤销（撤销创建在 Web 中）。提醒卡片的投递与“完成”、简报“待我处理”中的任务尚未实现（[A02 验收缺口 C-09](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)）。
+**实现状况（PRD 第6段卡片“跟进”，[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.3.0）**：信号卡片在租户已开启跟进入口（发布开关 `MIAOQIA_CHANNELS_PURSUE_TENANTS`，逗号分隔的租户，缺省为空即不显示）、pursuit 的 `Actions` 绑定可用、且收件人本人在目标上有 `can_assign`（经 customer-context `ObjectiveAccess` 以收件人本人判断，判断失败不显示）时带“跟进”按钮；排除信号不显示。点击沿用第5段的令牌、回调与执行检查（签名、租户、卡片、绑定、收件人、已固定结果、到期），之后以点击者的用户主体调用 pursuit `CreatePursuit`（`channel` 为 `wecom`，负责人为点击者本人、没有任务；操作标识为令牌标识，每次尝试的幂等键为“令牌标识-序号”）；已创建与“已存在 · 已关联”为成功、“已存在”为无变化，pursuit 的确定失败（4xx）固定在令牌上，暂时失败不作废令牌；`channels.action.executed.v1` 的 `action` 为 `pursue` 并带 `pursuit_id`。卡片“跟进”不提供撤销（撤销创建在 Web 中）。
+
+**实现状况（PRD 第6段渠道侧 C-09，[channels 契约](../../../contracts/apis/channels/openapi.yaml) 0.3.0、[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.4.0）**：
+
+- **通知记录**：消费者 `channels.pursuit-notices` 订阅 pursuit 主题：`pursuit.task.due.v1` 为每个（提醒、收件人）记一行 `chn_notices`（转给决策者的提醒没有收件人，记为 `*`）；乱序按（截止版本、提醒时刻）比较，同一任务已有更新的通知时新到的旧事件记为取消（`superseded`），否则取消同一任务更早的未发通知。`pursuit.pursuit.authorization_rejected.v1` 带操作者（成员，非服务主体）时给操作者记一行，每个跟进的每个参与版本一条；
+- **投递**（本地绑定 `channels.Notices.DeliverNotices`，调度器周期调用）：以租约认领；渠道重试时限为事件时刻起 24 小时（安静时段延后时顺延），之后留在 Web 与站内（`in_app`）。转给决策者的一行先展开：以每个已绑定成员本人经 pursuit `getTask` 判断 `viewer_escalated`（至多 500 名），满足的各记一行（未绑定的决策者在简报“待我处理”与 Web 中看到）。每次发送（含重试）前按收件人当前状态再检查，顺序为：安静时段（收件人本人当前偏好；延后到结束、不丢弃，在任何渲染与令牌签发之前）→ 成员有效 → 以收件人本人经 pursuit 读取（任务：不能查看取消、跟进关闭或任务非待办取消、截止版本已变取消 `superseded`、已不是负责人也不是转交给他的决策者取消 `reassigned`、写入准入不满足（授权同步中）稍后重试；同一任务已有更新的通知取消；授权被拒通知：操作者已不能查看该跟进取消 `pursuit_not_visible`）→ 投递目标（未绑定为 `in_app`）。卡片在第一次发送前渲染并固定（重试发送同一张卡片、令牌不变；解绑后重新绑定的按新绑定重新渲染），正文每次按当前值重新渲染；结果只写审计（`channels.notice.*`），不发布 `channels.delivery.*`（其契约以简报为单位）；
+- **任务提醒卡片**：标题为任务名（转给决策者的为“待你决定的任务”），正文为截止（所填值与时区）、逾期、转交说明与备注；按钮“完成”（动作令牌，24 小时，令牌带任务与提醒所在的截止版本）与“查看”（Web 任务地址 `/pursuits/tasks/{id}`，只指向对象、不带令牌，打开时由 pursuit 以当前登录成员授权）。授权被拒通知：被移出的人数（负责人、协作者）与原因，负责人失效时说明任务转给决策者，“查看”为 `/pursuits/{id}`；
+- **“完成”与“撤销”**：点击沿用第5段的回调、令牌与执行检查（签名、租户、卡片、点击者的有效绑定与成员资格、点击者是收件人、已固定的结果、到期；任一不满足不消耗令牌），由 `Briefings.ProcessActions` 执行：以点击者本人经 `getTask` 再判断——不能查看为确定失败 `forbidden`；令牌的截止版本不是当前版本为确定失败 `deadline_changed`（截止改变后的新提醒是新卡片与新令牌）；已不是负责人也不是转交给他的决策者为 `forbidden`——之后以点击者调用 `completeTask`（所见任务版本在首次执行时固定在令牌上）或 `reopenTask`（`channel` 为 `wecom`；操作标识为令牌标识，每次尝试的幂等键为“令牌标识-序号”）。成功、无变化与确定失败固定在令牌上并发布 `channels.task_action.executed.v1`；暂时失败与 `authorization_syncing` 不作废令牌（同步完成后同一令牌可再执行）。成功的“完成”带“撤销”（10 分钟，pursuit 的渠道撤销时限），回写卡片显示点击者此刻可见的当前状态；
+- **简报“待我处理”中的任务**：组装时以成员本人经 pursuit `listMyTasks`（截止早于下一期计划发送，含已逾期；含转给本人决定的 escalated 任务）读取，排在审批之后；pursuit 不可用时本区暂不可用。读取完整简报、重新推送与每次投递发送前以本人经 `getTask` 再检查：已不能查看的整条移除，其余叠加 `task_current`（todo / done / cancelled / reassigned / pursuit_closed），总览卡只计仍待处理的；
+- **调度器入口**：`Notices.DeliverNotices`（通知投递与安静时段结束后的延后通知）与 `Briefings.ComposeDue`（为本租户已绑定成员中、按本人偏好与时区在 `at` 已到计划发送时间且本期尚未组装的成员组装简报；同一成员同一期只组装一次，未生成简报的记在 `chn_compose_marks`；已错过的上一期不补，由下一期覆盖；每次至多 `limit` 名，`More` 表示还有）。两者都只有本地绑定（与 `Briefings` 其他方法相同），调度器接入见 [A02 验收缺口 R-01](../../05-delivery/09-a02-end-to-end-acceptance.md#43-运行装配r)；
+- **证据**：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 C-09 用例：安静时段延后与重试同一张卡片、篡改 / 伪造签名 / 他租户 / 换卡片的令牌、非收件人点击、完成与重放与撤销、截止改变后的旧卡片与未发旧提醒、授权同步中不作废令牌、改派与成员退出后的未发提醒取消、授权被拒通知与已不能查看的操作者、转给决策者的展开与简报）与 `services/kernel/integration/briefing_test.go`（`ComposeDue`：限额与 More、重复调用、已错过的上一期、未绑定与已退出成员、他租户、时区边界）；
+- **未实现**：通知的投递事件与统计（`channels.delivery.*` 与投递统计只覆盖简报）、负责人仍在团队但授权同步滞后时转交提醒没有接收者、展开上限之外的决策者，见 [A02 验收缺口 C-11](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)。
 
 ## 7. 事件
 

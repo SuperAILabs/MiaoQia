@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -87,16 +89,29 @@ func (s *Service) rejected(ctx context.Context, tx pgx.Tx, p *Pursuit, rejected 
 	ownerInvalid := false
 	collaborators := slices.Clone(p.Collaborators)
 	var names []string
+	var listed []map[string]any
 	for _, r := range rejected {
 		names = append(names, r.Subject+":"+string(r.Reason))
-		if r.Subject == p.Owner && r.Relation == identityapi.SyncParticipantsResultRejectedItemRelationOwner {
-			ownerInvalid = true
+		relation := ""
+		switch {
+		case r.Subject == p.Owner && r.Relation == identityapi.SyncParticipantsResultRejectedItemRelationOwner:
+			ownerInvalid, relation = true, "owner"
+		case r.Relation == identityapi.SyncParticipantsResultRejectedItemRelationCollaborator && slices.Contains(p.Collaborators, r.Subject):
+			relation = "collaborator"
+		}
+		if relation != "" && len(listed) < 50 {
+			listed = append(listed, map[string]any{"subject": r.Subject, "relation": relation, "reason": rejectionReason(string(r.Reason))})
 		}
 		collaborators = slices.DeleteFunc(collaborators, func(c string) bool { return c == r.Subject })
 	}
+	// 写入被拒版本的操作者（系统写入的版本不通知）
+	var operator *string
+	if err := tx.QueryRow(ctx, `SELECT team_changed_by FROM pur_pursuits WHERE id = $1`, p.ID).Scan(&operator); err != nil {
+		return err
+	}
 	pv := p.Participation + 1
 	if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET owner_valid = owner_valid AND NOT $2, collaborators = $3, participation_version = $4, version = version + 1,
- sync_pending_since = COALESCE(sync_pending_since, now()), notify_version = CASE WHEN $2 THEN NULL ELSE notify_version END,
+ team_changed_by = 'svc:pursuit', sync_pending_since = COALESCE(sync_pending_since, now()), notify_version = CASE WHEN $2 THEN NULL ELSE notify_version END,
  notify_assignee = CASE WHEN $2 THEN NULL ELSE notify_assignee END, notify_by = CASE WHEN $2 THEN NULL ELSE notify_by END,
  notify_kind = CASE WHEN $2 THEN NULL ELSE notify_kind END, updated_at = now() WHERE id = $1`, p.ID, ownerInvalid, collaborators, pv); err != nil {
 		return err
@@ -112,6 +127,17 @@ func (s *Service) rejected(ctx context.Context, tx pgx.Tx, p *Pursuit, rejected 
 	detail := fmt.Sprintf("identity 拒绝：%v", names)
 	if err := timelineNow(ctx, tx, rc.Tenant, p.ID, "authorization_rejected", rc.Principal.ID, detail); err != nil {
 		return err
+	}
+	// 通知操作者（PRD 第6段 F12 第6条）：channels 消费，发送前以操作者本人再检查能否查看该跟进
+	if len(listed) > 0 {
+		data := map[string]any{"pursuit_id": p.ID, "objective_id": p.ObjectiveID, "org_unit_id": p.OrgUnitID, "participation_version": p.Participation,
+			"rejected": listed, "owner_invalid": ownerInvalid, "recorded_at": ts(s.businessNow())}
+		if operator != nil && *operator != "" && !strings.HasPrefix(*operator, "svc:") {
+			data["operator"] = *operator
+		}
+		if _, err := writer.Append(ctx, tx, outbox.Event{Type: AuthorizationRejected, Subject: p.ID, PartitionKey: p.ID, Data: data}); err != nil {
+			return err
+		}
 	}
 	return recorder.Record(ctx, tx, audit.Entry{Action: "pursuit.authorization.rejected", Resource: fmt.Sprintf("%s/participation:%d", p.ID, p.Participation),
 		Result: "failed", Basis: "sync_resource_participants"})
@@ -182,4 +208,14 @@ func (s *Service) RetrySync(ctx context.Context, limit int) (int, error) {
 		done++
 	}
 	return done, nil
+}
+
+var reasonCode = regexp.MustCompile(`^[a-z][a-z0-9_]{1,63}$`)
+
+// rejectionReason 规范 identity 给出的拒绝原因（契约只接受稳定代码；其他值记为 rejected）。
+func rejectionReason(r string) string {
+	if reasonCode.MatchString(r) {
+		return r
+	}
+	return "rejected"
 }

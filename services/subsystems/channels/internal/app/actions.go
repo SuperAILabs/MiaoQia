@@ -94,16 +94,24 @@ type actionToken struct {
 	expires                                                               time.Time
 	request, result                                                       []byte
 	executedAt                                                            *time.Time
+	// 任务提醒卡片（complete_task / reopen_task）：任务、提醒所在的截止版本、被撤销的“完成”
+	task, targetOp string
+	deadline       int64
+}
+
+func (t *actionToken) taskAction() bool {
+	return t.action == "complete_task" || t.action == "reopen_task"
 }
 
 func (s *Service) readToken(sctx context.Context, id string) (*actionToken, error) {
 	var t *actionToken
 	err := s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
 		var v actionToken
-		var reason, target *string
-		err := tx.QueryRow(ctx, `SELECT id, recipient, signal_id, objective_id, action, reason, target_token, card_id, state, content_version, expires_at, request, result, executed_at
- FROM chn_action_tokens WHERE id = $1`, id).Scan(&v.id, &v.recipient, &v.signal, &v.objective, &v.action, &reason, &target, &v.card, &v.state, &v.content,
-			&v.expires, &v.request, &v.result, &v.executedAt)
+		var reason, target, signal, task, targetOp *string
+		var deadline *int64
+		err := tx.QueryRow(ctx, `SELECT id, recipient, signal_id, objective_id, action, reason, target_token, card_id, state, content_version, expires_at, request, result, executed_at,
+ task_id, deadline_version, target_operation FROM chn_action_tokens WHERE id = $1`, id).Scan(&v.id, &v.recipient, &signal, &v.objective, &v.action, &reason, &target, &v.card,
+			&v.state, &v.content, &v.expires, &v.request, &v.result, &v.executedAt, &task, &deadline, &targetOp)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -115,6 +123,18 @@ func (s *Service) readToken(sctx context.Context, id string) (*actionToken, erro
 		}
 		if target != nil {
 			v.target = *target
+		}
+		if signal != nil {
+			v.signal = *signal
+		}
+		if task != nil {
+			v.task = *task
+		}
+		if deadline != nil {
+			v.deadline = *deadline
+		}
+		if targetOp != nil {
+			v.targetOp = *targetOp
 		}
 		t = &v
 		return nil
@@ -338,6 +358,9 @@ func definiteOf(err error) (string, json.RawMessage) {
 // execute 执行一次点击：至多 MaxActionAttempts 次尝试（每次新的幂等键、同一操作标识与请求）；成功、无变化与确定失败固定在令牌上，
 // 暂时失败不作废令牌。
 func (s *Service) execute(sctx, uctx context.Context, j actionJob, tok *actionToken) string {
+	if tok.taskAction() {
+		return s.executeTask(sctx, uctx, j, tok)
+	}
 	if s.Detection == nil {
 		s.reply(sctx, j, nil, "暂时没有成功，可再点一次或打开 Web 处理", s.viewButton(sctx, tok))
 		return "transient"
@@ -518,6 +541,10 @@ func (s *Service) replay(sctx, uctx context.Context, j actionJob, tok *actionTok
 	if err != nil {
 		s.logger().WarnContext(sctx, "动作审计写入失败", "token", tok.id, "error", err.Error())
 	}
+	if tok.taskAction() {
+		s.replyTask(sctx, uctx, j, tok, &res, true)
+		return
+	}
 	s.replyResult(sctx, uctx, j, tok, &res, true)
 }
 
@@ -659,6 +686,9 @@ func tenantOf(ctx context.Context) string {
 
 // viewButton 返回“查看”链接按钮（新的只指向信号的链接）。
 func (s *Service) viewButton(sctx context.Context, tok *actionToken) []api.Button {
+	if tok.taskAction() {
+		return []api.Button{{Key: "view", Label: "查看", URL: taskURL(tok.task)}}
+	}
 	m := &minter{s: s, tenant: tenantOf(sctx), recipient: tok.recipient, now: s.businessNow()}
 	url, err := m.link("signal", tok.signal)
 	if err != nil {

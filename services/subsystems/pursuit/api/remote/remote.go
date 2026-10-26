@@ -102,3 +102,35 @@ func (c client) ReopenTask(ctx context.Context, task, key string, req *api.Reope
 			return out, nil
 		})
 }
+
+func (c client) ListMyTasks(ctx context.Context, before *time.Time, limit int, cursor string) (*api.MyTaskList, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "ListMyTasks", Idempotent: true},
+		func(ctx context.Context) (*api.MyTaskList, error) {
+			p := pur.ListMyTasksParams{}
+			if before != nil {
+				p.Before = pur.NewOptDateTime(*before)
+			}
+			if limit > 0 {
+				p.Limit = pur.NewOptInt(limit)
+			}
+			if cursor != "" {
+				p.Cursor = pur.NewOptCursor(pur.Cursor(cursor))
+			}
+			out, err := c.c.ListMyTasks(ctx, p)
+			if err != nil {
+				return nil, translate(err)
+			}
+			return out, nil
+		})
+}
+
+func (c client) GetPursuit(ctx context.Context, pursuit string) (*api.Pursuit, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetPursuit", Idempotent: true},
+		func(ctx context.Context) (*api.Pursuit, error) {
+			out, err := c.c.GetPursuit(ctx, pur.GetPursuitParams{PursuitID: pur.PursuitID(pursuit)})
+			if err != nil {
+				return nil, translate(err)
+			}
+			return out, nil
+		})
+}
