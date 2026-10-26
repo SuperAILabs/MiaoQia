@@ -61,6 +61,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.ApprovalReaderBinding, api.LocalApprovalReader(directory))
 			return nil
 		},
+		Jobs: jobs,
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
 			handler := &app.Server{Decider: decider, Directory: directory}
 			srv, err := identityapi.NewServer(handler, identityapi.WithPathPrefix("/internal"), identityapi.WithErrorHandler(app.WriteProtocolError))

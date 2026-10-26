@@ -33,6 +33,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	"github.com/superailabs/miaoqia/services/kernel/scheduler"
 	"github.com/superailabs/miaoqia/services/subsystems/commerce"
 	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext"
@@ -931,6 +932,45 @@ func TestPolicySimulationApproval(t *testing.T) {
 		offset.Store(0)
 		if len(list.Approvals) != 0 {
 			t.Fatalf("%+v", list)
+		}
+		pump(t)
+		a := getApproval(t, dm, r.ApprovalID)
+		if a.State != "expired" || !a.ClosedAt.Or(time.Time{}).Equal(a.ExpiresAt) {
+			t.Fatalf("%+v", a)
+		}
+		if p = getPolicy(t, dm); p.Request.Or(cc.PolicyRequest{}).State != "expired" || p.Draft.Or(cc.PolicyDraft{}).LockedBy.Set {
+			t.Fatalf("%+v", p)
+		}
+	})
+
+	t.Run("用例13（R-01）：到期失效由 scheduler 角色的 identity.expire-approvals 任务完成，无需有人读取审批", func(t *testing.T) {
+		declared, err := idModule.Jobs(idEnv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var job scheduler.Job
+		for _, j := range declared {
+			if j.Name == "identity.expire-approvals" {
+				job = j
+			}
+		}
+		if job.Run == nil {
+			t.Fatalf("identity 应声明 identity.expire-approvals：%+v", declared)
+		}
+		p := getPolicy(t, dm)
+		r := request(t, dm, activation(p, "由定时任务过期"), 200)
+		runner := &scheduler.Runner{}
+		if o := runner.Once(ctx, scheduler.Bound{Job: job, DB: iamApp}); o != scheduler.Ran {
+			t.Fatalf("%s", o)
+		}
+		if a := getApproval(t, dm, r.ApprovalID); a.State != "pending" {
+			t.Fatalf("未到期不得失效：%+v", a)
+		}
+		offset.Store(int64(8 * 24 * time.Hour))
+		o := runner.Once(ctx, scheduler.Bound{Job: job, DB: iamApp})
+		offset.Store(0)
+		if o != scheduler.Ran {
+			t.Fatalf("%s", o)
 		}
 		pump(t)
 		a := getApproval(t, dm, r.ApprovalID)
