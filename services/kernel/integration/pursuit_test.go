@@ -1617,6 +1617,101 @@ func TestPursuitFollowUp(t *testing.T) {
 		}
 	})
 
+	run("越权与反例测试（复审二）：成员退出、目标变化事件迟到期间重新加入，决策者把负责人改为协作者（及协作者改为负责人）时重新判断并记下此刻的成员版本，之后送达的旧事件不撤销这次分派；带团队的“已存在”、关闭与修订不改授予", func(t *testing.T) {
+		grantsOf := func(t *testing.T, id string) string {
+			t.Helper()
+			var g string
+			if err := purOwner.QueryRow(ctx, `SELECT grants::text FROM pur_pursuits WHERE id = $1`, id).Scan(&g); err != nil {
+				t.Fatal(err)
+			}
+			return g
+		}
+		// 上一用例中 bd2 退出后重新加入：先恢复其目标访问
+		setParticipants(t, bd, lead, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+		sigP, sigQ := newSignal(t, pursueBid())[0], newSignal(t, pursueBid())[0]
+		p := pursuitOf(create(t, bd, fromSignal(t, bd, sigP, fmt.Sprintf(`,"owner":%q`, bd2)), 200))                          // bd2 负责人 → 改为协作者
+		q := pursuitOf(create(t, bd, fromSignal(t, bd, sigQ, fmt.Sprintf(`,"owner":%q,"collaborators":[%q]`, bd, bd2)), 200)) // bd2 协作者 → 改为负责人
+		drained(t)
+		// 带负责人与协作者的“已存在”不改团队与授予
+		before := grantsOf(t, p)
+		if res := create(t, bd, fromSignal(t, bd, sigP, fmt.Sprintf(`,"owner":%q,"collaborators":[%q]`, bd, expert)), 200); res["result"] != "existing" {
+			t.Fatalf("%+v", res)
+		}
+		if grantsOf(t, p) != before {
+			t.Fatal("“已存在”改了授予")
+		}
+		// pursuit 暂不消费成员与目标事件：bd2 退出、重新加入、恢复目标访问
+		start := len(delivered)
+		routesMu.Lock()
+		savedM, savedO := routes["identity.member.changed.v1"], routes["customer_context.objective.changed.v1"]
+		routes["identity.member.changed.v1"], routes["customer_context.objective.changed.v1"] = savedM[:1], savedO[:1]
+		routesMu.Unlock()
+		putMember(t, bd2, "removed", `[]`)
+		putMember(t, bd2, "active", `["business_developer"]`)
+		setParticipants(t, bd, lead, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+		routesMu.Lock()
+		routes["identity.member.changed.v1"], routes["customer_context.objective.changed.v1"] = savedM, savedO
+		routesMu.Unlock()
+		var held []outbox.Envelope
+		for _, e := range delivered[start:] {
+			if e.Type == "identity.member.changed.v1" || e.Type == "customer_context.objective.changed.v1" {
+				held = append(held, e)
+			}
+		}
+		if len(held) < 3 {
+			t.Fatalf("扣下的事件 %d", len(held))
+		}
+		// 决策者明确改派：p 的负责人改为 bd、bd2 为协作者；q 的负责人改为 bd2、bd 为协作者
+		assign(t, dm, p, bd, []string{bd2}, 200)
+		assign(t, dm, q, bd2, []string{bd}, 200)
+		drained(t)
+		vp, vq := versionOf(t, p), versionOf(t, q)
+		// 迟到的事件按原顺序送达 pursuit
+		for _, e := range held {
+			r := savedM[len(savedM)-1]
+			if e.Type == "customer_context.objective.changed.v1" {
+				r = savedO[len(savedO)-1]
+			}
+			if err := handle(t, r, e); err != nil {
+				t.Fatal(err)
+			}
+		}
+		drained(t)
+		if d := detail(t, dm, p); fmt.Sprint(d["collaborators"]) != fmt.Sprint([]any{bd2}) || versionOf(t, p) != vp {
+			t.Fatalf("旧事件撤销了改为协作者的分派：%+v", d["collaborators"])
+		}
+		if d := detail(t, dm, q); d["owner"] != bd2 || d["owner_valid"] != true || versionOf(t, q) != vq {
+			t.Fatalf("旧事件撤销了改为负责人的分派：%+v", d)
+		}
+		if !allowedOn(t, bd2, "collaborator", "pursuit:"+p) || !allowedOn(t, bd2, "can_edit", "pursuit:"+q) {
+			t.Fatal("旧事件撤回了新分派的关系")
+		}
+		addTask(t, bd2, q, `{"title":"新负责人"}`, 200)
+		// 关闭与修订结果不改授予
+		before = grantsOf(t, q)
+		res := obj(t, expect(t, bd2, "POST", "/v1/pursuit/pursuits/"+q+"/close", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"outcome":{"result":"abandoned","reason_code":"TOO_SMALL"}}`, opID("cl"), versionOf(t, q)), 200))
+		outcome := res["outcome"].(map[string]any)["id"].(string)
+		expect(t, bd2, "POST", "/v1/pursuit/pursuits/"+q+"/outcomes", fmt.Sprintf(`{"operation_id":%q,"supersedes":%q,"outcome":{"result":"abandoned","reason_code":"TOO_SMALL"},"reason":"复核"}`, opID("rv"), outcome), 200)
+		drained(t)
+		if grantsOf(t, q) != before {
+			t.Fatal("关闭或修订改了授予")
+		}
+		// 授予之后的退出仍判无效（两处都移出 / 无效）
+		putMember(t, bd2, "removed", `[]`)
+		drained(t)
+		if d := detail(t, dm, p); len(d["collaborators"].([]any)) != 0 {
+			t.Fatalf("授予之后的退出应移出协作者：%+v", d["collaborators"])
+		}
+		putMember(t, bd2, "active", `["business_developer"]`)
+		setParticipants(t, bd, lead, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+	})
+
 	if len(pending) != 0 {
 		t.Fatalf("结束时仍有 %d 个事件待重试", len(pending))
 	}

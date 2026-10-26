@@ -105,7 +105,7 @@ func (p *Pursuit) granted(subject string) bool {
 }
 
 // regrant 按新的负责人与协作者计算授予记录：角色不变的成员保留原记录，新加入或角色改变的成员记为参与版本 pv，成员版本取 members
-// （没有时沿用原记录）。
+// （调用方须为这些成员重新判断并给出此刻的成员版本；缺少时记 0，任何退出事件都判无效，失败关闭）。
 func regrant(old map[string]Grant, prevRole func(string) string, owner string, collaborators []string, pv int64, members map[string]int64) map[string]Grant {
 	out := map[string]Grant{}
 	put := func(subject, role string) {
@@ -113,11 +113,7 @@ func regrant(old map[string]Grant, prevRole func(string) string, owner string, c
 			out[subject] = g
 			return
 		}
-		mv, ok := members[subject]
-		if !ok {
-			mv = old[subject].Member
-		}
-		out[subject] = Grant{Role: role, PV: pv, Member: mv}
+		out[subject] = Grant{Role: role, PV: pv, Member: members[subject]}
 	}
 	put(owner, "owner")
 	for _, c := range collaborators {

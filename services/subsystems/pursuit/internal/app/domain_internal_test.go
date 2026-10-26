@@ -125,12 +125,13 @@ func TestGrantTracksCurrentRoleVersion(t *testing.T) {
 		t.Fatal("第3版已应用")
 	}
 	// 角色不变保留原授予；负责人改为协作者是新的授予
-	next := regrant(p.Grants, p.role, "C", []string{"A"}, 4, map[string]int64{"C": 1})
-	if g := next["A"]; g.Role != "collaborator" || g.PV != 4 || g.Member != 9 {
+	// 角色改变时成员版本取此次重新判断的值，不沿用授予前的值
+	next := regrant(p.Grants, p.role, "C", []string{"A"}, 4, map[string]int64{"C": 1, "A": 11})
+	if g := next["A"]; g.Role != "collaborator" || g.PV != 4 || g.Member != 11 {
 		t.Fatalf("%+v", g)
 	}
 	p.Collaborators = []string{"C"}
-	if kept := regrant(p.Grants, p.role, "A", []string{"C"}, 5, nil); kept["A"].PV != 3 || kept["C"].PV != 5 {
+	if kept := regrant(p.Grants, p.role, "A", []string{"C"}, 5, nil); kept["A"].PV != 3 || kept["A"].Member != 9 || kept["C"].PV != 5 || kept["C"].Member != 0 {
 		t.Fatalf("%+v", kept)
 	}
 }

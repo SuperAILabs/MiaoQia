@@ -514,8 +514,20 @@ func (s *Service) AssignPursuit(ctx context.Context, id, key string, req AssignR
 		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
-		current := func(m string) bool { return p.involves(m) }
-		versions, err := s.assignees(ctx, rc, p.ObjectiveID, append([]string{req.Owner}, req.Collaborators...), current)
+		// 角色不变且已有授予记录的成员沿用原授予（不再判断）；新加入、角色改变（负责人↔协作者）或失效后重新分派的成员以其本人
+		// 重新判断成员状态与目标访问，并记下此刻的成员版本（不沿用授予前的成员版本，否则迟到的旧退出事件会撤销这次分派）
+		pre := p
+		roleIn := func(m string) string {
+			if m == req.Owner {
+				return "owner"
+			}
+			return "collaborator"
+		}
+		unchanged := func(q *Pursuit, m string) bool {
+			g, ok := q.Grants[m]
+			return ok && g.Role == roleIn(m) && q.role(m) == roleIn(m)
+		}
+		versions, err := s.assignees(ctx, rc, p.ObjectiveID, append([]string{req.Owner}, req.Collaborators...), func(m string) bool { return unchanged(pre, m) })
 		if err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
@@ -538,9 +550,9 @@ func (s *Service) AssignPursuit(ctx context.Context, id, key string, req AssignR
 			if p.Version != req.Expected {
 				return nil, nil, conflict("conflict", p, nil)
 			}
-			// 只有在加锁后仍成立的成员才算“已在跟进中”：并发改动使原判断失效时按冲突处理
+			// 沿用原授予的成员须在加锁后仍是同一授予：并发改动使原判断失效时按冲突处理
 			for _, m := range append([]string{req.Owner}, req.Collaborators...) {
-				if current(m) && !p.involves(m) {
+				if unchanged(pre, m) && (!unchanged(p, m) || p.Grants[m] != pre.Grants[m]) {
 					return nil, nil, conflict("conflict", p, nil)
 				}
 			}
