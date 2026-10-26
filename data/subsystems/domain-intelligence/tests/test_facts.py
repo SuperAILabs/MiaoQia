@@ -61,8 +61,9 @@ def _facts(dom_db):
 
 
 def test_schema_versions_match_the_contracts():
-    for _, (_, _, _, version) in OBJECT_TYPES.items():
-        schema = json.loads((REPO / "contracts/schemas/domains/procurement/notice.schema.json").read_text())
+    schemas = {"INF-PROC": "procurement/notice", "INF-ORG": "organization/registration"}
+    for domain, (_, _, _, version) in OBJECT_TYPES.items():
+        schema = json.loads((REPO / f"contracts/schemas/domains/{schemas[domain]}.schema.json").read_text())
         assert schema["x-version"] == version
 
 

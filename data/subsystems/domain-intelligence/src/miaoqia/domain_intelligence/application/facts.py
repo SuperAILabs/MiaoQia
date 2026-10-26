@@ -29,6 +29,7 @@ EXTRACTION_REVISED = "evidence.extraction.revised.v1"
 # 信息领域 → (对象类型, 标识前缀, 契约模型, Schema 版本)。Schema 版本与 contracts/schemas 的 x-version 一致（测试核对）。
 OBJECT_TYPES = {
     "INF-PROC": ("tendering.notice", "ntc", models.Notice, "1.2.0"),
+    "INF-ORG": ("organization.registration", "ogr", models.OrgRegistration, "1.2.0"),
 }
 
 writer = outbox.Writer(subsystem=NAME, namespace="domain", zone=reqctx.PUBLIC)
@@ -64,8 +65,9 @@ class Materializer:
         conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
                      {"k": f"{revision.pack_id}|{revision.source_id}|{revision.source_key}"})
         # 多事实修订先按稳定顺序锁住全部身份；避免来源A/B以相反顺序竞争两个项目。
-        from .projects import lock_identities
-        lock_identities(conn, revision)
+        if revision.pack_id == "INF-PROC":
+            from .projects import lock_identities
+            lock_identities(conn, revision)
         published = []
         for ordinal, extracted in enumerate(revision.facts):
             row = conn.execute(text("""SELECT f.id, f.current_version, v.content FROM dom_facts f
@@ -85,8 +87,9 @@ class Materializer:
                                  object_type=object_type, model=model, schema_version=schema_version,
                                  source_id=revision.source_id, source_key=revision.source_key, ordinal=ordinal)
             if full is not None:
-                from .projects import aggregate_notice
-                aggregate_notice(conn, revision, full)
+                if revision.pack_id == "INF-PROC":
+                    from .projects import aggregate_notice
+                    aggregate_notice(conn, revision, full)
                 published.append(full)
         return published
 

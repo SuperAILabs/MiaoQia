@@ -49,8 +49,22 @@ class ResolvedEvidence:
     derivation: dict | None = None
 
 
+@dataclass(frozen=True)
+class SnapshotRead:
+    """Full-access owner read with verified raw and normalized object hashes."""
+    id: str
+    source_id: str
+    source_key: str
+    rights_tags: tuple[str, ...]
+    raw_sha256: str
+    raw: bytes
+    document: dict
+
+
 class EvidenceResolver(Protocol):
     def resolve(self, evidence_ref: str) -> ResolvedEvidence | None: ...
+
+    def snapshot(self, snapshot_ref: str) -> SnapshotRead | None: ...
 
 
 class Enrichments(Protocol):

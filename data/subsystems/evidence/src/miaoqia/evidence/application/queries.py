@@ -55,17 +55,7 @@ class Resolver:
                                         WHERE r.id = :id"""), {"id": evidence_ref}).mappings().one_or_none()
         if row is None:
             return self.enrichments.resolve(evidence_ref) if self.enrichments else None
-        if self.authorize is not None:
-            from ..api import Unbound
-            try:
-                groups = self.provenance.resolve(self.provenance.evidence(evidence_ref))
-            except Unbound:
-                return None
-            level = self.authorize(groups, ctx.purpose)
-        else:
-            level = self.display(tuple(row["rights_tags"]), ctx.purpose)
-        if level not in ("none", "citation_only", "excerpt", "full_text"):
-            raise PermissionError("展示策略返回未知级别")
+        level = self._level(tuple(row["rights_tags"]), lambda: self.provenance.evidence(evidence_ref))
         if level == "none":
             return None
         base = dict(id=evidence_ref, display_level=level, snapshot_ref=row["snapshot_id"], source_id=row["source_id"],
@@ -84,3 +74,39 @@ class Resolver:
             loc = row["locator"]
             context = "\n".join(u.text for u in doc.units() if loc["block"] <= u.block <= loc.get("block_end", loc["block"]))
         return ResolvedEvidence(**base, locator=row["locator"], snippet=quote if level == "full_text" else quote[:512], context=context)
+
+    def _level(self, tags, closure):
+        ctx = reqctx.current()
+        ctx.validate()
+        if not ctx.purpose or (self.display is None and self.authorize is None):
+            raise PermissionError("未装配展示权利判定或缺少用途")
+        if self.authorize is not None:
+            from ..api import Unbound
+            try:
+                groups = self.provenance.resolve(closure())
+            except Unbound:
+                return "none"
+            level = self.authorize(groups, ctx.purpose)
+        else:
+            level = self.display(tags, ctx.purpose)
+        if level not in ("none", "citation_only", "excerpt", "full_text"):
+            raise PermissionError("展示策略返回未知级别")
+        return level
+
+    def snapshot(self, snapshot_ref):
+        """Owner full read; reject before reading either object when display is clipped."""
+        import hashlib
+        from ..api import SnapshotRead
+        # Admission runs even for an absent handle.
+        self._level((), lambda: self.provenance.snapshot(snapshot_ref))
+        with self.database.tx() as conn:
+            conn.execute(text("SET TRANSACTION READ ONLY"))
+            row = conn.execute(text("SELECT * FROM evd_snapshots WHERE id=:i"),
+                               {"i": snapshot_ref}).mappings().one_or_none()
+        if row is None or self._level(tuple(row["rights_tags"]), lambda: self.provenance.snapshot(snapshot_ref)) != "full_text":
+            return None
+        raw = self.store.get(row["artifact_ref"])
+        if "sha256:" + hashlib.sha256(raw).hexdigest() != row["raw_sha256"]:
+            raise EvidenceIntegrityError("原件与快照哈希不符")
+        return SnapshotRead(row["id"], row["source_id"], row["source_key"], tuple(row["rights_tags"]),
+                            row["raw_sha256"], raw, load_document(self.store, row))
