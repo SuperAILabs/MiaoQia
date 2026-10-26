@@ -1,0 +1,26 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-26T18:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在提交进入评审，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  PRD 第6段跟进（交易型跟进、任务、提醒与结果记录）的服务端切片在 C4a 冻结的 contracts/identifiers.yaml 中追加四个 pursuit 所有的前缀：
+  psl（信号与跟进的一条关联）、tsk（跟进任务）、otc（结果记录）、rmd（一次任务提醒），版本 1.7.0 → 1.8.0；既有前缀不变、不复用。
+  identity 的 OpenFGA 模型在 org_unit 上追加三个关系 can_assign_unit_objectives、can_view_unit_pursuits、can_edit_unit_pursuits
+  （只追加，既有关系与 pursuit 类型不变；docs/03-architecture/subsystems/identity.md 第7.2节矩阵同步）。
+  customer-context 的 OpenAPI（0.4.0 → 0.5.0）在 ObjectiveAccess 追加关系 can_assign 与可选字段 org_unit_id、template_id、state；
+  pursuit 新增 OpenAPI 与事件契约（均为 0.1.0）；channels 事件契约（0.2.0 → 0.3.0）在 channels.action.executed.v1 的 action
+  追加枚举值 pursue（卡片“跟进”）与可选字段 pursuit_id。这些是草案，不在 C4a 冻结范围，只记录。
+  修订编号按“谁先合并谁占用”：主线已合并修订 11 与 12，本记录顺延为 13；原冻结记录与修订 1–12 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.8.0
+  sha256: 40bfde27b723d3077cc9e9b4fce2bf8d3ee6064988d5d14bbbfea0e3f07b8cd9
+verification:
+  base: c0694cf
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0：customer-context 与 channels 追加枚举值与可选字段，pursuit 新增路径与事件类型均为追加）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；调度器、企业微信与模型为本地绑定或内存实现，生产适配器未接入）

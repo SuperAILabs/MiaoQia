@@ -28,3 +28,10 @@ def module(extractions: Callable[[], evidence_api.Extractions] | None = None) ->
                          handlers={EXTRACTION_REVISED: materializer.on_extraction_revised}, db=env.db)]
 
     return Module(name=NAME, database="dom", migrations=MIGRATIONS, consumers=consumers)
+
+
+def queries(database, *, allowed=None):
+    """api.Facts 的本地绑定；database 使用 domain-intelligence 的账号，allowed 缺省拒绝。"""
+    from .application.queries import Queries
+
+    return Queries(database, allowed)

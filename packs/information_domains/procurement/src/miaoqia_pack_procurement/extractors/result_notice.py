@@ -18,7 +18,7 @@ from decimal import Decimal, InvalidOperation
 from miaoqia.sdk import Document, ExtractionContext, ExtractionResult
 from miaoqia.sdk.document import Span, TextUnit
 
-RESULT_TITLE = re.compile(r"(中标|成交|入围)[^\n]{0,12}(结果)?(公告|公示)|候选人公示")
+RESULT_TITLE = re.compile(r"(中标|成交|入围)[^\n]{0,12}(结果)?(公告|公示)|候选人公示|采购的结果公告")
 CANDIDATE = re.compile(r"候选人公示")
 NOT_RESULT = re.compile(r"更正|澄清|变更|补充|终止|废标|流标|失败|验收|合同")   # 结果的更正与其他阶段由各自解析器处理
 CODE = re.compile(r"(?:项目编号|招标编号|采购编号)[：:]\s*([A-Za-z0-9][A-Za-z0-9_\-/]*)")
@@ -47,7 +47,7 @@ def _lot_key(raw: str) -> str:
 
 class ResultNoticeExtractor:
     id = "proc.result-notice"
-    version = "0.1.0"
+    version = "0.2.0"
     fact_types = ("tendering.notice",)
     gold_notice_types = ("award", "candidate")
     # 与人工映射对照评测的关键字段（mq-corpus check --gold reviewed）；* 匹配数组下标。
@@ -98,8 +98,8 @@ class ResultNoticeExtractor:
 
     # ---------- 通用 ----------
     def _title(self, doc: Document) -> Span | None:
-        """首个文本块的第一行（站点页面为公告标题；PDF 文本层的首行为标题）。"""
-        for b in doc.blocks[:2]:
+        """明确的采购结果公告标题优先；其他既有格式使用首个文本块的第一行。"""
+        for b in sorted(doc.blocks[:3], key=lambda b: not b.get("text", "").endswith("采购的结果公告")):
             text = b.get("text", "")
             if b["kind"] == "table" or not text.strip():
                 continue
@@ -136,6 +136,11 @@ class ResultNoticeExtractor:
                     return TextUnit(text, b["index"]).span(m.start(1), m.end(1))
                 if re.search(r"代理机构信息|项目联系方式", text):
                     break
+        # 表格排版的采购人信息：文本单元保留换行，仍按小节边界读取。
+        for u in doc.units():
+            m = re.search(r"采购人信息\s+名\s*称[：:]\s*([^\n]+)", u.text)
+            if m:
+                return u.span(m.start(1), m.end(1))
         return None
 
     def _money(self, ctx: ExtractionContext, span: Span, default_unit: str | None = None) -> dict | None:
@@ -214,6 +219,18 @@ class ResultNoticeExtractor:
             name_col = next((i for i, h in enumerate(header) if "供应商名称" in h or "中标人名称" in h), None)
             price_col = next((i for i, h in enumerate(header) if "金额" in h and ("中标" in h or "成交" in h)), None)
             if name_col is None or price_col is None:
+                # HTML 嵌套结果表被规范化为外表单元格中的多行文本；只接收完整、明确的单中标人折扣率行。
+                # 折扣率保留为合同定价原文，不能塞进 money 或 A02 的 amount。
+                for u in doc.units():
+                    if u.block != b["index"]:
+                        continue
+                    m = re.fullmatch(r"\s*中标供应商名称\s+采购内容\s+中标（成交）金额\s+([^\n]+)\s*\n[^\n]+\n\s*([0-9]+(?:\.[0-9]+)?%)\s*", u.text)
+                    if m and not lots:
+                        key = "1"
+                        result = self._result(ctx, key, "award", u.span(m.start(1), m.end(1)), 0)
+                        result.update(result_kind="contract_award", is_winner=True)
+                        lots[key] = {"lot_key": key, "bid_results": [result],
+                                     "conditions": {"contract_pricing": ctx.text(u.span(m.start(2), m.end(2)))}}
                 continue
             lot_col = next((i for i, h in enumerate(header) if h in ("包号", "包件号", "标包号")), None)
             uscc_col = next((i for i, h in enumerate(header) if "信用代码" in h), None)
