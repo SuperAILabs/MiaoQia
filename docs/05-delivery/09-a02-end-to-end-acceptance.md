@@ -80,7 +80,8 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | C-01 | 生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态 | [channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L3 | C10 真实调用与凭证授权 |
 | C-02 | gateway 未认证入口：安装回调、消息回调与免登的外网入口（目前只以本地绑定提供） | 同上 | ④ | L3 | 开发 VPS 公网域名与证书 |
 | C-03 | IdP：Keycloak 管理接口与邀请邮件适配器、按免登会话铸造令牌、真实 TOTP 仪式与会话时长配置 | [identity 第5节](../03-architecture/subsystems/identity.md#5-接口)；PRD 第1段用例6、18 | ①④ | L2（Web 登录）、L3（免登） | — |
-| C-04 | 简报组装与投递、动作令牌与 `ExecuteAction`、通知、偏好 | PRD 第5段；channels | ④ | L1（站内）、L3（企业微信） | 主线第5段进行中 |
+| C-04 | 简报组装与投递、动作令牌与 `ExecuteAction`、偏好、历史与重新推送：**服务端已实现（PR #36）**。站内 L1 部分的服务端证据：`services/kernel/integration/briefing_test.go`（`TestBriefingQuickActions`，含跨租户、非收件人、令牌篡改与重放、失去访问的负向用例）与 [PRD 第5段第12节](../01-product/prd/05-briefing-quick-actions.md)；L1 贯通仍待调度器装配（R-01）与 L1-4 的贯通 E2E，L3 待 C-01 | PRD 第5段；[channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L1（站内）、L3（企业微信） | — |
+| C-08 | 第5段未实现部分：即时通知 F7（PRD 第5段用例5、41）、卡片“跟进”按钮（用例26，随第6段）、AI 摘要、“关注变化”区与“待我处理”中的任务 | PRD 第5段第12节 | ④ | L1 | — |
 | C-05 | 审批通知、策略执行失败通知、邀请通知的实际发送 | PRD 第7段用例13、14、20；identity | ① | L2 | 随 C-04 |
 | C-06 | 管理员账号恢复（IdP 管理接口与平台运营双人控制） | PRD 第1段用例17 | — | L5 前 | — |
 | C-07 | identity：`ListPermitted`、单元删除与变更事件、服务账号与外部协作者、个人租户免审批例外、额度条件 | [identity 第5节](../03-architecture/subsystems/identity.md#5-接口) | — | — | — |
@@ -89,7 +90,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 | 编号 | 缺口 | 来源 | 环节 | 最早级别 | 外部前置 |
 |---|---|---|---|---|---|
-| R-01 | 定时任务未装配：`identity.Maintenance`（邀请到期、绑定重试、`ExpireDueApprovals`）、channels 维护、简报定时、跟进提醒；`scheduler` 角色只登记了 operations | identity、channels；`deploy/platform/roles.yaml` | ①④ | L1 | — |
+| R-01 | 定时任务未装配：`identity.Maintenance`（邀请到期、绑定重试、`ExpireDueApprovals`）、channels 维护、简报定时、跟进提醒；`scheduler` 角色只登记了 operations；简报组装、投递与点击处理的调度器角色与工作进程未接入（PR #36 目前由本地绑定 `channels.Briefings` 驱动） | identity、channels；`deploy/platform/roles.yaml` | ①④ | L1 | — |
 | R-02 | 贯通装配：各子系统 `Module()` 缺省为 `NotWired`，缺少一份“全部端口装配生产实现”的部署配置与启动检查 | 各子系统实现状况 | ①～④ | L1 | — |
 | R-03 | 开发 VPS 部署与重建（M0-01）、候选版本的实际 CI 与开发 E2E（M0-08） | [阶段基线 M0](06-stage-baseline.md#2-m0-逐项核对) | ①～④ | L2 | — |
 | R-04 | 持续运行的告警、值班、备份恢复（C11） | 阶段基线 M1-P7 | ② | L4 | C11 |

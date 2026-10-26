@@ -1,43 +1,26 @@
 status: amended
-amends: contracts/reviews/first-batch-freeze.yaml
-amended_at: '2026-10-26T06:04:47.659651+00:00'
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-26T12:00:00+00:00'
 approval:
-  authority: 随本 PR 提交，评审合并后生效；E1–E5 仍是建议，本记录不代替其采纳决定
+  authority: 待项目负责人确认；本记录随所在 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
 reason: >-
-  INF-PROC 包升至 1.3.0；招标解析器 proc.tender-notice@0.3.0 支持非政府采购公告标题与项目编号，
-  结果解析器 proc.result-notice@0.2.0 支持嵌套折扣率结果表，折扣率不进入 money。
-  官方配对原件 XCXCG-2025-008 补入语料，人工映射独立于自动解析结果，manifest 升至 0.6.0。
-  既有冻结原件与人工映射不改，Schema 与事件契约不改。修订编号合并前按主线最新记录核对。
-version_owners:
-- path: packs/information_domains/procurement/pack.yaml
-  version: 1.3.0
-  sha256: f4ae8b2b243edae7a6dd4999b15ccd7618429e0ee5bdcab664117b4e59d235ba
+  PRD 第5段简报与卡片快捷动作的服务端切片在 C4a 冻结的 contracts/identifiers.yaml 中追加三个 channels 所有的前缀：
+  brf（一期简报）、dlv（一次投递）、atk（卡片按钮的动作令牌，标识即操作标识），版本 1.6.0 → 1.7.0；既有前缀不变、不复用。
+  identity 的 OpenAPI、事件契约与 OpenFGA 模型不变（channels 以本人身份经 identity 内部端口读取审批，使用既有 listApprovals /
+  getApproval；服务授权清单的 context_reader 追加 channels，只是 identity 代码中的登记，不改模型）。
+  mqc compat 对 origin/main 判定 breaking 0：channels 新增事件类型 channels.delivery.sent.v1、channels.delivery.failed.v1、
+  channels.action.executed.v1 与六条简报路径，detection 新增 briefing-signals 与 signal-cards 两条路径、撤销请求追加可选字段 channel。
+  channels 的 OpenAPI（0.1.0 → 0.2.0）与事件（0.1.0 → 0.2.0）、detection 的 OpenAPI（0.2.0 → 0.3.0）是草案，不在 C4a 冻结范围，只记录。
+  修订编号按“谁先合并谁占用”：主线已合并修订 10（INF-PROC 包），本记录顺延为 11；原冻结记录与修订 1–10 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.7.0
+  sha256: 3ee9eeddd0fa8aa5d1c0f0372c4ea88313f8335663f9f0ba41ebefbf943b4430
 verification:
-  base: ef7c34871abd54893f8bcd20b6cb31d3ca49ff9a
+  base: ef7c348
   commands:
   - mqc check
   - mqc freeze-check
-  - mq-corpus check --reviewed（原件哈希、人工映射、证据、Schema 与语义）
-  - mq-corpus check --gold reviewed（解析开发样本评测，不代表泛化准确率）
-sample_sets:
-- path: packs/information_domains/procurement/corpus/lifecycle-manifest.json
-  manifest_sha256: 951529be045d0b2b8fca02ee3b4e9fef1c0917d9fea33147c1442ae3fae0e5c0
-  originals: 17
-  manual_facts: 22
-  reviewed_artifacts:
-  - path: packs/information_domains/procurement/corpus/official-building-tender-20261026/meta.yaml
-    sha256: c621d6882cb471404aae22f56c4bc7076184937ce87dd5adfa785290c8582f37
-  - path: packs/information_domains/procurement/corpus/official-building-tender-20261026/raw.html
-    sha256: 0dcce1714d74c88b17d110cd154a720182e45562f4771c38293afd731dde2c9e
-  - path: packs/information_domains/procurement/corpus/official-building-tender-20261026/response.html
-    sha256: 85a2da40195ef4f2c44dc549aae559d4413bf5ce3d5538d9c101610884fbfc92
-  - path: packs/information_domains/procurement/corpus/official-building-tender-20261026/reviewed.json
-    sha256: 901f0bb7545dd73ac9ca1e6023c86d0f4ae2e8cc6d8ba36dd855881cb7fc6e47
-  - path: packs/information_domains/procurement/corpus/official-building-award-20261026/meta.yaml
-    sha256: bdc269c0b6b34c0f8fcd9ba450478fc3e57fd233494317b1824d6b58e7e6fee8
-  - path: packs/information_domains/procurement/corpus/official-building-award-20261026/raw.html
-    sha256: 33ec4c2e0d2ed1f5301140c85a13ad39c7b495d8bcd2b3be84afdc8e22c368e9
-  - path: packs/information_domains/procurement/corpus/official-building-award-20261026/response.html
-    sha256: 9cae7b42d6a0e5208b1b70259117294dc7967b500fc01745313be9dd743b4eb6
-  - path: packs/information_domains/procurement/corpus/official-building-award-20261026/reviewed.json
-    sha256: f7896696f90f30779fce88ef6a8eeca7fe720104dad07e1fdf4cec64e307dc9c
+  - mqc compat --base origin/main（breaking 0、additive 12、doc 0：channels 三个新增事件类型与六条简报路径、detection 两条简报路径与撤销请求的可选字段 channel 均为追加）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；企业微信为内存实现 wecomtest，覆盖与来源权利为测试夹具，生产适配器未接入）

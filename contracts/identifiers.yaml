@@ -1,6 +1,6 @@
 # 标识前缀登记（docs/03-architecture/02-data-architecture.md 第 4 节）。
 # 格式 <前缀>_<ULID>；新增前缀在此登记并经架构评审，禁止重复，分配后永不复用。
-version: 1.6.0
+version: 1.7.0
 prefixes:
   usr: { object: User, owner: identity }
   tnt: { object: Tenant, owner: identity }
@@ -59,3 +59,6 @@ prefixes:
   chb: { object: ChannelBinding, owner: channels }        # 重新绑定产生新的标识
   cbr: { object: BindingRequest, owner: channels }
   lnk: { object: CardLink, owner: channels }              # 卡片详情的短时授权链接
+  brf: { object: Briefing, owner: channels }              # 一期简报（PRD 第5段 F1；幂等键为租户 + 成员 + 简报来源 + 周期起止）
+  dlv: { object: Delivery, owner: channels }              # 一次投递（简报推送或本人重新推送；重试沿用同一投递）
+  atk: { object: ActionToken, owner: channels }           # 卡片按钮的动作令牌，标识即操作标识（PRD 第5段 F4 第5条、F5 第1条）

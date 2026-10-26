@@ -38,6 +38,45 @@ func encodeDisableInstallationResponse(response *Installation, w http.ResponseWr
 	return nil
 }
 
+func encodeGetBriefingResponse(response *Briefing, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeGetBriefingPreferencesResponse(response *BriefingPreferences, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeGetDeliveryStatsResponse(response *DeliveryStats, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodeInstallChannelResponse(response *InstallationStarted, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
@@ -64,7 +103,33 @@ func encodeListBindingsResponse(response *BindingList, w http.ResponseWriter, sp
 	return nil
 }
 
+func encodeListBriefingsResponse(response *BriefingList, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodeListInstallationsResponse(response *InstallationList, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeOpenBriefingLinkResponse(response *BriefingLinkTarget, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 
@@ -103,7 +168,33 @@ func encodePrepareBindingResponse(response *BindingPreview, w http.ResponseWrite
 	return nil
 }
 
+func encodeResendBriefingResponse(response *DeliverySummary, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodeUnbindAccountResponse(response *Binding, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeUpdateBriefingPreferencesResponse(response *BriefingPreferences, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 

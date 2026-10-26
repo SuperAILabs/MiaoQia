@@ -200,3 +200,28 @@ func (c client) CloseApproval(ctx context.Context, id string, req *api.CloseAppr
 		return value, nil
 	})
 }
+
+// ListApprovals 经内部端口以用户主体列出审批请求（可见性在 identity 内按该用户判断）。
+func (c client) ListApprovals(ctx context.Context, params api.ListApprovalsParams) (*api.ApprovalList, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "ListApprovals", Idempotent: true}, func(ctx context.Context) (*api.ApprovalList, error) {
+		value, err := c.c.ListApprovals(ctx, params)
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}
+
+// GetApproval 经内部端口以用户主体读取审批请求。
+func (c client) GetApproval(ctx context.Context, id string) (*api.ApprovalRequest, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetApproval", Idempotent: true}, func(ctx context.Context) (*api.ApprovalRequest, error) {
+		if identityapi.ApprovalID(id).Validate() != nil {
+			return nil, &api.Error{Status: 400, Code: "invalid_request"}
+		}
+		value, err := c.c.GetApproval(ctx, identityapi.GetApprovalParams{ApprovalID: identityapi.ApprovalID(id)})
+		if err != nil {
+			return nil, problem(err)
+		}
+		return value, nil
+	})
+}

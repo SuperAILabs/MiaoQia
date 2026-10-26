@@ -63,6 +63,25 @@ type Invoker interface {
 	//
 	// GET /v1/detection/signal-batches/{batchID}
 	GetSignalBatch(ctx context.Context, params GetSignalBatchParams) (*SignalBatch, error)
+	// ListBriefingSignals invokes listBriefingSignals operation.
+	//
+	// Channels 以简报收件人的用户主体调用（PRD 第5段 F1 第4–7条）。需要目标的
+	// can_view_signals（按 customer-context 的当前口径）： 不能查看与不存在同为 404
+	// objective_not_found，没有 can_view_signals 为 403 forbidden，判断失败
+	// 503。覆盖窗口为左闭右开 [from, to)：一条信号列入须组装时为待处理（open 或
+	// triaged，非排除），并且在窗口内新发现（created_at，不含回填）或在窗口内
+	// 有实质更新（det_signal_updates 中 material 为真的更新记录的写入时间
+	// recorded_at，不是来源发布时间或求值时间）。每条信号 只返回一行：category
+	// 为 new（窗口内新发现）或 updated（窗口前发现），updates
+	// 为窗口内的全部实质更新（按记录时间）； correction
+	// 为窗口内的实质更新改变了中标方、金额或品类（更正类，不受配额截断）。排序：更正类在前，其次排序分降序、
+	// 同分按发现时间新到旧。至多返回 200 行，pending_total
+	// 为全部符合的行数；计数 new_count、updated_count 含组装时已处理的，
+	// handled_count 为其中已忽略、已转跟进或已关闭的，backfill_count
+	// 为窗口内产生的回填信号数（不作为条目）。.
+	//
+	// GET /v1/detection/objectives/{objectiveID}/briefing-signals
+	ListBriefingSignals(ctx context.Context, params ListBriefingSignalsParams) (*BriefingSignalPage, error)
 	// ListObjectSignals invokes listObjectSignals operation.
 	//
 	// 对象页的本租户信号分区（PRD 第4段
@@ -81,6 +100,19 @@ type Invoker interface {
 	//
 	// GET /v1/detection/object-signals
 	ListObjectSignals(ctx context.Context, params ListObjectSignalsParams) (*ObjectSignalPage, error)
+	// ListSignalCards invokes listSignalCards operation.
+	//
+	// Channels 以用户主体调用：按标识读取至多 50
+	// 条信号的当前行（当前内容版本、处理状态与版本、本人反馈与版本），以及最近一次处理状态
+	// 改变的操作者与时间（完整简报的“状态为当前”叠加、卡片动作前读取当前版本、SIGNAL_UPDATED
+	// 后按新版本渲染卡片、打开卡片链接时 授权）。只返回调用者有所属目标
+	// can_view_signals
+	// 的信号；其他租户的、不存在的与无权查看的信号不出现，也不提示其存在。授权逐目标
+	// 判断，判断失败时整次 503（失败关闭）。viewer_can_feedback
+	// 为调用者当前是否有该目标的 can_feedback。.
+	//
+	// GET /v1/detection/signal-cards
+	ListSignalCards(ctx context.Context, params ListSignalCardsParams) (*SignalCardList, error)
 	// ListSignalTriage invokes listSignalTriage operation.
 	//
 	// 信号的处理与反馈记录（追加式，只含至少改变了一个部分的操作），按时间倒序；每页至多
@@ -627,6 +659,150 @@ func (c *Client) sendGetSignalBatch(ctx context.Context, params GetSignalBatchPa
 	return result, nil
 }
 
+// ListBriefingSignals invokes listBriefingSignals operation.
+//
+// Channels 以简报收件人的用户主体调用（PRD 第5段 F1 第4–7条）。需要目标的
+// can_view_signals（按 customer-context 的当前口径）： 不能查看与不存在同为 404
+// objective_not_found，没有 can_view_signals 为 403 forbidden，判断失败
+// 503。覆盖窗口为左闭右开 [from, to)：一条信号列入须组装时为待处理（open 或
+// triaged，非排除），并且在窗口内新发现（created_at，不含回填）或在窗口内
+// 有实质更新（det_signal_updates 中 material 为真的更新记录的写入时间
+// recorded_at，不是来源发布时间或求值时间）。每条信号 只返回一行：category
+// 为 new（窗口内新发现）或 updated（窗口前发现），updates
+// 为窗口内的全部实质更新（按记录时间）； correction
+// 为窗口内的实质更新改变了中标方、金额或品类（更正类，不受配额截断）。排序：更正类在前，其次排序分降序、
+// 同分按发现时间新到旧。至多返回 200 行，pending_total
+// 为全部符合的行数；计数 new_count、updated_count 含组装时已处理的，
+// handled_count 为其中已忽略、已转跟进或已关闭的，backfill_count
+// 为窗口内产生的回填信号数（不作为条目）。.
+//
+// GET /v1/detection/objectives/{objectiveID}/briefing-signals
+func (c *Client) ListBriefingSignals(ctx context.Context, params ListBriefingSignalsParams) (*BriefingSignalPage, error) {
+	res, err := c.sendListBriefingSignals(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListBriefingSignals(ctx context.Context, params ListBriefingSignalsParams) (res *BriefingSignalPage, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listBriefingSignals"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/detection/objectives/{objectiveID}/briefing-signals"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListBriefingSignalsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/detection/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/briefing-signals"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "from" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "from",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.DateTimeToString(params.From))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "to" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "to",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.DateTimeToString(params.To))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListBriefingSignalsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListObjectSignals invokes listObjectSignals operation.
 //
 // 对象页的本租户信号分区（PRD 第4段
@@ -781,6 +957,120 @@ func (c *Client) sendListObjectSignals(ctx context.Context, params ListObjectSig
 
 	stage = "DecodeResponse"
 	result, err := decodeListObjectSignalsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListSignalCards invokes listSignalCards operation.
+//
+// Channels 以用户主体调用：按标识读取至多 50
+// 条信号的当前行（当前内容版本、处理状态与版本、本人反馈与版本），以及最近一次处理状态
+// 改变的操作者与时间（完整简报的“状态为当前”叠加、卡片动作前读取当前版本、SIGNAL_UPDATED
+// 后按新版本渲染卡片、打开卡片链接时 授权）。只返回调用者有所属目标
+// can_view_signals
+// 的信号；其他租户的、不存在的与无权查看的信号不出现，也不提示其存在。授权逐目标
+// 判断，判断失败时整次 503（失败关闭）。viewer_can_feedback
+// 为调用者当前是否有该目标的 can_feedback。.
+//
+// GET /v1/detection/signal-cards
+func (c *Client) ListSignalCards(ctx context.Context, params ListSignalCardsParams) (*SignalCardList, error) {
+	res, err := c.sendListSignalCards(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListSignalCards(ctx context.Context, params ListSignalCardsParams) (res *SignalCardList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listSignalCards"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/detection/signal-cards"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListSignalCardsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/detection/signal-cards"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "ids" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "ids",
+			Style:   uri.QueryStyleForm,
+			Explode: false,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeArray(func(e uri.Encoder) error {
+				for i, item := range params.Ids {
+					if err := func() error {
+						return e.EncodeValue(conv.StringToString(item))
+					}(); err != nil {
+						return errors.Wrapf(err, "[%d]", i)
+					}
+				}
+				return nil
+			})
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListSignalCardsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

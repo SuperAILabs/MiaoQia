@@ -373,3 +373,387 @@ fixtures:
     - op: replace
       path: /object
       value: tenant:tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: BriefingID
+  base: brf_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 其他前缀
+    valid: false
+    instance: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: DeliveryID
+  base: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 非 ULID
+    valid: false
+    instance: dlv_1
+- schema: ClockTime
+  base: '07:30'
+  cases:
+  - name: 不是时刻
+    valid: false
+    instance: '25:00'
+- schema: SectionLimit
+  base:
+    objective_code: APP-TENDER.A02
+    limit: 10
+  cases:
+  - name: 目标编号格式
+    valid: false
+    patch:
+    - op: replace
+      path: /objective_code
+      value: A02
+- schema: BriefingPreferences
+  base: &prefs
+    version: 0
+    send_time: '07:30'
+    timezone: Asia/Shanghai
+    send_days: [1, 2, 3, 4, 5]
+    quiet_start: '21:00'
+    quiet_end: '07:00'
+    push_empty: false
+    section_limits: []
+  cases:
+  - name: 已保存的版本
+    valid: true
+    patch:
+    - op: replace
+      path: /version
+      value: 2
+    - op: replace
+      path: /timezone
+      value: Asia/Tokyo
+    - op: add
+      path: /effective_from
+      value: '2026-10-21T07:30:00+09:00'
+    - op: add
+      path: /section_limits/-
+      value: {objective_code: APP-TENDER.A02, limit: 15}
+  - name: 发送日不能为空
+    valid: false
+    patch:
+    - op: replace
+      path: /send_days
+      value: []
+  - name: 发送日越界
+    valid: false
+    patch:
+    - op: replace
+      path: /send_days
+      value: [0]
+- schema: UpdateBriefingPreferencesRequest
+  base:
+    expected_version: 0
+    send_time: '08:00'
+    timezone: Asia/Shanghai
+    send_days: [1, 2, 3, 4, 5]
+    quiet_start: '21:00'
+    quiet_end: '07:00'
+    push_empty: true
+    section_limits:
+    - objective_code: APP-TENDER.A02
+      limit: 5
+  cases:
+  - name: 缺并发版本
+    valid: false
+    patch:
+    - op: remove
+      path: /expected_version
+  - name: 不接受版本以外的字段
+    valid: false
+    patch:
+    - op: add
+      path: /version
+      value: 3
+- schema: Period
+  base: &period
+    start: '2026-10-19T07:30:00+08:00'
+    end: '2026-10-20T07:30:00+08:00'
+    timezone: Asia/Shanghai
+  cases:
+  - name: 缺终点
+    valid: false
+    patch:
+    - op: remove
+      path: /end
+- schema: DeliveryState
+  base: in_app
+  cases:
+  - name: 已读不是投递状态
+    valid: false
+    instance: read
+- schema: DeliverySummary
+  base: &delivery
+    id: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    briefing_id: brf_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    kind: briefing
+    state: delivered
+    attempts: 1
+    created_at: '2026-10-20T07:30:00+08:00'
+    submitted_at: '2026-10-20T07:30:01+08:00'
+    accepted_at: '2026-10-20T07:30:02+08:00'
+    read_receipts: unsupported
+  cases:
+  - name: 截止后在站内
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: in_app
+    - op: add
+      path: /reason
+      value: cutoff
+    - op: remove
+      path: /accepted_at
+  - name: 不含条目
+    valid: false
+    patch:
+    - op: add
+      path: /items
+      value: []
+- schema: PushState
+  base: not_pushed
+  cases:
+  - name: 未知状态
+    valid: false
+    instance: sent
+- schema: BriefingSummary
+  base: &summary
+    id: brf_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    period: *period
+    assembled_at: '2026-10-20T07:30:04+08:00'
+    scheduled_at: '2026-10-20T07:30:00+08:00'
+    delayed: false
+    empty: true
+    partial: false
+    item_count: 0
+    push_state: not_pushed
+    not_pushed_reason: empty
+  cases:
+  - name: 未知的未推送原因
+    valid: false
+    patch:
+    - op: replace
+      path: /not_pushed_reason
+      value: quiet
+- schema: BriefingCursor
+  base: eyJiIjoiYWJjIn0
+  cases:
+  - name: 非 base64url 字符
+    valid: false
+    instance: 'a b'
+- schema: BriefingList
+  base:
+    briefings:
+    - *summary
+    next_cursor: eyJiIjoiYWJjIn0
+  cases:
+  - name: 不含他人的简报字段
+    valid: false
+    patch:
+    - op: add
+      path: /member
+      value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+- schema: DisplayLevel
+  base: citation_only
+  cases:
+  - name: 未登记的级别
+    valid: false
+    instance: summary
+- schema: DisplayField
+  base: &field
+    level: full_text
+    state: known
+    value: 某市政管网改造工程中标结果公告
+  cases:
+  - name: 仅引用只给链接
+    valid: true
+    instance:
+      level: citation_only
+      state: known
+      source_url: https://www.ccgp.gov.cn/notice/1
+  - name: 金额未公布
+    valid: true
+    instance:
+      level: full_text
+      state: undisclosed
+  - name: 未知状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: empty
+- schema: ItemUpdate
+  base: &update
+    recorded_at: '2026-10-19T14:05:00+08:00'
+    changed_fields: [/results/0/amount]
+    disposition_before: pursue_candidate
+    disposition_after: pursue_candidate
+    content_version: 1
+  cases:
+  - name: 缺记录时间
+    valid: false
+    patch:
+    - op: remove
+      path: /recorded_at
+- schema: ItemStatus
+  base: &status
+    status: dismissed
+    handled_by: usr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    handled_at: '2026-10-20T08:12:00+08:00'
+    status_as_of: '2026-10-20T09:00:00+08:00'
+  cases:
+  - name: 缺时间轴
+    valid: false
+    patch:
+    - op: remove
+      path: /status_as_of
+- schema: BriefingItem
+  base: &item
+    kind: signal
+    position: 0
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    content_version: 1
+    category: updated
+    correction: true
+    score: 75
+    disposition: pursue_candidate
+    project: *field
+    winner:
+      level: citation_only
+      state: known
+      source_url: https://www.ccgp.gov.cn/notice/1
+    amount:
+      level: full_text
+      state: known
+      value: 1,760 万元
+    reasons: [中标方近三年项目中出现过我方品类]
+    unknown_count: 0
+    same_lot_count: 1
+    discovered_at: '2026-10-10T09:00:00+08:00'
+    updates:
+    - *update
+    current: *status
+  cases:
+  - name: 引用行
+    valid: true
+    instance:
+      kind: reference
+      position: 3
+      signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX2
+      references: APP-TENDER.A01
+  - name: 待我处理中的审批
+    valid: true
+    instance:
+      kind: approval
+      position: 0
+      approval_id: apr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      approval_type: policy_activation
+      submitted_at: '2026-10-19T16:00:00+08:00'
+  - name: 不复述来源原文
+    valid: false
+    patch:
+    - op: add
+      path: /raw_record
+      value: {}
+- schema: DataAsOf
+  base: &asof
+    domain: INF-PROC
+    state: interrupted
+    as_of: '2026-10-19T22:00:00+08:00'
+  cases:
+  - name: 未知不以空代替
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: ''
+- schema: BriefingSection
+  base: &section
+    kind: objective
+    order: 2
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_code: APP-TENDER.A02
+    title: 进入供货
+    state: source_interrupted
+    window_start: '2026-10-19T07:30:00+08:00'
+    window_end: '2026-10-20T07:30:00+08:00'
+    includes_previous: false
+    new_count: 12
+    updated_count: 2
+    handled_count: 3
+    backfill_count: 0
+    overflow_count: 1
+    quota: 10
+    data_as_of:
+    - *asof
+    items:
+    - *item
+  cases:
+  - name: 失去访问的区不含条目
+    valid: true
+    instance:
+      kind: objective
+      order: 2
+      state: no_permission
+      items: []
+  - name: 未知区状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: failed
+- schema: Briefing
+  base:
+    id: brf_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    source: BRF-TENDER-DAILY
+    period: *period
+    assembled_at: '2026-10-20T07:30:04+08:00'
+    scheduled_at: '2026-10-20T07:30:00+08:00'
+    delayed: false
+    empty: false
+    partial: true
+    rule_version: BRF-TENDER-DAILY@0.1.0/channels-briefing.1
+    preference_version: 0
+    content_as_of: '2026-10-20T07:30:04+08:00'
+    status_as_of: '2026-10-20T09:00:00+08:00'
+    sections:
+    - *section
+    deliveries:
+    - *delivery
+  cases:
+  - name: 来源格式
+    valid: false
+    patch:
+    - op: replace
+      path: /source
+      value: daily
+- schema: BriefingLinkTarget
+  base:
+    kind: signal
+    id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    from_signal: true
+  cases:
+  - name: 不返回标题
+    valid: false
+    patch:
+    - op: add
+      path: /title
+      value: 某燃气项目
+- schema: DeliveryStats
+  base:
+    since: '2026-10-13T00:00:00Z'
+    deliveries:
+    - state: delivered
+      count: 120
+    - state: in_app
+      reason: cutoff
+      count: 2
+    empty_briefings: 5
+    partial_briefings: 1
+  cases:
+  - name: 不含收件人
+    valid: false
+    patch:
+    - op: add
+      path: /deliveries/0/recipient
+      value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
