@@ -8,6 +8,20 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// CheckCoverage implements checkCoverage operation.
+	//
+	// 调用者为请求上下文中的用户主体（服务主体 403
+	// forbidden），租户来自请求上下文。info_domain 是对象所属信息领域；region
+	// 是对象 所在行政区划（GB/T 2260
+	// 六位代码），未知时省略：覆盖包只限定区域时，区域未知按覆盖不足处理（缺失维度
+	// region）， 不推定在覆盖内。覆盖包中的区域按代码层级包含：省级 330000
+	// 包含 33 开头的全部区划，地级 330800 包含 3308 开头的区划。 covered 为假时
+	// missing 列出缺少的覆盖维度，调用方据此返回
+	// entitlement.coverage_insufficient，只展示对象名称。 覆盖包未配置或读取失败为
+	// 503 coverage_unavailable，调用方失败关闭。.
+	//
+	// GET /v1/commerce/coverage
+	CheckCoverage(ctx context.Context, params CheckCoverageParams) (*CoverageDecision, error)
 	// RecordView implements recordView operation.
 	//
 	// 查看者为请求上下文中的用户主体（服务主体 403 forbidden）。outcome 为

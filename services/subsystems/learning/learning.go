@@ -19,7 +19,9 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/policy"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
+	identityapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/api"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/internal/app"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/migrations"
@@ -79,6 +81,13 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("learning：缺少 %s 绑定", customercontext.PolicyBinding)
 			}
+			// 代表样本按查看者过滤（D-17）：identity 的授权决策点必需；commerce 的覆盖判断在每次读取时从绑定表解析（不依赖模块启动顺序），
+			// 未加载 commerce 的角色（workflow-worker）没有该绑定，报告读取不返回任何样本（只给数量与 samples_unavailable），不当作有权。
+			decider, ok := runtime.Lookup[identityapi.Authorizer](env.Bindings, identityapi.AuthorizerBinding)
+			if !ok {
+				return fmt.Errorf("learning：缺少 %s 绑定", identityapi.AuthorizerBinding)
+			}
+			svc.Authz, svc.Coverage = decider, boundCoverage{env.Bindings}
 			svc.DB, svc.Access, svc.Context, svc.Policies, svc.Features, svc.Log = env.DB, access, reader, policies, features, env.Log
 			return nil
 		},
@@ -178,4 +187,15 @@ func loadFeatures(dir string) (map[string]policy.Feature, error) {
 		}
 	}
 	return out, nil
+}
+
+// boundCoverage 在每次调用时从绑定表解析 commerce 的覆盖判断；没有该绑定时返回错误（调用方按不可用处理）。
+type boundCoverage struct{ bindings *runtime.Bindings }
+
+func (b boundCoverage) CheckCoverage(ctx context.Context, infoDomain, region string) (*commerceapi.CoverageDecision, error) {
+	c, ok := runtime.Lookup[commerceapi.Coverage](b.bindings, commerceapi.CoverageBinding)
+	if !ok {
+		return nil, fmt.Errorf("learning：缺少 %s 绑定", commerceapi.CoverageBinding)
+	}
+	return c.CheckCoverage(ctx, infoDomain, region)
 }

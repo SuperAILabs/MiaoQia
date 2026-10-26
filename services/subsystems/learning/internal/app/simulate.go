@@ -55,25 +55,35 @@ type WeeklyRates struct {
 	Watch  float64 `json:"watch_signal"`
 }
 
-// Sample 是代表样本。
+// Sample 是代表样本。Scope 是判断查看权限所需的对象范围（随报告保存，不出现在响应中，见 present）。
 type Sample struct {
-	FactID     string    `json:"fact_id"`
-	FactType   string    `json:"fact_type"`
-	OccurredAt time.Time `json:"occurred_at"`
-	Title      string    `json:"title,omitempty"`
-	AmountCNY  *int64    `json:"amount_cny,omitempty"`
-	Draft      string    `json:"draft"`
-	Active     string    `json:"active,omitempty"`
+	FactID     string       `json:"fact_id"`
+	FactType   string       `json:"fact_type"`
+	OccurredAt time.Time    `json:"occurred_at"`
+	Title      string       `json:"title,omitempty"`
+	AmountCNY  *int64       `json:"amount_cny,omitempty"`
+	Draft      string       `json:"draft"`
+	Active     string       `json:"active,omitempty"`
+	Scope      *SampleScope `json:"scope,omitempty"`
 }
 
-// Diff 是相对生效版本的差异。
+// SampleScope 是样本对应公共事实的信息领域与所在区划（事实视图的 location，未知时为空），用于按查看者判断数据覆盖。
+type SampleScope struct {
+	InfoDomain string `json:"info_domain"`
+	Region     string `json:"region,omitempty"`
+}
+
+// Diff 是相对生效版本的差异。*Withheld 只出现在响应中：该列表中当前查看者无权查看、未返回的样本数（见 present）。
 type Diff struct {
-	Added          int      `json:"added"`
-	Removed        int      `json:"removed"`
-	Changed        int      `json:"changed"`
-	AddedSamples   []Sample `json:"added_samples"`
-	RemovedSamples []Sample `json:"removed_samples"`
-	ChangedSamples []Sample `json:"changed_samples"`
+	Added           int      `json:"added"`
+	Removed         int      `json:"removed"`
+	Changed         int      `json:"changed"`
+	AddedSamples    []Sample `json:"added_samples"`
+	RemovedSamples  []Sample `json:"removed_samples"`
+	ChangedSamples  []Sample `json:"changed_samples"`
+	AddedWithheld   *int     `json:"added_withheld,omitempty"`
+	RemovedWithheld *int     `json:"removed_withheld,omitempty"`
+	ChangedWithheld *int     `json:"changed_withheld,omitempty"`
 }
 
 // UnknownCount 是一种未知原因的计数。
@@ -106,6 +116,7 @@ type Report struct {
 	CompareDistribution *DispositionCounts `json:"compare_distribution,omitempty"`
 	Diff                *Diff              `json:"diff,omitempty"`
 	Samples             []Sample           `json:"samples,omitempty"`
+	SamplesWithheld     *int               `json:"samples_withheld,omitempty"`
 	Rules               []RuleStats        `json:"rules"`
 	TopUnknownRules     []string           `json:"top_unknown_rules"`
 	Hints               []Hint             `json:"hints"`
@@ -307,9 +318,15 @@ func round(v float64, digits int) float64 {
 	return math.Round(v*p) / p
 }
 
-func sample(e evaluated, withActive bool) Sample {
+func sample(e evaluated, withActive bool, domains map[string]string) Sample {
 	s := Sample{FactID: e.fact.ID, FactType: e.fact.Type, OccurredAt: e.fact.OccurredAt.UTC(), Title: e.fact.Title, AmountCNY: e.fact.AmountCNY,
 		Draft: string(e.draft)}
+	if d := domains[e.fact.Type]; d != "" {
+		s.Scope = &SampleScope{InfoDomain: d}
+		if region, ok := e.fact.Fields["location"].(string); ok {
+			s.Scope.Region = region
+		}
+	}
 	if withActive {
 		s.Active = string(e.active)
 	}
@@ -317,7 +334,7 @@ func sample(e evaluated, withActive bool) Sample {
 }
 
 // pick 按金额倒序（无金额在后）、时间倒序、事实标识确定性抽样。
-func pick(list []evaluated, withActive bool) []Sample {
+func pick(list []evaluated, withActive bool, domains map[string]string) []Sample {
 	slices.SortStableFunc(list, func(a, b evaluated) int {
 		amount := func(e evaluated) int64 {
 			if e.fact.AmountCNY == nil {
@@ -338,7 +355,7 @@ func pick(list []evaluated, withActive bool) []Sample {
 		if i == maxSamples {
 			break
 		}
-		out = append(out, sample(e, withActive))
+		out = append(out, sample(e, withActive, domains))
 	}
 	return out
 }
@@ -415,7 +432,8 @@ func (c *computation) run() *Report {
 			}
 		}
 		d.Added, d.Removed, d.Changed = len(added), len(removed), len(changed)
-		d.AddedSamples, d.RemovedSamples, d.ChangedSamples = pick(added, true), pick(removed, true), pick(changed, true)
+		domains := c.slice.FactDomains
+		d.AddedSamples, d.RemovedSamples, d.ChangedSamples = pick(added, true, domains), pick(removed, true, domains), pick(changed, true, domains)
 		r.Diff = d
 	} else {
 		var signals []evaluated
@@ -424,7 +442,7 @@ func (c *computation) run() *Report {
 				signals = append(signals, e)
 			}
 		}
-		r.Samples = pick(signals, false)
+		r.Samples = pick(signals, false, c.slice.FactDomains)
 	}
 	slices.Sort(ruleOrder)
 	type unknownRank struct {

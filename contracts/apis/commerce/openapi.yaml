@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: commerce 接口
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     对象查看与原文查看的计量与配额（PRD 第4段 F9、F10，docs/01-product/prd/04-object-page-evidence.md；规格见
     docs/03-architecture/subsystems/commerce.md 第6、8节）。草案：随第4段首个实现切片提交，未冻结。只有内部接口（mTLS 内部端口，
@@ -11,6 +11,9 @@ info:
     同键重发返回该尝试的结果，包括 quota.exhausted；暂时失败（503，未提交）不登记。额度检查在计入之前、同一事务内完成：
     额度已用完时不写入计量操作，返回 429 quota.exhausted 与已用量、上限和重置时间。commerce 不可用时 gateway 放行查看并以
     gateway.view_meter.deferred.v1 事后补记（只补计数，不检查额度，按计量操作标识去重）。
+    0.2.0 追加覆盖判断 checkCoverage（GetEntitlements 的数据覆盖部分，commerce 第4、8节）：对象所在信息领域与行政区划是否在租户的
+    数据覆盖包内。产品目录与订阅接入（M2-P8）之前，覆盖包来自部署配置 MIAOQIA_COMMERCE_COVERAGE，对全部租户相同，响应以
+    source = deployment_config 标明；未配置时 503 coverage_unavailable，不当作“全部覆盖”或“全部不覆盖”。
 servers:
 - url: /internal
 paths:
@@ -45,6 +48,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ViewMeterReceipt'
+        default:
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/commerce/coverage:
+    get:
+      operationId: checkCoverage
+      summary: 判断对象是否在租户的数据覆盖包内（GetEntitlements 的覆盖部分）
+      description: >-
+        调用者为请求上下文中的用户主体（服务主体 403 forbidden），租户来自请求上下文。info_domain 是对象所属信息领域；region 是对象
+        所在行政区划（GB/T 2260 六位代码），未知时省略：覆盖包只限定区域时，区域未知按覆盖不足处理（缺失维度 region），
+        不推定在覆盖内。覆盖包中的区域按代码层级包含：省级 330000 包含 33 开头的全部区划，地级 330800 包含 3308 开头的区划。
+        covered 为假时 missing 列出缺少的覆盖维度，调用方据此返回 entitlement.coverage_insufficient，只展示对象名称。
+        覆盖包未配置或读取失败为 503 coverage_unavailable，调用方失败关闭。
+      x-timeout-ms: 2000
+      x-idempotent: true
+      parameters:
+      - name: info_domain
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^INF-[A-Z]+$
+      - name: region
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^[0-9]{6}$
+      responses:
+        '200':
+          description: 覆盖判断结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverageDecision'
         default:
           description: 失败关闭，稳定错误码
           content:
@@ -152,3 +193,35 @@ components:
         resets_at:
           type: string
           format: date-time
+    CoverageDecision:
+      type: object
+      additionalProperties: false
+      required:
+      - covered
+      - info_domain
+      - missing
+      - source
+      properties:
+        covered:
+          type: boolean
+        info_domain:
+          type: string
+          pattern: ^INF-[A-Z]+$
+        region:
+          type: string
+          pattern: ^[0-9]{6}$
+        missing:
+          type: array
+          description: covered 为假时缺少的覆盖维度；covered 为真时为空
+          maxItems: 2
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - info_domain
+            - region
+        source:
+          type: string
+          description: 覆盖包来源。deployment_config 为产品目录接入前的部署配置（全部租户相同）
+          enum:
+          - deployment_config

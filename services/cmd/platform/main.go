@@ -17,6 +17,7 @@
 //	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
 //	MIAOQIA_CHANNELS_SIGNING_KEY  简报卡片动作令牌与简报历史游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_PURSUIT_SIGNING_KEY   跟进列表与待我处理翻页游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
+//	MIAOQIA_COMMERCE_COVERAGE     数据覆盖包（产品目录接入前，全部租户相同），例如 INF-PROC=330000;INF-ORG=*；未配置时对象页 503
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
 //	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
@@ -152,7 +153,8 @@ var remotes = map[string]remote{
 		b.Provide(ccapi.ActivePoliciesBinding, active)
 		return nil
 	}},
-	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看、经 detection 读取信号固定的求值输入（均以用户主体转交）；
+	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看与判断数据覆盖、经 detection 读取信号固定的求值输入（均以用户主体转交）；
+	// 仿真报告（PRD 第7段）：learning 经 commerce 按查看者判断代表样本的数据覆盖；
 	// 简报（PRD 第5段）：channels 经 detection 读取简报条目与信号卡片、在渠道内处理（以收件人或点击者的用户主体转交）
 	commerceapi.Name: {provide: func(u string, b *runtime.Bindings) error {
 		meter, err := commerceremote.NewMetering(u)
@@ -160,6 +162,11 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(commerceapi.MeteringBinding, meter)
+		coverage, err := commerceremote.NewCoverage(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(commerceapi.CoverageBinding, coverage)
 		return nil
 	}},
 	detectionapi.Name: {provide: func(u string, b *runtime.Bindings) error {

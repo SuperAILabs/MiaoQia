@@ -1422,6 +1422,41 @@ func (s *OptFloat64) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes int as json.
+func (o OptInt) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Int(int(o.Value))
+}
+
+// Decode decodes int from json.
+func (o *OptInt) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptInt to nil")
+	}
+	o.Set = true
+	v, err := d.Int()
+	if err != nil {
+		return err
+	}
+	o.Value = int(v)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptInt) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptInt) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes int64 as json.
 func (o OptInt64) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -2292,15 +2327,36 @@ func (s *SimulationDiff) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		if s.AddedWithheld.Set {
+			e.FieldStart("added_withheld")
+			s.AddedWithheld.Encode(e)
+		}
+	}
+	{
+		if s.RemovedWithheld.Set {
+			e.FieldStart("removed_withheld")
+			s.RemovedWithheld.Encode(e)
+		}
+	}
+	{
+		if s.ChangedWithheld.Set {
+			e.FieldStart("changed_withheld")
+			s.ChangedWithheld.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfSimulationDiff = [6]string{
+var jsonFieldsNameOfSimulationDiff = [9]string{
 	0: "added",
 	1: "removed",
 	2: "changed",
 	3: "added_samples",
 	4: "removed_samples",
 	5: "changed_samples",
+	6: "added_withheld",
+	7: "removed_withheld",
+	8: "changed_withheld",
 }
 
 // Decode decodes SimulationDiff from json.
@@ -2308,7 +2364,7 @@ func (s *SimulationDiff) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode SimulationDiff to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -2402,6 +2458,36 @@ func (s *SimulationDiff) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"changed_samples\"")
 			}
+		case "added_withheld":
+			if err := func() error {
+				s.AddedWithheld.Reset()
+				if err := s.AddedWithheld.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"added_withheld\"")
+			}
+		case "removed_withheld":
+			if err := func() error {
+				s.RemovedWithheld.Reset()
+				if err := s.RemovedWithheld.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"removed_withheld\"")
+			}
+		case "changed_withheld":
+			if err := func() error {
+				s.ChangedWithheld.Reset()
+				if err := s.ChangedWithheld.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"changed_withheld\"")
+			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
 		}
@@ -2411,8 +2497,9 @@ func (s *SimulationDiff) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b00111111,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -2597,6 +2684,8 @@ func (s *SimulationHintCode) Decode(d *jx.Decoder) error {
 		*s = SimulationHintCodeCoverageInsufficient
 	case SimulationHintCodeFactTypesNotConnected:
 		*s = SimulationHintCodeFactTypesNotConnected
+	case SimulationHintCodeSamplesUnavailable:
+		*s = SimulationHintCodeSamplesUnavailable
 	default:
 		*s = SimulationHintCode(v)
 	}
@@ -3233,6 +3322,12 @@ func (s *SimulationReport) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.SamplesWithheld.Set {
+			e.FieldStart("samples_withheld")
+			s.SamplesWithheld.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("rules")
 		e.ArrStart()
 		for _, elem := range s.Rules {
@@ -3258,16 +3353,17 @@ func (s *SimulationReport) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSimulationReport = [9]string{
+var jsonFieldsNameOfSimulationReport = [10]string{
 	0: "evaluated",
 	1: "distribution",
 	2: "weekly",
 	3: "compare_distribution",
 	4: "diff",
 	5: "samples",
-	6: "rules",
-	7: "top_unknown_rules",
-	8: "hints",
+	6: "samples_withheld",
+	7: "rules",
+	8: "top_unknown_rules",
+	9: "hints",
 }
 
 // Decode decodes SimulationReport from json.
@@ -3348,8 +3444,18 @@ func (s *SimulationReport) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"samples\"")
 			}
+		case "samples_withheld":
+			if err := func() error {
+				s.SamplesWithheld.Reset()
+				if err := s.SamplesWithheld.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"samples_withheld\"")
+			}
 		case "rules":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				s.Rules = make([]RuleStats, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -3367,7 +3473,7 @@ func (s *SimulationReport) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"rules\"")
 			}
 		case "top_unknown_rules":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.TopUnknownRules = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -3387,7 +3493,7 @@ func (s *SimulationReport) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"top_unknown_rules\"")
 			}
 		case "hints":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				s.Hints = make([]SimulationHint, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -3414,8 +3520,8 @@ func (s *SimulationReport) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11000111,
-		0b00000001,
+		0b10000111,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

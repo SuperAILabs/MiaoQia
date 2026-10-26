@@ -58,3 +58,37 @@ func (e *Error) Error() string {
 	}
 	return e.Code
 }
+
+// CoverageBinding 是覆盖判断接口在绑定表中的名称。
+const CoverageBinding = "commerce.Coverage"
+
+// 覆盖判断缺少的维度（契约 CoverageDecision.missing）。
+const (
+	MissingInfoDomain = "info_domain"
+	MissingRegion     = "region"
+)
+
+// CoverageDecision 是一次覆盖判断：Covered 为假时 Missing 列出缺少的覆盖维度。
+type CoverageDecision struct {
+	Covered bool
+	Missing []string
+}
+
+// Coverage 是 GetEntitlements 的数据覆盖部分（commerce 第4、8节）：对象所在信息领域与行政区划（GB/T 2260 六位代码，未知时为空）
+// 是否在请求上下文中租户的数据覆盖包内。调用者为用户主体。覆盖包不可用时返回 503 coverage_unavailable 的 *Error 或暂时性错误，
+// 调用方失败关闭，不当作覆盖内或覆盖外。
+type Coverage interface {
+	CheckCoverage(ctx context.Context, infoDomain, region string) (*CoverageDecision, error)
+}
+
+// LocalCoverage 把本地实现包装为经调用管线的接口（与远程绑定行为一致）。
+func LocalCoverage(impl Coverage) Coverage { return localCoverage{impl} }
+
+type localCoverage struct{ impl Coverage }
+
+func (l localCoverage) CheckCoverage(ctx context.Context, infoDomain, region string) (*CoverageDecision, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "CheckCoverage", Idempotent: true, Timeout: 2 * time.Second},
+		func(ctx context.Context) (*CoverageDecision, error) {
+			return l.impl.CheckCoverage(ctx, infoDomain, region)
+		})
+}

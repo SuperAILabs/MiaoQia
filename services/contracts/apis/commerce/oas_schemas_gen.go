@@ -13,6 +13,143 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// Ref: #/components/schemas/CoverageDecision
+type CoverageDecision struct {
+	Covered    bool      `json:"covered"`
+	InfoDomain string    `json:"info_domain"`
+	Region     OptString `json:"region"`
+	// Covered 为假时缺少的覆盖维度；covered 为真时为空.
+	Missing []CoverageDecisionMissingItem `json:"missing"`
+	// 覆盖包来源。deployment_config 为产品目录接入前的部署配置（全部租户相同）.
+	Source CoverageDecisionSource `json:"source"`
+}
+
+// GetCovered returns the value of Covered.
+func (s *CoverageDecision) GetCovered() bool {
+	return s.Covered
+}
+
+// GetInfoDomain returns the value of InfoDomain.
+func (s *CoverageDecision) GetInfoDomain() string {
+	return s.InfoDomain
+}
+
+// GetRegion returns the value of Region.
+func (s *CoverageDecision) GetRegion() OptString {
+	return s.Region
+}
+
+// GetMissing returns the value of Missing.
+func (s *CoverageDecision) GetMissing() []CoverageDecisionMissingItem {
+	return s.Missing
+}
+
+// GetSource returns the value of Source.
+func (s *CoverageDecision) GetSource() CoverageDecisionSource {
+	return s.Source
+}
+
+// SetCovered sets the value of Covered.
+func (s *CoverageDecision) SetCovered(val bool) {
+	s.Covered = val
+}
+
+// SetInfoDomain sets the value of InfoDomain.
+func (s *CoverageDecision) SetInfoDomain(val string) {
+	s.InfoDomain = val
+}
+
+// SetRegion sets the value of Region.
+func (s *CoverageDecision) SetRegion(val OptString) {
+	s.Region = val
+}
+
+// SetMissing sets the value of Missing.
+func (s *CoverageDecision) SetMissing(val []CoverageDecisionMissingItem) {
+	s.Missing = val
+}
+
+// SetSource sets the value of Source.
+func (s *CoverageDecision) SetSource(val CoverageDecisionSource) {
+	s.Source = val
+}
+
+type CoverageDecisionMissingItem string
+
+const (
+	CoverageDecisionMissingItemInfoDomain CoverageDecisionMissingItem = "info_domain"
+	CoverageDecisionMissingItemRegion     CoverageDecisionMissingItem = "region"
+)
+
+// AllValues returns all CoverageDecisionMissingItem values.
+func (CoverageDecisionMissingItem) AllValues() []CoverageDecisionMissingItem {
+	return []CoverageDecisionMissingItem{
+		CoverageDecisionMissingItemInfoDomain,
+		CoverageDecisionMissingItemRegion,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CoverageDecisionMissingItem) MarshalText() ([]byte, error) {
+	switch s {
+	case CoverageDecisionMissingItemInfoDomain:
+		return []byte(s), nil
+	case CoverageDecisionMissingItemRegion:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CoverageDecisionMissingItem) UnmarshalText(data []byte) error {
+	switch CoverageDecisionMissingItem(data) {
+	case CoverageDecisionMissingItemInfoDomain:
+		*s = CoverageDecisionMissingItemInfoDomain
+		return nil
+	case CoverageDecisionMissingItemRegion:
+		*s = CoverageDecisionMissingItemRegion
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 覆盖包来源。deployment_config 为产品目录接入前的部署配置（全部租户相同）.
+type CoverageDecisionSource string
+
+const (
+	CoverageDecisionSourceDeploymentConfig CoverageDecisionSource = "deployment_config"
+)
+
+// AllValues returns all CoverageDecisionSource values.
+func (CoverageDecisionSource) AllValues() []CoverageDecisionSource {
+	return []CoverageDecisionSource{
+		CoverageDecisionSourceDeploymentConfig,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CoverageDecisionSource) MarshalText() ([]byte, error) {
+	switch s {
+	case CoverageDecisionSourceDeploymentConfig:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CoverageDecisionSource) UnmarshalText(data []byte) error {
+	switch CoverageDecisionSource(data) {
+	case CoverageDecisionSourceDeploymentConfig:
+		*s = CoverageDecisionSourceDeploymentConfig
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // NewOptDateTime returns new OptDateTime with value set to v.
 func NewOptDateTime(v time.Time) OptDateTime {
 	return OptDateTime{

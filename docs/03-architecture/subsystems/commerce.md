@@ -1,6 +1,6 @@
 # 订阅计量计费子系统（commerce）
 
-> 状态：评审中 · 版本：2.3 · 更新：2026-10-18 · 平面：平台
+> 状态：评审中 · 版本：2.4 · 更新：2026-10-26 · 平面：平台
 
 ## 1. 使命
 
@@ -85,4 +85,5 @@ M1最小模型网关与任务执行器记录技术用量，M2的gateway/search�
 - **去重与额度**：同一尝试以咨询锁串行，同一租户、类型与计量日的用量行以行锁串行，同一事务内依次：按（调用者、尝试键）重放已保存的尝试结果（含 429；同键不同请求 409 `idempotency_conflict`）→ 锁定当日用量 → 计量操作已存在为 `unchanged` → 用量达到额度为 429 `quota.exhausted`（带已用量、额度与重置时间，保存该尝试，不写计量）→ 否则写入计量并加一。额度为每租户每计量日每类型，权益接入前来自配置 `MIAOQIA_COMMERCE_OBJECT_VIEW_DAILY_QUOTA` 与 `MIAOQIA_COMMERCE_EVIDENCE_VIEW_DAILY_QUOTA`（缺省 2000）；计量日按 `MIAOQIA_COMMERCE_METERING_TZ`（缺省 Asia/Shanghai；租户时区随租户设置接入）；
 - **补记**：消费 `gateway.view_meter.deferred.v1`（consumer `commerce.view-backfill`），按同一计量操作标识写入（`source = backfill`），已存在则不计，只在新写入时加用量；补记不检查额度，不补授权；
 - **数据**：`com_view_usage`、`com_view_meters`、`com_view_attempts`，均按租户行级隔离；
-- **未实现**：产品目录、订阅、权益与覆盖判断（`GetEntitlements`，gateway 的覆盖端口未接入）、`commerce.quota.exceeded.v1`、用量报表与账单。
+- **覆盖判断（契约 0.2.0，验收线 R-05）**：内部接口 `GET /internal/v1/commerce/coverage`（`checkCoverage`，`GetEntitlements` 的数据覆盖部分，经 `Coverage` 绑定由 gateway 的对象页与 learning 的代表样本以用户主体调用，服务主体 403）。按对象的信息领域与 GB/T 2260 区划判断，省级代码包含该省全部区划、地级代码包含该市全部区划；区划未知时只有“全部区域”覆盖，否则为覆盖不足（缺失维度 `region`）；信息领域不在包内时缺失维度为 `info_domain`。产品目录接入（M2-P8）之前覆盖包来自部署配置 `MIAOQIA_COMMERCE_COVERAGE`（如 `INF-PROC=330000;INF-ORG=*`），对全部租户相同，响应以 `source = deployment_config` 标明；格式错误拒绝启动，未配置时 503 `coverage_unavailable`（调用方失败关闭）。按租户的覆盖包随产品目录与订阅交付；
+- **未实现**：产品目录、订阅、按租户的权益与覆盖包、`commerce.quota.exceeded.v1`、用量报表与账单。

@@ -28,6 +28,20 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// CheckCoverage invokes checkCoverage operation.
+	//
+	// 调用者为请求上下文中的用户主体（服务主体 403
+	// forbidden），租户来自请求上下文。info_domain 是对象所属信息领域；region
+	// 是对象 所在行政区划（GB/T 2260
+	// 六位代码），未知时省略：覆盖包只限定区域时，区域未知按覆盖不足处理（缺失维度
+	// region）， 不推定在覆盖内。覆盖包中的区域按代码层级包含：省级 330000
+	// 包含 33 开头的全部区划，地级 330800 包含 3308 开头的区划。 covered 为假时
+	// missing 列出缺少的覆盖维度，调用方据此返回
+	// entitlement.coverage_insufficient，只展示对象名称。 覆盖包未配置或读取失败为
+	// 503 coverage_unavailable，调用方失败关闭。.
+	//
+	// GET /v1/commerce/coverage
+	CheckCoverage(ctx context.Context, params CheckCoverageParams) (*CoverageDecision, error)
 	// RecordView invokes recordView operation.
 	//
 	// 查看者为请求上下文中的用户主体（服务主体 403 forbidden）。outcome 为
@@ -78,6 +92,129 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// CheckCoverage invokes checkCoverage operation.
+//
+// 调用者为请求上下文中的用户主体（服务主体 403
+// forbidden），租户来自请求上下文。info_domain 是对象所属信息领域；region
+// 是对象 所在行政区划（GB/T 2260
+// 六位代码），未知时省略：覆盖包只限定区域时，区域未知按覆盖不足处理（缺失维度
+// region）， 不推定在覆盖内。覆盖包中的区域按代码层级包含：省级 330000
+// 包含 33 开头的全部区划，地级 330800 包含 3308 开头的区划。 covered 为假时
+// missing 列出缺少的覆盖维度，调用方据此返回
+// entitlement.coverage_insufficient，只展示对象名称。 覆盖包未配置或读取失败为
+// 503 coverage_unavailable，调用方失败关闭。.
+//
+// GET /v1/commerce/coverage
+func (c *Client) CheckCoverage(ctx context.Context, params CheckCoverageParams) (*CoverageDecision, error) {
+	res, err := c.sendCheckCoverage(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendCheckCoverage(ctx context.Context, params CheckCoverageParams) (res *CoverageDecision, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("checkCoverage"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/commerce/coverage"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CheckCoverageOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/commerce/coverage"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "info_domain" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "info_domain",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.InfoDomain))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "region" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "region",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Region.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCheckCoverageResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // RecordView invokes recordView operation.

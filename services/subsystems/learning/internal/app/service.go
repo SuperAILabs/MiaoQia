@@ -17,11 +17,13 @@ import (
 
 	cc "github.com/superailabs/miaoqia/services/contracts/apis/customer-context"
 	"github.com/superailabs/miaoqia/services/kernel/audit"
+	"github.com/superailabs/miaoqia/services/kernel/authz"
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/policy"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
+	commerce "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/api"
 )
@@ -29,11 +31,14 @@ import (
 // SimulationCompleted 是仿真结束（完成或失败）的事件。
 const SimulationCompleted = "learning.simulation.completed.v1"
 
-// Service 是 learning 的用例。Authz 是 identity 的授权决策点；Context 与Policies 是 customer-context 的上下文与策略仿真输入读取
-// （均经绑定，以 svc:learning 读取）；Dataset 与 Domains 是仿真端口（api.NotWired 为未接入）；Features 是应用领域包的共享特征。
+// Service 是 learning 的用例。Access、Context 与 Policies 是 customer-context 的目标授权、上下文与策略仿真输入读取（均经绑定，
+// 以 svc:learning 读取）；Dataset 与 Domains 是仿真端口（api.NotWired 为未接入）；Features 是应用领域包的共享特征。
+// Authz（identity 的授权决策点）与 Coverage（commerce 的覆盖判断）用于按查看者过滤代表样本，任一缺失时样本全部不返回（samples.go）。
 type Service struct {
 	DB       *db.DB
 	Access   customercontext.ObjectiveAccess
+	Authz    authz.Decider
+	Coverage commerce.Coverage
 	Context  customercontext.ContextReader
 	Policies customercontext.PolicyReader
 	Dataset  api.Dataset
@@ -463,7 +468,8 @@ func (s *Service) SimulatePolicy(ctx context.Context, objective string, revision
 	if !ok {
 		return nil, failure(403, "forbidden")
 	}
-	return s.simulate(ctx, rc, objective, revision)
+	run, err := s.simulate(ctx, rc, objective, revision)
+	return s.present(ctx, run), err
 }
 
 // GetSimulation 读取运行（目标的 can_view，按 customer-context 的当前口径）；无权限、其他租户的与不存在的运行返回同一 404。
@@ -494,7 +500,7 @@ func (s *Service) GetSimulation(ctx context.Context, id string) (*Run, error) {
 	if !visible {
 		return nil, failure(404, "simulation_not_found")
 	}
-	return out, nil
+	return s.present(ctx, out), nil
 }
 
 // PolicyDrafted 是 customer_context.policy.drafted.v1 的消费处理：通过校验的草案修订保存后自动仿真（以 svc:learning）。

@@ -1,4 +1,4 @@
-// Package remote 是 commerce 查看计量接口的远程绑定：由 contracts/apis/commerce/openapi.yaml 生成的客户端，经调用管线。
+// Package remote 是 commerce 查看计量与覆盖判断接口的远程绑定：由 contracts/apis/commerce/openapi.yaml 生成的客户端，经调用管线。
 // 调用以请求上下文中的用户主体转交（binding.Transport）。
 package remote
 
@@ -16,18 +16,23 @@ import (
 )
 
 // NewMetering 返回远程查看计量接口；baseURL 为 commerce 内部接口地址，例如 https://platform-api:8091/internal。
-func NewMetering(baseURL string) (api.ViewMetering, error) {
+func NewMetering(baseURL string) (api.ViewMetering, error) { return newClient(baseURL) }
+
+// NewCoverage 返回远程覆盖判断接口（地址同 NewMetering）。
+func NewCoverage(baseURL string) (api.Coverage, error) { return newClient(baseURL) }
+
+func newClient(baseURL string) (client, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Host == "" || u.User != nil || (!transportsecurity.Development() && u.Scheme != "https") {
-		return nil, fmt.Errorf("commerce remote requires authenticated HTTPS")
+		return client{}, fmt.Errorf("commerce remote requires authenticated HTTPS")
 	}
 	base, err := transportsecurity.Client()
 	if err != nil {
-		return nil, err
+		return client{}, err
 	}
 	cl, err := com.NewClient(baseURL, com.WithClient(&http.Client{Transport: binding.Transport{Base: base}, CheckRedirect: refuseRedirect}))
 	if err != nil {
-		return nil, err
+		return client{}, err
 	}
 	return client{cl}, nil
 }
@@ -63,5 +68,28 @@ func (c client) RecordView(ctx context.Context, kind, target, requestKey string)
 				return nil, translate(err)
 			}
 			return r, nil
+		})
+}
+
+func (c client) CheckCoverage(ctx context.Context, infoDomain, region string) (*api.CoverageDecision, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "CheckCoverage", Idempotent: true},
+		func(ctx context.Context) (*api.CoverageDecision, error) {
+			params := com.CheckCoverageParams{InfoDomain: infoDomain}
+			if region != "" {
+				params.Region = com.NewOptString(region)
+			}
+			r, err := c.c.CheckCoverage(ctx, params)
+			if err != nil {
+				return nil, translate(err)
+			}
+			// 响应必须回答所问的对象：信息领域或区划不符时不采信（失败关闭）。
+			if r.InfoDomain != infoDomain || r.Region.Or("") != region || r.Covered != (len(r.Missing) == 0) {
+				return nil, fmt.Errorf("%w：覆盖判断响应与请求不符", binding.ErrTransient)
+			}
+			out := &api.CoverageDecision{Covered: r.Covered, Missing: []string{}}
+			for _, m := range r.Missing {
+				out.Missing = append(out.Missing, string(m))
+			}
+			return out, nil
 		})
 }
