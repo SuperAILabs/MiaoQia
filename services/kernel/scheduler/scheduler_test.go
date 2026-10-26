@@ -108,14 +108,16 @@ func TestRunStartsImmediatelyAndNeverOverlaps(t *testing.T) {
 	}
 	time.Sleep(3500 * time.Millisecond)
 	cancel()
+	elapsed := time.Since(start)
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("取消后 Run 应返回 context.Canceled：%v", err)
 	}
 	if overlapped.Load() != 0 {
 		t.Fatal("同一任务的轮次不得重叠")
 	}
-	if n := calls.Load(); n < 2 || n > 4 {
-		t.Fatalf("约 5 秒内应执行 2–4 轮：%d", n)
+	// 轮次串行且每轮至少 1.5 秒：轮数不超过 经过时间/1.5秒 + 1（与机器负载无关）
+	if n, limit := calls.Load(), int32(elapsed/(1500*time.Millisecond))+1; n < 2 || n > limit {
+		t.Fatalf("经过 %s 应执行 2–%d 轮：%d", elapsed, limit, n)
 	}
 }
 

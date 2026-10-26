@@ -56,6 +56,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.DirectoryBinding, api.LocalDirectory(directory))
 			env.Bindings.Provide(api.GuardBinding, api.LocalGuard(directory))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(directory))
+			env.Bindings.Provide(api.TenantsBinding, api.LocalTenants(directory))
 			env.Bindings.Provide(api.ChannelSessionsBinding, api.LocalChannelSessions(directory))
 			env.Bindings.Provide(api.ApprovalsBinding, api.LocalApprovals(directory))
 			env.Bindings.Provide(api.ApprovalReaderBinding, api.LocalApprovalReader(directory))

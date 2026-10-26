@@ -98,6 +98,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.RemindersBinding, api.LocalReminders(svc))
 			return nil
 		},
+		Jobs: jobs(clock(adapters.Now)),
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
 			handler := &app.Server{Service: svc}
 			in, err := pur.NewServer(handler, pur.WithPathPrefix("/internal"), pur.WithErrorHandler(app.WriteProtocolError))

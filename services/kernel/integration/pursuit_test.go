@@ -36,6 +36,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	"github.com/superailabs/miaoqia/services/kernel/scheduler"
 	"github.com/superailabs/miaoqia/services/subsystems/channels"
 	chapi "github.com/superailabs/miaoqia/services/subsystems/channels/api"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/api/wecomtest"
@@ -777,9 +778,29 @@ func TestPursuitFollowUp(t *testing.T) {
 		if items := obj(t, expect(t, lead, "GET", "/v1/pursuit/my-tasks", "", 200))["items"].([]any); len(items) != 1 {
 			t.Fatalf("%+v", items)
 		}
-		// 已到时的“前一日 09:00”提醒在同步后发出一次，收件人为任务负责人
-		if n := runDue(t, at(24, 9, 2)); n != 1 {
-			t.Fatalf("%d", n)
+		// 已到时的“前一日 09:00”提醒在同步后发出一次，收件人为任务负责人。这一轮经 scheduler 角色的 pursuit.run-due-reminders
+		// 任务执行（R-01）：任务经 identity.Tenants 枚举全部 active 租户，逐个以 svc:pursuit 调用 RunDue
+		declared, err := purModule.Jobs(purs.env)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var dueJob scheduler.Job
+		for _, j := range declared {
+			if j.Name == "pursuit.run-due-reminders" {
+				dueJob = j
+			}
+		}
+		if dueJob.Run == nil {
+			t.Fatalf("pursuit 应声明 pursuit.run-due-reminders：%+v", declared)
+		}
+		var sent int
+		runner := &scheduler.Runner{OnRound: func(_ string, _ scheduler.Outcome, n int, _ error) { sent = n }}
+		pclock.set(at(24, 9, 2), 0)
+		outcome := runner.Once(ctx, scheduler.Bound{Job: dueJob, DB: purs.env.DB})
+		pclock.set(at(21, 10, 0), 0)
+		pump(t)
+		if outcome != scheduler.Ran || sent != 1 {
+			t.Fatalf("%s %d", outcome, sent)
 		}
 		if n := runDue(t, at(24, 9, 3)); n != 0 {
 			t.Fatalf("重复发送 %d", n)

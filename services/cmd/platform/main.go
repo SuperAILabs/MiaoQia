@@ -511,20 +511,8 @@ func runRelay(ctx context.Context, log *slog.Logger, brokers []string) error {
 // runScheduler 运行已加载子系统声明的周期任务（runtime.Module.Jobs，kernel/scheduler）。任务在所属子系统的数据库上取咨询锁，
 // 主备两个实例同时运行时同一任务同一时刻只在一个实例上执行。没有任务时只等待退出。
 func runScheduler(ctx context.Context, log *slog.Logger, loaded []runtime.Module, envs []*runtime.Env) error {
-	var jobs []scheduler.Bound
-	for i, m := range loaded {
-		if m.Jobs == nil {
-			continue
-		}
-		declared, err := m.Jobs(envs[i])
-		if err != nil {
-			return fmt.Errorf("%s：%w", m.Name, err)
-		}
-		for _, j := range declared {
-			jobs = append(jobs, scheduler.Bound{Job: j, DB: envs[i].DB})
-		}
-	}
-	if err := scheduler.Validate(jobs); err != nil {
+	jobs, err := collectJobs(loaded, envs)
+	if err != nil {
 		return err
 	}
 	names := make([]string, 0, len(jobs))
@@ -537,4 +525,23 @@ func runScheduler(ctx context.Context, log *slog.Logger, loaded []runtime.Module
 		return nil
 	}
 	return (&scheduler.Runner{Jobs: jobs, Log: log}).Run(ctx)
+}
+
+// collectJobs 收集并校验已加载子系统的周期任务。按租户的任务依赖 identity.Tenants（只有本地绑定），
+// identity 配置为远程时这些子系统声明任务失败，scheduler 角色不启动。
+func collectJobs(loaded []runtime.Module, envs []*runtime.Env) ([]scheduler.Bound, error) {
+	var jobs []scheduler.Bound
+	for i, m := range loaded {
+		if m.Jobs == nil {
+			continue
+		}
+		declared, err := m.Jobs(envs[i])
+		if err != nil {
+			return nil, fmt.Errorf("%s 定时任务：%w", m.Name, err)
+		}
+		for _, j := range declared {
+			jobs = append(jobs, scheduler.Bound{Job: j, DB: envs[i].DB})
+		}
+	}
+	return jobs, scheduler.Validate(jobs)
 }

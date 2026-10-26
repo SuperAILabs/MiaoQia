@@ -121,6 +121,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.BriefingsBinding, api.LocalBriefings(svc))
 			return nil
 		},
+		Jobs: jobs,
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
 			pub, err := chn.NewServer(&app.Server{Service: svc}, chn.WithErrorHandler(app.WriteProtocolError))
 			if err != nil {

@@ -98,6 +98,10 @@ func (r *Runner) loop(ctx context.Context, j Bound) {
 	ticker := time.NewTicker(j.Every)
 	defer ticker.Stop()
 	for {
+		// select 在退出与节拍同时就绪时随机选择：先检查退出，取消后不再开始新的一轮
+		if ctx.Err() != nil {
+			return
+		}
 		// 同一任务在本实例内串行：本轮结束前不会开始下一轮，期间到达的节拍由 ticker 合并丢弃
 		r.Once(ctx, j)
 		select {
