@@ -1,22 +1,14 @@
 """显式目标的本地项目补物化；不重放consumer inbox或改写Notice历史。"""
 from __future__ import annotations
 
-import argparse
 import copy
-import json
-import os
 import re
-import sys
 from datetime import datetime
 
 from sqlalchemy import text
 
-from miaoqia import evidence
 from miaoqia.contracts import models
-from miaoqia.kernel import db, reqctx
-from miaoqia.kernel.runtime import env_key
 
-from ..api import NAME
 from ..domain.versions import META, stabilize_result_ids, value_hash
 from .facts import fact_version
 from .projects import aggregate_notice, lock_identities
@@ -68,26 +60,3 @@ def backfill(database, extractions, notice_ids):
             results.append({"notice_id": notice["id"], "notice_version": notice["version"],
                             "action": "processed", "status": status, "project_id": project_id})
         return sorted(results, key=lambda r: r["notice_id"])
-
-
-def main(argv=None):
-    parser = argparse.ArgumentParser(prog="mq-project-backfill")
-    parser.add_argument("notice_ids", nargs="+", help="显式指定当前固定版本的ntc_标识；单次至多100个")
-    args = parser.parse_args(argv)
-    dom_dsn, evd_dsn = os.environ.get(env_key(NAME, "DB_DSN")), os.environ.get(env_key("evidence", "DB_DSN"))
-    if not dom_dsn or not evd_dsn:
-        print("未配置MIAOQIA_DOMAIN_INTELLIGENCE_DB_DSN或MIAOQIA_EVIDENCE_DB_DSN", file=sys.stderr)
-        return 2
-    database, reader = db.Database(dom_dsn), evidence.extractions(evd_dsn)
-    try:
-        with reqctx.use(reqctx.service(NAME)):
-            results = backfill(database, reader, args.notice_ids)
-        print(json.dumps(results, ensure_ascii=False))
-        return 0
-    finally:
-        reader.close()
-        database.close()
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
