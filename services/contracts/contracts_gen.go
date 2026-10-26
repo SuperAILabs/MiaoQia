@@ -2372,6 +2372,151 @@ const SignalStatusDismissed SignalStatus = "dismissed"
 const SignalStatusOpen SignalStatus = "open"
 const SignalStatusTriaged SignalStatus = "triaged"
 
+type SourceRightsConfirmRequest struct {
+	// Inputs corresponds to the JSON schema field "inputs".
+	Inputs []SourceRightsInput `json:"inputs"`
+
+	// Operation corresponds to the JSON schema field "operation".
+	Operation SourceRightsConfirmRequestOperation `json:"operation"`
+
+	// Receipt corresponds to the JSON schema field "receipt".
+	Receipt SourceRightsReceipt `json:"receipt"`
+}
+
+type SourceRightsConfirmRequestOperation string
+
+const SourceRightsConfirmRequestOperationEvidenceResolve SourceRightsConfirmRequestOperation = "evidence_resolve"
+const SourceRightsConfirmRequestOperationFactRead SourceRightsConfirmRequestOperation = "fact_read"
+
+type SourceRightsDecision struct {
+	// Allowed corresponds to the JSON schema field "allowed".
+	Allowed bool `json:"allowed"`
+
+	// Display corresponds to the JSON schema field "display".
+	Display SourceRightsDecisionDisplay `json:"display"`
+
+	// Epoch corresponds to the JSON schema field "epoch".
+	Epoch int `json:"epoch"`
+
+	// Receipt corresponds to the JSON schema field "receipt".
+	Receipt *SourceRightsReceipt `json:"receipt,omitempty,omitzero"`
+
+	// Redistribution corresponds to the JSON schema field "redistribution".
+	Redistribution bool `json:"redistribution"`
+}
+
+type SourceRightsDecisionDisplay string
+
+const SourceRightsDecisionDisplayCitationOnly SourceRightsDecisionDisplay = "citation_only"
+const SourceRightsDecisionDisplayExcerpt SourceRightsDecisionDisplay = "excerpt"
+const SourceRightsDecisionDisplayFullText SourceRightsDecisionDisplay = "full_text"
+const SourceRightsDecisionDisplayNone SourceRightsDecisionDisplay = "none"
+
+type SourceRightsInput struct {
+	// SourceId corresponds to the JSON schema field "source_id".
+	SourceId string `json:"source_id"`
+
+	// Tags corresponds to the JSON schema field "tags".
+	Tags []string `json:"tags"`
+}
+
+// Frozen-corpus read permission only. Immutable original restrictions intersect
+// current restrictions; registration is not source activation. Effective time must
+// precede expiry.
+type SourceRightsPolicy struct {
+	// Display corresponds to the JSON schema field "display".
+	Display SourceRightsPolicyDisplay `json:"display"`
+
+	// EffectiveAt corresponds to the JSON schema field "effective_at".
+	EffectiveAt time.Time `json:"effective_at"`
+
+	// EntryId corresponds to the JSON schema field "entry_id".
+	EntryId string `json:"entry_id"`
+
+	// ExpiresAt corresponds to the JSON schema field "expires_at".
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// Purposes corresponds to the JSON schema field "purposes".
+	Purposes []SourceRightsPolicyPurposesElem `json:"purposes"`
+
+	// Redistribution corresponds to the JSON schema field "redistribution".
+	Redistribution bool `json:"redistribution"`
+
+	// SchemaVersion corresponds to the JSON schema field "schema_version".
+	SchemaVersion int `json:"schema_version"`
+
+	// Scopes corresponds to the JSON schema field "scopes".
+	Scopes []SourceRightsPolicyScopesElem `json:"scopes"`
+
+	// SourceId corresponds to the JSON schema field "source_id".
+	SourceId string `json:"source_id"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version"`
+}
+
+type SourceRightsPolicyDisplay string
+
+const SourceRightsPolicyDisplayCitationOnly SourceRightsPolicyDisplay = "citation_only"
+const SourceRightsPolicyDisplayExcerpt SourceRightsPolicyDisplay = "excerpt"
+const SourceRightsPolicyDisplayFullText SourceRightsPolicyDisplay = "full_text"
+const SourceRightsPolicyDisplayNone SourceRightsPolicyDisplay = "none"
+
+type SourceRightsPolicyPurposesElem string
+
+const SourceRightsPolicyPurposesElemInteractive SourceRightsPolicyPurposesElem = "interactive"
+
+type SourceRightsPolicyScopesElem struct {
+	// Cell corresponds to the JSON schema field "cell".
+	Cell string `json:"cell"`
+
+	// Tenant corresponds to the JSON schema field "tenant".
+	Tenant string `json:"tenant"`
+}
+
+type SourceRightsReceipt struct {
+	// Epoch corresponds to the JSON schema field "epoch".
+	Epoch int `json:"epoch"`
+
+	// Expires corresponds to the JSON schema field "expires".
+	Expires int `json:"expires"`
+
+	// Mac corresponds to the JSON schema field "mac".
+	Mac string `json:"mac"`
+
+	// Nonce corresponds to the JSON schema field "nonce".
+	Nonce string `json:"nonce"`
+}
+
+type SourceRightsResolveRequest struct {
+	// Inputs corresponds to the JSON schema field "inputs".
+	Inputs []SourceRightsInput `json:"inputs"`
+
+	// Operation corresponds to the JSON schema field "operation".
+	Operation SourceRightsResolveRequestOperation `json:"operation"`
+}
+
+type SourceRightsResolveRequestOperation string
+
+const SourceRightsResolveRequestOperationEvidenceResolve SourceRightsResolveRequestOperation = "evidence_resolve"
+const SourceRightsResolveRequestOperationFactRead SourceRightsResolveRequestOperation = "fact_read"
+
+type SourceRightsStatus struct {
+	// Capability corresponds to the JSON schema field "capability".
+	Capability SourceRightsStatusCapability `json:"capability"`
+
+	// DomainService corresponds to the JSON schema field "domain_service".
+	DomainService SourceRightsStatusDomainService `json:"domain_service"`
+}
+
+type SourceRightsStatusCapability string
+
+const SourceRightsStatusCapabilityFrozenSourceRightsOnly SourceRightsStatusCapability = "frozen_source_rights_only"
+
+type SourceRightsStatusDomainService string
+
+const SourceRightsStatusDomainServiceNotLive SourceRightsStatusDomainService = "not_live"
+
 type StructuredRecord struct {
 	// 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value
 	Data StructuredRecordData `json:"data"`

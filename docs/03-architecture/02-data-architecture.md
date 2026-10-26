@@ -287,7 +287,7 @@ TenantSide:
 
 **到期与撤销。** 公共来源的权利变化（含到期）由 `acquisition.source.rights_changed.v1` 发布，`action` 区分保留、收紧与撤回；下游按新的组合结果重新判断可见性与用途，不必等待重建。租户授权的到期与撤销在租户域内处理，不发布到公共主题。撤销引起的下线与删除由 `governance` 编排（第 13 节）。
 
-**契约现状。** 已冻结的 `rights_tags`、`rights_set` 结构不变；权利条目的 Schema 与引用格式随首个需要逐维判断的功能（授权数据商接入或客户授权数据进入研究）一起定义，届时按追加式规则升级相关契约。
+**契约现状。** 已冻结的 `rights_tags`、`rights_set` 结构不变。[SourceRightsPolicy](../../contracts/schemas/acquisition/source-rights.schema.json) 1.0.0 已定义冻结语料的只读权利版本；精确 source+原 tags 组合不可变地映射到原始 entry/version，原始与当前限制逐维取交集。[d0 当前权利端口](subsystems/source-rights-runtime.md) 由 acquisition 独立持久化并经内部 mTLS 供 data 调用；通用 review 标签单独不足授权。该实现不发布 rights_changed 事件，不覆盖采集/模型使用/租户上传治理，不启用真实来源；完整能力随对应功能追加，data 查询装配及完整 R2 仍未完成。
 
 ## 13. 来源不可用、撤回与失效
 

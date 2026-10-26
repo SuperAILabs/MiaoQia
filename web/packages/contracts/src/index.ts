@@ -1440,6 +1440,129 @@ export interface TenantMeta {
   updated_at: string;
   [k: string]: unknown;
 }
+export interface SourceRightsConfirmRequest {
+  operation: "fact_read" | "evidence_resolve";
+  /**
+   * @minItems 1
+   * @maxItems 64
+   */
+  inputs: [SourceRightsInput, ...SourceRightsInput[]];
+  receipt: SourceRightsReceipt;
+}
+export interface SourceRightsInput {
+  source_id: string;
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  tags:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+}
+export interface SourceRightsReceipt {
+  epoch: number;
+  expires: number;
+  nonce: string;
+  mac: string;
+}
+export interface SourceRightsDecision {
+  allowed: boolean;
+  display: "none" | "citation_only" | "excerpt" | "full_text";
+  redistribution: boolean;
+  epoch: number;
+  receipt?: SourceRightsReceipt;
+}
+/**
+ * Frozen-corpus read permission only. Immutable original restrictions intersect current restrictions; registration is not source activation. Effective time must precede expiry.
+ */
+export interface SourceRightsPolicy {
+  schema_version: 1;
+  entry_id: string;
+  version: number;
+  source_id: string;
+  /**
+   * @minItems 1
+   * @maxItems 64
+   */
+  scopes: [
+    {
+      tenant: string;
+      cell: string;
+    },
+    ...{
+      tenant: string;
+      cell: string;
+    }[]
+  ];
+  /**
+   * @minItems 1
+   * @maxItems 1
+   */
+  purposes: ["interactive"];
+  display: "none" | "citation_only" | "excerpt" | "full_text";
+  effective_at: string;
+  expires_at: string;
+  redistribution: boolean;
+}
+export interface SourceRightsResolveRequest {
+  operation: "fact_read" | "evidence_resolve";
+  /**
+   * @minItems 1
+   * @maxItems 64
+   */
+  inputs: [SourceRightsInput, ...SourceRightsInput[]];
+}
+export interface SourceRightsStatus {
+  domain_service: "not_live";
+  capability: "frozen_source_rights_only";
+}
 export interface StructuredRecord {
   /**
    * 记录键：优先取来源自身的主键；来源没有主键时由处理管线按 key_rule 生成，不用行号（行号随排序变化）

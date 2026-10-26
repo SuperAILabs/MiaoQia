@@ -155,6 +155,7 @@ L1 按依赖拆分，下表为实施建议；PR #35 的 E1–E5 仍为建议，�
 | L1-1 | 结果公告解析器与对照人工映射的评测；evidence 公共管线（快照、规范化文档、解析修订、证据引用、事件）；domain-intelligence 事实版本、`domain.fact.upserted.v1` 与 A02 结果视图投影；语料回放命令 `mq-evidence-replay` | D-02、D-03、D-04（部分） | 只改 Python 数据平面、INF-PROC 包与 CI，不碰 Go 服务端 |
 | L1-2a | 事实当前/当时已知/固定版本、历史、结构化查询、A02 求值单位与文档证据解析的本地绑定；补同项目建材招标/中标官方原件、人工映射及折扣率解析回归 | D-02、D-03、D-11（提供读取基础，尚未接入 Go 端口） | 只改 Python 与语料 |
 | L1-2b | 冻结 `official-qzygjy` 招标/中标按平台、采购方与项目号聚合 `pp_`；无明确标包证据为 `lots=[]`；四事件与独立聚合版本，后续修订关联待复核；既有 Notice 经显式 ID 本地 backfill 补建，保持旧版本/事件不变 | D-04（局部，不关闭完整生命周期） | 只改 Python、最小兼容契约与夹具 |
+| L1-2d0 | acquisition 持久化当前来源权利、受限本地 CLI 与内部 mTLS 只读 endpoint/client；冻结 building 组合，原始与当前权利全输入交集 | d1/d2 查询和状态装配、完整来源治理仍未完成 | 只改 Python 与契约 |
 | L1-2 后续 | data-api 内部读取接口（事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态）；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；建材品类规则增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
 | L1-3 | Go 端口生产适配器：detection `Facts`/`Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、commerce 覆盖判断（R-05）、learning `Dataset`/`DomainStatus` 与样本权限过滤（D-17） | D-06、D-07、D-09、D-10、D-11、D-17、R-05 | 改主线子系统，开工前与主线协调修订号与文件 |
 | L1-4 | 全端口生产装配的部署配置与启动检查、调度器任务、贯通 E2E（投放结果公告 → 收件箱信号 → 对象页回到原文 → 站内简报）及跨租户与无权限负向用例 | R-01、R-02、C-04（站内） | 第5段服务端已合并，仍待适配器与运行装配 |
