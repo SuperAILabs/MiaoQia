@@ -24,11 +24,11 @@ DATE_ONLY = re.compile(r"^\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日$")
 
 class TenderNoticeExtractor:
     id = "proc.tender-notice"
-    version = "0.2.0"
+    version = "0.3.0"
     fact_types = ("tendering.notice",)
 
     def applies(self, doc: Document, source: dict) -> bool:
-        return any(TITLE_MARK.match(b.get("text", "")) for b in doc.blocks[:5])
+        return any(TITLE_MARK.match(b.get("text", "")) or b.get("text", "").endswith("非政府采购招标公告") for b in doc.blocks[:5])
 
     def extract(self, doc: Document, ctx: ExtractionContext) -> ExtractionResult:
         res = ExtractionResult()
@@ -44,7 +44,9 @@ class TenderNoticeExtractor:
                 if word in s.text:
                     fact["method"] = code
                     break
-        for key, labels in (("buyer", ["招标人", "采购人"]),
+        if (s := doc.find_labeled(["项目编号"])):
+            fact["project_code"] = ctx.text(s)
+        for key, labels in (("buyer", ["招标人", "采购人", "采购人名称"]),
                             ("agency", ["招标组织单位", "招标代理机构", "采购代理机构", "代理机构"])):
             if (s := doc.find_labeled(labels)):
                 fact[key] = ctx.org(s)
@@ -66,7 +68,8 @@ class TenderNoticeExtractor:
         """标题标记（“招标公告”）之后、第一行“标签：”之前的居中标题行，可能跨多块。"""
         mark = next((b["index"] for b in doc.blocks[:5] if TITLE_MARK.match(b.get("text", ""))), None)
         if mark is None:
-            return None
+            title = next((b for b in doc.blocks[:5] if b.get("text", "").endswith("非政府采购招标公告")), None)
+            return doc.block_span(title["index"]) if title else None
         end = mark
         for b in doc.blocks[mark + 1: mark + 4]:
             text = b.get("text", "")

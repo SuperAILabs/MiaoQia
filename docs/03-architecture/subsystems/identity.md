@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.11 · 更新：2026-10-26 · 平面：平台
+> 状态：评审中 · 版本：1.12 · 更新：2026-10-26 · 平面：平台
 
 ## 1. 使命
 
@@ -67,7 +67,7 @@
 - **单元角色**：成员命令的 `unit_roles` 写入绑定在单元上的角色（全量替换，缺省为空；租户管理员只能绑定在租户上），会话与 `identity.member.changed.v1`（1.1.0 起）携带 `unit_roles`；
 - **Check**：带租户上下文时只判断调用主体自身。用户主体按目录中的当前成员资格、租户角色、单元角色、单元层级与资源所在单元构造上下文关系，挂在每次决策独有的一次性租户与单元对象上，由 OpenFGA 按 `model.fga` 求值，持久化旧关系不参与；资源可为本租户的 `tenant`、`org_unit` 与经 `SyncResourceParticipants` 登记的 `objective`、`pursuit`、`research_case`，其他租户的或未登记的资源一律拒绝。服务主体（`service:<子系统>`）不是成员，只能判断上下文租户上的服务动作：`can_read_context`（读取客户上下文快照与版本）与 `can_sync_<资源>_participants`，依据 identity 的服务授权清单（`services/subsystems/identity/internal/infra/service_grants.go`，启动时与 OpenFGA 对齐，清单外的同类关系删除），每次决策核对租户处于启用状态且 cell 一致。服务主体代表用户判断（显式其他主体）仍为拒绝；
 - **SyncResourceParticipants**：内部端口 `POST /internal/v1/identity/participants:sync`，只接受资源所属子系统的服务主体（objective 为 customer-context，pursuit 为 pursuit，research_case 为 research）。资源登记所在租户与单元（一经登记不能转到其他租户，可随更高版本改变单元），参与版本按上表规则处理：高于已应用版本时与成员状态和单元范围访问（`org_unit#scope_member`）求交，按 OpenFGA 中的现有关系计算增删并一次写入（单次写入至多 100 条，期望集合至多 50 条），同一 SQL 事务记录版本、请求指纹与结果；同一版本同一请求返回首次结果（`replayed`），同一版本不同请求 409 `participants_version_conflict`，低于已应用版本返回 `stale` 不做修改。成员退出提交后尽力清理其在本租户已登记资源上的参与关系，重新加入前必须清理成功（失败关闭），旧参与关系不会随重新加入复活。清理、成员命令与同步按成员串行：清理与成员命令对成员行加排他锁、同步对涉及的成员行加共享锁，均持有到 OpenFGA 写入后的事务提交；清理在锁内重核成员仍未处于有效状态，成员已重新加入时跳过，因此迟到的清理不会删除重新加入后经更高参与版本写入的关系，同一版本的重放也无需重建；
-- 尚未实现：管理员账号恢复、审批、支持访问与服务委托、`ListPermitted`（列表目前由业务子系统按单元逐个 `Check` 列表关系）、服务账号与外部协作者的运行时接入、单元删除与单元变更事件。
+- 尚未实现：管理员账号恢复、支持访问与服务委托、`ListPermitted`（列表目前由业务子系统按单元逐个 `Check` 列表关系）、服务账号与外部协作者的运行时接入、单元删除与单元变更事件。
 
 **实现状况（PRD 第1段邀请与强认证时效，契约 1.3.0）**：
 

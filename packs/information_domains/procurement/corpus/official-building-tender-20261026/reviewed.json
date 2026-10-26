@@ -1,0 +1,75 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "tender",
+      "title": {
+        "value": "2026年度球墨铸铁管材及管件采购的非政府采购招标公告",
+        "prov": {
+          "evidence_ref": "ev_QMSDGC37FS7RVRPGAZ4AQ9M09Z",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "XCXCG-2025-008",
+        "prov": {
+          "evidence_ref": "ev_X3NRRQRJWPB7572J2JRW2GC4AT",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "buyer": {
+        "name_raw": "江山市水务有限公司",
+        "prov": {
+          "evidence_ref": "ev_SNCFPV7X15JA9DY0NA0CGG2X4C",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1"
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "ev_QMSDGC37FS7RVRPGAZ4AQ9M09Z": {
+      "id": "ev_QMSDGC37FS7RVRPGAZ4AQ9M09Z",
+      "snapshot_ref": "snp_YPR3H2BHS8P4JC287VRH0A7FNH",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 0,
+        "char_end": 27
+      },
+      "quote_hash": "sha256:8ba2202fefce3d31dfdb4ac547a5dac20185814cbef5c77ce83400c8c6f0ba79"
+    },
+    "ev_X3NRRQRJWPB7572J2JRW2GC4AT": {
+      "id": "ev_X3NRRQRJWPB7572J2JRW2GC4AT",
+      "snapshot_ref": "snp_YPR3H2BHS8P4JC287VRH0A7FNH",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 3,
+        "char_start": 7,
+        "char_end": 21
+      },
+      "quote_hash": "sha256:07e33dac2e66e6b8a23fde1a533beeb521883d83c6e791cb0cffcc28d2372302"
+    },
+    "ev_SNCFPV7X15JA9DY0NA0CGG2X4C": {
+      "id": "ev_SNCFPV7X15JA9DY0NA0CGG2X4C",
+      "snapshot_ref": "snp_YPR3H2BHS8P4JC287VRH0A7FNH",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 59,
+        "char_end": 68
+      },
+      "quote_hash": "sha256:c113e77e7328f91db8da2bb2befaeb5146d9b8aca72073198ae2eac887e6a0d6"
+    }
+  }
+}

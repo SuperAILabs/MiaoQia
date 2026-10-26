@@ -112,3 +112,22 @@ def test_text_value_must_equal_the_quoted_original():
     fact = ex.extract(doc, ctx).facts[0]
     fact["title"]["value"] = "改写后的标题"
     assert any("文本字段与证据原文不一致" in e for e in validate_extraction(doc, [fact], ctx.evidence))
+
+
+def test_official_building_pair_has_the_same_code_and_percentage_is_not_money():
+    from miaoqia_pack_procurement.extractors.tender_notice import TenderNoticeExtractor
+    pair = {}
+    for kind in ("tender", "award"):
+        doc, reviewed, _ = load_reviewed_sample(CORPUS / f"official-building-{kind}-20261026")
+        ex = TenderNoticeExtractor() if kind == "tender" else ResultNoticeExtractor()
+        assert ex.applies(doc, {})
+        ctx = ExtractionContext(doc, f"{ex.id}@{ex.version}")
+        result = ex.extract(doc, ctx)
+        assert not validate_extraction(doc, result.facts, ctx.evidence)
+        pair[kind] = result.facts[0]
+        assert pair[kind]["project_code"] == {"value": "XCXCG-2025-008", "prov": pair[kind]["project_code"]["prov"]}
+        assert pair[kind]["buyer"]["name_raw"] == reviewed[0]["buyer"]["name_raw"] == "江山市水务有限公司"
+    award = pair["award"]
+    assert award["lots"][0]["bid_results"][0]["bidder"]["name_raw"] == "新兴铸管股份有限公司"
+    assert award["lots"][0]["conditions"]["contract_pricing"]["value"] == "76.5000%"
+    assert "price" not in award["lots"][0]["bid_results"][0] and "award_amount" not in award
