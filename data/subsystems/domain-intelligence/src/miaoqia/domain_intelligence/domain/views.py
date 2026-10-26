@@ -6,7 +6,7 @@
   - 框架第一阶段入围、未中标的投标人、只在附件中的结果不产生求值单位；
   - amount 只取 price_kind=total 的报价，年单价合计、单价、估算与未标明含义的报价都不进入金额；
   - 来源字段为空时视图中不出现该字段（表达式读取为未知）：采购项目、标的与品类来自项目聚合与品类增强，location 来自
-    行政区划解析，org_id 来自 entity-graph 组织解析，本投影不以名称或标题代替。
+    行政区划解析，org_id 来自 entity-graph 组织解析。固定标题主题只在查询已验证receipt/pp范围后回退，明确notice_subject，不表示实际供货。
 """
 from __future__ import annotations
 
@@ -41,10 +41,16 @@ def _cny(money: dict) -> int | None:
     return int(value) if value == value.to_integral_value() else None
 
 
-def bid_result_units(fact: dict) -> list[dict]:
+def bid_result_units(fact: dict, topic_context: dict | None = None) -> list[dict]:
     notice_type = fact.get("notice_type")
     if notice_type not in ("award", "candidate"):
         return []
+    all_results = [r for lot in fact.get("lots", []) for r in lot.get("bid_results", [])]
+    topic = (topic_context if notice_type == "award" and len(fact.get("lots", [])) == 1 and len(all_results) == 1
+             and all_results[0].get("stage") == "award" and all_results[0].get("is_winner") is True
+             and all_results[0].get("result_kind", "contract_award") == "contract_award"
+             and not fact.get("ending") and not fact.get("result_details_pending")
+             and not any(lot.get("ending") for lot in fact.get("lots", [])) else None)
     units = []
     for lot in fact.get("lots", []):
         for result in lot.get("bid_results", []):
@@ -90,6 +96,15 @@ def bid_result_units(fact: dict) -> list[dict]:
             if org_ids:
                 fields["org_ids"] = org_ids
             refs = [{"name": "fact", "id": fact["id"], "version": fact["version"], "domain": DOMAIN}]
+            if topic and not lot.get("items") and not result.get("awarded_items"):
+                categories = topic["categories"]
+                fields["categories"] = [c["category"]["code"] for c in categories]
+                fields["categories_scope"] = "notice_subject"
+                evidence["fact.categories"] = {"confidence": min(c["prov"]["confidence"] for c in categories), "method": "rule", "suspect": False}
+                project = topic["project"]
+                fields["project_id"] = project["id"]
+                display["procurement_project_id"] = project["id"]
+                refs.append({"name": "project", "id": project["id"], "version": project["version"], "domain": DOMAIN})
             units.append({
                 "key": f"{FACT_TYPE}:{fact['id']}:{result['id']}", "fact_type": FACT_TYPE, "domain": DOMAIN,
                 "subject": {"id": fact["id"], "version": fact["version"], "part_id": result["id"]}, "event": EVENT,

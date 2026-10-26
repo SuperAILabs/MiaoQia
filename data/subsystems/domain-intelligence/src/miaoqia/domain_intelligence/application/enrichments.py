@@ -55,8 +55,9 @@ def apply(database, extractions, enrichments, run_key, *, expected_parent):
     result = enrichments.get(run_key)
     if result is None:
         raise PermissionError("增强结果不存在或当前权利拒绝")
-    if not result.get("test_recipe"):
-        raise ValueError("c0只启用明确测试recipe")
+    topic = result["recipe"] == "proc.building-topic@0.1.0" and result.get("test_recipe") is False
+    if not topic and not result.get("test_recipe"):
+        raise ValueError("未启用的封闭recipe")
     source_id = result["source"]["id"]
     revision = extractions.revision(result["revision_ref"])
     with database.tx() as conn:
@@ -77,6 +78,27 @@ def apply(database, extractions, enrichments, run_key, *, expected_parent):
         fact = {k: copy.deepcopy(v) for k, v in current.items() if k not in META}
         for output in result["outputs"]:
             path = output["path"]
+            if topic:
+                if (len(result["outputs"]) != 1 or set(output) != {"path", "value", "evidence_ref", "scope_check", "diagnostics"}
+                        or path != "/subject_categories" or not isinstance(output["value"], list)):
+                    raise ValueError("主题增强必须替换其拥有的整个字段")
+                guard = output["scope_check"]
+                if guard["source_hash"] != result["source_hash"] or guard["reference_hash"] != result["reference_hash"] or guard["snapshot_ref"] != source["snapshot_ref"]:
+                    raise ValueError("主题范围证明与固定source不符")
+                codes = []
+                for item in output["value"]:
+                    category, prov = item["category"], item["prov"]
+                    if (not guard["eligible"] or item["scope"] != "notice_subject" or item["source_field"] != "/title/value"
+                            or prov["evidence_ref"] != output["evidence_ref"] or prov["confidence"] != category["confidence"]
+                            or not 0.8 <= prov["confidence"] <= source["title"]["prov"]["confidence"]):
+                        raise ValueError("主题证据或发布门槛不符")
+                    codes.append((category["scheme"], category["scheme_version"], category["code"]))
+                if len(codes) != len(set(codes)):
+                    raise ValueError("主题品类重复")
+                fact.pop("subject_categories", None)
+                if output["value"]:
+                    fact["subject_categories"] = copy.deepcopy(output["value"])
+                continue
             if not re.fullmatch(r"/(buyer|lots/(0|[1-9][0-9]*)/bid_results/(0|[1-9][0-9]*)/bidder)/prov", path):
                 raise ValueError("增强字段不在c0允许列表")
             if output["value"].get("evidence_ref") != output["evidence_ref"]:
@@ -85,7 +107,7 @@ def apply(database, extractions, enrichments, run_key, *, expected_parent):
             parent["prov"] = copy.deepcopy(output["value"])
         lock_identities(conn, revision)
         full = write_version(conn, revision, fact, fact_id=source_id, version=current["version"], prev=current,
-                             object_type="tendering.notice", model=models.Notice, schema_version=current["schema_version"],
+                             object_type="tendering.notice", model=models.Notice, schema_version="1.2.0" if topic else current["schema_version"],
                              source_id=row.source_id, source_key=row.source_key, ordinal=row.ordinal,
                              derivation_key="enhance:" + run_key, rights_tags=sorted(set(current["rights_tags"]) | set(result["rights_tags"])), compare_evidence=True)
         output_version = full["version"] if full else current["version"]

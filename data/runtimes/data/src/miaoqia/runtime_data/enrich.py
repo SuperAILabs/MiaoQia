@@ -1,9 +1,10 @@
-"""显式目标的非生产测试增强；部署单元组装两阶段本地服务。"""
+"""显式目标的冻结语料增强；部署单元组装两阶段本地服务。"""
 import argparse
 import dataclasses
 import json
 import os
 import sys
+from pathlib import Path
 
 from miaoqia import domain_intelligence, evidence
 from miaoqia.domain_intelligence.api import Basis
@@ -20,7 +21,7 @@ def test_display(tags, purpose):
     if (ctx.principal.id != "svc:notice-enrich-test" or ctx.principal.kind != "service"
             or ctx.tenant or ctx.cell or purpose != "enrichment_test"):
         raise PermissionError("非本地测试服务上下文")
-    return "full_text" if all(t == "public-official-review" or t == "test:identity-policy"
+    return "full_text" if all(t == "public-official-review" or t in ("test:identity-policy", "review:building-topic-pair")
                               or t.startswith("corpus:") for t in tags) else "none"
 
 
@@ -28,6 +29,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="mq-notice-enrich")
     parser.add_argument("--recipe", required=True)
     parser.add_argument("--enable-test-recipe", action="store_true")
+    parser.add_argument("--enable-building-topic", action="store_true", help="仅启用复核冻结官方pair")
+    parser.add_argument("--packs", default=os.environ.get("MIAOQIA_PACKS_DIR", "packs"))
     parser.add_argument("notice_ids", nargs="+")
     args = parser.parse_args(argv)
     dom_dsn = os.environ.get(env_key("domain-intelligence", "DB_DSN"))
@@ -43,11 +46,18 @@ def main(argv=None):
             def fixed(fact_id, version):
                 result = queries.get_fact(fact_id, Basis("current"), version=version)
                 return result.fact if result else None
+            recipes = []
+            if args.enable_building_topic:
+                recipes.append(evidence.load_recipe(Path(args.packs) / "industries/building-materials",
+                    "miaoqia_pack_building_materials.topic:build_recipe", args.packs))
             service = evidence.enrichments(evd_database, FilesystemObjectStore(root), facts=fixed,
-                                           display=test_display, enable_test_recipe=args.enable_test_recipe)
+                                           display=test_display, enable_test_recipe=args.enable_test_recipe, recipes=recipes)
             if args.recipe not in service.recipes:
                 raise ValueError("recipe未登记/未启用（测试recipe须显式启用）")
-            service.register_reference(**REFERENCE, content=TEST_CONTENT, rights_tags=["test:identity-policy"])
+            if args.enable_test_recipe:
+                service.register_reference(**REFERENCE, content=TEST_CONTENT, rights_tags=["test:identity-policy"])
+            for recipe in recipes:
+                service.register_reference(**recipe.reference, content=recipe.content, rights_tags=["review:building-topic-pair"])
             results = []
             for target in prepare(database, reader, args.notice_ids):
                 run_key = service.register(target["source"], args.recipe)

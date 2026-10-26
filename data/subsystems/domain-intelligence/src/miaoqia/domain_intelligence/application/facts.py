@@ -28,7 +28,7 @@ EXTRACTION_REVISED = "evidence.extraction.revised.v1"
 
 # 信息领域 → (对象类型, 标识前缀, 契约模型, Schema 版本)。Schema 版本与 contracts/schemas 的 x-version 一致（测试核对）。
 OBJECT_TYPES = {
-    "INF-PROC": ("tendering.notice", "ntc", models.Notice, "1.1.0"),
+    "INF-PROC": ("tendering.notice", "ntc", models.Notice, "1.2.0"),
 }
 
 writer = outbox.Writer(subsystem=NAME, namespace="domain", zone=reqctx.PUBLIC)

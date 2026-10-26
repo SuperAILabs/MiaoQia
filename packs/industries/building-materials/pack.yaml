@@ -2,7 +2,7 @@
 pack:
   id: IND-BUILDING-MATERIALS
   kind: industry
-  version: 0.2.0                 # 草案：建材管材完整样板，推荐值待领域负责人核对（review: proposed）
+  version: 0.3.0                 # 新增显式本地主题recipe；taxonomy仍0.2.0，推荐值待领域负责人核对
   platform_api: ">=1.0 <2.0"
   owners: [tendering-domain-team]
   provides:

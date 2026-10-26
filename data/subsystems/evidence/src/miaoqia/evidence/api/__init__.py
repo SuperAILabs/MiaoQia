@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, Callable
 
 NAME = "evidence"
 
@@ -58,3 +58,16 @@ class Enrichments(Protocol):
     def require_full(self, rights_tags: list[str]) -> None: ...
 
     def get(self, run_key: str) -> dict | None: ...
+
+
+@dataclass(frozen=True)
+class Recipe:
+    """部署单元明确装配的单字段recipe；输出重建函数不接收调用方补丁。"""
+    id: str
+    path: str
+    transform_id: str
+    reference: dict
+    content: dict
+    transform: Callable
+    outputs: Callable
+    test_recipe: bool = False

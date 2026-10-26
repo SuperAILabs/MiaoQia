@@ -219,6 +219,31 @@ export type Notice = PublicFactMeta & {
    * 结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人
    */
   result_details_pending?: boolean;
+  /**
+   * 公告采购主题；不表示中标人实际供货，不代替真实items或标包品类。固定字段证据及独立范围复核由recipe验证。
+   *
+   * @minItems 1
+   */
+  subject_categories?: [
+    {
+      category: Category;
+      prov: Provenance;
+      scope: "notice_subject";
+      /**
+       * 固定源字段JSON Pointer；首版recipe只允许/title/value
+       */
+      source_field: string;
+    },
+    ...{
+      category: Category;
+      prov: Provenance;
+      scope: "notice_subject";
+      /**
+       * 固定源字段JSON Pointer；首版recipe只允许/title/value
+       */
+      source_field: string;
+    }[]
+  ];
   [k: string]: unknown;
 };
 /**

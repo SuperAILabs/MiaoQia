@@ -131,16 +131,18 @@ L1-2b 在 `application/projects.py` 实现冻结来源的局部采购项目聚�
 
 普通解析事件回放对已物化 revision 保持原幂等，不会替代这条补物化命令；consumer inbox 去重也不影响本地命令。补物化不改 Notice 内容/版本或原 `domain.fact.upserted.v1` 条目，不假造 revision；它首次补建关联/项目并发布本批尚不存在的 tendering 事件，项目新版本仍使用现有 `domain.fact.upserted.v1`。重复执行不产生新版本或事件。关联后的修订仍须复核，不因此扩大自动乱序处理。旧库回归夹具冻结自 `c0694cf` 的旧物化写入，带 SHA-256 校验，只证明旧持久化形态/事务写入升级路径，复用当前纯版本规则，不代证完整旧运行环境。
 
-L1-2c0 受控增强复用相同事实writer、查询、项目投影及发件箱。data部署单元提供显式目标命令：
+受控增强复用相同事实writer、查询、项目投影及发件箱。data部署单元提供显式目标命令：
 
 ```sh
 uv run --locked --all-packages mq-notice-enrich --enable-test-recipe --recipe test.buyer-provenance@0.1.0 ntc_<ID>
 ```
 
-先执行 evidence `0002` 与 domain `0003` 迁移，配置两个已有 `DB_DSN` 和 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR`；对象目录须与原公共文档管线相同。命令仅接收1–100个明确Notice ID，按目标逐个提交，两阶段之间不宣称跨库原子事务。默认拒绝所有recipe，显式测试模式仅授权本地 `svc:notice-enrich-test`、`enrichment_test` 用途、无租户/单元，以及 `public-official-review`、`corpus:*`、`test:identity-policy` 标签；此装配不代替远程用户认证或生产来源权利治理。测试recipe及单事实限制见 [evidence实现状况](evidence.md#12-实现状况)。
+先执行 evidence `0002` 与 domain `0003` 迁移，配置两个已有 `DB_DSN` 和 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR`；对象目录须与原公共文档管线相同。命令仅接收1–100个明确Notice ID，按目标逐个提交，两阶段之间不宣称跨库原子事务。默认拒绝所有recipe，显式测试模式仅授权本地 `svc:notice-enrich-test`、`enrichment_test` 用途、无租户/单元，以及 `public-official-review`、`corpus:*`、`test:identity-policy` 和 `review:building-topic-pair` 标签；此装配不代替远程用户认证或生产来源权利治理。`--enable-building-topic --recipe proc.building-topic@0.1.0 --packs <packs目录>` 单独启用固定官方pair主题；无此开关不装配行业recipe。单事实及recipe限制见 [evidence实现状况](evidence.md#12-实现状况)。
 
-准备阶段复用来源一致性校验，固定原始source-base；evidence先提交可重算结果，domain再验证结果与实际源修订。domain持来源锁后比较current与expected_parent、核验source-base指纹，已推进的旧任务报stale；后续按身份锁、pp锁顺序提交。`dom_enrichment_receipts` 不可变地记录固定source-base、父/输出版本、recipe、输入/输出/参考指纹及补丁依据；重复run复用receipt。测试路径仅可替换buyer或bidder的 `prov`，保留原名、金额、编号等取值。真实prov或rights变化产生新Notice版本及真实顶层changed_fields；只改内部recipe且公开值/依据未变只登记receipt，不发布新领域事件。源路径的prov-only/rights-only同值去重保持原规则。权利标签保守保留当前版本及所有新增输入的并集，当前策略须全部许可；本切片不回收先前已加入的权利要求。
+准备阶段复用来源一致性校验，固定原始source-base；evidence先提交可重算结果，domain再验证结果与实际源修订。domain持来源锁后比较current与expected_parent、核验source-base指纹，已推进的旧任务报stale；后续按身份锁、pp锁顺序提交。`dom_enrichment_receipts` 不可变地记录固定source-base、父/输出版本、recipe、输入/输出/参考指纹及补丁依据；重复run复用receipt。测试路径仅可替换buyer或bidder的 `prov`。主题路径只允许替换/删除整个owned `/subject_categories`，无候选时清除旧主题，按固定source-base重算而不累加；Notice使用1.2.0兼容契约，封闭category/prov/scope/source_field包装，code不可重复，Project不复制主题。两种路径均保留原名、金额、编号等取值。真实prov或rights变化产生新Notice版本及真实顶层changed_fields；只改内部recipe且公开值/依据未变只登记receipt，不发布新领域事件。源路径的prov-only/rights-only同值去重保持原规则。权利标签保守保留当前版本及所有新增输入的并集，当前策略须全部许可；本切片不回收先前已加入的权利要求。
 
 只有receipt指向已确认source-base成员时才刷新同一个pp ID；来源新修订及其增强仍为 `pending_revision`。刷新以Notice ID替换成员，不重复追加。Project 1.3.0新增可选 `notice_refs:[{id,version}]`，新写入版本始终携带，与同事务的 `dom_project_dependencies` 逐值一致，`notice_ids` 保持相同ID集合；旧版本缺省合法。即使仅winner依据变化、pp展示字段相同，`notice_refs`也会产生真实变化并更新依赖。Notice、receipt、pp版本、link、deps和发件箱同事务；载荷或模型校验失败全部回滚，已提交evidence结果可重试。增强不重发四种tendering首发/阶段事件。recorded_at取实际领域写入时间，observed_at保持来源时间；fixed/known_at不被新规则改写，所有读取持续使用当前权利。
 
-未实现：本地绑定的 data-api 远程传输与认证装配、生产来源权利策略、`GetCoverage` 与服务状态，其他来源的自动项目聚合、标包关联、更正与完整生命周期事件、统计、业务有效区间、撤回与恢复。项目链、品类增强、INF-ORG 夹具及组织归属仍属 L1-2 后续工作。A02 保持 L0；冻结语料不构成真实来源启用。
+`bid_result_units` 在同一只读事务选定Notice版本、其confirmed link、reason.project_version对应固定pp及deps，逐项检查当前rights与known_at cutoff；不读取实时EVD或当前pp来污染历史。真实item/lot语义保持原口径；仅当整个award公告恰一个有效contract_award且没有其它候选/框架/分包/冲突、不可变receipt的重验scope证明可用时，将同版subject_categories回退为categories并带 `categories_scope=notice_subject`。求值单位引用实际固定pp版本，证据从固定Notice的prov追踪，confidence取已发布品类最小值。pp/成员权限拒绝、pending关联、scope未知、多结果或历史无topic均不产生主题品类。这表示采购相关性，不表示供应商实际供货。
+
+未实现：本地绑定的 data-api 远程传输与认证装配、生产来源权利策略、`GetCoverage` 与服务状态，其他来源的自动项目聚合、标包关联、更正与完整生命周期事件、统计、业务有效区间、撤回与恢复。广泛来源的项目链/品类、INF-ORG 夹具及组织归属仍属 L1-2 后续工作。A02 保持 L0；冻结语料不构成真实来源启用。

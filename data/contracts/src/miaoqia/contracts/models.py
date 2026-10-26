@@ -1020,6 +1020,18 @@ class NormalizedDocument(BaseModel):
     )
 
 
+class SubjectCategory(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    category: Category
+    prov: Provenance
+    scope: Literal["notice_subject"]
+    source_field: constr(pattern=r"^(/([^~/]|~[01])*)+$") = Field(
+        ..., description="固定源字段JSON Pointer；首版recipe只允许/title/value"
+    )
+
+
 class OrgRef(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1520,6 +1532,11 @@ class Notice(PublicFactMeta):
     result_details_pending: bool | None = Field(
         None,
         description="结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人",
+    )
+    subject_categories: list[SubjectCategory] | None = Field(
+        None,
+        description="公告采购主题；不表示中标人实际供货，不代替真实items或标包品类。固定字段证据及独立范围复核由recipe验证。",
+        min_length=1,
     )
 
 
