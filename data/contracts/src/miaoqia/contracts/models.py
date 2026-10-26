@@ -787,6 +787,92 @@ class Status2(Enum):
     closed = "closed"
 
 
+class Operation(Enum):
+    fact_read = "fact_read"
+    evidence_resolve = "evidence_resolve"
+
+
+class Display(Enum):
+    none = "none"
+    citation_only = "citation_only"
+    excerpt = "excerpt"
+    full_text = "full_text"
+
+
+class Tag(RootModel[constr(pattern=r"^[a-zA-Z0-9:_-]{1,160}$")]):
+    root: constr(pattern=r"^[a-zA-Z0-9:_-]{1,160}$")
+
+
+class SourceRightsInput(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    source_id: constr(pattern=r"^[a-z][a-z0-9_-]{0,95}$")
+    tags: list[Tag] = Field(..., max_length=16, min_length=1)
+
+
+class Scope(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tenant: constr(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
+    cell: constr(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
+
+
+class Purpose(Enum):
+    interactive = "interactive"
+
+
+class SourceRightsPolicy(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    schema_version: Literal[1]
+    entry_id: constr(pattern=r"^[a-z][a-z0-9_-]{0,95}$")
+    version: conint(ge=1)
+    source_id: constr(pattern=r"^[a-z][a-z0-9_-]{0,95}$")
+    scopes: list[Scope] = Field(..., max_length=64, min_length=1)
+    purposes: list[Purpose] = Field(..., max_length=1, min_length=1)
+    display: Display
+    effective_at: AwareDatetime
+    expires_at: AwareDatetime
+    redistribution: bool
+
+
+class SourceRightsReceipt(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    epoch: conint(ge=0)
+    expires: conint(ge=1)
+    nonce: constr(pattern=r"^[0-9a-f]{32}$")
+    mac: constr(pattern=r"^[0-9a-f]{64}$")
+
+
+class SourceRightsResolveRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    operation: Operation
+    inputs: list[SourceRightsInput] = Field(..., max_length=64, min_length=1)
+
+
+class DomainService(Enum):
+    not_live = "not_live"
+
+
+class Capability(Enum):
+    frozen_source_rights_only = "frozen_source_rights_only"
+
+
+class SourceRightsStatus(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    domain_service: DomainService
+    capability: Capability
+
+
 class StructuredRecord(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1114,6 +1200,26 @@ class Requirement(BaseModel):
         None, description="体系版本；只与 code_scheme 一起出现"
     )
     grade_required: Text | None = None
+
+
+class SourceRightsConfirmRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    operation: Operation
+    inputs: list[SourceRightsInput] = Field(..., max_length=64, min_length=1)
+    receipt: SourceRightsReceipt
+
+
+class SourceRightsDecision(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    allowed: bool
+    display: Display
+    redistribution: bool
+    epoch: conint(ge=0)
+    receipt: SourceRightsReceipt | None = None
 
 
 class SubjectRef(BaseModel):

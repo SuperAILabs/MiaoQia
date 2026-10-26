@@ -34,9 +34,11 @@
 | `acq-scheduler` | 采集计划与回填工作流（Temporal worker，任务队列 `acquisition-schedule`）；消费控制类事件（回填请求、链路探针） | 固定副本 |
 | `acq-fetcher` | HTTP/API 抓取执行器 | 任务队列深度 |
 | `acq-browser` | 浏览器渲染池（Playwright） | 渲染任务队列深度、内存 |
-| `acq-admin` | 来源注册、权利、健康的内部管理接口（经 `gateway` 暴露给运营控制台） | 固定副本 |
+| `acq-admin` | 已实现显式启用的冻结语料权利内部只读接口；写管理为本地 operator CLI，运营控制台和完整来源管理后续实现 | 固定副本 |
 
 网络：独立的出口网关与出口地址池；入站仅允许来自内部网络的管理请求。
+
+`acq-admin` 可显式启用[冻结语料当前权利只读接口](subsystems/source-rights-runtime.md)，以 TLS1.3/mTLS、精确委托矩阵与当前 identity 核验接收 data 调用。权利 reader/operator/owner 分离，data 只有远程 client，不持 acquisition DSN。默认关闭；该端口不提供写管理、来源内容或领域 live 证明。
 
 以上角色只服务公共数据供应。客户系统集成复用同一镜像与连接器代码，以单元级的租户集成角色随租户单元部署，使用单元级凭证、存储、主题与出口，不与公共实例混用（[acquisition 第 10 节](subsystems/acquisition.md#10-租户集成)）；角色在首个租户集成启用时加入清单。
 

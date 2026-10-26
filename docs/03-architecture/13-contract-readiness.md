@@ -153,7 +153,7 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 
 | 契约 | 设计依据 | 触发功能 | 兼容方式 |
 |---|---|---|---|
-| 权利条目 Schema 与引用格式 | [数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 授权数据商接入，或客户授权数据进入研究 | 追加；已冻结的 `rights_tags`、`rights_set` 不变 |
+| 权利条目 Schema 与引用格式 | [数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益)、[d0 当前权利](subsystems/source-rights-runtime.md) | 冻结语料只读 SourceRightsPolicy 1.0.0；真实来源/租户授权/模型用途后续追加 | 精确原始引用与当前限制交集；已冻结的 `rights_tags`、`rights_set` 不变 |
 | 事实撤回领域事件 | [domain-intelligence 第 11 节](subsystems/domain-intelligence.md#11-事实撤回与恢复) | 首个撤回识别能力 | 领域事件契约追加，升次版本 |
 | 导出与迁移的事件和接口 | [governance 第 10 节](subsystems/governance.md#10-数据导出与迁移) | 首个租户导出功能 | 新增 |
 | 私有部署馈送包格式 | [部署拓扑第 10 节](07-deployment-topology.md#10-私有部署的公共数据馈送) | M5 私有部署包 | 新增 |

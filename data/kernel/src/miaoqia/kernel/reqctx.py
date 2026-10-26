@@ -9,6 +9,8 @@ import base64
 import json
 from typing import Iterator
 
+from .jsoncodec import loads
+
 PUBLIC, TENANT, PLATFORM = "public", "tenant", "platform"
 
 
@@ -60,7 +62,7 @@ class Context:
         body = base64.urlsafe_b64decode(header + "=" * (-len(header) % 4))
         if base64.urlsafe_b64encode(body).decode().rstrip("=") != header:
             raise ValueError("非规范Base64URL")
-        return cls.from_dict(json.loads(body))
+        return cls.from_dict(loads(body))
 
 
 class MissingContext(RuntimeError):
