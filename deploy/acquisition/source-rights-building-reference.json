@@ -1,0 +1,33 @@
+[
+  {
+    "action": "register",
+    "policy": {
+      "schema_version": 1,
+      "entry_id": "building-topic-reference",
+      "version": 1,
+      "source_id": "reference-proc-building-topic-v0-1",
+      "scopes": [
+        {
+          "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "cell": "cell-01"
+        }
+      ],
+      "purposes": [
+        "interactive"
+      ],
+      "display": "excerpt",
+      "effective_at": "2026-10-26T00:00:00Z",
+      "expires_at": "2027-01-01T00:00:00Z",
+      "redistribution": false
+    }
+  },
+  {
+    "action": "bind",
+    "source_id": "reference-proc-building-topic-v0-1",
+    "tags": [
+      "review:building-topic-pair"
+    ],
+    "entry_id": "building-topic-reference",
+    "version": 1
+  }
+]

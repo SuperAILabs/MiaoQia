@@ -33,7 +33,7 @@ def _service(plane, display=None, store=None, enabled=True, recipes=()):
         found = reader.get_fact(i, Basis("current"), version=v)
         return found.fact if found else None
     return evidence.enrichments(plane[0], store or plane[2].store, facts=fixed,
-        display=display or (lambda tags, purpose: "full_text"), enable_test_recipe=enabled, recipes=recipes)
+        display=display or (lambda tags, purpose: "full_text"), enable_test_recipe=enabled, recipes=recipes, fact_requirements=reader.requirements)
 
 
 def _setup(plane, recipes=()):
@@ -278,7 +278,7 @@ def test_multi_fact_revision_is_rejected_without_enrichment_writes(plane):
     assert _events(plane[0], "evidence.enrichment.completed.v1") == []
 
 
-def test_pre_enrichment_migration_upgrade_preserves_existing_pair(plane):
+def test_pre_enrichment_migration_upgrade_preserves_existing_pair(plane, monkeypatch):
     from alembic import command
     from alembic.config import Config
     from miaoqia.domain_intelligence import MIGRATIONS as DOM
@@ -292,8 +292,23 @@ def test_pre_enrichment_migration_upgrade_preserves_existing_pair(plane):
         cfg.set_main_option("sqlalchemy.url", db._url(owner))
         command.downgrade(cfg, version)
         configs.append(cfg)
-    for revision in _revisions(plane):
-        _materialize(plane, revision)
+    # Freeze the preceding writers: current writers require their matching metadata schema.
+    import hashlib
+    import types
+    frozen = {}
+    for name, digest in (("facts", "d41b59af430a5210021399eeec303d4867eaea68bde0450d10e744901197c126"), ("projects", "bd78a3c2337e06bdb5bdfe8cb621621009a6ed3085cf5b4159bbc3d0b001f4c5")):
+        source = (Path(__file__).parent / "fixtures" / ("0002_"+name+".py")).read_bytes()
+        assert hashlib.sha256(source).hexdigest() == digest
+        module = types.ModuleType("legacy_0002_"+name)
+        module.__package__ = "miaoqia.domain_intelligence.application"
+        exec(compile(source, "legacy_0002_"+name, "exec"), module.__dict__)
+        frozen[name] = module
+    frozen["projects"].write_version = frozen["facts"].write_version
+    with monkeypatch.context() as legacy:
+        legacy.setattr(facts, "write_version", frozen["facts"].write_version)
+        legacy.setattr(projects, "_write_project", frozen["projects"]._write_project)
+        for revision in _revisions(plane):
+            _materialize(plane, revision)
     notices, project, events = _facts(plane[1]), _projects(plane), _events(plane[1], "domain.fact.upserted.v1")
     for cfg in configs:
         command.upgrade(cfg, "head")

@@ -2,28 +2,15 @@
 
 import psycopg
 from psycopg import sql
+from miaoqia.kernel.privileges import independent_roles
 
 
 def provision(owner_dsn, reader, operator):
     if reader == operator:
         raise ValueError("distinct roles required")
     with psycopg.connect(owner_dsn) as c:
-        owner = c.execute("SELECT current_user").fetchone()[0]
+        independent_roles(c, (reader, operator))
         for name in (reader, operator):
-            role = c.execute(
-                "SELECT rolsuper,rolcreaterole,rolcreatedb,rolbypassrls FROM pg_roles WHERE rolname=%s",
-                (name,),
-            ).fetchone()
-            if (
-                role is None
-                or any(role)
-                or name == owner
-                or c.execute(
-                    "SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member WHERE r.rolname=%s",
-                    (name,),
-                ).fetchone()
-            ):
-                raise ValueError("unprivileged independent roles required")
             ident = sql.Identifier(name)
             # Remove historical public-schema defaults on fixture/operator/runtime accounts.
             c.execute(

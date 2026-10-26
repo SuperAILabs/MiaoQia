@@ -8,6 +8,7 @@ dependencies = ["miaoqia-kernel", "miaoqia-evidence", "miaoqia-domain-intelligen
 [project.scripts]
 mq-data = "miaoqia.runtime_data:main"
 mq-notice-enrich = "miaoqia.runtime_data.enrich:main"
+mq-provenance = "miaoqia.runtime_data.provenance:main"
 mq-project-backfill = "miaoqia.runtime_data.backfill:main"
 
 [tool.uv.sources]

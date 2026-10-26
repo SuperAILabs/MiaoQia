@@ -117,11 +117,19 @@ def _write_project(conn, revision, notice, project_id, members, prev, source_id,
     project = write_version(conn, revision, body, fact_id=project_id, version=prev["version"] if prev else 0,
                             prev=prev, object_type=PROJECT_TYPE, model=models.ProcurementProject,
                             schema_version="1.3.0", source_id=source_id, source_key=source_key,
-                            derivation_key=derivation, rights_tags=rights, compare_evidence=True)
+                            derivation_key=derivation, rights_tags=rights, compare_evidence=True, defer_closure=True)
     if project:
         for member in members:
             conn.execute(text("INSERT INTO dom_project_dependencies VALUES (:p,:v,:n,:nv)"),
                          {"p": project_id, "v": project["version"], "n": member["id"], "nv": member["version"]})
+        from . import requirements
+        from miaoqia.evidence.api import Unbound
+        try:
+            closure = requirements.members(conn, members)
+        except Unbound:
+            pass  # Legacy members stay local-only until explicit, proven backfill.
+        else:
+            requirements.put(conn, project, closure)
     return project
 
 

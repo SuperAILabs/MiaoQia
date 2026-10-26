@@ -74,7 +74,18 @@ def apply(database, extractions, enrichments, run_key, *, expected_parent):
         validate_source(source, row, revision)
         if fingerprint(source) != result["source_hash"]:
             raise ValueError("增强source-base指纹不符")
-        enrichments.require_full(current["rights_tags"])
+        from . import requirements
+        from miaoqia.evidence.api import Closure, Unbound
+        try:
+            source_closure = Closure.merge(requirements.read(conn, current).with_dependency("fact", current["id"]+":"+str(current["version"]), fingerprint(current)), enrichments.requirements(run_key))
+        except Unbound:
+            if enrichments.authorize is not None:
+                raise
+            source_closure = None
+        if enrichments.authorize is not None and source_closure is not None:
+            enrichments.require_full_requirements(source_closure)
+        else:
+            enrichments.require_full(current["rights_tags"])
         fact = {k: copy.deepcopy(v) for k, v in current.items() if k not in META}
         for output in result["outputs"]:
             path = output["path"]
@@ -109,7 +120,7 @@ def apply(database, extractions, enrichments, run_key, *, expected_parent):
         full = write_version(conn, revision, fact, fact_id=source_id, version=current["version"], prev=current,
                              object_type="tendering.notice", model=models.Notice, schema_version="1.2.0" if topic else current["schema_version"],
                              source_id=row.source_id, source_key=row.source_key, ordinal=row.ordinal,
-                             derivation_key="enhance:" + run_key, rights_tags=sorted(set(current["rights_tags"]) | set(result["rights_tags"])), compare_evidence=True)
+                             derivation_key="enhance:" + run_key, rights_tags=sorted(set(current["rights_tags"]) | set(result["rights_tags"])), compare_evidence=True, source_closure=source_closure, defer_closure=source_closure is None)
         output_version = full["version"] if full else current["version"]
         conn.execute(text("""INSERT INTO dom_enrichment_receipts VALUES
             (:k,:n,:s,:p,:v,:r,:sh,:ih,:oh,:rh,CAST(:e AS jsonb),CAST(:o AS jsonb),now())"""),

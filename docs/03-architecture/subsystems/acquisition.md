@@ -129,4 +129,4 @@ M0探针消费者在公共消费框架中先验证operations请求载荷，再�
 
 ## 12. 当前实现边界
 
-已实现[冻结语料当前权利端口（d0）](source-rights-runtime.md)：acquisition 自有 PostgreSQL 的不可变版本/组合别名、原子当前撤销与审计、本地受限 operator CLI、acq-admin 内部 mTLS 只读接口和跨单元 remote client。仅两个已复核 building corpus/source 组合可登记，初始清单不激活；所有输入的原始和当前限制同时成立才允许。旧 tags、事实、事件与快照保持不变。真实来源采集、完整来源治理及 rights_changed 事件、data 查询 listener、Go 生产适配和完整 R2 未交付；A02 保持 L0。
+已实现[冻结语料当前权利端口（d0）](source-rights-runtime.md)：acquisition 自有 PostgreSQL 的不可变版本/组合别名、原子当前撤销与审计、本地受限 operator CLI、acq-admin 内部 mTLS 只读接口和跨单元 remote client。允许两个已复核 building corpus/source 组合及一个精确 building-topic 参考 source/tags 组合登记；参考内容身份由 evidence 固定 manifest/绑定核验，两个独立 register/bind 批次均不激活；所有输入的原始和当前限制同时成立才允许。旧 tags、事实、事件与快照保持不变。真实来源采集、完整来源治理及 rights_changed 事件、data 查询 listener、Go 生产适配和完整 R2 未交付；A02 保持 L0。
