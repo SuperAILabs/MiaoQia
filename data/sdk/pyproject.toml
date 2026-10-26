@@ -9,6 +9,7 @@ dependencies = [
   "referencing==0.37.0",
   "pyyaml==6.0.3",
   "lxml==6.0.2",
+  "rfc8785==0.1.4",
 ]
 
 [project.scripts]

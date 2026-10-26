@@ -562,6 +562,14 @@ class NoticeId(RootModel[constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")]):
     root: constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
 
 
+class NoticeRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
+    version: conint(ge=1)
+
+
 class Status(Enum):
     open = "open"
     evaluating = "evaluating"
@@ -1756,6 +1764,11 @@ class ProcurementProject(PublicFactMeta):
         ...,
         description="已确认标包；空数组表示尚无已确认标包，不能把公告默认容器1推断成跨公告标包。",
         min_length=0,
+    )
+    notice_refs: list[NoticeRef] | None = Field(
+        None,
+        description="成员固定版本的公开投影，与notice_ids及权威聚合依赖逐值一致；旧版本可缺省。",
+        min_length=1,
     )
 
 

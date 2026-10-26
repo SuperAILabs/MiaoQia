@@ -46,7 +46,15 @@ class ResolvedEvidence:
     locator: dict | None = None
     snippet: str | None = None
     context: str | None = None
+    derivation: dict | None = None
 
 
 class EvidenceResolver(Protocol):
     def resolve(self, evidence_ref: str) -> ResolvedEvidence | None: ...
+
+
+class Enrichments(Protocol):
+    """已验证不可变结果的读取；无权返回None，完整性错误拒绝，当前权限每次重验。"""
+    def require_full(self, rights_tags: list[str]) -> None: ...
+
+    def get(self, run_key: str) -> dict | None: ...

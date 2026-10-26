@@ -420,6 +420,21 @@ export type ProcurementProject = PublicFactMeta & {
    * @minItems 0
    */
   lots: ProjectLot[];
+  /**
+   * 成员固定版本的公开投影，与notice_ids及权威聚合依赖逐值一致；旧版本可缺省。
+   *
+   * @minItems 1
+   */
+  notice_refs?: [
+    {
+      id: string;
+      version: number;
+    },
+    ...{
+      id: string;
+      version: number;
+    }[]
+  ];
   [k: string]: unknown;
 };
 /**

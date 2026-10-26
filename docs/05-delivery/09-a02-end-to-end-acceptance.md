@@ -155,10 +155,11 @@ L1 按依赖拆分，下表为实施建议；PR #35 的 E1–E5 仍为建议，�
 | L1-1 | 结果公告解析器与对照人工映射的评测；evidence 公共管线（快照、规范化文档、解析修订、证据引用、事件）；domain-intelligence 事实版本、`domain.fact.upserted.v1` 与 A02 结果视图投影；语料回放命令 `mq-evidence-replay` | D-02、D-03、D-04（部分） | 只改 Python 数据平面、INF-PROC 包与 CI，不碰 Go 服务端 |
 | L1-2a | 事实当前/当时已知/固定版本、历史、结构化查询、A02 求值单位与文档证据解析的本地绑定；补同项目建材招标/中标官方原件、人工映射及折扣率解析回归 | D-02、D-03、D-11（提供读取基础，尚未接入 Go 端口） | 只改 Python 与语料 |
 | L1-2b | 冻结 `official-qzygjy` 招标/中标按平台、采购方与项目号聚合 `pp_`；无明确标包证据为 `lots=[]`；四事件与独立聚合版本，后续修订关联待复核；既有 Notice 经显式 ID 本地 backfill 补建，保持旧版本/事件不变 | D-04（局部，不关闭完整生命周期） | 只改 Python、最小兼容契约与夹具 |
+| L1-2c0 | 固定字段派生链、不可变参考数据与测试recipe的本地两阶段CLI；可信source-base增强及同pp成员刷新，公开notice_refs与内部deps一致；不提供实际品类/组织解析 | D-02、D-04（基础局部，不关闭生产能力） | Python、最小兼容Project字段；显式测试模式 |
 | L1-2 后续 | data-api 内部读取接口（事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态）；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；建材品类规则增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
 | L1-3 | Go 端口生产适配器：detection `Facts`/`Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、commerce 覆盖判断（R-05）、learning `Dataset`/`DomainStatus` 与样本权限过滤（D-17） | D-06、D-07、D-09、D-10、D-11、D-17、R-05 | 改主线子系统，开工前与主线协调修订号与文件 |
 | L1-4 | 全端口生产装配的部署配置与启动检查、调度器任务、贯通 E2E（投放结果公告 → 收件箱信号 → 对象页回到原文 → 站内简报）及跨租户与无权限负向用例 | R-01、R-02、C-04（站内） | 第5段服务端已合并，仍待适配器与运行装配 |
 
 L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力，不宣称 INF-PROC 就绪；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）。
 
-建材配对语料为衢州市阳光交易服务平台的 `official-building-tender-20261026` 与 `official-building-award-20261026`：同一项目 `XCXCG-2025-008`，采购人为江山市水务有限公司；原始响应、正文、人工事实及证据已保存，哈希登记于 `lifecycle-manifest.json`。中标定价 `76.5000%` 保留为 `conditions.contract_pricing`，不记金额，不据此推算成交总价。此配对在冻结来源边界内形成同一 `pp_`，保留成员固定版本与字段证据；未提供跨公告标包依据，故 `lots=[]`，不推断 `prj_` 或 `part_of`。四种首批事件与保守身份/修订规则见 [domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)。其他来源/生命周期、品类增强、企业主数据夹具及 data-api 装配仍在 L1-2 后续范围，整条旅程仍为 L0。
+建材配对语料为衢州市阳光交易服务平台的 `official-building-tender-20261026` 与 `official-building-award-20261026`：同一项目 `XCXCG-2025-008`，采购人为江山市水务有限公司；原始响应、正文、人工事实及证据已保存，哈希登记于 `lifecycle-manifest.json`。中标定价 `76.5000%` 保留为 `conditions.contract_pricing`，不记金额，不据此推算成交总价。此配对在冻结来源边界内形成同一 `pp_`，保留成员固定版本与字段证据；未提供跨公告标包依据，故 `lots=[]`，不推断 `prj_` 或 `part_of`。四种首批事件与保守身份/修订规则见 [domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)。本地测试recipe可验证固定版本派生与可信成员刷新，保留notice_refs；它不识别品类或组织。其他来源/生命周期、实际品类增强、企业主数据夹具及 data-api 装配仍在 L1-2 后续范围，整条旅程仍为 L0。
