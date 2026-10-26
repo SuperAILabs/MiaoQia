@@ -1,0 +1,29 @@
+fixtures:
+- event: gateway.view_meter.deferred.v1
+  base:
+    kind: object_view
+    target: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    member: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    occurred_at: '2026-10-25T02:10:00Z'
+    request_id: req-0123456789abcdef
+  cases:
+  - name: 原文查看
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: evidence_view
+    - op: replace
+      path: /target
+      value: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不携带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 缺查看者
+    valid: false
+    patch:
+    - op: remove
+      path: /member

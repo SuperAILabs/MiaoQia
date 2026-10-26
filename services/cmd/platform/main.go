@@ -14,6 +14,7 @@
 //	MIAOQIA_BINDING_<子系统>       local（默认）或 remote；remote 时经 MIAOQIA_<子系统>_URL 调用远程接口
 //	MIAOQIA_HTTP_ADDR / MIAOQIA_INTERNAL_ADDR   对外与内部监听地址，默认 :8090 / :8091
 //	MIAOQIA_GATEWAY_ISSUER / MIAOQIA_GATEWAY_AUDIENCE   HTTPS Keycloak realm与资源受众
+//	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
 //	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
@@ -50,10 +51,14 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/assessment"
 	"github.com/superailabs/miaoqia/services/subsystems/channels"
 	"github.com/superailabs/miaoqia/services/subsystems/commerce"
+	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
+	commerceremote "github.com/superailabs/miaoqia/services/subsystems/commerce/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext"
 	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	ccremote "github.com/superailabs/miaoqia/services/subsystems/customercontext/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/detection"
+	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
+	detectionremote "github.com/superailabs/miaoqia/services/subsystems/detection/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway"
 	"github.com/superailabs/miaoqia/services/subsystems/governance"
 	"github.com/superailabs/miaoqia/services/subsystems/identity"
@@ -66,10 +71,10 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/search"
 )
 
-// modules 是本单元全部子系统；顺序即启动顺序（提供绑定的子系统在前）。
+// modules 是本单元全部子系统；顺序即启动顺序（提供绑定的子系统在前：gateway 的对象页依赖 commerce、customer-context 与 detection）。
 var modules = []func() runtime.Module{
-	identity.Module, governance.Module, commerce.Module, aiplatform.Module, gateway.Module,
-	customercontext.Module, detection.Module, research.Module, assessment.Module, pursuit.Module,
+	identity.Module, governance.Module, commerce.Module, aiplatform.Module,
+	customercontext.Module, detection.Module, gateway.Module, research.Module, assessment.Module, pursuit.Module,
 	learning.Module, channels.Module, search.Module, operations.Module,
 }
 
@@ -131,6 +136,23 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(ccapi.ActivePoliciesBinding, active)
+		return nil
+	}},
+	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看、经 detection 读取信号固定的求值输入（均以用户主体转交）
+	commerceapi.Name: {provide: func(u string, b *runtime.Bindings) error {
+		meter, err := commerceremote.NewMetering(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(commerceapi.MeteringBinding, meter)
+		return nil
+	}},
+	detectionapi.Name: {provide: func(u string, b *runtime.Bindings) error {
+		explainer, err := detectionremote.NewExplainer(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(detectionapi.ExplainerBinding, explainer)
 		return nil
 	}},
 }

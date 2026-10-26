@@ -1,0 +1,629 @@
+openapi: 3.1.0
+info:
+  title: gateway 对象页 BFF 接口
+  version: 0.1.0
+  description: >-
+    对象页与证据面板的 BFF（PRD 第4段，docs/01-product/prd/04-object-page-evidence.md；规格见
+    docs/03-architecture/subsystems/gateway.md 第2、10节）。草案：随第4段首个实现切片提交，未冻结。只有对外接口。
+    每个请求按调用方现场裁剪，按以下顺序检查，任一不通过即拒绝，后面的步骤不执行：身份与 tenant 上的 can_search_public
+    （外部协作者与无会话的请求不能访问）→ 对象解析（按视角）→ 覆盖范围（entitlement.coverage_insufficient 时只返回对象名称）
+    → 安全上限（翻页深度 200 条）→ 计量（quota.exhausted）。计量服务不可用时放行并事后补记（只补计数），其余检查不放宽。
+    BFF 不缓存响应（共享层只在数据平面按对象与版本缓存不可变的公共事实、实体与证据）。
+    视角：current（默认，业务有效口径）与 signal_time（只在带 signal_id 且用户能看到该信号时可用）。signal_time 以信号固定的求值
+    输入为锚点：视图快照中的各项按固定版本读取，其余以信号的 evaluated_at 为记录截止；统计与画像不支持历史，标
+    history_unavailable；视图快照已过保存期时，依赖快照还原的分区同样标 history_unavailable。信号不属于本租户、不存在或用户
+    看不到时，与没有 signal_id 一样只返回公共部分，不提示其存在。本租户叠加内容不在本接口：信号分区为 detection 的
+    listObjectSignals，企业清单标记随 customer-context 清单实现。错误为 application/problem+json 与稳定 code。
+servers:
+- url: /
+paths:
+  /v1/objects/{objectID}:
+    get:
+      operationId: getObjectPage
+      summary: 对象页页头（对象解析、视角、信号上下文、分区清单、计量）
+      description: >-
+        旧组织标识经合并历史解析到存续组织（当前视角）或按记录截止时点解析（signal_time），merged_from 说明来源；current_merge 为
+        当前口径下另行提示的合并或撤销。每次成功的页头请求计一次对象查看（计量操作标识去重：同一成员同一对象同一计量日只计一次）。
+        Idempotency-Key 是本次页面请求的尝试键（缺省由网关生成），超时后用同一键重发不重复计。
+      x-timeout-ms: 3000
+      x-idempotent: true
+      parameters:
+      - &objectID
+        name: objectID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+      - &view
+        name: view
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/View'
+      - &signalID
+        name: signal_id
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+      - &requestKey
+        name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,128}$
+      responses:
+        '200':
+          description: 页头
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectPage'
+        default: &problem
+          description: 失败关闭，稳定错误码
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/objects/{objectID}/sections/{section}:
+    get:
+      operationId: getObjectSection
+      summary: 对象页的一个分区（独立加载、独立状态）
+      description: >-
+        分区返回自己的状态（ok / empty / unavailable / history_unavailable / not_connected）、原因码、所用口径与记录截止时点、
+        数据截至时间与时间轴；一个分区不可用不影响其他分区。列表每页至多 20 条，翻页深度至多 200 条，超过时 422 limit.safety_cap
+        （缩小范围，不提示升级套餐）；游标绑定查看者、对象、分区、视角与筛选。mine=true 时按本租户档案品类（signal_time 视角为
+        信号固定的上下文快照版本中的品类）筛选，筛选只在本次响应中进行，不写入公共数据。返回内容的分区与页头共用对象查看计量。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *objectID
+      - name: section
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/SectionName'
+      - *view
+      - *signalID
+      - *requestKey
+      - name: mine
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 20
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: 分区
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectSection'
+        default: *problem
+  /v1/evidence/{evidenceID}:
+    get:
+      operationId: resolveEvidence
+      summary: 证据面板（ResolveEvidence）
+      description: >-
+        经 evidence 解析证据，按调用方当前的来源权利与用途逐维取最严格的展示级别（历史视角不放宽）：full_text 高亮并显示上下文；
+        excerpt 只显示被引用的片段；citation_only 只显示来源名称、标题与链接；none 不显示内容，reason_code 为 rights.restricted。
+        派生证据的展示级别不高于任一输入。证据所属对象须在覆盖范围内；每次成功的请求计一次原文查看（计量操作标识去重）。
+      x-timeout-ms: 3000
+      x-idempotent: true
+      parameters:
+      - name: evidenceID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^ev_[0-9A-HJKMNP-TV-Z]{26}$
+      - *requestKey
+      responses:
+        '200':
+          description: 证据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceView'
+        default: *problem
+components:
+  schemas:
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          description: 稳定错误代码（含 commerce 第8节的不可用原因）
+        object:
+          $ref: '#/components/schemas/ObjectName'
+          description: entitlement.coverage_insufficient 时只给出对象名称
+        used:
+          type: integer
+          format: int64
+          minimum: 0
+        limit:
+          type: integer
+          format: int64
+          minimum: 0
+        resets_at:
+          type: string
+          format: date-time
+    View:
+      type: string
+      description: current 当前（业务有效）；signal_time 信号判断时（当时已知，以信号的 evaluated_at 为记录截止）
+      enum:
+      - current
+      - signal_time
+      default: current
+    ObjectType:
+      type: string
+      enum:
+      - procurement_project
+      - project
+      - organization
+    ObjectName:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - type
+      - name
+      properties:
+        id:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+        type:
+          $ref: '#/components/schemas/ObjectType'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+    MergeEvent:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      - org_id
+      - at
+      properties:
+        state:
+          type: string
+          description: merged 已并入（org_id 为存续组织）；reverted 合并已撤销（org_id 为恢复独立的组织）
+          enum:
+          - merged
+          - reverted
+        org_id:
+          type: string
+          pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+        at:
+          type: string
+          format: date-time
+          description: 合并事件的记录时间
+        basis:
+          type: string
+          minLength: 1
+          maxLength: 200
+    ObjectRef:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - requested_id
+      - type
+      - name
+      properties:
+        id:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+          description: 按所用口径解析后的标识（合并后为存续组织）
+        requested_id:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+        type:
+          $ref: '#/components/schemas/ObjectType'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+        merged_from:
+          type: array
+          maxItems: 20
+          description: 解析经过的合并（旧标识 → 存续组织）
+          items:
+            $ref: '#/components/schemas/MergeEvent'
+        current_merge:
+          $ref: '#/components/schemas/MergeEvent'
+          description: 当前口径下的合并或撤销（历史视角只另行提示，不替换历史主体）
+    PinnedItem:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - id
+      - version
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        id:
+          type: string
+          pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+    Basis:
+      type: object
+      additionalProperties: false
+      description: 所用口径；signal_time 时带记录截止时点（信号的 evaluated_at）与固定版本
+      required:
+      - view
+      properties:
+        view:
+          $ref: '#/components/schemas/View'
+        recorded_cutoff:
+          type: string
+          format: date-time
+        pinned:
+          type: array
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/PinnedItem'
+    SignalContext:
+      type: object
+      additionalProperties: false
+      description: 信号上下文条（只对能看到该信号的用户出现）
+      required:
+      - signal_id
+      - disposition
+      - subject_id
+      - subject_version
+      - evaluated_at
+      - created_at
+      - context_snapshot_version
+      - snapshot_available
+      properties:
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        disposition:
+          type: string
+          enum:
+          - pursue_candidate
+          - review_candidate
+          - watch_signal
+          - excluded
+        subject_id:
+          type: string
+          pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+        subject_version:
+          type: integer
+          format: int64
+          minimum: 1
+        part_id:
+          type: string
+          pattern: ^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$
+        evaluated_at:
+          type: string
+          format: date-time
+          description: 逻辑求值时间（触发事件的时间）
+        created_at:
+          type: string
+          format: date-time
+          description: 信号生成时间（写入时间）
+        context_snapshot_version:
+          type: integer
+          format: int64
+          minimum: 1
+        snapshot_available:
+          type: boolean
+    MeterReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - outcome
+      properties:
+        kind:
+          type: string
+          enum:
+          - object_view
+          - evidence_view
+        outcome:
+          type: string
+          description: counted 本计量日首次；unchanged 已计过；deferred 计量服务不可用，已放行并待补记
+          enum:
+          - counted
+          - unchanged
+          - deferred
+        metering_day:
+          type: string
+          format: date
+        used:
+          type: integer
+          format: int64
+          minimum: 0
+        limit:
+          type: integer
+          format: int64
+          minimum: 0
+        resets_at:
+          type: string
+          format: date-time
+    Watermark:
+      type: object
+      additionalProperties: false
+      required:
+      - tenant_id
+      - member
+      - issued_at
+      properties:
+        tenant_id:
+          type: string
+          pattern: ^tnt_[0-9A-HJKMNP-TV-Z]{26}$
+        member:
+          type: string
+          minLength: 1
+          maxLength: 128
+        issued_at:
+          type: string
+          format: date-time
+    SectionName:
+      type: string
+      description: >-
+        采购项目：summary 概要、lots 标包与中标结果、parent_projects 所属项目、notice_timeline 公告时间线；项目：summary、
+        procurement_projects 归属的采购项目、project_timeline 跨采购项目时间线、investment 投资审批（INF-INVP）；组织：
+        registration 登记信息、people 主要人员与出资人（只读文本）、won_history 作为中标方、supplied_brands 供过的品牌与归属、
+        procured_history 作为采购人、statistics 汇总统计与画像、credit 信用（INF-CRED）
+      enum:
+      - summary
+      - lots
+      - parent_projects
+      - notice_timeline
+      - procurement_projects
+      - project_timeline
+      - investment
+      - registration
+      - people
+      - won_history
+      - supplied_brands
+      - procured_history
+      - statistics
+      - credit
+    SectionStatus:
+      type: string
+      description: >-
+        ok 正常；empty 空（reason_code 说明原因与覆盖起点）；unavailable 不可用（reason_code，可重试或说明原因）；
+        history_unavailable 历史不可用（不以当前数据或更晚的版本代替）；not_connected 数据未接入（不显示为无记录）
+      enum:
+      - ok
+      - empty
+      - unavailable
+      - history_unavailable
+      - not_connected
+    ObjectPage:
+      type: object
+      additionalProperties: false
+      required:
+      - object
+      - basis
+      - sections
+      - meter
+      - watermark
+      properties:
+        object:
+          $ref: '#/components/schemas/ObjectRef'
+        basis:
+          $ref: '#/components/schemas/Basis'
+        signal_context:
+          $ref: '#/components/schemas/SignalContext'
+        signal_context_unavailable:
+          type: boolean
+          description: 信号上下文暂时读不到（只影响上下文条；公共部分照常）
+        sections:
+          type: array
+          maxItems: 16
+          items:
+            $ref: '#/components/schemas/SectionName'
+        meter:
+          $ref: '#/components/schemas/MeterReceipt'
+        watermark:
+          $ref: '#/components/schemas/Watermark'
+    ObjectSection:
+      type: object
+      additionalProperties: false
+      required:
+      - object_id
+      - section
+      - status
+      - basis
+      - items
+      properties:
+        object_id:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+        section:
+          $ref: '#/components/schemas/SectionName'
+        status:
+          $ref: '#/components/schemas/SectionStatus'
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+        basis:
+          $ref: '#/components/schemas/Basis'
+        as_of:
+          type: string
+          format: date-time
+          description: 数据截至时间
+        time_axis:
+          type: string
+          description: 所用时间轴，例如 source_published 来源发布时间、recorded 平台记录时间、effective 业务生效时间
+          minLength: 1
+          maxLength: 64
+        coverage_start:
+          type: string
+          format: date
+        stats_version:
+          type: string
+          minLength: 1
+          maxLength: 64
+        items:
+          type: array
+          maxItems: 20
+          description: 分区内容（数据平面返回的字段与字段状态，按调用方裁剪后的结果）
+          items:
+            type: object
+            additionalProperties: true
+        next_cursor:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        capped:
+          type: boolean
+          description: 已到翻页深度上限（200 条），之后的内容需缩小范围查看
+        later_count:
+          type: integer
+          minimum: 0
+          description: signal_time 视角下，记录截止之后另有的条数（只提示，不显示）
+        meter:
+          $ref: '#/components/schemas/MeterReceipt'
+    DisplayLevel:
+      type: string
+      enum:
+      - full_text
+      - excerpt
+      - citation_only
+      - none
+    EvidenceSource:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        url:
+          type: string
+          format: uri
+        reachable:
+          type: boolean
+        unreachable_since:
+          type: string
+          format: date-time
+    EvidenceView:
+      type: object
+      additionalProperties: false
+      required:
+      - evidence_id
+      - kind
+      - display_level
+      - source
+      - metadata_only
+      - retracted
+      - meter
+      properties:
+        evidence_id:
+          type: string
+          pattern: ^ev_[0-9A-HJKMNP-TV-Z]{26}$
+        kind:
+          type: string
+          enum:
+          - document
+          - record
+          - derivation
+        display_level:
+          $ref: '#/components/schemas/DisplayLevel'
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+        object_id:
+          type: string
+          pattern: ^(pp|prj|org)_[0-9A-HJKMNP-TV-Z]{26}$
+        source:
+          $ref: '#/components/schemas/EvidenceSource'
+        snapshot_saved_at:
+          type: string
+          format: date-time
+        metadata_only:
+          type: boolean
+          description: 来源权利只允许保存元数据（没有快照正文）
+        retracted:
+          type: boolean
+          description: 已撤回的原文
+        snippet:
+          type: string
+          maxLength: 4000
+        context:
+          type: string
+          maxLength: 20000
+        locator:
+          type: string
+          maxLength: 200
+          description: 页码或段落
+        record_key:
+          type: string
+          maxLength: 500
+        record_value:
+          type: string
+          maxLength: 4000
+        transform:
+          type: string
+          maxLength: 200
+        inputs:
+          type: array
+          maxItems: 32
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - evidence_id
+            - display_level
+            properties:
+              evidence_id:
+                type: string
+                pattern: ^ev_[0-9A-HJKMNP-TV-Z]{26}$
+              display_level:
+                $ref: '#/components/schemas/DisplayLevel'
+        meter:
+          $ref: '#/components/schemas/MeterReceipt'

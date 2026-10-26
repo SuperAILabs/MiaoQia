@@ -13,7 +13,10 @@ import (
 
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
 	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
+	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
+	idapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 )
 
 func TestMigrationRejectsInvalidRoleBeforeDatabase(t *testing.T) {
@@ -85,17 +88,25 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 	t.Setenv("MIAOQIA_IDENTITY_OPENFGA_URL", fga)
 	t.Setenv("MIAOQIA_IDENTITY_URL", "http://127.0.0.1:1/internal")
 	t.Setenv("MIAOQIA_CUSTOMER_CONTEXT_URL", "http://127.0.0.1:1/internal")
+	t.Setenv("MIAOQIA_COMMERCE_URL", "http://127.0.0.1:1/internal")
+	t.Setenv("MIAOQIA_DETECTION_URL", "http://127.0.0.1:1/internal")
+	keys := []string{"MIAOQIA_BINDING_IDENTITY", "MIAOQIA_BINDING_CUSTOMER_CONTEXT", "MIAOQIA_BINDING_COMMERCE", "MIAOQIA_BINDING_DETECTION"}
+	subsystemOf := map[string]string{"MIAOQIA_BINDING_IDENTITY": "identity", "MIAOQIA_BINDING_CUSTOMER_CONTEXT": "customer-context",
+		"MIAOQIA_BINDING_COMMERCE": "commerce", "MIAOQIA_BINDING_DETECTION": "detection"}
 	variants := []map[string]string{
 		{},
 		{"MIAOQIA_BINDING_IDENTITY": "remote"},
 		{"MIAOQIA_BINDING_CUSTOMER_CONTEXT": "remote"},
 		{"MIAOQIA_BINDING_IDENTITY": "remote", "MIAOQIA_BINDING_CUSTOMER_CONTEXT": "remote"},
+		{"MIAOQIA_BINDING_COMMERCE": "remote"},
+		{"MIAOQIA_BINDING_DETECTION": "remote"},
+		{"MIAOQIA_BINDING_IDENTITY": "remote", "MIAOQIA_BINDING_CUSTOMER_CONTEXT": "remote", "MIAOQIA_BINDING_COMMERCE": "remote", "MIAOQIA_BINDING_DETECTION": "remote"},
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for role := range mf.Roles {
 		for _, v := range variants {
 			t.Run(fmt.Sprintf("%s %v", role, v), func(t *testing.T) {
-				for _, k := range []string{"MIAOQIA_BINDING_IDENTITY", "MIAOQIA_BINDING_CUSTOMER_CONTEXT"} {
+				for _, k := range keys {
 					t.Setenv(k, v[k])
 				}
 				loaded, envs, closeAll, err := assemble(context.Background(), log, role, nil)
@@ -104,9 +115,10 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 					t.Fatal(err)
 				}
 				for i, m := range loaded {
-					if (m.Name == "identity" && v["MIAOQIA_BINDING_IDENTITY"] == "remote") ||
-						(m.Name == "customer-context" && v["MIAOQIA_BINDING_CUSTOMER_CONTEXT"] == "remote") {
-						t.Fatalf("远程绑定的 %s 仍在本地加载", m.Name)
+					for _, k := range keys {
+						if m.Name == subsystemOf[k] && v[k] == "remote" {
+							t.Fatalf("远程绑定的 %s 仍在本地加载", m.Name)
+						}
 					}
 					// 第3段新增的跨子系统绑定：detection 每批读取生效策略与上下文，用户入口经 ObjectiveAccess 判断
 					if m.Name == "detection" {
@@ -116,6 +128,18 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, active := runtime.Lookup[ccapi.ActivePolicies](b, ccapi.ActivePoliciesBinding)
 						if !access || !reader || !active {
 							t.Fatalf("detection 的绑定不完整：access=%v context=%v active=%v", access, reader, active)
+						}
+					}
+					// 第4段新增的跨子系统绑定：gateway 的对象页经 identity 授权、commerce 计量、detection 读取信号固定的求值输入、
+					// customer-context 读取档案品类
+					if m.Name == "gateway" {
+						b := envs[i].Bindings
+						_, authz := runtime.Lookup[idapi.Authorizer](b, idapi.AuthorizerBinding)
+						_, meter := runtime.Lookup[commerceapi.ViewMetering](b, commerceapi.MeteringBinding)
+						_, explainer := runtime.Lookup[detectionapi.SignalExplainer](b, detectionapi.ExplainerBinding)
+						_, reader := runtime.Lookup[ccapi.ContextReader](b, ccapi.ContextBinding)
+						if !authz || !meter || !explainer || !reader {
+							t.Fatalf("gateway 的绑定不完整：authz=%v meter=%v explainer=%v context=%v", authz, meter, explainer, reader)
 						}
 					}
 				}

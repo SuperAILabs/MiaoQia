@@ -63,6 +63,24 @@ type Invoker interface {
 	//
 	// GET /v1/detection/signal-batches/{batchID}
 	GetSignalBatch(ctx context.Context, params GetSignalBatchParams) (*SignalBatch, error)
+	// ListObjectSignals invokes listObjectSignals operation.
+	//
+	// 对象页的本租户信号分区（PRD 第4段
+	// F3–F5）：按采购项目（pp_，信号求值单位所在的采购项目）、项目（prj_，经当前有效且已确认或
+	// 置信度不低于 0.9 的 part_of 归属边展开到采购项目，归属边由 entity-graph
+	// 提供；未接入时 503 project_links_unavailable）或组织
+	// （org_，信号视图中的中标方或采购人，role
+	// 筛选）列出本租户信号，跨目标按发现时间（信号写入时间）新到旧排列。只返回用户有
+	// can_view_signals 的目标的信号：每个目标经其所有者 customer-context 的
+	// ObjectiveAccess 按当前口径判断（移除参与人立即撤权），
+	// 不能查看的目标的信号不出现，也不提示其存在；授权或 customer-context
+	// 不可用时 503（失败关闭）。租户来自请求上下文，
+	// 其他租户的信号不出现。游标分页，每页至多 20
+	// 条；游标绑定查看者、对象与角色，不一致时 400 invalid_cursor。
+	// 信号记录的中标方不因之后的合并改写；按组织查询时匹配信号记录中的组织标识。.
+	//
+	// GET /v1/detection/object-signals
+	ListObjectSignals(ctx context.Context, params ListObjectSignalsParams) (*ObjectSignalPage, error)
 	// ListSignalTriage invokes listSignalTriage operation.
 	//
 	// 信号的处理与反馈记录（追加式，只含至少改变了一个部分的操作），按时间倒序；每页至多
@@ -602,6 +620,167 @@ func (c *Client) sendGetSignalBatch(ctx context.Context, params GetSignalBatchPa
 
 	stage = "DecodeResponse"
 	result, err := decodeGetSignalBatchResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListObjectSignals invokes listObjectSignals operation.
+//
+// 对象页的本租户信号分区（PRD 第4段
+// F3–F5）：按采购项目（pp_，信号求值单位所在的采购项目）、项目（prj_，经当前有效且已确认或
+// 置信度不低于 0.9 的 part_of 归属边展开到采购项目，归属边由 entity-graph
+// 提供；未接入时 503 project_links_unavailable）或组织
+// （org_，信号视图中的中标方或采购人，role
+// 筛选）列出本租户信号，跨目标按发现时间（信号写入时间）新到旧排列。只返回用户有
+// can_view_signals 的目标的信号：每个目标经其所有者 customer-context 的
+// ObjectiveAccess 按当前口径判断（移除参与人立即撤权），
+// 不能查看的目标的信号不出现，也不提示其存在；授权或 customer-context
+// 不可用时 503（失败关闭）。租户来自请求上下文，
+// 其他租户的信号不出现。游标分页，每页至多 20
+// 条；游标绑定查看者、对象与角色，不一致时 400 invalid_cursor。
+// 信号记录的中标方不因之后的合并改写；按组织查询时匹配信号记录中的组织标识。.
+//
+// GET /v1/detection/object-signals
+func (c *Client) ListObjectSignals(ctx context.Context, params ListObjectSignalsParams) (*ObjectSignalPage, error) {
+	res, err := c.sendListObjectSignals(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListObjectSignals(ctx context.Context, params ListObjectSignalsParams) (res *ObjectSignalPage, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listObjectSignals"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/detection/object-signals"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListObjectSignalsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/detection/object-signals"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "object_id" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "object_id",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.ObjectID))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "role" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "role",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Role.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListObjectSignalsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

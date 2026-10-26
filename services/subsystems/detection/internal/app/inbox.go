@@ -76,6 +76,8 @@ type Row struct {
 	Title           string     `json:"title"`
 	Winner          *Winner    `json:"winner,omitempty"`
 	Amount          *Amount    `json:"amount,omitempty"`
+	ProjectID       string     `json:"procurement_project_id,omitempty"`
+	Buyer           *Winner    `json:"buyer,omitempty"`
 	Location        string     `json:"location,omitempty"`
 	Categories      []string   `json:"categories"`
 	SameLotCount    int        `json:"same_lot_count"`
@@ -130,6 +132,7 @@ const rowColumns = `s.id, s.tenant_id, s.objective_id, s.objective_code, s.org_u
  s.score, s.needs_review, s.reason_code, s.reasons, s.unknown_count, s.status, s.state_version, s.content_version, s.backfill,
  s.material_updated_at, s.policy_id, s.policy_version, s.generation, s.template_id, s.template_version, s.enabled_domains,
  s.evaluated_at, s.created_at, s.conclusion, s.trace, s.features, s.view_snapshot_hash, s.context_version, s.trigger_event_id,
+ s.procurement_project_id, s.buyer_org_id, s.buyer_name,
  CASE WHEN s.lot_key IS NULL THEN 1 ELSE (SELECT count(*) FROM det_signals l WHERE l.objective_id = s.objective_id AND l.lot_key = s.lot_key) END,
  f.result, f.reasons, f.note, f.based_on_content_version, f.version`
 
@@ -139,6 +142,7 @@ const rowFrom = ` FROM det_signals s LEFT JOIN det_feedback f ON f.signal_id = s
 func (s *Service) scanRow(row pgx.Row) (*Row, error) {
 	var r Row
 	var part, winnerID, winnerName, amountValue, amountCurrency, location, manual, manualReason, reasonCode *string
+	var project, buyerID, buyerName *string
 	var material *time.Time
 	var fbResult, fbNote *string
 	var fbReasons []string
@@ -147,7 +151,8 @@ func (s *Service) scanRow(row pgx.Row) (*Row, error) {
 		&winnerID, &winnerName, &amountValue, &amountCurrency, &location, &r.Categories, &r.Disposition, &manual, &manualReason,
 		&r.Score, &r.NeedsReview, &reasonCode, &r.Reasons, &r.UnknownCount, &r.Status, &r.StateVersion, &r.ContentVersion, &r.Backfill,
 		&material, &r.Policy.PolicyID, &r.Policy.Version, &r.Policy.Generation, &r.Policy.TemplateID, &r.Policy.TemplateVersion, &r.Policy.EnabledDomains,
-		&r.EvaluatedAt, &r.CreatedAt, &r.conclusion, &r.trace, &r.features, &r.hash, &r.contextVersion, &r.trigger, &r.SameLotCount,
+		&r.EvaluatedAt, &r.CreatedAt, &r.conclusion, &r.trace, &r.features, &r.hash, &r.contextVersion, &r.trigger,
+		&project, &buyerID, &buyerName, &r.SameLotCount,
 		&fbResult, &fbReasons, &fbNote, &fbBased, &fbVersion); err != nil {
 		return nil, err
 	}
@@ -160,6 +165,10 @@ func (s *Service) scanRow(row pgx.Row) (*Row, error) {
 	r.Subject.Type, r.Subject.PartID = "domain_fact", str(part)
 	if winnerID != nil || winnerName != nil {
 		r.Winner = &Winner{OrgID: str(winnerID), Name: str(winnerName)}
+	}
+	r.ProjectID = str(project)
+	if buyerID != nil || buyerName != nil {
+		r.Buyer = &Winner{OrgID: str(buyerID), Name: str(buyerName)}
 	}
 	if amountValue != nil && amountCurrency != nil {
 		r.Amount = &Amount{Value: *amountValue, Currency: *amountCurrency}

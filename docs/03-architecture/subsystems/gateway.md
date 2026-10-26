@@ -88,3 +88,17 @@ Skills 是组合这些工具的工作流说明（如“每日信号评审”“�
 - 所有出站数据经字段白名单净化，不透传内部元数据；
 - Webhook 签名（HMAC）与目标地址校验，防止 SSRF；
 - 执行公共数据暴露策略：结果上限、翻页深度、配额、水印、异常访问检测，见 [安全与租户](../06-security-and-tenancy.md#7-公共数据暴露控制)。
+
+## 10. 对象页与证据面板 BFF
+
+**实现状况（PRD 第4段对象页与证据的服务端切片，契约 [`contracts/apis/gateway/openapi.yaml`](../../../contracts/apis/gateway/openapi.yaml) 0.1.0 草案，事件 [`contracts/events/gateway/events.asyncapi.yaml`](../../../contracts/events/gateway/events.asyncapi.yaml) 0.1.0 草案）**：
+
+- **接口**：`GET /v1/objects/{objectID}`（对象页：对象、口径、信号上下文、分区清单、计量回执与水印）、`GET /v1/objects/{objectID}/sections/{section}`（逐分区返回状态 `ok` / `empty` / `unavailable` / `history_unavailable` / `not_connected`、原因码、口径与内容）与 `GET /v1/evidence/{evidenceID}`（证据面板）。对象标识只接受 `pp_`、`prj_`、`org_`，分区按对象类型固定；
+- **检查顺序**：每个请求现场执行，顺序固定：身份（只接受用户主体，经 identity `Authorizer` 判断 `tenant#can_search_public`，拒绝 403，授权服务不可用 503）→ 信号上下文 → 对象解析（按口径）→ 覆盖范围（不足时 403 `entitlement.coverage_insufficient`，只带对象名称）→ 安全上限 → 读取 → 计量。任何一步不通过即拒绝，之后的步骤不执行；拒绝的请求不计量。不缓存响应；
+- **信号上下文**：带 `signal_id` 时经 detection 的 `SignalExplainer` 绑定（远程时为内部接口 `GET /internal/v1/detection/signals/{signalID}/explanation`，以用户主体调用，按目标判断 `can_view_signals`）读取固定的求值输入。他租户、不存在与无权查看的信号同样按“不带信号”处理，`signal_time` 退回当前视角，不提示其存在；detection 不可用时当前视角只缺上下文条（`signal_context_unavailable`），`signal_time` 503。`signal_time` 的记录截止时点是信号的 `evaluated_at`（对外精度到秒，本地与远程绑定一致），并固定视图快照中的对象版本；统计分区历史不可用，视图快照已过保存期时依赖快照的分区（概要、标包、登记信息、人员）历史不可用；
+- **分页与安全上限**：列表每页至多 20 条，游标为 gateway 签发的不透明值：整个载荷（绑定的租户、调用者、对象、分区、口径与筛选，偏移，数据平面的游标）连同其 HMAC-SHA256 签名一起编码，签名密钥为 `MIAOQIA_GATEWAY_CURSOR_KEY`（base64，至少 32 字节，同一部署的全部 api 实例相同；只有 `MIAOQIA_ENV=development` 可以缺省，此时每个进程随机生成）。签名不符、绑定不一致或位置无效时 400 `invalid_cursor`，在读取与计量之前判断，调用方不能借重置偏移或替换内层游标越过上限；翻到 200 条为止（最后一页标 `capped`），更深的位置 422 `limit.safety_cap`，在读取与计量之前判断；
+- **“含我方品类”**：取调用者组织单元的本租户档案品类（customer-context `ContextReader`），只作为请求参数传给数据平面，不写入公共数据；
+- **证据**：展示级别取证据及其全部输入中最严格的一档，按最终级别以字段白名单填入内容，不从数据平面结果整体复制：全文含片段、上下文、定位、记录键与原值；摘要只有被引用的片段与定位元数据（定位、记录键、转换说明、快照保存时间、来源），不含上下文与记录原值；仅引用只有来源名称、标题、链接、可达状态与转换说明；不展示只留来源链接；未知级别按不展示；只允许保存元数据的来源在任何级别都不返回正文；证据所属对象同样检查覆盖；
+- **计量**：对象页与分区按 `object_view`、证据按 `evidence_view` 经 commerce 的 `ViewMetering` 绑定（远程时为内部接口 `POST /internal/v1/commerce/view-meters`）计量，客户端的 `Idempotency-Key` 作为尝试键（未给出时由网关生成）。额度用完 429 `quota.exhausted`；commerce 不可用时放行（回执 `deferred`）并在本子系统发件箱写入 `gateway.view_meter.deferred.v1`，写入失败则 503，不放行未登记的查看；
+- **端口与缺省**：数据平面读取（`api.PublicData`）、证据解析（`api.EvidenceResolver`）与覆盖判断（`api.Entitlements`）没有生产实现，`gateway.Module()` 使用 `api.NotWired`：对象页、分区与证据面板 503，不以空数据冒充没有记录。测试使用 `api/publictest` 的内存夹具，内容全部虚构；
+- **未实现**：版本检查（PRD 第4段第10节）、字段级状态与时间轴（由数据平面提供，本切片透传）、清单标记、跟进、报告漏报与报告数据问题、埋点。

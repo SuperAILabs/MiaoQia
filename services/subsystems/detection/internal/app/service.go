@@ -43,6 +43,7 @@ type Service struct {
 	Policies   customercontext.ActivePolicies
 	Facts      api.Facts
 	Candidates api.Candidates
+	Links      api.ProjectLinks // 项目到采购项目的归属边（对象页按项目列出信号）
 	Packs      *Packs
 	Cell       string
 	Now        func() time.Time

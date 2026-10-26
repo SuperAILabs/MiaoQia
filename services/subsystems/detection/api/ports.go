@@ -63,6 +63,11 @@ type Display struct {
 	Location       string
 	Categories     []string
 	LotKey         string // 同一标包的键（同标包多家中标时相同）
+
+	// 对象页的本租户信号分区（PRD 第4段 F3–F5）按这些字段查找信号：求值单位所在的采购项目与采购人（来自信号视图，不参与求值）。
+	ProcurementProjectID string
+	BuyerOrgID           string
+	BuyerName            string
 }
 
 // Unit 是一个求值单位的视图（策略 DSL 第5.1节）。Key 在事实类型内唯一，是信号的去重键（同一目标对同一求值单位只有一条信号）。
@@ -92,8 +97,18 @@ type Candidates interface {
 	Tenants(ctx context.Context, cell string, ref FactRef) ([]string, error)
 }
 
+// ProjectLinks 是项目（prj_）到采购项目（pp_）的归属边读取（entity-graph 的 part_of，当前有效且已确认或置信度不低于 0.9 的边，
+// PRD 第4段第13节第8项）：对象页按项目列出本租户信号时展开到采购项目。生产适配器尚未接入（NotWired 返回 ErrNotWired，调用方 503）。
+type ProjectLinks interface {
+	ProcurementProjects(ctx context.Context, project string) ([]string, error)
+}
+
 // NotWired 是缺省的匹配适配器：所有调用返回 ErrNotWired。
 type NotWired struct{}
+
+func (NotWired) ProcurementProjects(context.Context, string) ([]string, error) {
+	return nil, ErrNotWired
+}
 
 func (NotWired) Units(context.Context, FactRef) ([]Unit, error)             { return nil, ErrNotWired }
 func (NotWired) Tenants(context.Context, string, FactRef) ([]string, error) { return nil, ErrNotWired }

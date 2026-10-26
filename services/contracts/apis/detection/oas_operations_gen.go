@@ -10,6 +10,7 @@ const (
 	ExplainSignalOperation         OperationName = "ExplainSignal"
 	GetSignalOperation             OperationName = "GetSignal"
 	GetSignalBatchOperation        OperationName = "GetSignalBatch"
+	ListObjectSignalsOperation     OperationName = "ListObjectSignals"
 	ListSignalTriageOperation      OperationName = "ListSignalTriage"
 	ListSignalsOperation           OperationName = "ListSignals"
 	RetrySignalBatchItemsOperation OperationName = "RetrySignalBatchItems"

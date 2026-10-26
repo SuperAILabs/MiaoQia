@@ -1,19 +1,32 @@
-// Package gateway 组装接入网关（REST/OpenAPI、BFF、MCP、Webhook、限流）。M0 提供令牌校验与对外路由。
+// Package gateway 组装接入网关（REST/OpenAPI、BFF、MCP、Webhook、限流）。M0 提供令牌校验与对外路由；M2 第4段提供对象页与
+// 证据面板的 BFF（docs/01-product/prd/04-object-page-evidence.md）：数据平面读取与权益覆盖尚未接入（api.NotWired，对象页 503），
+// 测试与演示使用标明为夹具的内存实现（api/publictest）。
 package gateway
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
+	gw "github.com/superailabs/miaoqia/services/contracts/apis/gateway"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
+	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
+	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
+	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
+	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway/api"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway/internal/auth"
+	"github.com/superailabs/miaoqia/services/subsystems/gateway/internal/bff"
 	identityapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 )
 
@@ -84,7 +97,101 @@ func Public(ctx context.Context, issuer, audience string, h http.Handler, resolv
 	}), nil
 }
 
-// Module 返回 gateway 的模块定义（对外路由的包装见 Public）。
-func Module() runtime.Module {
-	return runtime.Module{Name: api.Name, Database: "gwy"}
+// 对外接口（经 Public 包装）的路由。
+var publicRoutes = []string{
+	"GET /v1/objects/{objectID}",
+	"GET /v1/objects/{objectID}/sections/{section}",
+	"GET /v1/evidence/{evidenceID}",
+}
+
+// Adapters 是对象页的出站端口与业务时钟。零值字段使用缺省：数据平面、证据与覆盖为未接入（api.NotWired），Now 为系统时钟。
+type Adapters struct {
+	Public       api.PublicData
+	Evidence     api.EvidenceResolver
+	Entitlements api.Entitlements
+	Now          func() time.Time
+}
+
+// Module 返回 gateway 的模块定义（对外路由的包装见 Public；对象页适配器未接入）。
+func Module() runtime.Module { return ModuleWith(Adapters{}) }
+
+// ModuleWith 返回使用给定适配器的 gateway 模块定义。对象页依赖的跨子系统绑定在启动时全部解析：identity 的授权决策点、commerce 的
+// 查看计量、detection 的信号固定求值输入与 customer-context 的上下文读取（本地或远程绑定），缺一不启动。
+func ModuleWith(adapters Adapters) runtime.Module {
+	svc := &bff.Service{Public: adapters.Public, Evidence: adapters.Evidence, Entitlements: adapters.Entitlements, Now: adapters.Now}
+	if svc.Public == nil {
+		svc.Public = api.NotWired{}
+	}
+	if svc.Evidence == nil {
+		svc.Evidence = api.NotWiredEvidence{}
+	}
+	if svc.Entitlements == nil {
+		svc.Entitlements = api.NotWired{}
+	}
+	return runtime.Module{
+		Name:     api.Name,
+		Database: "gwy",
+		Start: func(ctx context.Context, env *runtime.Env) error {
+			a, ok := runtime.Lookup[identityapi.Authorizer](env.Bindings, identityapi.AuthorizerBinding)
+			if !ok {
+				return fmt.Errorf("gateway：缺少 %s 绑定", identityapi.AuthorizerBinding)
+			}
+			meter, ok := runtime.Lookup[commerceapi.ViewMetering](env.Bindings, commerceapi.MeteringBinding)
+			if !ok {
+				return fmt.Errorf("gateway：缺少 %s 绑定", commerceapi.MeteringBinding)
+			}
+			signals, ok := runtime.Lookup[detectionapi.SignalExplainer](env.Bindings, detectionapi.ExplainerBinding)
+			if !ok {
+				return fmt.Errorf("gateway：缺少 %s 绑定", detectionapi.ExplainerBinding)
+			}
+			reader, ok := runtime.Lookup[ccapi.ContextReader](env.Bindings, ccapi.ContextBinding)
+			if !ok {
+				return fmt.Errorf("gateway：缺少 %s 绑定", ccapi.ContextBinding)
+			}
+			key, err := cursorKey(env)
+			if err != nil {
+				return err
+			}
+			svc.DB, svc.Authz, svc.Meter, svc.Signals, svc.Context, svc.Log, svc.CursorKey = env.DB, a, meter, signals, reader, env.Log, key
+			return nil
+		},
+		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
+			pub, err := gw.NewServer(&bff.Server{Service: svc}, gw.WithErrorHandler(bff.WriteProtocolError))
+			if err != nil {
+				panic(err)
+			}
+			for _, pattern := range publicRoutes {
+				public.Handle(pattern, pub)
+			}
+		},
+	}
+}
+
+// cursorKey 读取分区游标的签名密钥 MIAOQIA_GATEWAY_CURSOR_KEY（base64，解码后至少 32 字节；同一部署的全部 api 实例必须相同，
+// 否则跨实例翻页为 invalid_cursor）。缺省只在 MIAOQIA_ENV=development 时允许：每个进程随机生成，重启后已签发的游标失效；
+// 其他环境缺少或无效时不启动。
+func cursorKey(env *runtime.Env) ([]byte, error) {
+	v := strings.TrimSpace(env.Config("CURSOR_KEY"))
+	if v == "" {
+		if !transportsecurity.Development() {
+			return nil, fmt.Errorf("gateway：缺少 MIAOQIA_GATEWAY_CURSOR_KEY（分区游标签名密钥）")
+		}
+		key := make([]byte, bff.MinCursorKey)
+		if _, err := rand.Read(key); err != nil {
+			return nil, err
+		}
+		if env.Log != nil {
+			env.Log.Warn("gateway：未配置 MIAOQIA_GATEWAY_CURSOR_KEY，开发环境使用进程内随机密钥")
+		}
+		return key, nil
+	}
+	for _, enc := range []*base64.Encoding{base64.StdEncoding, base64.RawStdEncoding, base64.URLEncoding, base64.RawURLEncoding} {
+		if key, err := enc.DecodeString(v); err == nil {
+			if len(key) < bff.MinCursorKey {
+				break
+			}
+			return key, nil
+		}
+	}
+	return nil, fmt.Errorf("gateway：MIAOQIA_GATEWAY_CURSOR_KEY 须为 base64 编码、至少 %d 字节", bff.MinCursorKey)
 }

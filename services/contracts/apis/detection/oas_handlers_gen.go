@@ -664,6 +664,184 @@ func (s *Server) handleGetSignalBatchRequest(args [1]string, argsEscaped bool, w
 	}
 }
 
+// handleListObjectSignalsRequest handles listObjectSignals operation.
+//
+// 对象页的本租户信号分区（PRD 第4段
+// F3–F5）：按采购项目（pp_，信号求值单位所在的采购项目）、项目（prj_，经当前有效且已确认或
+// 置信度不低于 0.9 的 part_of 归属边展开到采购项目，归属边由 entity-graph
+// 提供；未接入时 503 project_links_unavailable）或组织
+// （org_，信号视图中的中标方或采购人，role
+// 筛选）列出本租户信号，跨目标按发现时间（信号写入时间）新到旧排列。只返回用户有
+// can_view_signals 的目标的信号：每个目标经其所有者 customer-context 的
+// ObjectiveAccess 按当前口径判断（移除参与人立即撤权），
+// 不能查看的目标的信号不出现，也不提示其存在；授权或 customer-context
+// 不可用时 503（失败关闭）。租户来自请求上下文，
+// 其他租户的信号不出现。游标分页，每页至多 20
+// 条；游标绑定查看者、对象与角色，不一致时 400 invalid_cursor。
+// 信号记录的中标方不因之后的合并改写；按组织查询时匹配信号记录中的组织标识。.
+//
+// GET /v1/detection/object-signals
+func (s *Server) handleListObjectSignalsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listObjectSignals"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/v1/detection/object-signals"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), ListObjectSignalsOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: ListObjectSignalsOperation,
+			ID:   "listObjectSignals",
+		}
+	)
+	params, err := decodeListObjectSignalsParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response *ObjectSignalPage
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    ListObjectSignalsOperation,
+			OperationSummary: "对象页的本租户信号（ListSignalsForObject）",
+			OperationID:      "listObjectSignals",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "object_id",
+					In:   "query",
+				}: params.ObjectID,
+				{
+					Name: "role",
+					In:   "query",
+				}: params.Role,
+				{
+					Name: "limit",
+					In:   "query",
+				}: params.Limit,
+				{
+					Name: "cursor",
+					In:   "query",
+				}: params.Cursor,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = ListObjectSignalsParams
+			Response = *ObjectSignalPage
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackListObjectSignalsParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.ListObjectSignals(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.ListObjectSignals(ctx, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeListObjectSignalsResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleListSignalTriageRequest handles listSignalTriage operation.
 //
 // 信号的处理与反馈记录（追加式，只含至少改变了一个部分的操作），按时间倒序；每页至多

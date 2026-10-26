@@ -781,6 +781,54 @@ func (s *FeedbackResult) UnmarshalText(data []byte) error {
 	}
 }
 
+type ListObjectSignalsRole string
+
+const (
+	ListObjectSignalsRoleAny    ListObjectSignalsRole = "any"
+	ListObjectSignalsRoleWinner ListObjectSignalsRole = "winner"
+	ListObjectSignalsRoleBuyer  ListObjectSignalsRole = "buyer"
+)
+
+// AllValues returns all ListObjectSignalsRole values.
+func (ListObjectSignalsRole) AllValues() []ListObjectSignalsRole {
+	return []ListObjectSignalsRole{
+		ListObjectSignalsRoleAny,
+		ListObjectSignalsRoleWinner,
+		ListObjectSignalsRoleBuyer,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListObjectSignalsRole) MarshalText() ([]byte, error) {
+	switch s {
+	case ListObjectSignalsRoleAny:
+		return []byte(s), nil
+	case ListObjectSignalsRoleWinner:
+		return []byte(s), nil
+	case ListObjectSignalsRoleBuyer:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListObjectSignalsRole) UnmarshalText(data []byte) error {
+	switch ListObjectSignalsRole(data) {
+	case ListObjectSignalsRoleAny:
+		*s = ListObjectSignalsRoleAny
+		return nil
+	case ListObjectSignalsRoleWinner:
+		*s = ListObjectSignalsRoleWinner
+		return nil
+	case ListObjectSignalsRoleBuyer:
+		*s = ListObjectSignalsRoleBuyer
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type ListSignalsMarker string
 
 const (
@@ -1090,6 +1138,44 @@ func (s *MemberFeedback) SetFeedbackVersion(val int64) {
 // SetUpdatedAt sets the value of UpdatedAt.
 func (s *MemberFeedback) SetUpdatedAt(val time.Time) {
 	s.UpdatedAt = val
+}
+
+// 对象页的一页本租户信号（按发现时间新到旧；时间轴为信号写入时间）.
+// Ref: #/components/schemas/ObjectSignalPage
+type ObjectSignalPage struct {
+	ObjectID   string      `json:"object_id"`
+	Signals    []SignalRow `json:"signals"`
+	NextCursor OptString   `json:"next_cursor"`
+}
+
+// GetObjectID returns the value of ObjectID.
+func (s *ObjectSignalPage) GetObjectID() string {
+	return s.ObjectID
+}
+
+// GetSignals returns the value of Signals.
+func (s *ObjectSignalPage) GetSignals() []SignalRow {
+	return s.Signals
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ObjectSignalPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetObjectID sets the value of ObjectID.
+func (s *ObjectSignalPage) SetObjectID(val string) {
+	s.ObjectID = val
+}
+
+// SetSignals sets the value of Signals.
+func (s *ObjectSignalPage) SetSignals(val []SignalRow) {
+	s.Signals = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ObjectSignalPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
 }
 
 // NewOptBatchItemFailure returns new OptBatchItemFailure with value set to v.
@@ -1454,6 +1540,52 @@ func (o OptInt64) Get() (v int64, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptListObjectSignalsRole returns new OptListObjectSignalsRole with value set to v.
+func NewOptListObjectSignalsRole(v ListObjectSignalsRole) OptListObjectSignalsRole {
+	return OptListObjectSignalsRole{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListObjectSignalsRole is optional ListObjectSignalsRole.
+type OptListObjectSignalsRole struct {
+	Value ListObjectSignalsRole
+	Set   bool
+}
+
+// IsSet returns true if OptListObjectSignalsRole was set.
+func (o OptListObjectSignalsRole) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListObjectSignalsRole) Reset() {
+	var v ListObjectSignalsRole
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListObjectSignalsRole) SetTo(v ListObjectSignalsRole) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListObjectSignalsRole) Get() (v ListObjectSignalsRole, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListObjectSignalsRole) Or(d ListObjectSignalsRole) ListObjectSignalsRole {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1914,6 +2046,52 @@ func (o OptSignalRowAmount) Get() (v SignalRowAmount, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptSignalRowAmount) Or(d SignalRowAmount) SignalRowAmount {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSignalRowBuyer returns new OptSignalRowBuyer with value set to v.
+func NewOptSignalRowBuyer(v SignalRowBuyer) OptSignalRowBuyer {
+	return OptSignalRowBuyer{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSignalRowBuyer is optional SignalRowBuyer.
+type OptSignalRowBuyer struct {
+	Value SignalRowBuyer
+	Set   bool
+}
+
+// IsSet returns true if OptSignalRowBuyer was set.
+func (o OptSignalRowBuyer) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSignalRowBuyer) Reset() {
+	var v SignalRowBuyer
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSignalRowBuyer) SetTo(v SignalRowBuyer) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSignalRowBuyer) Get() (v SignalRowBuyer, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSignalRowBuyer) Or(d SignalRowBuyer) SignalRowBuyer {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -3567,13 +3745,17 @@ func (s *SignalPage) SetViewerCanFeedback(val bool) {
 // 为查看者本人的当前反馈与反馈版本（0 为从未反馈）。.
 // Ref: #/components/schemas/SignalRow
 type SignalRow struct {
-	ID                string               `json:"id"`
-	ObjectiveID       string               `json:"objective_id"`
-	FactType          string               `json:"fact_type"`
-	Subject           SubjectRef           `json:"subject"`
-	Title             string               `json:"title"`
-	Winner            OptSignalRowWinner   `json:"winner"`
-	Amount            OptSignalRowAmount   `json:"amount"`
+	ID          string             `json:"id"`
+	ObjectiveID string             `json:"objective_id"`
+	FactType    string             `json:"fact_type"`
+	Subject     SubjectRef         `json:"subject"`
+	Title       string             `json:"title"`
+	Winner      OptSignalRowWinner `json:"winner"`
+	Amount      OptSignalRowAmount `json:"amount"`
+	// 求值单位所在的采购项目（0.2.0 起记录；之前生成的信号不出现）.
+	ProcurementProjectID OptString `json:"procurement_project_id"`
+	// 采购人（来自信号视图；0.2.0 起记录）.
+	Buyer             OptSignalRowBuyer    `json:"buyer"`
 	Location          OptString            `json:"location"`
 	Categories        []string             `json:"categories"`
 	SameLotCount      int                  `json:"same_lot_count"`
@@ -3632,6 +3814,16 @@ func (s *SignalRow) GetWinner() OptSignalRowWinner {
 // GetAmount returns the value of Amount.
 func (s *SignalRow) GetAmount() OptSignalRowAmount {
 	return s.Amount
+}
+
+// GetProcurementProjectID returns the value of ProcurementProjectID.
+func (s *SignalRow) GetProcurementProjectID() OptString {
+	return s.ProcurementProjectID
+}
+
+// GetBuyer returns the value of Buyer.
+func (s *SignalRow) GetBuyer() OptSignalRowBuyer {
+	return s.Buyer
 }
 
 // GetLocation returns the value of Location.
@@ -3769,6 +3961,16 @@ func (s *SignalRow) SetAmount(val OptSignalRowAmount) {
 	s.Amount = val
 }
 
+// SetProcurementProjectID sets the value of ProcurementProjectID.
+func (s *SignalRow) SetProcurementProjectID(val OptString) {
+	s.ProcurementProjectID = val
+}
+
+// SetBuyer sets the value of Buyer.
+func (s *SignalRow) SetBuyer(val OptSignalRowBuyer) {
+	s.Buyer = val
+}
+
 // SetLocation sets the value of Location.
 func (s *SignalRow) SetLocation(val OptString) {
 	s.Location = val
@@ -3892,6 +4094,32 @@ func (s *SignalRowAmount) SetValue(val string) {
 // SetCurrency sets the value of Currency.
 func (s *SignalRowAmount) SetCurrency(val string) {
 	s.Currency = val
+}
+
+// 采购人（来自信号视图；0.2.0 起记录）.
+type SignalRowBuyer struct {
+	OrgID OptString `json:"org_id"`
+	Name  OptString `json:"name"`
+}
+
+// GetOrgID returns the value of OrgID.
+func (s *SignalRowBuyer) GetOrgID() OptString {
+	return s.OrgID
+}
+
+// GetName returns the value of Name.
+func (s *SignalRowBuyer) GetName() OptString {
+	return s.Name
+}
+
+// SetOrgID sets the value of OrgID.
+func (s *SignalRowBuyer) SetOrgID(val OptString) {
+	s.OrgID = val
+}
+
+// SetName sets the value of Name.
+func (s *SignalRowBuyer) SetName(val OptString) {
+	s.Name = val
 }
 
 type SignalRowWinner struct {

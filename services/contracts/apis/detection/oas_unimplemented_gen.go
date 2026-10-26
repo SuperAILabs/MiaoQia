@@ -60,6 +60,27 @@ func (UnimplementedHandler) GetSignalBatch(ctx context.Context, params GetSignal
 	return r, ht.ErrNotImplemented
 }
 
+// ListObjectSignals implements listObjectSignals operation.
+//
+// 对象页的本租户信号分区（PRD 第4段
+// F3–F5）：按采购项目（pp_，信号求值单位所在的采购项目）、项目（prj_，经当前有效且已确认或
+// 置信度不低于 0.9 的 part_of 归属边展开到采购项目，归属边由 entity-graph
+// 提供；未接入时 503 project_links_unavailable）或组织
+// （org_，信号视图中的中标方或采购人，role
+// 筛选）列出本租户信号，跨目标按发现时间（信号写入时间）新到旧排列。只返回用户有
+// can_view_signals 的目标的信号：每个目标经其所有者 customer-context 的
+// ObjectiveAccess 按当前口径判断（移除参与人立即撤权），
+// 不能查看的目标的信号不出现，也不提示其存在；授权或 customer-context
+// 不可用时 503（失败关闭）。租户来自请求上下文，
+// 其他租户的信号不出现。游标分页，每页至多 20
+// 条；游标绑定查看者、对象与角色，不一致时 400 invalid_cursor。
+// 信号记录的中标方不因之后的合并改写；按组织查询时匹配信号记录中的组织标识。.
+//
+// GET /v1/detection/object-signals
+func (UnimplementedHandler) ListObjectSignals(ctx context.Context, params ListObjectSignalsParams) (r *ObjectSignalPage, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListSignalTriage implements listSignalTriage operation.
 //
 // 信号的处理与反馈记录（追加式，只含至少改变了一个部分的操作），按时间倒序；每页至多
