@@ -102,3 +102,13 @@ def test_supplier_lines_outside_a_result_section_do_not_create_winners():
     (result,) = _results(fact)
     assert result["bidder"]["name_raw"] == "某某建材有限公司" and "price" not in result
     assert fact["award_amount"]["value"] == "125000" and fact["result_details_pending"] is True
+
+
+def test_text_value_must_equal_the_quoted_original():
+    """反例：文本字段取值被改写（定位与证据哈希仍有效）时，领域校验报告与原文不一致。"""
+    doc = _sample("award")
+    ex = ResultNoticeExtractor()
+    ctx = ExtractionContext(doc, f"{ex.id}@{ex.version}")
+    fact = ex.extract(doc, ctx).facts[0]
+    fact["title"]["value"] = "改写后的标题"
+    assert any("文本字段与证据原文不一致" in e for e in validate_extraction(doc, [fact], ctx.evidence))

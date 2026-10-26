@@ -3,10 +3,11 @@ name = "miaoqia-domain-intelligence"
 version = "0.1.0"
 description = "domain-intelligence 子系统：领域情报（规格见 docs/03-architecture/subsystems/domain-intelligence.md）"
 requires-python = ">=3.12"
-dependencies = ["miaoqia-kernel"]
+dependencies = ["miaoqia-kernel", "miaoqia-evidence"]
 
 [tool.uv.sources]
 miaoqia-kernel = { workspace = true }
+miaoqia-evidence = { workspace = true }
 
 [build-system]
 requires = ["hatchling==1.27.0"]

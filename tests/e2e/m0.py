@@ -298,6 +298,27 @@ def main() -> None:
         ok("授权经 identity 内部接口远程调用（追踪中可见服务端 span），允许与拒绝与本地绑定一致")
         ok("同一套契约用例对本地与远程绑定通过：go test ./subsystems/identity")
 
+        step("L1 回放：官方中标公告经数据平面管线成为领域事实（evidence → Kafka → domain-intelligence）")
+        replay_env = dict(env, MIAOQIA_EVIDENCE_OBJECT_STORE_DIR=str(WORK / "objects"), MIAOQIA_PACKS_DIR=str(ROOT / "packs"))
+        sample = ROOT / "packs/information_domains/procurement/corpus/official-award-20261014"
+        out = subprocess.run(["uv", "run", "-q", "mq-evidence-replay", str(sample)], cwd=ROOT / "data", env=replay_env,
+                             check=True, capture_output=True, text=True).stdout
+        revision = json.loads(out.splitlines()[-1])["revisions"][0]
+        deadline, fact = time.time() + 60, None
+        while time.time() < deadline and fact is None:
+            time.sleep(1)
+            procs.check_alive()
+            with psycopg.connect(f"postgres://dom_owner:dom_owner@{PG}/dom") as c:
+                fact = c.execute("SELECT fact_id, version FROM dom_fact_versions WHERE revision_ref = %s", (revision,)).fetchone()
+        if fact is None:
+            fail(f"解析修订 {revision} 未物化为领域事实")
+        with psycopg.connect(f"postgres://dom_owner:dom_owner@{PG}/dom") as c:
+            row = c.execute("SELECT published_at FROM kernel_outbox WHERE envelope->>'type' = 'domain.fact.upserted.v1' "
+                            "AND envelope->'data'->>'fact_id' = %s", (fact[0],)).fetchone()
+        if row is None:
+            fail(f"领域事实 {fact[0]} 没有 domain.fact.upserted.v1")
+        ok(f"{revision} → {fact[0]} v{fact[1]}，domain.fact.upserted.v1 已进入发件箱")
+
         print("\nM0 端到端验证通过。")
     finally:
         procs.stop()

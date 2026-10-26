@@ -83,6 +83,29 @@ jobs:
           uv run --locked --package miaoqia-sdk mq-corpus check ../packs/information_domains/organizations/corpus
           --reviewed --schema domains/organization/registration.schema.json --schema domains/organization/change.schema.json --schema domains/organization/abnormal.schema.json
 
+  pipeline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
+    env:
+      MIAOQIA_TEST_PG: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+
+      - name: 数据平面管线测试（evidence 快照与解析修订、domain-intelligence 事实版本与 A02 结果视图；真实 PostgreSQL）
+        working-directory: data
+        run: uv run --locked --all-packages --group dev pytest -q subsystems
+
   kernel:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
