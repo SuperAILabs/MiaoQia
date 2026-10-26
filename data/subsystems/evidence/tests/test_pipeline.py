@@ -202,3 +202,25 @@ def test_html_only_unless_reviewed_normalization_is_given(evd):
     with pytest.raises(ValueError, match="不支持"), reqctx.use(reqctx.service("evidence")), database.tx() as conn:
         pipeline.ingest(conn, bare)
     assert datetime.now(timezone.utc) > art.observed_at
+
+
+def test_replay_events_carry_a_contract_valid_root_traceparent_inherited_downstream(evd):
+    """回归：下游消费者在回放事件的追踪上下文中写发件箱，traceparent 须符合信封契约（标志 0[01]）。"""
+    import re
+
+    from opentelemetry import trace
+
+    from miaoqia.kernel import outbox, tracing
+    database, pipeline, _ = evd
+    replay(database, pipeline, [CORPUS / "official-award-20261014"])
+    events = _outbox(database)
+    assert all(re.fullmatch(r"00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]", e["traceparent"]) for e in events)
+    tracing.setup("data", "test")
+    try:
+        with tracing.tracer("t").start_as_current_span("consume", context=tracing.context_from(events[-1]["traceparent"]),
+                                                       kind=trace.SpanKind.CONSUMER):
+            child = tracing.traceparent()
+    finally:
+        tracing.shutdown()
+    assert child.split("-")[1] == events[-1]["traceparent"].split("-")[1]
+    outbox.validate({**events[-1], "traceparent": child})

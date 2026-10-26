@@ -12,13 +12,16 @@ import argparse
 import hashlib
 import json
 import os
+import secrets
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
 
-from miaoqia.kernel import db, reqctx
+from opentelemetry import context as otel_context
+
+from miaoqia.kernel import db, reqctx, tracing
 
 from .api import NAME
 from .application.pipeline import Artifact, Ingested, Pipeline
@@ -50,13 +53,25 @@ def corpus_artifact(sample: Path) -> Artifact:
                     source_url=str(meta["source_url"]), normalized=normalized)
 
 
+def root_traceparent() -> str:
+    """回放是一条链路的起点：显式给出 W3C 第1级的根 traceparent（标志 01）。
+
+    Python SDK 自建根 span 时追加随机标志位（03），不符合事件信封契约的 0[01]，下游处理器沿用它写发件箱时会被拒绝。
+    """
+    return f"00-{secrets.token_hex(16)}-{secrets.token_hex(8)}-01"
+
+
 def replay(database: db.Database, pipeline: Pipeline, samples: list[Path]) -> list[Ingested]:
     out = []
     with reqctx.use(reqctx.service(NAME)):
         for sample in samples:
             art = corpus_artifact(sample)
-            with database.tx() as conn:
-                out.append(pipeline.ingest(conn, art))
+            token = otel_context.attach(tracing.context_from(root_traceparent()))
+            try:
+                with database.tx() as conn:
+                    out.append(pipeline.ingest(conn, art))
+            finally:
+                otel_context.detach(token)
     return out
 
 
