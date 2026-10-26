@@ -119,6 +119,8 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 
 通用 SDK 的文档校验覆盖规范化文档、定位、哈希及证据引用完整性；`sdk.derivation.evaluate` 校验固定事实版本、字段路径与字段证据匹配、无环输入图、文档叶子、已登记转换和不可变可取得的参考数据，并按 RFC 8785 重算输出哈希。每条派生最多64个输入，整图最多64层、1024节点；未知转换、未知形态、缺输入和篡改均拒绝。记录证据叶子尚不支持，明确拒绝；结构化记录键唯一与取值哈希仍是首个结构化来源启用前的门禁。字段语义和领域一致性由信息领域包 `semantic_validator` 提供，扩展注册属于本子系统的 extensions 层。公共文档管线与 corpus 语料校验执行文档证据和领域语义校验。evidence 负责增强器专业指标、评估执行与版本生效门禁；公共语料与公共评估快照由本子系统维护，不回查租户 learning 数据。
 
+冻结语料通过 SDK 的一个 `corpus_source` 校验器供 checker 与 replay 共用。`artifact_origin` 为闭合的 `public_http|synthetic_fixture`，缺省保留旧公开 HTTP 语料行为；`source_kind` 继续表示正文分类（例如司法判决），不承担制品来源判定。公开制品保留真实 URL 与 fetched_at；合成制品使用 manifest 绑定的独立本地 source_key、无 URL、带时区 observed_at，禁止 fetched_at 或伪造公开抓取声明。通用夹具信封校验闭合字段、manifest/原件哈希、样本身份和可见合成标记，领域专用名称、来源及标签规则由所属包适配器验证。已含通用可见合成标记的内容不能通过删除夹具元数据、补 URL/fetched_at 重标为公开 HTTP 制品；这是内容真实性控制，不证明来源或标签授权。此登记不产生来源许可，当前权利仍由读取装配判定。
+
 ## 12. 实现状况
 
 A02 贯通验收 L1-1（[验收线第8节](../../05-delivery/09-a02-end-to-end-acceptance.md#8-l1-实施进度)）交付公共实例的最小文档管线，代码位于 `data/subsystems/evidence/`：

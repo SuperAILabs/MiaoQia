@@ -466,6 +466,10 @@ class OrgEnterpriseType(Enum):
     other = "other"
 
 
+class RecordScope(Enum):
+    fixture = "fixture"
+
+
 class Kind2(Enum):
     organization = "organization"
     natural_person = "natural_person"
@@ -1706,6 +1710,9 @@ class OrgRegistration(PublicFactMeta):
     uscc_prov: Provenance | None = None
     status_prov: Provenance | None = None
     legal_representative_prov: Provenance | None = None
+    record_scope: RecordScope | None = Field(
+        None, description="显式合成登记夹具；不构成真实工商登记或已解析的生产组织身份"
+    )
 
 
 class ProjectLot(BaseModel):

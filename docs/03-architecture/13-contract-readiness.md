@@ -25,6 +25,8 @@
 
 候选信源唯一定义在[source-inventory.yaml](../../packs/information_domains/procurement/source-inventory.yaml)：40个入口、39个public参考访问方式、1个authenticated；参考项目的启用状态不构成妙洽授权。需要去重平台入口、逐来源权利确认和正文/附件能力验证，未覆盖省份/公告类型仍需补源。
 
+INF-ORG 当前登记 Schema 为1.2.0、领域包1.1.0：可选 `record_scope: fixture` 明示合成登记记录，夹具来源必须由领域语义校验要求该标记。四份显式合成 HTML 及闭合 manifest 验证名称/曾用名字段证据，不包含真实工商身份断言。其制品来源使用 `artifact_origin`，不改变既有正文 `source_kind` 分类；固定事实/完整权限投影与采购组织增强分别验收。
+
 ## 3. 生命周期验证语料
 
 [语料清单](../../packs/information_domains/procurement/corpus/lifecycle-manifest.json)登记15份原件：13个HTML响应及2份PDF（22页扫描合同、2页文本层中标公示）；其中一个验收页面包含6个独立对象，合计20条人工事实映射。来源包含中国政府采购网、国家林草局、上海松江政府、烟台市场监管局及宜昌公共资源交易平台。每个样本目录包含原响应/附件、来源URL、获取日期、SHA-256、正文定位方式和`reviewed.json`；PDF另有人工规范化制品与其哈希。

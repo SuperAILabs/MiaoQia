@@ -310,3 +310,106 @@ def test_resolve_reuses_sdk_integrity_checks_for_tampered_objects(evd, level, ta
 
     with reqctx.use(dataclasses.replace(reqctx.service("test"), purpose="object_page")), pytest.raises(EvidenceIntegrityError):
         evidence.resolver(database, Tampered(), display=lambda tags, purpose: level).resolve(ref)
+
+
+def test_four_explicit_registry_fixtures_have_real_pipeline_proofs(evd):
+    """c2a Stage A：真实 snp/exr/ev；ogr/projection 待共享 d1a 集成后验证。"""
+    from miaoqia.evidence import resolver
+    from miaoqia_pack_organizations.fixtures import load_registry_manifest, MANIFEST
+    database, pipeline, dsns = evd
+    manifest = load_registry_manifest()
+    samples = [MANIFEST.parent / r['sample'] for r in manifest['data']['records']]
+    results = replay(database, pipeline, samples)
+    assert len({r.snapshot_ref for r in results}) == 4
+    reader = SqlExtractions(dsns['app'])
+    evidence = resolver(database, pipeline.store, display=lambda tags, purpose: 'full_text' if
+                        any(t in {f'fixture:r2-org-record-{key}' for key in 'abcd'} for t in tags) else 'none')
+    try:
+        for record, sample, result in zip(manifest['data']['records'], samples, results):
+            assert result.snapshot_created and len(result.revisions) == 1
+            revision = reader.revision(result.revisions[0])
+            assert revision.pack_id == 'INF-ORG' and revision.pack_version == '1.1.0'
+            assert revision.quality_status == 'ok'
+            assert revision.source_id == 'fixture-r2-org'
+            assert revision.source_key == manifest['samples'][sample.name]['source_key']
+            assert set(revision.rights_tags) == {manifest['samples'][sample.name]['rights_tag'], f'corpus:{sample.name}'}
+            fact, = revision.facts
+            assert fact['record_scope'] == 'fixture' and fact['name']['value'] == record['name']
+            assert [a['value'] for a in fact['former_names']] == record['aliases']
+            for field in [fact['name'], *fact['former_names']]:
+                with reqctx.use(dataclasses.replace(reqctx.service('test'), purpose='interactive')):
+                    resolved = evidence.resolve(field['prov']['evidence_ref'])
+                assert resolved.snapshot_ref == result.snapshot_ref and field['value'] in resolved.snippet
+                assert resolved.source_id == 'fixture-r2-org' and resolved.source_key.startswith('fixture:r2-org:')
+        repeated = replay(database, pipeline, samples)
+        assert all(not r.snapshot_created and not r.revisions for r in repeated)
+        assert _count(database, 'evd_snapshots') == 4
+        assert _count(database, 'evd_extraction_revisions') == 4
+        assert _count(database, 'evd_evidence_refs') == 9
+        for event in _outbox(database):
+            assert not list(payloads.validator(event['type'], {}).iter_errors(event['data']))
+    finally:
+        reader.close()
+
+
+def test_registry_replay_uses_shared_source_validation_and_default_evidence_denial(evd, tmp_path):
+    from miaoqia.evidence import resolver
+    from miaoqia_pack_organizations.fixtures import MANIFEST
+    import yaml
+    database, pipeline, _ = evd
+    sample = tmp_path / 'fixture-r2-org-a'
+    shutil.copytree(MANIFEST.parent / sample.name, sample)
+    shutil.copy(MANIFEST, tmp_path)
+    artifact = corpus_artifact(sample)
+    assert artifact.source_url is None and artifact.source_key == 'fixture:r2-org:fixture-r2-org-a'
+    result, = replay(database, pipeline, [sample])
+    with reqctx.use(dataclasses.replace(reqctx.service('test'), purpose='interactive')), database.tx() as conn:
+        ref = conn.execute(text('SELECT id FROM evd_evidence_refs LIMIT 1')).scalar_one()
+    with reqctx.use(dataclasses.replace(reqctx.service('test'), purpose='interactive')):
+        with pytest.raises(PermissionError, match='未装配'):
+            resolver(database, pipeline.store).resolve(ref)
+    path = sample / 'meta.yaml'
+    meta = yaml.safe_load(path.read_text()); meta['source_url'] = 'https://example.org/fake'
+    path.write_text(yaml.safe_dump(meta))
+    with pytest.raises(ValueError, match='不闭合'):
+        corpus_artifact(sample)
+    assert _count(database, 'evd_snapshots') == 1
+
+
+@pytest.mark.parametrize('body, synthetic', [
+    ('%PDF-1.7\n<p>合成测试夹具；非真实来源；不得用于生产核验</p>', True),
+    ('<p>&#21512;成测试夹具；非真实来源；不得用于生产核验</p>', True),
+    ('<p>合成<span>测试夹具；非真实来源；不得用于生产核验</span></p>', True),
+    ('<p>声明：合成测试夹具；非真实来源；不得用于生产核验（仅供测试）</p>', True),
+    ('<!-- 合成测试夹具；非真实来源；不得用于生产核验 --><p>ordinary</p>', False),
+    ('<script>合成测试夹具；非真实来源；不得用于生产核验</script><p>ordinary</p>', False),
+    ('<style>合成测试夹具；非真实来源；不得用于生产核验</style><p>ordinary</p>', False),
+])
+def test_replay_artifact_classification_uses_normalized_visible_declaration(tmp_path, body, synthetic):
+    import hashlib
+    import yaml
+    raw = body.encode('utf-8')
+    (tmp_path / 'raw.html').write_bytes(raw)
+    (tmp_path / 'meta.yaml').write_text(yaml.safe_dump({
+        'artifact_origin': 'public_http', 'source_id': 'ordinary-public-source',
+        'source_url': 'https://example.org/document', 'fetched_at': '2026-10-26T01:00:00Z',
+        'rights_tag': 'review-only', 'raw_sha256': hashlib.sha256(raw).hexdigest(),
+    }))
+    if synthetic:
+        with pytest.raises(ValueError, match='夹具不能伪装公开来源'):
+            corpus_artifact(tmp_path)
+    else:
+        assert corpus_artifact(tmp_path).source_url == 'https://example.org/document'
+
+
+@pytest.mark.parametrize('name', ['official-contract-attachment-20261014', 'official-ordinary-multiwinner-20261014'])
+def test_reviewed_actual_pdf_path_retains_normalized_artifact(name):
+    import yaml
+    from miaoqia.sdk.corpus import _load_document
+    sample = CORPUS / name
+    meta = yaml.safe_load((sample / 'meta.yaml').read_text())
+    art = corpus_artifact(sample)
+    doc = _load_document(sample, meta)
+    assert art.media_type == 'application/pdf' and art.normalized == doc.data
+    assert art.raw == (sample / 'raw.pdf').read_bytes()
+    assert art.source_url == meta['source_url'] and art.normalized['blocks']
