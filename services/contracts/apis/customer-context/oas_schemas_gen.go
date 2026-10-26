@@ -760,8 +760,11 @@ func (s *Objective) SetVersion(val int64) {
 
 // Ref: #/components/schemas/ObjectiveAccess
 type ObjectiveAccess struct {
-	ObjectiveID string              `json:"objective_id"`
-	Allowed     []ObjectiveRelation `json:"allowed"`
+	ObjectiveID string                  `json:"objective_id"`
+	Allowed     []ObjectiveRelation     `json:"allowed"`
+	OrgUnitID   OptString               `json:"org_unit_id"`
+	TemplateID  OptString               `json:"template_id"`
+	State       OptObjectiveAccessState `json:"state"`
 }
 
 // GetObjectiveID returns the value of ObjectiveID.
@@ -774,6 +777,21 @@ func (s *ObjectiveAccess) GetAllowed() []ObjectiveRelation {
 	return s.Allowed
 }
 
+// GetOrgUnitID returns the value of OrgUnitID.
+func (s *ObjectiveAccess) GetOrgUnitID() OptString {
+	return s.OrgUnitID
+}
+
+// GetTemplateID returns the value of TemplateID.
+func (s *ObjectiveAccess) GetTemplateID() OptString {
+	return s.TemplateID
+}
+
+// GetState returns the value of State.
+func (s *ObjectiveAccess) GetState() OptObjectiveAccessState {
+	return s.State
+}
+
 // SetObjectiveID sets the value of ObjectiveID.
 func (s *ObjectiveAccess) SetObjectiveID(val string) {
 	s.ObjectiveID = val
@@ -782,6 +800,69 @@ func (s *ObjectiveAccess) SetObjectiveID(val string) {
 // SetAllowed sets the value of Allowed.
 func (s *ObjectiveAccess) SetAllowed(val []ObjectiveRelation) {
 	s.Allowed = val
+}
+
+// SetOrgUnitID sets the value of OrgUnitID.
+func (s *ObjectiveAccess) SetOrgUnitID(val OptString) {
+	s.OrgUnitID = val
+}
+
+// SetTemplateID sets the value of TemplateID.
+func (s *ObjectiveAccess) SetTemplateID(val OptString) {
+	s.TemplateID = val
+}
+
+// SetState sets the value of State.
+func (s *ObjectiveAccess) SetState(val OptObjectiveAccessState) {
+	s.State = val
+}
+
+type ObjectiveAccessState string
+
+const (
+	ObjectiveAccessStateInactive ObjectiveAccessState = "inactive"
+	ObjectiveAccessStateActive   ObjectiveAccessState = "active"
+	ObjectiveAccessStateDisabled ObjectiveAccessState = "disabled"
+)
+
+// AllValues returns all ObjectiveAccessState values.
+func (ObjectiveAccessState) AllValues() []ObjectiveAccessState {
+	return []ObjectiveAccessState{
+		ObjectiveAccessStateInactive,
+		ObjectiveAccessStateActive,
+		ObjectiveAccessStateDisabled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ObjectiveAccessState) MarshalText() ([]byte, error) {
+	switch s {
+	case ObjectiveAccessStateInactive:
+		return []byte(s), nil
+	case ObjectiveAccessStateActive:
+		return []byte(s), nil
+	case ObjectiveAccessStateDisabled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ObjectiveAccessState) UnmarshalText(data []byte) error {
+	switch ObjectiveAccessState(data) {
+	case ObjectiveAccessStateInactive:
+		*s = ObjectiveAccessStateInactive
+		return nil
+	case ObjectiveAccessStateActive:
+		*s = ObjectiveAccessStateActive
+		return nil
+	case ObjectiveAccessStateDisabled:
+		*s = ObjectiveAccessStateDisabled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/ObjectiveList
@@ -912,6 +993,7 @@ const (
 	ObjectiveRelationCanRequestActivation  ObjectiveRelation = "can_request_activation"
 	ObjectiveRelationCanViewSignals        ObjectiveRelation = "can_view_signals"
 	ObjectiveRelationCanFeedback           ObjectiveRelation = "can_feedback"
+	ObjectiveRelationCanAssign             ObjectiveRelation = "can_assign"
 )
 
 // AllValues returns all ObjectiveRelation values.
@@ -924,6 +1006,7 @@ func (ObjectiveRelation) AllValues() []ObjectiveRelation {
 		ObjectiveRelationCanRequestActivation,
 		ObjectiveRelationCanViewSignals,
 		ObjectiveRelationCanFeedback,
+		ObjectiveRelationCanAssign,
 	}
 }
 
@@ -943,6 +1026,8 @@ func (s ObjectiveRelation) MarshalText() ([]byte, error) {
 	case ObjectiveRelationCanViewSignals:
 		return []byte(s), nil
 	case ObjectiveRelationCanFeedback:
+		return []byte(s), nil
+	case ObjectiveRelationCanAssign:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -972,6 +1057,9 @@ func (s *ObjectiveRelation) UnmarshalText(data []byte) error {
 		return nil
 	case ObjectiveRelationCanFeedback:
 		*s = ObjectiveRelationCanFeedback
+		return nil
+	case ObjectiveRelationCanAssign:
+		*s = ObjectiveRelationCanAssign
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -1488,6 +1576,52 @@ func (o OptInt64) Get() (v int64, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptObjectiveAccessState returns new OptObjectiveAccessState with value set to v.
+func NewOptObjectiveAccessState(v ObjectiveAccessState) OptObjectiveAccessState {
+	return OptObjectiveAccessState{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptObjectiveAccessState is optional ObjectiveAccessState.
+type OptObjectiveAccessState struct {
+	Value ObjectiveAccessState
+	Set   bool
+}
+
+// IsSet returns true if OptObjectiveAccessState was set.
+func (o OptObjectiveAccessState) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptObjectiveAccessState) Reset() {
+	var v ObjectiveAccessState
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptObjectiveAccessState) SetTo(v ObjectiveAccessState) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptObjectiveAccessState) Get() (v ObjectiveAccessState, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptObjectiveAccessState) Or(d ObjectiveAccessState) ObjectiveAccessState {
 	if v, ok := o.Get(); ok {
 		return v
 	}

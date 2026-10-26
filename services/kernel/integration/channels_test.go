@@ -43,6 +43,7 @@ import (
 	idapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 	"github.com/superailabs/miaoqia/services/subsystems/identity/api/idptest"
 	idremote "github.com/superailabs/miaoqia/services/subsystems/identity/api/remote"
+	pursuitapi "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 )
 
 // hookedChannelSessions 是 channels 看到的 identity 免登会话接口：可注入签发前/后的屏障与故障（模拟超时、不可用），
@@ -157,6 +158,8 @@ func TestChannelBindingAndSSO(t *testing.T) {
 	bindings.Provide(idapi.ChannelSessionsBinding, idapi.ChannelSessions(hooked))
 
 	chnDB := testenv.NewDatabase(t)
+	// 第6段：channels 依赖 pursuit 的渠道内动作；本用例不开启卡片“跟进”入口，以未接入的实现占位
+	bindings.Provide(pursuitapi.ActionsBinding, pursuitapi.Actions(unwiredPursuits{}))
 	module := channels.ModuleWith(channels.Adapters{WeCom: wc, Now: clock.Now})
 	if err := db.Migrate(ctx, chnDB.OwnerDSN, chnDB.Name+"_app", module.Migrations); err != nil {
 		t.Fatal(err)

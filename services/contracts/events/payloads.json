@@ -643,6 +643,42 @@
     },
     {
       "event": "channels.action.executed.v1",
+      "name": "卡片跟进带跟进标识",
+      "valid": true,
+      "value": {
+        "action": "pursue",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.action.executed.v1",
+      "name": "跟进标识格式不符",
+      "valid": false,
+      "value": {
+        "action": "pursue",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": "changed",
+          "status": "unchanged"
+        },
+        "pursuit_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.action.executed.v1",
       "name": "成功不带错误代码",
       "valid": false,
       "value": {
@@ -3480,6 +3516,943 @@
       }
     },
     {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "channel": "web",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 1,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "signal",
+        "target": {
+          "fact_type": "tendering.bid_result",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        }
+      }
+    },
+    {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "从企业微信卡片创建",
+      "valid": true,
+      "value": {
+        "channel": "wecom",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 1,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "signal",
+        "target": {
+          "fact_type": "tendering.bid_result",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        }
+      }
+    },
+    {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "手动创建不带信号",
+      "valid": true,
+      "value": {
+        "channel": "web",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "manual",
+        "target": {
+          "fact_type": "tendering.bid_result",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        }
+      }
+    },
+    {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "手动创建不得带信号",
+      "valid": false,
+      "value": {
+        "channel": "web",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 1,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "manual",
+        "target": {
+          "fact_type": "tendering.bid_result",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        }
+      }
+    },
+    {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "信号来源必须带信号",
+      "valid": false,
+      "value": {
+        "channel": "web",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 1,
+        "source": "signal",
+        "target": {
+          "fact_type": "tendering.bid_result",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        }
+      }
+    },
+    {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "不得夹带租户",
+      "valid": false,
+      "value": {
+        "channel": "web",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 1,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "signal",
+        "target": {
+          "fact_type": "tendering.bid_result",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        },
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "未登记的渠道",
+      "valid": false,
+      "value": {
+        "channel": "sms",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 1,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "signal",
+        "target": {
+          "fact_type": "tendering.bid_result",
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        }
+      }
+    },
+    {
+      "event": "pursuit.pursuit.created.v1",
+      "name": "目标缺事实类型",
+      "valid": false,
+      "value": {
+        "channel": "web",
+        "created_at": "2026-10-26T08:00:00Z",
+        "created_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-create-0001",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 1,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "source": "signal",
+        "target": {
+          "part_id": "bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "subject_id": "ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "winner_org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        }
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_linked.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "linked_at": "2026-10-26T08:00:00Z",
+        "method": "create",
+        "operation_id": "op-create-0001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 2,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_linked.v1",
+      "name": "关联已存在的跟进",
+      "valid": true,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "linked_at": "2026-10-26T08:00:00Z",
+        "method": "link_existing",
+        "operation_id": "op-create-0001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 2,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_linked.v1",
+      "name": "未登记的关联方式",
+      "valid": false,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "linked_at": "2026-10-26T08:00:00Z",
+        "method": "merge",
+        "operation_id": "op-create-0001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 2,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_linked.v1",
+      "name": "缺看到的内容版本",
+      "valid": false,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "linked_at": "2026-10-26T08:00:00Z",
+        "method": "create",
+        "operation_id": "op-create-0001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_linked.v1",
+      "name": "关联标识前缀错误",
+      "valid": false,
+      "value": {
+        "link_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "linked_at": "2026-10-26T08:00:00Z",
+        "method": "create",
+        "operation_id": "op-create-0001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "seen_content_version": 2,
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_unlinked.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "voided",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unlinked_at": "2026-10-26T08:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_unlinked.v1",
+      "name": "撤销解除",
+      "valid": true,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "voided",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unlinked_at": "2026-10-26T08:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_unlinked.v1",
+      "name": "M2 只随撤销解除",
+      "valid": false,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "manual",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unlinked_at": "2026-10-26T08:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.signal_unlinked.v1",
+      "name": "缺解除时间",
+      "valid": false,
+      "value": {
+        "link_id": "psl_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "voided",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.voided.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unlinked": 1,
+        "voided_at": "2026-10-26T08:00:00Z",
+        "voided_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.voided.v1",
+      "name": "无关联的手动跟进撤销",
+      "valid": true,
+      "value": {
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unlinked": 0,
+        "voided_at": "2026-10-26T08:00:00Z",
+        "voided_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.voided.v1",
+      "name": "解除数不得为负",
+      "valid": false,
+      "value": {
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unlinked": -1,
+        "voided_at": "2026-10-26T08:00:00Z",
+        "voided_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.voided.v1",
+      "name": "缺撤销人",
+      "valid": false,
+      "value": {
+        "operation_id": "op-void-00001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "unlinked": 1,
+        "voided_at": "2026-10-26T08:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.team.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "created"
+      }
+    },
+    {
+      "event": "pursuit.team.changed.v1",
+      "name": "改派",
+      "valid": true,
+      "value": {
+        "participation_version": 2,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "reassigned"
+      }
+    },
+    {
+      "event": "pursuit.team.changed.v1",
+      "name": "负责人失效",
+      "valid": true,
+      "value": {
+        "participation_version": 3,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "owner_invalid"
+      }
+    },
+    {
+      "event": "pursuit.team.changed.v1",
+      "name": "版本从 1 开始",
+      "valid": false,
+      "value": {
+        "participation_version": 0,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "created"
+      }
+    },
+    {
+      "event": "pursuit.team.changed.v1",
+      "name": "不得夹带参与者",
+      "valid": false,
+      "value": {
+        "participants": [
+          "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "created"
+      }
+    },
+    {
+      "event": "pursuit.team.changed.v1",
+      "name": "未登记的原因",
+      "valid": false,
+      "value": {
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "rejoined"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.assigned.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "applied_at": "2026-10-26T08:00:00Z",
+        "assigned_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "assignee": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "kind": "created",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.assigned.v1",
+      "name": "改派通知",
+      "valid": true,
+      "value": {
+        "applied_at": "2026-10-26T08:00:00Z",
+        "assigned_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "assignee": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "kind": "reassigned",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "participation_version": 2,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.assigned.v1",
+      "name": "缺被分派人",
+      "valid": false,
+      "value": {
+        "applied_at": "2026-10-26T08:00:00Z",
+        "assigned_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "kind": "created",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.assigned.v1",
+      "name": "未登记的种类",
+      "valid": false,
+      "value": {
+        "applied_at": "2026-10-26T08:00:00Z",
+        "assigned_by": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "assignee": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "kind": "collaborator",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "只到日的前一天提醒",
+      "valid": true,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "day",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "day_before_0900",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "负责人无效转决策者",
+      "valid": true,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": true,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "未转交必须带收件人",
+      "valid": false,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "转交不得带收件人",
+      "valid": false,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": true,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "未登记的提醒种类",
+      "valid": false,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "weekly",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "截止版本从 1 开始",
+      "valid": false,
+      "value": {
+        "deadline_version": 0,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "不得夹带任务标题",
+      "valid": false,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "title": "联系采购"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "amounts": [
+          {
+            "currency": "CNY",
+            "nature": "actual",
+            "source": "customer_document",
+            "type": "contract_amount",
+            "value": "1200000.00"
+          }
+        ],
+        "contribution": "first_alert",
+        "known_at": {
+          "precision": "day",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-25"
+        },
+        "known_at_utc": "2026-10-25T16:00:00Z",
+        "known_channel": "miaoqia_signal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "WON_CONTRACT",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "success",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "修订追加",
+      "valid": true,
+      "value": {
+        "amounts": [
+          {
+            "currency": "CNY",
+            "nature": "actual",
+            "source": "customer_document",
+            "type": "contract_amount",
+            "value": "1200000.00"
+          }
+        ],
+        "contribution": "undetermined",
+        "known_at": {
+          "precision": "day",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-25"
+        },
+        "known_at_utc": "2026-10-25T16:00:00Z",
+        "known_channel": "miaoqia_signal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "WON_CONTRACT",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "success",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "supersedes": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "放弃且无获知时间",
+      "valid": true,
+      "value": {
+        "amounts": [],
+        "contribution": "first_alert",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "LOW_PRIORITY",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "abandoned",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "获知时间必须带时点",
+      "valid": false,
+      "value": {
+        "amounts": [
+          {
+            "currency": "CNY",
+            "nature": "actual",
+            "source": "customer_document",
+            "type": "contract_amount",
+            "value": "1200000.00"
+          }
+        ],
+        "contribution": "first_alert",
+        "known_at": {
+          "precision": "day",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-25"
+        },
+        "known_channel": "miaoqia_signal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "WON_CONTRACT",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "success",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "时点必须带获知时间",
+      "valid": false,
+      "value": {
+        "amounts": [
+          {
+            "currency": "CNY",
+            "nature": "actual",
+            "source": "customer_document",
+            "type": "contract_amount",
+            "value": "1200000.00"
+          }
+        ],
+        "contribution": "first_alert",
+        "known_at_utc": "2026-10-25T16:00:00Z",
+        "known_channel": "miaoqia_signal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "WON_CONTRACT",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "success",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "不得夹带说明文字",
+      "valid": false,
+      "value": {
+        "amounts": [
+          {
+            "currency": "CNY",
+            "nature": "actual",
+            "source": "customer_document",
+            "type": "contract_amount",
+            "value": "1200000.00"
+          }
+        ],
+        "contribution": "first_alert",
+        "known_at": {
+          "precision": "day",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-25"
+        },
+        "known_at_utc": "2026-10-25T16:00:00Z",
+        "known_channel": "miaoqia_signal",
+        "note": "客户口头确认",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "WON_CONTRACT",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "success",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "未登记的结果",
+      "valid": false,
+      "value": {
+        "amounts": [
+          {
+            "currency": "CNY",
+            "nature": "actual",
+            "source": "customer_document",
+            "type": "contract_amount",
+            "value": "1200000.00"
+          }
+        ],
+        "contribution": "first_alert",
+        "known_at": {
+          "precision": "day",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-25"
+        },
+        "known_at_utc": "2026-10-25T16:00:00Z",
+        "known_channel": "miaoqia_signal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "WON_CONTRACT",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "won",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.outcome.recorded.v1",
+      "name": "币种格式",
+      "valid": false,
+      "value": {
+        "amounts": [
+          {
+            "currency": "rmb",
+            "nature": "actual",
+            "source": "customer_document",
+            "type": "contract_amount",
+            "value": "1200000.00"
+          }
+        ],
+        "contribution": "first_alert",
+        "known_at": {
+          "precision": "day",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-25"
+        },
+        "known_at_utc": "2026-10-25T16:00:00Z",
+        "known_channel": "miaoqia_signal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason_code": "WON_CONTRACT",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "result": "success",
+        "source_signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "template_id": "APP-TENDER.A02"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.closed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "closed_at": "2026-10-26T08:00:00Z",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-close-0001",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "failure"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.closed.v1",
+      "name": "成功关闭",
+      "valid": true,
+      "value": {
+        "closed_at": "2026-10-26T08:00:00Z",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-close-0001",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "success"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.closed.v1",
+      "name": "缺结果记录",
+      "valid": false,
+      "value": {
+        "closed_at": "2026-10-26T08:00:00Z",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-close-0001",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "failure"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.closed.v1",
+      "name": "未登记的结果",
+      "valid": false,
+      "value": {
+        "closed_at": "2026-10-26T08:00:00Z",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operation_id": "op-close-0001",
+        "outcome_id": "otc_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "voided"
+      }
+    },
+    {
       "event": "tendering.acceptance.published.v1",
       "name": "base",
       "valid": true,
@@ -3913,7 +4886,8 @@
           "enum": [
             "relevant",
             "irrelevant",
-            "undo"
+            "undo",
+            "pursue"
           ],
           "type": "string"
         },
@@ -3924,7 +4898,7 @@
           "type": "string"
         },
         "code": {
-          "description": "确定失败的稳定错误代码（forbidden、signal_updated、signal_closed、conflict、not_applicable、signal_not_found）",
+          "description": "确定失败的稳定错误代码（forbidden、signal_updated、signal_closed、conflict、not_applicable、signal_not_found； pursue 另有 pursuit 的错误代码，例如 objective_not_found）",
           "pattern": "^[a-z][a-z0-9_]{1,63}$",
           "type": "string"
         },
@@ -3957,6 +4931,11 @@
             }
           },
           "type": "object"
+        },
+        "pursuit_id": {
+          "description": "卡片“跟进”创建或关联到的跟进（只用于 action 为 pursue）",
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
         },
         "recipient": {
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
@@ -7337,6 +8316,652 @@
           "type": "object"
         }
       ]
+    },
+    "pursuit.outcome.recorded.v1": {
+      "additionalProperties": false,
+      "dependentRequired": {
+        "known_at": [
+          "known_at_utc"
+        ],
+        "known_at_utc": [
+          "known_at"
+        ]
+      },
+      "properties": {
+        "amounts": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "currency": {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              "nature": {
+                "enum": [
+                  "actual",
+                  "estimate",
+                  "customer_stated"
+                ],
+                "type": "string"
+              },
+              "source": {
+                "enum": [
+                  "public_fact",
+                  "customer_document",
+                  "verbal"
+                ],
+                "type": "string"
+              },
+              "type": {
+                "pattern": "^[a-z][a-z0-9_]{1,63}$",
+                "type": "string"
+              },
+              "value": {
+                "pattern": "^-?[0-9]{1,15}(\\.[0-9]{1,4})?$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "currency",
+              "value",
+              "nature",
+              "source"
+            ],
+            "type": "object"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "contribution": {
+          "enum": [
+            "first_alert",
+            "decision_basis",
+            "self_found",
+            "external_notice",
+            "undetermined"
+          ],
+          "type": "string"
+        },
+        "known_at": {
+          "additionalProperties": false,
+          "description": "所填或原始的时间：值、精度（day / minute）与 IANA 时区",
+          "properties": {
+            "precision": {
+              "enum": [
+                "day",
+                "minute"
+              ],
+              "type": "string"
+            },
+            "timezone": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z]+(/[A-Za-z0-9_+-]+){0,2}$",
+              "type": "string"
+            },
+            "value": {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2})?$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "value",
+            "precision",
+            "timezone"
+          ],
+          "type": "object"
+        },
+        "known_at_utc": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "known_channel": {
+          "enum": [
+            "public_notice",
+            "miaoqia_signal",
+            "buyer_or_prime_notice",
+            "customer_system",
+            "other"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "outcome_id": {
+          "pattern": "^otc_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "success",
+            "failure",
+            "abandoned"
+          ],
+          "type": "string"
+        },
+        "source_signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "supersedes": {
+          "pattern": "^otc_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "template_id": {
+          "pattern": "^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_id",
+        "pursuit_id",
+        "objective_id",
+        "template_id",
+        "result",
+        "reason_code",
+        "amounts",
+        "contribution",
+        "recorded_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.assigned.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "applied_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "assigned_by": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "assignee": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "created",
+            "reassigned"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "participation_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "assignee",
+        "assigned_by",
+        "participation_version",
+        "kind",
+        "applied_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.closed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "closed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$",
+          "type": "string"
+        },
+        "outcome_id": {
+          "pattern": "^otc_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "success",
+            "failure",
+            "abandoned"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "outcome_id",
+        "result",
+        "operation_id",
+        "closed_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.created.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "signal_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "seen_content_version"
+                  ]
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "source": {
+                "const": "signal"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "signal_id",
+              "seen_content_version"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "channel": {
+          "enum": [
+            "web",
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_by": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "owner": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "previous_pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "seen_content_version": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "signal",
+            "manual"
+          ],
+          "type": "string"
+        },
+        "target": {
+          "additionalProperties": false,
+          "properties": {
+            "fact_type": {
+              "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            "part_id": {
+              "pattern": "^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "subject_id": {
+              "pattern": "^[a-z]{2,3}_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "winner_org_id": {
+              "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "fact_type",
+            "subject_id"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "operation_id",
+        "objective_id",
+        "org_unit_id",
+        "target",
+        "source",
+        "owner",
+        "created_by",
+        "channel",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.signal_linked.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "link_id": {
+          "pattern": "^psl_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "linked_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "create",
+            "link_existing"
+          ],
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "seen_content_version": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "link_id",
+        "pursuit_id",
+        "signal_id",
+        "seen_content_version",
+        "method",
+        "operation_id",
+        "linked_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.signal_unlinked.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "link_id": {
+          "pattern": "^psl_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "voided"
+          ],
+          "type": "string"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "unlinked_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "link_id",
+        "pursuit_id",
+        "signal_id",
+        "reason",
+        "operation_id",
+        "unlinked_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.voided.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,191}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "unlinked": {
+          "description": "一起解除的有效关联数",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "voided_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "voided_by": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "operation_id",
+        "voided_by",
+        "voided_at",
+        "unlinked"
+      ],
+      "type": "object"
+    },
+    "pursuit.task.due.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "recipient"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "escalated": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "recipient"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "deadline_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "due": {
+          "additionalProperties": false,
+          "description": "所填或原始的时间：值、精度（day / minute）与 IANA 时区",
+          "properties": {
+            "precision": {
+              "enum": [
+                "day",
+                "minute"
+              ],
+              "type": "string"
+            },
+            "timezone": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z]+(/[A-Za-z0-9_+-]+){0,2}$",
+              "type": "string"
+            },
+            "value": {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2})?$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "value",
+            "precision",
+            "timezone"
+          ],
+          "type": "object"
+        },
+        "escalated": {
+          "type": "boolean"
+        },
+        "fire_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "before_24h",
+            "at_due",
+            "day_before_0900",
+            "due_day_0900",
+            "overdue_next_day_0900"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "reminder_id": {
+          "pattern": "^rmd_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^tsk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reminder_id",
+        "task_id",
+        "pursuit_id",
+        "objective_id",
+        "org_unit_id",
+        "kind",
+        "deadline_version",
+        "due",
+        "escalated",
+        "fire_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.team.changed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "participation_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "created",
+            "reassigned",
+            "team_changed",
+            "owner_invalid",
+            "voided"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "participation_version",
+        "reason"
+      ],
+      "type": "object"
     },
     "tendering.acceptance.published.v1": {
       "allOf": [
