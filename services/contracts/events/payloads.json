@@ -8968,6 +8968,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9025,6 +9026,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9073,6 +9075,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9137,6 +9140,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9191,6 +9195,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9250,6 +9255,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9318,6 +9324,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9375,6 +9382,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9441,6 +9449,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9495,6 +9504,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },
@@ -9543,6 +9553,7 @@
         {
           "properties": {
             "fact_version": {
+              "description": "notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段",
               "minimum": 1,
               "type": "integer"
             },

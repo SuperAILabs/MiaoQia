@@ -1746,9 +1746,17 @@ class ProcurementProject(PublicFactMeta):
     project_owner: OrgRef | None = None
     location: Region | None = None
     budget: Money | None = None
-    notice_ids: list[NoticeId] = Field(..., description="按发布时间排序", min_length=1)
+    notice_ids: list[NoticeId] = Field(
+        ...,
+        description="有发布时间时按发布时间排序，否则按稳定公告标识排序。",
+        min_length=1,
+    )
     first_published_at: Instant | None = None
-    lots: list[ProjectLot] = Field(..., min_length=1)
+    lots: list[ProjectLot] = Field(
+        ...,
+        description="已确认标包；空数组表示尚无已确认标包，不能把公告默认容器1推断成跨公告标包。",
+        min_length=0,
+    )
 
 
 RecordValue.model_rebuild()

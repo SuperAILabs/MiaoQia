@@ -38,6 +38,12 @@ base:
         org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
         prov: *id001
 cases:
+- name: 尚无已确认标包不伪造默认容器
+  valid: true
+  patch:
+  - op: replace
+    path: /lots
+    value: []
 - name: 未知阶段
   valid: false
   patch:

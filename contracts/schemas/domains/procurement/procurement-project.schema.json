@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.miaoqia.com/domains/procurement/procurement-project.schema.json",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "title": "ProcurementProject 采购项目",
-  "description": "同一采购项目的多条公告归并后的当前状态（领域项目聚合）。每个字段的 prov 指向其最新依据所在公告的证据；更正按 amendment.changes 应用后得到当前值。阶段由 packs/information_domains/procurement/lifecycle.yaml 的状态机维护。",
+  "description": "采购项目的独立不可变聚合版本。字段prov指向所选公告版本证据，成员固定版本保存在聚合依赖中。当前实现支持有依据的招标/中标归并，其他生命周期不自动应用。",
   "type": "object",
   "allOf": [
     {
@@ -92,17 +92,18 @@
         "type": "string",
         "pattern": "^ntc_[0-9A-HJKMNP-TV-Z]{26}$"
       },
-      "description": "按发布时间排序"
+      "description": "有发布时间时按发布时间排序，否则按稳定公告标识排序。"
     },
     "first_published_at": {
       "$ref": "../../common/types.schema.json#/$defs/instant"
     },
     "lots": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "items": {
         "$ref": "#/$defs/project_lot"
-      }
+      },
+      "description": "已确认标包；空数组表示尚无已确认标包，不能把公告默认容器1推断成跨公告标包。"
     }
   },
   "unevaluatedProperties": false,

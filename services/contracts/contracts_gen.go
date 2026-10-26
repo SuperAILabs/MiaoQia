@@ -1181,7 +1181,8 @@ const NormalizedDocumentMediaTypePlainText NormalizedDocumentMediaType = "plain_
 const NormalizedDocumentMediaTypeTextHtml NormalizedDocumentMediaType = "text_html"
 
 // 一条公告按原文表达的领域事实（随解析修订产生新版本）。跨公告的当前状态见
-// procurement-project.schema.json。未分包的公告视为一个标包（lot_key = "1"）。
+// procurement-project.schema.json。未分包的公告使用公告内兼容容器（lot_key =
+// "1"）；默认容器不证明存在可跨公告关联的标包。
 type Notice struct {
 	// Acceptance corresponds to the JSON schema field "acceptance".
 	Acceptance *AcceptanceSection `json:"acceptance,omitempty,omitzero"`
@@ -1807,8 +1808,7 @@ const ProcurementMethodOther ProcurementMethod = "other"
 const ProcurementMethodSelection ProcurementMethod = "selection"
 const ProcurementMethodSingleSource ProcurementMethod = "single_source"
 
-// 同一采购项目的多条公告归并后的当前状态（领域项目聚合）。每个字段的 prov 指向其最新依据所在公告的证据；更正按 amendment.changes
-// 应用后得到当前值。阶段由 packs/information_domains/procurement/lifecycle.yaml 的状态机维护。
+// 采购项目的独立不可变聚合版本。字段prov指向所选公告版本证据，成员固定版本保存在聚合依赖中。当前实现支持有依据的招标/中标归并，其他生命周期不自动应用。
 type ProcurementProject struct {
 	// Agency corresponds to the JSON schema field "agency".
 	Agency *OrgRef `json:"agency,omitempty,omitzero"`
@@ -1841,13 +1841,13 @@ type ProcurementProject struct {
 	// Location corresponds to the JSON schema field "location".
 	Location *Region `json:"location,omitempty,omitzero"`
 
-	// Lots corresponds to the JSON schema field "lots".
+	// 已确认标包；空数组表示尚无已确认标包，不能把公告默认容器1推断成跨公告标包。
 	Lots []ProjectLot `json:"lots"`
 
 	// Method corresponds to the JSON schema field "method".
 	Method *ProcurementMethod `json:"method,omitempty,omitzero"`
 
-	// 按发布时间排序
+	// 有发布时间时按发布时间排序，否则按稳定公告标识排序。
 	NoticeIds []string `json:"notice_ids"`
 
 	// ObservedAt corresponds to the JSON schema field "observed_at".
