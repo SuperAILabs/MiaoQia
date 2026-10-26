@@ -1,8 +1,8 @@
 # Web 与 H5 专项设计
 
-> 状态：评审中 · 版本：1.0 · 更新：2026-10-26 · 负责人：首席架构师、产品负责人、设计负责人、安全负责人 · 原型：[prototypes/00-web-shell.html](../01-product/prd/prototypes/00-web-shell.html)
+> 状态：评审中 · 版本：1.1 · 更新：2026-10-26 · 负责人：首席架构师、产品负责人、设计负责人、安全负责人 · 原型：[prototypes/00-web-shell.html](../01-product/prd/prototypes/00-web-shell.html)
 
-本文是[阶段基线 M2-P12](../05-delivery/06-stage-baseline.md#4-m2-前置条件与能力交接)要求的 Web 专项设计，关闭 [A02 真实贯通验收线](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)缺口 W-01：补齐浏览器端流程（登录、强认证、渠道免登与卡片落地）、具体 BFF 契约与保存视图的所有者，并把七段 PRD 中标为“随 Web”的行为落到页面、组件与接口上，为 L2 界面贯通的实现做准备。
+本文是[阶段基线 M2-P12](../05-delivery/06-stage-baseline.md#4-m2-前置条件与能力交接)要求的 Web 专项设计，对应 [A02 真实贯通验收线](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)缺口 W-01（第11节待决事项确认后关闭）：补齐浏览器端流程（登录、强认证、渠道免登与卡片落地）、具体 BFF 契约与保存视图的所有者，并把七段 PRD 中标为“随 Web”的行为落到页面、组件与接口上，为 L2 界面贯通的实现做准备。
 
 各段的业务规则、状态与文案以[功能 PRD](../01-product/prd/README.md) 为准，本文不改写；接口语义以子系统规格为准，本文只规定浏览器如何使用它们，以及 gateway 需要新增的聚合与会话能力。产品层的交互范式与主导航见[产品体验](../01-product/04-product-experience.md)。按项目负责人 2026-10-15 的设计原则，信息架构与原型展示完整版本（全部模块与客户可能追求的目标），不受 M2 发布范围限制；实现批次在第10节单独给出。
 
@@ -104,20 +104,24 @@ API 客户端只从 OpenAPI 生成，不手写请求结构；`copy` 的覆盖检
 - **到期**：交互登录会话空闲 12 小时、绝对 7 天（第1段第10节）；免登会话的绝对到期取 identity 免登会话的到期（12 小时）。刷新令牌沿用原 `auth_time`，不延长强认证窗口；
 - **请求认证**：带会话 Cookie 的请求，`web_session` 取出会话：`password` 来源取（必要时刷新）访问令牌，交给现有的令牌校验（issuer、audience、RS256、`exp`/`iat`/`nbf`、`amr`、`auth_time`），派生的请求上下文与 Bearer 请求完全相同；`channel` 来源调用 identity `ResolveChannelSession` 核验 `chs_`（第4.5节）。之后的成员、租户与 cell 核对沿用 [gateway 第2节](subsystems/gateway.md#2-职责与非职责)的租户路由，不放宽任何一项；
 - **两种凭证互斥**：同一请求同时带 Cookie 与 `Authorization` 时 400 `ambiguous_credentials`。`Authorization: Bearer` 继续服务 API 客户端、MCP 与测试，不受本节影响；
-- **IdP 侧退出**：gateway 注册 Keycloak 的后端通道登出（back-channel logout），IdP 会话结束（管理员重置、账号恢复、IdP 侧登出）时删除该 `sid` 的全部 Web 会话；刷新令牌被拒时会话立即作废，返回 401 `session_expired`。
+- **IdP 侧退出**：gateway 注册 Keycloak 的后端通道登出（back-channel logout），IdP 会话结束（管理员重置、账号恢复、IdP 侧登出）时删除该 `sid` 的全部 Web 会话；刷新令牌被拒时会话立即作废，返回 401 `session_expired`。后端通道登出是 IdP 服务器对 gateway 的调用，不带 Cookie，也不适用浏览器的 CSRF 规则，以登出令牌本身认证（第4.2节）。
 
 ### 4.2 登录与退出
 
 ```text
 应用 /login?return_to=/signals/obj_…
-  → GET /auth/login?return_to=…            gateway 生成 state、nonce、PKCE(S256) 校验码，写入短时登录事务（10 分钟，单次）
+  → GET /auth/login?return_to=…            gateway 生成 state、nonce、PKCE(S256) 校验码，写入短时登录事务（10 分钟，单次），
+                                            并设置事务 Cookie __Host-mq_tx（随机 32 字节，Secure、HttpOnly、SameSite=Lax、10 分钟）
   → 302 Keycloak 授权端点                   保密客户端 miaoqia-web，scope=openid，登录、TOTP、找回密码都在 IdP 页面完成
-  → GET /auth/callback?code&state          校验 state、换取令牌、校验 ID 令牌 nonce 与 sid，建立会话并设置 Cookie
+  → GET /auth/callback?code&state          先按事务 Cookie 取登录事务并核对 state，再换取令牌、校验 ID 令牌 nonce 与 sid，
+                                            建立会话、设置会话 Cookie 并清除事务 Cookie
   → 302 return_to                           只接受同源相对路径且命中路由白名单，否则回到 /
 ```
 
+- **事务绑定发起的浏览器**：登录事务以事务 Cookie 的摘要为键保存，state、PKCE 校验码与 nonce 只能从这个键取出。state 单次有效并不能防止“攻击者在自己的浏览器发起登录、认证为自己，再让受害者的浏览器打开尚未消费的回调地址”从而把攻击者的会话装进受害者浏览器（登录 CSRF）；绑定之后，回调浏览器没有对应的事务 Cookie、或事务 Cookie 与 state 不属于同一事务时一律拒绝（400 `login_transaction_mismatch`），不换取令牌、不设置会话，该事务作废。渠道免登（第4.5节）、绑定的网页授权（第4.6节）与强认证（第4.4节）的事务使用同一机制；强认证事务还绑定发起时的会话、主体与操作标识；
 - **登录页由 IdP 提供**：账号密码、TOTP、找回密码、激活设置密码都使用 Keycloak 的托管页面（妙洽主题），应用不收集密码，不使用资源所有者密码模式（第11节 WD5）。连续失败锁定（5 次锁 15 分钟）由 IdP 执行；
 - **退出**：`POST /auth/logout`（需 CSRF 头，第9节）删除会话、调用 IdP 结束会话端点，应用通过 `BroadcastChannel` 通知同一浏览器的其他标签页回到登录页并清除 `sessionStorage` 中的待续操作；
+- **后端通道登出**：`POST /auth/backchannel-logout` 只接受 IdP 服务器按 OIDC 后端通道登出规范发来的 `logout_token`，不要求、也不接受浏览器 Cookie 与 CSRF 头。校验：签名来自配置的 Keycloak issuer 的公钥（RS256），`iss` 等于该 issuer，`aud` 含 `miaoqia-web`，`iat` 不早于 2 分钟前且不晚于 5 秒后、有 `exp` 的未过期，`events` 含 `http://schemas.openid.net/event/backchannel-logout`，含 `sid` 或 `sub`（至少一个），不含 `nonce`；`jti` 在 10 分钟内只接受一次（重放 400）。通过后删除该 `sid`（或该 `sub` 在本 issuer 下）的全部 Web 会话，返回 200；任何一项不通过 400，不删除会话。该端点只在网关对 IdP 网络可达的地址上开放；
 - **会话失效的页面行为**：任何接口返回 401 `session_expired`、`unauthenticated` 时，应用把当前路由作为 `return_to` 跳转登录；页面上未提交的表单按第4.4节的待续操作保存，登录后恢复，但不自动提交；403 `invalid_tenant_context`（成员已停用或退出）显示“账号已停用或已退出该企业”，不重试。
 
 ### 4.3 激活与接受邀请
@@ -134,7 +138,7 @@ API 客户端只从 OpenAPI 生成，不手写请求结构；`copy` 的覆盖检
 
 1. **保存待续操作**：被拒的写请求连同它的操作标识、表单内容与目标路由保存为“待续操作”（内存，以及 `sessionStorage` 的 `mq.pending.<操作标识>`，只在本标签页存在，退出或 30 分钟后清除）。被拒是操作开始前的拒绝，操作标识上没有固定任何结果（第3段 F9），继续时用新的幂等键、同一操作标识；
 2. **弹框说明**：“这一步需要验证身份（15 分钟内有效）”；`totp_enrollment_required` 时说明“首次执行需要先登记验证器”。取消则原动作不执行、已填内容保留；
-3. **重新认证**：`GET /auth/step-up?op=…` 以 `prompt=login`、`max_age=0` 请求 IdP 交互认证（未登记时附 IdP 的“登记 TOTP”必需动作），回调后更新会话的令牌与 `auth_time`（Cookie 轮换），并核对新令牌的主体与原会话相同，不同则拒绝并要求退出（防止借强认证切换账号）；
+3. **重新认证**：`GET /auth/step-up?op=…` 以 `prompt=login`、`max_age=0` 请求 IdP 交互认证（未登记时附 IdP 的“登记 TOTP”必需动作）；强认证事务按第4.2节绑定发起的浏览器，并绑定当前会话、主体与操作标识，回调时三者任一不符即拒绝。回调后更新会话的令牌与 `auth_time`（Cookie 轮换），并核对新令牌的主体与原会话相同，不同则拒绝并要求退出（防止借强认证切换账号）；
 4. **继续原动作**（第11节 WD3）：
    - 桌面浏览器：认证在弹出窗口中完成，窗口经 `postMessage`（只接受同源消息）通知原页面，原页面自动以同一操作标识重新提交——用户已经点过最终的提交按钮，意图明确；
    - H5 与渠道内置浏览器（弹出窗口不可用）：整页跳转到 IdP，返回后从待续操作恢复表单与确认页，用户再点一次“继续提交”。整页跳转后不自动提交，避免把一次页面加载变成写操作；
@@ -150,7 +154,7 @@ API 客户端只从 OpenAPI 生成，不手写请求结构；`copy` 的覆盖检
 企业微信内置浏览器打开 /c/lnk_…
   ├─ 已有本人会话 ───────────────────────────────► POST /v1/channels/card-links:open
   └─ 无会话：GET /auth/channel/sso?return_to=/c/lnk_…
-       → 302 渠道网页授权（静默）→ GET /auth/channel/callback?code&state
+       → 设置事务 Cookie（第4.2节）→ 302 渠道网页授权（静默）→ GET /auth/channel/callback?code&state（state 须属于本浏览器的事务）
        → channels ChannelSSO（核对绑定、签发 30 秒凭据）→ identity IssueChannelSession（chs_，12 小时）
        → gateway 建立 channel 来源的会话（引用 chs_），设置 Cookie → 302 /c/lnk_…
   card-links:open → 200 CardTarget → 应用跳转到信号详情、对象页（带 signal）、完整简报或审批
@@ -328,10 +332,10 @@ BFF 聚合端点的共同规则：
 | 端点 | 作用 |
 |---|---|
 | `GET /auth/login?return_to=` | 发起授权码 + PKCE 登录（第4.2节） |
-| `GET /auth/callback` | 回调：校验 state、nonce，建立会话 |
+| `GET /auth/callback` | 回调：按事务 Cookie 核对 state，校验 nonce，建立会话 |
 | `GET /auth/step-up?op=` | 强认证（第4.4节），可附“登记 TOTP”必需动作 |
 | `POST /auth/logout` | 退出（需 CSRF 头） |
-| `POST /auth/backchannel-logout` | 接收 IdP 后端通道登出令牌（校验签名、`sid`、`events`），删除该 `sid` 的全部会话 |
+| `POST /auth/backchannel-logout` | IdP 服务器调用，不适用浏览器 CSRF 规则；按第4.2节完整校验 `logout_token`（签名、`iss`、`aud`、时间、`events`、`sid`/`sub`、无 `nonce`、`jti` 防重放）后删除对应会话 |
 | `GET /auth/channel/sso?return_to=` / `GET /auth/channel/callback` | 渠道免登（第4.5节），调用 channels `ChannelSSO` |
 | `GET /auth/channel/oauth?purpose=bind&return_to=` | 为绑定取渠道网页授权码（第4.6节） |
 
@@ -368,7 +372,7 @@ BFF 聚合端点的共同规则：
 | 项 | 规则 |
 |---|---|
 | 令牌 | 访问令牌与刷新令牌不进入浏览器脚本、不进入 URL；会话 Cookie `HttpOnly`、`Secure`、`SameSite=Lax`、`__Host-` 前缀 |
-| CSRF | 除 GET、HEAD 外的请求必须带自定义头 `X-Miaoqia-Request: 1`，并校验 `Origin`（或 `Sec-Fetch-Site: same-origin`），否则 403 `csrf_rejected`；`SameSite=Lax` 是第二层 |
+| CSRF | 带会话 Cookie 的浏览器请求中，除 GET、HEAD 外必须带自定义头 `X-Miaoqia-Request: 1`，并校验 `Origin`（或 `Sec-Fetch-Site: same-origin`），否则 403 `csrf_rejected`；`SameSite=Lax` 是第二层。不依赖 Cookie 的服务器回调（`/auth/backchannel-logout`）不适用此规则，以自身令牌认证（第4.2节）；登录、免登与强认证的回调以事务 Cookie 防登录 CSRF |
 | 跳转 | `return_to` 只接受同源相对路径并匹配路由白名单；OIDC 的 state 单次、10 分钟；IdP 与渠道回调地址精确登记 |
 | 内容安全策略 | `default-src 'self'`；`script-src 'self'`（无内联脚本、无 `eval`）；`frame-ancestors 'none'`；`connect-src 'self'`；`img-src 'self' data:`；`form-action 'self'` 加 IdP 源 |
 | 原文渲染 | 来源原文与模型输出一律作为文本渲染；证据高亮按定位偏移在规范化文档的文本节点上标注，不以 `innerHTML` 插入来源 HTML；外部链接加 `rel="noopener noreferrer"` |
@@ -378,7 +382,7 @@ BFF 聚合端点的共同规则：
 | 本地数据 | 第5.6节；退出时广播清除 |
 | 埋点 | 只记录租户、用户标识、页面、动作、耗时、结果与原因码，不记录字段内容与搜索词原文（各段 PRD 第11节） |
 
-L2 环境中重新执行、并由 Web 实现 PR 附带的浏览器侧越权与反例测试：Cookie 缺失或伪造、会话固定（登录后 Cookie 必须轮换）、跨站请求（无 CSRF 头或错误 `Origin`）、开放跳转（`return_to` 指向外站或协议相对地址）、他租户与伪造标识的 URL、强认证窗口来自他源的消息、强认证后主体变化、免登会话尝试绑定与强认证动作、解绑后免登会话的下一次请求、卡片链接被转发给他人打开、退出后其他标签页与后退按钮不显示业务内容。
+L2 环境中重新执行、并由 Web 实现 PR 附带的浏览器侧越权与反例测试：Cookie 缺失或伪造、会话固定（登录后 Cookie 必须轮换）、登录 CSRF（在另一浏览器打开合法但尚未消费的登录、免登或强认证回调地址，必须拒绝且不设置会话）、强认证回调的会话、主体或操作与发起时不符、后端通道登出（没有浏览器头的正常 IdP 通知能作废会话；伪造签名、错误 `aud`、过期、缺 `events`、带 `nonce` 与重放的通知被拒且不删除会话）、跨站请求（无 CSRF 头或错误 `Origin`）、开放跳转（`return_to` 指向外站或协议相对地址）、他租户与伪造标识的 URL、强认证窗口来自他源的消息、强认证后主体变化、免登会话尝试绑定与强认证动作、解绑后免登会话的下一次请求、卡片链接被转发给他人打开、退出后其他标签页与后退按钮不显示业务内容。
 
 ## 10. 实现批次与缺口
 
@@ -397,7 +401,7 @@ L2 环境中重新执行、并由 Web 实现 PR 附带的浏览器侧越权与�
 
 ### 10.2 新增缺口
 
-以下缺口登记到[贯通验收线第4.4节](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)，W-01 随本文关闭：
+以下缺口登记到[贯通验收线第4.4节](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)；W-01 在第11节待决事项经项目负责人确认后关闭：
 
 | 编号 | 缺口 | 最早级别 |
 |---|---|---|
@@ -408,12 +412,12 @@ L2 环境中重新执行、并由 Web 实现 PR 附带的浏览器侧越权与�
 
 ## 11. 待决事项
 
-以下由编写人选定默认做法，评审时逐条确认或改写；确认后本节改名为“已确认事项”并注明确认人与日期。
+以下由编写人选定默认做法，均为推荐方案、待项目负责人确认；技术评审不代替确认（[研发规范第1节](../05-delivery/03-engineering-standards.md)）。确认后本节改名为“已确认事项”并注明确认人与日期，正文与相关规格中标“待确认”的表述随之改为已确认。
 
 | # | 事项 | 推荐 | 备选与取舍 |
 |---|---|---|---|
 | WD1 | 浏览器会话模型 | gateway 持有令牌的服务端会话（第4.1节），浏览器只持有 `HttpOnly` Cookie | 单页应用作为公开客户端自己持有令牌（内存保存、静默刷新）：少一个服务端组件，但令牌暴露给脚本，XSS 可直接窃取，且企业微信内置浏览器的第三方 Cookie 与静默刷新不可靠 |
-| WD2 | 免登会话的凭证形态 | gateway 会话直接引用 `chs_`，每次请求经 `ResolveChannelSession` 核验（第4.5节）；identity“IdP 按免登会话铸造令牌”不再需要，C-03 的免登部分缩小为渠道网页授权与 `ChannelSSO` 的生产接入 | IdP 令牌交换铸造带 `miaoqia_channel_session` 的令牌：与 Bearer 路径完全统一，但需要定制 Keycloak 扩展，且令牌有效期与撤销水位要再对齐一次 |
+| WD2 | 免登会话的凭证形态 | gateway 会话直接引用 `chs_`，每次请求经 `ResolveChannelSession` 核验（第4.5节）；浏览器免登不再需要 IdP 按免登会话铸造令牌：C-03 去掉这一项，浏览器侧的会话与落地由 W-04 承接，`ChannelSSO` 的生产接入（渠道网页授权）由 C-01、C-02 承接；Bearer 免登令牌路径只保留给测试签发方与非浏览器客户端，不阻断浏览器 L3 | IdP 令牌交换铸造带 `miaoqia_channel_session` 的令牌：与 Bearer 路径完全统一，但需要定制 Keycloak 扩展，且令牌有效期与撤销水位要再对齐一次 |
 | WD3 | 强认证后如何继续原动作 | 桌面弹出窗口完成后自动以同一操作标识重新提交；H5 与内置浏览器整页跳转，返回后恢复表单，用户再点一次（第4.4节） | 一律回到确认页由用户再点：更保守但多一步，不满足第1段 F3 “验证后继续原动作”的体验；一律自动提交：整页跳转后自动写入有被诱导的风险 |
 | WD4 | 保存视图的所有者与团队视图权限 | customer-context 拥有；收件箱团队视图创建需目标 `can_edit`，可见需 `can_view_signals`（第6.2节） | gateway 保存：违反 gateway 不保存业务数据；identity 的 `Workspace`：identity 只表达授权，不宜承载列表条件；新建工作台子系统：M2 规模不值得 |
 | WD5 | 登录、TOTP、找回密码页面由谁提供 | Keycloak 托管页面（妙洽主题），应用不收集密码 | 应用自绘登录页再调用 IdP：体验一致，但需要资源所有者密码模式或自建认证流程，扩大攻击面，且 `auth_time` 与 `amr` 的真实性更难保证 |

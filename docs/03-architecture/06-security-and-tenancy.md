@@ -48,7 +48,7 @@ Tenant（签约客户）
 
 外部网关只接受指定HTTPS Keycloak issuer签发、目标audience匹配的RS256 Bearer访问令牌，必须含有效exp/iat；检查nbf、主体及租户/单元配对，丢弃客户端Miaoqia-Context头。租户请求再经identity权威目录核对当前租户/成员状态及cell-01归属；错误租户/cell拒绝，目录故障503，不读取令牌角色恢复撤权。平台生命周期管理要求已签名amr=mfa且通过当前授权；租户管理命令（成员、角色、单元、邀请）还要求15分钟内的强认证，以IdP签发的auth_time计算，刷新令牌与渠道免登会话不延长（[identity 第8节](subsystems/identity.md#8-安全要点)）；认证保证不在内部头传递；平台operator+MFA命令可指定受管理的tenantID，但不据此切换用户上下文或cell。具体边界见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。内部上下文只经TLS1.3双向认证及精确SPIFFE调用方白名单传递。默认生产策略缺配置失败关闭，仅显式development允许实验环境明文。认证配置及真实正反例见[M0运行时验收](../05-delivery/05-m0-runtime-acceptance.md)；实际证书运维和部署网络另验收。
 
-浏览器不持有令牌：Web 应用经 gateway 的服务端会话访问，浏览器只持有 `HttpOnly`、`Secure`、`SameSite=Lax` 的会话 Cookie，gateway 取出会话保存的访问令牌后按上述规则校验，或对渠道免登会话经 identity 逐次核验 `chs_`；Cookie 请求须带 CSRF 头与同源 `Origin`，同一请求不能同时带 Cookie 与 Bearer。浏览器侧的跳转白名单、内容安全策略、原文渲染与负向用例见 [Web 专项设计第9节](14-web-application.md#9-安全要点浏览器侧)。
+浏览器不持有令牌：Web 应用经 gateway 的服务端会话访问，浏览器只持有 `HttpOnly`、`Secure`、`SameSite=Lax` 的会话 Cookie，gateway 取出会话保存的访问令牌后按上述规则校验，或对渠道免登会话经 identity 逐次核验 `chs_`；Cookie 请求须带 CSRF 头与同源 `Origin`，同一请求不能同时带 Cookie 与 Bearer；登录、免登与强认证的回调须与发起它的浏览器的事务 Cookie 匹配；IdP 的后端通道登出不带 Cookie，以完整校验的 `logout_token` 认证（Web 专项设计 WD1 推荐方案，待确认）。浏览器侧的跳转白名单、内容安全策略、原文渲染与负向用例见 [Web 专项设计第9节](14-web-application.md#9-安全要点浏览器侧)。
 
 ## 4. 授权
 
