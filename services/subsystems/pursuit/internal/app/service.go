@@ -204,27 +204,50 @@ func (s *Service) scopeOf(ctx context.Context, objective string, relations ...st
 
 // memberAccess 判断成员（被分派人、负责人、协作者）此刻是否仍可承担跟进：是租户有效成员（identity 以其本人核验会话：停用或退出为
 // 403），且能查看该目标的信号（customer-context 以其本人判断）。明确否定返回 false；判断失败返回 503，不当作无权限也不当作有权限。
-func (s *Service) memberAccess(ctx context.Context, tenant, cell, subject, objective string) (bool, error) {
+// 有效时同时返回该成员此刻在 identity 的成员版本（记入授予记录，用于识别授予之前的旧退出事件）。
+func (s *Service) memberAccess(ctx context.Context, tenant, cell, subject, objective string) (bool, int64, error) {
 	if s.Members == nil {
-		return false, failure(503, "identity_unavailable")
+		return false, 0, failure(503, "identity_unavailable")
 	}
 	mctx := asMember(ctx, tenant, cell, subject)
-	if _, err := s.Members.Resolve(mctx); err != nil {
+	session, err := s.Members.Resolve(mctx)
+	if err != nil {
 		var safe *identity.Error
 		if errors.As(err, &safe) && safe.Status == 403 {
-			return false, nil
+			return false, 0, nil
 		}
-		return false, failure(503, "identity_unavailable")
+		return false, 0, failure(503, "identity_unavailable")
 	}
 	sc, err := s.scopeOf(mctx, objective, relViewSignal)
 	if err != nil {
 		var safe *api.Error
 		if errors.As(err, &safe) && (safe.Status == 404 || safe.Status == 403) {
-			return false, nil
+			return false, 0, nil
 		}
-		return false, err
+		return false, 0, err
 	}
-	return sc.Has(relViewSignal), nil
+	return sc.Has(relViewSignal), session.MemberVersion, nil
+}
+
+// admitWrite 是每个写命令的统一准入（改派、关闭、修订结果、新增 / 修改 / 完成 / 撤销完成任务）：
+//   - 不能更新跟进：本地参与但 identity 尚未同步时 403 authorization_syncing，其余 403 forbidden；
+//   - 单元关系（决策者 can_edit_unit_pursuits）放行，不受授权同步状态影响（F12 第6条）；
+//   - 只凭参与关系写入的成员：授权同步失败（超过 24 小时）时 403 authorization_syncing（F12 第6条，只允许决策者改派或关闭）；
+//     其当前角色授予时的参与版本尚未在 identity 应用时同样 403 authorization_syncing（F12 第3条；identity 中仍是旧版本的同名
+//     关系，如 A→B→A 改派且同步失败，不放行）。
+//
+// 命令在加锁重读跟进后再以同一规则判断一次。authorization_syncing 不固定在操作上（同步完成后同一操作可成功）。
+func (s *Service) admitWrite(p *Pursuit, r Rights, subject string) error {
+	if !r.Edit {
+		return editDenied(p, r, s)
+	}
+	if r.UnitEdit {
+		return nil
+	}
+	if s.authorization(p).State == "failed" || !p.granted(subject) {
+		return failure(403, "authorization_syncing")
+	}
+	return nil
 }
 
 // Rights 是调用者对一个跟进的当前权限（每次读取与命令都实时判断，不以创建或上次读取时为准）。

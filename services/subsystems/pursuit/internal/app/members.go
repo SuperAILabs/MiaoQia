@@ -16,6 +16,9 @@ import (
 // 协作者同样情况下移出团队。事件只是触发：每个受影响成员以其本人此刻的成员状态与目标访问重新判断（identity 会话核验与 customer-context
 // 的 can_view_signals），判断失败时返回错误、事件按退避重试（不当作无权限也不当作有权限）。重新加入租户或恢复访问不自动恢复负责人
 // 或协作者身份（须由有 can_manage_team 的成员改派）。参与版本加一，授权同步撤回 identity 中的关系。
+//
+// 成员事件可能迟到或重放：退出（state 不是 active）事件的成员版本不高于授予记录中该成员当前角色授予时的成员版本时，是授予之前
+// 的旧事件，不据此判无效，而是以其本人此刻的成员状态与目标访问重新判断；高于时（授予之后退出过）判无效，此后重新加入也不恢复。
 
 // MemberChanged 是 identity.member.changed.v1 的消费处理（平台域主题，信封带租户）。
 func (s *Service) MemberChanged(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) error {
@@ -23,6 +26,7 @@ func (s *Service) MemberChanged(ctx context.Context, tx pgx.Tx, env *outbox.Enve
 		TenantID string `json:"tenant_id"`
 		Subject  string `json:"subject"`
 		State    string `json:"state"`
+		Version  int64  `json:"version"`
 	}
 	if err := json.Unmarshal(env.Data, &data); err != nil {
 		return err
@@ -30,8 +34,15 @@ func (s *Service) MemberChanged(ctx context.Context, tx pgx.Tx, env *outbox.Enve
 	if env.Tenant == "" || env.Cell == "" || env.Tenant != data.TenantID {
 		return fmt.Errorf("pursuit：成员事件 %s 的租户上下文缺失或不一致", env.ID)
 	}
+	var left func(*Pursuit, string) bool
+	if data.State != "active" {
+		left = func(p *Pursuit, subject string) bool {
+			g, ok := p.Grants[subject]
+			return !ok || data.Version > g.Member
+		}
+	}
 	return s.revalidate(ctx, tx, env.Tenant, env.Cell, `state = 'open' AND ((owner = $1 AND owner_valid) OR $1 = ANY(collaborators))`, data.Subject,
-		func(subject string) bool { return subject == data.Subject }, data.State != "active")
+		func(subject string) bool { return subject == data.Subject }, left)
 }
 
 // ObjectiveChanged 是 customer_context.objective.changed.v1 的消费处理：目标的负责人、参与人或单元变化后，重新判断该目标上进行中的
@@ -46,12 +57,12 @@ func (s *Service) ObjectiveChanged(ctx context.Context, tx pgx.Tx, env *outbox.E
 	if env.Tenant == "" || env.Cell == "" {
 		return fmt.Errorf("pursuit：目标事件 %s 缺少租户上下文", env.ID)
 	}
-	return s.revalidate(ctx, tx, env.Tenant, env.Cell, `state = 'open' AND objective_id = $1`, data.ObjectiveID, nil, false)
+	return s.revalidate(ctx, tx, env.Tenant, env.Cell, `state = 'open' AND objective_id = $1`, data.ObjectiveID, nil, nil)
 }
 
-// revalidate 对匹配 where 的进行中跟进，重新判断其有效负责人与协作者（only 为空时判断全部成员；left 为真时 only 选中的成员直接
-// 视为无效，不再询问 identity）。
-func (s *Service) revalidate(ctx context.Context, tx pgx.Tx, tenant, cell, where string, arg any, only func(string) bool, left bool) error {
+// revalidate 对匹配 where 的进行中跟进，重新判断其有效负责人与协作者（only 为空时判断全部成员；left 对某跟进上 only 选中的成员
+// 为真时——授予之后退出过——直接视为无效，否则以其本人此刻的成员状态与目标访问判断）。
+func (s *Service) revalidate(ctx context.Context, tx pgx.Tx, tenant, cell, where string, arg any, only func(string) bool, left func(*Pursuit, string) bool) error {
 	rows, err := tx.Query(ctx, `SELECT `+pursuitColumns+` FROM pur_pursuits WHERE `+where+` ORDER BY id FOR UPDATE`, arg)
 	if err != nil {
 		return err
@@ -70,18 +81,18 @@ func (s *Service) revalidate(ctx context.Context, tx pgx.Tx, tenant, cell, where
 		return err
 	}
 	verdicts := map[string]bool{} // 成员 → 仍有效（同一事件内每个成员在每个目标上只判断一次）
-	valid := func(subject, objective string) (bool, error) {
+	valid := func(p *Pursuit, subject, objective string) (bool, error) {
 		if only != nil && !only(subject) {
 			return true, nil
 		}
-		if left {
+		if left != nil && left(p, subject) {
 			return false, nil
 		}
 		k := subject + "/" + objective
 		if v, ok := verdicts[k]; ok {
 			return v, nil
 		}
-		v, err := s.memberAccess(ctx, tenant, cell, subject, objective)
+		v, _, err := s.memberAccess(ctx, tenant, cell, subject, objective)
 		if err != nil {
 			return false, err
 		}
@@ -91,7 +102,7 @@ func (s *Service) revalidate(ctx context.Context, tx pgx.Tx, tenant, cell, where
 	for _, p := range list {
 		ownerInvalid := false
 		if p.OwnerValid {
-			ok, err := valid(p.Owner, p.ObjectiveID)
+			ok, err := valid(p, p.Owner, p.ObjectiveID)
 			if err != nil {
 				return err
 			}
@@ -99,7 +110,7 @@ func (s *Service) revalidate(ctx context.Context, tx pgx.Tx, tenant, cell, where
 		}
 		var removed []string
 		for _, c := range p.Collaborators {
-			ok, err := valid(c, p.ObjectiveID)
+			ok, err := valid(p, c, p.ObjectiveID)
 			if err != nil {
 				return err
 			}

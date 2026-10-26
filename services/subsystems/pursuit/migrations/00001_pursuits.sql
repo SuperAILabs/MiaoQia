@@ -6,6 +6,8 @@
 -- 跟进：同一目标、同一目标对象（target_key）至多一个进行中的跟进（部分唯一索引）。期望参与关系（负责人、协作者）与参与版本在本地保存，
 -- identity 中的参与关系经授权同步写入，applied_version 为 identity 已应用的版本；sync_pending_since 为期望版本首次高于已应用版本的时间。
 -- notify_* 是待发的分派通知（只在该参与版本同步完成后发布 pursuit.pursuit.assigned.v1）。
+-- grants 记录当前每个参与成员的角色是在哪个参与版本授予的（pv）以及授予时该成员在 identity 的成员版本（mv）：成员以参与关系写入时
+-- 须 applied_version >= pv（identity 中可能仍是旧版本的同名关系），成员退出事件的版本不高于 mv 时是授予之前的旧事件。
 CREATE TABLE pur_pursuits (
     id                  text PRIMARY KEY CHECK (id ~ '^pur_[0-9A-HJKMNP-TV-Z]{26}$'),
     tenant_id           text NOT NULL CHECK (tenant_id ~ '^tnt_[0-9A-HJKMNP-TV-Z]{26}$'),
@@ -46,6 +48,7 @@ CREATE TABLE pur_pursuits (
     updated_at          timestamptz NOT NULL,
     closed_at           timestamptz,
     voided_at           timestamptz,
+    grants              jsonb NOT NULL DEFAULT '{}'::jsonb,
     CHECK ((source_kind = 'signal') = (source_signal_id IS NOT NULL)),
     CHECK ((state = 'closed') = (closed_at IS NOT NULL AND result IS NOT NULL)),
     CHECK ((state = 'voided') = (voided_at IS NOT NULL)),

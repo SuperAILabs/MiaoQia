@@ -107,3 +107,30 @@ func TestCursorSealRejectsTamper(t *testing.T) {
 		t.Fatal("密钥过短时仍签发")
 	}
 }
+
+func TestGrantTracksCurrentRoleVersion(t *testing.T) {
+	// A 在第1版成为负责人；改派给 B（第2版）再改回 A（第3版）：A 的授予版本为 3，identity 只应用到第1版时不放行
+	p := &Pursuit{Owner: "A", OwnerValid: true, Collaborators: []string{}, Participation: 1, Applied: 1}
+	p.Grants = regrant(nil, func(string) string { return "" }, "A", nil, 1, map[string]int64{"A": 7})
+	if !p.granted("A") {
+		t.Fatal("第1版已应用")
+	}
+	p.Grants, p.Owner, p.Participation = regrant(p.Grants, p.role, "B", nil, 2, map[string]int64{"B": 3}), "B", 2
+	p.Grants, p.Owner, p.Participation = regrant(p.Grants, p.role, "A", nil, 3, map[string]int64{"A": 9}), "A", 3
+	if g := p.Grants["A"]; g.PV != 3 || g.Member != 9 || p.granted("A") {
+		t.Fatalf("A→B→A：%+v", g)
+	}
+	p.Applied = 3
+	if !p.granted("A") {
+		t.Fatal("第3版已应用")
+	}
+	// 角色不变保留原授予；负责人改为协作者是新的授予
+	next := regrant(p.Grants, p.role, "C", []string{"A"}, 4, map[string]int64{"C": 1})
+	if g := next["A"]; g.Role != "collaborator" || g.PV != 4 || g.Member != 9 {
+		t.Fatalf("%+v", g)
+	}
+	p.Collaborators = []string{"C"}
+	if kept := regrant(p.Grants, p.role, "A", []string{"C"}, 5, nil); kept["A"].PV != 3 || kept["C"].PV != 5 {
+		t.Fatalf("%+v", kept)
+	}
+}

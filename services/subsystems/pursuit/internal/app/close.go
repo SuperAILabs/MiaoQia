@@ -261,8 +261,8 @@ func (s *Service) ClosePursuit(ctx context.Context, id, key string, req CloseReq
 		if err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
-		if !r.Edit || (s.authorization(p).State == "failed" && !r.UnitEdit) {
-			return s.fix(ctx, rc, o, editDenied(p, r, s))
+		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+			return s.fix(ctx, rc, o, err)
 		}
 		if err := s.validateOutcome(p, &req.Outcome); err != nil {
 			return s.fix(ctx, rc, o, err)
@@ -271,6 +271,9 @@ func (s *Service) ClosePursuit(ctx context.Context, id, key string, req CloseReq
 			now := s.businessNow()
 			p, err := loadPursuit(ctx, tx, id, true)
 			if err != nil {
+				return nil, nil, err
+			}
+			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 				return nil, nil, err
 			}
 			if p.State != "open" || p.Version != req.Expected {
@@ -327,8 +330,8 @@ func (s *Service) ReviseOutcome(ctx context.Context, id, key string, req ReviseR
 		if err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
-		if !r.Edit {
-			return s.fix(ctx, rc, o, editDenied(p, r, s))
+		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+			return s.fix(ctx, rc, o, err)
 		}
 		if err := s.validateOutcome(p, &req.Outcome); err != nil {
 			return s.fix(ctx, rc, o, err)
@@ -337,6 +340,9 @@ func (s *Service) ReviseOutcome(ctx context.Context, id, key string, req ReviseR
 			now := s.businessNow()
 			p, err := loadPursuit(ctx, tx, id, true)
 			if err != nil {
+				return nil, nil, err
+			}
+			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 				return nil, nil, err
 			}
 			if p.State != "closed" || p.CurrentOutcome != req.Supersedes {

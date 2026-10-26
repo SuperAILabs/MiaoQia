@@ -1339,7 +1339,7 @@ func TestPursuitFollowUp(t *testing.T) {
 		if d := detail(t, dm, p); d["authorization"].(map[string]any)["state"] != "failed" {
 			t.Fatalf("%+v", d)
 		}
-		assign(t, lead, p, bd, nil, 403, "forbidden")
+		assign(t, lead, p, bd, nil, 403, "authorization_syncing")
 		assign(t, dm, p, bd, nil, 200)
 		directory.fail.Store(false)
 		drained(t)
@@ -1482,6 +1482,138 @@ func TestPursuitFollowUp(t *testing.T) {
 			Collaborators: []purcontract.Subject{}}
 		if _, err := remoteActions.CreatePursuit(svc(t1), "svc-attempt-"+suffix, req); !errors.As(err, &pe) || pe.Status != 403 {
 			t.Fatalf("服务主体经内部端口创建：%v", err)
+		}
+	})
+
+	run("越权与反例测试（复审）：负责人 A→B→A 改派且同步失败时 identity 中仍是旧版本的 A 关系，A 在新参与版本同步前不能写入（决策者可以），同步后同一操作成功", func(t *testing.T) {
+		sig := newSignal(t, pursueBid())[0]
+		p := pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd)), 200))
+		drained(t)
+		directory.fail.Store(true)
+		assign(t, dm, p, bd2, nil, 200)
+		assign(t, dm, p, bd, nil, 200)
+		pump(t)
+		var applied, desired int64
+		if err := purOwner.QueryRow(ctx, `SELECT applied_version, participation_version FROM pur_pursuits WHERE id = $1`, p).Scan(&applied, &desired); err != nil {
+			t.Fatal(err)
+		}
+		if applied != 1 || desired != 3 || !allowedOn(t, bd, "can_edit", "pursuit:"+p) {
+			t.Fatalf("前提：identity 中仍是第1版的负责人关系（applied %d desired %d）", applied, desired)
+		}
+		// 决策者（单元关系）不受同步状态影响
+		addTask(t, dm, p, `{"title":"决策者安排"}`, 200)
+		v := versionOf(t, p)
+		op := opID("aba")
+		body := fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"task":{"title":"A 同步前"}}`, op, v)
+		expect(t, bd, "POST", "/v1/pursuit/pursuits/"+p+"/tasks", body, 403, "authorization_syncing")
+		assign(t, bd, p, bd, []string{expert}, 403, "authorization_syncing")
+		expect(t, bd, "POST", "/v1/pursuit/pursuits/"+p+"/close", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"outcome":{"result":"abandoned","reason_code":"TOO_SMALL"}}`, opID("aba"), v),
+			403, "authorization_syncing")
+		if versionOf(t, p) != v || count(t, purOwner, `SELECT count(*) FROM pur_operations WHERE operation_id = $1`, op) != 0 {
+			t.Fatal("同步前的写入不得生效，也不得固定在操作上")
+		}
+		directory.fail.Store(false)
+		drained(t)
+		if res := obj(t, expect(t, bd, "POST", "/v1/pursuit/pursuits/"+p+"/tasks", body, 200)); res["result"] != "succeeded" {
+			t.Fatalf("%+v", res)
+		}
+	})
+
+	run("越权与反例测试（复审）：授权同步失败超过 24 小时，只凭参与关系的负责人不能新增、修改、完成任务或撤销完成（决策者可以）；同步成功后恢复", func(t *testing.T) {
+		sig := newSignal(t, pursueBid())[0]
+		res := create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q,"first_task":{"title":"第一项"}`, bd)), 200)
+		p := pursuitOf(res)
+		drained(t)
+		var first string
+		if err := purOwner.QueryRow(ctx, `SELECT id FROM pur_tasks WHERE pursuit_id = $1`, p).Scan(&first); err != nil {
+			t.Fatal(err)
+		}
+		completeOp := opID("done")
+		expect(t, bd, "POST", "/v1/pursuit/tasks/"+first+"/complete", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d}`, completeOp, taskVersion(t, first)), 200)
+		second := addTask(t, bd, p, `{"title":"第二项"}`, 200)["task"].(map[string]any)["id"].(string)
+		directory.fail.Store(true)
+		assign(t, dm, p, bd, []string{expert}, 200)
+		pump(t)
+		// 24 小时内：负责人本人的关系已同步，仍可写入（只有新加入的协作者等待同步）
+		if d := detail(t, dm, p); d["authorization"].(map[string]any)["state"] != "syncing" {
+			t.Fatalf("%+v", d)
+		}
+		if _, err := purOwner.Exec(ctx, `UPDATE pur_pursuits SET sync_pending_since = $2 WHERE id = $1`, p, pclock.Now().Add(-25*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		if d := detail(t, dm, p); d["authorization"].(map[string]any)["state"] != "failed" {
+			t.Fatalf("%+v", d)
+		}
+		v, tv := versionOf(t, p), taskVersion(t, second)
+		addTask(t, bd, p, `{"title":"失败后"}`, 403, "authorization_syncing")
+		expect(t, bd, "POST", "/v1/pursuit/tasks/"+second+"/update", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"title":"改名"}`, opID("u"), tv), 403, "authorization_syncing")
+		expect(t, bd, "POST", "/v1/pursuit/tasks/"+second+"/complete", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d}`, opID("done"), tv), 403, "authorization_syncing")
+		expect(t, bd, "POST", "/v1/pursuit/tasks/"+first+"/reopen", fmt.Sprintf(`{"operation_id":%q,"target_operation_id":%q}`, opID("re"), completeOp), 403, "authorization_syncing")
+		expect(t, bd, "POST", "/v1/pursuit/pursuits/"+p+"/close", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"outcome":{"result":"abandoned","reason_code":"TOO_SMALL"}}`, opID("cl"), v),
+			403, "authorization_syncing")
+		if versionOf(t, p) != v || taskVersion(t, second) != tv {
+			t.Fatal("被拒的写入生效了")
+		}
+		addTask(t, dm, p, `{"title":"决策者安排"}`, 200)
+		directory.fail.Store(false)
+		drained(t)
+		addTask(t, bd, p, `{"title":"恢复后"}`, 200)
+	})
+
+	run("越权与反例测试（复审）：迟到或重放的成员退出事件（早于当前分派）不使重新加入后被重新分派的负责人失效；授予之后的退出仍判无效", func(t *testing.T) {
+		sig := newSignal(t, pursueBid())[0]
+		p := pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd)), 200))
+		drained(t)
+		// 扣下 bd2 的退出事件（pursuit 的成员变化消费者不收到）
+		routesMu.Lock()
+		saved := routes["identity.member.changed.v1"]
+		routes["identity.member.changed.v1"] = saved[:1]
+		routesMu.Unlock()
+		putMember(t, bd2, "removed", `[]`)
+		routesMu.Lock()
+		routes["identity.member.changed.v1"] = saved
+		routesMu.Unlock()
+		var held outbox.Envelope
+		for _, e := range delivered {
+			var d struct{ Subject, State string }
+			if e.Type == "identity.member.changed.v1" && json.Unmarshal(e.Data, &d) == nil && d.Subject == bd2 && d.State == "removed" {
+				held = e
+			}
+		}
+		if held.ID == "" {
+			t.Fatal("没有扣下退出事件")
+		}
+		putMember(t, bd2, "active", `["business_developer"]`)
+		// 恢复目标访问（退出时 identity 撤回了其关系；参与人列表先去掉再加回）
+		setParticipants(t, bd, lead, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+		signalRow(t, bd2, sig)
+		// 重新加入并恢复目标访问后，决策者改派给 bd2、改走再改回（有效分派）
+		assign(t, dm, p, bd2, nil, 200)
+		assign(t, dm, p, bd, nil, 200)
+		assign(t, dm, p, bd2, nil, 200)
+		drained(t)
+		v := versionOf(t, p)
+		purRoute := saved[len(saved)-1]
+		if err := handle(t, purRoute, held); err != nil {
+			t.Fatal(err)
+		}
+		drained(t)
+		if d := detail(t, dm, p); d["owner"] != bd2 || d["owner_valid"] != true || versionOf(t, p) != v {
+			t.Fatalf("旧的退出事件使当前负责人失效：%+v", d)
+		}
+		if !allowedOn(t, bd2, "can_edit", "pursuit:"+p) {
+			t.Fatal("旧的退出事件撤回了当前负责人的关系")
+		}
+		addTask(t, bd2, p, `{"title":"仍是负责人"}`, 200)
+		// 授予之后的退出仍判无效，重新加入不恢复
+		putMember(t, bd2, "removed", `[]`)
+		drained(t)
+		putMember(t, bd2, "active", `["business_developer"]`)
+		drained(t)
+		if d := detail(t, dm, p); d["owner_valid"] != false {
+			t.Fatalf("授予之后的退出应判无效：%+v", d)
 		}
 	})
 

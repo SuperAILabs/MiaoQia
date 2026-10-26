@@ -106,21 +106,24 @@ func (s *Service) signal(ctx context.Context, objective, id string, seen int64) 
 }
 
 // assignees 检查被分派的成员（F1 第2条、F4 第2条）：每人以其本人判断是否是租户有效成员且能查看该目标的信号；任一不满足即
-// 422 assignee_no_access（整个命令不写入，不自动授予权限）。skip 中的成员（已在跟进中且有效）不再判断。
-func (s *Service) assignees(ctx context.Context, rc reqctx.Context, objective string, members []string, skip func(string) bool) error {
+// 422 assignee_no_access（整个命令不写入，不自动授予权限）。skip 中的成员（已在跟进中且有效）不再判断。返回被判断成员此刻在
+// identity 的成员版本（记入授予记录）。
+func (s *Service) assignees(ctx context.Context, rc reqctx.Context, objective string, members []string, skip func(string) bool) (map[string]int64, error) {
+	versions := map[string]int64{}
 	for _, m := range members {
 		if skip != nil && skip(m) {
 			continue
 		}
-		ok, err := s.memberAccess(ctx, rc.Tenant, rc.Cell, m, objective)
+		ok, mv, err := s.memberAccess(ctx, rc.Tenant, rc.Cell, m, objective)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if !ok {
-			return &api.Error{Status: 422, Code: "assignee_no_access", Detail: m}
+			return nil, &api.Error{Status: 422, Code: "assignee_no_access", Detail: m}
 		}
+		versions[m] = mv
 	}
-	return nil
+	return versions, nil
 }
 
 func (s *Service) create(ctx context.Context, rc reqctx.Context, req CreateRequest, fp string) (*Fixed, error) {
@@ -161,7 +164,9 @@ func (s *Service) create(ctx context.Context, rc reqctx.Context, req CreateReque
 	if owner == rc.Principal.ID && !scope.Has(relViewSignal) {
 		return s.fix(ctx, rc, o, &api.Error{Status: 422, Code: "assignee_no_access", Detail: owner})
 	}
-	if err := s.assignees(ctx, rc, req.ObjectiveID, append([]string{owner}, collaborators...), func(m string) bool { return m == rc.Principal.ID }); err != nil {
+	// 调用者本人同样以其本人判断一次，取得成员版本
+	versions, err := s.assignees(ctx, rc, req.ObjectiveID, append([]string{owner}, collaborators...), nil)
+	if err != nil {
 		return s.fix(ctx, rc, o, err)
 	}
 	if t := req.FirstTask; t != nil {
@@ -203,6 +208,10 @@ func (s *Service) create(ctx context.Context, rc reqctx.Context, req CreateReque
 		if previous != nil {
 			p.Previous = prev
 		}
+		grants, err := json.Marshal(regrant(nil, func(string) string { return "" }, owner, collaborators, 1, versions))
+		if err != nil {
+			return nil, nil, err
+		}
 		var signalCreated *time.Time
 		if row != nil {
 			p.SourceKind, p.SourceSignal, p.SourceContent = "signal", row.ID, row.ContentVersion
@@ -223,11 +232,11 @@ func (s *Service) create(ctx context.Context, rc reqctx.Context, req CreateReque
 		_, err = tx.Exec(ctx, `INSERT INTO pur_pursuits (id, tenant_id, objective_id, org_unit_id, template_id, fact_type, subject_id, part_id, winner_org_id, target_key,
  source_kind, source_signal_id, source_content_version, source_signal_created_at, channel, previous_pursuit_id, state, owner, owner_valid, collaborators, note,
  created_by, create_operation_id, version, participation_version, applied_version, sync_pending_since, notify_version, notify_assignee, notify_by, notify_kind,
- changed_by, created_at, updated_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,true,$18,$19,$20,$21,1,1,0,$22,$23,$24,$25,$26,$20,$22,$22)`,
+ changed_by, created_at, updated_at, grants)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,true,$18,$19,$20,$21,1,1,0,$22,$23,$24,$25,$26,$20,$22,$22,$27)`,
 			p.ID, rc.Tenant, p.ObjectiveID, p.OrgUnitID, p.TemplateID, target.FactType, target.SubjectID, optional(target.PartID), optional(target.WinnerOrgID), target.key(),
 			p.SourceKind, optional(p.SourceSignal), content, signalCreated, p.Channel, previous, owner, collaborators, optional(req.Note),
-			rc.Principal.ID, o.id, now, notifyVersion, notifyAssignee, notifyBy, notifyKind)
+			rc.Principal.ID, o.id, now, notifyVersion, notifyAssignee, notifyBy, notifyKind, grants)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -502,11 +511,12 @@ func (s *Service) AssignPursuit(ctx context.Context, id, key string, req AssignR
 		if err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
-		if !r.Edit || (s.authorization(p).State == "failed" && !r.UnitEdit) {
-			return s.fix(ctx, rc, o, failure(403, "forbidden"))
+		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+			return s.fix(ctx, rc, o, err)
 		}
 		current := func(m string) bool { return p.involves(m) }
-		if err := s.assignees(ctx, rc, p.ObjectiveID, append([]string{req.Owner}, req.Collaborators...), current); err != nil {
+		versions, err := s.assignees(ctx, rc, p.ObjectiveID, append([]string{req.Owner}, req.Collaborators...), current)
+		if err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
 		var changed bool
@@ -518,6 +528,9 @@ func (s *Service) AssignPursuit(ctx context.Context, id, key string, req AssignR
 			}
 			if p.State != "open" {
 				return nil, nil, conflict("conflict", p, nil)
+			}
+			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+				return nil, nil, err
 			}
 			if p.Owner == req.Owner && p.OwnerValid && slices.Equal(dedupe(p.Collaborators, ""), req.Collaborators) {
 				return &Fixed{Result: "no_change", PursuitID: id}, nil, nil
@@ -541,9 +554,13 @@ func (s *Service) AssignPursuit(ctx context.Context, id, key string, req AssignR
 			} else if !ownerChanged {
 				nv, na, nb, nk = p.NotifyVersion, optional(p.NotifyAssignee), optional(p.NotifyBy), optional(p.NotifyKind)
 			}
+			grants, err := json.Marshal(regrant(p.Grants, p.role, req.Owner, req.Collaborators, pv, versions))
+			if err != nil {
+				return nil, nil, err
+			}
 			if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET owner = $2, owner_valid = true, collaborators = $3, version = version + 1, participation_version = $4,
- sync_pending_since = COALESCE(sync_pending_since, $5), notify_version = $6, notify_assignee = $7, notify_by = $8, notify_kind = $9, changed_by = $10, updated_at = $5
- WHERE id = $1`, id, req.Owner, req.Collaborators, pv, now, nv, na, nb, nk, rc.Principal.ID); err != nil {
+ sync_pending_since = COALESCE(sync_pending_since, $5), notify_version = $6, notify_assignee = $7, notify_by = $8, notify_kind = $9, changed_by = $10, updated_at = $5,
+ grants = $11 WHERE id = $1`, id, req.Owner, req.Collaborators, pv, now, nv, na, nb, nk, rc.Principal.ID, grants); err != nil {
 				return nil, nil, err
 			}
 			// 不再在团队中的成员的待办任务转给新负责人（任务负责人须为负责人或协作者）

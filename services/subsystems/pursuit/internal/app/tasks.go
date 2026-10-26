@@ -127,8 +127,8 @@ func (s *Service) CreateTask(ctx context.Context, id, key string, req CreateTask
 		if err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
-		if !r.Edit {
-			return s.fix(ctx, rc, o, editDenied(p, r, s))
+		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+			return s.fix(ctx, rc, o, err)
 		}
 		if req.Task.Due != nil {
 			if _, err := req.Task.Due.Instant(); err != nil {
@@ -139,6 +139,9 @@ func (s *Service) CreateTask(ctx context.Context, id, key string, req CreateTask
 			now := s.businessNow()
 			p, err := loadPursuit(ctx, tx, id, true)
 			if err != nil {
+				return nil, nil, err
+			}
+			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 				return nil, nil, err
 			}
 			if p.State != "open" || p.Version != req.Expected {
@@ -225,8 +228,8 @@ func (s *Service) UpdateTask(ctx context.Context, id, key string, req UpdateTask
 			return s.fix(ctx, rc, o, err)
 		}
 		o.pursuit = p.ID
-		if !r.Edit {
-			return s.fix(ctx, rc, o, editDenied(p, r, s))
+		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+			return s.fix(ctx, rc, o, err)
 		}
 		if req.Due != nil {
 			if _, err := req.Due.Instant(); err != nil {
@@ -237,6 +240,9 @@ func (s *Service) UpdateTask(ctx context.Context, id, key string, req UpdateTask
 			now := s.businessNow()
 			p, err := loadPursuit(ctx, tx, p.ID, true)
 			if err != nil {
+				return nil, nil, err
+			}
+			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 				return nil, nil, err
 			}
 			t, err := loadTask(ctx, tx, id, true)
@@ -352,13 +358,16 @@ func (s *Service) CompleteTask(ctx context.Context, id, key string, req Complete
 			return s.fix(ctx, rc, o, err)
 		}
 		o.pursuit = p.ID
-		if !r.Edit {
-			return s.fix(ctx, rc, o, editDenied(p, r, s))
+		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+			return s.fix(ctx, rc, o, err)
 		}
 		return s.commit(ctx, rc, o, func(ctx context.Context, tx pgx.Tx) (*Fixed, any, error) {
 			now := s.businessNow()
 			p, err := loadPursuit(ctx, tx, p.ID, true)
 			if err != nil {
+				return nil, nil, err
+			}
+			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 				return nil, nil, err
 			}
 			t, err := loadTask(ctx, tx, id, true)
@@ -426,8 +435,8 @@ func (s *Service) ReopenTask(ctx context.Context, id, key string, req ReopenRequ
 			return s.fix(ctx, rc, o, err)
 		}
 		o.pursuit = p.ID
-		if !r.Edit {
-			return s.fix(ctx, rc, o, editDenied(p, r, s))
+		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+			return s.fix(ctx, rc, o, err)
 		}
 		return s.commit(ctx, rc, o, func(ctx context.Context, tx pgx.Tx) (*Fixed, any, error) {
 			now := s.businessNow()
@@ -452,6 +461,9 @@ func (s *Service) ReopenTask(ctx context.Context, id, key string, req ReopenRequ
 			}
 			p, err := loadPursuit(ctx, tx, p.ID, true)
 			if err != nil {
+				return nil, nil, err
+			}
+			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 				return nil, nil, err
 			}
 			t, err := loadTask(ctx, tx, id, true)

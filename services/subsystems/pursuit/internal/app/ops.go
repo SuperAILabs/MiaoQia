@@ -191,6 +191,9 @@ func (s *Service) commit(ctx context.Context, rc reqctx.Context, o op, fn func(c
 				return rerr
 			}
 			definite = e
+			if e.Code == "authorization_syncing" {
+				return nil // 不固定（同步完成后同一操作可成功）
+			}
 			return insertOp(ctx, tx, rc, o, nil, e, nil, s)
 		}
 		if err != nil {

@@ -77,6 +77,53 @@ type Pursuit struct {
 	Result, CurrentOutcome                           string
 	CreatedAt, UpdatedAt                             time.Time
 	ClosedAt, VoidedAt                               *time.Time
+	Grants                                           map[string]Grant
+}
+
+// Grant 是一个参与成员当前角色的授予记录：角色（owner / collaborator）、授予时的参与版本与授予时该成员在 identity 的成员版本。
+type Grant struct {
+	Role   string `json:"role"`
+	PV     int64  `json:"pv"`
+	Member int64  `json:"mv"`
+}
+
+// role 返回成员在本地期望关系中的当前角色（不参与为空）。
+func (p *Pursuit) role(subject string) string {
+	switch {
+	case p.Owner == subject && p.OwnerValid:
+		return "owner"
+	case slices.Contains(p.Collaborators, subject):
+		return "collaborator"
+	}
+	return ""
+}
+
+// granted 判断成员当前角色所在的参与版本是否已在 identity 应用（F12 第3条：新关系同步前不放行；identity 中旧版本的同名关系不算）。
+func (p *Pursuit) granted(subject string) bool {
+	g, ok := p.Grants[subject]
+	return ok && g.Role == p.role(subject) && g.Role != "" && p.Applied >= g.PV
+}
+
+// regrant 按新的负责人与协作者计算授予记录：角色不变的成员保留原记录，新加入或角色改变的成员记为参与版本 pv，成员版本取 members
+// （没有时沿用原记录）。
+func regrant(old map[string]Grant, prevRole func(string) string, owner string, collaborators []string, pv int64, members map[string]int64) map[string]Grant {
+	out := map[string]Grant{}
+	put := func(subject, role string) {
+		if g, ok := old[subject]; ok && g.Role == role && prevRole(subject) == role {
+			out[subject] = g
+			return
+		}
+		mv, ok := members[subject]
+		if !ok {
+			mv = old[subject].Member
+		}
+		out[subject] = Grant{Role: role, PV: pv, Member: mv}
+	}
+	put(owner, "owner")
+	for _, c := range collaborators {
+		put(c, "collaborator")
+	}
+	return out
 }
 
 // involves 判断成员是否在本地期望关系中：有效的负责人或协作者（失效的负责人不算，重新加入不恢复）。
@@ -98,16 +145,17 @@ func (p *Pursuit) desired() (owner string, collaborators []string) {
 const pursuitColumns = `id, tenant_id, objective_id, org_unit_id, template_id, fact_type, subject_id, part_id, winner_org_id, source_kind, source_signal_id,
  source_content_version, source_signal_created_at, channel, previous_pursuit_id, state, owner, owner_valid, collaborators, note, created_by, create_operation_id,
  changed_by, version, participation_version, applied_version, sync_pending_since, notify_version, notify_assignee, notify_by, notify_kind, result,
- current_outcome_id, created_at, updated_at, closed_at, voided_at`
+ current_outcome_id, created_at, updated_at, closed_at, voided_at, grants`
 
 func scanPursuit(row pgx.Row, extra ...any) (*Pursuit, error) {
 	var p Pursuit
 	var part, winner, signal, prev, note, nAssignee, nBy, nKind, result, outcome *string
 	var content *int64
+	var grants []byte
 	dest := []any{&p.ID, &p.TenantID, &p.ObjectiveID, &p.OrgUnitID, &p.TemplateID, &p.Target.FactType, &p.Target.SubjectID, &part, &winner, &p.SourceKind,
 		&signal, &content, &p.SignalCreatedAt, &p.Channel, &prev, &p.State, &p.Owner, &p.OwnerValid, &p.Collaborators, &note, &p.CreatedBy, &p.CreateOp,
 		&p.ChangedBy, &p.Version, &p.Participation, &p.Applied, &p.PendingSince, &p.NotifyVersion, &nAssignee, &nBy, &nKind, &result, &outcome,
-		&p.CreatedAt, &p.UpdatedAt, &p.ClosedAt, &p.VoidedAt}
+		&p.CreatedAt, &p.UpdatedAt, &p.ClosedAt, &p.VoidedAt, &grants}
 	err := row.Scan(append(dest, extra...)...)
 	if err != nil {
 		return nil, err
@@ -125,6 +173,12 @@ func scanPursuit(row pgx.Row, extra ...any) (*Pursuit, error) {
 	}
 	if p.Collaborators == nil {
 		p.Collaborators = []string{}
+	}
+	p.Grants = map[string]Grant{}
+	if len(grants) > 0 {
+		if err := json.Unmarshal(grants, &p.Grants); err != nil {
+			return nil, err
+		}
 	}
 	return &p, nil
 }
