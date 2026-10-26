@@ -35,8 +35,11 @@ const ResendRetryWindow = 2 * time.Hour
 type deliveryMessage struct {
 	Objective string      `json:"objective,omitempty"`
 	Message   api.Message `json:"message"`
-	Sent      bool        `json:"sent,omitempty"`
-	Dropped   bool        `json:"dropped,omitempty"`
+	// 信号卡片的渲染来源（区标题与条目快照）：每次发送前按当前来源权利收紧后重新渲染正文，按钮、令牌与链接不变
+	Title   string      `json:"title,omitempty"`
+	Item    *SignalItem `json:"item,omitempty"`
+	Sent    bool        `json:"sent,omitempty"`
+	Dropped bool        `json:"dropped,omitempty"`
 }
 
 type tokenRow struct {
@@ -303,7 +306,7 @@ func (s *Service) planDelivery(sctx context.Context, tenant, subject string, doc
 			if err != nil {
 				return nil, err
 			}
-			plan.messages = append(plan.messages, deliveryMessage{Objective: sec.ObjectiveID, Message: msg})
+			plan.messages = append(plan.messages, deliveryMessage{Objective: sec.ObjectiveID, Message: msg, Title: sec.Title, Item: it.SignalItem})
 			n++
 			cards++
 		}
@@ -452,27 +455,47 @@ func (s *Service) deliverOne(sctx context.Context, id string) {
 			lost[sec.ObjectiveID] = true
 		}
 	}
-	if len(lost) > 0 {
-		var kept []section
-		for _, sec := range secs {
-			if sec.ObjectiveSection == nil || !lost[sec.ObjectiveID] {
-				kept = append(kept, sec)
-			}
+	var kept []section
+	for _, sec := range secs {
+		if sec.ObjectiveSection == nil || !lost[sec.ObjectiveID] {
+			kept = append(kept, sec)
 		}
-		for i := range d.messages {
-			m := &d.messages[i]
-			switch {
-			case m.Objective != "" && lost[m.Objective] && !m.Sent && !m.Dropped:
-				m.Dropped = true
-			case m.Objective == "" && !m.Sent && m.Message.Card != nil && len(m.Message.Card.Buttons) > 0:
-				// 总览卡尚未送达：按剩余的区重新渲染（链接不变）
-				var doc briefingDoc
-				if err := s.briefingHeader(sctx, d.briefing, &doc); err == nil {
-					m.Message = overview(&doc, kept, m.Message.Card.Buttons[0].URL, prefs, s.provider().Capabilities())
-				}
-			}
+	}
+	d.dropped = len(lost)
+	// 发送前按当前来源权利收紧（快照不固定展示权限，数据架构第12节）：尚未送达的总览卡按剩余的区重新渲染（链接不变），
+	// 尚未送达的信号卡片按收紧后的条目重新渲染正文（按钮与令牌不变）；权利不可得时按 none（失败关闭）
+	s.restrictSections(sctx, kept)
+	var cardSignals []string
+	for _, m := range d.messages {
+		if m.Item != nil && !m.Sent {
+			cardSignals = append(cardSignals, m.Item.SignalID)
 		}
-		d.dropped = len(lost)
+	}
+	rights := s.fieldRights(sctx, uniq(cardSignals))
+	caps := s.provider().Capabilities()
+	for i := range d.messages {
+		m := &d.messages[i]
+		if m.Sent || m.Dropped {
+			continue
+		}
+		switch {
+		case m.Objective != "" && lost[m.Objective]:
+			m.Dropped = true
+		case m.Objective != "" && m.Message.Card != nil:
+			if m.Item == nil {
+				m.Dropped = true // 没有渲染来源，无法按当前权利重新渲染：不发送
+				continue
+			}
+			it := restrictItem(m.Item, rights[m.Item.SignalID])
+			m.Message.Card.Lines, _ = domain.FitCard(cardLines(m.Title, it, false, prefs.Location(), tenantLocation()), caps.LineMax, caps.LinesMax)
+		case m.Objective == "" && m.Message.Card != nil && len(m.Message.Card.Buttons) > 0:
+			var doc briefingDoc
+			if err := s.briefingHeader(sctx, d.briefing, &doc); err != nil {
+				s.reschedule(sctx, &d, now.Add(time.Minute))
+				return
+			}
+			m.Message = overview(&doc, kept, m.Message.Card.Buttons[0].URL, prefs, caps)
+		}
 	}
 	// 发送尚未送达的消息（重试发送同一条消息，卡片与令牌不变）
 	failed := false

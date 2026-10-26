@@ -178,6 +178,8 @@ func (s *Service) GetBriefing(ctx context.Context, id string) (*chn.Briefing, er
 	if _, err := s.recheck(ctx, doc); err != nil {
 		return nil, err
 	}
+	// 快照不固定展示权限：按当前来源权利收紧
+	s.restrictSections(serviceContext(ctx, rc.Tenant, rc.Cell), doc.Sections)
 	var ids []string
 	for _, sec := range doc.Sections {
 		for _, it := range sec.Items {
@@ -304,6 +306,7 @@ func (s *Service) ResendBriefing(ctx context.Context, id, key string) (*chn.Deli
 	if err != nil {
 		return nil, err
 	}
+	s.restrictSections(sctx, doc.Sections)
 	var kept []section
 	for _, sec := range doc.Sections {
 		if sec.State != "no_permission" {

@@ -130,9 +130,22 @@ func (f *fakeCoverage) Coverage(_ context.Context, domains []string) ([]chapi.Do
 type fakeRights struct {
 	mu       sync.Mutex
 	override map[string]map[string]chapi.FieldRight
+	fail     atomic.Bool
+}
+
+func (f *fakeRights) set(signal, field string, r chapi.FieldRight) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.override[signal] == nil {
+		f.override[signal] = map[string]chapi.FieldRight{}
+	}
+	f.override[signal][field] = r
 }
 
 func (f *fakeRights) FieldRights(_ context.Context, signals []string) (map[string]map[string]chapi.FieldRight, error) {
+	if f.fail.Load() {
+		return nil, errors.New("注入：来源权利不可得")
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := map[string]map[string]chapi.FieldRight{}
@@ -1652,4 +1665,90 @@ func TestBriefingQuickActions(t *testing.T) {
 			t.Fatalf("%s %v", basis, err)
 		}
 	})
+
+	run("越权与反例测试 来源权利收紧：快照不固定展示权限——完整简报、重新推送与排队重试的发送都按当前权利重新裁剪（full_text→none、full_text→citation_only、权利不可得）", func(t *testing.T) {
+		// dm 的一期推送失败、待重试；组装时全部字段为 full_text
+		wc.FailNextSends(1)
+		res := compose(t, dm, at(30, 7, 31))
+		if res.DeliveryID == "" {
+			t.Fatalf("%+v", res)
+		}
+		var target string
+		var amount, project string
+		for _, it := range objectiveSection(t, getBriefing(t, dm, res.BriefingID))["items"].([]any) {
+			m := it.(map[string]any)
+			a, _ := m["amount"].(map[string]any)
+			if m["kind"] == "signal" && a != nil && a["level"] == "full_text" && a["value"] != nil {
+				target, amount = m["signal_id"].(string), a["value"].(string)
+				project = m["project"].(map[string]any)["value"].(string)
+				break
+			}
+		}
+		if target == "" {
+			t.Fatal("没有 full_text 的金额")
+		}
+		// 组装之后权利收紧：金额 none，项目只允许引用与链接
+		rights.set(target, "amount", chapi.FieldRight{Levels: []string{"none"}})
+		rights.set(target, "project", chapi.FieldRight{Levels: []string{"citation_only"}, SourceURL: "https://example.com/p/" + target})
+		cardText := func(c sentCard) string { return strings.Join(c.card.Lines, "\n") }
+		// 排队重试的发送：按当前权利重新渲染，按钮与令牌不变
+		var before []byte
+		if err := chnOwner.QueryRow(ctx, `SELECT messages FROM chn_deliveries WHERE id = $1`, res.DeliveryID).Scan(&before); err != nil {
+			t.Fatal(err)
+		}
+		from := len(wc.Messages(corp1, account[dm]))
+		deliverDue(t, at(30, 7, 40))
+		c := cardFor(t, cards(t, corp1, account[dm], from), target)
+		if txt := cardText(c); strings.Contains(txt, amount) || strings.Contains(txt, project) || !strings.Contains(txt, "见原文 https://example.com/p/") {
+			t.Fatalf("重试发送泄露：%s", txt)
+		}
+		if !strings.Contains(string(before), button(c.card, "relevant").Token) {
+			t.Fatal("重新渲染不得更换令牌")
+		}
+		ov := wc.Messages(corp1, account[dm])[from]
+		if ov.Kind != "briefing_overview" || !strings.Contains(strings.Join(ov.Card.Lines, "\n"), "见原文 https://example.com/p/") {
+			t.Fatalf("%+v", ov.Card)
+		}
+		// 完整简报：快照内容不变，展示按当前权利
+		check := func(t *testing.T, b map[string]any, wantProject string) {
+			t.Helper()
+			for _, it := range objectiveSection(t, b)["items"].([]any) {
+				m := it.(map[string]any)
+				if m["signal_id"] != target {
+					continue
+				}
+				a, p := m["amount"].(map[string]any), m["project"].(map[string]any)
+				if a["level"] != "none" || a["value"] != nil || a["source_url"] != nil || p["level"] != wantProject || p["value"] != nil {
+					t.Fatalf("%+v", m)
+				}
+			}
+		}
+		check(t, getBriefing(t, dm, res.BriefingID), "citation_only")
+		// 本人重新推送：新卡片同样按当前权利
+		from = len(wc.Messages(corp1, account[dm]))
+		expect(t, dm, false, "POST", "/v1/channels/briefings/"+res.BriefingID+"/resend", "", 200)
+		if txt := cardText(cardFor(t, cards(t, corp1, account[dm], from), target)); strings.Contains(txt, amount) || strings.Contains(txt, project) {
+			t.Fatalf("重新推送泄露：%s", txt)
+		}
+		// 权利服务不可得：失败关闭为 none（全部条目），重新推送的卡片不含任何来源值
+		rights.fail.Store(true)
+		b := getBriefing(t, dm, res.BriefingID)
+		check(t, b, "none")
+		for _, it := range objectiveSection(t, b)["items"].([]any) {
+			for _, f := range []string{"project", "winner", "amount", "region", "categories"} {
+				if v, _ := it.(map[string]any)[f].(map[string]any); v != nil && (v["level"] != "none" || v["value"] != nil) {
+					t.Fatalf("%s：%+v", f, v)
+				}
+			}
+		}
+		from = len(wc.Messages(corp1, account[dm]))
+		expect(t, dm, false, "POST", "/v1/channels/briefings/"+res.BriefingID+"/resend", "", 200)
+		for _, c := range cards(t, corp1, account[dm], from) {
+			if txt := cardText(c); strings.Contains(txt, " 万") || strings.Contains(txt, "夹具") {
+				t.Fatalf("权利不可得时泄露：%s", txt)
+			}
+		}
+		rights.fail.Store(false)
+	})
+
 }

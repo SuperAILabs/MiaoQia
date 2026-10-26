@@ -192,3 +192,67 @@ func newCardID() (string, error) {
 	}
 	return "card-" + hex.EncodeToString(raw), nil
 }
+
+// 来源权利随时可能收紧（数据架构第12节）：保存的快照只固定内容，不固定展示权限。读取完整简报、重新推送与每次发送尚未送达的消息前，
+// 按当前权利重新裁剪：每个字段取快照级别与当前级别中更严格者，citation_only 与 none 不保留原值；权利不可得时当前级别为 none（失败关闭）。
+
+// restrictField 以当前权利收紧一个已保存的字段。
+func restrictField(f *displayField, cur api.FieldRight) *displayField {
+	if f == nil {
+		return nil
+	}
+	level := domain.StrictestLevel([]string{f.Level, domain.StrictestLevel(cur.Levels)})
+	out := &displayField{Level: level, State: f.State}
+	switch level {
+	case "full_text":
+		out.Value = f.Value
+	case "excerpt":
+		if f.Value != "" {
+			out.Value = domain.Truncate(f.Value, domain.ExcerptMax)
+		}
+	case "citation_only":
+		out.SourceURL = f.SourceURL
+		if strings.HasPrefix(cur.SourceURL, "https://") || strings.HasPrefix(cur.SourceURL, "http://") {
+			out.SourceURL = cur.SourceURL
+		}
+	}
+	return out
+}
+
+// restrictItem 返回按当前权利收紧后的条目副本（不修改快照本身）。
+func restrictItem(it *SignalItem, rights map[string]api.FieldRight) *SignalItem {
+	if it == nil {
+		return nil
+	}
+	cp := *it
+	cp.Project = restrictField(it.Project, rights["project"])
+	cp.Winner = restrictField(it.Winner, rights["winner"])
+	cp.Amount = restrictField(it.Amount, rights["amount"])
+	cp.Region = restrictField(it.Region, rights["region"])
+	cp.Categories = restrictField(it.Categories, rights["categories"])
+	return &cp
+}
+
+// restrictSections 按当前权利收紧各区条目的来源字段（含引用行）。
+func (s *Service) restrictSections(sctx context.Context, secs []section) {
+	var ids []string
+	for _, sec := range secs {
+		for _, it := range sec.Items {
+			if it.SignalItem != nil {
+				ids = append(ids, it.SignalID)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	rights := s.fieldRights(sctx, uniq(ids))
+	for si := range secs {
+		for ii := range secs[si].Items {
+			it := &secs[si].Items[ii]
+			if it.SignalItem != nil {
+				it.SignalItem = restrictItem(it.SignalItem, rights[it.SignalID])
+			}
+		}
+	}
+}

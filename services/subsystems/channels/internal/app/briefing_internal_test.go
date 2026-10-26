@@ -238,3 +238,55 @@ func TestCardClockDualTimezone(t *testing.T) {
 		t.Fatal(text)
 	}
 }
+
+// 越权与反例：快照不固定展示权限。组装时 full_text 的字段在权利收紧后按“快照级别与当前级别中更严格者”重新裁剪：
+// full_text→none 不留值与链接、full_text→citation_only 只留当前原文链接、full_text→excerpt 截断；当前放宽不放宽快照；
+// 权利服务失败或未接入时一律 none。
+func TestRestrictToCurrentRights(t *testing.T) {
+	long := strings.Repeat("长", 60)
+	snap := &SignalItem{SignalID: "sig_1",
+		Project: &displayField{Level: "full_text", State: "known", Value: long},
+		Winner:  &displayField{Level: "full_text", State: "known", Value: "夹具中标方"},
+		Amount:  &displayField{Level: "full_text", State: "known", Value: "600 万"},
+		Region:  &displayField{Level: "citation_only", State: "known", SourceURL: "https://example.com/old"}}
+	got := restrictItem(snap, map[string]api.FieldRight{
+		"project": {Levels: []string{"excerpt"}},
+		"winner":  {Levels: []string{"none"}, SourceURL: "https://example.com/w"},
+		"amount":  {Levels: []string{"citation_only"}, SourceURL: "https://example.com/a"},
+		"region":  {Levels: []string{"full_text"}},
+	})
+	if got.Project.Level != "excerpt" || got.Project.Value == long || got.Project.Value == "" {
+		t.Fatalf("%+v", got.Project)
+	}
+	if got.Winner.Level != "none" || got.Winner.Value != "" || got.Winner.SourceURL != "" {
+		t.Fatalf("full_text→none：%+v", got.Winner)
+	}
+	if got.Amount.Level != "citation_only" || got.Amount.Value != "" || got.Amount.SourceURL != "https://example.com/a" {
+		t.Fatalf("full_text→citation_only：%+v", got.Amount)
+	}
+	if got.Region.Level != "citation_only" || got.Region.SourceURL != "https://example.com/old" {
+		t.Fatalf("当前放宽不得放宽快照：%+v", got.Region)
+	}
+	if snap.Winner.Value != "夹具中标方" {
+		t.Fatal("快照本身不得被修改")
+	}
+	for name, r := range map[string]api.Rights{"rights_error": failingRights{}, "not_wired": api.NotWired{}, "missing": fixedRights{}} {
+		s := &Service{Rights: r}
+		secs := []section{{Kind: "objective", Items: []item{{Kind: "signal", SignalItem: snap}, {Kind: "reference", SignalItem: snap}}}}
+		s.restrictSections(context.Background(), secs)
+		for _, it := range secs[0].Items {
+			for _, f := range []*displayField{it.Project, it.Winner, it.Amount, it.Region} {
+				if f.Level != "none" || f.Value != "" || f.SourceURL != "" {
+					t.Fatalf("%s：%+v", name, f)
+				}
+			}
+		}
+		text := ""
+		for _, l := range cardLines("进入供货", restrictItem(snap, nil), false, time.UTC, nil) {
+			text += l.Text
+		}
+		if strings.Contains(text, "夹具中标方") || strings.Contains(text, "600 万") {
+			t.Fatalf("%s：卡片泄露 %s", name, text)
+		}
+	}
+}

@@ -339,7 +339,7 @@
 | 9 | 全部（服务端）：组装时已处理的不列出、区头计已处理数；回填只计数 | 子测试“用例2、3、9、14、15：…” |
 | 10–12 | 部分：配额只限制普通条目（更正类在区首、不受配额），超出与 detection 单次上限之外的待处理条目计入“另有 N 条”；跨区同一采购项目在后面的区为引用行、前面的区标“也命中”；简报记录条目、排序分与区内顺序。24 小时内截止随 A01，Top-K 对照随 learning | `services/subsystems/channels/internal/app/briefing_internal_test.go`（TestFillItemsQuotaCorrectionDedup） |
 | 13 | 全部（服务端）：卡片字段按优先级截断，金额、处置与“查看”保留 | `services/subsystems/channels/internal/domain/briefing_test.go`（TestFitCard） |
-| 14 | 全部（服务端）：只允许引用与链接的字段在简报中只有原文链接、卡片上只写“见原文”；未知级别、缺少权利与权利服务失败都按 none | 子测试“用例2、3、9、14、15：…”；`services/subsystems/channels/internal/app/briefing_internal_test.go`（TestDisplayLevelWhitelist）；`services/subsystems/channels/internal/domain/briefing_test.go`（TestStrictestLevel） |
+| 14 | 全部（服务端）：只允许引用与链接的字段在简报中只有原文链接、卡片上只写“见原文”；未知级别、缺少权利与权利服务失败都按 none；组装后权利收紧（full_text→none、full_text→citation_only、权利不可得）时，完整简报、本人重新推送与排队重试的发送都按快照与当前级别中更严格者重新裁剪，令牌不变 | 子测试“用例2、3、9、14、15：…”“越权与反例测试 来源权利收紧：…”；`services/subsystems/channels/internal/app/briefing_internal_test.go`（TestDisplayLevelWhitelist、TestRestrictToCurrentRights）；`services/subsystems/channels/internal/domain/briefing_test.go`（TestStrictestLevel） |
 | 15 | 全部（服务端）：只读参与人的卡片只有“查看”；以他人令牌点击被拒绝；直接调用 detection 处理 403；没有“跟进” | 子测试“用例2、3、9、14、15：…”“用例15（反例）：…” |
 | 16、17 | 全部（服务端）：“相关”与“不相关 · 原因”写入 detection，`signal.triaged` 的渠道为 `wecom`，结果按部分回写到点击的卡片并带“撤销” | 子测试“用例16、17、25、24：…” |
 | 18 | 部分：组合动作的各部分结果文字由 detection 的部分结果决定；集成测试覆盖成功与无变化，同事已忽略的组合未单独覆盖 | 子测试“用例16、17、25、24：…”“用例31、33：…” |
