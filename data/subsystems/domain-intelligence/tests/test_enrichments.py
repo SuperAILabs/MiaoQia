@@ -27,23 +27,25 @@ BUYER = "test.buyer-provenance@0.1.0"
 WINNER = "test.winner-provenance@0.1.0"
 
 
-def _service(plane, display=None, store=None, enabled=True):
+def _service(plane, display=None, store=None, enabled=True, recipes=()):
     reader = domain_intelligence.queries(plane[1], allowed=lambda tags, purpose: True)
     def fixed(i, v):
         found = reader.get_fact(i, Basis("current"), version=v)
         return found.fact if found else None
     return evidence.enrichments(plane[0], store or plane[2].store, facts=fixed,
-        display=display or (lambda tags, purpose: "full_text"), enable_test_recipe=enabled)
+        display=display or (lambda tags, purpose: "full_text"), enable_test_recipe=enabled, recipes=recipes)
 
 
-def _setup(plane):
+def _setup(plane, recipes=()):
     revisions = _revisions(plane)
     assert all(len(r.facts) == 1 for r in revisions)
     for revision in revisions:
         _materialize(plane, revision)
-    service = _service(plane)
+    service = _service(plane, recipes=recipes)
     with reqctx.use(CTX):
         service.register_reference(**REFERENCE, content=TEST_CONTENT, rights_tags=["test:identity-policy"])
+        for recipe in recipes:
+            service.register_reference(**recipe.reference, content=recipe.content, rights_tags=["review:building-topic-pair"])
     return service
 
 
@@ -143,10 +145,15 @@ def test_winner_only_concurrent_registration_apply_and_recipe_only_receipt(plane
     assert after_counts == {**before, "dom_enrichment_receipts": before["dom_enrichment_receipts"] + 1}
 
 
-def test_payload_failure_domain_rolls_back_evidence_remains_and_retries(plane, monkeypatch):
-    service = _setup(plane)
+@pytest.mark.parametrize("recipe_id", [BUYER, "proc.building-topic@0.1.0"])
+def test_payload_failure_domain_rolls_back_evidence_remains_and_retries(plane, monkeypatch, recipe_id):
+    recipes = []
+    if recipe_id != BUYER:
+        recipes = [evidence.load_recipe(CORPUS.parents[2] / "industries/building-materials",
+            "miaoqia_pack_building_materials.topic:build_recipe", CORPUS.parents[2])]
+    service = _setup(plane, recipes)
     notice = _facts(plane[1])[0]
-    key, parent = _register(plane, service, notice, BUYER)
+    key, parent = _register(plane, service, notice, recipe_id)
     before, original = _counts(plane), facts.payloads.validator
     def invalid_gate(name, *args, **kwargs):
         actual = original(name, *args, **kwargs)

@@ -526,3 +526,42 @@ cases:
       delivery_region:
         code: '330106'
         prov: *id001
+- name: 公告主题带证据与明确scope
+  valid: true
+  patch:
+  - op: add
+    path: /subject_categories
+    value:
+    - category: {scheme: 'industry:building-materials', scheme_version: 0.2.0, code: CAT-PIPE-DI, confidence: 0.95}
+      prov: *id001
+      scope: notice_subject
+      source_field: /title/value
+- name: 主题不能假装实际供货scope
+  valid: false
+  patch:
+  - op: add
+    path: /subject_categories
+    value:
+    - category: {scheme: 'industry:building-materials', scheme_version: 0.2.0, code: CAT-PIPE-DI}
+      prov: *id001
+      scope: actual_supply
+      source_field: /title/value
+- name: 主题缺少证据拒绝
+  valid: false
+  patch:
+  - op: add
+    path: /subject_categories
+    value:
+    - category: {scheme: 'industry:building-materials', scheme_version: 0.2.0, code: CAT-PIPE-DI}
+      scope: notice_subject
+      source_field: /title/value
+- name: 主题源路径必须JSONPointer
+  valid: false
+  patch:
+  - op: add
+    path: /subject_categories
+    value:
+    - category: {scheme: 'industry:building-materials', scheme_version: 0.2.0, code: CAT-PIPE-DI}
+      prov: *id001
+      scope: notice_subject
+      source_field: /title/~bad

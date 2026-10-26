@@ -37,7 +37,14 @@ def resolver(database, store, *, display=None, enrichments=None):
     return Resolver(database, store, display, enrichments=enrichments)
 
 
-def enrichments(database, store, *, facts, display=None, enable_test_recipe=False):
+def enrichments(database, store, *, facts, display=None, enable_test_recipe=False, recipes=()):
     """公开本地派生登记/读取装配，默认无recipe且拒绝访问。"""
     from .application.enrichments import EnrichmentStore
-    return EnrichmentStore(database, store, facts=facts, display=display, enable_test_recipe=enable_test_recipe)
+    return EnrichmentStore(database, store, facts=facts, display=display, enable_test_recipe=enable_test_recipe, recipes=recipes)
+
+
+def load_recipe(pack_dir, entrypoint, packs_dir):
+    """本地显式recipe装配；复用包入口来源检查，不自动启用所有行业包。"""
+    from .extensions.packs import _load_module
+    module, name = entrypoint.split(":")
+    return getattr(_load_module(pack_dir, module), name)(packs_dir)

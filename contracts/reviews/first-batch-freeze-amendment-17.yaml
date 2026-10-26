@@ -1,0 +1,29 @@
+status: amended
+amends: contracts/reviews/first-batch-freeze.yaml
+amended_at: '2026-10-26T17:26:15.552244+00:00'
+approval:
+  authority: 随本PR评审合并生效；A02仍L0，E1–E5仍为建议
+reason: Notice可选公告主题包装；INF-PROC1.6.0与APP-TENDER0.8.0的有界主题回退，只启用精确复核官方pair；非实际供货或生产来源启用。IND-BUILDING-MATERIALS分发版本升0.3.0以包含recipe代码/评测制品；Project1.3.0和taxonomy/vocabulary0.2.0字节不变。
+version_owners:
+- path: contracts/schemas/domains/procurement/notice.schema.json
+  version: 1.2.0
+  sha256: afdd9606407e6550f25d58133a84392789faee21d0e6ad468f7d7ee938f007bd
+- path: packs/information_domains/procurement/pack.yaml
+  version: 1.6.0
+  sha256: 829b86582893b3ea7d96e568673a1e55396fc4bd05cb3dd75c600ddfa8c2c994
+- path: packs/application_domains/tendering/pack.yaml
+  version: 0.8.0
+  sha256: 02ce97fb6b58a89f39e2cb7a6b879de3c64c89e57222b51b29fb19e66f4f560d
+- path: packs/industries/building-materials/pack.yaml
+  version: 0.3.0
+  sha256: efd485c30a2dd9b4254b5c179dbaea89fffaa112642a3e9f8649cf1e4727aa89
+verification:
+  base: 98d2304f44b5fc1accc7074b79f3bdfc19056443
+  commands:
+  - mqc check
+  - mqc compat --base 98d2304
+  - mqc generate --check
+  - mqc freeze-check
+  - SDK and all subsystem PostgreSQL tests
+  - lint-imports
+  - doclinks and diff-check

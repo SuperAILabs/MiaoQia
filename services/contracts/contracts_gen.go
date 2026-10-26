@@ -1291,6 +1291,9 @@ type Notice struct {
 	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
 	SnapshotRef string `json:"snapshot_ref"`
 
+	// 公告采购主题；不表示中标人实际供货，不代替真实items或标包品类。固定字段证据及独立范围复核由recipe验证。
+	SubjectCategories []NoticeSubjectCategoriesElem `json:"subject_categories,omitempty,omitzero"`
+
 	// Title corresponds to the JSON schema field "title".
 	Title Text `json:"title"`
 
@@ -1299,6 +1302,20 @@ type Notice struct {
 
 	// 领域事实版本号
 	Version int `json:"version"`
+}
+
+type NoticeSubjectCategoriesElem struct {
+	// Category corresponds to the JSON schema field "category".
+	Category Category `json:"category"`
+
+	// Prov corresponds to the JSON schema field "prov".
+	Prov Provenance `json:"prov"`
+
+	// Scope corresponds to the JSON schema field "scope".
+	Scope interface{} `json:"scope"`
+
+	// 固定源字段JSON Pointer；首版recipe只允许/title/value
+	SourceField string `json:"source_field"`
 }
 
 type NoticeType string

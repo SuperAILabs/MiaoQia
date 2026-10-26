@@ -8,7 +8,7 @@ from sqlalchemy import text
 from miaoqia.kernel import ids, outbox, payloads, reqctx
 from miaoqia.sdk.derivation import canonical, evaluate, field_input, fingerprint
 
-from ..api import NAME, ResolvedEvidence
+from ..api import NAME, ResolvedEvidence, Recipe
 from .queries import load_document
 
 LEVELS = ("none", "citation_only", "excerpt", "full_text")
@@ -25,11 +25,28 @@ def identity(inputs, references):
     return inputs[0]
 
 
+def identity_outputs(source, value, ref, snapshot):
+    from miaoqia.sdk.derivation import pointer
+    path = ref["inputs"][0]["field_path"].rsplit("/", 1)[0] + "/prov"
+    return [{"path": path, "value": {**pointer(source, path), "evidence_ref": ref["id"],
+             "method": "rule", "extractor": ref["transform"]}, "evidence_ref": ref["id"]}]
+
+
 class EnrichmentStore:
-    def __init__(self, database, store, *, facts, display=None, enable_test_recipe=False):
+    def __init__(self, database, store, *, facts, display=None, enable_test_recipe=False, recipes=()):
         self.database, self.store, self.facts, self.display = database, store, facts, display
-        self.transforms = {"test.identity@0.1.0": identity} if enable_test_recipe else {}
-        self.recipes = RECIPES if enable_test_recipe else {}
+        registered = list(recipes)
+        if enable_test_recipe:
+            registered += [Recipe(name, path, "test.identity@0.1.0", REFERENCE, TEST_CONTENT,
+                                  identity, identity_outputs, True) for name, path in RECIPES.items()]
+        self.recipes = {r.id: r for r in registered}
+        if len(self.recipes) != len(registered):
+            raise ValueError("recipe重复")
+        self.transforms = {}
+        for recipe in registered:
+            if recipe.transform_id in self.transforms and self.transforms[recipe.transform_id] is not recipe.transform:
+                raise ValueError("转换版本重复")
+            self.transforms[recipe.transform_id] = recipe.transform
 
     def level(self, requirements=()):
         ctx = reqctx.current()
@@ -101,6 +118,12 @@ class EnrichmentStore:
             return self._load(derived)
         return None
 
+    def _snapshot(self, snapshot_ref):
+        with self.database.tx() as conn:
+            row = conn.execute(text("SELECT * FROM evd_snapshots WHERE id=:id"), {"id": snapshot_ref}).mappings().one()
+        self.require_full(row["rights_tags"])
+        return dict(row)
+
     def _document(self, snapshot_ref):
         with self.database.tx() as conn:
             row = conn.execute(text("SELECT * FROM evd_snapshots WHERE id=:id"), {"id": snapshot_ref}).mappings().one()
@@ -119,15 +142,17 @@ class EnrichmentStore:
             raise ValueError("recipe未登记/未启用（测试recipe须显式启用）")
         if self.facts(source["id"], source["version"]) != source:
             raise ValueError("固定source事实不一致")
-        path = self.recipes[recipe]
-        value, leaf = field_input(source, path)
-        reference = self.reference(**REFERENCE)
-        if reference is None:
-            raise ValueError("参考内容不存在或不可用")
+        descriptor = self.recipes[recipe]
+        path = descriptor.path
+        input_value, leaf = field_input(source, path)
+        reference = self.reference(**descriptor.reference)
+        if reference is None or reference["content"] != descriptor.content:
+            raise ValueError("参考内容不存在或与已登记recipe不一致")
+        value = descriptor.transform([input_value], [reference["content"]])
         requirements = [source["rights_tags"], reference["rights_tags"]]
-        ref = {"kind": "derivation", "transform": "test.identity@0.1.0",
+        ref = {"kind": "derivation", "transform": descriptor.transform_id,
                "inputs": [{"evidence_ref": leaf, "fact_ref": {"id": source["id"], "version": source["version"]}, "field_path": path}],
-               "reference_data": [REFERENCE], "value_hash": fingerprint(value)}
+               "reference_data": [descriptor.reference], "value_hash": fingerprint(value)}
         key = fingerprint({"source": [source["id"], source["version"]], "recipe": recipe,
                            "reference_hash": reference["hash"], "derivation": ref, "rights": requirements})
         with self.database.tx() as conn:
@@ -136,7 +161,7 @@ class EnrichmentStore:
             if not revision or revision["snapshot_id"] != source["snapshot_ref"]:
                 raise ValueError("真实解析修订与快照不一致")
             if len(revision["facts"]) != 1:
-                raise ValueError("c0测试recipe仅支持单事实解析修订")
+                raise ValueError("当前recipe仅支持单事实解析修订")
             conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": "enrich:" + key})
             old = conn.execute(text("SELECT run_key FROM evd_enrichments WHERE run_key=:k"), {"k": key}).first()
             if old:
@@ -158,15 +183,12 @@ class EnrichmentStore:
                 object_ref, content_hash = self._put(ref)
                 conn.execute(text("INSERT INTO evd_derivations VALUES (:id,:f,:o,:h,CAST(:r AS jsonb))"),
                              {"id": ref["id"], "f": deriv_digest, "o": object_ref, "h": content_hash, "r": json.dumps(requirements)})
-            prov_path = path.rsplit("/", 1)[0] + "/prov"
-            from miaoqia.sdk.derivation import pointer
-            source_prov = pointer(source, prov_path)
-            bundle = {"run_key": key, "recipe": recipe, "test_recipe": True, "source": {"id": source["id"], "version": source["version"]},
+            snapshot = self._snapshot(source["snapshot_ref"])
+            bundle = {"run_key": key, "recipe": recipe, "test_recipe": descriptor.test_recipe, "source": {"id": source["id"], "version": source["version"]},
                       "source_hash": fingerprint(source), "snapshot_ref": source["snapshot_ref"], "revision_ref": source["revision_ref"],
                       "input_hash": fingerprint(ref["inputs"]), "reference_hash": reference["hash"],
                       "rights_tags": sorted({t for tags in requirements for t in tags}),
-                      "outputs": [{"path": prov_path, "value": {**source_prov, "evidence_ref": ref["id"], "method": "rule", "extractor": ref["transform"]},
-                                   "evidence_ref": ref["id"]}]}
+                      "outputs": descriptor.outputs(source, value, ref, snapshot)}
             object_ref, content_hash = self._put(bundle)
             conn.execute(text("INSERT INTO evd_enrichments(run_key,snapshot_ref,revision_ref,recipe,object_ref,content_hash,rights_requirements) VALUES (:k,:s,:r,:p,:o,:h,CAST(:q AS jsonb))"),
                          {"k": key, "s": source["snapshot_ref"], "r": source["revision_ref"], "p": recipe, "o": object_ref, "h": content_hash, "q": json.dumps(requirements)})
@@ -194,28 +216,27 @@ class EnrichmentStore:
                 or row["revision_ref"] != bundle["revision_ref"]
                 or source["snapshot_ref"] != bundle["snapshot_ref"] or source["revision_ref"] != bundle["revision_ref"]):
             raise ValueError("登记元数据与source不一致")
-        path = self.recipes[bundle["recipe"]]
-        value, leaf = field_input(source, path)
-        reference = self.reference(**REFERENCE)
-        if reference is None or bundle["reference_hash"] != reference["hash"]:
+        descriptor = self.recipes[bundle["recipe"]]
+        path = descriptor.path
+        input_value, leaf = field_input(source, path)
+        reference = self.reference(**descriptor.reference)
+        if reference is None or reference["content"] != descriptor.content or bundle["reference_hash"] != reference["hash"]:
             raise ValueError("参考指纹不一致")
+        value = descriptor.transform([input_value], [reference["content"]])
         requirements = [source["rights_tags"], reference["rights_tags"]]
         if row["rights_requirements"] != requirements or bundle["rights_tags"] != sorted({t for tags in requirements for t in tags}):
             raise ValueError("输入权利不一致")
-        if len(bundle["outputs"]) != 1:
-            raise ValueError("测试recipe输出数错误")
+        if len(bundle["outputs"]) != 1 or bundle["test_recipe"] is not descriptor.test_recipe:
+            raise ValueError("recipe输出数或类型错误")
         output = bundle["outputs"][0]
         ref = self._ref(output["evidence_ref"])
         expected_inputs = [{"evidence_ref": leaf, "fact_ref": bundle["source"], "field_path": path}]
-        if (not ref or ref["inputs"] != expected_inputs or ref["reference_data"] != [REFERENCE]
-                or ref["transform"] != "test.identity@0.1.0"
+        if (not ref or ref["inputs"] != expected_inputs or ref["reference_data"] != [descriptor.reference]
+                or ref["transform"] != descriptor.transform_id
                 or bundle["input_hash"] != fingerprint(expected_inputs)
                 or self._evaluate(output["evidence_ref"]) != value):
             raise ValueError("输出与固定输入不一致")
-        from miaoqia.sdk.derivation import pointer
-        prov_path = path.rsplit("/", 1)[0] + "/prov"
-        expected_prov = {**pointer(source, prov_path), "evidence_ref": ref["id"], "method": "rule", "extractor": ref["transform"]}
-        if output != {"path": prov_path, "value": expected_prov, "evidence_ref": ref["id"]}:
+        if bundle["outputs"] != descriptor.outputs(source, value, ref, self._snapshot(source["snapshot_ref"])):
             raise ValueError("输出补丁与已登记转换不一致")
         return bundle
 
