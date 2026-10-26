@@ -192,3 +192,58 @@ def test_materializer_runs_only_in_the_consumer_role_and_requires_its_binding():
     assert module().consumers(env("data-api")) == []
     with pytest.raises(SystemExit):
         module().consumers(env("data-consumer"))      # 未装配解析修订读取时拒绝启动，不以空数据运行
+
+
+def test_source_reverting_to_earlier_content_restores_the_current_value(plane):
+    """A→A 无新版本；A→B→A 产生新快照与新版本，当前值回到 A，并发布事实事件（评审 P1 回归）。"""
+    from miaoqia.evidence.replay import corpus_artifact
+    evd_db, dom_db, pipeline, materializer, _ = plane
+    a = corpus_artifact(CORPUS / "official-consortium-20261014")
+    b = dataclasses.replace(a, raw=a.raw.replace("4186666元".encode(), "4186667元".encode()))
+    seen: set[str] = set()
+
+    def ingest(art):
+        with reqctx.use(reqctx.service("evidence")), evd_db.tx() as conn:
+            result = pipeline.ingest(conn, art)
+        for env in _events(evd_db, "evidence.extraction.revised.v1"):
+            if env["id"] not in seen:
+                seen.add(env["id"])
+                with reqctx.use(reqctx.service("domain-intelligence")), dom_db.tx() as conn:
+                    materializer.on_extraction_revised(conn, env)
+        (fact,) = _facts(dom_db)
+        return result.snapshot_created, fact["version"], fact["lots"][0]["bid_results"][0]["price"]["value"]
+
+    assert ingest(a) == (True, 1, "4186666")
+    assert ingest(a) == (False, 1, "4186666")
+    assert ingest(b) == (True, 2, "4186667")
+    assert ingest(a) == (True, 3, "4186666")
+    assert [e["data"]["fact_version"] for e in _events(dom_db, "domain.fact.upserted.v1")] == [1, 2, 3]
+
+
+def test_fact_marked_suspect_by_the_extractor_is_not_materialized(plane):
+    """证据与契约都合法、但解析器主动标为 suspect 的事实：修订为 suspect，不物化（评审 P2 回归）；warning 照常物化。"""
+    from miaoqia.sdk import ExtractionResult
+    evd_db, dom_db, pipeline, materializer, _ = plane
+    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.1.0")]
+
+    def marking(status):
+        class Marking:
+            id, version, fact_types = "proc.marking-" + status, "0.0.1", ("tendering.notice",)
+
+            def applies(self, doc, source):
+                return True
+
+            def extract(self, doc, ctx):
+                fact = real.extractor.extract(doc, ctx).facts[0]
+                fact["quality"] = {"status": status, "warnings": [{"code": "REVIEW_REQUIRED"}]}
+                return ExtractionResult(facts=[fact])
+        return Marking()
+
+    pipeline.extractors = [dataclasses.replace(real, extractor=marking("suspect"))]
+    _deliver(plane, [CORPUS / "official-award-20261014"])
+    assert _events(evd_db, "evidence.extraction.revised.v1")[-1]["data"]["quality_status"] == "suspect"
+    assert _facts(dom_db) == []
+    pipeline.extractors = [dataclasses.replace(real, extractor=marking("warning"))]
+    _deliver(plane, [CORPUS / "official-award-20261014"])
+    assert _events(evd_db, "evidence.extraction.revised.v1")[-1]["data"]["quality_status"] == "warning"
+    assert [f["quality"]["status"] for f in _facts(dom_db)] == ["warning"]

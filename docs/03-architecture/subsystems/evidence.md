@@ -123,9 +123,9 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 
 A02 贯通验收 L1-1（[验收线第8节](../../05-delivery/09-a02-end-to-end-acceptance.md#8-l1-实施进度)）交付公共实例的最小文档管线，代码位于 `data/subsystems/evidence/`：
 
-- `snapshotter`：同一来源对象（来源 + 来源对象键）按规范化内容哈希判定新快照，序号递增；原件按内容寻址存 `raw/<sha256>`，规范化文档存 `normalized/<snp>.json`，对象不可覆盖；
+- `snapshotter`：同一来源对象（来源 + 来源对象键）的规范化内容与最新快照不同即为新快照，序号递增，内容回到历史取值同样是新快照；原件按内容寻址存 `raw/<sha256>`，规范化文档存 `normalized/<snp>.json`，对象不可覆盖；
 - `document_pipeline`：HTML 使用 SDK 的规范化（`doc.html-dev@0.1.0`，与语料评测同一坐标系）；PDF 只接受经复核的规范化表示，PDF 文本层、OCR 与版面随 M1；
-- `extraction_orchestrator`：按包清单加载解析器与领域校验（入口须位于包内），同一快照同一解析器版本只解析一次；证据或领域语义校验不通过的修订记为 `suspect`，下游不物化；
+- `extraction_orchestrator`：按包清单加载解析器与领域校验（入口须位于包内），同一快照同一解析器版本只解析一次；证据或领域语义校验不通过、或任一事实被解析器标为 `suspect` 的修订记为 `suspect`（按最严格状态汇总），下游不物化；
 - `provenance`：文档证据引用入库，快照、修订与证据引用由触发器保持不可变；
 - 事件：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`，与数据同事务经发件箱发布；公共管线拒绝租户上下文；
 - 回放：`mq-evidence-replay` 投放冻结语料（核对原件哈希，权利标签追加 `corpus:<样本>`），不构成来源启用；

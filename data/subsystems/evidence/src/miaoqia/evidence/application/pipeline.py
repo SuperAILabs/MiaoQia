@@ -3,7 +3,7 @@
 一次 ingest 在一个数据库事务内完成快照、解析修订、证据引用与发件箱事件，事件与数据一致；对象存储写入先于事务，
 对象不可变且按内容寻址（原件）或按快照（规范化文档），事务回滚只会留下无人引用的对象，不会改写已发布对象。
 
-同一来源对象的规范化内容不变时不产生新快照；同一快照在同一解析器版本下只解析一次，重复投放幂等，不重复发布事件。
+同一来源对象的规范化内容与最新快照相同时不产生新快照（回到历史内容仍是新快照）；同一快照在同一解析器版本下只解析一次，重复投放幂等，不重复发布事件。
 本管线只处理公共来源：租户上下文下调用被拒绝（租户文档属于租户实例，见 evidence.md 第11节）。
 """
 from __future__ import annotations
@@ -81,8 +81,10 @@ class Pipeline:
         digest = normalized_hash(document)
         raw_digest = raw_hash(art.raw)
         conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": f"{art.source_id}|{art.source_key}"})
-        row = conn.execute(text("SELECT id FROM evd_snapshots WHERE source_id = :s AND source_key = :k AND normalized_hash = :h"),
-                           {"s": art.source_id, "k": art.source_key, "h": digest}).first()
+        # 与来源对象的最新快照比较（不是全部历史）：内容回到旧值也是来源的一次变化，须产生新快照并驱动物化。
+        latest = conn.execute(text("""SELECT id, normalized_hash FROM evd_snapshots WHERE source_id = :s AND source_key = :k
+                                      ORDER BY seq DESC LIMIT 1"""), {"s": art.source_id, "k": art.source_key}).first()
+        row = latest if latest is not None and latest[1] == digest else None
         created = row is None
         if created:
             snapshot = ids.new("snp")

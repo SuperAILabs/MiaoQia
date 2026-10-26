@@ -16,7 +16,8 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
--- 来源快照：同一来源对象（source_id + source_key）按规范化内容哈希判定是否为新快照，seq 自 1 递增。
+-- 来源快照：同一来源对象（source_id + source_key）的规范化内容与最新快照不同即为新快照，seq 自 1 递增；
+-- 内容回到历史取值（A→B→A）同样是来源的一次变化，记为新快照，不复用历史快照。
 CREATE TABLE evd_snapshots (
     id               text PRIMARY KEY CHECK (id ~ '^snp_[0-9A-HJKMNP-TV-Z]{26}$'),
     source_id        text NOT NULL CHECK (source_id <> ''),
@@ -31,8 +32,7 @@ CREATE TABLE evd_snapshots (
     rights_tags      jsonb NOT NULL CHECK (jsonb_typeof(rights_tags) = 'array' AND jsonb_array_length(rights_tags) >= 1),
     observed_at      timestamptz NOT NULL,   -- 来源观察时间（采集或回放材料的取得时间）
     recorded_at      timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (source_id, source_key, seq),
-    UNIQUE (source_id, source_key, normalized_hash)
+    UNIQUE (source_id, source_key, seq)
 );
 
 -- 解析修订：一个快照在一个解析器版本下只有一个修订；人工修正与重放追加新修订。

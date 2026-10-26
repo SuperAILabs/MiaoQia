@@ -16,9 +16,11 @@ def raw_hash(raw: bytes) -> str:
 
 
 def quality_status(errors: list[str], warnings: list[dict], facts: list[dict]) -> str:
-    """证据或领域语义校验不通过为 suspect（进入复核，不物化为领域事实）；解析警告或事实质量警告为 warning。"""
-    if errors:
+    """按最严格状态汇总：证据或领域语义校验不通过、或任一事实被解析器标为 suspect，修订即为 suspect（进入复核，
+    不物化为领域事实）；解析警告或事实质量警告为 warning。"""
+    statuses = {f.get("quality", {}).get("status") for f in facts}
+    if errors or "suspect" in statuses:
         return "suspect"
-    if warnings or any(f.get("quality", {}).get("status") in ("warning", "suspect") for f in facts):
+    if warnings or "warning" in statuses:
         return "warning"
     return "ok"
