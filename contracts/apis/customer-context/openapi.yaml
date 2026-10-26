@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: customer-context 接口
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     客户档案、上下文版本与快照、目标配置（PRD 第2段，docs/01-product/prd/02-profile-and-objectives.md；
     规格见 docs/03-architecture/subsystems/customer-context.md）。草案：随第2段首个实现切片提交，未冻结。
@@ -14,6 +14,8 @@ info:
     批准后由本子系统消费 identity.approval.decided.v1 执行），以及供 learning 读取的仿真输入（内部端口）。
     0.4.0 起（PRD 第3段）：内部端口的生效策略读取（GetActivePolicies，detection 每批求值前读取策略代次）；目标访问判断追加
     can_view_signals 与 can_feedback（detection 的信号收件箱与反馈按本子系统的口径授权）；策略状态带策略标识 pol_。
+    0.5.0 起（PRD 第6段）：目标访问判断追加 can_assign（单元关系 can_assign_unit_objectives，或本地当前版本的负责人/参与人且
+    identity 判断通过），响应追加目标所在单元、模板与状态（可选字段，供 pursuit 确定推进所在单元与结果原因代码）。
 servers:
 - url: /internal
 paths:
@@ -549,6 +551,7 @@ paths:
         可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且 identity 判断通过”放行，移除参与人在本地提交后立即撤权，
         不等待 identity 同步。调用者须为用户主体（否则 403 forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
         授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation 中被允许的部分（总含 can_view）。
+        0.5.0 起响应带目标所在单元 org_unit_id、模板 template_id 与状态 state（调用者能查看目标时才返回）。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -561,7 +564,7 @@ paths:
         schema:
           type: array
           minItems: 1
-          maxItems: 7
+          maxItems: 8
           items:
             $ref: '#/components/schemas/ObjectiveRelation'
       responses:
@@ -606,6 +609,7 @@ components:
       - can_request_activation
       - can_view_signals
       - can_feedback
+      - can_assign
     ObjectiveAccess:
       type: object
       additionalProperties: false
@@ -618,10 +622,20 @@ components:
           pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
         allowed:
           type: array
-          maxItems: 5
+          maxItems: 8
           uniqueItems: true
           items:
             $ref: '#/components/schemas/ObjectiveRelation'
+        org_unit_id: *unit
+        template_id:
+          type: string
+          pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+        state:
+          type: string
+          enum:
+          - inactive
+          - active
+          - disabled
     ProfileEntity:
       type: object
       additionalProperties: false

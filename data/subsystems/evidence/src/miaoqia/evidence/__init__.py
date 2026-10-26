@@ -30,8 +30,14 @@ def module() -> Module:
     return Module(name=NAME, database="evd", migrations=MIGRATIONS, consumers=consumers)
 
 
-def resolver(database, store, *, display=None):
+def resolver(database, store, *, display=None, enrichments=None):
     """api.EvidenceResolver 的本地绑定；必须注入按当前请求上下文判定展示级别的策略。"""
     from .application.queries import Resolver
 
-    return Resolver(database, store, display)
+    return Resolver(database, store, display, enrichments=enrichments)
+
+
+def enrichments(database, store, *, facts, display=None, enable_test_recipe=False):
+    """公开本地派生登记/读取装配，默认无recipe且拒绝访问。"""
+    from .application.enrichments import EnrichmentStore
+    return EnrichmentStore(database, store, facts=facts, display=display, enable_test_recipe=enable_test_recipe)

@@ -23,10 +23,19 @@ class EvidenceIntegrityError(ValueError):
     """已发布证据与对象存储不一致。"""
 
 
+def load_document(store, row):
+    """唯一规范化对象完整性检查；调用者必须先判定当前正文读取权利。"""
+    document = json.loads(store.get(row["document_ref"]))
+    if normalized_hash(document) != row["normalized_hash"]:
+        raise EvidenceIntegrityError("规范化文档与快照哈希不符")
+    return document
+
+
 class Resolver:
     def __init__(self, database: db.Database, store: ObjectStore,
-                 display: Callable[[tuple[str, ...], str], str] | None = None):
+                 display: Callable[[tuple[str, ...], str], str] | None = None, *, enrichments=None):
         self.database, self.store, self.display = database, store, display
+        self.enrichments = enrichments
 
     def resolve(self, evidence_ref: str) -> ResolvedEvidence | None:
         ctx = reqctx.current()
@@ -41,7 +50,7 @@ class Resolver:
                                         FROM evd_evidence_refs r JOIN evd_snapshots s ON s.id = r.snapshot_id
                                         WHERE r.id = :id"""), {"id": evidence_ref}).mappings().one_or_none()
         if row is None:
-            return None
+            return self.enrichments.resolve(evidence_ref) if self.enrichments else None
         level = self.display(tuple(row["rights_tags"]), ctx.purpose)
         if level not in ("none", "citation_only", "excerpt", "full_text"):
             raise PermissionError("展示策略返回未知级别")
@@ -51,9 +60,7 @@ class Resolver:
                     source_key=row["source_key"], observed_at=row["observed_at"])
         if level == "citation_only":
             return ResolvedEvidence(**base)
-        document = json.loads(self.store.get(row["document_ref"]))
-        if normalized_hash(document) != row["normalized_hash"]:
-            raise EvidenceIntegrityError("规范化文档与快照哈希不符")
+        document = load_document(self.store, row)
         doc = Document(document)
         ref = {"id": row["id"], "snapshot_ref": row["snapshot_id"], "pipeline_version": row["pipeline_version"],
                "locator": row["locator"], "quote_hash": row["quote_hash"]}

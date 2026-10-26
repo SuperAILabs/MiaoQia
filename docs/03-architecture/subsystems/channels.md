@@ -202,7 +202,7 @@
 - **简报链接**（`POST /v1/channels/briefing-links:open`）：链接只指向对象（信号、简报、审批），7 天有效；他人打开 409 `account_mismatch`，不存在、其他租户与无权限同为 404 `content_unavailable`，过期 410；
 - **偏好**（`GET/PUT /v1/channels/briefing-preferences`）：`expected_version` 乐观并发（409 `version_conflict`），非法值 422 `invalid_preferences`，生效时刻为下一个周期边界；写审计；
 - **投递统计**（`GET /v1/channels/delivery-stats`）：需要 `can_manage_members`，只有状态、原因与计数；
-- 尚未实现：定时任务与工作进程、企业微信生产适配器、覆盖与来源权利的生产适配器（`api.Coverage` / `api.Rights` 为 NotWired）、即时通知（F7）、“跟进”按钮（第6段）、AI 摘要、“关注变化”区。
+- 尚未实现：定时任务与工作进程、企业微信生产适配器、覆盖与来源权利的生产适配器（`api.Coverage` / `api.Rights` 为 NotWired）、即时通知（F7）、AI 摘要、“关注变化”区。
 
 本切片选定的缺省值（规格未定处）：
 
@@ -216,6 +216,8 @@
 | 一次点击的尝试 | 至多 3 次，暂时失败不作废令牌 |
 | 卡片数 | 每区前 3 条、每期至多 6 张信号卡片 |
 | 签名密钥 | `MIAOQIA_CHANNELS_SIGNING_KEY`，至少 32 字节；动作令牌与历史游标共用、按用途分隔 |
+
+**实现状况（PRD 第6段卡片“跟进”，[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.3.0）**：信号卡片在租户已开启跟进入口（发布开关 `MIAOQIA_CHANNELS_PURSUE_TENANTS`，逗号分隔的租户，缺省为空即不显示）、pursuit 的 `Actions` 绑定可用、且收件人本人在目标上有 `can_assign`（经 customer-context `ObjectiveAccess` 以收件人本人判断，判断失败不显示）时带“跟进”按钮；排除信号不显示。点击沿用第5段的令牌、回调与执行检查（签名、租户、卡片、绑定、收件人、已固定结果、到期），之后以点击者的用户主体调用 pursuit `CreatePursuit`（`channel` 为 `wecom`，负责人为点击者本人、没有任务；操作标识为令牌标识，每次尝试的幂等键为“令牌标识-序号”）；已创建与“已存在 · 已关联”为成功、“已存在”为无变化，pursuit 的确定失败（4xx）固定在令牌上，暂时失败不作废令牌；`channels.action.executed.v1` 的 `action` 为 `pursue` 并带 `pursuit_id`。卡片“跟进”不提供撤销（撤销创建在 Web 中）。提醒卡片的投递与“完成”、简报“待我处理”中的任务尚未实现（[A02 验收缺口 C-09](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)）。
 
 ## 7. 事件
 

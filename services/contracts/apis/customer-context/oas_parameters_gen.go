@@ -1291,7 +1291,7 @@ func decodeGetObjectiveAccessParams(args [1]string, argsEscaped bool, r *http.Re
 				if err := (validate.Array{
 					MinLength:    1,
 					MinLengthSet: true,
-					MaxLength:    7,
+					MaxLength:    8,
 					MaxLengthSet: true,
 				}).ValidateLength(len(params.Relation)); err != nil {
 					return errors.Wrap(err, "array")

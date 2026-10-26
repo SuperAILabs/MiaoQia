@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.10 · 更新：2026-10-19 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.11 · 更新：2026-10-26 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -80,7 +80,7 @@ F指完整正文集的sample_index，S指结构化集的sample_index。示例是
 | 附件、OCR与表格 | 已有22页扫描合同原件及第2/3/6页人工转录、正文表格和附件不可得；缺全量OCR/跨页表格独立评估，不能以人工转录代证 | 数据/AI负责人；M1对应能力验收前 |
 | 更正的before/after | SDK通用替换校验与采购包不可变字段约束已校验现有字段替换的Pointer、目标Schema、before值与原版本；真实金额及时间更正通过。新增/删除字段、授权、原子写入、并发重放仍须在领域执行器验收 | domain-intelligence负责人；M1更正应用前 |
 | 语义与引用完整性 | SDK通用校验验证块连续、表格网格、证据快照/管线/定位/hash与引用存在；采购/企业包的语料校验器验证联系/信用代码原文、标包/结果标识唯一、候选/中标/框架入围阶段与冲突、联合体成员去重；持久化org/revision完整性、跨源冲突裁决与恢复重放仍待真实链路验收 | evidence/领域负责人；M1验收前 |
-| 结构化与派生证据 | 记录集、记录证据、派生证据为草案（ADR-0011已批准架构方向，运行能力按首次启用门禁验收），三语言生成与正反例通过；不改动已冻结的文档证据。SDK尚未校验记录键唯一、字段路径与value_hash、派生链无环及末端为文档/记录证据、事实版本可解析、转换与参考数据内容可取得，派生结果的权限也未按全部来源传播；结构化来源复用快照与解析修订事件，派生证据随事实版本发布，不另设事件 | evidence负责人；第一个结构化来源或派生字段启用前 |
+| 结构化与派生证据 | 记录集与记录证据仍为草案；派生格式已有本地测试转换运行基础。SDK校验固定事实/字段与证据、无环文档叶子图、登记转换、不可变参考内容及RFC8785重算；evidence按全部输入当前权利裁剪，并对未知/record叶子拒绝。生产转换、结构化记录键唯一/字段路径与value_hash校验仍待首次来源启用验收。结构化来源复用快照与解析修订事件，派生证据不另设事件；本地测试运行复用既有enrichment.completed事件 | evidence负责人；第一个结构化来源或生产派生字段启用前 |
 | 事件覆盖 | 采集4种、证据6种、通用领域3种、实体5种基础事件已补；采购另补验收及框架入围，共20种新事件，权利全部撤回的有效集合可为空。新载荷封闭字段、复用event-types并有正反例；现有v1载荷不就地收紧。客户智能/研究/渠道按阶段补齐 | 各能力负责人；首次实现前 |
 | 企业、审批与信用 | 已验证企业公示登记字段、未知状态和采购供应商名称/信用代码/地址。登记状态/代码/法人和股权比例分别溯源，比例限制0—1；已补核准注销、分支与隶属主体、实际变更日未知和住所失联异常的真实边界；来源接口/全量字段交付另验收，审批与信用M3另行验收 | 信息领域负责人；M1/M3对应实现前 |
 | Schema与事实版本 | 文件x-version、schema_version、事实version、解析器/管线与事件type分别校验；跨版本重放不得混同 | 首席架构师；每批冻结前 |
@@ -171,3 +171,8 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | detection 的归属边读取（entity-graph 的 `part_of`，项目展开到采购项目） | [detection 第5节](subsystems/detection.md#5-接口) | entity-graph 关系读取的生产实现（第4段切片以 `api.ProjectLinks` 端口代替） | 随 entity-graph `GetRelationships` |
 | 简报各区的数据截至时间与来源中断（domain-intelligence 的 `GetCoverage`，按信息领域） | [PRD 第5段 F2 第4条](../01-product/prd/05-briefing-quick-actions.md#f2-推送到企业微信)；[channels 第6节](subsystems/channels.md#6-接口) | 覆盖的首个生产读取实现（第5段切片以 channels 的 `api.Coverage` 端口代替，未接入时各领域为“未知”） | 随 domain-intelligence OpenAPI；channels 的简报契约不变 |
 | 简报与卡片来源字段的展示级别（信号各展示字段的来源权利与原文链接） | [PRD 第5段 F3 第3条](../01-product/prd/05-briefing-quick-actions.md#f3-卡片内容与截断)；[数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 来源权利的生产读取（第5段切片以 channels 的 `api.Rights` 端口代替，未接入时来源字段失败关闭为 none） | 随权利条目 Schema；channels 的简报契约不变 |
+| 公开截止时间的变化事件（domain-intelligence 的投标截止、开标时间的更正与撤回，带业务有效值、来源发布时间与事实版本） | [PRD 第6段 F6](../01-product/prd/06-pursuit-follow-up.md#f6-公开截止时间变化)；[pursuit 第11节](subsystems/pursuit.md#11-实现状况) | pursuit 任务的公开截止绑定（第6段切片未实现 F6：任务只有手工截止，见 [A02 验收缺口 D-18](../05-delivery/09-a02-end-to-end-acceptance.md#41-数据供应d)） | domain-intelligence 领域事件追加；pursuit 的任务契约追加可选的绑定字段 |
+| 成员与租户时区（identity 成员或租户属性） | [PRD 第6段附“已知设计缺口”第4项](../01-product/prd/06-pursuit-follow-up.md#附已知设计缺口) | 第一个按负责人时区计算提醒或周期的功能（第6段切片按截止所填时区计算提醒，简报按缺省 Asia/Shanghai） | identity OpenAPI 追加可选字段 |
+| gateway 的 Web 页面聚合 `/v1/web/*` 与对象页版本检查 `GET /v1/objects/{objectID}/versions` | [Web 专项设计第7节](14-web-application.md#7-bff-契约) | 首个使用该端点的 Web 实现批次（W0～W5） | gateway OpenAPI 追加，升次版本 |
+| customer-context 的保存视图（`SavedView` 与接口） | [Web 专项设计第6.2节](14-web-application.md#62-保存视图的所有者) | Web 收件箱的个人视图（W2） | customer-context OpenAPI 追加 |
+| Web 页面需要的公开读取与命令：identity `ListMembers` / `PreviewInvitation` / 受邀账号准备，entity-graph `ResolveEntity`，evidence 证书文件上传，learning `ReportMiss` | [Web 专项设计第7.3节](14-web-application.md#73-端点清单) | 对应页面的 Web 实现批次（W1、W2） | 各所有者 OpenAPI 追加 |

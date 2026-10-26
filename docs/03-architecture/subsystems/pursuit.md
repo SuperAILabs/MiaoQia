@@ -90,7 +90,7 @@
 
 - **请求**：本地事务写入期望参与关系、参与版本 N 与发件箱同步请求；同步任务以推进标识 + N 为幂等键调用 identity `SyncResourceParticipants`（[identity 第 5 节](identity.md#5-接口)），提交完整期望关系；
 - **重试与告警**：暂时失败退避重试（1 分钟起，最长间隔 30 分钟）；待处理超过 5 分钟告警；超过 24 小时标“授权同步失败”，通知目标范围的决策者与运营，只允许决策者改派或关闭，之后同步成功即恢复；
-- **准入失败关闭**：依赖参与关系的操作须同时通过 pursuit 本地期望关系与 identity `Check`。新负责人在已应用版本达到 N 前不能操作；原负责人即使 identity 中残留旧关系也被本地关系拒绝；按角色范围授权的决策者不受影响；
+- **准入失败关闭**：依赖参与关系的操作须同时通过 pursuit 本地期望关系与 identity `Check`。新负责人在已应用版本达到 N 前不能操作；原负责人即使 identity 中残留旧关系也被本地关系拒绝；identity 中残留的同名旧关系也不算（负责人甲→乙→甲改派且同步失败时，甲在甲重新获得负责人角色的参与版本应用前不能写入）；按角色范围授权的决策者不受影响；
 - **返回与通知**：命令在本地提交后返回，带授权状态；分派通知、任务提醒与提醒卡片只在对应参与版本同步完成后发给新负责人；
 - **补偿**：identity 返回被拒成员（同步前已退出或失去目标访问）时，被拒的负责人按“无有效负责人”处理，提醒改发决策者并通知操作者。
 
@@ -144,3 +144,20 @@ M2 切片的用户流程、唯一性、撤销创建、提醒与结果规则见 [
 - 截止时间变更（人工修改或领域更正导致）：取消旧提醒、按新时间重建，提醒只触发一次；
 - 提醒投递失败：按 `channels` 的重试与站内兜底执行，提醒定时器在进程重启后不丢失；
 - 关闭：结果与原因代码必填，金额条目与获知信息按第 4.1 节记录（M2 至少记录取值性质、币种与获知时间），修订结果时追加新的 `Outcome` 记录并留审计（结果为追加式，见[决策产物目录](../../02-business/01-business-architecture.md#6-决策产物目录)），结果进入 `learning` 的反馈。
+
+## 11. 实现状况
+
+**PRD 第6段交易型跟进的服务端切片（[pursuit 契约](../../../contracts/apis/pursuit/openapi.yaml) 0.1.0、[pursuit 事件](../../../contracts/events/pursuit/events.asyncapi.yaml) 0.1.0，均为草案）**：
+
+- **接口**：`createPursuit`、`voidPursuit`、`assignPursuit`、`createTask`、`updateTask`、`completeTask`、`reopenTask`、`closePursuit`、`reviseOutcome`、`getPursuit`、`listPursuits`（视图 `mine` / `collaborating` / `team` / `closed`）、`getTask` 与 `listMyTasks`，经 gateway 公开；`createPursuit`、`getTask`、`completeTask`、`reopenTask` 另经 mTLS 内部端口（`/internal` 前缀）与本地绑定 `pursuit.Actions` 供 channels 以点击者的用户主体调用，`channel` 为 `wecom` 的请求只在内部端口与本地绑定接受（公开接口 403）。`MIAOQIA_BINDING_PURSUIT=remote` 时 `Actions` 为远程客户端（`MIAOQIA_PURSUIT_URL`）。阶段、持续型推进（F10）、`AdvanceStage` 与外部协作者未实现；
+- **授权**：创建为目标上的 `can_assign`（customer-context `ObjectiveScope` 的当前口径：决策者经单元关系 `org_unit#can_assign_unit_objectives`，业务开拓者经参与关系），被分派的每个成员以其本人判断“租户有效成员（identity 会话核验）且能查看该目标的信号”，任一不满足 422 `assignee_no_access`、整个命令不写入、不自动授权；读取与更新按“单元关系（`org_unit#can_view_unit_pursuits` / `can_edit_unit_pursuits`），或 pursuit 本地期望关系中的有效负责人或协作者且 identity 在 `pursuit:` 资源上判断通过”放行，每次读取、命令、提醒发送前实时判断，不在快照中固定权限；判断不可用为 503，不当作无权限也不当作有权限；不能查看与不存在、他租户同为 404；
+- **唯一性与关联**：同一目标、同一目标对象（事实类型 + 主体 + 部分 + 中标方）同时只有一个进行中的跟进（部分唯一索引 + 按目标对象的咨询锁）；已存在时信号尚未关联则新增关联（`existing_linked`，只发 `signal_linked`），否则 `existing`，请求中的负责人、协作者、任务与说明不写入并在 `not_written` 中列出；调用者不能查看已有跟进时只返回负责人。关闭后可再建并引用上一个，撤销的不占用唯一性；
+- **操作与尝试**：操作标识固定一次意图（成功、无变化与确定失败；他人或不同请求使用同一操作标识 409 `operation_conflict`），幂等键记录每次尝试的结果（含失败与暂时失败；同键不同请求 409 `idempotency_conflict`）；`authorization_syncing` 不固定在操作上（同步完成后同一操作可成功）；结果每次返回前按调用者当前权限重新投影；
+- **授权同步**：命令在本地事务中写入期望参与关系、参与版本与 `pursuit.team.changed.v1`，提交后立即以服务主体调用 identity `SyncResourceParticipants` 一次，失败由本子系统的 `pursuit.authorization-sync` 消费者按退避重试（`Reminders.RetrySync` 另可补做）；identity 拒绝的成员：负责人标“无有效负责人”、协作者移出，参与版本加一再同步，写时间线与审计；分派通知 `pursuit.pursuit.assigned.v1` 只在对应参与版本同步后发布一次；超过 24 小时未同步标 `failed`，只允许决策者改派或关闭；
+- **写入准入**：改派、关闭、修订结果与新增 / 修改 / 完成 / 撤销完成任务经同一准入：不能更新跟进 403；单元关系（决策者）放行；只凭参与关系写入的成员在授权同步失败（超过 24 小时）时 403 `authorization_syncing`，其当前角色授予时的参与版本（`pur_pursuits.grants`）尚未在 identity 应用时同样 403 `authorization_syncing`（identity 中残留的同名旧关系不算）；加锁重读后再判断一次；`authorization_syncing` 不固定在操作上；
+- **成员与目标变化**：消费 `identity.member.changed.v1`（`pursuit.member-changes`）与 `customer_context.objective.changed.v1`（`pursuit.objective-changes`），以成员本人重新判断负责人与协作者；退出、停用或失去目标访问的负责人标“无有效负责人”（列表置顶，提醒与待办转给单元决策者），协作者移出；重新加入不自动恢复；退出事件可能迟到或重放：每个参与成员的授予记录保存其当前角色授予时的参与版本与 identity 成员版本（创建时与改派时新加入、角色改变——负责人↔协作者——或失效后重新分派的成员都以其本人重新判断成员状态与目标访问并记下此刻的成员版本；只有角色不变的成员沿用原授予；带团队的“已存在”、关闭与修订结果不改授予），退出事件的成员版本不高于授予时成员版本的是授予之前的旧事件，不据此判无效，改以成员本人此刻的成员状态与目标访问判断；授予之后的退出判无效，重新加入不恢复；
+- **任务与提醒**：截止保存所填值、精度与时区；提醒按（任务、截止版本、种类）持久计划在 `pur_reminders`（只到日：前一日与当日 09:00；分钟：提前 24 小时与到期；逾期次日 09:00；按所填时区），本地绑定 `pursuit.Reminders.RunDue` 以行锁并跳过已锁定的行执行，发送前按当前值再检查（跟进进行中、任务待办、截止版本未变、参与版本已同步、收件人仍可更新），同一任务同一截止版本已过的多条只发最晚的一条；完成取消提醒，撤销完成（Web 10 秒、渠道 10 分钟）恢复；
+- **关闭与结果**：结果类型、原因代码与金额类型取自应用领域包 `outcomes/*.yaml`（按目标模板）；成功与失败必填获知时间；金额不换算、不相加；贡献关系按信号 `created_at` 与获知时间判定（只到日且同日不判定，用户给出时以用户为准）；修订追加记录并引用旧记录；`pursuit.outcome.recorded.v1` 由 learning 幂等写入评估结果集；
+- **翻页**：列表每页至多 50（待办 100），每次至多扫描 500 行后以游标返回；游标为整个载荷连同 HMAC-SHA256 签名（`MIAOQIA_PURSUIT_SIGNING_KEY`，base64、至少 32 字节；只有 development 可缺省为进程内随机密钥），绑定租户、调用者与视图，篡改 400 `invalid_cursor`；
+- **进程角色**：pursuit 在 `api`、`consumer` 与 `workflow-worker` 角色加载；从信号创建需要 detection 的 `Briefing` 绑定，只在 `api` 角色必需（其他角色缺少时从信号创建失败关闭为 503）；
+- **未实现**：公开截止绑定（F6，依赖 domain-intelligence 的截止事件，见[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)）、持续跟踪（F10）、分派规则的候选负责人（缺省为本人）、同一标包其他中标方的提示、提醒卡片的投递与卡片“完成”、简报“待我处理”中的任务、被拒成员的渠道通知、安静时段、定时任务（`Reminders` 由调度器调用，[A02 验收缺口 R-01](../../05-delivery/09-a02-end-to-end-acceptance.md#43-运行装配r)）。证据：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`）、`services/subsystems/pursuit/internal/app/domain_internal_test.go`。

@@ -348,6 +348,8 @@ var objectiveRelations = map[string]string{
 	// 信号（PRD 第3段，detection 经 ObjectiveAccess 判断）：决策者与研究分析者经单元关系，业务开拓者、项目推进者等经参与关系
 	"can_view_signals": "can_view_unit_signals",
 	"can_feedback":     "can_feedback_unit_signals",
+	// 跟进（PRD 第6段，pursuit 经 ObjectiveScope 判断）：决策者经单元关系，业务开拓者经参与关系
+	"can_assign": "can_assign_unit_objectives",
 }
 
 // allowedObjective 判断用户主体对目标（本地当前版本）是否具有关系，见 objectiveRelations。
@@ -414,14 +416,20 @@ func (s *Service) requireObjective(ctx context.Context, id string, relations ...
 // 供以用户请求上下文转交的子系统（learning 的仿真接口）使用，使移除参与人在本地提交后立即对其生效，不等待 identity 同步。
 // 不能查看与不存在同样 404 objective_not_found；授权服务不可用为 503（失败关闭）。
 func (s *Service) ObjectiveAccess(ctx context.Context, id string, relations []string) ([]string, error) {
+	allowed, _, err := s.ObjectiveScope(ctx, id, relations)
+	return allowed, err
+}
+
+// ObjectiveScope 与 ObjectiveAccess 相同，另返回目标所在单元、模板与状态（调用者能查看目标时）。
+func (s *Service) ObjectiveScope(ctx context.Context, id string, relations []string) ([]string, *Objective, error) {
 	for _, r := range relations {
 		if _, known := objectiveRelations[r]; !known {
-			return nil, failure(400, "invalid_request")
+			return nil, nil, failure(400, "invalid_request")
 		}
 	}
 	rc, o, err := s.requireObjective(ctx, id, "can_view")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out := []string{"can_view"}
 	for _, r := range relations {
@@ -430,13 +438,13 @@ func (s *Service) ObjectiveAccess(ctx context.Context, id string, relations []st
 		}
 		ok, err := s.allowedObjective(ctx, rc, o, r)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if ok {
 			out = append(out, r)
 		}
 	}
-	return out, nil
+	return out, o, nil
 }
 
 // GetObjective 读取目标（can_view，见 objectiveRelations）；无权限与不存在同样返回 404。

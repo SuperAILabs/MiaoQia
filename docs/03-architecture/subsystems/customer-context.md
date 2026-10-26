@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.11 · 更新：2026-10-19 · 平面：客户智能
+> 状态：评审中 · 版本：1.12 · 更新：2026-10-26 · 平面：客户智能
 
 ## 1. 使命
 
@@ -46,6 +46,7 @@
 | `Policy` / `PolicyVersion` / `PolicyRollout` | 策略、版本、发布状态。`PolicyVersion` 保存合成文档、模板版本与仿真时固定的启用领域集合，状态为生效或已替代；每个目标有一个策略代次，激活与回滚在同一事务中写入新的生效版本并递增代次。M2 只有全量激活，影子与比例灰度随 M3 |
 | `PolicyDraft` | 每个目标最多一份草案：修订号与乐观并发版本号、编译与样例校验结果、所基于的生效版本；提交激活申请后锁定，撤回、驳回或失效后解锁；回滚申请不锁定草案（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md)） |
 | `KnowledgeAsset` | 知识资产：分级、可用于哪些工作流与模型 |
+| `SavedView` / `UserViewDefault` | 工作台列表的保存视图：列表种类、作用域（目标或组织单元）、名称、所有者、可见范围（个人 / 团队）、条件、排序与列配置、版本；成员在某列表与作用域上的默认视图。只保存条件不保存结果，打开时按查看者权限执行；团队视图的权限与上限见 [Web 专项设计第6.2节](../14-web-application.md#62-保存视图的所有者) |
 | `TenantEntityList` | 租户私有实体清单，种类：`customers` 客户、`partners` 伙伴、`competitors` 竞争对手、`blocked` 禁合作、`tracked` 跟踪对象、`counterparties` 交易对手；策略中以 `lists.<种类>` 引用。清单只表达“是否在名单中”，是部分关系的简化视图：例如有效的经销授权可派生出 `partners` 成员，但授权范围与期限只在 `TenantRelationship` 中 |
 | `TenantRelationship` | 租户私有关系（与 entity-graph 的公共关系分开，公共域不读取）。种类先登记经销授权 `dealer_authorization`、代理 `agency`、合作伙伴 `partnership`、长期供货 `supply_agreement`，由应用领域包扩展。**端点**：我方主体与对方组织（公共 `org_`，导入时未匹配的行暂存为待核对，不建关系）；**约束**：品牌（`brd_` 或行业包品牌词表代码）、区域（区划代码与版本）、品类，可进一步限定项目或标包；同一端点在不同约束下是不同的关系。**有效期**：起止日期，到期自动失效；**证据**：授权书等文件经 evidence 文档处理保存。**修订与撤销**：每次修改形成新版本并保留旧版本，撤销记录原因与操作人，已有信号按发现时的上下文版本解释；与公共关系冲突（例如授权的品牌归属与 entity-graph 不一致）时并列展示，不自动覆盖任何一方。导入的“备注/属性”列只作补充说明，不能代替结构化的品牌、区域与期限 |
 
@@ -71,6 +72,7 @@
 | `CreateUpgradeDraft` | 命令 | 模板新版本或信息领域上线后，按规则 `id` 对齐保留租户覆盖创建草案；被删除或改为锁定的覆盖逐条列出待确认 |
 | `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界） |
 | `UploadKnowledgeAsset` | 命令 | 上传与分级 |
+| `ListSavedViews` / `CreateSavedView` / `UpdateSavedView` / `DeleteSavedView` / `SetDefaultView` | 查询/命令 | 保存视图（第4节）；更新带 `expected_version`；团队视图的变更写审计。契约随第一个使用保存视图的 Web 实现写入（[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)） |
 
 实现状况：首个切片实现了 `GetContextSnapshot`、`GetContextVersion`（内部端口，经 mTLS）、`Get/Update Profile`（本企业关联与资质在档案内维护）与目标的 `ListObjectiveTemplates`、`EnableObjective`、`ConfigureObjective`、`DisableObjective`（含重新启用），契约为 [`contracts/apis/customer-context/openapi.yaml`](../../../contracts/apis/customer-context/openapi.yaml) 0.2.0 草案。组织单元为 identity 的 `OrgUnit`（根单元 `root` 或 `unt_<ULID>`），经 identity 核对属于本租户并取得单元链；单元覆盖实现前，非根单元的快照与根单元合成结果相同，首次读取时按当时的单元链物化，之后同一（租户、单元、上下文版本）不变。授权全部经 identity 的 `Check`：启用目标在目标单元上判断 `can_create_objective`，查看、调整与参与人管理在目标资源上判断；目标的单元、负责人与参与人在每个目标版本上以服务主体经 `SyncResourceParticipants` 同步（参与版本即目标版本；负责人同时是参与人时只同步负责人关系），命令提交后同步一次，失败时由本子系统消费 `objective.changed` 重试。负责人与参与人合计的不同主体数至多 50（等于 identity 单次同步的关系上限），在命令提交前校验，超出返回 422 `too_many_participants`、不入库、不产生事件。identity 中的参与关系可能落后于本地目标版本，因此可经参与关系获得的权限（目前为查看）按“目标所在单元的 `can_list_objectives`，或调用者是本地当前版本的负责人/参与人且 identity 对目标判断通过”放行：移除参与人、改派负责人在命令提交后立即撤权，不等待同步；新加入的主体在同步应用前不可见；首个版本同步前 identity 尚未登记目标，目标上的判断一律拒绝（失败关闭）。决策者、研究分析者与管理员的单元权限不受同步影响。目标列表与读取同一口径。我方主体可挂接本租户的任一单元（领域校验只核对标识格式，归属经 identity 核对）。快照与版本的服务读取方由 identity 判断 `can_read_context`，本子系统不保存名单。启用目标时在同一事务中创建首版策略草案（第7段，见下）。
 
@@ -85,6 +87,8 @@
 - **失效**：消费 `identity.approval.closed.v1`，请求记为撤回、过期或失效并解锁草案。目标停用时本子系统在提交后以 `CloseApproval`（`objective_disabled`）使进行中的审批失效；失效未送达而批准先到时，执行前的目标状态核验拒绝执行。重新启用的目标回到未激活并保留原生效版本，下一次激活后变为生效；
 - **生效策略读取（PRD 第3段切片，契约 0.4.0 草案）**：`GetActivePolicies`（内部接口 `GET /internal/v1/customer-context/active-policies`，本地绑定 `customer-context.ActivePolicies`，`MIAOQIA_BINDING_CUSTOMER_CONTEXT=remote` 时为远程客户端）以服务主体（`tenant#can_read_context`）读主库，按目标标识升序分页（每页至多 200，游标），返回每个有生效版本的目标的状态、组织单元、策略标识、生效版本与代次、模板版本、启用领域集合与合成文档；激活与回滚在同一事务中切换生效版本与代次，因此返回后开始的读取一律看到新代次。策略标识（`pol_`，迁移 `00003_policy_ids.sql`）每个目标一个、建立后不变，已有的行由目标标识确定性派生。`ObjectiveAccess` 的关系追加 `can_view_signals` 与 `can_feedback`，按本节口径（单元关系 `can_view_unit_signals` / `can_feedback_unit_signals`，或本地当前版本的负责人/参与人且 identity 对目标判断通过）放行，供 detection 与 learning 使用；
 - **未实现**：回填的实际执行（随 detection）、通知（随 channels）、升级草案（F7）、按规则显示“数据未接入”（规则到信息领域的生产对应随 domain-intelligence 的覆盖接口）、组织单元迁移时使进行中的审批失效。
+
+**实现状况（PRD 第6段，契约 0.5.0 草案）**：`ObjectiveAccess` 的关系追加 `can_assign`（决策者经单元关系 `org_unit#can_assign_unit_objectives`，业务开拓者经参与关系），并返回目标所在单元、模板与状态（可选字段）；本地绑定与远程客户端另提供 `customer-context.ObjectiveScope`（同一判断，带目标所在单元与模板），供 pursuit 判断创建权限与被分派人的目标访问。分派规则的候选负责人尚未提供给 pursuit。
 
 ## 7. 事件
 

@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 from typing import Protocol
 
-KEY = re.compile(r"(raw|normalized)/[A-Za-z0-9_.-]{1,200}")
+KEY = re.compile(r"(raw|normalized|enrichment)/[A-Za-z0-9_.-]{1,200}")
 
 
 class ObjectConflict(RuntimeError):

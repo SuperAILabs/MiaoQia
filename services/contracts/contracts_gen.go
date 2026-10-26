@@ -1850,6 +1850,9 @@ type ProcurementProject struct {
 	// 有发布时间时按发布时间排序，否则按稳定公告标识排序。
 	NoticeIds []string `json:"notice_ids"`
 
+	// 成员固定版本的公开投影，与notice_ids及权威聚合依赖逐值一致；旧版本可缺省。
+	NoticeRefs []ProcurementProjectNoticeRefsElem `json:"notice_refs,omitempty,omitzero"`
+
 	// ObservedAt corresponds to the JSON schema field "observed_at".
 	ObservedAt time.Time `json:"observed_at"`
 
@@ -1894,6 +1897,14 @@ type ProcurementProject struct {
 	TradingSystem *TradingSystem `json:"trading_system,omitempty,omitzero"`
 
 	// 领域事实版本号
+	Version int `json:"version"`
+}
+
+type ProcurementProjectNoticeRefsElem struct {
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// Version corresponds to the JSON schema field "version".
 	Version int `json:"version"`
 }
 

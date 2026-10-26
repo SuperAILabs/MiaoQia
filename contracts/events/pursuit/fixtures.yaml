@@ -1,0 +1,389 @@
+fixtures:
+- event: pursuit.pursuit.created.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    operation_id: op-create-0001
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    target:
+      fact_type: tendering.bid_result
+      subject_id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      part_id: bdr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      winner_org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    source: signal
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    seen_content_version: 1
+    owner: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    created_by: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: web
+    created_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 从企业微信卡片创建
+    valid: true
+    patch:
+    - op: replace
+      path: /channel
+      value: wecom
+  - name: 手动创建不带信号
+    valid: true
+    patch:
+    - op: replace
+      path: /source
+      value: manual
+    - op: remove
+      path: /signal_id
+    - op: remove
+      path: /seen_content_version
+  - name: 手动创建不得带信号
+    valid: false
+    patch:
+    - op: replace
+      path: /source
+      value: manual
+  - name: 信号来源必须带信号
+    valid: false
+    patch:
+    - op: remove
+      path: /signal_id
+  - name: 不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 未登记的渠道
+    valid: false
+    patch:
+    - op: replace
+      path: /channel
+      value: sms
+  - name: 目标缺事实类型
+    valid: false
+    patch:
+    - op: remove
+      path: /target/fact_type
+- event: pursuit.pursuit.signal_linked.v1
+  base:
+    link_id: psl_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    seen_content_version: 2
+    method: create
+    operation_id: op-create-0001
+    linked_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 关联已存在的跟进
+    valid: true
+    patch:
+    - op: replace
+      path: /method
+      value: link_existing
+  - name: 未登记的关联方式
+    valid: false
+    patch:
+    - op: replace
+      path: /method
+      value: merge
+  - name: 缺看到的内容版本
+    valid: false
+    patch:
+    - op: remove
+      path: /seen_content_version
+  - name: 关联标识前缀错误
+    valid: false
+    patch:
+    - op: replace
+      path: /link_id
+      value: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- event: pursuit.pursuit.signal_unlinked.v1
+  base:
+    link_id: psl_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    reason: voided
+    operation_id: op-void-00001
+    unlinked_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 撤销解除
+    valid: true
+    patch: []
+  - name: M2 只随撤销解除
+    valid: false
+    patch:
+    - op: replace
+      path: /reason
+      value: manual
+  - name: 缺解除时间
+    valid: false
+    patch:
+    - op: remove
+      path: /unlinked_at
+- event: pursuit.pursuit.voided.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    operation_id: op-void-00001
+    voided_by: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    voided_at: '2026-10-26T08:00:00Z'
+    unlinked: 1
+  cases:
+  - name: 无关联的手动跟进撤销
+    valid: true
+    patch:
+    - op: replace
+      path: /unlinked
+      value: 0
+  - name: 解除数不得为负
+    valid: false
+    patch:
+    - op: replace
+      path: /unlinked
+      value: -1
+  - name: 缺撤销人
+    valid: false
+    patch:
+    - op: remove
+      path: /voided_by
+- event: pursuit.team.changed.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    participation_version: 1
+    reason: created
+  cases:
+  - name: 改派
+    valid: true
+    patch:
+    - op: replace
+      path: /participation_version
+      value: 2
+    - op: replace
+      path: /reason
+      value: reassigned
+  - name: 负责人失效
+    valid: true
+    patch:
+    - op: replace
+      path: /participation_version
+      value: 3
+    - op: replace
+      path: /reason
+      value: owner_invalid
+  - name: 版本从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /participation_version
+      value: 0
+  - name: 不得夹带参与者
+    valid: false
+    patch:
+    - op: add
+      path: /participants
+      value:
+      - usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 未登记的原因
+    valid: false
+    patch:
+    - op: replace
+      path: /reason
+      value: rejoined
+- event: pursuit.pursuit.assigned.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    assignee: usr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    assigned_by: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    participation_version: 1
+    kind: created
+    applied_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 改派通知
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: reassigned
+    - op: replace
+      path: /participation_version
+      value: 2
+  - name: 缺被分派人
+    valid: false
+    patch:
+    - op: remove
+      path: /assignee
+  - name: 未登记的种类
+    valid: false
+    patch:
+    - op: replace
+      path: /kind
+      value: collaborator
+- event: pursuit.task.due.v1
+  base:
+    reminder_id: rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    task_id: tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    kind: before_24h
+    deadline_version: 1
+    due:
+      value: 2026-10-28T15:00
+      precision: minute
+      timezone: Asia/Shanghai
+    recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    escalated: false
+    fire_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 只到日的前一天提醒
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: day_before_0900
+    - op: replace
+      path: /due
+      value:
+        value: '2026-10-28'
+        precision: day
+        timezone: Asia/Shanghai
+  - name: 负责人无效转决策者
+    valid: true
+    patch:
+    - op: replace
+      path: /escalated
+      value: true
+    - op: remove
+      path: /recipient
+  - name: 未转交必须带收件人
+    valid: false
+    patch:
+    - op: remove
+      path: /recipient
+  - name: 转交不得带收件人
+    valid: false
+    patch:
+    - op: replace
+      path: /escalated
+      value: true
+  - name: 未登记的提醒种类
+    valid: false
+    patch:
+    - op: replace
+      path: /kind
+      value: weekly
+  - name: 截止版本从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /deadline_version
+      value: 0
+  - name: 不得夹带任务标题
+    valid: false
+    patch:
+    - op: add
+      path: /title
+      value: 联系采购
+- event: pursuit.outcome.recorded.v1
+  base:
+    outcome_id: otc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    template_id: APP-TENDER.A02
+    result: success
+    reason_code: WON_CONTRACT
+    known_at:
+      value: '2026-10-25'
+      precision: day
+      timezone: Asia/Shanghai
+    known_at_utc: '2026-10-25T16:00:00Z'
+    known_channel: miaoqia_signal
+    amounts:
+    - type: contract_amount
+      currency: CNY
+      value: '1200000.00'
+      nature: actual
+      source: customer_document
+    contribution: first_alert
+    source_signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    recorded_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 修订追加
+    valid: true
+    patch:
+    - op: add
+      path: /supersedes
+      value: otc_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    - op: replace
+      path: /contribution
+      value: undetermined
+  - name: 放弃且无获知时间
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: abandoned
+    - op: replace
+      path: /reason_code
+      value: LOW_PRIORITY
+    - op: remove
+      path: /known_at
+    - op: remove
+      path: /known_at_utc
+    - op: remove
+      path: /known_channel
+    - op: replace
+      path: /amounts
+      value: []
+  - name: 获知时间必须带时点
+    valid: false
+    patch:
+    - op: remove
+      path: /known_at_utc
+  - name: 时点必须带获知时间
+    valid: false
+    patch:
+    - op: remove
+      path: /known_at
+  - name: 不得夹带说明文字
+    valid: false
+    patch:
+    - op: add
+      path: /note
+      value: 客户口头确认
+  - name: 未登记的结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: won
+  - name: 币种格式
+    valid: false
+    patch:
+    - op: replace
+      path: /amounts/0/currency
+      value: rmb
+- event: pursuit.pursuit.closed.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    outcome_id: otc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    result: failure
+    operation_id: op-close-0001
+    closed_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 成功关闭
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: success
+  - name: 缺结果记录
+    valid: false
+    patch:
+    - op: remove
+      path: /outcome_id
+  - name: 未登记的结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: voided

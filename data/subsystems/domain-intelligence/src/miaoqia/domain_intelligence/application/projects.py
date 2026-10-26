@@ -81,26 +81,10 @@ def aggregate_notice(conn, revision, notice):
                 JOIN dom_fact_versions v ON v.fact_id=d.notice_id AND v.version=d.notice_version
                 WHERE d.project_id=:p AND d.project_version=:v"""),
                 {"p": project_id, "v": prev["version"]}).scalars().all()
-        members = sorted([*members, notice], key=lambda n: (n.get("published_at", {}).get("value", ""), n["id"]))
-        # 优先招标标题；相同语义输入选择稳定，不能按到达顺序退回阶段。
-        selected = min(members, key=lambda n: (n["notice_type"] != "tender", n["id"]))
-        stage = "awarded" if any(n["notice_type"] == "award" for n in members) else "announced"
-        body = {"stage": stage, "title": selected["title"], "buyer": selected["buyer"],
-                "project_code": selected["project_code"], "notice_ids": [n["id"] for n in members], "lots": []}
-        rights = sorted({tag for n in members for tag in n["rights_tags"]})
-        derivation = hashlib.sha256(json.dumps([RULE, [(n["id"], n["version"]) for n in members]],
-                                              sort_keys=True).encode()).hexdigest()
-        project = write_version(conn, revision, body, fact_id=project_id, version=prev["version"] if prev else 0,
-                                prev=prev, object_type=PROJECT_TYPE, model=models.ProcurementProject,
-                                schema_version="1.2.0", source_id=namespace, source_key=lock,
-                                derivation_key=derivation, rights_tags=rights)
-        if project:
-            for member in members:
-                conn.execute(text("INSERT INTO dom_project_dependencies VALUES (:p,:v,:n,:nv)"),
-                             {"p": project_id, "v": project["version"], "n": member["id"], "nv": member["version"]})
-            if not prev or prev["stage"] != stage:
-                _emit(conn, "project.stage_changed", notice, project_id, rights,
-                      **{"from": prev["stage"] if prev else None, "to": stage})
+        project = _write_project(conn, revision, notice, project_id, members, prev, namespace, lock)
+        if project and (not prev or prev["stage"] != project["stage"]):
+            _emit(conn, "project.stage_changed", notice, project_id, project["rights_tags"],
+                  **{"from": prev["stage"] if prev else None, "to": project["stage"]})
     reason = {"rule": RULE, "source_id": revision.source_id, "identity": identity,
               "project_code": notice.get("project_code"), "buyer": notice.get("buyer"),
               "project_version": project["version"] if project else None,
@@ -116,3 +100,57 @@ def aggregate_notice(conn, revision, notice):
                   method="project_code", confidence=1, status="confirmed")
         if notice["notice_type"] == "award":
             _emit(conn, "result.published", notice, project_id, event_rights, stage="award", lot_ids=[])
+
+
+def _write_project(conn, revision, notice, project_id, members, prev, source_id, source_key):
+    """唯一采购投影写入原语；refs是同次写入deps的公开投影。"""
+    members = sorted({m["id"]: m for m in [*members, notice]}.values(), key=lambda n: (n.get("published_at", {}).get("value", ""), n["id"]))
+    # 优先招标标题；相同语义输入选择稳定，不能按到达顺序退回阶段。
+    selected = min(members, key=lambda n: (n["notice_type"] != "tender", n["id"]))
+    stage = "awarded" if any(n["notice_type"] == "award" for n in members) else "announced"
+    body = {"stage": stage, "title": selected["title"], "buyer": selected["buyer"],
+            "project_code": selected["project_code"], "notice_ids": [n["id"] for n in members],
+            "notice_refs": [{"id": n["id"], "version": n["version"]} for n in members], "lots": []}
+    rights = sorted({tag for n in members for tag in n["rights_tags"]})
+    derivation = hashlib.sha256(json.dumps([RULE, [(n["id"], n["version"]) for n in members]],
+                                          sort_keys=True).encode()).hexdigest()
+    project = write_version(conn, revision, body, fact_id=project_id, version=prev["version"] if prev else 0,
+                            prev=prev, object_type=PROJECT_TYPE, model=models.ProcurementProject,
+                            schema_version="1.3.0", source_id=source_id, source_key=source_key,
+                            derivation_key=derivation, rights_tags=rights, compare_evidence=True)
+    if project:
+        for member in members:
+            conn.execute(text("INSERT INTO dom_project_dependencies VALUES (:p,:v,:n,:nv)"),
+                         {"p": project_id, "v": project["version"], "n": member["id"], "nv": member["version"]})
+    return project
+
+
+def refresh_enriched_member(conn, revision, notice, receipt):
+    """只从本事务已持久化receipt读取source-base；不接受请求传入trusted布尔值。"""
+    proof = conn.execute(text("SELECT * FROM dom_enrichment_receipts WHERE run_key=:r AND notice_id=:n AND output_version=:v"),
+                         {"r": receipt, "n": notice["id"], "v": notice["version"]}).mappings().one()
+    base = fact_version(conn, notice["id"], proof["source_base_version"])
+    root_link = conn.execute(text("SELECT * FROM dom_notice_links WHERE notice_id=:n AND notice_version=:v"),
+                             {"n": notice["id"], "v": base["version"]}).mappings().one_or_none()
+    identity_fields = lambda n: (n["notice_type"], n.get("project_code", {}).get("value"),
+                                n.get("buyer", {}).get("name_raw"), n.get("buyer", {}).get("uscc"))
+    if identity_fields(base) != identity_fields(notice) or base["revision_ref"] != notice["revision_ref"]:
+        raise ValueError("增强不得改变来源身份")
+    project_id, project = None, None
+    if root_link and root_link["status"] == "confirmed" and root_link["project_id"]:
+        project_id = root_link["project_id"]
+        conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": "pp-id:" + project_id})
+        prev = fact_version(conn, project_id)
+        # 正常聚合和刷新还需共用同一个身份锁，调用方已先持有source→identity锁。
+        row = conn.execute(text("SELECT source_id,source_key FROM dom_facts WHERE id=:p"), {"p": project_id}).one()
+        members = conn.execute(text("""SELECT v.content FROM dom_project_dependencies d JOIN dom_fact_versions v
+            ON v.fact_id=d.notice_id AND v.version=d.notice_version WHERE d.project_id=:p AND d.project_version=:v"""),
+            {"p": project_id, "v": prev["version"]}).scalars().all()
+        if notice["id"] not in {m["id"] for m in members}:
+            raise ValueError("source-base不是已接受项目成员")
+        project = _write_project(conn, revision, notice, project_id, members, prev, row.source_id, row.source_key)
+    reason = {"rule": RULE, "enrichment_receipt": receipt, "source_base_version": base["version"],
+              "project_version": project["version"] if project else None}
+    conn.execute(text("INSERT INTO dom_notice_links VALUES (:n,:v,:p,:s,CAST(:r AS jsonb))"),
+                 {"n": notice["id"], "v": notice["version"], "p": project_id,
+                  "s": "confirmed" if project_id else "pending_revision", "r": json.dumps(reason)})

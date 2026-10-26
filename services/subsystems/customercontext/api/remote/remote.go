@@ -49,6 +49,15 @@ func NewObjectiveAccess(baseURL string) (api.ObjectiveAccess, error) {
 	return r.(client), nil
 }
 
+// NewObjectiveScope 返回远程目标访问判断（带目标所在单元、模板与状态）；baseURL 同 NewContextReader。调用以请求上下文中的用户主体转交。
+func NewObjectiveScope(baseURL string) (api.ObjectiveScope, error) {
+	r, err := NewContextReader(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return r.(client), nil
+}
+
 // NewActivePolicies 返回远程生效策略读取接口；baseURL 同 NewContextReader（以服务主体调用）。
 func NewActivePolicies(baseURL string) (api.ActivePolicies, error) {
 	r, err := NewContextReader(baseURL)
@@ -132,6 +141,30 @@ func (c client) Access(ctx context.Context, objective string, relations []string
 			out := make([]string, 0, len(res.Allowed))
 			for _, r := range res.Allowed {
 				out = append(out, string(r))
+			}
+			return out, nil
+		})
+}
+
+func (c client) Scope(ctx context.Context, objective string, relations []string) (*api.Scope, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetObjectiveAccess", Idempotent: true},
+		func(ctx context.Context) (*api.Scope, error) {
+			params := cc.GetObjectiveAccessParams{ObjectiveID: objective}
+			for _, r := range relations {
+				params.Relation = append(params.Relation, cc.ObjectiveRelation(r))
+			}
+			res, err := c.c.GetObjectiveAccess(ctx, params)
+			if err != nil {
+				return nil, translate(err)
+			}
+			out := &api.Scope{ObjectiveID: res.ObjectiveID, Allowed: make([]string, 0, len(res.Allowed)), OrgUnitID: res.OrgUnitID.Or(""),
+				TemplateID: res.TemplateID.Or(""), State: string(res.State.Or(""))}
+			for _, r := range res.Allowed {
+				out.Allowed = append(out.Allowed, string(r))
+			}
+			if out.OrgUnitID == "" {
+				// 旧版本的服务端不返回单元：失败关闭，不按根单元猜测
+				return nil, &api.Error{Status: 503, Code: "customer_context_unavailable", Detail: "目标访问判断缺少 org_unit_id"}
 			}
 			return out, nil
 		})

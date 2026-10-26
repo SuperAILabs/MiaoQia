@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	cc "github.com/superailabs/miaoqia/services/contracts/apis/customer-context"
+	"github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 )
 
 // 策略接口的契约转换：本子系统的记录与契约字段同名（JSON），经 JSON 转换为生成类型；转换失败（记录不符合契约）不外泄细节。
@@ -124,22 +125,31 @@ func (s *Server) GetObjectiveAccess(ctx context.Context, params cc.GetObjectiveA
 	for _, r := range params.Relation {
 		relations = append(relations, string(r))
 	}
-	allowed, err := s.Service.ObjectiveAccess(ctx, params.ObjectiveID, relations)
+	allowed, o, err := s.Service.ObjectiveScope(ctx, params.ObjectiveID, relations)
 	if err != nil {
 		return nil, err
 	}
-	out := &cc.ObjectiveAccess{ObjectiveID: params.ObjectiveID, Allowed: []cc.ObjectiveRelation{}}
+	out := &cc.ObjectiveAccess{ObjectiveID: params.ObjectiveID, Allowed: []cc.ObjectiveRelation{},
+		OrgUnitID: cc.NewOptString(o.OrgUnitID), TemplateID: cc.NewOptString(o.TemplateID), State: cc.NewOptObjectiveAccessState(cc.ObjectiveAccessState(o.State))}
 	for _, r := range allowed {
 		out.Allowed = append(out.Allowed, cc.ObjectiveRelation(r))
 	}
 	return out, nil
 }
 
-// ObjectiveAccessor 实现 api.ObjectiveAccess（本地绑定）。
+// ObjectiveAccessor 实现 api.ObjectiveAccess 与 api.ObjectiveScope（本地绑定）。
 type ObjectiveAccessor struct{ Service *Service }
 
 func (a ObjectiveAccessor) Access(ctx context.Context, objective string, relations []string) ([]string, error) {
 	return a.Service.ObjectiveAccess(ctx, objective, relations)
+}
+
+func (a ObjectiveAccessor) Scope(ctx context.Context, objective string, relations []string) (*api.Scope, error) {
+	allowed, o, err := a.Service.ObjectiveScope(ctx, objective, relations)
+	if err != nil {
+		return nil, err
+	}
+	return &api.Scope{ObjectiveID: o.ID, Allowed: allowed, OrgUnitID: o.OrgUnitID, TemplateID: o.TemplateID, State: o.State}, nil
 }
 
 func (s *Server) GetActivePolicies(ctx context.Context, params cc.GetActivePoliciesParams) (*cc.ActivePolicyList, error) {

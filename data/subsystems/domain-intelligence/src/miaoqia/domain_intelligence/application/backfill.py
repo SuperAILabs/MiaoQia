@@ -1,15 +1,13 @@
 """显式目标的本地项目补物化；不重放consumer inbox或改写Notice历史。"""
 from __future__ import annotations
 
-import copy
 import re
-from datetime import datetime
 
 from sqlalchemy import text
 
 from miaoqia.contracts import models
 
-from ..domain.versions import META, stabilize_result_ids, value_hash
+from .source import validate_source
 from .facts import fact_version
 from .projects import aggregate_notice, lock_identities
 
@@ -41,16 +39,7 @@ def backfill(database, extractions, notice_ids):
                                 "action": "unchanged", "status": existing.status, "project_id": existing.project_id})
                 continue
             revision = extractions.revision(notice["revision_ref"])
-            if (revision is None or revision.pack_id != row.info_domain or revision.source_id != row.source_id
-                    or revision.source_key != row.source_key or revision.snapshot_ref != notice["snapshot_ref"]
-                    or revision.id != notice["revision_ref"] or revision.quality_status == "suspect"
-                    or revision.observed_at != datetime.fromisoformat(notice["observed_at"].replace("Z", "+00:00"))
-                    or list(revision.rights_tags) != notice["rights_tags"] or row.ordinal >= len(revision.facts)):
-                raise ValueError(f"公告与真实解析修订不一致：{notice_id}")
-            extracted = stabilize_result_ids(notice, copy.deepcopy(revision.facts[row.ordinal]))
-            body = {k: v for k, v in notice.items() if k not in META}
-            if value_hash(extracted) != value_hash(notice) or extracted != body:
-                raise ValueError(f"公告字段/证据与解析修订不一致：{notice_id}")
+            validate_source(notice, row, revision)
             pending.append((notice, revision))
         lock_identities(conn, *(revision for _, revision in pending))
         for notice, revision in pending:

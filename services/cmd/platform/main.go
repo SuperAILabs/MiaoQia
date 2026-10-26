@@ -16,6 +16,7 @@
 //	MIAOQIA_GATEWAY_ISSUER / MIAOQIA_GATEWAY_AUDIENCE   HTTPS Keycloak realm与资源受众
 //	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
 //	MIAOQIA_CHANNELS_SIGNING_KEY  简报卡片动作令牌与简报历史游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
+//	MIAOQIA_PURSUIT_SIGNING_KEY   跟进列表与待我处理翻页游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
 //	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
@@ -68,6 +69,8 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/learning"
 	"github.com/superailabs/miaoqia/services/subsystems/operations"
 	"github.com/superailabs/miaoqia/services/subsystems/pursuit"
+	pursuitapi "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
+	pursuitremote "github.com/superailabs/miaoqia/services/subsystems/pursuit/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/research"
 	"github.com/superailabs/miaoqia/services/subsystems/search"
 )
@@ -137,6 +140,11 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(ccapi.AccessBinding, access)
+		scope, err := ccremote.NewObjectiveScope(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(ccapi.ScopeBinding, scope)
 		active, err := ccremote.NewActivePolicies(u)
 		if err != nil {
 			return err
@@ -165,6 +173,15 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(detectionapi.BriefingBinding, briefing)
+		return nil
+	}},
+	// 跟进（PRD 第6段）：channels 的卡片“跟进”与提醒卡片“完成”经 pursuit 的渠道内动作接口（以点击者的用户主体转交）
+	pursuitapi.Name: {provide: func(u string, b *runtime.Bindings) error {
+		actions, err := pursuitremote.NewActions(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(pursuitapi.ActionsBinding, actions)
 		return nil
 	}},
 }

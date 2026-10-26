@@ -84,6 +84,8 @@
 - **信号卡片**（`GET /v1/detection/signal-cards?ids=…`，内部接口同名，至多 50 个）：返回调用者可见的信号的当前行、最近一次处理状态改变（处理人与时间）与能否反馈；不可见、不存在与其他租户的信号不出现；任一目标的授权判断失败整次 503，不退化为部分结果。channels 用于卡片动作前读取当前版本、结果回写的当前值、`SIGNAL_UPDATED` 的新卡片与完整简报的状态叠加；
 - **渠道动作**：`TriageSignal` 与 `UndoSignalTriage` 经同一绑定以点击者的用户主体调用（内部接口 `POST /internal/v1/detection/signals/{signalID}/triage`、`POST /internal/v1/detection/triage-undos`），规则与公共接口相同；请求的 `channel` 为 `wecom` 时 `detection.signal.triaged.v1` 记录渠道。
 
+**实现状况（PRD 第6段“已转跟进”）**：消费 pursuit 的 `pursuit.pursuit.signal_linked.v1` / `signal_unlinked.v1`（`detection.pursuit-links`），以关联标识幂等维护每条信号的有效关联集合（`det_pursuit_links`，先于加入到达的移除记为墓碑）：集合从空变为非空时记录转换基线（处理状态与人工处置）与转换时的状态版本 V，转为 `converted`（信号已关闭时只记录关联）；集合变空时只有状态版本仍为 V 才恢复基线，否则保持当前值，之后清除基线。晚到或重复的事件不改变结果。
+
 ## 6. 事件
 
 **发布**：`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（载荷含操作标识、动作、反馈结果与原因标签、所见内容版本、各被改变部分的前后值、渠道与批次标识；撤销同样发布并引用被撤销的操作，`learning` 据此写入反馈集，以操作标识幂等）、`detection.pursuit_related_event.v1`。
