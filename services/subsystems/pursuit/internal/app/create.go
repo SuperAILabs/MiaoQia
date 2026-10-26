@@ -232,8 +232,8 @@ func (s *Service) create(ctx context.Context, rc reqctx.Context, req CreateReque
 		_, err = tx.Exec(ctx, `INSERT INTO pur_pursuits (id, tenant_id, objective_id, org_unit_id, template_id, fact_type, subject_id, part_id, winner_org_id, target_key,
  source_kind, source_signal_id, source_content_version, source_signal_created_at, channel, previous_pursuit_id, state, owner, owner_valid, collaborators, note,
  created_by, create_operation_id, version, participation_version, applied_version, sync_pending_since, notify_version, notify_assignee, notify_by, notify_kind,
- changed_by, created_at, updated_at, grants)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,true,$18,$19,$20,$21,1,1,0,$22,$23,$24,$25,$26,$20,$22,$22,$27)`,
+ changed_by, created_at, updated_at, grants, team_changed_by)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,true,$18,$19,$20,$21,1,1,0,$22,$23,$24,$25,$26,$20,$22,$22,$27,$20)`,
 			p.ID, rc.Tenant, p.ObjectiveID, p.OrgUnitID, p.TemplateID, target.FactType, target.SubjectID, optional(target.PartID), optional(target.WinnerOrgID), target.key(),
 			p.SourceKind, optional(p.SourceSignal), content, signalCreated, p.Channel, previous, owner, collaborators, optional(req.Note),
 			rc.Principal.ID, o.id, now, notifyVersion, notifyAssignee, notifyBy, notifyKind, grants)
@@ -384,8 +384,8 @@ func (s *Service) VoidPursuit(ctx context.Context, id, key string, req VersionRe
 			}
 			pv := p.Participation + 1
 			if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET state = 'voided', voided_at = $2, version = version + 1, participation_version = $3,
- sync_pending_since = COALESCE(sync_pending_since, $2), notify_version = NULL, notify_assignee = NULL, notify_by = NULL, notify_kind = NULL, changed_by = $4, updated_at = $2
- WHERE id = $1`, id, now, pv, rc.Principal.ID); err != nil {
+ sync_pending_since = COALESCE(sync_pending_since, $2), notify_version = NULL, notify_assignee = NULL, notify_by = NULL, notify_kind = NULL, changed_by = $4, updated_at = $2,
+ team_changed_by = $4 WHERE id = $1`, id, now, pv, rc.Principal.ID); err != nil {
 				return nil, nil, err
 			}
 			if _, err := tx.Exec(ctx, `UPDATE pur_tasks SET status = 'cancelled', version = version + 1 WHERE pursuit_id = $1 AND status = 'todo'`, id); err != nil {
@@ -572,7 +572,7 @@ func (s *Service) AssignPursuit(ctx context.Context, id, key string, req AssignR
 			}
 			if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET owner = $2, owner_valid = true, collaborators = $3, version = version + 1, participation_version = $4,
  sync_pending_since = COALESCE(sync_pending_since, $5), notify_version = $6, notify_assignee = $7, notify_by = $8, notify_kind = $9, changed_by = $10, updated_at = $5,
- grants = $11 WHERE id = $1`, id, req.Owner, req.Collaborators, pv, now, nv, na, nb, nk, rc.Principal.ID, grants); err != nil {
+ grants = $11, team_changed_by = $10 WHERE id = $1`, id, req.Owner, req.Collaborators, pv, now, nv, na, nb, nk, rc.Principal.ID, grants); err != nil {
 				return nil, nil, err
 			}
 			// 不再在团队中的成员的待办任务转给新负责人（任务负责人须为负责人或协作者）

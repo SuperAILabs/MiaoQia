@@ -69,6 +69,10 @@ type actionClaims struct {
 	Content   int64     `json:"v"`
 	Card      string    `json:"k"`
 	Expires   time.Time `json:"e"`
+	// 任务提醒卡片（C-09）：任务、提醒所在的截止版本与被撤销的“完成”（只用于 reopen_task）；信号卡片上为空
+	Task     string `json:"tk,omitempty"`
+	Deadline int64  `json:"dv,omitempty"`
+	Target   string `json:"g,omitempty"`
 }
 
 // historyCursor 是简报历史的翻页位置：上一页最后一期的 (period_end, id)，绑定租户与调用者。

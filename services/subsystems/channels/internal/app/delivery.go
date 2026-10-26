@@ -48,6 +48,9 @@ type tokenRow struct {
 	id, recipient, signal, objective, action, reason, card, target string
 	content                                                        int64
 	expires                                                        time.Time
+	// 任务提醒卡片（complete_task / reopen_task）
+	task, targetOp string
+	deadline       int64
 }
 
 type linkRow struct {
@@ -86,16 +89,26 @@ func insertTokens(ctx context.Context, tx pgx.Tx, tenant, delivery string, token
 		dlv = &delivery
 	}
 	for _, t := range tokens {
-		var reason, target *string
+		var reason, target, signal, task, targetOp *string
+		var deadline *int64
 		if t.reason != "" {
 			reason = &t.reason
 		}
 		if t.target != "" {
 			target = &t.target
 		}
+		if t.task != "" {
+			task, deadline = &t.task, &t.deadline
+			if t.targetOp != "" {
+				targetOp = &t.targetOp
+			}
+		} else {
+			signal = &t.signal
+		}
 		if _, err := tx.Exec(ctx, `INSERT INTO chn_action_tokens (id, tenant_id, recipient, signal_id, objective_id, action, reason, content_version, target_token,
- card_id, delivery_id, expires_at, state, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'open', $13)`,
-			t.id, tenant, t.recipient, t.signal, t.objective, t.action, reason, t.content, target, t.card, dlv, t.expires, at); err != nil {
+ card_id, delivery_id, expires_at, state, created_at, task_id, deadline_version, target_operation) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'open', $13,
+ $14, $15, $16)`,
+			t.id, tenant, t.recipient, signal, t.objective, t.action, reason, t.content, target, t.card, dlv, t.expires, at, task, deadline, targetOp); err != nil {
 			return err
 		}
 	}
@@ -232,7 +245,13 @@ func overview(doc *briefingDoc, secs []section, url string, prefs domain.Prefere
 			if sec.State == "unavailable" {
 				lines = append(lines, "待我处理：暂不可用")
 			} else {
-				lines = append(lines, fmt.Sprintf("待我处理：%d 项（去 Web 处理）", len(sec.Items)))
+				open := 0
+				for _, it := range sec.Items {
+					if it.TaskCurrent == nil || it.TaskCurrent.Status == "todo" {
+						open++
+					}
+				}
+				lines = append(lines, fmt.Sprintf("待我处理：%d 项（去 Web 处理）", open))
 			}
 			continue
 		}
@@ -489,6 +508,8 @@ func (s *Service) deliverOne(sctx context.Context, id string) {
 			lost[sec.ObjectiveID] = true
 		}
 	}
+	// “待我处理”中的任务按收件人当前状态再检查（已不能查看的移除；总览只计仍待处理的）
+	s.recheckTasks(uctx, secs)
 	var kept []section
 	for _, sec := range secs {
 		if sec.ObjectiveSection == nil || !lost[sec.ObjectiveID] {

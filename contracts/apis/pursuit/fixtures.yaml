@@ -574,6 +574,21 @@ fixtures:
     viewer_can_edit: true
     viewer_is_assignee: true
   cases:
+  - name: 转给决策者的任务
+    valid: true
+    patch:
+    - op: replace
+      path: /viewer_is_assignee
+      value: false
+    - op: add
+      path: /viewer_escalated
+      value: true
+  - name: 转交标记须为布尔
+    valid: false
+    patch:
+    - op: add
+      path: /viewer_escalated
+      value: 'yes'
   - name: 缺少权限判断
     valid: false
     patch:

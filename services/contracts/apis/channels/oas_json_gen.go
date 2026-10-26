@@ -1670,14 +1670,56 @@ func (s *BriefingItem) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.TaskID.Set {
+			e.FieldStart("task_id")
+			s.TaskID.Encode(e)
+		}
+	}
+	{
+		if s.PursuitID.Set {
+			e.FieldStart("pursuit_id")
+			s.PursuitID.Encode(e)
+		}
+	}
+	{
+		if s.ObjectiveID.Set {
+			e.FieldStart("objective_id")
+			s.ObjectiveID.Encode(e)
+		}
+	}
+	{
+		if s.TaskTitle.Set {
+			e.FieldStart("task_title")
+			s.TaskTitle.Encode(e)
+		}
+	}
+	{
+		if s.Due.Set {
+			e.FieldStart("due")
+			s.Due.Encode(e)
+		}
+	}
+	{
+		if s.Escalated.Set {
+			e.FieldStart("escalated")
+			s.Escalated.Encode(e)
+		}
+	}
+	{
 		if s.Current.Set {
 			e.FieldStart("current")
 			s.Current.Encode(e)
 		}
 	}
+	{
+		if s.TaskCurrent.Set {
+			e.FieldStart("task_current")
+			s.TaskCurrent.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfBriefingItem = [24]string{
+var jsonFieldsNameOfBriefingItem = [31]string{
 	0:  "kind",
 	1:  "position",
 	2:  "signal_id",
@@ -1701,7 +1743,14 @@ var jsonFieldsNameOfBriefingItem = [24]string{
 	20: "approval_id",
 	21: "approval_type",
 	22: "submitted_at",
-	23: "current",
+	23: "task_id",
+	24: "pursuit_id",
+	25: "objective_id",
+	26: "task_title",
+	27: "due",
+	28: "escalated",
+	29: "current",
+	30: "task_current",
 }
 
 // Decode decodes BriefingItem from json.
@@ -1709,7 +1758,7 @@ func (s *BriefingItem) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode BriefingItem to nil")
 	}
-	var requiredBitSet [3]uint8
+	var requiredBitSet [4]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -1970,6 +2019,66 @@ func (s *BriefingItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"submitted_at\"")
 			}
+		case "task_id":
+			if err := func() error {
+				s.TaskID.Reset()
+				if err := s.TaskID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"task_id\"")
+			}
+		case "pursuit_id":
+			if err := func() error {
+				s.PursuitID.Reset()
+				if err := s.PursuitID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"pursuit_id\"")
+			}
+		case "objective_id":
+			if err := func() error {
+				s.ObjectiveID.Reset()
+				if err := s.ObjectiveID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"objective_id\"")
+			}
+		case "task_title":
+			if err := func() error {
+				s.TaskTitle.Reset()
+				if err := s.TaskTitle.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"task_title\"")
+			}
+		case "due":
+			if err := func() error {
+				s.Due.Reset()
+				if err := s.Due.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"due\"")
+			}
+		case "escalated":
+			if err := func() error {
+				s.Escalated.Reset()
+				if err := s.Escalated.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"escalated\"")
+			}
 		case "current":
 			if err := func() error {
 				s.Current.Reset()
@@ -1980,6 +2089,16 @@ func (s *BriefingItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"current\"")
 			}
+		case "task_current":
+			if err := func() error {
+				s.TaskCurrent.Reset()
+				if err := s.TaskCurrent.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"task_current\"")
+			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
 		}
@@ -1989,8 +2108,9 @@ func (s *BriefingItem) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [3]uint8{
+	for i, mask := range [4]uint8{
 		0b00000011,
+		0b00000000,
 		0b00000000,
 		0b00000000,
 	} {
@@ -2100,6 +2220,8 @@ func (s *BriefingItemKind) Decode(d *jx.Decoder) error {
 		*s = BriefingItemKindReference
 	case BriefingItemKindApproval:
 		*s = BriefingItemKindApproval
+	case BriefingItemKindTask:
+		*s = BriefingItemKindTask
 	default:
 		*s = BriefingItemKind(v)
 	}
@@ -6635,6 +6757,72 @@ func (s *OptString) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes TaskDue as json.
+func (o OptTaskDue) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes TaskDue from json.
+func (o *OptTaskDue) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptTaskDue to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptTaskDue) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptTaskDue) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TaskItemStatus as json.
+func (o OptTaskItemStatus) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes TaskItemStatus from json.
+func (o *OptTaskItemStatus) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptTaskItemStatus to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptTaskItemStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptTaskItemStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes url.URL as json.
 func (o OptURI) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -7134,6 +7322,331 @@ func (s *SectionLimit) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *SectionLimit) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *TaskDue) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TaskDue) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("value")
+		e.Str(s.Value)
+	}
+	{
+		e.FieldStart("precision")
+		s.Precision.Encode(e)
+	}
+	{
+		e.FieldStart("timezone")
+		e.Str(s.Timezone)
+	}
+}
+
+var jsonFieldsNameOfTaskDue = [3]string{
+	0: "value",
+	1: "precision",
+	2: "timezone",
+}
+
+// Decode decodes TaskDue from json.
+func (s *TaskDue) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TaskDue to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "value":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Value = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"value\"")
+			}
+		case "precision":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Precision.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"precision\"")
+			}
+		case "timezone":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Timezone = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"timezone\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TaskDue")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfTaskDue) {
+					name = jsonFieldsNameOfTaskDue[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TaskDue) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TaskDue) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TaskDuePrecision as json.
+func (s TaskDuePrecision) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TaskDuePrecision from json.
+func (s *TaskDuePrecision) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TaskDuePrecision to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TaskDuePrecision(v) {
+	case TaskDuePrecisionDay:
+		*s = TaskDuePrecisionDay
+	case TaskDuePrecisionMinute:
+		*s = TaskDuePrecisionMinute
+	default:
+		*s = TaskDuePrecision(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TaskDuePrecision) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TaskDuePrecision) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *TaskItemStatus) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TaskItemStatus) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("status")
+		s.Status.Encode(e)
+	}
+	{
+		e.FieldStart("status_as_of")
+		json.EncodeDateTime(e, s.StatusAsOf)
+	}
+}
+
+var jsonFieldsNameOfTaskItemStatus = [2]string{
+	0: "status",
+	1: "status_as_of",
+}
+
+// Decode decodes TaskItemStatus from json.
+func (s *TaskItemStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TaskItemStatus to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "status":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Status.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status\"")
+			}
+		case "status_as_of":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.StatusAsOf = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status_as_of\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TaskItemStatus")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfTaskItemStatus) {
+					name = jsonFieldsNameOfTaskItemStatus[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TaskItemStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TaskItemStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TaskItemStatusStatus as json.
+func (s TaskItemStatusStatus) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TaskItemStatusStatus from json.
+func (s *TaskItemStatusStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TaskItemStatusStatus to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TaskItemStatusStatus(v) {
+	case TaskItemStatusStatusTodo:
+		*s = TaskItemStatusStatusTodo
+	case TaskItemStatusStatusDone:
+		*s = TaskItemStatusStatusDone
+	case TaskItemStatusStatusCancelled:
+		*s = TaskItemStatusStatusCancelled
+	case TaskItemStatusStatusReassigned:
+		*s = TaskItemStatusStatusReassigned
+	case TaskItemStatusStatusPursuitClosed:
+		*s = TaskItemStatusStatusPursuitClosed
+	default:
+		*s = TaskItemStatusStatus(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TaskItemStatusStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TaskItemStatusStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

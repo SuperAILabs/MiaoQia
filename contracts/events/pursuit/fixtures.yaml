@@ -387,3 +387,49 @@ fixtures:
     - op: replace
       path: /result
       value: voided
+- event: pursuit.pursuit.authorization_rejected.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    participation_version: 1
+    operator: usr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    rejected:
+    - subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      relation: owner
+      reason: member_inactive
+    owner_invalid: true
+    recorded_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 系统写入的版本不带操作者
+    valid: true
+    patch:
+    - op: remove
+      path: /operator
+  - name: 只拒绝协作者
+    valid: true
+    patch:
+    - op: replace
+      path: /rejected/0/relation
+      value: collaborator
+    - op: replace
+      path: /owner_invalid
+      value: false
+  - name: 至少一名被拒成员
+    valid: false
+    patch:
+    - op: replace
+      path: /rejected
+      value: []
+  - name: 不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 未登记的关系
+    valid: false
+    patch:
+    - op: replace
+      path: /rejected/0/relation
+      value: shared_with

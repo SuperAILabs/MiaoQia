@@ -161,9 +161,11 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, approvals := runtime.Lookup[idapi.ApprovalReader](b, idapi.ApprovalReaderBinding)
 						_, own := runtime.Lookup[chnapi.Briefings](b, chnapi.BriefingsBinding)
 						_, pursuits := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
-						if !briefing || !access || !active || !approvals || !own || !pursuits {
-							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v pursuit=%v", briefing, access, active,
-								approvals, own, pursuits)
+						// C-09：渠道通知（任务提醒卡片与授权被拒的通知）的投递入口
+						_, notices := runtime.Lookup[chnapi.Notices](b, chnapi.NoticesBinding)
+						if !briefing || !access || !active || !approvals || !own || !pursuits || !notices {
+							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v pursuit=%v notices=%v", briefing, access, active,
+								approvals, own, pursuits, notices)
 						}
 					}
 					// 第6段新增的跨子系统绑定：pursuit 经 identity 授权、同步参与关系与核验成员，经 customer-context 判断成员的目标访问；
@@ -201,7 +203,8 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						got[j.Name] = true
 					}
 					want := []string{"identity.expire-invitations", "identity.retry-tenant-bindings", "identity.expire-approvals",
-						"channels.retry-revocations", "channels.reconcile-sessions", "channels.deliver-briefings", "channels.process-card-actions"}
+						"channels.retry-revocations", "channels.reconcile-sessions", "channels.compose-briefings", "channels.deliver-briefings",
+						"channels.process-card-actions", "channels.deliver-notices"}
 					if v["MIAOQIA_BINDING_PURSUIT"] != "remote" {
 						want = append(want, "pursuit.run-due-reminders", "pursuit.retry-authorization-sync")
 					}

@@ -195,3 +195,53 @@ fixtures:
     - op: add
       path: /reasons
       value: [CATEGORY_MISMATCH]
+- event: channels.task_action.executed.v1
+  base:
+    operation_id: atk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    task_id: tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    action: complete_task
+    result: succeeded
+    channel: wecom
+    executed_at: '2026-10-20T08:15:00+08:00'
+  cases:
+  - name: 撤销完成带被撤销的操作
+    valid: true
+    patch:
+    - op: replace
+      path: /action
+      value: reopen_task
+    - op: replace
+      path: /operation_id
+      value: atk_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    - op: add
+      path: /target_operation_id
+      value: atk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 截止已改变的确定失败
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: failed
+    - op: add
+      path: /code
+      value: deadline_changed
+  - name: 撤销缺被撤销的操作
+    valid: false
+    patch:
+    - op: replace
+      path: /action
+      value: reopen_task
+  - name: 失败缺少错误代码
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: failed
+  - name: 不含任务标题
+    valid: false
+    patch:
+    - op: add
+      path: /task_title
+      value: 联系总包采购

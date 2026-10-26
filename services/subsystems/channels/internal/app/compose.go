@@ -144,7 +144,7 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 		return &api.ComposeResult{Outcome: "late", BriefingID: id}, nil
 	}
 	uctx := userContext(ctx, rc.Tenant, rc.Cell, subject)
-	sections, partial, audience, err := s.assemble(sctx, uctx, rc.Tenant, subject, start, end, prefs)
+	sections, partial, audience, err := s.assemble(sctx, uctx, rc.Tenant, subject, start, end, sched.NextBoundary(end), prefs)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 }
 
 // assemble 逐区取数。audience 为成员是否是本期的受众（至少一个已激活目标可看信号，或有待其处理的审批）。
-func (s *Service) assemble(sctx, uctx context.Context, tenant, subject string, start, end time.Time, prefs domain.Preferences) ([]composedSection, bool, bool, error) {
+func (s *Service) assemble(sctx, uctx context.Context, tenant, subject string, start, end, nextBoundary time.Time, prefs domain.Preferences) ([]composedSection, bool, bool, error) {
 	if s.Detection == nil {
 		return nil, false, false, failure(503, "detection_unavailable")
 	}
@@ -308,22 +308,44 @@ func (s *Service) assemble(sctx, uctx context.Context, tenant, subject string, s
 		return out[i].ObjectiveCode < out[j].ObjectiveCode
 	})
 	s.fillItems(sctx, out)
-	// “待我处理”：待本人批准的审批（按提交时间）；任务随第6段
-	if s.Approvals != nil {
+	// “待我处理”：待本人批准的审批（按提交时间），之后是分派给本人或转给本人决定的跟进任务（截止在下一期简报之前或已逾期，
+	// 按截止时间；PRD 第6段 F9 第1条）。以成员本人读取；任一来源不可用时本区暂不可用
+	if s.Approvals != nil || s.Pursuits != nil {
 		pending := composedSection{section: section{Kind: "pending", Order: 0, State: "normal", Items: []item{}}}
-		list, err := s.Approvals.ListApprovals(uctx, identityapi.ListApprovalsParams{Role: identityapi.NewOptListApprovalsRole(identityapi.ListApprovalsRoleApprover),
-			State: identityapi.NewOptApprovalState(identityapi.ApprovalStatePending), Limit: identityapi.NewOptInt(50)})
-		switch {
-		case err != nil:
-			pending.State, partial = "unavailable", true
-			out = append([]composedSection{pending}, out...)
-		case len(list.Approvals) > 0:
-			apps := list.Approvals
-			sort.SliceStable(apps, func(i, j int) bool { return apps[i].SubmittedAt.Before(apps[j].SubmittedAt) })
-			for i, a := range apps {
-				pending.Items = append(pending.Items, item{Kind: "approval", Position: i,
-					ApprovalItem: &ApprovalItem{ApprovalID: string(a.ID), ApprovalType: string(a.Type), SubmittedAt: a.SubmittedAt.UTC()}})
+		failed := false
+		if s.Approvals != nil {
+			list, err := s.Approvals.ListApprovals(uctx, identityapi.ListApprovalsParams{Role: identityapi.NewOptListApprovalsRole(identityapi.ListApprovalsRoleApprover),
+				State: identityapi.NewOptApprovalState(identityapi.ApprovalStatePending), Limit: identityapi.NewOptInt(50)})
+			if err != nil {
+				failed = true
+			} else {
+				apps := list.Approvals
+				sort.SliceStable(apps, func(i, j int) bool { return apps[i].SubmittedAt.Before(apps[j].SubmittedAt) })
+				for _, a := range apps {
+					pending.Items = append(pending.Items, item{Kind: "approval", Position: len(pending.Items),
+						ApprovalItem: &ApprovalItem{ApprovalID: string(a.ID), ApprovalType: string(a.Type), SubmittedAt: a.SubmittedAt.UTC()}})
+				}
 			}
+		}
+		if s.Pursuits != nil && !failed {
+			var before *time.Time
+			if next := nextBoundary; !next.IsZero() {
+				before = &next
+			}
+			list, err := s.Pursuits.ListMyTasks(uctx, before, 100, "")
+			if err != nil {
+				failed = true
+			} else {
+				for _, t := range list.Items {
+					pending.Items = append(pending.Items, item{Kind: "task", Position: len(pending.Items), TaskItem: taskItem(t)})
+				}
+			}
+		}
+		switch {
+		case failed:
+			pending.State, partial, pending.Items = "unavailable", true, []item{}
+			out = append([]composedSection{pending}, out...)
+		case len(pending.Items) > 0:
 			audience = true
 			out = append([]composedSection{pending}, out...)
 		}

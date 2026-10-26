@@ -37,7 +37,9 @@ var (
 		"POST /v1/pursuit/tasks/{taskID}/reopen", "GET /v1/pursuit/my-tasks",
 	}
 	internalRoutes = []string{"POST /internal/v1/pursuit/pursuits", "GET /internal/v1/pursuit/tasks/{taskID}",
-		"POST /internal/v1/pursuit/tasks/{taskID}/complete", "POST /internal/v1/pursuit/tasks/{taskID}/reopen"}
+		"POST /internal/v1/pursuit/tasks/{taskID}/complete", "POST /internal/v1/pursuit/tasks/{taskID}/reopen",
+		// C-09：简报“待我处理”中的任务与授权被拒通知的再检查（以收件人本人）
+		"GET /internal/v1/pursuit/my-tasks", "GET /internal/v1/pursuit/pursuits/{pursuitID}"}
 )
 
 // Module 返回 pursuit 的模块定义。配置：MIAOQIA_PURSUIT_SIGNING_KEY（翻页游标签名密钥，base64，至少 32 字节，同一部署的全部实例相同；

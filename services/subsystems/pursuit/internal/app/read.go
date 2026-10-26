@@ -463,6 +463,7 @@ type GetTaskView struct {
 	PursuitState string   `json:"pursuit_state"`
 	ViewerEdit   bool     `json:"viewer_can_edit"`
 	ViewerIs     bool     `json:"viewer_is_assignee"`
+	Escalated    bool     `json:"viewer_escalated"`
 }
 
 // GetTask 读取任务与调用者的当前权限（契约 getTask；提醒卡片发送前与点击后的再检查）。
@@ -475,8 +476,10 @@ func (s *Service) GetTask(ctx context.Context, id string) (*GetTaskView, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &GetTaskView{Task: t.view(p), ObjectiveID: p.ObjectiveID, PursuitState: p.State, ViewerEdit: r.Edit && p.State == "open",
-		ViewerIs: t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID)}, nil
+	// viewer_can_edit 与写命令同一准入（admitWrite：授权同步与本人当前角色的授予版本）；viewer_escalated 与 listMyTasks 同一口径
+	open := p.State == "open"
+	return &GetTaskView{Task: t.view(p), ObjectiveID: p.ObjectiveID, PursuitState: p.State, ViewerEdit: open && s.admitWrite(p, r, rc.Principal.ID) == nil,
+		ViewerIs: t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID), Escalated: open && !p.involves(t.Assignee) && r.UnitEdit}, nil
 }
 
 func (s *Service) sealTasks(out *MyTaskList, c tasksCursor) error {
