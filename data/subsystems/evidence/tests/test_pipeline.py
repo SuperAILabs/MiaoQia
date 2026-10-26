@@ -280,19 +280,33 @@ def test_resolve_rechecks_current_caller_and_does_not_cache_permission(evd):
         assert reader.resolve(ref) is None
 
 
-def test_resolve_reuses_sdk_integrity_checks_for_tampered_objects(evd):
+@pytest.mark.parametrize("level", ["excerpt", "full_text"])
+@pytest.mark.parametrize("tamper", ["snapshot", "quote", "context"])
+def test_resolve_reuses_sdk_integrity_checks_for_tampered_objects(evd, level, tamper):
     from miaoqia import evidence
     from miaoqia.evidence.application.queries import EvidenceIntegrityError
+    from miaoqia.sdk import Document
     database, pipeline, _ = evd
     replay(database, pipeline, [CORPUS / "official-consortium-20261014"])
     with reqctx.use(reqctx.service("test")), database.tx() as conn:
-        ref = conn.execute(text("SELECT id FROM evd_evidence_refs LIMIT 1")).scalar_one()
+        ref, loc = conn.execute(text("SELECT id, locator FROM evd_evidence_refs LIMIT 1")).one()
 
     class Tampered:
         def get(self, key):
             doc = json.loads(pipeline.store.get(key))
-            doc["snapshot_ref"] = "snp_" + "Z" * 26
+            if tamper == "snapshot":
+                doc["snapshot_ref"] = "snp_" + "Z" * 26
+            else:
+                original_quote = Document(doc).quote(loc)
+                block = doc["blocks"][loc.get("block_end", loc["block"])]
+                unit = block["rows"][loc["row"]][loc["col"]] if "row" in loc else block
+                if tamper == "quote":
+                    unit["text"] = "伪" * len(unit["text"])
+                    assert Document(doc).quote(loc) != original_quote
+                else:
+                    unit["text"] += "\n伪造的上下文"
+                    assert Document(doc).quote(loc) == original_quote
             return json.dumps(doc).encode()
 
     with reqctx.use(dataclasses.replace(reqctx.service("test"), purpose="object_page")), pytest.raises(EvidenceIntegrityError):
-        evidence.resolver(database, Tampered(), display=lambda tags, purpose: "excerpt").resolve(ref)
+        evidence.resolver(database, Tampered(), display=lambda tags, purpose: level).resolve(ref)

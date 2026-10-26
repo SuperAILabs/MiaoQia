@@ -22,11 +22,15 @@ class Queries:
         self.database = database
         self.allowed = allowed
 
-    def _allowed(self, fact):
+    def _require_access(self):
         context = reqctx.current()
         context.validate()
         if not context.purpose or self.allowed is None:
             raise PermissionError("未装配来源权利判定或缺少用途")
+        return context
+
+    def _allowed(self, fact):
+        context = self._require_access()
         return self.allowed(tuple(fact["rights_tags"]), context.purpose) is True
 
     @staticmethod
@@ -35,6 +39,7 @@ class Queries:
             raise ValueError("limit 必须在 1–100 之间")
 
     def get_fact(self, fact_id: str, basis: Basis, *, version: int | None = None) -> FactRead | None:
+        self._require_access()
         if version is not None and (type(version) is not int or version < 1):
             raise ValueError("version 必须为正整数")
         with self.database.tx() as conn:
@@ -72,6 +77,7 @@ class Queries:
         return Page(basis, items, cursor)
 
     def get_fact_history(self, fact_id: str, basis: Basis, *, after: int = 0, limit: int = 50) -> Page:
+        self._require_access()
         self._limit(limit)
         if type(after) is not int or after < 0:
             raise ValueError("历史游标必须为非负版本号")
@@ -84,6 +90,7 @@ class Queries:
                               {"f": fact_id, "a": after, "r": basis.recorded_cutoff}, basis, limit, history=True)
 
     def query_facts(self, info_domain: str, object_type: str, basis: Basis, *, after: str = "", limit: int = 50) -> Page:
+        self._require_access()
         self._limit(limit)
         with self.database.tx() as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))

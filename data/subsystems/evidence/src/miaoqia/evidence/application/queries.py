@@ -15,6 +15,7 @@ from miaoqia.sdk import Document
 from miaoqia.sdk.validation import validate_extraction
 
 from ..api import ResolvedEvidence
+from ..domain.snapshot import normalized_hash
 from ..infrastructure.objectstore import ObjectStore
 
 
@@ -35,7 +36,8 @@ class Resolver:
         with self.database.tx() as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
             row = conn.execute(text("""SELECT r.id, r.snapshot_id, r.pipeline_version, r.locator, r.quote_hash,
-                                               s.source_id, s.source_key, s.rights_tags, s.observed_at, s.document_ref
+                                               s.source_id, s.source_key, s.rights_tags, s.observed_at, s.document_ref,
+                                               s.normalized_hash
                                         FROM evd_evidence_refs r JOIN evd_snapshots s ON s.id = r.snapshot_id
                                         WHERE r.id = :id"""), {"id": evidence_ref}).mappings().one_or_none()
         if row is None:
@@ -49,7 +51,10 @@ class Resolver:
                     source_key=row["source_key"], observed_at=row["observed_at"])
         if level == "citation_only":
             return ResolvedEvidence(**base)
-        doc = Document(json.loads(self.store.get(row["document_ref"])))
+        document = json.loads(self.store.get(row["document_ref"]))
+        if normalized_hash(document) != row["normalized_hash"]:
+            raise EvidenceIntegrityError("规范化文档与快照哈希不符")
+        doc = Document(document)
         ref = {"id": row["id"], "snapshot_ref": row["snapshot_id"], "pipeline_version": row["pipeline_version"],
                "locator": row["locator"], "quote_hash": row["quote_hash"]}
         if validate_extraction(doc, [], {evidence_ref: ref}):

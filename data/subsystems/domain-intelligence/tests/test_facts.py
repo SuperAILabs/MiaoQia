@@ -322,6 +322,31 @@ def test_read_binding_checks_caller_and_current_rights_for_every_shape(plane):
         reader.get_fact(fact["id"], basis)
 
 
+@pytest.mark.parametrize("populated", [False, True])
+@pytest.mark.parametrize("missing", ["policy", "purpose", "context"])
+def test_read_preconditions_do_not_depend_on_matching_rows(plane, populated, missing):
+    from contextlib import nullcontext
+    from miaoqia import domain_intelligence
+    from miaoqia.domain_intelligence.api import Basis
+
+    if populated:
+        _deliver(plane, [CORPUS / "official-award-20261014"])
+    fact_id = _facts(plane[1])[0]["id"] if populated else "ntc_" + "Z" * 26
+    reader = domain_intelligence.queries(plane[1], allowed=None if missing == "policy" else lambda tags, purpose: True)
+    ctx = dataclasses.replace(reqctx.service("test"), purpose="" if missing == "purpose" else "object_page")
+    basis = Basis("current")
+    calls = (
+        lambda: reader.get_fact(fact_id, basis),
+        lambda: reader.get_fact_history(fact_id, basis),
+        lambda: reader.query_facts("INF-PROC", "tendering.notice", basis),
+        lambda: reader.bid_result_units(fact_id, basis),
+    )
+    with nullcontext() if missing == "context" else reqctx.use(ctx):
+        for call in calls:
+            with pytest.raises(reqctx.MissingContext if missing == "context" else PermissionError):
+                call()
+
+
 def test_fact_query_pagination_does_not_duplicate_or_omit_permitted_facts(plane):
     from miaoqia import domain_intelligence
     from miaoqia.domain_intelligence.api import Basis

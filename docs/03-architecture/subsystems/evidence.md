@@ -131,6 +131,6 @@ A02 贯通验收 L1-1（[验收线第8节](../../05-delivery/09-a02-end-to-end-a
 - 回放：`mq-evidence-replay` 投放冻结语料（核对原件哈希，权利标签追加 `corpus:<样本>`），不构成来源启用；
 - 读取：`api.Extractions`（解析修订）在数据单元内以本地绑定注入 domain-intelligence。
 
-L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolver(database, store, display=...)`。回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
+L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolver(database, store, display=...)`。回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
 
 本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。它尚未装配到 data-api 或 gateway，生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待后续接入。未实现：`GetDocument` 等远程查询，结构化记录集与派生证据、质量规则、增强、语料快照与重放工作流，S3 对象存储实现（R-03）。
