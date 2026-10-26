@@ -48,6 +48,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/relay"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	"github.com/superailabs/miaoqia/services/kernel/scheduler"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
 	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
 	"github.com/superailabs/miaoqia/services/subsystems/aiplatform"
@@ -327,8 +328,10 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 		}
 		<-ctx.Done()
 		return nil
+	case "scheduler":
+		return runScheduler(ctx, log, loaded, envs)
 	default:
-		<-ctx.Done() // scheduler、workflow-worker 的任务随所属里程碑加入
+		<-ctx.Done() // workflow-worker 的任务随所属里程碑加入
 		return nil
 	}
 }
@@ -503,4 +506,42 @@ func runRelay(ctx context.Context, log *slog.Logger, brokers []string) error {
 	defer prod.Close()
 	log.Info("发件箱中继启动", "databases", len(sources))
 	return (&relay.Relay{Sources: sources, Producer: prod, Log: log}).Run(ctx)
+}
+
+// runScheduler 运行已加载子系统声明的周期任务（runtime.Module.Jobs，kernel/scheduler）。任务在所属子系统的数据库上取咨询锁，
+// 主备两个实例同时运行时同一任务同一时刻只在一个实例上执行。没有任务时只等待退出。
+func runScheduler(ctx context.Context, log *slog.Logger, loaded []runtime.Module, envs []*runtime.Env) error {
+	jobs, err := collectJobs(loaded, envs)
+	if err != nil {
+		return err
+	}
+	names := make([]string, 0, len(jobs))
+	for _, j := range jobs {
+		names = append(names, j.Name)
+	}
+	log.Info("定时任务", "count", len(jobs), "jobs", names)
+	if len(jobs) == 0 {
+		<-ctx.Done()
+		return nil
+	}
+	return (&scheduler.Runner{Jobs: jobs, Log: log}).Run(ctx)
+}
+
+// collectJobs 收集并校验已加载子系统的周期任务。按租户的任务依赖 identity.Tenants（只有本地绑定），
+// identity 配置为远程时这些子系统声明任务失败，scheduler 角色不启动。
+func collectJobs(loaded []runtime.Module, envs []*runtime.Env) ([]scheduler.Bound, error) {
+	var jobs []scheduler.Bound
+	for i, m := range loaded {
+		if m.Jobs == nil {
+			continue
+		}
+		declared, err := m.Jobs(envs[i])
+		if err != nil {
+			return nil, fmt.Errorf("%s 定时任务：%w", m.Name, err)
+		}
+		for _, j := range declared {
+			jobs = append(jobs, scheduler.Bound{Job: j, DB: envs[i].DB})
+		}
+	}
+	return jobs, scheduler.Validate(jobs)
 }

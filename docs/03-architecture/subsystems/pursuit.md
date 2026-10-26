@@ -1,6 +1,6 @@
 # 推进与结果子系统（pursuit）
 
-> 状态：评审中 · 版本：1.7 · 更新：2026-10-19 · 平面：客户智能
+> 状态：评审中 · 版本：1.8 · 更新：2026-10-26 · 平面：客户智能
 
 ## 1. 使命
 
@@ -160,5 +160,5 @@ M2 切片的用户流程、唯一性、撤销创建、提醒与结果规则见 [
 - **关闭与结果**：结果类型、原因代码与金额类型取自应用领域包 `outcomes/*.yaml`（按目标模板）；成功与失败必填获知时间；金额不换算、不相加；贡献关系按信号 `created_at` 与获知时间判定（只到日且同日不判定，用户给出时以用户为准）；修订追加记录并引用旧记录；`pursuit.outcome.recorded.v1` 由 learning 幂等写入评估结果集；
 - **翻页**：列表每页至多 50（待办 100），每次至多扫描 500 行后以游标返回；游标为整个载荷连同 HMAC-SHA256 签名（`MIAOQIA_PURSUIT_SIGNING_KEY`，base64、至少 32 字节；只有 development 可缺省为进程内随机密钥），绑定租户、调用者与视图，篡改 400 `invalid_cursor`；
 - **进程角色**：pursuit 在 `api`、`consumer` 与 `workflow-worker` 角色加载；从信号创建需要 detection 的 `Briefing` 绑定，只在 `api` 角色必需（其他角色缺少时从信号创建失败关闭为 503）；
-- **未实现**：公开截止绑定（F6，依赖 domain-intelligence 的截止事件，见[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)）、持续跟踪（F10）、分派规则的候选负责人（缺省为本人）、同一标包其他中标方的提示、定时任务（`Reminders` 由调度器调用，[A02 验收缺口 R-01](../../05-delivery/09-a02-end-to-end-acceptance.md#43-运行装配r)）。证据：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`）、`services/subsystems/pursuit/internal/app/domain_internal_test.go`；
+- **未实现**：公开截止绑定（F6，依赖 domain-intelligence 的截止事件，见[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)）、持续跟踪（F10）、分派规则的候选负责人（缺省为本人）、同一标包其他中标方的提示。`Reminders` 由 `scheduler` 角色的 `pursuit.run-due-reminders` 与 `pursuit.retry-authorization-sync`（每分钟，逐个 active 租户以 `svc:pursuit` 调用，`services/subsystems/pursuit/jobs.go`，[A02 验收缺口 R-01](../../05-delivery/09-a02-end-to-end-acceptance.md#43-运行装配r)）调用。证据：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`）、`services/subsystems/pursuit/internal/app/domain_internal_test.go`；
 - **渠道侧（C-09，channels 实现）**：任务提醒卡片（“完成”“撤销”“查看”）、简报“待我处理”中的任务、授权被拒时通知操作者与提醒的安静时段由 channels 消费 `pursuit.task.due.v1` 与 `pursuit.pursuit.authorization_rejected.v1` 实现，每次发送与点击都以收件人或点击者本人经 `getTask` / `getPursuit` / `completeTask` / `reopenTask` 再判断，见 [channels 实现状况](channels.md)。
