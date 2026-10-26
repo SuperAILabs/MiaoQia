@@ -60,8 +60,8 @@ func sampleRun() *Run {
 	}
 	return &Run{ID: "sim_x", Report: &Report{
 		Samples: []Sample{s("F1", "INF-PROC", "330106"), s("F2", "INF-PROC", "440305"), s("F3", "INF-PROC", "330106"), s("F4", "", "")},
-		Diff: &Diff{AddedSamples: []Sample{s("F5", "INF-PROC", "440305")}, RemovedSamples: []Sample{}, ChangedSamples: []Sample{s("F6", "INF-INVP", "")}},
-		Hints: []Hint{{Code: "review_majority"}},
+		Diff:    &Diff{AddedSamples: []Sample{s("F5", "INF-PROC", "440305")}, RemovedSamples: []Sample{}, ChangedSamples: []Sample{s("F6", "INF-INVP", "")}},
+		Hints:   []Hint{{Code: "review_majority"}},
 	}}
 }
 
