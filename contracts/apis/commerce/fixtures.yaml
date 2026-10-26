@@ -124,4 +124,3 @@ fixtures:
     - op: replace
       path: /region
       value: '33'
-
