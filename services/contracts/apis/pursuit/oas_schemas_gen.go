@@ -4714,6 +4714,8 @@ type TaskView struct {
 	PursuitState     PursuitStatus `json:"pursuit_state"`
 	ViewerCanEdit    bool          `json:"viewer_can_edit"`
 	ViewerIsAssignee bool          `json:"viewer_is_assignee"`
+	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0）.
+	ViewerEscalated OptBool `json:"viewer_escalated"`
 }
 
 // GetTask returns the value of Task.
@@ -4741,6 +4743,11 @@ func (s *TaskView) GetViewerIsAssignee() bool {
 	return s.ViewerIsAssignee
 }
 
+// GetViewerEscalated returns the value of ViewerEscalated.
+func (s *TaskView) GetViewerEscalated() OptBool {
+	return s.ViewerEscalated
+}
+
 // SetTask sets the value of Task.
 func (s *TaskView) SetTask(val Task) {
 	s.Task = val
@@ -4764,6 +4771,11 @@ func (s *TaskView) SetViewerCanEdit(val bool) {
 // SetViewerIsAssignee sets the value of ViewerIsAssignee.
 func (s *TaskView) SetViewerIsAssignee(val bool) {
 	s.ViewerIsAssignee = val
+}
+
+// SetViewerEscalated sets the value of ViewerEscalated.
+func (s *TaskView) SetViewerEscalated(val OptBool) {
+	s.ViewerEscalated = val
 }
 
 // 时间线条目（按平台记录时间 recorded_at 排列）.

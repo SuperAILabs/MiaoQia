@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -66,6 +68,14 @@ func (unwiredPursuits) CompleteTask(context.Context, string, string, *pursuitapi
 	return nil, binding.ErrTransient
 }
 func (unwiredPursuits) ReopenTask(context.Context, string, string, *pursuitapi.ReopenTaskRequest) (*pursuitapi.CommandResult, error) {
+	return nil, binding.ErrTransient
+}
+
+// ListMyTasks 返回空列表（这些用例没有跟进任务；不把“待我处理”标为暂不可用）。
+func (unwiredPursuits) ListMyTasks(context.Context, *time.Time, int, string) (*pursuitapi.MyTaskList, error) {
+	return &pursuitapi.MyTaskList{Items: []purcontract.MyTask{}}, nil
+}
+func (unwiredPursuits) GetPursuit(context.Context, string) (*pursuitapi.Pursuit, error) {
 	return nil, binding.ErrTransient
 }
 
@@ -1708,6 +1718,584 @@ func TestPursuitFollowUp(t *testing.T) {
 		}
 		putMember(t, bd2, "active", `["business_developer"]`)
 		setParticipants(t, bd, lead, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+	})
+
+	// C-09：任务提醒卡片（“完成”“撤销”）、简报“待我处理”中的任务、授权被拒时通知操作者、提醒的安静时段（PRD 第6段 F9、F12 第6条，
+	// 用例30、43、44、58）。channels 从这里起消费 pursuit 的提醒与授权被拒事件；定时任务未接入，测试以本地绑定 channels.Notices
+	// 驱动通知投递（调度器接入后周期调用 DeliverNotices）。
+	notices, _ := runtime.Lookup[chapi.Notices](bindings, chapi.NoticesBinding)
+	if notices == nil {
+		t.Fatal("channels 未提供 Notices")
+	}
+	routesMu.Lock()
+	routes["pursuit.task.due.v1"] = []route{{chnModule, chns.env, "channels.pursuit-notices"}}
+	routes["pursuit.pursuit.authorization_rejected.v1"] = []route{{chnModule, chns.env, "channels.pursuit-notices"}}
+	routesMu.Unlock()
+	svcN := func(tenant string) context.Context {
+		return reqctx.With(ctx, reqctx.Context{Tenant: tenant, Cell: "cell-01", Principal: reqctx.Principal{ID: "svc:notice-scheduler", Kind: "service"}})
+	}
+	corpN := "corp-" + suffix
+	var instN string
+	if err := chnOwner.QueryRow(ctx, `SELECT id FROM chn_installations WHERE corp_id = $1`, corpN).Scan(&instN); err != nil {
+		t.Fatal(err)
+	}
+	// 每个成员一个企业微信账号；已有有效绑定的沿用，没有的新建（成员版本取 identity 的当前版本）
+	accountOf := map[string]string{}
+	bindN := func(t *testing.T, subject string) string {
+		t.Helper()
+		var acct string
+		err := chnOwner.QueryRow(ctx, `SELECT channel_user_id FROM chn_bindings WHERE subject = $1 AND state = 'bound'`, subject).Scan(&acct)
+		if errors.Is(err, pgx.ErrNoRows) {
+			var mv int64
+			if err := iamOwner.QueryRow(ctx, `SELECT version FROM identity_members WHERE tenant_id = $1 AND subject = $2`, t1, subject).Scan(&mv); err != nil {
+				t.Fatal(err)
+			}
+			acct = "n-" + subject
+			_, err = chnOwner.Exec(ctx, `INSERT INTO chn_bindings (id, tenant_id, installation_id, channel, corp_id, channel_user_id, display_name, subject, member_version, state, version, bound_at)
+ VALUES ($1, $2, $3, 'wecom', $4, $5, $6, $7, $8, 'bound', 1, now())`, ids.New("chb"), t1, instN, corpN, acct, "成员"+acct, subject, mv)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		accountOf[subject] = acct
+		return acct
+	}
+	deliverN := func(t *testing.T) {
+		t.Helper()
+		for range 3 { // 展开转给决策者的提醒后，新行在下一次调用中发送
+			if _, err := notices.DeliverNotices(svcN(t1), 100); err != nil {
+				t.Fatal(err)
+			}
+		}
+		pump(t)
+	}
+	noticeOf := func(t *testing.T, task, recipient string) (state, reason string) {
+		t.Helper()
+		var r *string
+		if err := chnOwner.QueryRow(ctx, `SELECT state, reason FROM chn_notices WHERE task_id = $1 AND recipient = $2 ORDER BY created_at DESC, id DESC LIMIT 1`, task, recipient).
+			Scan(&state, &r); err != nil {
+			t.Fatalf("%s → %s：%v", task, recipient, err)
+		}
+		if r != nil {
+			reason = *r
+		}
+		return state, reason
+	}
+	taskCards := func(subject, task string) []chapi.Card {
+		var out []chapi.Card
+		for _, m := range wc.Messages(corpN, accountOf[subject]) {
+			if m.Kind == "task_reminder" && m.Card != nil {
+				for _, b := range m.Card.Buttons {
+					if b.Key == "view" && b.URL == "/pursuits/tasks/"+task {
+						out = append(out, *m.Card)
+					}
+				}
+			}
+		}
+		return out
+	}
+	btn := func(c chapi.Card, key string) chapi.Button {
+		for _, b := range c.Buttons {
+			if b.Key == key {
+				return b
+			}
+		}
+		return chapi.Button{}
+	}
+	var evN atomic.Int64
+	clickN := func(t *testing.T, subject, cardID, token string, want chapi.InboundOutcome) {
+		t.Helper()
+		ev := fmt.Sprintf("c09-%s-%d", suffix, evN.Add(1))
+		gw := reqctx.With(ctx, reqctx.Context{Principal: reqctx.Principal{ID: "svc:gateway", Kind: "service"}})
+		res, err := callbacks.ReceiveInbound(gw, "wecom", wc.Sign(&chapi.Callback{CorpID: corpN, EventID: ev, Timestamp: clock.Now(), Nonce: "n",
+			Body: wecomtest.ActionBody(accountOf[subject], cardID, token)}))
+		if err != nil || res.Outcome != want {
+			t.Fatalf("%+v %v", res, err)
+		}
+		if _, err := briefings.ProcessActions(svcN(t1), 50); err != nil {
+			t.Fatal(err)
+		}
+		pump(t)
+	}
+	lastUpdate := func(t *testing.T, subject string) chapi.Message {
+		t.Helper()
+		up := wc.Updates(corpN, accountOf[subject])
+		if len(up) == 0 {
+			t.Fatal("没有回写")
+		}
+		return up[len(up)-1]
+	}
+	claimsOf := func(token string) map[string]any {
+		raw, _ := base64.RawURLEncoding.DecodeString(token)
+		var c map[string]any
+		_ = json.Unmarshal(raw[:len(raw)-32], &c)
+		return c
+	}
+	sealWith := func(key []byte, claims map[string]any) string {
+		raw, _ := json.Marshal(claims)
+		h := hmac.New(sha256.New, key)
+		h.Write([]byte("channels/action-token/v1"))
+		h.Write([]byte{0})
+		h.Write(raw)
+		return base64.RawURLEncoding.EncodeToString(append(raw, h.Sum(nil)...))
+	}
+	taskState := func(t *testing.T, task string) (status string, dv int64) {
+		t.Helper()
+		if err := purOwner.QueryRow(ctx, `SELECT status, deadline_version FROM pur_tasks WHERE id = $1`, task).Scan(&status, &dv); err != nil {
+			t.Fatal(err)
+		}
+		return status, dv
+	}
+	updateDue := func(t *testing.T, who, task, due string) {
+		t.Helper()
+		expect(t, who, "POST", "/v1/pursuit/tasks/"+task+"/update", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"due":{"value":%q,"precision":"minute","timezone":"Asia/Shanghai"}}`,
+			opID("due"), taskVersion(t, task), due), 200)
+		drained(t)
+	}
+	taskOf := func(res map[string]any) string { return res["task"].(map[string]any)["id"].(string) }
+
+	var cP, cT1, cT2 string
+	run("C-09 用例44、30：提醒卡片在安静时段内延后到结束（不丢弃、不先签发令牌），结束后发出带“完成”与“查看”的卡片；发送失败重试同一张卡片", func(t *testing.T) {
+		bindN(t, bd)
+		bindN(t, expert)
+		pclock.set(at(32, 20, 0), 0)
+		sig := newSignal(t, pursueBid())[0]
+		cP = pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd)), 200))
+		drained(t)
+		cT1 = taskOf(addTask(t, bd, cP, `{"title":"提交样品","due":{"value":"2026-11-03T22:30","precision":"minute","timezone":"Asia/Shanghai"}}`, 200))
+		drained(t)
+		runDue(t, at(33, 22, 31)) // 11-02 22:31：提前 24 小时
+		drained(t)
+		if st, _ := noticeOf(t, cT1, bd); st != "pending" {
+			t.Fatalf("%s", st)
+		}
+		// 22:32 在安静时段（缺省 21:00–07:00）：延后到 07:00，不渲染、不签发令牌、不发送
+		clock.set(at(33, 22, 32), 0)
+		tokensBefore := count(t, chnOwner, `SELECT count(*) FROM chn_action_tokens WHERE task_id = $1`, cT1)
+		deliverN(t)
+		var next time.Time
+		var msg []byte
+		if err := chnOwner.QueryRow(ctx, `SELECT next_attempt_at, message FROM chn_notices WHERE task_id = $1 AND recipient = $2`, cT1, bd).Scan(&next, &msg); err != nil {
+			t.Fatal(err)
+		}
+		if !next.Equal(at(34, 7, 0)) || msg != nil || len(taskCards(bd, cT1)) != 0 ||
+			count(t, chnOwner, `SELECT count(*) FROM chn_action_tokens WHERE task_id = $1`, cT1) != tokensBefore {
+			t.Fatalf("安静时段应延后到 07:00 且无副作用：%v %s", next, msg)
+		}
+		if audits(t, chnOwner, "channels.notice.deferred", "dlv_") < 1 {
+			t.Fatal("延后审计")
+		}
+		// 07:00 前仍不发；07:01 发送，第一次渠道失败后重试同一张卡片（卡片与令牌不变）
+		clock.set(at(34, 6, 59), 0)
+		deliverN(t)
+		if len(taskCards(bd, cT1)) != 0 {
+			t.Fatal("安静时段结束前发送了")
+		}
+		clock.set(at(34, 7, 1), 0)
+		wc.FailNextSends(1)
+		deliverN(t)
+		if st, _ := noticeOf(t, cT1, bd); st != "retrying" || len(taskCards(bd, cT1)) != 0 {
+			t.Fatalf("%s", st)
+		}
+		var first []byte
+		_ = chnOwner.QueryRow(ctx, `SELECT message FROM chn_notices WHERE task_id = $1 AND recipient = $2`, cT1, bd).Scan(&first)
+		clock.set(at(34, 7, 5), 0)
+		deliverN(t)
+		cards := taskCards(bd, cT1)
+		if st, _ := noticeOf(t, cT1, bd); st != "delivered" || len(cards) != 1 {
+			t.Fatalf("%s %d", st, len(cards))
+		}
+		if !strings.Contains(string(first), cards[0].CardID) || !strings.Contains(cards[0].Title, "提交样品") || btn(cards[0], "complete").Token == "" {
+			t.Fatalf("重试应发送同一张卡片：%+v", cards[0])
+		}
+		if c := claimsOf(btn(cards[0], "complete").Token); c["tk"] != cT1 || c["dv"] != float64(1) || c["r"] != bd || c["t"] != t1 {
+			t.Fatalf("%+v", c)
+		}
+		// 其他成员（expert）没有收到
+		if len(taskCards(expert, cT1)) != 0 {
+			t.Fatal("非收件人收到了提醒")
+		}
+	})
+
+	run("C-09 越权与反例测试 用例44：篡改、伪造签名、他租户、换卡片的令牌在任何读取前拒绝；非收件人点击被拒且不消耗令牌、不完成任务", func(t *testing.T) {
+		card := taskCards(bd, cT1)[0]
+		tok := btn(card, "complete").Token
+		raw, _ := base64.RawURLEncoding.DecodeString(tok)
+		raw[5] ^= 0x01
+		tampered := base64.RawURLEncoding.EncodeToString(raw)
+		claims := claimsOf(tok)
+		forged := sealWith([]byte("another-signing-key-0123456789abcdef-x"), claims)
+		other := maps.Clone(claims)
+		other["t"] = t2
+		crossTenant := sealWith([]byte("pursuit-test-signing-key-0123456789abcdef"), other)
+		rejectedBefore := audits(t, chnOwner, "channels.action.rejected", "callback:")
+		for _, bad := range []string{tampered, forged, crossTenant} {
+			clickN(t, bd, card.CardID, bad, chapi.InboundRejected)
+		}
+		clickN(t, bd, "card-elsewhere", tok, chapi.InboundRejected)
+		if audits(t, chnOwner, "channels.action.rejected", "callback:") != rejectedBefore+4 {
+			t.Fatal("拒绝审计")
+		}
+		// 非收件人（expert）点击 bd 的卡片
+		clickN(t, expert, card.CardID, tok, chapi.InboundQueued)
+		var state string
+		var attempts int
+		if err := chnOwner.QueryRow(ctx, `SELECT state, attempts FROM chn_action_tokens WHERE id = $1`, claims["i"]).Scan(&state, &attempts); err != nil || state != "open" || attempts != 0 {
+			t.Fatalf("%s %d %v", state, attempts, err)
+		}
+		if st, _ := taskState(t, cT1); st != "todo" || len(eventsFor("channels.task_action.executed.v1", "operation_id", claims["i"].(string))) != 0 {
+			t.Fatal("非收件人的点击不得执行")
+		}
+		told := false
+		for _, m := range append(wc.Updates(corpN, accountOf[expert]), wc.Messages(corpN, accountOf[expert])...) {
+			told = told || strings.Contains(m.Text, "其他成员")
+		}
+		if !told {
+			t.Fatal("非收件人应被告知卡片发给其他成员")
+		}
+	})
+
+	run("C-09 用例44：收件人点“完成”以本人完成（渠道为企业微信），结果带“撤销”；再点返回已固定的结果；10 分钟内“撤销”恢复待办", func(t *testing.T) {
+		card := taskCards(bd, cT1)[0]
+		tok := btn(card, "complete").Token
+		id := claimsOf(tok)["i"].(string)
+		pclock.set(at(34, 7, 6), 0)
+		clock.set(at(34, 7, 6), 0)
+		clickN(t, bd, card.CardID, tok, chapi.InboundQueued)
+		if st, _ := taskState(t, cT1); st != "done" {
+			t.Fatalf("%s", st)
+		}
+		up := lastUpdate(t, bd)
+		if !strings.HasPrefix(up.Text, "已完成") || up.Card == nil || btn(*up.Card, "undo").Token == "" {
+			t.Fatalf("%+v", up)
+		}
+		exec := eventsFor("channels.task_action.executed.v1", "operation_id", id)
+		if len(exec) != 1 || exec[0]["action"] != "complete_task" || exec[0]["result"] != "succeeded" || exec[0]["task_id"] != cT1 || exec[0]["pursuit_id"] != cP {
+			t.Fatalf("%+v", exec)
+		}
+		// 再点：返回已固定的结果，不再执行
+		clickN(t, bd, card.CardID, tok, chapi.InboundQueued)
+		if !strings.Contains(lastUpdate(t, bd).Text, "（已于 ") || len(eventsFor("channels.task_action.executed.v1", "operation_id", id)) != 1 {
+			t.Fatalf("%+v", lastUpdate(t, bd))
+		}
+		// 撤销（10 分钟内，pursuit 的渠道撤销时限）
+		undo := btn(*up.Card, "undo").Token
+		if claimsOf(undo)["g"] != id {
+			t.Fatalf("撤销令牌应指向被撤销的“完成”：%+v", claimsOf(undo))
+		}
+		pclock.set(at(34, 7, 9), 0)
+		clock.set(at(34, 7, 9), 0)
+		clickN(t, bd, card.CardID, undo, chapi.InboundQueued)
+		if st, _ := taskState(t, cT1); st != "todo" {
+			t.Fatalf("撤销后应恢复待办：%s", st)
+		}
+		re := eventsFor("channels.task_action.executed.v1", "operation_id", claimsOf(undo)["i"].(string))
+		if len(re) != 1 || re[0]["action"] != "reopen_task" || re[0]["result"] != "succeeded" || re[0]["target_operation_id"] != id {
+			t.Fatalf("%+v", re)
+		}
+		drained(t)
+	})
+
+	run("C-09 用例43：简报“待我处理”含本人已逾期或截止在下一期之前的任务；读取时叠加当前状态，已不能查看的整条不返回", func(t *testing.T) {
+		svcB := func(tenant string) context.Context {
+			return reqctx.With(ctx, reqctx.Context{Tenant: tenant, Cell: "cell-01", Principal: reqctx.Principal{ID: "svc:briefing-scheduler", Kind: "service"}})
+		}
+		// 11-04（周三）07:30 一期：T1（11-03 22:30 截止，已逾期）在“待我处理”；截止在下一期（11-05 07:30）之后的任务不在
+		later := taskOf(addTask(t, bd, cP, `{"title":"下周的事","due":{"value":"2026-11-12T10:00","precision":"minute","timezone":"Asia/Shanghai"}}`, 200))
+		drained(t)
+		clock.set(at(35, 7, 32), 0)
+		res, err := briefings.Compose(svcB(t1), bd, at(35, 7, 32))
+		if err != nil || res.BriefingID == "" {
+			t.Fatalf("%+v %v", res, err)
+		}
+		pump(t)
+		var doc struct {
+			Sections []struct {
+				Kind  string           `json:"kind"`
+				State string           `json:"state"`
+				Items []map[string]any `json:"items"`
+			} `json:"sections"`
+		}
+		decode(t, expect(t, bd, "GET", "/v1/channels/briefings/"+res.BriefingID, "", 200), &doc)
+		var tasks []map[string]any
+		for _, s := range doc.Sections {
+			if s.Kind == "pending" {
+				for _, it := range s.Items {
+					if it["kind"] == "task" {
+						tasks = append(tasks, it)
+					}
+				}
+			}
+		}
+		var mineT1 map[string]any
+		for _, it := range tasks {
+			if it["task_id"] == later {
+				t.Fatalf("截止在下一期之后的任务不应列出：%+v", it)
+			}
+			if it["task_id"] == cT1 {
+				mineT1 = it
+			}
+		}
+		if mineT1 == nil || mineT1["escalated"] != false || mineT1["task_title"] != "提交样品" || mineT1["task_current"].(map[string]any)["status"] != "todo" ||
+			mineT1["pursuit_id"] != cP || mineT1["due"].(map[string]any)["value"] != "2026-11-03T22:30" {
+			t.Fatalf("%+v", tasks)
+		}
+		// 总览卡计入
+		found := false
+		for _, m := range wc.Messages(corpN, accountOf[bd]) {
+			if m.Kind == "briefing_overview" && m.Card != nil && strings.Contains(strings.Join(m.Card.Lines, "\n"), fmt.Sprintf("待我处理：%d 项", len(tasks))) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("总览卡应计入待我处理的任务")
+		}
+		cT2 = later
+		// 他人看不到：expert 的同一期没有该任务
+		if r2, err := briefings.Compose(svcB(t1), expert, at(35, 7, 32)); err == nil && r2.BriefingID != "" {
+			pump(t)
+			raw := expect(t, expert, "GET", "/v1/channels/briefings/"+r2.BriefingID, "", 200)
+			if strings.Contains(string(raw), cT1) {
+				t.Fatal("他人的简报含有 bd 的任务")
+			}
+		}
+		// 读取时的当前状态：完成后为 done（Web 完成）
+		expect(t, bd, "POST", "/v1/pursuit/tasks/"+cT1+"/complete", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d}`, opID("done"), taskVersion(t, cT1)), 200)
+		drained(t)
+		raw := expect(t, bd, "GET", "/v1/channels/briefings/"+res.BriefingID, "", 200)
+		if !strings.Contains(string(raw), `"task_current":{"status":"done"`) {
+			t.Fatalf("%s", raw)
+		}
+	})
+
+	run("C-09 越权与反例测试 用例44：截止改变后旧卡片“完成”为确定失败 deadline_changed、不改任务；改变前未发出的旧提醒按版本丢弃；新截止的提醒是新卡片与新令牌；授权同步中的点击不作废令牌，同步后同一令牌完成", func(t *testing.T) {
+		pclock.set(at(35, 8, 0), 0)
+		// T2：11-12 10:00 截止 → 提前 24 小时（11-11 10:00）
+		runDue(t, at(42, 10, 1))
+		clock.set(at(42, 10, 2), 0)
+		deliverN(t)
+		old := taskCards(bd, cT2)
+		if len(old) != 1 {
+			t.Fatalf("%d", len(old))
+		}
+		// 截止改到 11-14 10:00（截止版本 2）：旧卡片的“完成”确定失败，任务不变
+		pclock.set(at(42, 10, 3), 0)
+		updateDue(t, bd, cT2, "2026-11-14T10:00")
+		oldTok := btn(old[0], "complete").Token
+		clickN(t, bd, old[0].CardID, oldTok, chapi.InboundQueued)
+		if st, dv := taskState(t, cT2); st != "todo" || dv != 2 {
+			t.Fatalf("%s %d", st, dv)
+		}
+		exec := eventsFor("channels.task_action.executed.v1", "operation_id", claimsOf(oldTok)["i"].(string))
+		if len(exec) != 1 || exec[0]["result"] != "failed" || exec[0]["code"] != "deadline_changed" || !strings.Contains(lastUpdate(t, bd).Text, "截止时间已改变") {
+			t.Fatalf("%+v %+v", exec, lastUpdate(t, bd))
+		}
+		// 新截止的提前提醒到时（11-13 10:00），发出前截止又改了（版本 3）：这条按版本丢弃，不发
+		runDue(t, at(44, 10, 1))
+		if st, _ := noticeOf(t, cT2, bd); st != "pending" {
+			t.Fatalf("%s", st)
+		}
+		updateDue(t, bd, cT2, "2026-11-16T10:00")
+		clock.set(at(44, 10, 2), 0)
+		deliverN(t)
+		if st, reason := noticeOf(t, cT2, bd); st != "cancelled" || reason != "superseded" || len(taskCards(bd, cT2)) != 1 {
+			t.Fatalf("%s %s %d", st, reason, len(taskCards(bd, cT2)))
+		}
+		// 版本 3 的提醒（11-15 10:00）：新卡片、新令牌
+		runDue(t, at(46, 10, 1))
+		clock.set(at(46, 10, 2), 0)
+		deliverN(t)
+		cards := taskCards(bd, cT2)
+		if len(cards) != 2 || cards[1].CardID == old[0].CardID || claimsOf(btn(cards[1], "complete").Token)["dv"] != float64(3) {
+			t.Fatalf("%+v", cards)
+		}
+		// 授权同步中：决策者把负责人改为 bd2、bd 改为协作者，同步失败 → bd 的点击得到“授权同步中”，令牌仍可用、不固定结果
+		pclock.set(at(46, 10, 3), 0)
+		directory.fail.Store(true)
+		assign(t, dm, cP, bd2, []string{bd}, 200)
+		tok := btn(cards[1], "complete").Token
+		clock.set(at(46, 10, 4), 0)
+		clickN(t, bd, cards[1].CardID, tok, chapi.InboundQueued)
+		var state string
+		if err := chnOwner.QueryRow(ctx, `SELECT state FROM chn_action_tokens WHERE id = $1`, claimsOf(tok)["i"]).Scan(&state); err != nil || state != "open" {
+			t.Fatalf("%s %v", state, err)
+		}
+		if st, _ := taskState(t, cT2); st != "todo" || !strings.Contains(lastUpdate(t, bd).Text, "授权同步中") {
+			t.Fatalf("%s %+v", st, lastUpdate(t, bd))
+		}
+		directory.fail.Store(false)
+		drained(t)
+		clickN(t, bd, cards[1].CardID, tok, chapi.InboundQueued)
+		if st, _ := taskState(t, cT2); st != "done" {
+			t.Fatalf("同步后同一令牌应完成：%s", st)
+		}
+	})
+
+	run("C-09 越权与反例测试：发送前再检查——改派后原负责人的未发提醒取消；成员已不能查看任务时取消", func(t *testing.T) {
+		pclock.set(at(46, 11, 0), 0)
+		t5 := taskOf(addTask(t, bd, cP, fmt.Sprintf(`{"title":"改派前的任务","assignee":%q,"due":{"value":"2026-11-20T10:00","precision":"minute","timezone":"Asia/Shanghai"}}`, bd), 200))
+		drained(t)
+		runDue(t, at(50, 10, 1))
+		if st, _ := noticeOf(t, t5, bd); st != "pending" {
+			t.Fatalf("%s", st)
+		}
+		// 决策者把跟进改派给 lead（bd、bd2 不再在团队中，待办任务转给 lead）
+		assign(t, dm, cP, lead, nil, 200)
+		drained(t)
+		clock.set(at(50, 10, 2), 0)
+		deliverN(t)
+		if st, reason := noticeOf(t, t5, bd); st != "cancelled" || (reason != "reassigned" && reason != "task_not_visible") || len(taskCards(bd, t5)) != 0 {
+			t.Fatalf("%s %s", st, reason)
+		}
+	})
+
+	var e1 string
+	run("C-09 用例58：同步前被分派人被 identity 拒绝，通知最近一次变更团队的决策者；已不能查看该跟进的操作者不通知", func(t *testing.T) {
+		bindN(t, dm)
+		bindN(t, dm2)
+		pclock.set(at(50, 11, 0), 0)
+		sig := newSignal(t, pursueBid())[0]
+		p2 := pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd)), 200))
+		drained(t)
+		e1 = taskOf(addTask(t, bd, p2, `{"title":"转给决策者的任务","due":{"value":"2026-11-24T07:00","precision":"minute","timezone":"Asia/Shanghai"}}`, 200))
+		drained(t)
+		directory.fail.Store(true)
+		assign(t, dm, p2, lead, nil, 200)
+		routesMu.Lock()
+		saved := routes["identity.member.changed.v1"]
+		routes["identity.member.changed.v1"] = saved[:1]
+		routesMu.Unlock()
+		putMember(t, lead, "removed", `[]`)
+		routesMu.Lock()
+		routes["identity.member.changed.v1"] = saved
+		routesMu.Unlock()
+		directory.fail.Store(false)
+		drained(t)
+		rej := eventsFor("pursuit.pursuit.authorization_rejected.v1", "pursuit_id", p2)
+		if len(rej) != 1 || rej[0]["operator"] != dm || rej[0]["owner_invalid"] != true {
+			t.Fatalf("%+v", rej)
+		}
+		clock.set(at(50, 11, 1), 0)
+		deliverN(t)
+		var got *chapi.Message
+		for _, m := range wc.Messages(corpN, accountOf[dm]) {
+			if m.Kind == "authorization_rejected" && m.Card != nil && btn(*m.Card, "view").URL == "/pursuits/"+p2 {
+				mm := m
+				got = &mm
+			}
+		}
+		if got == nil || !strings.Contains(strings.Join(got.Card.Lines, "\n"), "1 人未获授权") {
+			t.Fatalf("操作者应收到通知：%+v", got)
+		}
+		for _, who := range []string{bd, dm2, expert} {
+			for _, m := range wc.Messages(corpN, accountOf[who]) {
+				if m.Kind == "authorization_rejected" {
+					t.Fatalf("%s 不应收到授权被拒通知", who)
+				}
+			}
+		}
+		// 操作者已不能查看该跟进（重放一条操作者为无关系成员的事件）：不发送
+		var env outbox.Envelope
+		for _, e := range delivered {
+			if e.Type == "pursuit.pursuit.authorization_rejected.v1" && strings.Contains(string(e.Data), p2) {
+				env = e
+			}
+		}
+		var data map[string]any
+		_ = json.Unmarshal(env.Data, &data)
+		// 无任何角色的有效成员（在单元与该跟进上都没有关系）
+		nobody := user("nobody")
+		if _, err := iamOwner.Exec(ctx, `INSERT INTO identity_members VALUES ($1, $2, 'active', ARRAY[]::text[], 1)`, t1, nobody); err != nil {
+			t.Fatal(err)
+		}
+		data["operator"] = nobody
+		data["participation_version"] = num(data, "participation_version") + 100
+		env.Data, _ = json.Marshal(data)
+		env.ID = ids.New("evt")
+		if err := handle(t, route{chnModule, chns.env, "channels.pursuit-notices"}, env); err != nil {
+			t.Fatal(err)
+		}
+		bindN(t, nobody)
+		deliverN(t)
+		var st, reason string
+		if err := chnOwner.QueryRow(ctx, `SELECT state, COALESCE(reason, '') FROM chn_notices WHERE kind = 'authorization_rejected' AND recipient = $1`, nobody).Scan(&st, &reason); err != nil ||
+			st != "cancelled" || reason != "pursuit_not_visible" {
+			t.Fatalf("%s %s %v", st, reason, err)
+		}
+		for _, m := range wc.Messages(corpN, accountOf[nobody]) {
+			if m.Kind == "authorization_rejected" {
+				t.Fatal("已不能查看的操作者收到了通知")
+			}
+		}
+		putMember(t, lead, "active", `["pursuit_lead"]`)
+		drained(t)
+	})
+
+	run("C-09 用例43、44：无有效负责人的任务提醒转给决策者：只发给已绑定且在单元上能更新的决策者，简报“待我处理”标 escalated；决策者在卡片上完成", func(t *testing.T) {
+		svcB := func(tenant string) context.Context {
+			return reqctx.With(ctx, reqctx.Context{Tenant: tenant, Cell: "cell-01", Principal: reqctx.Principal{ID: "svc:briefing-scheduler", Kind: "service"}})
+		}
+		runDue(t, at(54, 7, 1)) // 11-23 07:01：提前 24 小时
+		due := eventsFor("pursuit.task.due.v1", "task_id", e1)
+		if len(due) == 0 || due[len(due)-1]["escalated"] != true {
+			t.Fatalf("%+v", due)
+		}
+		clock.set(at(54, 7, 2), 0)
+		deliverN(t)
+		if st, _ := noticeOf(t, e1, "*"); st != "expanded" {
+			t.Fatalf("%s", st)
+		}
+		cards := taskCards(dm, e1)
+		if len(cards) != 1 || !strings.Contains(cards[0].Title, "待你决定") {
+			t.Fatalf("%+v", cards)
+		}
+		for _, who := range []string{bd, expert} {
+			if len(taskCards(who, e1)) != 0 {
+				t.Fatalf("%s 不是决策者却收到了转交的提醒", who)
+			}
+		}
+		// 简报：11-23（周一）07:30 一期，dm 的“待我处理”含 escalated 任务（截止 11-24 07:00 在下一期之前）
+		res, err := briefings.Compose(svcB(t1), dm, at(54, 7, 32))
+		if err != nil || res.BriefingID == "" {
+			t.Fatalf("%+v %v", res, err)
+		}
+		pump(t)
+		raw := expect(t, dm, "GET", "/v1/channels/briefings/"+res.BriefingID, "", 200)
+		if !strings.Contains(string(raw), `"task_id":"`+e1+`"`) || !strings.Contains(string(raw), `"escalated":true`) {
+			t.Fatalf("%s", raw)
+		}
+		// 决策者在卡片上完成
+		pclock.set(at(54, 7, 40), 0)
+		clock.set(at(54, 7, 40), 0)
+		clickN(t, dm, cards[0].CardID, btn(cards[0], "complete").Token, chapi.InboundQueued)
+		if st, _ := taskState(t, e1); st != "done" {
+			t.Fatalf("%s %+v", st, lastUpdate(t, dm))
+		}
+		drained(t)
+	})
+
+	run("C-09 越权与反例测试：成员退出后其未发送的提醒取消（不发给已退出的成员）", func(t *testing.T) {
+		pclock.set(at(54, 8, 0), 0)
+		sig := newSignal(t, pursueBid())[0]
+		p3 := pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd2)), 200))
+		drained(t)
+		bindN(t, bd2)
+		t6 := taskOf(addTask(t, bd2, p3, `{"title":"退出前的任务","due":{"value":"2026-11-27T10:00","precision":"minute","timezone":"Asia/Shanghai"}}`, 200))
+		drained(t)
+		runDue(t, at(57, 10, 1))
+		if st, _ := noticeOf(t, t6, bd2); st != "pending" {
+			t.Fatalf("%s", st)
+		}
+		putMember(t, bd2, "removed", `[]`)
+		drained(t)
+		clock.set(at(57, 10, 2), 0)
+		deliverN(t)
+		if st, reason := noticeOf(t, t6, bd2); st != "cancelled" || reason != "member_inactive" || len(taskCards(bd2, t6)) != 0 {
+			t.Fatalf("%s %s", st, reason)
+		}
+		putMember(t, bd2, "active", `["business_developer"]`)
 		setParticipants(t, bd, bd2, lead, expert, admin)
 		drained(t)
 	})

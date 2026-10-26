@@ -119,6 +119,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.MessagingBinding, api.LocalMessaging(svc))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(svc))
 			env.Bindings.Provide(api.BriefingsBinding, api.LocalBriefings(svc))
+			env.Bindings.Provide(api.NoticesBinding, api.LocalNotices(svc))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
@@ -130,7 +131,8 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				public.Handle(pattern, pub)
 			}
 		},
-		// 绑定失效的撤销重试（本子系统的 channels.binding.changed.v1）与成员停用或退出（identity.member.changed.v1）。
+		// 绑定失效的撤销重试（本子系统的 channels.binding.changed.v1）、成员停用或退出（identity.member.changed.v1），以及
+		// 任务提醒与授权被拒的通知（pursuit.task.due.v1、pursuit.pursuit.authorization_rejected.v1，PRD 第6段）。
 		Consumers: func(env *runtime.Env) []*consumer.Consumer {
 			return []*consumer.Consumer{
 				{
@@ -142,6 +144,12 @@ func ModuleWith(adapters Adapters) runtime.Module {
 					Name: "channels.member-changes", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
 					Topics:   []string{outbox.Topic(reqctx.ZonePlatform, env.Cell, "identity")},
 					Handlers: map[string]consumer.Handler{"identity.member.changed.v1": svc.MemberChanged},
+				},
+				{
+					Name: "channels.pursuit-notices", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+					Topics: []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "pursuit")},
+					Handlers: map[string]consumer.Handler{app.PursuitTaskDue: svc.TaskDueEvent,
+						app.PursuitAuthorizationRejected: svc.AuthorizationRejectedEvent},
 				},
 			}
 		},

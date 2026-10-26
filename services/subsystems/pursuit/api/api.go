@@ -36,6 +36,8 @@ type (
 	ReopenTaskRequest    = pur.ReopenTaskRequest
 	CommandResult        = pur.CommandResult
 	TaskView             = pur.TaskView
+	MyTaskList           = pur.MyTaskList
+	Pursuit              = pur.Pursuit
 )
 
 // ActionsBinding 是渠道内跟进动作在绑定表中的名称（PRD 第5段第26条延后的卡片“跟进”按钮与第6段 F9 的提醒卡片“完成”）。
@@ -46,7 +48,9 @@ const ActionsBinding = "pursuit.Actions"
 //
 //   - CreatePursuit：卡片上的“跟进”（契约 createPursuit；负责人为点击者本人、没有任务）；
 //   - GetTask：提醒卡片发送前与点击后读取任务与调用者的当前权限（契约 getTask）；
-//   - CompleteTask / ReopenTask：提醒卡片的“完成”与“撤销”（契约 completeTask、reopenTask）。
+//   - CompleteTask / ReopenTask：提醒卡片的“完成”与“撤销”（契约 completeTask、reopenTask）；
+//   - ListMyTasks：简报“待我处理”中的任务，以收件人本人读取（契约 listMyTasks；before 为空表示不限，limit 1–100，cursor 为上一页的签名游标）；
+//   - GetPursuit：授权被拒的操作者通知发送前以操作者本人再检查能否查看该跟进（契约 getPursuit）。
 //
 // 命令不在调用管线内自动重试：每次尝试带调用方自己的幂等键，暂时失败由调用方以新的幂等键、同一操作标识重试。
 type Actions interface {
@@ -54,6 +58,8 @@ type Actions interface {
 	GetTask(ctx context.Context, task string) (*TaskView, error)
 	CompleteTask(ctx context.Context, task, key string, req *CompleteTaskRequest) (*CommandResult, error)
 	ReopenTask(ctx context.Context, task, key string, req *ReopenTaskRequest) (*CommandResult, error)
+	ListMyTasks(ctx context.Context, before *time.Time, limit int, cursor string) (*MyTaskList, error)
+	GetPursuit(ctx context.Context, pursuit string) (*Pursuit, error)
 }
 
 // LocalActions 把本地实现包装为经调用管线的接口（与远程绑定行为一致）。
@@ -79,6 +85,16 @@ func (l localActions) CompleteTask(ctx context.Context, task, key string, req *C
 func (l localActions) ReopenTask(ctx context.Context, task, key string, req *ReopenTaskRequest) (*CommandResult, error) {
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ReopenTask"},
 		func(ctx context.Context) (*CommandResult, error) { return l.impl.ReopenTask(ctx, task, key, req) })
+}
+
+func (l localActions) ListMyTasks(ctx context.Context, before *time.Time, limit int, cursor string) (*MyTaskList, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ListMyTasks", Idempotent: true},
+		func(ctx context.Context) (*MyTaskList, error) { return l.impl.ListMyTasks(ctx, before, limit, cursor) })
+}
+
+func (l localActions) GetPursuit(ctx context.Context, pursuit string) (*Pursuit, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetPursuit", Idempotent: true},
+		func(ctx context.Context) (*Pursuit, error) { return l.impl.GetPursuit(ctx, pursuit) })
 }
 
 // RemindersBinding 是任务提醒的持久定时器与授权同步重试在绑定表中的名称（本地绑定；定时任务角色尚未接入，

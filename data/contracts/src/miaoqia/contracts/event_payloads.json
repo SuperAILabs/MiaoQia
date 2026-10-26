@@ -720,6 +720,99 @@
       }
     },
     {
+      "event": "channels.task_action.executed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "action": "complete_task",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.task_action.executed.v1",
+      "name": "撤销完成带被撤销的操作",
+      "valid": true,
+      "value": {
+        "action": "reopen_task",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "target_operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.task_action.executed.v1",
+      "name": "截止已改变的确定失败",
+      "valid": true,
+      "value": {
+        "action": "complete_task",
+        "channel": "wecom",
+        "code": "deadline_changed",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "failed",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.task_action.executed.v1",
+      "name": "撤销缺被撤销的操作",
+      "valid": false,
+      "value": {
+        "action": "reopen_task",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.task_action.executed.v1",
+      "name": "失败缺少错误代码",
+      "valid": false,
+      "value": {
+        "action": "complete_task",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "failed",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.task_action.executed.v1",
+      "name": "不含任务标题",
+      "valid": false,
+      "value": {
+        "action": "complete_task",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_title": "联系总包采购"
+      }
+    },
+    {
       "event": "customer_context.profile.updated.v1",
       "name": "base",
       "valid": true,
@@ -4453,6 +4546,126 @@
       }
     },
     {
+      "event": "pursuit.pursuit.authorization_rejected.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operator": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "org_unit_id": "root",
+        "owner_invalid": true,
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "rejected": [
+          {
+            "reason": "member_inactive",
+            "relation": "owner",
+            "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+          }
+        ]
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_rejected.v1",
+      "name": "系统写入的版本不带操作者",
+      "valid": true,
+      "value": {
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "owner_invalid": true,
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "rejected": [
+          {
+            "reason": "member_inactive",
+            "relation": "owner",
+            "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+          }
+        ]
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_rejected.v1",
+      "name": "只拒绝协作者",
+      "valid": true,
+      "value": {
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operator": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "org_unit_id": "root",
+        "owner_invalid": false,
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "rejected": [
+          {
+            "reason": "member_inactive",
+            "relation": "collaborator",
+            "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+          }
+        ]
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_rejected.v1",
+      "name": "至少一名被拒成员",
+      "valid": false,
+      "value": {
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operator": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "org_unit_id": "root",
+        "owner_invalid": true,
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "rejected": []
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_rejected.v1",
+      "name": "不得夹带租户",
+      "valid": false,
+      "value": {
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operator": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "org_unit_id": "root",
+        "owner_invalid": true,
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "rejected": [
+          {
+            "reason": "member_inactive",
+            "relation": "owner",
+            "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+          }
+        ],
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_rejected.v1",
+      "name": "未登记的关系",
+      "valid": false,
+      "value": {
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "operator": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2",
+        "org_unit_id": "root",
+        "owner_invalid": true,
+        "participation_version": 1,
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recorded_at": "2026-10-26T08:00:00Z",
+        "rejected": [
+          {
+            "reason": "member_inactive",
+            "relation": "shared_with",
+            "subject": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+          }
+        ]
+      }
+    },
+    {
       "event": "tendering.acceptance.published.v1",
       "name": "base",
       "valid": true,
@@ -5167,6 +5380,115 @@
         "messages",
         "dropped_sections",
         "accepted_at"
+      ],
+      "type": "object"
+    },
+    "channels.task_action.executed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "code"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "result": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "code"
+            ]
+          }
+        },
+        {
+          "else": {
+            "not": {
+              "required": [
+                "target_operation_id"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "action": {
+                "const": "reopen_task"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "target_operation_id"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "complete_task",
+            "reopen_task"
+          ],
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "code": {
+          "description": "确定失败的稳定错误代码（forbidden、conflict、task_closed、undo_window_expired、operation_not_found、deadline_changed 等）",
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "executed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^atk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "succeeded",
+            "no_change",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "target_operation_id": {
+          "pattern": "^atk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^tsk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "recipient",
+        "task_id",
+        "action",
+        "result",
+        "channel",
+        "executed_at"
       ],
       "type": "object"
     },
@@ -8523,6 +8845,80 @@
         "participation_version",
         "kind",
         "applied_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.authorization_rejected.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "operator": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "owner_invalid": {
+          "description": "被拒的成员中有负责人，跟进已标为无有效负责人",
+          "type": "boolean"
+        },
+        "participation_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "rejected": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "pattern": "^[a-z][a-z0-9_]{1,63}$",
+                "type": "string"
+              },
+              "relation": {
+                "enum": [
+                  "owner",
+                  "collaborator"
+                ],
+                "type": "string"
+              },
+              "subject": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "subject",
+              "relation",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "org_unit_id",
+        "participation_version",
+        "rejected",
+        "owner_invalid",
+        "recorded_at"
       ],
       "type": "object"
     },

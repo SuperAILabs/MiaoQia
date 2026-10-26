@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: pursuit 跟进接口
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     pursuit 的对外接口（经 gateway，令牌派生租户与主体），PRD 第6段跟进的服务端切片（docs/01-product/prd/06-pursuit-follow-up.md；
     规格见 docs/03-architecture/subsystems/pursuit.md）。草案：随第6段首个实现切片提交，未冻结。M2 只有交易型跟进（deal）；
@@ -17,6 +17,8 @@ info:
     返回的 *_at 为平台记录时间（UTC）。翻页游标由 pursuit 签名（整个载荷），只在签发它的租户、调用者与视图内有效，篡改为 400 invalid_cursor。
     部分接口另经内部端口（/internal 前缀）供 channels 以点击者（经有效绑定核验的收件人本人）的用户主体调用：卡片上的“跟进”
     （createPursuit，channel 为 wecom）与提醒卡片的“完成”（completeTask、reopenTask、getTask）；channel 为 wecom 的请求只接受内部端口。
+    0.2.0（C-09 渠道侧）：内部端口另提供 listMyTasks（简报“待我处理”中的任务，以收件人本人读取）与 getPursuit（授权被拒的操作者
+    通知发送前、以及链接打开时以本人再检查）；TaskView 追加 viewer_escalated（跟进无有效负责人、任务转给调用者所在单元的决策者）。
 servers:
 - url: /
 paths:
@@ -263,8 +265,10 @@ paths:
       operationId: getTask
       summary: 读取任务（提醒卡片发送前的再检查）
       description: >-
-        需要任务所属推进的 can_view；viewer_can_edit 为调用者当前能否更新（含授权同步与本地负责人判断），viewer_is_assignee 为调用者是否
-        仍是任务负责人。他租户、不存在与无权查看同为 404 task_not_found。
+        需要任务所属推进的 can_view；viewer_can_edit 为调用者当前能否更新（与写命令同一准入：含授权同步与本地负责人判断），
+        viewer_is_assignee 为调用者是否仍是任务负责人（且仍是跟进的有效负责人或协作者），viewer_escalated 为任务已转给调用者处理
+        （跟进无有效负责人或任务负责人已不在团队中，且调用者在单元上有 can_edit_unit_pursuits）。他租户、不存在与无权查看同为
+        404 task_not_found。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -911,6 +915,9 @@ components:
           type: boolean
         viewer_is_assignee:
           type: boolean
+        viewer_escalated:
+          type: boolean
+          description: 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0）
     PursuitStatus:
       type: string
       enum:

@@ -681,7 +681,10 @@ type BriefingID string
 // 区内的一条（组装时的快照）。kind：signal 完整条目；reference
 // 同一采购项目已在靠前的区完整展示，本区为引用行（打开的仍是本目标
 // 自己的信号）；approval
-// “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）。.
+// “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）；task
+// “待我处理”中的跟进任务
+// （分派给本人、未完成、截止在下一期简报之前或已逾期；escalated
+// 为无有效负责人的跟进转给决策者的任务；0.3.0）。.
 // Ref: #/components/schemas/BriefingItem
 type BriefingItem struct {
 	Kind           BriefingItemKind        `json:"kind"`
@@ -705,11 +708,18 @@ type BriefingItem struct {
 	Updates      []ItemUpdate `json:"updates"`
 	AlsoMatched  []string     `json:"also_matched"`
 	// 引用行指向的、完整展示该采购项目的区（目标编号）.
-	References   OptString     `json:"references"`
-	ApprovalID   OptString     `json:"approval_id"`
-	ApprovalType OptString     `json:"approval_type"`
-	SubmittedAt  OptDateTime   `json:"submitted_at"`
-	Current      OptItemStatus `json:"current"`
+	References   OptString         `json:"references"`
+	ApprovalID   OptString         `json:"approval_id"`
+	ApprovalType OptString         `json:"approval_type"`
+	SubmittedAt  OptDateTime       `json:"submitted_at"`
+	TaskID       OptString         `json:"task_id"`
+	PursuitID    OptString         `json:"pursuit_id"`
+	ObjectiveID  OptString         `json:"objective_id"`
+	TaskTitle    OptString         `json:"task_title"`
+	Due          OptTaskDue        `json:"due"`
+	Escalated    OptBool           `json:"escalated"`
+	Current      OptItemStatus     `json:"current"`
+	TaskCurrent  OptTaskItemStatus `json:"task_current"`
 }
 
 // GetKind returns the value of Kind.
@@ -827,9 +837,44 @@ func (s *BriefingItem) GetSubmittedAt() OptDateTime {
 	return s.SubmittedAt
 }
 
+// GetTaskID returns the value of TaskID.
+func (s *BriefingItem) GetTaskID() OptString {
+	return s.TaskID
+}
+
+// GetPursuitID returns the value of PursuitID.
+func (s *BriefingItem) GetPursuitID() OptString {
+	return s.PursuitID
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *BriefingItem) GetObjectiveID() OptString {
+	return s.ObjectiveID
+}
+
+// GetTaskTitle returns the value of TaskTitle.
+func (s *BriefingItem) GetTaskTitle() OptString {
+	return s.TaskTitle
+}
+
+// GetDue returns the value of Due.
+func (s *BriefingItem) GetDue() OptTaskDue {
+	return s.Due
+}
+
+// GetEscalated returns the value of Escalated.
+func (s *BriefingItem) GetEscalated() OptBool {
+	return s.Escalated
+}
+
 // GetCurrent returns the value of Current.
 func (s *BriefingItem) GetCurrent() OptItemStatus {
 	return s.Current
+}
+
+// GetTaskCurrent returns the value of TaskCurrent.
+func (s *BriefingItem) GetTaskCurrent() OptTaskItemStatus {
+	return s.TaskCurrent
 }
 
 // SetKind sets the value of Kind.
@@ -947,9 +992,44 @@ func (s *BriefingItem) SetSubmittedAt(val OptDateTime) {
 	s.SubmittedAt = val
 }
 
+// SetTaskID sets the value of TaskID.
+func (s *BriefingItem) SetTaskID(val OptString) {
+	s.TaskID = val
+}
+
+// SetPursuitID sets the value of PursuitID.
+func (s *BriefingItem) SetPursuitID(val OptString) {
+	s.PursuitID = val
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *BriefingItem) SetObjectiveID(val OptString) {
+	s.ObjectiveID = val
+}
+
+// SetTaskTitle sets the value of TaskTitle.
+func (s *BriefingItem) SetTaskTitle(val OptString) {
+	s.TaskTitle = val
+}
+
+// SetDue sets the value of Due.
+func (s *BriefingItem) SetDue(val OptTaskDue) {
+	s.Due = val
+}
+
+// SetEscalated sets the value of Escalated.
+func (s *BriefingItem) SetEscalated(val OptBool) {
+	s.Escalated = val
+}
+
 // SetCurrent sets the value of Current.
 func (s *BriefingItem) SetCurrent(val OptItemStatus) {
 	s.Current = val
+}
+
+// SetTaskCurrent sets the value of TaskCurrent.
+func (s *BriefingItem) SetTaskCurrent(val OptTaskItemStatus) {
+	s.TaskCurrent = val
 }
 
 type BriefingItemCategory string
@@ -999,6 +1079,7 @@ const (
 	BriefingItemKindSignal    BriefingItemKind = "signal"
 	BriefingItemKindReference BriefingItemKind = "reference"
 	BriefingItemKindApproval  BriefingItemKind = "approval"
+	BriefingItemKindTask      BriefingItemKind = "task"
 )
 
 // AllValues returns all BriefingItemKind values.
@@ -1007,6 +1088,7 @@ func (BriefingItemKind) AllValues() []BriefingItemKind {
 		BriefingItemKindSignal,
 		BriefingItemKindReference,
 		BriefingItemKindApproval,
+		BriefingItemKindTask,
 	}
 }
 
@@ -1018,6 +1100,8 @@ func (s BriefingItemKind) MarshalText() ([]byte, error) {
 	case BriefingItemKindReference:
 		return []byte(s), nil
 	case BriefingItemKindApproval:
+		return []byte(s), nil
+	case BriefingItemKindTask:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -1035,6 +1119,9 @@ func (s *BriefingItemKind) UnmarshalText(data []byte) error {
 		return nil
 	case BriefingItemKindApproval:
 		*s = BriefingItemKindApproval
+		return nil
+	case BriefingItemKindTask:
+		*s = BriefingItemKindTask
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -1269,8 +1356,9 @@ func (s *BriefingPreferences) SetUpdatedAt(val OptDateTime) {
 	s.UpdatedAt = val
 }
 
-// 一区。kind objective 为一个目标；pending 为“待我处理”。state：normal
-// 正常；empty 无新信号；source_interrupted 来源中断（条目照常，
+// 一区。kind objective 为一个目标；pending
+// 为“待我处理”（审批与跟进任务）。state：normal 正常；empty
+// 无新信号；source_interrupted 来源中断（条目照常，
 // 恢复后补齐的信号进入下一期）；unavailable
 // 暂不可用（本期没能取数，窗口顺延到下一期）；objective_inactive
 // 目标未激活； no_permission 读取时已失去访问（不返回条目与标题）。window
@@ -3676,6 +3764,98 @@ func (o OptString) Or(d string) string {
 	return d
 }
 
+// NewOptTaskDue returns new OptTaskDue with value set to v.
+func NewOptTaskDue(v TaskDue) OptTaskDue {
+	return OptTaskDue{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTaskDue is optional TaskDue.
+type OptTaskDue struct {
+	Value TaskDue
+	Set   bool
+}
+
+// IsSet returns true if OptTaskDue was set.
+func (o OptTaskDue) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTaskDue) Reset() {
+	var v TaskDue
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTaskDue) SetTo(v TaskDue) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTaskDue) Get() (v TaskDue, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTaskDue) Or(d TaskDue) TaskDue {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptTaskItemStatus returns new OptTaskItemStatus with value set to v.
+func NewOptTaskItemStatus(v TaskItemStatus) OptTaskItemStatus {
+	return OptTaskItemStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTaskItemStatus is optional TaskItemStatus.
+type OptTaskItemStatus struct {
+	Value TaskItemStatus
+	Set   bool
+}
+
+// IsSet returns true if OptTaskItemStatus was set.
+func (o OptTaskItemStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTaskItemStatus) Reset() {
+	var v TaskItemStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTaskItemStatus) SetTo(v TaskItemStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTaskItemStatus) Get() (v TaskItemStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTaskItemStatus) Or(d TaskItemStatus) TaskItemStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptURI returns new OptURI with value set to v.
 func NewOptURI(v url.URL) OptURI {
 	return OptURI{
@@ -3941,6 +4121,178 @@ func (s *SectionLimit) SetObjectiveCode(val string) {
 // SetLimit sets the value of Limit.
 func (s *SectionLimit) SetLimit(val int) {
 	s.Limit = val
+}
+
+// 任务截止的所填值、精度（day 只到日，minute
+// 精确到分钟）与时区（IANA），只到日的不补成时刻.
+// Ref: #/components/schemas/TaskDue
+type TaskDue struct {
+	Value     string           `json:"value"`
+	Precision TaskDuePrecision `json:"precision"`
+	Timezone  string           `json:"timezone"`
+}
+
+// GetValue returns the value of Value.
+func (s *TaskDue) GetValue() string {
+	return s.Value
+}
+
+// GetPrecision returns the value of Precision.
+func (s *TaskDue) GetPrecision() TaskDuePrecision {
+	return s.Precision
+}
+
+// GetTimezone returns the value of Timezone.
+func (s *TaskDue) GetTimezone() string {
+	return s.Timezone
+}
+
+// SetValue sets the value of Value.
+func (s *TaskDue) SetValue(val string) {
+	s.Value = val
+}
+
+// SetPrecision sets the value of Precision.
+func (s *TaskDue) SetPrecision(val TaskDuePrecision) {
+	s.Precision = val
+}
+
+// SetTimezone sets the value of Timezone.
+func (s *TaskDue) SetTimezone(val string) {
+	s.Timezone = val
+}
+
+type TaskDuePrecision string
+
+const (
+	TaskDuePrecisionDay    TaskDuePrecision = "day"
+	TaskDuePrecisionMinute TaskDuePrecision = "minute"
+)
+
+// AllValues returns all TaskDuePrecision values.
+func (TaskDuePrecision) AllValues() []TaskDuePrecision {
+	return []TaskDuePrecision{
+		TaskDuePrecisionDay,
+		TaskDuePrecisionMinute,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TaskDuePrecision) MarshalText() ([]byte, error) {
+	switch s {
+	case TaskDuePrecisionDay:
+		return []byte(s), nil
+	case TaskDuePrecisionMinute:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TaskDuePrecision) UnmarshalText(data []byte) error {
+	switch TaskDuePrecision(data) {
+	case TaskDuePrecisionDay:
+		*s = TaskDuePrecisionDay
+		return nil
+	case TaskDuePrecisionMinute:
+		*s = TaskDuePrecisionMinute
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 任务的当前状态（叠加，时间轴为“当前”，status_as_of 为读取时间）：todo
+// 仍待本人处理；done 已完成；cancelled 已取消； reassigned
+// 已不由本人处理（改派或负责人恢复）；pursuit_closed
+// 跟进已关闭。查看者已不能查看该任务时整条不返回。.
+// Ref: #/components/schemas/TaskItemStatus
+type TaskItemStatus struct {
+	Status     TaskItemStatusStatus `json:"status"`
+	StatusAsOf time.Time            `json:"status_as_of"`
+}
+
+// GetStatus returns the value of Status.
+func (s *TaskItemStatus) GetStatus() TaskItemStatusStatus {
+	return s.Status
+}
+
+// GetStatusAsOf returns the value of StatusAsOf.
+func (s *TaskItemStatus) GetStatusAsOf() time.Time {
+	return s.StatusAsOf
+}
+
+// SetStatus sets the value of Status.
+func (s *TaskItemStatus) SetStatus(val TaskItemStatusStatus) {
+	s.Status = val
+}
+
+// SetStatusAsOf sets the value of StatusAsOf.
+func (s *TaskItemStatus) SetStatusAsOf(val time.Time) {
+	s.StatusAsOf = val
+}
+
+type TaskItemStatusStatus string
+
+const (
+	TaskItemStatusStatusTodo          TaskItemStatusStatus = "todo"
+	TaskItemStatusStatusDone          TaskItemStatusStatus = "done"
+	TaskItemStatusStatusCancelled     TaskItemStatusStatus = "cancelled"
+	TaskItemStatusStatusReassigned    TaskItemStatusStatus = "reassigned"
+	TaskItemStatusStatusPursuitClosed TaskItemStatusStatus = "pursuit_closed"
+)
+
+// AllValues returns all TaskItemStatusStatus values.
+func (TaskItemStatusStatus) AllValues() []TaskItemStatusStatus {
+	return []TaskItemStatusStatus{
+		TaskItemStatusStatusTodo,
+		TaskItemStatusStatusDone,
+		TaskItemStatusStatusCancelled,
+		TaskItemStatusStatusReassigned,
+		TaskItemStatusStatusPursuitClosed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TaskItemStatusStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case TaskItemStatusStatusTodo:
+		return []byte(s), nil
+	case TaskItemStatusStatusDone:
+		return []byte(s), nil
+	case TaskItemStatusStatusCancelled:
+		return []byte(s), nil
+	case TaskItemStatusStatusReassigned:
+		return []byte(s), nil
+	case TaskItemStatusStatusPursuitClosed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TaskItemStatusStatus) UnmarshalText(data []byte) error {
+	switch TaskItemStatusStatus(data) {
+	case TaskItemStatusStatusTodo:
+		*s = TaskItemStatusStatusTodo
+		return nil
+	case TaskItemStatusStatusDone:
+		*s = TaskItemStatusStatusDone
+		return nil
+	case TaskItemStatusStatusCancelled:
+		*s = TaskItemStatusStatusCancelled
+		return nil
+	case TaskItemStatusStatusReassigned:
+		*s = TaskItemStatusStatusReassigned
+		return nil
+	case TaskItemStatusStatusPursuitClosed:
+		*s = TaskItemStatusStatusPursuitClosed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/UnbindRequest

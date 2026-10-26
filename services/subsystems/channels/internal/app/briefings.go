@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	purapi "github.com/superailabs/miaoqia/services/contracts/apis/pursuit"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -162,7 +163,52 @@ func (s *Service) recheck(ctx context.Context, doc *briefingDoc) (map[string]boo
 		}
 		feedback[sec.ObjectiveID] = fb
 	}
+	s.recheckTasks(ctx, doc.Sections)
 	return feedback, nil
+}
+
+// recheckTasks 以调用者本人经 pursuit getTask 再检查“待我处理”中的任务（快照不固定权限）：已不能查看的整条移除；其余叠加当前状态
+// （task_current）。pursuit 不可用时移除全部任务条目（失败关闭），区内不再有条目时本区为暂不可用。
+func (s *Service) recheckTasks(uctx context.Context, secs []section) {
+	now := s.businessNow()
+	for i := range secs {
+		sec := &secs[i]
+		if sec.Kind != "pending" {
+			continue
+		}
+		kept := sec.Items[:0:0]
+		dropped := false
+		for _, it := range sec.Items {
+			if it.TaskItem == nil {
+				kept = append(kept, it)
+				continue
+			}
+			if s.Pursuits == nil {
+				dropped = true
+				continue
+			}
+			v, err := s.Pursuits.GetTask(uctx, it.TaskID)
+			if err != nil {
+				dropped = dropped || dependencyTransient(err)
+				continue
+			}
+			st := &taskStatus{Status: "todo", StatusAsOf: now}
+			switch {
+			case v.PursuitState != purapi.PursuitStatusOpen:
+				st.Status = "pursuit_closed"
+			case v.Task.Status != purapi.TaskStatusTodo:
+				st.Status = string(v.Task.Status)
+			case !v.ViewerIsAssignee && !v.ViewerEscalated.Or(false):
+				st.Status = "reassigned"
+			}
+			it.TaskCurrent = st
+			kept = append(kept, it)
+		}
+		sec.Items = kept
+		if dropped && len(kept) == 0 {
+			sec.State = "unavailable"
+		}
+	}
 }
 
 // GetBriefing 返回本人的完整简报：条目为组装时的快照，当前处理状态经 detection 以调用者的权限读取并按“当前”叠加。

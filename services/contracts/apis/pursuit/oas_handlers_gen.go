@@ -1082,9 +1082,12 @@ func (s *Server) handleGetPursuitRequest(args [1]string, argsEscaped bool, w htt
 // handleGetTaskRequest handles getTask operation.
 //
 // 需要任务所属推进的 can_view；viewer_can_edit
-// 为调用者当前能否更新（含授权同步与本地负责人判断），viewer_is_assignee
-// 为调用者是否 仍是任务负责人。他租户、不存在与无权查看同为 404
-// task_not_found。.
+// 为调用者当前能否更新（与写命令同一准入：含授权同步与本地负责人判断），
+// viewer_is_assignee
+// 为调用者是否仍是任务负责人（且仍是跟进的有效负责人或协作者），viewer_escalated
+// 为任务已转给调用者处理
+// （跟进无有效负责人或任务负责人已不在团队中，且调用者在单元上有
+// can_edit_unit_pursuits）。他租户、不存在与无权查看同为 404 task_not_found。.
 //
 // GET /v1/pursuit/tasks/{taskID}
 func (s *Server) handleGetTaskRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
