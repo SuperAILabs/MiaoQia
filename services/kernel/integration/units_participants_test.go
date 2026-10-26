@@ -488,7 +488,7 @@ func TestOrgUnitsParticipantsAndServiceAuthorization(t *testing.T) {
 				t.Fatalf("%s：%v", who, err)
 			}
 		}
-		for _, who := range []string{"svc:channels", "svc:customer-context", "svc:pursuit"} {
+		for _, who := range []string{"svc:commerce", "svc:customer-context", "svc:pursuit"} {
 			if _, err := reader.ContextVersion(as(t1, who, "service")); err == nil || !strings.Contains(err.Error(), "forbidden") {
 				t.Fatalf("%s 不是登记的读取方：%v", who, err)
 			}

@@ -4,7 +4,8 @@
 //   - Callbacks：渠道侧入口——安装授权回调、消息回调（验签、去重）与渠道内置浏览器免登。它们不带妙洽令牌，
 //     对外路由随网关的未认证入口接入（尚未实现），在此之前只以本地绑定提供；
 //   - Messaging：卡片详情链接与投递目标（简报、通知等出站编排随 PRD 第5段实现）；
-//   - Maintenance：撤销重试、失效完成与免登会话对账（定时任务角色随所属里程碑接入）。
+//   - Maintenance：撤销重试、失效完成与免登会话对账（定时任务角色随所属里程碑接入）；
+//   - Briefings：简报组装、投递与卡片动作执行（PRD 第5段；定时任务与工作进程随所属里程碑接入）。
 package api
 
 import (
@@ -38,6 +39,8 @@ const (
 	InboundBound     InboundOutcome = "bound"      // 已绑定账号：交给会话处理（渠道内对话尚未实现）
 	InboundIgnored   InboundOutcome = "ignored"    // 渠道未安装或已停用
 	InboundDuplicate InboundOutcome = "duplicate"  // 同一事件已处理过（重放）：不改变任何状态
+	InboundQueued    InboundOutcome = "queued"     // 卡片按钮：令牌签名与租户核对通过，点击已排队异步执行（1 秒内确认）
+	InboundRejected  InboundOutcome = "rejected"   // 卡片按钮：令牌被篡改、伪造或属于其他租户；与不存在相同，只写审计，不触及令牌
 )
 
 // InboundResult 是消息回调的处理结果。
@@ -113,6 +116,47 @@ const MaintenanceBinding = "channels.Maintenance"
 type Maintenance interface {
 	RetryRevocations(ctx context.Context, limit int) (int, error)
 	ReconcileChannelSessions(ctx context.Context) (int, error)
+}
+
+// BriefingsBinding 是简报组装、投递与卡片动作执行在绑定表中的名称（定时任务与工作进程随所属里程碑接入，在此之前由测试与运维调用）。
+const BriefingsBinding = "channels.Briefings"
+
+// ComposeResult 是一次组装的结果：Outcome 为 composed（新生成）、existing（同一期已生成，返回已有的一份）、late（晚于当日 12:00，
+// 不推送，各区窗口不前移）或 skipped（成员不是有效成员，或尚无已到计划发送时间的周期）。
+type ComposeResult struct {
+	Outcome    string
+	BriefingID string
+	DeliveryID string
+}
+
+// Briefings 以带租户的服务主体调用，均可重复执行：
+//   - Compose 为成员组装 at 时最近一个已到计划发送时间的周期（幂等键：租户 + 成员 + 简报来源 + 周期起止）；按成员本人的权限
+//     逐区取数（以成员的用户主体调用 detection 与 customer-context），保存快照，需要推送时创建投递并立即尝试一次；
+//   - DeliverDue 处理到期的投递（每次至多 limit 条）：每次发送前按收件人当前状态再检查，失败退避重试到当日 18:00；
+//   - ProcessActions 执行排队的卡片点击（每次至多 limit 条），按 F4 第6条的顺序检查后调用 detection。
+type Briefings interface {
+	Compose(ctx context.Context, subject string, at time.Time) (*ComposeResult, error)
+	DeliverDue(ctx context.Context, limit int) (int, error)
+	ProcessActions(ctx context.Context, limit int) (int, error)
+}
+
+func LocalBriefings(impl Briefings) Briefings { return localBriefings{impl} }
+
+type localBriefings struct{ impl Briefings }
+
+func (l localBriefings) Compose(ctx context.Context, subject string, at time.Time) (*ComposeResult, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ComposeBriefing", Timeout: 60 * time.Second},
+		func(ctx context.Context) (*ComposeResult, error) { return l.impl.Compose(ctx, subject, at) })
+}
+
+func (l localBriefings) DeliverDue(ctx context.Context, limit int) (int, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "DeliverDue", Timeout: 60 * time.Second},
+		func(ctx context.Context) (int, error) { return l.impl.DeliverDue(ctx, limit) })
+}
+
+func (l localBriefings) ProcessActions(ctx context.Context, limit int) (int, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ProcessActions", Timeout: 60 * time.Second},
+		func(ctx context.Context) (int, error) { return l.impl.ProcessActions(ctx, limit) })
 }
 
 // LocalCallbacks 等把本地实现包装为经调用管线的接口。

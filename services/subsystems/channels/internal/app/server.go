@@ -81,3 +81,31 @@ func (s *Server) UnbindAccount(ctx context.Context, req *chn.UnbindRequest, para
 func (s *Server) OpenCardLink(ctx context.Context, req *chn.OpenCardLinkRequest) (*chn.CardTarget, error) {
 	return s.Service.OpenCardLink(ctx, req)
 }
+
+func (s *Server) GetBriefingPreferences(ctx context.Context) (*chn.BriefingPreferences, error) {
+	return s.Service.GetPreferences(ctx)
+}
+
+func (s *Server) UpdateBriefingPreferences(ctx context.Context, req *chn.UpdateBriefingPreferencesRequest, params chn.UpdateBriefingPreferencesParams) (*chn.BriefingPreferences, error) {
+	return s.Service.UpdatePreferences(ctx, req, params.IdempotencyKey)
+}
+
+func (s *Server) ListBriefings(ctx context.Context, params chn.ListBriefingsParams) (*chn.BriefingList, error) {
+	return s.Service.ListBriefings(ctx, params)
+}
+
+func (s *Server) GetBriefing(ctx context.Context, params chn.GetBriefingParams) (*chn.Briefing, error) {
+	return s.Service.GetBriefing(ctx, string(params.BriefingID))
+}
+
+func (s *Server) ResendBriefing(ctx context.Context, params chn.ResendBriefingParams) (*chn.DeliverySummary, error) {
+	return s.Service.ResendBriefing(ctx, string(params.BriefingID), params.IdempotencyKey)
+}
+
+func (s *Server) OpenBriefingLink(ctx context.Context, req *chn.OpenCardLinkRequest) (*chn.BriefingLinkTarget, error) {
+	return s.Service.OpenBriefingLink(ctx, req)
+}
+
+func (s *Server) GetDeliveryStats(ctx context.Context, params chn.GetDeliveryStatsParams) (*chn.DeliveryStats, error) {
+	return s.Service.DeliveryStats(ctx, params)
+}

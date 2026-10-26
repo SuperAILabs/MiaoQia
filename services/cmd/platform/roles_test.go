@@ -13,6 +13,7 @@ import (
 
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	chnapi "github.com/superailabs/miaoqia/services/subsystems/channels/api"
 	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
 	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
@@ -84,6 +85,7 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 	t.Setenv("MIAOQIA_CUSTOMER_CONTEXT_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_LEARNING_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_DETECTION_PACKS_DIR", packs)
+	t.Setenv("MIAOQIA_CHANNELS_PACKS_DIR", packs)
 	t.Setenv("MIAOQIA_ENV", "development")
 	t.Setenv("MIAOQIA_IDENTITY_OPENFGA_URL", fga)
 	t.Setenv("MIAOQIA_IDENTITY_URL", "http://127.0.0.1:1/internal")
@@ -140,6 +142,19 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, reader := runtime.Lookup[ccapi.ContextReader](b, ccapi.ContextBinding)
 						if !authz || !meter || !explainer || !reader {
 							t.Fatalf("gateway 的绑定不完整：authz=%v meter=%v explainer=%v context=%v", authz, meter, explainer, reader)
+						}
+					}
+					// 第5段新增的跨子系统绑定：channels 经 detection 读取简报条目与信号卡片并在渠道内处理、经 customer-context 判断目标访问
+					// 与读取生效策略、经 identity 读取审批；并提供 Briefings
+					if m.Name == "channels" {
+						b := envs[i].Bindings
+						_, briefing := runtime.Lookup[detectionapi.Briefing](b, detectionapi.BriefingBinding)
+						_, access := runtime.Lookup[ccapi.ObjectiveAccess](b, ccapi.AccessBinding)
+						_, active := runtime.Lookup[ccapi.ActivePolicies](b, ccapi.ActivePoliciesBinding)
+						_, approvals := runtime.Lookup[idapi.ApprovalReader](b, idapi.ApprovalReaderBinding)
+						_, own := runtime.Lookup[chnapi.Briefings](b, chnapi.BriefingsBinding)
+						if !briefing || !access || !active || !approvals || !own {
+							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v", briefing, access, active, approvals, own)
 						}
 					}
 				}

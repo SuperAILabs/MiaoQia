@@ -11,19 +11,19 @@ import (
 )
 
 var (
-	rn22AllowedHeaders = map[string]string{
+	rn26AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn3AllowedHeaders = map[string]string{
 		"POST": "Idempotency-Key",
 	}
-	rn17AllowedHeaders = map[string]string{
+	rn21AllowedHeaders = map[string]string{
 		"POST": "Idempotency-Key",
 	}
-	rn20AllowedHeaders = map[string]string{
+	rn24AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn23AllowedHeaders = map[string]string{
+	rn27AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 )
@@ -137,9 +137,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/signal"
+					case '/': // Prefix: "/"
 
-						if l := len("/signal"); len(elem) >= l && elem[0:l] == "/signal" {
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 							elem = elem[l:]
 						} else {
 							break
@@ -149,9 +149,36 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							break
 						}
 						switch elem[0] {
-						case '-': // Prefix: "-"
+						case 'b': // Prefix: "briefing-signals"
 
-							if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
+							if l := len("briefing-signals"); len(elem) >= l && elem[0:l] == "briefing-signals" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "GET":
+									s.handleListBriefingSignalsRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "GET",
+										allowedHeaders: nil,
+										acceptPost:     "",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						case 's': // Prefix: "signal"
+
+							if l := len("signal"); len(elem) >= l && elem[0:l] == "signal" {
 								elem = elem[l:]
 							} else {
 								break
@@ -161,36 +188,77 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								break
 							}
 							switch elem[0] {
-							case 'b': // Prefix: "batches"
+							case '-': // Prefix: "-"
 
-								if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
+								if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 									elem = elem[l:]
 								} else {
 									break
 								}
 
 								if len(elem) == 0 {
-									// Leaf node.
-									switch r.Method {
-									case "POST":
-										s.handleTriageSignalsRequest([1]string{
-											args[0],
-										}, elemIsEscaped, w, r)
-									default:
-										s.notAllowed(w, r, notAllowedParams{
-											allowedMethods: "POST",
-											allowedHeaders: rn22AllowedHeaders,
-											acceptPost:     "application/json",
-											acceptPatch:    "",
-										})
+									break
+								}
+								switch elem[0] {
+								case 'b': // Prefix: "batches"
+
+									if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
+										elem = elem[l:]
+									} else {
+										break
 									}
 
-									return
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "POST":
+											s.handleTriageSignalsRequest([1]string{
+												args[0],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, notAllowedParams{
+												allowedMethods: "POST",
+												allowedHeaders: rn26AllowedHeaders,
+												acceptPost:     "application/json",
+												acceptPatch:    "",
+											})
+										}
+
+										return
+									}
+
+								case 's': // Prefix: "selection"
+
+									if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "GET":
+											s.handleSelectSignalsRequest([1]string{
+												args[0],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, notAllowedParams{
+												allowedMethods: "GET",
+												allowedHeaders: nil,
+												acceptPost:     "",
+												acceptPatch:    "",
+											})
+										}
+
+										return
+									}
+
 								}
 
-							case 's': // Prefix: "selection"
+							case 's': // Prefix: "s"
 
-								if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
+								if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 									elem = elem[l:]
 								} else {
 									break
@@ -200,7 +268,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									// Leaf node.
 									switch r.Method {
 									case "GET":
-										s.handleSelectSignalsRequest([1]string{
+										s.handleListSignalsRequest([1]string{
 											args[0],
 										}, elemIsEscaped, w, r)
 									default:
@@ -215,33 +283,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									return
 								}
 
-							}
-
-						case 's': // Prefix: "s"
-
-							if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
-								elem = elem[l:]
-							} else {
-								break
-							}
-
-							if len(elem) == 0 {
-								// Leaf node.
-								switch r.Method {
-								case "GET":
-									s.handleListSignalsRequest([1]string{
-										args[0],
-									}, elemIsEscaped, w, r)
-								default:
-									s.notAllowed(w, r, notAllowedParams{
-										allowedMethods: "GET",
-										allowedHeaders: nil,
-										acceptPost:     "",
-										acceptPatch:    "",
-									})
-								}
-
-								return
 							}
 
 						}
@@ -262,107 +303,146 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
-				case '-': // Prefix: "-batches/"
+				case '-': // Prefix: "-"
 
-					if l := len("-batches/"); len(elem) >= l && elem[0:l] == "-batches/" {
+					if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "batchID"
-					// Match until "/"
-					idx := strings.IndexByte(elem, '/')
-					if idx < 0 {
-						idx = len(elem)
-					}
-					args[0] = elem[:idx]
-					elem = elem[idx:]
-
 					if len(elem) == 0 {
-						switch r.Method {
-						case "GET":
-							s.handleGetSignalBatchRequest([1]string{
-								args[0],
-							}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, notAllowedParams{
-								allowedMethods: "GET",
-								allowedHeaders: nil,
-								acceptPost:     "",
-								acceptPatch:    "",
-							})
-						}
-
-						return
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/"
+					case 'b': // Prefix: "batches/"
 
-						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						if l := len("batches/"); len(elem) >= l && elem[0:l] == "batches/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "batchID"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							switch r.Method {
+							case "GET":
+								s.handleGetSignalBatchRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET",
+									allowedHeaders: nil,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case 'c': // Prefix: "cancel"
+
+								if l := len("cancel"); len(elem) >= l && elem[0:l] == "cancel" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleCancelSignalBatchRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "POST",
+											allowedHeaders: rn3AllowedHeaders,
+											acceptPost:     "",
+											acceptPatch:    "",
+										})
+									}
+
+									return
+								}
+
+							case 'r': // Prefix: "retry"
+
+								if l := len("retry"); len(elem) >= l && elem[0:l] == "retry" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleRetrySignalBatchItemsRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "POST",
+											allowedHeaders: rn21AllowedHeaders,
+											acceptPost:     "",
+											acceptPatch:    "",
+										})
+									}
+
+									return
+								}
+
+							}
+
+						}
+
+					case 'c': // Prefix: "cards"
+
+						if l := len("cards"); len(elem) >= l && elem[0:l] == "cards" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							break
-						}
-						switch elem[0] {
-						case 'c': // Prefix: "cancel"
-
-							if l := len("cancel"); len(elem) >= l && elem[0:l] == "cancel" {
-								elem = elem[l:]
-							} else {
-								break
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleListSignalCardsRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET",
+									allowedHeaders: nil,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
 							}
 
-							if len(elem) == 0 {
-								// Leaf node.
-								switch r.Method {
-								case "POST":
-									s.handleCancelSignalBatchRequest([1]string{
-										args[0],
-									}, elemIsEscaped, w, r)
-								default:
-									s.notAllowed(w, r, notAllowedParams{
-										allowedMethods: "POST",
-										allowedHeaders: rn3AllowedHeaders,
-										acceptPost:     "",
-										acceptPatch:    "",
-									})
-								}
-
-								return
-							}
-
-						case 'r': // Prefix: "retry"
-
-							if l := len("retry"); len(elem) >= l && elem[0:l] == "retry" {
-								elem = elem[l:]
-							} else {
-								break
-							}
-
-							if len(elem) == 0 {
-								// Leaf node.
-								switch r.Method {
-								case "POST":
-									s.handleRetrySignalBatchItemsRequest([1]string{
-										args[0],
-									}, elemIsEscaped, w, r)
-								default:
-									s.notAllowed(w, r, notAllowedParams{
-										allowedMethods: "POST",
-										allowedHeaders: rn17AllowedHeaders,
-										acceptPost:     "",
-										acceptPatch:    "",
-									})
-								}
-
-								return
-							}
-
+							return
 						}
 
 					}
@@ -458,7 +538,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "POST",
-										allowedHeaders: rn20AllowedHeaders,
+										allowedHeaders: rn24AllowedHeaders,
 										acceptPost:     "application/json",
 										acceptPatch:    "",
 									})
@@ -518,7 +598,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "POST",
-							allowedHeaders: rn23AllowedHeaders,
+							allowedHeaders: rn27AllowedHeaders,
 							acceptPost:     "application/json",
 							acceptPatch:    "",
 						})
@@ -685,9 +765,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/signal"
+					case '/': // Prefix: "/"
 
-						if l := len("/signal"); len(elem) >= l && elem[0:l] == "/signal" {
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 							elem = elem[l:]
 						} else {
 							break
@@ -697,73 +777,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							break
 						}
 						switch elem[0] {
-						case '-': // Prefix: "-"
+						case 'b': // Prefix: "briefing-signals"
 
-							if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
-								elem = elem[l:]
-							} else {
-								break
-							}
-
-							if len(elem) == 0 {
-								break
-							}
-							switch elem[0] {
-							case 'b': // Prefix: "batches"
-
-								if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
-									elem = elem[l:]
-								} else {
-									break
-								}
-
-								if len(elem) == 0 {
-									// Leaf node.
-									switch method {
-									case "POST":
-										r.name = TriageSignalsOperation
-										r.summary = "批量反馈与忽略（TriageSignals）"
-										r.operationID = "triageSignals"
-										r.operationGroup = ""
-										r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-batches"
-										r.args = args
-										r.count = 1
-										return r, true
-									default:
-										return
-									}
-								}
-
-							case 's': // Prefix: "selection"
-
-								if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
-									elem = elem[l:]
-								} else {
-									break
-								}
-
-								if len(elem) == 0 {
-									// Leaf node.
-									switch method {
-									case "GET":
-										r.name = SelectSignalsOperation
-										r.summary = "固定“全部符合筛选”的选中清单"
-										r.operationID = "selectSignals"
-										r.operationGroup = ""
-										r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-selection"
-										r.args = args
-										r.count = 1
-										return r, true
-									default:
-										return
-									}
-								}
-
-							}
-
-						case 's': // Prefix: "s"
-
-							if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+							if l := len("briefing-signals"); len(elem) >= l && elem[0:l] == "briefing-signals" {
 								elem = elem[l:]
 							} else {
 								break
@@ -773,17 +789,120 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								// Leaf node.
 								switch method {
 								case "GET":
-									r.name = ListSignalsOperation
-									r.summary = "收件箱（ListSignals）"
-									r.operationID = "listSignals"
+									r.name = ListBriefingSignalsOperation
+									r.summary = "简报取数（ListSignals 的简报口径，只经内部端口）"
+									r.operationID = "listBriefingSignals"
 									r.operationGroup = ""
-									r.pathPattern = "/v1/detection/objectives/{objectiveID}/signals"
+									r.pathPattern = "/v1/detection/objectives/{objectiveID}/briefing-signals"
 									r.args = args
 									r.count = 1
 									return r, true
 								default:
 									return
 								}
+							}
+
+						case 's': // Prefix: "signal"
+
+							if l := len("signal"); len(elem) >= l && elem[0:l] == "signal" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case '-': // Prefix: "-"
+
+								if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									break
+								}
+								switch elem[0] {
+								case 'b': // Prefix: "batches"
+
+									if l := len("batches"); len(elem) >= l && elem[0:l] == "batches" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "POST":
+											r.name = TriageSignalsOperation
+											r.summary = "批量反馈与忽略（TriageSignals）"
+											r.operationID = "triageSignals"
+											r.operationGroup = ""
+											r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-batches"
+											r.args = args
+											r.count = 1
+											return r, true
+										default:
+											return
+										}
+									}
+
+								case 's': // Prefix: "selection"
+
+									if l := len("selection"); len(elem) >= l && elem[0:l] == "selection" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "GET":
+											r.name = SelectSignalsOperation
+											r.summary = "固定“全部符合筛选”的选中清单"
+											r.operationID = "selectSignals"
+											r.operationGroup = ""
+											r.pathPattern = "/v1/detection/objectives/{objectiveID}/signal-selection"
+											r.args = args
+											r.count = 1
+											return r, true
+										default:
+											return
+										}
+									}
+
+								}
+
+							case 's': // Prefix: "s"
+
+								if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "GET":
+										r.name = ListSignalsOperation
+										r.summary = "收件箱（ListSignals）"
+										r.operationID = "listSignals"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/detection/objectives/{objectiveID}/signals"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
 							}
 
 						}
@@ -804,101 +923,140 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
-				case '-': // Prefix: "-batches/"
+				case '-': // Prefix: "-"
 
-					if l := len("-batches/"); len(elem) >= l && elem[0:l] == "-batches/" {
+					if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "batchID"
-					// Match until "/"
-					idx := strings.IndexByte(elem, '/')
-					if idx < 0 {
-						idx = len(elem)
-					}
-					args[0] = elem[:idx]
-					elem = elem[idx:]
-
 					if len(elem) == 0 {
-						switch method {
-						case "GET":
-							r.name = GetSignalBatchOperation
-							r.summary = "批量作业与逐项结果（GetSignalBatch）"
-							r.operationID = "getSignalBatch"
-							r.operationGroup = ""
-							r.pathPattern = "/v1/detection/signal-batches/{batchID}"
-							r.args = args
-							r.count = 1
-							return r, true
-						default:
-							return
-						}
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/"
+					case 'b': // Prefix: "batches/"
 
-						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						if l := len("batches/"); len(elem) >= l && elem[0:l] == "batches/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "batchID"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							switch method {
+							case "GET":
+								r.name = GetSignalBatchOperation
+								r.summary = "批量作业与逐项结果（GetSignalBatch）"
+								r.operationID = "getSignalBatch"
+								r.operationGroup = ""
+								r.pathPattern = "/v1/detection/signal-batches/{batchID}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case 'c': // Prefix: "cancel"
+
+								if l := len("cancel"); len(elem) >= l && elem[0:l] == "cancel" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = CancelSignalBatchOperation
+										r.summary = "取消批量作业（CancelSignalBatch）"
+										r.operationID = "cancelSignalBatch"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/detection/signal-batches/{batchID}/cancel"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							case 'r': // Prefix: "retry"
+
+								if l := len("retry"); len(elem) >= l && elem[0:l] == "retry" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = RetrySignalBatchItemsOperation
+										r.summary = "重试暂时失败项、继续未处理项（RetrySignalBatchItems）"
+										r.operationID = "retrySignalBatchItems"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/detection/signal-batches/{batchID}/retry"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							}
+
+						}
+
+					case 'c': // Prefix: "cards"
+
+						if l := len("cards"); len(elem) >= l && elem[0:l] == "cards" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							break
-						}
-						switch elem[0] {
-						case 'c': // Prefix: "cancel"
-
-							if l := len("cancel"); len(elem) >= l && elem[0:l] == "cancel" {
-								elem = elem[l:]
-							} else {
-								break
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = ListSignalCardsOperation
+								r.summary = "信号卡片的当前版本与状态（只经内部端口）"
+								r.operationID = "listSignalCards"
+								r.operationGroup = ""
+								r.pathPattern = "/v1/detection/signal-cards"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
 							}
-
-							if len(elem) == 0 {
-								// Leaf node.
-								switch method {
-								case "POST":
-									r.name = CancelSignalBatchOperation
-									r.summary = "取消批量作业（CancelSignalBatch）"
-									r.operationID = "cancelSignalBatch"
-									r.operationGroup = ""
-									r.pathPattern = "/v1/detection/signal-batches/{batchID}/cancel"
-									r.args = args
-									r.count = 1
-									return r, true
-								default:
-									return
-								}
-							}
-
-						case 'r': // Prefix: "retry"
-
-							if l := len("retry"); len(elem) >= l && elem[0:l] == "retry" {
-								elem = elem[l:]
-							} else {
-								break
-							}
-
-							if len(elem) == 0 {
-								// Leaf node.
-								switch method {
-								case "POST":
-									r.name = RetrySignalBatchItemsOperation
-									r.summary = "重试暂时失败项、继续未处理项（RetrySignalBatchItems）"
-									r.operationID = "retrySignalBatchItems"
-									r.operationGroup = ""
-									r.pathPattern = "/v1/detection/signal-batches/{batchID}/retry"
-									r.args = args
-									r.count = 1
-									return r, true
-								default:
-									return
-								}
-							}
-
 						}
 
 					}

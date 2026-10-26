@@ -124,6 +124,7 @@
 - **到期**：7 天（PRD 第13节第3项），按业务时钟判断。读取、列表、决定、撤回与提交前先在独立事务中把到期的请求置为已过期，`effective_at` 为到期时间；`ExpireDueApprovals` 供定时任务批量处理，本切片未接入调度器，到期请求在下一次被访问时关闭并发布事件；
 - **列表**：`role=approver`（缺省）逐个资源实时判断批准关系（同一资源只判断一次，一次至多检查 500 条，达到时返回已找到的部分与游标），`role=applicant` 只列本人申请；每页缺省与上限 100，游标绑定租户、调用者、角色与状态，换用于其他角色或状态 400 `invalid_cursor`；
 - **事件**：`identity.approval.requested.v1`、`identity.approval.decided.v1`、`identity.approval.closed.v1` 的信封带租户与 cell，载荷带类型、资源、申请人、绑定、请求版本与生效时间，按请求版本单调递增；所有状态变化写审计（`identity.approval.*`）；
+- **读取绑定**（PRD 第5段）：`identity.ApprovalReader` 提供 `ListApprovals` 与 `GetApproval`，本地与远程（内部接口 `GET /internal/v1/identity/approvals`、`GET /internal/v1/identity/approvals/{approvalID}`）行为一致，以调用者的用户主体判断可见性，与公共接口相同；channels 以简报收件人本人的身份读取待其批准的审批（“待我处理”区）与简报链接指向的审批；
 - 尚未实现：审批通知（只发给当时有批准权的成员，不含申请人，随 channels）、个人租户的免审批例外、额度条件。
 [`openapi.yaml`](../../../contracts/apis/identity/openapi.yaml)。显式subject是可信内部服务的授权查询参数，缺省时取上下文主体；外部上下文由gateway验证后派生，内部头不能作为外部身份凭据。relation/object格式在本地与远程绑定均校验；未知业务字段（包括tenant）、空主体与错误上下文拒绝，错误统一为application/problem+json及稳定code。请求单次超时5秒，仅暂时性失败重试，最多3次。目录核验租户/成员当前状态及单元；当前SQL角色经同一OpenFGA模型做隔离contextual tuples求值，持久化旧角色关系不恢复被撤销权限。上下文提供租户不等于已获得资源权限。网关令牌验证和内部mTLS身份已通过[M0运行时验收](../../05-delivery/05-m0-runtime-acceptance.md)；审批及具体生产部署另按相应门禁验收。
 

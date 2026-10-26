@@ -173,7 +173,7 @@
 - **对账**：`api.Maintenance.ReconcileChannelSessions` 分页读取 identity 中仍有有效会话的全部绑定，对本子系统中不是有效绑定的（含不存在的）撤销到两边版本的较大者；本子系统查询失败或 identity 不可用时中止并返回错误，不把未知当作失效；
 - **卡片跳转**（`POST /v1/channels/card-links:open`）：出站编排经本地绑定 `api.Messaging.CreateCardLink` 为收件人与对象生成链接（只保存令牌摘要）。打开时不切换账号：链接收件人不是当前成员时 409 `account_mismatch` 并带出收件人，由客户端提示切换；链接不存在、属于其他租户、对象不存在与无权查看（实时 `Check can_view`）都是同一个 404 `content_unavailable`，响应不含标题、归属或负责人；过期 410 `card_link_expired`。`api.Messaging.DeliveryTarget` 只在渠道已启用、绑定有效且经上述核对仍属于成员当前的成员资格时投到渠道，否则改投站内并给出原因；查询失败或 identity 不可用时返回错误，不当作“未绑定”；
 - **回调**：先验签（失败 401 `callback_signature_invalid`），再核对时间戳在业务时钟前后 5 分钟内（否则 401 `callback_replayed`），再按（渠道、企业、渠道事件标识）去重，去重与业务写入在同一事务中；被拒绝与重复的回调不改变任何业务状态，计入该企业路由上的被拒回调数（安装列表的 `rejected_callbacks`）；
-- 尚未实现：网关的未认证入口（安装回调、消息回调与免登目前只以本地绑定提供）、生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态“异常”（只有被拒回调计数）、动作令牌与 `ExecuteAction`（卡片按钮动作，PRD 第1段用例 12 的“渠道动作按钮”）、渠道内对话、通知与简报、偏好、定时任务角色（`api.Maintenance` 由其调用）、飞书、钉钉与 Telegram。
+- 尚未实现：网关的未认证入口（安装回调、消息回调与免登目前只以本地绑定提供）、生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态“异常”（只有被拒回调计数）、渠道内对话、即时通知、定时任务角色（`api.Maintenance` 与 `api.Briefings` 由其调用）、飞书、钉钉与 Telegram。简报、偏好与卡片快捷动作见下文第5段实现状况。
 
 本切片选定的缺省值（规格未定处）：
 
@@ -189,6 +189,33 @@
 | 安装列表 | 只对管理员开放 |
 | 绑定列表 | 管理员看到本租户全部，其他成员只看到本人；按 `(created_at, id)` 倒序分页，每页至多 500，游标绑定租户、可见范围与 `state` 过滤 |
 | 撤销重试 | 每次至多 `limit`（1–500）条失效中的绑定，按上次尝试时间轮转 |
+
+**实现状况（PRD 第5段简报与卡片快捷动作的服务端切片，[channels 契约](../../../contracts/apis/channels/openapi.yaml) 0.2.0、[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.2.0）**：
+
+- **组装**（本地绑定 `api.Briefings.Compose`，带租户的服务主体调用；定时任务未接入）：按成员逐人组装。先经 identity `MemberLifecycle` 确认成员有效，按偏好版本序列求出 `at` 所在的周期（`internal/domain`：固定区间，起止以带偏移的时刻保存；新偏好版本从修改时所在周期的下一个边界生效，生效当天不额外产生一期）。幂等键为租户 + 成员 + 简报来源（应用领域包 `briefing.yaml` 的 `BRF-TENDER-DAILY`）+ 周期起止，表上唯一约束与按成员的咨询锁兜底并发；已存在时返回 `existing`。以 channels 服务主体经 customer-context `ActivePolicies` 枚举生效目标，再以**收件人本人**的用户主体逐目标判断 `can_view_signals` / `can_feedback`（不可看的目标不列出，判断不可用时该区不列出、简报标为部分），并经 mTLS 内部端口调用 detection `listBriefingSignals` 取数（覆盖窗口从该区上一次成功取数并随简报保存的终点起，至多 62 天）。取数暂时失败为 `unavailable`、窗口不前移；覆盖端口报告来源中断时为 `source_interrupted`（覆盖不可得时各领域为 `unknown`，不当作正常或中断）。“待我处理”区经 identity 内部端口以本人身份列出待其批准的审批，排在首位；任务随第6段；
+- **条目**：每区按配额（成员偏好或包中缺省）列出，更正类不受配额且排在区首（detection 已排序），超出的与 detection 单次上限之外的待处理条目计入 `overflow_count`；同一采购项目在后面的区为引用行（`references`），前面的区标 `also_matched`。来源字段按展示级别逐字段白名单写入（`full_text` 原值、`excerpt` 截断、`citation_only` 只有 http(s) 原文链接、`none` 都没有），多个来源取最严格，未知级别、缺少权利与权利端口失败都按 `none`；不复制来源记录；
+- **推送**（`api.Briefings.DeliverDue`）：空简报默认不推送（`not_pushed`/`empty`）；没有有效绑定只在 Web 与站内（`not_bound`）；当地 12:00 及之后才组装的不推送、窗口不前移（`late`）；晚于计划 10 分钟以上标 `delayed`。投递保存已渲染的消息（总览卡 + 每区前 3 条、合计至多 6 张信号卡片），重试发送同一批消息，卡片、链接与令牌不变；每次发送前以租约认领，再检查成员有效、绑定仍是投递时的绑定、各目标仍可看（失去访问的区删除并重新渲染尚未送达的总览卡），依赖不可用时延后重试、不当作退出或失效；安静时段内延后到结束；失败按退避重试到当日 18:00，之后改投站内（`in_app`/`cutoff`）。发布 `channels.delivery.sent.v1` 与 `channels.delivery.failed.v1`（`final` 区分重试与结束）；
+- **动作令牌**：每个按钮一个 `atk_` 令牌，卡片上携带的是 channels 签发的整个载荷（令牌标识、租户、收件人、信号、动作、原因、所见内容版本、卡片、到期时间）连同 HMAC-SHA256 签名（`MIAOQIA_CHANNELS_SIGNING_KEY`，base64、至少 32 字节，同一部署相同；只有 development 可缺省为进程内随机密钥），用途分隔，签名不符在任何读取之前拒绝。按钮 24 小时有效，“撤销” 10 分钟；
+- **点击**（`api.Callbacks.ReceiveInbound` 的卡片回调 + `api.Briefings.ProcessActions`）：回调验签与时间窗之后先校验令牌签名、令牌租户等于回调企业所属租户、卡片一致（否则 `rejected` 并写审计，令牌不受影响），按渠道事件标识去重后排队（`queued`）。执行时依次检查：令牌存在且卡片一致；点击者账号有有效绑定且仍属于成员当前的成员资格（否则只发绑定引导）；点击者是收件人（否则回复“此卡片发给其他成员”，不返回结果）；已有固定结果时返回该结果与执行时间及当前状态；未过期。之后以点击者的用户主体经内部端口调用 detection：首次执行时按信号当前的状态与反馈版本构造请求并固定在令牌上，至多 3 次尝试，每次幂等键为“令牌标识-序号”、操作标识为令牌标识；成功、无变化与确定失败固定在令牌上并发布 `channels.action.executed.v1`，暂时失败不作废。结果优先更新点击的卡片（`UpdateCard`），不支持或失败时另发结果消息；成功的反馈带“撤销”；`signal_updated` 另发按新版本渲染、带新令牌的卡片；
+- **简报历史与完整简报**（`GET /v1/channels/briefings`、`/{id}`）：只返回本人的简报（他人、其他租户与不存在同为 404 `briefing_not_found`）；历史按 `(period_end, id)` 倒序、每页至多 30 条，游标签名并绑定租户与成员（否则 400 `invalid_cursor`）。完整简报的条目为快照，按调用者当前权限再检查（失去访问的区只剩种类、顺序与 `no_permission`），处理状态经 detection `listSignalCards` 按“当前”叠加并标注处理人与内容是否已更新；
+- **重新推送**（`POST /v1/channels/briefings/{id}/resend`）：只限本人当日一期（409 `resend_not_allowed`）与有效绑定（409 `not_bound`），不重新组装，新的投递与新的令牌；同一幂等键重放返回首次的投递。重新推送的重试时限为发起后 2 小时，不受 18:00 截止与安静时段限制；
+- **简报链接**（`POST /v1/channels/briefing-links:open`）：链接只指向对象（信号、简报、审批），7 天有效；他人打开 409 `account_mismatch`，不存在、其他租户与无权限同为 404 `content_unavailable`，过期 410；
+- **偏好**（`GET/PUT /v1/channels/briefing-preferences`）：`expected_version` 乐观并发（409 `version_conflict`），非法值 422 `invalid_preferences`，生效时刻为下一个周期边界；写审计；
+- **投递统计**（`GET /v1/channels/delivery-stats`）：需要 `can_manage_members`，只有状态、原因与计数；
+- 尚未实现：定时任务与工作进程、企业微信生产适配器、覆盖与来源权利的生产适配器（`api.Coverage` / `api.Rights` 为 NotWired）、即时通知（F7）、“跟进”按钮（第6段）、AI 摘要、“关注变化”区。
+
+本切片选定的缺省值（规格未定处）：
+
+| 事项 | 取值 |
+|---|---|
+| 缺省偏好 | 工作日 07:30、Asia/Shanghai、安静时段 21:00–07:00、不推送空简报、各区条数取包中缺省值 |
+| 租户时区 | 固定为 Asia/Shanghai（租户时区设置未建模） |
+| 延迟发送 | 组装晚于计划发送时间 10 分钟以上 |
+| 当日不再推送 | 当地 12:00 及之后组装；投递重试截止当地 18:00 |
+| 令牌与链接 | 按钮 24 小时、撤销 10 分钟、简报链接 7 天 |
+| 一次点击的尝试 | 至多 3 次，暂时失败不作废令牌 |
+| 卡片数 | 每区前 3 条、每期至多 6 张信号卡片 |
+| 签名密钥 | `MIAOQIA_CHANNELS_SIGNING_KEY`，至少 32 字节；动作令牌与历史游标共用、按用途分隔 |
 
 ## 7. 事件
 

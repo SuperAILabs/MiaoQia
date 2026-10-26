@@ -513,6 +513,1235 @@ func (s *BindingState) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/Briefing
+type Briefing struct {
+	ID BriefingID `json:"id"`
+	// 简报来源（日常简报定义，如 BRF-TENDER-DAILY）.
+	Source            string    `json:"source"`
+	Period            Period    `json:"period"`
+	AssembledAt       time.Time `json:"assembled_at"`
+	ScheduledAt       time.Time `json:"scheduled_at"`
+	Delayed           bool      `json:"delayed"`
+	Empty             bool      `json:"empty"`
+	Partial           bool      `json:"partial"`
+	RuleVersion       string    `json:"rule_version"`
+	PreferenceVersion int64     `json:"preference_version"`
+	// 条目内容的时间轴：组装时.
+	ContentAsOf time.Time `json:"content_as_of"`
+	// 当前处理状态的时间轴：读取时.
+	StatusAsOf OptDateTime       `json:"status_as_of"`
+	Sections   []BriefingSection `json:"sections"`
+	Deliveries []DeliverySummary `json:"deliveries"`
+}
+
+// GetID returns the value of ID.
+func (s *Briefing) GetID() BriefingID {
+	return s.ID
+}
+
+// GetSource returns the value of Source.
+func (s *Briefing) GetSource() string {
+	return s.Source
+}
+
+// GetPeriod returns the value of Period.
+func (s *Briefing) GetPeriod() Period {
+	return s.Period
+}
+
+// GetAssembledAt returns the value of AssembledAt.
+func (s *Briefing) GetAssembledAt() time.Time {
+	return s.AssembledAt
+}
+
+// GetScheduledAt returns the value of ScheduledAt.
+func (s *Briefing) GetScheduledAt() time.Time {
+	return s.ScheduledAt
+}
+
+// GetDelayed returns the value of Delayed.
+func (s *Briefing) GetDelayed() bool {
+	return s.Delayed
+}
+
+// GetEmpty returns the value of Empty.
+func (s *Briefing) GetEmpty() bool {
+	return s.Empty
+}
+
+// GetPartial returns the value of Partial.
+func (s *Briefing) GetPartial() bool {
+	return s.Partial
+}
+
+// GetRuleVersion returns the value of RuleVersion.
+func (s *Briefing) GetRuleVersion() string {
+	return s.RuleVersion
+}
+
+// GetPreferenceVersion returns the value of PreferenceVersion.
+func (s *Briefing) GetPreferenceVersion() int64 {
+	return s.PreferenceVersion
+}
+
+// GetContentAsOf returns the value of ContentAsOf.
+func (s *Briefing) GetContentAsOf() time.Time {
+	return s.ContentAsOf
+}
+
+// GetStatusAsOf returns the value of StatusAsOf.
+func (s *Briefing) GetStatusAsOf() OptDateTime {
+	return s.StatusAsOf
+}
+
+// GetSections returns the value of Sections.
+func (s *Briefing) GetSections() []BriefingSection {
+	return s.Sections
+}
+
+// GetDeliveries returns the value of Deliveries.
+func (s *Briefing) GetDeliveries() []DeliverySummary {
+	return s.Deliveries
+}
+
+// SetID sets the value of ID.
+func (s *Briefing) SetID(val BriefingID) {
+	s.ID = val
+}
+
+// SetSource sets the value of Source.
+func (s *Briefing) SetSource(val string) {
+	s.Source = val
+}
+
+// SetPeriod sets the value of Period.
+func (s *Briefing) SetPeriod(val Period) {
+	s.Period = val
+}
+
+// SetAssembledAt sets the value of AssembledAt.
+func (s *Briefing) SetAssembledAt(val time.Time) {
+	s.AssembledAt = val
+}
+
+// SetScheduledAt sets the value of ScheduledAt.
+func (s *Briefing) SetScheduledAt(val time.Time) {
+	s.ScheduledAt = val
+}
+
+// SetDelayed sets the value of Delayed.
+func (s *Briefing) SetDelayed(val bool) {
+	s.Delayed = val
+}
+
+// SetEmpty sets the value of Empty.
+func (s *Briefing) SetEmpty(val bool) {
+	s.Empty = val
+}
+
+// SetPartial sets the value of Partial.
+func (s *Briefing) SetPartial(val bool) {
+	s.Partial = val
+}
+
+// SetRuleVersion sets the value of RuleVersion.
+func (s *Briefing) SetRuleVersion(val string) {
+	s.RuleVersion = val
+}
+
+// SetPreferenceVersion sets the value of PreferenceVersion.
+func (s *Briefing) SetPreferenceVersion(val int64) {
+	s.PreferenceVersion = val
+}
+
+// SetContentAsOf sets the value of ContentAsOf.
+func (s *Briefing) SetContentAsOf(val time.Time) {
+	s.ContentAsOf = val
+}
+
+// SetStatusAsOf sets the value of StatusAsOf.
+func (s *Briefing) SetStatusAsOf(val OptDateTime) {
+	s.StatusAsOf = val
+}
+
+// SetSections sets the value of Sections.
+func (s *Briefing) SetSections(val []BriefingSection) {
+	s.Sections = val
+}
+
+// SetDeliveries sets the value of Deliveries.
+func (s *Briefing) SetDeliveries(val []DeliverySummary) {
+	s.Deliveries = val
+}
+
+type BriefingCursor string
+
+type BriefingID string
+
+// 区内的一条（组装时的快照）。kind：signal 完整条目；reference
+// 同一采购项目已在靠前的区完整展示，本区为引用行（打开的仍是本目标
+// 自己的信号）；approval
+// “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）。.
+// Ref: #/components/schemas/BriefingItem
+type BriefingItem struct {
+	Kind           BriefingItemKind        `json:"kind"`
+	Position       int                     `json:"position"`
+	SignalID       OptString               `json:"signal_id"`
+	ContentVersion OptInt64                `json:"content_version"`
+	Category       OptBriefingItemCategory `json:"category"`
+	Correction     OptBool                 `json:"correction"`
+	Score          OptInt                  `json:"score"`
+	Disposition    OptString               `json:"disposition"`
+	Project        OptDisplayField         `json:"project"`
+	Winner         OptDisplayField         `json:"winner"`
+	Amount         OptDisplayField         `json:"amount"`
+	Region         OptDisplayField         `json:"region"`
+	Categories     OptDisplayField         `json:"categories"`
+	Reasons        []string                `json:"reasons"`
+	UnknownCount   OptInt                  `json:"unknown_count"`
+	SameLotCount   OptInt                  `json:"same_lot_count"`
+	// 发现时间（信号写入时间 created_at，不是求值时间）.
+	DiscoveredAt OptDateTime  `json:"discovered_at"`
+	Updates      []ItemUpdate `json:"updates"`
+	AlsoMatched  []string     `json:"also_matched"`
+	// 引用行指向的、完整展示该采购项目的区（目标编号）.
+	References   OptString     `json:"references"`
+	ApprovalID   OptString     `json:"approval_id"`
+	ApprovalType OptString     `json:"approval_type"`
+	SubmittedAt  OptDateTime   `json:"submitted_at"`
+	Current      OptItemStatus `json:"current"`
+}
+
+// GetKind returns the value of Kind.
+func (s *BriefingItem) GetKind() BriefingItemKind {
+	return s.Kind
+}
+
+// GetPosition returns the value of Position.
+func (s *BriefingItem) GetPosition() int {
+	return s.Position
+}
+
+// GetSignalID returns the value of SignalID.
+func (s *BriefingItem) GetSignalID() OptString {
+	return s.SignalID
+}
+
+// GetContentVersion returns the value of ContentVersion.
+func (s *BriefingItem) GetContentVersion() OptInt64 {
+	return s.ContentVersion
+}
+
+// GetCategory returns the value of Category.
+func (s *BriefingItem) GetCategory() OptBriefingItemCategory {
+	return s.Category
+}
+
+// GetCorrection returns the value of Correction.
+func (s *BriefingItem) GetCorrection() OptBool {
+	return s.Correction
+}
+
+// GetScore returns the value of Score.
+func (s *BriefingItem) GetScore() OptInt {
+	return s.Score
+}
+
+// GetDisposition returns the value of Disposition.
+func (s *BriefingItem) GetDisposition() OptString {
+	return s.Disposition
+}
+
+// GetProject returns the value of Project.
+func (s *BriefingItem) GetProject() OptDisplayField {
+	return s.Project
+}
+
+// GetWinner returns the value of Winner.
+func (s *BriefingItem) GetWinner() OptDisplayField {
+	return s.Winner
+}
+
+// GetAmount returns the value of Amount.
+func (s *BriefingItem) GetAmount() OptDisplayField {
+	return s.Amount
+}
+
+// GetRegion returns the value of Region.
+func (s *BriefingItem) GetRegion() OptDisplayField {
+	return s.Region
+}
+
+// GetCategories returns the value of Categories.
+func (s *BriefingItem) GetCategories() OptDisplayField {
+	return s.Categories
+}
+
+// GetReasons returns the value of Reasons.
+func (s *BriefingItem) GetReasons() []string {
+	return s.Reasons
+}
+
+// GetUnknownCount returns the value of UnknownCount.
+func (s *BriefingItem) GetUnknownCount() OptInt {
+	return s.UnknownCount
+}
+
+// GetSameLotCount returns the value of SameLotCount.
+func (s *BriefingItem) GetSameLotCount() OptInt {
+	return s.SameLotCount
+}
+
+// GetDiscoveredAt returns the value of DiscoveredAt.
+func (s *BriefingItem) GetDiscoveredAt() OptDateTime {
+	return s.DiscoveredAt
+}
+
+// GetUpdates returns the value of Updates.
+func (s *BriefingItem) GetUpdates() []ItemUpdate {
+	return s.Updates
+}
+
+// GetAlsoMatched returns the value of AlsoMatched.
+func (s *BriefingItem) GetAlsoMatched() []string {
+	return s.AlsoMatched
+}
+
+// GetReferences returns the value of References.
+func (s *BriefingItem) GetReferences() OptString {
+	return s.References
+}
+
+// GetApprovalID returns the value of ApprovalID.
+func (s *BriefingItem) GetApprovalID() OptString {
+	return s.ApprovalID
+}
+
+// GetApprovalType returns the value of ApprovalType.
+func (s *BriefingItem) GetApprovalType() OptString {
+	return s.ApprovalType
+}
+
+// GetSubmittedAt returns the value of SubmittedAt.
+func (s *BriefingItem) GetSubmittedAt() OptDateTime {
+	return s.SubmittedAt
+}
+
+// GetCurrent returns the value of Current.
+func (s *BriefingItem) GetCurrent() OptItemStatus {
+	return s.Current
+}
+
+// SetKind sets the value of Kind.
+func (s *BriefingItem) SetKind(val BriefingItemKind) {
+	s.Kind = val
+}
+
+// SetPosition sets the value of Position.
+func (s *BriefingItem) SetPosition(val int) {
+	s.Position = val
+}
+
+// SetSignalID sets the value of SignalID.
+func (s *BriefingItem) SetSignalID(val OptString) {
+	s.SignalID = val
+}
+
+// SetContentVersion sets the value of ContentVersion.
+func (s *BriefingItem) SetContentVersion(val OptInt64) {
+	s.ContentVersion = val
+}
+
+// SetCategory sets the value of Category.
+func (s *BriefingItem) SetCategory(val OptBriefingItemCategory) {
+	s.Category = val
+}
+
+// SetCorrection sets the value of Correction.
+func (s *BriefingItem) SetCorrection(val OptBool) {
+	s.Correction = val
+}
+
+// SetScore sets the value of Score.
+func (s *BriefingItem) SetScore(val OptInt) {
+	s.Score = val
+}
+
+// SetDisposition sets the value of Disposition.
+func (s *BriefingItem) SetDisposition(val OptString) {
+	s.Disposition = val
+}
+
+// SetProject sets the value of Project.
+func (s *BriefingItem) SetProject(val OptDisplayField) {
+	s.Project = val
+}
+
+// SetWinner sets the value of Winner.
+func (s *BriefingItem) SetWinner(val OptDisplayField) {
+	s.Winner = val
+}
+
+// SetAmount sets the value of Amount.
+func (s *BriefingItem) SetAmount(val OptDisplayField) {
+	s.Amount = val
+}
+
+// SetRegion sets the value of Region.
+func (s *BriefingItem) SetRegion(val OptDisplayField) {
+	s.Region = val
+}
+
+// SetCategories sets the value of Categories.
+func (s *BriefingItem) SetCategories(val OptDisplayField) {
+	s.Categories = val
+}
+
+// SetReasons sets the value of Reasons.
+func (s *BriefingItem) SetReasons(val []string) {
+	s.Reasons = val
+}
+
+// SetUnknownCount sets the value of UnknownCount.
+func (s *BriefingItem) SetUnknownCount(val OptInt) {
+	s.UnknownCount = val
+}
+
+// SetSameLotCount sets the value of SameLotCount.
+func (s *BriefingItem) SetSameLotCount(val OptInt) {
+	s.SameLotCount = val
+}
+
+// SetDiscoveredAt sets the value of DiscoveredAt.
+func (s *BriefingItem) SetDiscoveredAt(val OptDateTime) {
+	s.DiscoveredAt = val
+}
+
+// SetUpdates sets the value of Updates.
+func (s *BriefingItem) SetUpdates(val []ItemUpdate) {
+	s.Updates = val
+}
+
+// SetAlsoMatched sets the value of AlsoMatched.
+func (s *BriefingItem) SetAlsoMatched(val []string) {
+	s.AlsoMatched = val
+}
+
+// SetReferences sets the value of References.
+func (s *BriefingItem) SetReferences(val OptString) {
+	s.References = val
+}
+
+// SetApprovalID sets the value of ApprovalID.
+func (s *BriefingItem) SetApprovalID(val OptString) {
+	s.ApprovalID = val
+}
+
+// SetApprovalType sets the value of ApprovalType.
+func (s *BriefingItem) SetApprovalType(val OptString) {
+	s.ApprovalType = val
+}
+
+// SetSubmittedAt sets the value of SubmittedAt.
+func (s *BriefingItem) SetSubmittedAt(val OptDateTime) {
+	s.SubmittedAt = val
+}
+
+// SetCurrent sets the value of Current.
+func (s *BriefingItem) SetCurrent(val OptItemStatus) {
+	s.Current = val
+}
+
+type BriefingItemCategory string
+
+const (
+	BriefingItemCategoryNew     BriefingItemCategory = "new"
+	BriefingItemCategoryUpdated BriefingItemCategory = "updated"
+)
+
+// AllValues returns all BriefingItemCategory values.
+func (BriefingItemCategory) AllValues() []BriefingItemCategory {
+	return []BriefingItemCategory{
+		BriefingItemCategoryNew,
+		BriefingItemCategoryUpdated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BriefingItemCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case BriefingItemCategoryNew:
+		return []byte(s), nil
+	case BriefingItemCategoryUpdated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BriefingItemCategory) UnmarshalText(data []byte) error {
+	switch BriefingItemCategory(data) {
+	case BriefingItemCategoryNew:
+		*s = BriefingItemCategoryNew
+		return nil
+	case BriefingItemCategoryUpdated:
+		*s = BriefingItemCategoryUpdated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type BriefingItemKind string
+
+const (
+	BriefingItemKindSignal    BriefingItemKind = "signal"
+	BriefingItemKindReference BriefingItemKind = "reference"
+	BriefingItemKindApproval  BriefingItemKind = "approval"
+)
+
+// AllValues returns all BriefingItemKind values.
+func (BriefingItemKind) AllValues() []BriefingItemKind {
+	return []BriefingItemKind{
+		BriefingItemKindSignal,
+		BriefingItemKindReference,
+		BriefingItemKindApproval,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BriefingItemKind) MarshalText() ([]byte, error) {
+	switch s {
+	case BriefingItemKindSignal:
+		return []byte(s), nil
+	case BriefingItemKindReference:
+		return []byte(s), nil
+	case BriefingItemKindApproval:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BriefingItemKind) UnmarshalText(data []byte) error {
+	switch BriefingItemKind(data) {
+	case BriefingItemKindSignal:
+		*s = BriefingItemKindSignal
+		return nil
+	case BriefingItemKindReference:
+		*s = BriefingItemKindReference
+		return nil
+	case BriefingItemKindApproval:
+		*s = BriefingItemKindApproval
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/BriefingLinkTarget
+type BriefingLinkTarget struct {
+	Kind BriefingLinkTargetKind `json:"kind"`
+	ID   string                 `json:"id"`
+	// 从信号打开（第4段对象页带“来自信号”上下文）.
+	FromSignal OptBool `json:"from_signal"`
+}
+
+// GetKind returns the value of Kind.
+func (s *BriefingLinkTarget) GetKind() BriefingLinkTargetKind {
+	return s.Kind
+}
+
+// GetID returns the value of ID.
+func (s *BriefingLinkTarget) GetID() string {
+	return s.ID
+}
+
+// GetFromSignal returns the value of FromSignal.
+func (s *BriefingLinkTarget) GetFromSignal() OptBool {
+	return s.FromSignal
+}
+
+// SetKind sets the value of Kind.
+func (s *BriefingLinkTarget) SetKind(val BriefingLinkTargetKind) {
+	s.Kind = val
+}
+
+// SetID sets the value of ID.
+func (s *BriefingLinkTarget) SetID(val string) {
+	s.ID = val
+}
+
+// SetFromSignal sets the value of FromSignal.
+func (s *BriefingLinkTarget) SetFromSignal(val OptBool) {
+	s.FromSignal = val
+}
+
+type BriefingLinkTargetKind string
+
+const (
+	BriefingLinkTargetKindSignal   BriefingLinkTargetKind = "signal"
+	BriefingLinkTargetKindBriefing BriefingLinkTargetKind = "briefing"
+	BriefingLinkTargetKindApproval BriefingLinkTargetKind = "approval"
+)
+
+// AllValues returns all BriefingLinkTargetKind values.
+func (BriefingLinkTargetKind) AllValues() []BriefingLinkTargetKind {
+	return []BriefingLinkTargetKind{
+		BriefingLinkTargetKindSignal,
+		BriefingLinkTargetKindBriefing,
+		BriefingLinkTargetKindApproval,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BriefingLinkTargetKind) MarshalText() ([]byte, error) {
+	switch s {
+	case BriefingLinkTargetKindSignal:
+		return []byte(s), nil
+	case BriefingLinkTargetKindBriefing:
+		return []byte(s), nil
+	case BriefingLinkTargetKindApproval:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BriefingLinkTargetKind) UnmarshalText(data []byte) error {
+	switch BriefingLinkTargetKind(data) {
+	case BriefingLinkTargetKindSignal:
+		*s = BriefingLinkTargetKindSignal
+		return nil
+	case BriefingLinkTargetKindBriefing:
+		*s = BriefingLinkTargetKindBriefing
+		return nil
+	case BriefingLinkTargetKindApproval:
+		*s = BriefingLinkTargetKindApproval
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/BriefingList
+type BriefingList struct {
+	Briefings  []BriefingSummary `json:"briefings"`
+	NextCursor OptBriefingCursor `json:"next_cursor"`
+}
+
+// GetBriefings returns the value of Briefings.
+func (s *BriefingList) GetBriefings() []BriefingSummary {
+	return s.Briefings
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *BriefingList) GetNextCursor() OptBriefingCursor {
+	return s.NextCursor
+}
+
+// SetBriefings sets the value of Briefings.
+func (s *BriefingList) SetBriefings(val []BriefingSummary) {
+	s.Briefings = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *BriefingList) SetNextCursor(val OptBriefingCursor) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/BriefingPreferences
+type BriefingPreferences struct {
+	// 偏好版本；0 为从未保存（缺省值）.
+	Version       int64          `json:"version"`
+	SendTime      ClockTime      `json:"send_time"`
+	Timezone      string         `json:"timezone"`
+	SendDays      []int          `json:"send_days"`
+	QuietStart    ClockTime      `json:"quiet_start"`
+	QuietEnd      ClockTime      `json:"quiet_end"`
+	PushEmpty     bool           `json:"push_empty"`
+	SectionLimits []SectionLimit `json:"section_limits"`
+	// 本版本开始生效的周期起点（缺省值不出现）.
+	EffectiveFrom OptDateTime `json:"effective_from"`
+	UpdatedAt     OptDateTime `json:"updated_at"`
+}
+
+// GetVersion returns the value of Version.
+func (s *BriefingPreferences) GetVersion() int64 {
+	return s.Version
+}
+
+// GetSendTime returns the value of SendTime.
+func (s *BriefingPreferences) GetSendTime() ClockTime {
+	return s.SendTime
+}
+
+// GetTimezone returns the value of Timezone.
+func (s *BriefingPreferences) GetTimezone() string {
+	return s.Timezone
+}
+
+// GetSendDays returns the value of SendDays.
+func (s *BriefingPreferences) GetSendDays() []int {
+	return s.SendDays
+}
+
+// GetQuietStart returns the value of QuietStart.
+func (s *BriefingPreferences) GetQuietStart() ClockTime {
+	return s.QuietStart
+}
+
+// GetQuietEnd returns the value of QuietEnd.
+func (s *BriefingPreferences) GetQuietEnd() ClockTime {
+	return s.QuietEnd
+}
+
+// GetPushEmpty returns the value of PushEmpty.
+func (s *BriefingPreferences) GetPushEmpty() bool {
+	return s.PushEmpty
+}
+
+// GetSectionLimits returns the value of SectionLimits.
+func (s *BriefingPreferences) GetSectionLimits() []SectionLimit {
+	return s.SectionLimits
+}
+
+// GetEffectiveFrom returns the value of EffectiveFrom.
+func (s *BriefingPreferences) GetEffectiveFrom() OptDateTime {
+	return s.EffectiveFrom
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *BriefingPreferences) GetUpdatedAt() OptDateTime {
+	return s.UpdatedAt
+}
+
+// SetVersion sets the value of Version.
+func (s *BriefingPreferences) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetSendTime sets the value of SendTime.
+func (s *BriefingPreferences) SetSendTime(val ClockTime) {
+	s.SendTime = val
+}
+
+// SetTimezone sets the value of Timezone.
+func (s *BriefingPreferences) SetTimezone(val string) {
+	s.Timezone = val
+}
+
+// SetSendDays sets the value of SendDays.
+func (s *BriefingPreferences) SetSendDays(val []int) {
+	s.SendDays = val
+}
+
+// SetQuietStart sets the value of QuietStart.
+func (s *BriefingPreferences) SetQuietStart(val ClockTime) {
+	s.QuietStart = val
+}
+
+// SetQuietEnd sets the value of QuietEnd.
+func (s *BriefingPreferences) SetQuietEnd(val ClockTime) {
+	s.QuietEnd = val
+}
+
+// SetPushEmpty sets the value of PushEmpty.
+func (s *BriefingPreferences) SetPushEmpty(val bool) {
+	s.PushEmpty = val
+}
+
+// SetSectionLimits sets the value of SectionLimits.
+func (s *BriefingPreferences) SetSectionLimits(val []SectionLimit) {
+	s.SectionLimits = val
+}
+
+// SetEffectiveFrom sets the value of EffectiveFrom.
+func (s *BriefingPreferences) SetEffectiveFrom(val OptDateTime) {
+	s.EffectiveFrom = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *BriefingPreferences) SetUpdatedAt(val OptDateTime) {
+	s.UpdatedAt = val
+}
+
+// 一区。kind objective 为一个目标；pending 为“待我处理”。state：normal
+// 正常；empty 无新信号；source_interrupted 来源中断（条目照常，
+// 恢复后补齐的信号进入下一期）；unavailable
+// 暂不可用（本期没能取数，窗口顺延到下一期）；objective_inactive
+// 目标未激活； no_permission 读取时已失去访问（不返回条目与标题）。window
+// 为覆盖窗口 [start, end)，includes_previous 为含上一期未能生成的部分。.
+// Ref: #/components/schemas/BriefingSection
+type BriefingSection struct {
+	Kind             BriefingSectionKind  `json:"kind"`
+	Order            int                  `json:"order"`
+	ObjectiveID      OptString            `json:"objective_id"`
+	ObjectiveCode    OptString            `json:"objective_code"`
+	Title            OptString            `json:"title"`
+	State            BriefingSectionState `json:"state"`
+	WindowStart      OptDateTime          `json:"window_start"`
+	WindowEnd        OptDateTime          `json:"window_end"`
+	IncludesPrevious OptBool              `json:"includes_previous"`
+	NewCount         OptInt               `json:"new_count"`
+	UpdatedCount     OptInt               `json:"updated_count"`
+	HandledCount     OptInt               `json:"handled_count"`
+	BackfillCount    OptInt               `json:"backfill_count"`
+	// 超出每区条数的条目数（“另有 N 条，在收件箱查看”）.
+	OverflowCount OptInt         `json:"overflow_count"`
+	Quota         OptInt         `json:"quota"`
+	DataAsOf      []DataAsOf     `json:"data_as_of"`
+	Items         []BriefingItem `json:"items"`
+}
+
+// GetKind returns the value of Kind.
+func (s *BriefingSection) GetKind() BriefingSectionKind {
+	return s.Kind
+}
+
+// GetOrder returns the value of Order.
+func (s *BriefingSection) GetOrder() int {
+	return s.Order
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *BriefingSection) GetObjectiveID() OptString {
+	return s.ObjectiveID
+}
+
+// GetObjectiveCode returns the value of ObjectiveCode.
+func (s *BriefingSection) GetObjectiveCode() OptString {
+	return s.ObjectiveCode
+}
+
+// GetTitle returns the value of Title.
+func (s *BriefingSection) GetTitle() OptString {
+	return s.Title
+}
+
+// GetState returns the value of State.
+func (s *BriefingSection) GetState() BriefingSectionState {
+	return s.State
+}
+
+// GetWindowStart returns the value of WindowStart.
+func (s *BriefingSection) GetWindowStart() OptDateTime {
+	return s.WindowStart
+}
+
+// GetWindowEnd returns the value of WindowEnd.
+func (s *BriefingSection) GetWindowEnd() OptDateTime {
+	return s.WindowEnd
+}
+
+// GetIncludesPrevious returns the value of IncludesPrevious.
+func (s *BriefingSection) GetIncludesPrevious() OptBool {
+	return s.IncludesPrevious
+}
+
+// GetNewCount returns the value of NewCount.
+func (s *BriefingSection) GetNewCount() OptInt {
+	return s.NewCount
+}
+
+// GetUpdatedCount returns the value of UpdatedCount.
+func (s *BriefingSection) GetUpdatedCount() OptInt {
+	return s.UpdatedCount
+}
+
+// GetHandledCount returns the value of HandledCount.
+func (s *BriefingSection) GetHandledCount() OptInt {
+	return s.HandledCount
+}
+
+// GetBackfillCount returns the value of BackfillCount.
+func (s *BriefingSection) GetBackfillCount() OptInt {
+	return s.BackfillCount
+}
+
+// GetOverflowCount returns the value of OverflowCount.
+func (s *BriefingSection) GetOverflowCount() OptInt {
+	return s.OverflowCount
+}
+
+// GetQuota returns the value of Quota.
+func (s *BriefingSection) GetQuota() OptInt {
+	return s.Quota
+}
+
+// GetDataAsOf returns the value of DataAsOf.
+func (s *BriefingSection) GetDataAsOf() []DataAsOf {
+	return s.DataAsOf
+}
+
+// GetItems returns the value of Items.
+func (s *BriefingSection) GetItems() []BriefingItem {
+	return s.Items
+}
+
+// SetKind sets the value of Kind.
+func (s *BriefingSection) SetKind(val BriefingSectionKind) {
+	s.Kind = val
+}
+
+// SetOrder sets the value of Order.
+func (s *BriefingSection) SetOrder(val int) {
+	s.Order = val
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *BriefingSection) SetObjectiveID(val OptString) {
+	s.ObjectiveID = val
+}
+
+// SetObjectiveCode sets the value of ObjectiveCode.
+func (s *BriefingSection) SetObjectiveCode(val OptString) {
+	s.ObjectiveCode = val
+}
+
+// SetTitle sets the value of Title.
+func (s *BriefingSection) SetTitle(val OptString) {
+	s.Title = val
+}
+
+// SetState sets the value of State.
+func (s *BriefingSection) SetState(val BriefingSectionState) {
+	s.State = val
+}
+
+// SetWindowStart sets the value of WindowStart.
+func (s *BriefingSection) SetWindowStart(val OptDateTime) {
+	s.WindowStart = val
+}
+
+// SetWindowEnd sets the value of WindowEnd.
+func (s *BriefingSection) SetWindowEnd(val OptDateTime) {
+	s.WindowEnd = val
+}
+
+// SetIncludesPrevious sets the value of IncludesPrevious.
+func (s *BriefingSection) SetIncludesPrevious(val OptBool) {
+	s.IncludesPrevious = val
+}
+
+// SetNewCount sets the value of NewCount.
+func (s *BriefingSection) SetNewCount(val OptInt) {
+	s.NewCount = val
+}
+
+// SetUpdatedCount sets the value of UpdatedCount.
+func (s *BriefingSection) SetUpdatedCount(val OptInt) {
+	s.UpdatedCount = val
+}
+
+// SetHandledCount sets the value of HandledCount.
+func (s *BriefingSection) SetHandledCount(val OptInt) {
+	s.HandledCount = val
+}
+
+// SetBackfillCount sets the value of BackfillCount.
+func (s *BriefingSection) SetBackfillCount(val OptInt) {
+	s.BackfillCount = val
+}
+
+// SetOverflowCount sets the value of OverflowCount.
+func (s *BriefingSection) SetOverflowCount(val OptInt) {
+	s.OverflowCount = val
+}
+
+// SetQuota sets the value of Quota.
+func (s *BriefingSection) SetQuota(val OptInt) {
+	s.Quota = val
+}
+
+// SetDataAsOf sets the value of DataAsOf.
+func (s *BriefingSection) SetDataAsOf(val []DataAsOf) {
+	s.DataAsOf = val
+}
+
+// SetItems sets the value of Items.
+func (s *BriefingSection) SetItems(val []BriefingItem) {
+	s.Items = val
+}
+
+type BriefingSectionKind string
+
+const (
+	BriefingSectionKindObjective BriefingSectionKind = "objective"
+	BriefingSectionKindPending   BriefingSectionKind = "pending"
+)
+
+// AllValues returns all BriefingSectionKind values.
+func (BriefingSectionKind) AllValues() []BriefingSectionKind {
+	return []BriefingSectionKind{
+		BriefingSectionKindObjective,
+		BriefingSectionKindPending,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BriefingSectionKind) MarshalText() ([]byte, error) {
+	switch s {
+	case BriefingSectionKindObjective:
+		return []byte(s), nil
+	case BriefingSectionKindPending:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BriefingSectionKind) UnmarshalText(data []byte) error {
+	switch BriefingSectionKind(data) {
+	case BriefingSectionKindObjective:
+		*s = BriefingSectionKindObjective
+		return nil
+	case BriefingSectionKindPending:
+		*s = BriefingSectionKindPending
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type BriefingSectionState string
+
+const (
+	BriefingSectionStateNormal            BriefingSectionState = "normal"
+	BriefingSectionStateEmpty             BriefingSectionState = "empty"
+	BriefingSectionStateSourceInterrupted BriefingSectionState = "source_interrupted"
+	BriefingSectionStateUnavailable       BriefingSectionState = "unavailable"
+	BriefingSectionStateObjectiveInactive BriefingSectionState = "objective_inactive"
+	BriefingSectionStateNoPermission      BriefingSectionState = "no_permission"
+)
+
+// AllValues returns all BriefingSectionState values.
+func (BriefingSectionState) AllValues() []BriefingSectionState {
+	return []BriefingSectionState{
+		BriefingSectionStateNormal,
+		BriefingSectionStateEmpty,
+		BriefingSectionStateSourceInterrupted,
+		BriefingSectionStateUnavailable,
+		BriefingSectionStateObjectiveInactive,
+		BriefingSectionStateNoPermission,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BriefingSectionState) MarshalText() ([]byte, error) {
+	switch s {
+	case BriefingSectionStateNormal:
+		return []byte(s), nil
+	case BriefingSectionStateEmpty:
+		return []byte(s), nil
+	case BriefingSectionStateSourceInterrupted:
+		return []byte(s), nil
+	case BriefingSectionStateUnavailable:
+		return []byte(s), nil
+	case BriefingSectionStateObjectiveInactive:
+		return []byte(s), nil
+	case BriefingSectionStateNoPermission:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BriefingSectionState) UnmarshalText(data []byte) error {
+	switch BriefingSectionState(data) {
+	case BriefingSectionStateNormal:
+		*s = BriefingSectionStateNormal
+		return nil
+	case BriefingSectionStateEmpty:
+		*s = BriefingSectionStateEmpty
+		return nil
+	case BriefingSectionStateSourceInterrupted:
+		*s = BriefingSectionStateSourceInterrupted
+		return nil
+	case BriefingSectionStateUnavailable:
+		*s = BriefingSectionStateUnavailable
+		return nil
+	case BriefingSectionStateObjectiveInactive:
+		*s = BriefingSectionStateObjectiveInactive
+		return nil
+	case BriefingSectionStateNoPermission:
+		*s = BriefingSectionStateNoPermission
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/BriefingSummary
+type BriefingSummary struct {
+	ID          BriefingID `json:"id"`
+	Period      Period     `json:"period"`
+	AssembledAt time.Time  `json:"assembled_at"`
+	// 计划发送时间（周期终点）.
+	ScheduledAt time.Time `json:"scheduled_at"`
+	// 组装晚于计划时间（推送标“延迟发送（原定 07:30）”）.
+	Delayed bool `json:"delayed"`
+	Empty   bool `json:"empty"`
+	// 有区来源中断或暂不可用.
+	Partial         bool                              `json:"partial"`
+	ItemCount       int                               `json:"item_count"`
+	PushState       PushState                         `json:"push_state"`
+	NotPushedReason OptBriefingSummaryNotPushedReason `json:"not_pushed_reason"`
+}
+
+// GetID returns the value of ID.
+func (s *BriefingSummary) GetID() BriefingID {
+	return s.ID
+}
+
+// GetPeriod returns the value of Period.
+func (s *BriefingSummary) GetPeriod() Period {
+	return s.Period
+}
+
+// GetAssembledAt returns the value of AssembledAt.
+func (s *BriefingSummary) GetAssembledAt() time.Time {
+	return s.AssembledAt
+}
+
+// GetScheduledAt returns the value of ScheduledAt.
+func (s *BriefingSummary) GetScheduledAt() time.Time {
+	return s.ScheduledAt
+}
+
+// GetDelayed returns the value of Delayed.
+func (s *BriefingSummary) GetDelayed() bool {
+	return s.Delayed
+}
+
+// GetEmpty returns the value of Empty.
+func (s *BriefingSummary) GetEmpty() bool {
+	return s.Empty
+}
+
+// GetPartial returns the value of Partial.
+func (s *BriefingSummary) GetPartial() bool {
+	return s.Partial
+}
+
+// GetItemCount returns the value of ItemCount.
+func (s *BriefingSummary) GetItemCount() int {
+	return s.ItemCount
+}
+
+// GetPushState returns the value of PushState.
+func (s *BriefingSummary) GetPushState() PushState {
+	return s.PushState
+}
+
+// GetNotPushedReason returns the value of NotPushedReason.
+func (s *BriefingSummary) GetNotPushedReason() OptBriefingSummaryNotPushedReason {
+	return s.NotPushedReason
+}
+
+// SetID sets the value of ID.
+func (s *BriefingSummary) SetID(val BriefingID) {
+	s.ID = val
+}
+
+// SetPeriod sets the value of Period.
+func (s *BriefingSummary) SetPeriod(val Period) {
+	s.Period = val
+}
+
+// SetAssembledAt sets the value of AssembledAt.
+func (s *BriefingSummary) SetAssembledAt(val time.Time) {
+	s.AssembledAt = val
+}
+
+// SetScheduledAt sets the value of ScheduledAt.
+func (s *BriefingSummary) SetScheduledAt(val time.Time) {
+	s.ScheduledAt = val
+}
+
+// SetDelayed sets the value of Delayed.
+func (s *BriefingSummary) SetDelayed(val bool) {
+	s.Delayed = val
+}
+
+// SetEmpty sets the value of Empty.
+func (s *BriefingSummary) SetEmpty(val bool) {
+	s.Empty = val
+}
+
+// SetPartial sets the value of Partial.
+func (s *BriefingSummary) SetPartial(val bool) {
+	s.Partial = val
+}
+
+// SetItemCount sets the value of ItemCount.
+func (s *BriefingSummary) SetItemCount(val int) {
+	s.ItemCount = val
+}
+
+// SetPushState sets the value of PushState.
+func (s *BriefingSummary) SetPushState(val PushState) {
+	s.PushState = val
+}
+
+// SetNotPushedReason sets the value of NotPushedReason.
+func (s *BriefingSummary) SetNotPushedReason(val OptBriefingSummaryNotPushedReason) {
+	s.NotPushedReason = val
+}
+
+type BriefingSummaryNotPushedReason string
+
+const (
+	BriefingSummaryNotPushedReasonEmpty    BriefingSummaryNotPushedReason = "empty"
+	BriefingSummaryNotPushedReasonNotBound BriefingSummaryNotPushedReason = "not_bound"
+	BriefingSummaryNotPushedReasonLate     BriefingSummaryNotPushedReason = "late"
+)
+
+// AllValues returns all BriefingSummaryNotPushedReason values.
+func (BriefingSummaryNotPushedReason) AllValues() []BriefingSummaryNotPushedReason {
+	return []BriefingSummaryNotPushedReason{
+		BriefingSummaryNotPushedReasonEmpty,
+		BriefingSummaryNotPushedReasonNotBound,
+		BriefingSummaryNotPushedReasonLate,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BriefingSummaryNotPushedReason) MarshalText() ([]byte, error) {
+	switch s {
+	case BriefingSummaryNotPushedReasonEmpty:
+		return []byte(s), nil
+	case BriefingSummaryNotPushedReasonNotBound:
+		return []byte(s), nil
+	case BriefingSummaryNotPushedReasonLate:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BriefingSummaryNotPushedReason) UnmarshalText(data []byte) error {
+	switch BriefingSummaryNotPushedReason(data) {
+	case BriefingSummaryNotPushedReasonEmpty:
+		*s = BriefingSummaryNotPushedReasonEmpty
+		return nil
+	case BriefingSummaryNotPushedReasonNotBound:
+		*s = BriefingSummaryNotPushedReasonNotBound
+		return nil
+	case BriefingSummaryNotPushedReasonLate:
+		*s = BriefingSummaryNotPushedReasonLate
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/CardTarget
 type CardTarget struct {
 	// 链接指向的对象；客户端按对象所有者的接口读取，读取时仍按当前成员权限判断.
@@ -565,6 +1794,8 @@ func (s *ChannelKind) UnmarshalText(data []byte) error {
 	}
 }
 
+type ClockTime string
+
 // Ref: #/components/schemas/ConfirmBindingRequest
 type ConfirmBindingRequest struct {
 	LinkToken    LinkToken    `json:"link_token"`
@@ -603,6 +1834,662 @@ func (s *ConfirmBindingRequest) SetConfirmation(val Confirmation) {
 }
 
 type Confirmation string
+
+// Ref: #/components/schemas/DataAsOf
+type DataAsOf struct {
+	Domain string `json:"domain"`
+	// Current 正常；interrupted 来源中断；unknown
+	// 覆盖信息不可得（不以“正常”代替）.
+	State DataAsOfState `json:"state"`
+	AsOf  OptDateTime   `json:"as_of"`
+}
+
+// GetDomain returns the value of Domain.
+func (s *DataAsOf) GetDomain() string {
+	return s.Domain
+}
+
+// GetState returns the value of State.
+func (s *DataAsOf) GetState() DataAsOfState {
+	return s.State
+}
+
+// GetAsOf returns the value of AsOf.
+func (s *DataAsOf) GetAsOf() OptDateTime {
+	return s.AsOf
+}
+
+// SetDomain sets the value of Domain.
+func (s *DataAsOf) SetDomain(val string) {
+	s.Domain = val
+}
+
+// SetState sets the value of State.
+func (s *DataAsOf) SetState(val DataAsOfState) {
+	s.State = val
+}
+
+// SetAsOf sets the value of AsOf.
+func (s *DataAsOf) SetAsOf(val OptDateTime) {
+	s.AsOf = val
+}
+
+// Current 正常；interrupted 来源中断；unknown
+// 覆盖信息不可得（不以“正常”代替）.
+type DataAsOfState string
+
+const (
+	DataAsOfStateCurrent     DataAsOfState = "current"
+	DataAsOfStateInterrupted DataAsOfState = "interrupted"
+	DataAsOfStateUnknown     DataAsOfState = "unknown"
+)
+
+// AllValues returns all DataAsOfState values.
+func (DataAsOfState) AllValues() []DataAsOfState {
+	return []DataAsOfState{
+		DataAsOfStateCurrent,
+		DataAsOfStateInterrupted,
+		DataAsOfStateUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DataAsOfState) MarshalText() ([]byte, error) {
+	switch s {
+	case DataAsOfStateCurrent:
+		return []byte(s), nil
+	case DataAsOfStateInterrupted:
+		return []byte(s), nil
+	case DataAsOfStateUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DataAsOfState) UnmarshalText(data []byte) error {
+	switch DataAsOfState(data) {
+	case DataAsOfStateCurrent:
+		*s = DataAsOfStateCurrent
+		return nil
+	case DataAsOfStateInterrupted:
+		*s = DataAsOfStateInterrupted
+		return nil
+	case DataAsOfStateUnknown:
+		*s = DataAsOfStateUnknown
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type DeliveryID string
+
+// Pending 待发送（含安静时段延后）；retrying
+// 推送失败、等待退避重试；delivered 渠道已接受；in_app
+// 重试截止后仍失败，已在站内； cancelled
+// 发送前再检查时取消（成员已退出或绑定已失效），只留在 Web 历史.
+// Ref: #/components/schemas/DeliveryState
+type DeliveryState string
+
+const (
+	DeliveryStatePending   DeliveryState = "pending"
+	DeliveryStateRetrying  DeliveryState = "retrying"
+	DeliveryStateDelivered DeliveryState = "delivered"
+	DeliveryStateInApp     DeliveryState = "in_app"
+	DeliveryStateCancelled DeliveryState = "cancelled"
+)
+
+// AllValues returns all DeliveryState values.
+func (DeliveryState) AllValues() []DeliveryState {
+	return []DeliveryState{
+		DeliveryStatePending,
+		DeliveryStateRetrying,
+		DeliveryStateDelivered,
+		DeliveryStateInApp,
+		DeliveryStateCancelled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DeliveryState) MarshalText() ([]byte, error) {
+	switch s {
+	case DeliveryStatePending:
+		return []byte(s), nil
+	case DeliveryStateRetrying:
+		return []byte(s), nil
+	case DeliveryStateDelivered:
+		return []byte(s), nil
+	case DeliveryStateInApp:
+		return []byte(s), nil
+	case DeliveryStateCancelled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DeliveryState) UnmarshalText(data []byte) error {
+	switch DeliveryState(data) {
+	case DeliveryStatePending:
+		*s = DeliveryStatePending
+		return nil
+	case DeliveryStateRetrying:
+		*s = DeliveryStateRetrying
+		return nil
+	case DeliveryStateDelivered:
+		*s = DeliveryStateDelivered
+		return nil
+	case DeliveryStateInApp:
+		*s = DeliveryStateInApp
+		return nil
+	case DeliveryStateCancelled:
+		*s = DeliveryStateCancelled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/DeliveryStats
+type DeliveryStats struct {
+	Since            time.Time                     `json:"since"`
+	Deliveries       []DeliveryStatsDeliveriesItem `json:"deliveries"`
+	EmptyBriefings   int                           `json:"empty_briefings"`
+	PartialBriefings int                           `json:"partial_briefings"`
+}
+
+// GetSince returns the value of Since.
+func (s *DeliveryStats) GetSince() time.Time {
+	return s.Since
+}
+
+// GetDeliveries returns the value of Deliveries.
+func (s *DeliveryStats) GetDeliveries() []DeliveryStatsDeliveriesItem {
+	return s.Deliveries
+}
+
+// GetEmptyBriefings returns the value of EmptyBriefings.
+func (s *DeliveryStats) GetEmptyBriefings() int {
+	return s.EmptyBriefings
+}
+
+// GetPartialBriefings returns the value of PartialBriefings.
+func (s *DeliveryStats) GetPartialBriefings() int {
+	return s.PartialBriefings
+}
+
+// SetSince sets the value of Since.
+func (s *DeliveryStats) SetSince(val time.Time) {
+	s.Since = val
+}
+
+// SetDeliveries sets the value of Deliveries.
+func (s *DeliveryStats) SetDeliveries(val []DeliveryStatsDeliveriesItem) {
+	s.Deliveries = val
+}
+
+// SetEmptyBriefings sets the value of EmptyBriefings.
+func (s *DeliveryStats) SetEmptyBriefings(val int) {
+	s.EmptyBriefings = val
+}
+
+// SetPartialBriefings sets the value of PartialBriefings.
+func (s *DeliveryStats) SetPartialBriefings(val int) {
+	s.PartialBriefings = val
+}
+
+type DeliveryStatsDeliveriesItem struct {
+	State  DeliveryState `json:"state"`
+	Reason OptString     `json:"reason"`
+	Count  int           `json:"count"`
+}
+
+// GetState returns the value of State.
+func (s *DeliveryStatsDeliveriesItem) GetState() DeliveryState {
+	return s.State
+}
+
+// GetReason returns the value of Reason.
+func (s *DeliveryStatsDeliveriesItem) GetReason() OptString {
+	return s.Reason
+}
+
+// GetCount returns the value of Count.
+func (s *DeliveryStatsDeliveriesItem) GetCount() int {
+	return s.Count
+}
+
+// SetState sets the value of State.
+func (s *DeliveryStatsDeliveriesItem) SetState(val DeliveryState) {
+	s.State = val
+}
+
+// SetReason sets the value of Reason.
+func (s *DeliveryStatsDeliveriesItem) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetCount sets the value of Count.
+func (s *DeliveryStatsDeliveriesItem) SetCount(val int) {
+	s.Count = val
+}
+
+// Ref: #/components/schemas/DeliverySummary
+type DeliverySummary struct {
+	ID         DeliveryID          `json:"id"`
+	BriefingID BriefingID          `json:"briefing_id"`
+	Kind       DeliverySummaryKind `json:"kind"`
+	State      DeliveryState       `json:"state"`
+	Attempts   int                 `json:"attempts"`
+	// 失败或取消的原因.
+	Reason    OptDeliverySummaryReason `json:"reason"`
+	CreatedAt time.Time                `json:"created_at"`
+	// 最近一次平台提交.
+	SubmittedAt OptDateTime `json:"submitted_at"`
+	// 渠道接受（全部消息）.
+	AcceptedAt OptDateTime `json:"accepted_at"`
+	// 渠道不提供已读回执（以打开或动作近似，标明近似）.
+	ReadReceipts OptDeliverySummaryReadReceipts `json:"read_receipts"`
+}
+
+// GetID returns the value of ID.
+func (s *DeliverySummary) GetID() DeliveryID {
+	return s.ID
+}
+
+// GetBriefingID returns the value of BriefingID.
+func (s *DeliverySummary) GetBriefingID() BriefingID {
+	return s.BriefingID
+}
+
+// GetKind returns the value of Kind.
+func (s *DeliverySummary) GetKind() DeliverySummaryKind {
+	return s.Kind
+}
+
+// GetState returns the value of State.
+func (s *DeliverySummary) GetState() DeliveryState {
+	return s.State
+}
+
+// GetAttempts returns the value of Attempts.
+func (s *DeliverySummary) GetAttempts() int {
+	return s.Attempts
+}
+
+// GetReason returns the value of Reason.
+func (s *DeliverySummary) GetReason() OptDeliverySummaryReason {
+	return s.Reason
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *DeliverySummary) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetSubmittedAt returns the value of SubmittedAt.
+func (s *DeliverySummary) GetSubmittedAt() OptDateTime {
+	return s.SubmittedAt
+}
+
+// GetAcceptedAt returns the value of AcceptedAt.
+func (s *DeliverySummary) GetAcceptedAt() OptDateTime {
+	return s.AcceptedAt
+}
+
+// GetReadReceipts returns the value of ReadReceipts.
+func (s *DeliverySummary) GetReadReceipts() OptDeliverySummaryReadReceipts {
+	return s.ReadReceipts
+}
+
+// SetID sets the value of ID.
+func (s *DeliverySummary) SetID(val DeliveryID) {
+	s.ID = val
+}
+
+// SetBriefingID sets the value of BriefingID.
+func (s *DeliverySummary) SetBriefingID(val BriefingID) {
+	s.BriefingID = val
+}
+
+// SetKind sets the value of Kind.
+func (s *DeliverySummary) SetKind(val DeliverySummaryKind) {
+	s.Kind = val
+}
+
+// SetState sets the value of State.
+func (s *DeliverySummary) SetState(val DeliveryState) {
+	s.State = val
+}
+
+// SetAttempts sets the value of Attempts.
+func (s *DeliverySummary) SetAttempts(val int) {
+	s.Attempts = val
+}
+
+// SetReason sets the value of Reason.
+func (s *DeliverySummary) SetReason(val OptDeliverySummaryReason) {
+	s.Reason = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *DeliverySummary) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetSubmittedAt sets the value of SubmittedAt.
+func (s *DeliverySummary) SetSubmittedAt(val OptDateTime) {
+	s.SubmittedAt = val
+}
+
+// SetAcceptedAt sets the value of AcceptedAt.
+func (s *DeliverySummary) SetAcceptedAt(val OptDateTime) {
+	s.AcceptedAt = val
+}
+
+// SetReadReceipts sets the value of ReadReceipts.
+func (s *DeliverySummary) SetReadReceipts(val OptDeliverySummaryReadReceipts) {
+	s.ReadReceipts = val
+}
+
+type DeliverySummaryKind string
+
+const (
+	DeliverySummaryKindBriefing DeliverySummaryKind = "briefing"
+	DeliverySummaryKindResend   DeliverySummaryKind = "resend"
+)
+
+// AllValues returns all DeliverySummaryKind values.
+func (DeliverySummaryKind) AllValues() []DeliverySummaryKind {
+	return []DeliverySummaryKind{
+		DeliverySummaryKindBriefing,
+		DeliverySummaryKindResend,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DeliverySummaryKind) MarshalText() ([]byte, error) {
+	switch s {
+	case DeliverySummaryKindBriefing:
+		return []byte(s), nil
+	case DeliverySummaryKindResend:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DeliverySummaryKind) UnmarshalText(data []byte) error {
+	switch DeliverySummaryKind(data) {
+	case DeliverySummaryKindBriefing:
+		*s = DeliverySummaryKindBriefing
+		return nil
+	case DeliverySummaryKindResend:
+		*s = DeliverySummaryKindResend
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 渠道不提供已读回执（以打开或动作近似，标明近似）.
+type DeliverySummaryReadReceipts string
+
+const (
+	DeliverySummaryReadReceiptsUnsupported DeliverySummaryReadReceipts = "unsupported"
+)
+
+// AllValues returns all DeliverySummaryReadReceipts values.
+func (DeliverySummaryReadReceipts) AllValues() []DeliverySummaryReadReceipts {
+	return []DeliverySummaryReadReceipts{
+		DeliverySummaryReadReceiptsUnsupported,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DeliverySummaryReadReceipts) MarshalText() ([]byte, error) {
+	switch s {
+	case DeliverySummaryReadReceiptsUnsupported:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DeliverySummaryReadReceipts) UnmarshalText(data []byte) error {
+	switch DeliverySummaryReadReceipts(data) {
+	case DeliverySummaryReadReceiptsUnsupported:
+		*s = DeliverySummaryReadReceiptsUnsupported
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 失败或取消的原因.
+type DeliverySummaryReason string
+
+const (
+	DeliverySummaryReasonChannelError      DeliverySummaryReason = "channel_error"
+	DeliverySummaryReasonCutoff            DeliverySummaryReason = "cutoff"
+	DeliverySummaryReasonMemberInactive    DeliverySummaryReason = "member_inactive"
+	DeliverySummaryReasonBindingInactive   DeliverySummaryReason = "binding_inactive"
+	DeliverySummaryReasonChannelNotEnabled DeliverySummaryReason = "channel_not_enabled"
+)
+
+// AllValues returns all DeliverySummaryReason values.
+func (DeliverySummaryReason) AllValues() []DeliverySummaryReason {
+	return []DeliverySummaryReason{
+		DeliverySummaryReasonChannelError,
+		DeliverySummaryReasonCutoff,
+		DeliverySummaryReasonMemberInactive,
+		DeliverySummaryReasonBindingInactive,
+		DeliverySummaryReasonChannelNotEnabled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DeliverySummaryReason) MarshalText() ([]byte, error) {
+	switch s {
+	case DeliverySummaryReasonChannelError:
+		return []byte(s), nil
+	case DeliverySummaryReasonCutoff:
+		return []byte(s), nil
+	case DeliverySummaryReasonMemberInactive:
+		return []byte(s), nil
+	case DeliverySummaryReasonBindingInactive:
+		return []byte(s), nil
+	case DeliverySummaryReasonChannelNotEnabled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DeliverySummaryReason) UnmarshalText(data []byte) error {
+	switch DeliverySummaryReason(data) {
+	case DeliverySummaryReasonChannelError:
+		*s = DeliverySummaryReasonChannelError
+		return nil
+	case DeliverySummaryReasonCutoff:
+		*s = DeliverySummaryReasonCutoff
+		return nil
+	case DeliverySummaryReasonMemberInactive:
+		*s = DeliverySummaryReasonMemberInactive
+		return nil
+	case DeliverySummaryReasonBindingInactive:
+		*s = DeliverySummaryReasonBindingInactive
+		return nil
+	case DeliverySummaryReasonChannelNotEnabled:
+		*s = DeliverySummaryReasonChannelNotEnabled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 一个来源字段：value 只在展示级别为 full_text 或 excerpt 时出现（excerpt
+// 为截断后的摘录）；citation_only 只给 source_url（“见原文”）； none
+// 两者都没有。state 为 known 已知、undisclosed 未公布（金额）、unknown
+// 未能可靠识别。.
+// Ref: #/components/schemas/DisplayField
+type DisplayField struct {
+	Level     DisplayLevel      `json:"level"`
+	State     DisplayFieldState `json:"state"`
+	Value     OptString         `json:"value"`
+	SourceURL OptURI            `json:"source_url"`
+}
+
+// GetLevel returns the value of Level.
+func (s *DisplayField) GetLevel() DisplayLevel {
+	return s.Level
+}
+
+// GetState returns the value of State.
+func (s *DisplayField) GetState() DisplayFieldState {
+	return s.State
+}
+
+// GetValue returns the value of Value.
+func (s *DisplayField) GetValue() OptString {
+	return s.Value
+}
+
+// GetSourceURL returns the value of SourceURL.
+func (s *DisplayField) GetSourceURL() OptURI {
+	return s.SourceURL
+}
+
+// SetLevel sets the value of Level.
+func (s *DisplayField) SetLevel(val DisplayLevel) {
+	s.Level = val
+}
+
+// SetState sets the value of State.
+func (s *DisplayField) SetState(val DisplayFieldState) {
+	s.State = val
+}
+
+// SetValue sets the value of Value.
+func (s *DisplayField) SetValue(val OptString) {
+	s.Value = val
+}
+
+// SetSourceURL sets the value of SourceURL.
+func (s *DisplayField) SetSourceURL(val OptURI) {
+	s.SourceURL = val
+}
+
+type DisplayFieldState string
+
+const (
+	DisplayFieldStateKnown       DisplayFieldState = "known"
+	DisplayFieldStateUndisclosed DisplayFieldState = "undisclosed"
+	DisplayFieldStateUnknown     DisplayFieldState = "unknown"
+)
+
+// AllValues returns all DisplayFieldState values.
+func (DisplayFieldState) AllValues() []DisplayFieldState {
+	return []DisplayFieldState{
+		DisplayFieldStateKnown,
+		DisplayFieldStateUndisclosed,
+		DisplayFieldStateUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DisplayFieldState) MarshalText() ([]byte, error) {
+	switch s {
+	case DisplayFieldStateKnown:
+		return []byte(s), nil
+	case DisplayFieldStateUndisclosed:
+		return []byte(s), nil
+	case DisplayFieldStateUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DisplayFieldState) UnmarshalText(data []byte) error {
+	switch DisplayFieldState(data) {
+	case DisplayFieldStateKnown:
+		*s = DisplayFieldStateKnown
+		return nil
+	case DisplayFieldStateUndisclosed:
+		*s = DisplayFieldStateUndisclosed
+		return nil
+	case DisplayFieldStateUnknown:
+		*s = DisplayFieldStateUnknown
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 字段按来源权利逐维取最严格后的展示级别（数据架构第12节）.
+// Ref: #/components/schemas/DisplayLevel
+type DisplayLevel string
+
+const (
+	DisplayLevelFullText     DisplayLevel = "full_text"
+	DisplayLevelExcerpt      DisplayLevel = "excerpt"
+	DisplayLevelCitationOnly DisplayLevel = "citation_only"
+	DisplayLevelNone         DisplayLevel = "none"
+)
+
+// AllValues returns all DisplayLevel values.
+func (DisplayLevel) AllValues() []DisplayLevel {
+	return []DisplayLevel{
+		DisplayLevelFullText,
+		DisplayLevelExcerpt,
+		DisplayLevelCitationOnly,
+		DisplayLevelNone,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DisplayLevel) MarshalText() ([]byte, error) {
+	switch s {
+	case DisplayLevelFullText:
+		return []byte(s), nil
+	case DisplayLevelExcerpt:
+		return []byte(s), nil
+	case DisplayLevelCitationOnly:
+		return []byte(s), nil
+	case DisplayLevelNone:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DisplayLevel) UnmarshalText(data []byte) error {
+	switch DisplayLevel(data) {
+	case DisplayLevelFullText:
+		*s = DisplayLevelFullText
+		return nil
+	case DisplayLevelExcerpt:
+		*s = DisplayLevelExcerpt
+		return nil
+	case DisplayLevelCitationOnly:
+		*s = DisplayLevelCitationOnly
+		return nil
+	case DisplayLevelNone:
+		*s = DisplayLevelNone
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // Ref: #/components/schemas/InstallChannelRequest
 type InstallChannelRequest struct {
@@ -851,6 +2738,189 @@ func (s *InstallationState) UnmarshalText(data []byte) error {
 	}
 }
 
+// 当前处理状态（叠加，时间轴为“当前”，status_as_of
+// 为读取时间）；查看者已不能查看该信号时不出现.
+// Ref: #/components/schemas/ItemStatus
+type ItemStatus struct {
+	Status    ItemStatusStatus `json:"status"`
+	HandledBy OptString        `json:"handled_by"`
+	HandledAt OptDateTime      `json:"handled_at"`
+	// 组装后信号内容已更新（打开时提示“信号已更新”）.
+	ContentUpdated OptBool   `json:"content_updated"`
+	StatusAsOf     time.Time `json:"status_as_of"`
+}
+
+// GetStatus returns the value of Status.
+func (s *ItemStatus) GetStatus() ItemStatusStatus {
+	return s.Status
+}
+
+// GetHandledBy returns the value of HandledBy.
+func (s *ItemStatus) GetHandledBy() OptString {
+	return s.HandledBy
+}
+
+// GetHandledAt returns the value of HandledAt.
+func (s *ItemStatus) GetHandledAt() OptDateTime {
+	return s.HandledAt
+}
+
+// GetContentUpdated returns the value of ContentUpdated.
+func (s *ItemStatus) GetContentUpdated() OptBool {
+	return s.ContentUpdated
+}
+
+// GetStatusAsOf returns the value of StatusAsOf.
+func (s *ItemStatus) GetStatusAsOf() time.Time {
+	return s.StatusAsOf
+}
+
+// SetStatus sets the value of Status.
+func (s *ItemStatus) SetStatus(val ItemStatusStatus) {
+	s.Status = val
+}
+
+// SetHandledBy sets the value of HandledBy.
+func (s *ItemStatus) SetHandledBy(val OptString) {
+	s.HandledBy = val
+}
+
+// SetHandledAt sets the value of HandledAt.
+func (s *ItemStatus) SetHandledAt(val OptDateTime) {
+	s.HandledAt = val
+}
+
+// SetContentUpdated sets the value of ContentUpdated.
+func (s *ItemStatus) SetContentUpdated(val OptBool) {
+	s.ContentUpdated = val
+}
+
+// SetStatusAsOf sets the value of StatusAsOf.
+func (s *ItemStatus) SetStatusAsOf(val time.Time) {
+	s.StatusAsOf = val
+}
+
+type ItemStatusStatus string
+
+const (
+	ItemStatusStatusOpen      ItemStatusStatus = "open"
+	ItemStatusStatusTriaged   ItemStatusStatus = "triaged"
+	ItemStatusStatusConverted ItemStatusStatus = "converted"
+	ItemStatusStatusDismissed ItemStatusStatus = "dismissed"
+	ItemStatusStatusClosed    ItemStatusStatus = "closed"
+)
+
+// AllValues returns all ItemStatusStatus values.
+func (ItemStatusStatus) AllValues() []ItemStatusStatus {
+	return []ItemStatusStatus{
+		ItemStatusStatusOpen,
+		ItemStatusStatusTriaged,
+		ItemStatusStatusConverted,
+		ItemStatusStatusDismissed,
+		ItemStatusStatusClosed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ItemStatusStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case ItemStatusStatusOpen:
+		return []byte(s), nil
+	case ItemStatusStatusTriaged:
+		return []byte(s), nil
+	case ItemStatusStatusConverted:
+		return []byte(s), nil
+	case ItemStatusStatusDismissed:
+		return []byte(s), nil
+	case ItemStatusStatusClosed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ItemStatusStatus) UnmarshalText(data []byte) error {
+	switch ItemStatusStatus(data) {
+	case ItemStatusStatusOpen:
+		*s = ItemStatusStatusOpen
+		return nil
+	case ItemStatusStatusTriaged:
+		*s = ItemStatusStatusTriaged
+		return nil
+	case ItemStatusStatusConverted:
+		*s = ItemStatusStatusConverted
+		return nil
+	case ItemStatusStatusDismissed:
+		*s = ItemStatusStatusDismissed
+		return nil
+	case ItemStatusStatusClosed:
+		*s = ItemStatusStatusClosed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ItemUpdate
+type ItemUpdate struct {
+	RecordedAt        time.Time `json:"recorded_at"`
+	ChangedFields     []string  `json:"changed_fields"`
+	DispositionBefore string    `json:"disposition_before"`
+	DispositionAfter  string    `json:"disposition_after"`
+	ContentVersion    int64     `json:"content_version"`
+}
+
+// GetRecordedAt returns the value of RecordedAt.
+func (s *ItemUpdate) GetRecordedAt() time.Time {
+	return s.RecordedAt
+}
+
+// GetChangedFields returns the value of ChangedFields.
+func (s *ItemUpdate) GetChangedFields() []string {
+	return s.ChangedFields
+}
+
+// GetDispositionBefore returns the value of DispositionBefore.
+func (s *ItemUpdate) GetDispositionBefore() string {
+	return s.DispositionBefore
+}
+
+// GetDispositionAfter returns the value of DispositionAfter.
+func (s *ItemUpdate) GetDispositionAfter() string {
+	return s.DispositionAfter
+}
+
+// GetContentVersion returns the value of ContentVersion.
+func (s *ItemUpdate) GetContentVersion() int64 {
+	return s.ContentVersion
+}
+
+// SetRecordedAt sets the value of RecordedAt.
+func (s *ItemUpdate) SetRecordedAt(val time.Time) {
+	s.RecordedAt = val
+}
+
+// SetChangedFields sets the value of ChangedFields.
+func (s *ItemUpdate) SetChangedFields(val []string) {
+	s.ChangedFields = val
+}
+
+// SetDispositionBefore sets the value of DispositionBefore.
+func (s *ItemUpdate) SetDispositionBefore(val string) {
+	s.DispositionBefore = val
+}
+
+// SetDispositionAfter sets the value of DispositionAfter.
+func (s *ItemUpdate) SetDispositionAfter(val string) {
+	s.DispositionAfter = val
+}
+
+// SetContentVersion sets the value of ContentVersion.
+func (s *ItemUpdate) SetContentVersion(val int64) {
+	s.ContentVersion = val
+}
+
 type LinkToken string
 
 type OAuthCode string
@@ -1008,6 +3078,190 @@ func (o OptBindingState) Or(d BindingState) BindingState {
 	return d
 }
 
+// NewOptBool returns new OptBool with value set to v.
+func NewOptBool(v bool) OptBool {
+	return OptBool{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBool is optional bool.
+type OptBool struct {
+	Value bool
+	Set   bool
+}
+
+// IsSet returns true if OptBool was set.
+func (o OptBool) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBool) Reset() {
+	var v bool
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBool) SetTo(v bool) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBool) Get() (v bool, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBool) Or(d bool) bool {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBriefingCursor returns new OptBriefingCursor with value set to v.
+func NewOptBriefingCursor(v BriefingCursor) OptBriefingCursor {
+	return OptBriefingCursor{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBriefingCursor is optional BriefingCursor.
+type OptBriefingCursor struct {
+	Value BriefingCursor
+	Set   bool
+}
+
+// IsSet returns true if OptBriefingCursor was set.
+func (o OptBriefingCursor) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBriefingCursor) Reset() {
+	var v BriefingCursor
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBriefingCursor) SetTo(v BriefingCursor) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBriefingCursor) Get() (v BriefingCursor, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBriefingCursor) Or(d BriefingCursor) BriefingCursor {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBriefingItemCategory returns new OptBriefingItemCategory with value set to v.
+func NewOptBriefingItemCategory(v BriefingItemCategory) OptBriefingItemCategory {
+	return OptBriefingItemCategory{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBriefingItemCategory is optional BriefingItemCategory.
+type OptBriefingItemCategory struct {
+	Value BriefingItemCategory
+	Set   bool
+}
+
+// IsSet returns true if OptBriefingItemCategory was set.
+func (o OptBriefingItemCategory) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBriefingItemCategory) Reset() {
+	var v BriefingItemCategory
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBriefingItemCategory) SetTo(v BriefingItemCategory) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBriefingItemCategory) Get() (v BriefingItemCategory, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBriefingItemCategory) Or(d BriefingItemCategory) BriefingItemCategory {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBriefingSummaryNotPushedReason returns new OptBriefingSummaryNotPushedReason with value set to v.
+func NewOptBriefingSummaryNotPushedReason(v BriefingSummaryNotPushedReason) OptBriefingSummaryNotPushedReason {
+	return OptBriefingSummaryNotPushedReason{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBriefingSummaryNotPushedReason is optional BriefingSummaryNotPushedReason.
+type OptBriefingSummaryNotPushedReason struct {
+	Value BriefingSummaryNotPushedReason
+	Set   bool
+}
+
+// IsSet returns true if OptBriefingSummaryNotPushedReason was set.
+func (o OptBriefingSummaryNotPushedReason) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBriefingSummaryNotPushedReason) Reset() {
+	var v BriefingSummaryNotPushedReason
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBriefingSummaryNotPushedReason) SetTo(v BriefingSummaryNotPushedReason) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBriefingSummaryNotPushedReason) Get() (v BriefingSummaryNotPushedReason, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBriefingSummaryNotPushedReason) Or(d BriefingSummaryNotPushedReason) BriefingSummaryNotPushedReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptDateTime returns new OptDateTime with value set to v.
 func NewOptDateTime(v time.Time) OptDateTime {
 	return OptDateTime{
@@ -1054,6 +3308,144 @@ func (o OptDateTime) Or(d time.Time) time.Time {
 	return d
 }
 
+// NewOptDeliverySummaryReadReceipts returns new OptDeliverySummaryReadReceipts with value set to v.
+func NewOptDeliverySummaryReadReceipts(v DeliverySummaryReadReceipts) OptDeliverySummaryReadReceipts {
+	return OptDeliverySummaryReadReceipts{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDeliverySummaryReadReceipts is optional DeliverySummaryReadReceipts.
+type OptDeliverySummaryReadReceipts struct {
+	Value DeliverySummaryReadReceipts
+	Set   bool
+}
+
+// IsSet returns true if OptDeliverySummaryReadReceipts was set.
+func (o OptDeliverySummaryReadReceipts) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDeliverySummaryReadReceipts) Reset() {
+	var v DeliverySummaryReadReceipts
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDeliverySummaryReadReceipts) SetTo(v DeliverySummaryReadReceipts) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDeliverySummaryReadReceipts) Get() (v DeliverySummaryReadReceipts, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDeliverySummaryReadReceipts) Or(d DeliverySummaryReadReceipts) DeliverySummaryReadReceipts {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptDeliverySummaryReason returns new OptDeliverySummaryReason with value set to v.
+func NewOptDeliverySummaryReason(v DeliverySummaryReason) OptDeliverySummaryReason {
+	return OptDeliverySummaryReason{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDeliverySummaryReason is optional DeliverySummaryReason.
+type OptDeliverySummaryReason struct {
+	Value DeliverySummaryReason
+	Set   bool
+}
+
+// IsSet returns true if OptDeliverySummaryReason was set.
+func (o OptDeliverySummaryReason) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDeliverySummaryReason) Reset() {
+	var v DeliverySummaryReason
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDeliverySummaryReason) SetTo(v DeliverySummaryReason) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDeliverySummaryReason) Get() (v DeliverySummaryReason, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDeliverySummaryReason) Or(d DeliverySummaryReason) DeliverySummaryReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptDisplayField returns new OptDisplayField with value set to v.
+func NewOptDisplayField(v DisplayField) OptDisplayField {
+	return OptDisplayField{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDisplayField is optional DisplayField.
+type OptDisplayField struct {
+	Value DisplayField
+	Set   bool
+}
+
+// IsSet returns true if OptDisplayField was set.
+func (o OptDisplayField) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDisplayField) Reset() {
+	var v DisplayField
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDisplayField) SetTo(v DisplayField) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDisplayField) Get() (v DisplayField, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDisplayField) Or(d DisplayField) DisplayField {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptInt returns new OptInt with value set to v.
 func NewOptInt(v int) OptInt {
 	return OptInt{
@@ -1094,6 +3486,98 @@ func (o OptInt) Get() (v int, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInt64 returns new OptInt64 with value set to v.
+func NewOptInt64(v int64) OptInt64 {
+	return OptInt64{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt64 is optional int64.
+type OptInt64 struct {
+	Value int64
+	Set   bool
+}
+
+// IsSet returns true if OptInt64 was set.
+func (o OptInt64) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt64) Reset() {
+	var v int64
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt64) SetTo(v int64) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt64) Get() (v int64, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptItemStatus returns new OptItemStatus with value set to v.
+func NewOptItemStatus(v ItemStatus) OptItemStatus {
+	return OptItemStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptItemStatus is optional ItemStatus.
+type OptItemStatus struct {
+	Value ItemStatus
+	Set   bool
+}
+
+// IsSet returns true if OptItemStatus was set.
+func (o OptItemStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptItemStatus) Reset() {
+	var v ItemStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptItemStatus) SetTo(v ItemStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptItemStatus) Get() (v ItemStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptItemStatus) Or(d ItemStatus) ItemStatus {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1238,6 +3722,44 @@ func (o OptURI) Or(d url.URL) url.URL {
 	return d
 }
 
+// 简报周期 [start, end)，带成员时区的偏移；timezone 为成员时区.
+// Ref: #/components/schemas/Period
+type Period struct {
+	Start    time.Time `json:"start"`
+	End      time.Time `json:"end"`
+	Timezone string    `json:"timezone"`
+}
+
+// GetStart returns the value of Start.
+func (s *Period) GetStart() time.Time {
+	return s.Start
+}
+
+// GetEnd returns the value of End.
+func (s *Period) GetEnd() time.Time {
+	return s.End
+}
+
+// GetTimezone returns the value of Timezone.
+func (s *Period) GetTimezone() string {
+	return s.Timezone
+}
+
+// SetStart sets the value of Start.
+func (s *Period) SetStart(val time.Time) {
+	s.Start = val
+}
+
+// SetEnd sets the value of End.
+func (s *Period) SetEnd(val time.Time) {
+	s.End = val
+}
+
+// SetTimezone sets the value of Timezone.
+func (s *Period) SetTimezone(val string) {
+	s.Timezone = val
+}
+
 // Ref: #/components/schemas/Problem
 type Problem struct {
 	Type   string    `json:"type"`
@@ -1336,6 +3858,91 @@ func (s *ProblemStatusCode) SetResponse(val Problem) {
 	s.Response = val
 }
 
+// Delivered 已送达（渠道已接受）；pushing 投递中；in_app
+// 推送失败，已在站内；not_pushed 未推送（empty 空简报且偏好不推送， not_bound
+// 成员无有效绑定，late 组装晚于当日 12:00）.
+// Ref: #/components/schemas/PushState
+type PushState string
+
+const (
+	PushStateDelivered PushState = "delivered"
+	PushStatePushing   PushState = "pushing"
+	PushStateInApp     PushState = "in_app"
+	PushStateNotPushed PushState = "not_pushed"
+)
+
+// AllValues returns all PushState values.
+func (PushState) AllValues() []PushState {
+	return []PushState{
+		PushStateDelivered,
+		PushStatePushing,
+		PushStateInApp,
+		PushStateNotPushed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PushState) MarshalText() ([]byte, error) {
+	switch s {
+	case PushStateDelivered:
+		return []byte(s), nil
+	case PushStatePushing:
+		return []byte(s), nil
+	case PushStateInApp:
+		return []byte(s), nil
+	case PushStateNotPushed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PushState) UnmarshalText(data []byte) error {
+	switch PushState(data) {
+	case PushStateDelivered:
+		*s = PushStateDelivered
+		return nil
+	case PushStatePushing:
+		*s = PushStatePushing
+		return nil
+	case PushStateInApp:
+		*s = PushStateInApp
+		return nil
+	case PushStateNotPushed:
+		*s = PushStateNotPushed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/SectionLimit
+type SectionLimit struct {
+	ObjectiveCode string `json:"objective_code"`
+	Limit         int    `json:"limit"`
+}
+
+// GetObjectiveCode returns the value of ObjectiveCode.
+func (s *SectionLimit) GetObjectiveCode() string {
+	return s.ObjectiveCode
+}
+
+// GetLimit returns the value of Limit.
+func (s *SectionLimit) GetLimit() int {
+	return s.Limit
+}
+
+// SetObjectiveCode sets the value of ObjectiveCode.
+func (s *SectionLimit) SetObjectiveCode(val string) {
+	s.ObjectiveCode = val
+}
+
+// SetLimit sets the value of Limit.
+func (s *SectionLimit) SetLimit(val int) {
+	s.Limit = val
+}
+
 // Ref: #/components/schemas/UnbindRequest
 type UnbindRequest struct {
 	ExpectedVersion int64 `json:"expected_version"`
@@ -1361,6 +3968,98 @@ func (s *UnbindRequest) SetExpectedVersion(val int64) {
 // SetReason sets the value of Reason.
 func (s *UnbindRequest) SetReason(val OptString) {
 	s.Reason = val
+}
+
+// Ref: #/components/schemas/UpdateBriefingPreferencesRequest
+type UpdateBriefingPreferencesRequest struct {
+	ExpectedVersion int64          `json:"expected_version"`
+	SendTime        ClockTime      `json:"send_time"`
+	Timezone        string         `json:"timezone"`
+	SendDays        []int          `json:"send_days"`
+	QuietStart      ClockTime      `json:"quiet_start"`
+	QuietEnd        ClockTime      `json:"quiet_end"`
+	PushEmpty       bool           `json:"push_empty"`
+	SectionLimits   []SectionLimit `json:"section_limits"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *UpdateBriefingPreferencesRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// GetSendTime returns the value of SendTime.
+func (s *UpdateBriefingPreferencesRequest) GetSendTime() ClockTime {
+	return s.SendTime
+}
+
+// GetTimezone returns the value of Timezone.
+func (s *UpdateBriefingPreferencesRequest) GetTimezone() string {
+	return s.Timezone
+}
+
+// GetSendDays returns the value of SendDays.
+func (s *UpdateBriefingPreferencesRequest) GetSendDays() []int {
+	return s.SendDays
+}
+
+// GetQuietStart returns the value of QuietStart.
+func (s *UpdateBriefingPreferencesRequest) GetQuietStart() ClockTime {
+	return s.QuietStart
+}
+
+// GetQuietEnd returns the value of QuietEnd.
+func (s *UpdateBriefingPreferencesRequest) GetQuietEnd() ClockTime {
+	return s.QuietEnd
+}
+
+// GetPushEmpty returns the value of PushEmpty.
+func (s *UpdateBriefingPreferencesRequest) GetPushEmpty() bool {
+	return s.PushEmpty
+}
+
+// GetSectionLimits returns the value of SectionLimits.
+func (s *UpdateBriefingPreferencesRequest) GetSectionLimits() []SectionLimit {
+	return s.SectionLimits
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *UpdateBriefingPreferencesRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// SetSendTime sets the value of SendTime.
+func (s *UpdateBriefingPreferencesRequest) SetSendTime(val ClockTime) {
+	s.SendTime = val
+}
+
+// SetTimezone sets the value of Timezone.
+func (s *UpdateBriefingPreferencesRequest) SetTimezone(val string) {
+	s.Timezone = val
+}
+
+// SetSendDays sets the value of SendDays.
+func (s *UpdateBriefingPreferencesRequest) SetSendDays(val []int) {
+	s.SendDays = val
+}
+
+// SetQuietStart sets the value of QuietStart.
+func (s *UpdateBriefingPreferencesRequest) SetQuietStart(val ClockTime) {
+	s.QuietStart = val
+}
+
+// SetQuietEnd sets the value of QuietEnd.
+func (s *UpdateBriefingPreferencesRequest) SetQuietEnd(val ClockTime) {
+	s.QuietEnd = val
+}
+
+// SetPushEmpty sets the value of PushEmpty.
+func (s *UpdateBriefingPreferencesRequest) SetPushEmpty(val bool) {
+	s.PushEmpty = val
+}
+
+// SetSectionLimits sets the value of SectionLimits.
+func (s *UpdateBriefingPreferencesRequest) SetSectionLimits(val []SectionLimit) {
+	s.SectionLimits = val
 }
 
 // Ref: #/components/schemas/VersionRequest

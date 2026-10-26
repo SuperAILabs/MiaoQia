@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	identityapi "github.com/superailabs/miaoqia/services/contracts/apis/identity"
 	"github.com/superailabs/miaoqia/services/contracts/events"
 	"github.com/superailabs/miaoqia/services/internal/testissuer"
+	"github.com/superailabs/miaoqia/services/kernel/binding"
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/internal/testenv"
@@ -34,6 +36,8 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/channels"
 	chapi "github.com/superailabs/miaoqia/services/subsystems/channels/api"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/api/wecomtest"
+	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
+	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway"
 	"github.com/superailabs/miaoqia/services/subsystems/identity"
 	idapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
@@ -167,7 +171,16 @@ func TestChannelBindingAndSSO(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer chnApp.Close()
-	env := &runtime.Env{DB: chnApp, Bindings: bindings, Log: quiet, Cell: "cell-01", Config: func(string) string { return "" }}
+	// 第5段的简报依赖在本测试中不使用：以失败关闭的替身登记（调用一律不可用）
+	bindings.Provide(detectionapi.BriefingBinding, detectionapi.Briefing(unavailableBriefing{}))
+	bindings.Provide(ccapi.AccessBinding, ccapi.ObjectiveAccess(unavailableContext{}))
+	bindings.Provide(ccapi.ActivePoliciesBinding, ccapi.ActivePolicies(unavailableContext{}))
+	env := &runtime.Env{DB: chnApp, Bindings: bindings, Log: quiet, Cell: "cell-01", Config: func(k string) string {
+		if k == "SIGNING_KEY" {
+			return base64.StdEncoding.EncodeToString([]byte("channels-test-signing-key-0123456789"))
+		}
+		return ""
+	}}
 	if err := module.Start(ctx, env); err != nil {
 		t.Fatal(err)
 	}
@@ -1513,4 +1526,29 @@ func TestChannelBindingAndSSO(t *testing.T) {
 			t.Fatalf("事件 %d：%v", n, rows.Err())
 		}
 	})
+}
+
+// unavailableBriefing 与 unavailableContext 是失败关闭的替身：一律返回暂时性错误。
+type unavailableBriefing struct{}
+
+func (unavailableBriefing) BriefingSignals(context.Context, string, time.Time, time.Time) (*detectionapi.BriefingSignalPage, error) {
+	return nil, binding.ErrTransient
+}
+func (unavailableBriefing) SignalCards(context.Context, []string) (*detectionapi.SignalCardList, error) {
+	return nil, binding.ErrTransient
+}
+func (unavailableBriefing) Triage(context.Context, string, string, *detectionapi.TriageRequest) (*detectionapi.TriageResult, error) {
+	return nil, binding.ErrTransient
+}
+func (unavailableBriefing) Undo(context.Context, string, *detectionapi.UndoRequest) (*detectionapi.UndoResult, error) {
+	return nil, binding.ErrTransient
+}
+
+type unavailableContext struct{}
+
+func (unavailableContext) Access(context.Context, string, []string) ([]string, error) {
+	return nil, binding.ErrTransient
+}
+func (unavailableContext) ActivePolicies(context.Context, int, string) (*ccapi.ActivePolicyList, error) {
+	return nil, binding.ErrTransient
 }

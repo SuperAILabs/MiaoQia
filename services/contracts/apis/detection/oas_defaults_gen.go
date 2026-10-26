@@ -13,3 +13,11 @@ func (s *TriageRequest) setDefaults() {
 		s.Channel.SetTo(val)
 	}
 }
+
+// setDefaults set default value of fields.
+func (s *UndoRequest) setDefaults() {
+	{
+		val := UndoRequestChannel("web")
+		s.Channel.SetTo(val)
+	}
+}
