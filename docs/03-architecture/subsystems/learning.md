@@ -72,6 +72,8 @@
 - **口径**：按上表 `GetFeedbackSummary` 的口径，窗口为发现时间近 30 天；样本为相关、不相关与分歧之和，少于 20 时不给比例（`sample_sufficient` 为假）。原因分布按不相关信号计数，并按应用领域包反馈原因的 `relates` 给出相关的规则、参数与画像字段提示；
 - **缺省与缺口**：信号的内容版本只从 `triaged` 事件得知（`signal.updated` 尚未发布），信号更新后在有人基于新版本处理之前，旧版本反馈仍按当前版本计入；`learning.feedback.recorded.v1` 未发布。
 
+**实现状况（PRD 第6段结果进入评估）**：消费 `pursuit.outcome.recorded.v1`（`learning.pursuit-outcomes`），以结果记录标识幂等写入本租户的结果集 `lrn_outcomes`（结果、原因、金额条目、贡献关系、来源信号与被取代的记录）；有获知时间的记为时点评估（`point_in_time`），缺失的只进入事后统计（`post_hoc`）。结果不改变策略、信号或公共事实；评估报告中的结果汇总尚未实现。
+
 ## 6. 事件
 
 **发布**：`learning.feedback.recorded.v1`、`learning.miss.diagnosed.v1`（随漏报功能实现）、`learning.simulation.completed.v1`、`learning.evaluation.completed.v1`、`learning.drift.detected.v1`、`learning.policy.proposal_created.v1`。

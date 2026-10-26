@@ -51,6 +51,7 @@ import (
 	idremote "github.com/superailabs/miaoqia/services/subsystems/identity/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/learning"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/api/datasettest"
+	pursuitapi "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 )
 
 // flakyBriefing 是 channels 看到的 detection 简报接口（经 mTLS 内部端口的远程绑定）：可注入取数失败与“已提交而响应丢失”。
@@ -309,6 +310,8 @@ func TestBriefingQuickActions(t *testing.T) {
 	wc := wecomtest.New()
 	coverage := &fakeCoverage{interrupted: map[string]time.Time{}}
 	rights := &fakeRights{override: map[string]map[string]chapi.FieldRight{}}
+	// 第6段：channels 依赖 pursuit 的渠道内动作；本用例不开启卡片“跟进”入口，以未接入的实现占位
+	bindings.Provide(pursuitapi.ActionsBinding, pursuitapi.Actions(unwiredPursuits{}))
 	chnModule := channels.ModuleWith(channels.Adapters{WeCom: wc, Coverage: coverage, Rights: rights, Now: clock.Now})
 	chns := start(chnModule)
 	chnModule.Routes(chns.env, public, internal)

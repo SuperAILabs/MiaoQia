@@ -103,6 +103,11 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				Topics: []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "detection")},
 				Handlers: map[string]consumer.Handler{"detection.signal.detected.v1": svc.SignalDetected,
 					"detection.signal.triaged.v1": svc.SignalTriaged},
+			}, {
+				// 跟进结果进入本租户的评估（PRD 第6段 F7 第5条）
+				Name: "learning.pursuit-outcomes", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+				Topics:   []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "pursuit")},
+				Handlers: map[string]consumer.Handler{"pursuit.outcome.recorded.v1": svc.OutcomeRecorded},
 			}}
 		},
 	}

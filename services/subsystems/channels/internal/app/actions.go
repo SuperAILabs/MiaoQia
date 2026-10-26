@@ -12,11 +12,13 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	detapi "github.com/superailabs/miaoqia/services/contracts/apis/detection"
+	purapi "github.com/superailabs/miaoqia/services/contracts/apis/pursuit"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/api"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/internal/domain"
 	detection "github.com/superailabs/miaoqia/services/subsystems/detection/api"
+	pursuitapi "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 )
 
 // 卡片上的快捷动作（PRD 第5段 F4、F5、第9节）。回调先验签、核对时间窗，再校验动作令牌的签名（被篡改或伪造的令牌在任何读取之前拒绝）
@@ -254,6 +256,10 @@ type actionResult struct {
 	Status   string          `json:"status,omitempty"`
 	After    string          `json:"status_after,omitempty"`
 	Current  json.RawMessage `json:"current,omitempty"`
+	// 卡片“跟进”（PRD 第6段 F1 第1条）：created / existing_linked / existing 的跟进与负责人（点击者不能查看已有跟进时只给负责人）
+	Pursuit   string `json:"pursuit,omitempty"`
+	PursuitID string `json:"pursuit_id,omitempty"`
+	Owner     string `json:"owner,omitempty"`
 }
 
 // incrementAttempt 为一次尝试分配序号（幂等键 = 令牌标识 + 序号；每次尝试一个新键）。
@@ -336,6 +342,9 @@ func (s *Service) execute(sctx, uctx context.Context, j actionJob, tok *actionTo
 		s.reply(sctx, j, nil, "暂时没有成功，可再点一次或打开 Web 处理", s.viewButton(sctx, tok))
 		return "transient"
 	}
+	if tok.action == "pursue" {
+		return s.executePursue(sctx, uctx, j, tok)
+	}
 	var fixed *actionResult
 	var triage *detection.TriageRequest
 	if tok.action != "undo" {
@@ -395,6 +404,51 @@ func (s *Service) execute(sctx, uctx context.Context, j actionJob, tok *actionTo
 	return fixed.Result
 }
 
+// executePursue 执行卡片上的“跟进”：以点击者的用户主体调用 pursuit 的渠道内创建（负责人为点击者本人、没有任务），授权由 pursuit
+// 按点击者此刻在目标上的 can_assign 判断（channels 不另作判断）。操作标识为令牌标识，每次尝试一个新的幂等键；pursuit 的确定失败
+// （4xx，例如 forbidden、signal_updated、signal_closed）固定在令牌上，暂时失败不作废令牌。
+func (s *Service) executePursue(sctx, uctx context.Context, j actionJob, tok *actionToken) string {
+	if s.Pursuits == nil {
+		s.transient(sctx, j, tok)
+		return "transient"
+	}
+	req := &pursuitapi.CreatePursuitRequest{OperationID: purapi.OperationID(tok.id), ObjectiveID: purapi.ObjectiveID(tok.objective),
+		SignalID: purapi.NewOptSignalID(purapi.SignalID(tok.signal)), SeenContentVersion: purapi.NewOptInt64(tok.content),
+		Collaborators: []purapi.Subject{}, Channel: purapi.NewOptChannel(purapi.ChannelWecom)}
+	var fixed *actionResult
+	for i := 0; fixed == nil && i < domain.MaxActionAttempts; i++ {
+		n, err := s.incrementAttempt(sctx, tok.id)
+		if err != nil {
+			break
+		}
+		res, err := s.Pursuits.CreatePursuit(uctx, fmt.Sprintf("%s-%d", tok.id, n), req)
+		switch {
+		case err == nil:
+			fixed = &actionResult{Result: "succeeded", Pursuit: string(res.Result)}
+			if res.Result == purapi.CommandResultResultExisting {
+				fixed.Result = "no_change"
+			}
+			if p, ok := res.Pursuit.Get(); ok {
+				fixed.PursuitID, fixed.Owner = string(p.ID), string(p.Owner)
+			} else if o, ok := res.ExistingOwner.Get(); ok {
+				fixed.Owner = string(o)
+			}
+		case !dependencyTransient(err):
+			fixed = &actionResult{Result: "failed", Code: "failed"}
+			var pe *pursuitapi.Error
+			if errors.As(err, &pe) {
+				fixed.Code = pe.Code
+			}
+		}
+	}
+	if fixed == nil {
+		s.transient(sctx, j, tok)
+		return "transient"
+	}
+	s.settle(sctx, uctx, j, tok, fixed)
+	return fixed.Result
+}
+
 func (s *Service) transient(sctx context.Context, j actionJob, tok *actionToken) {
 	err := s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
 		return recordAs(ctx, tx, "channels.action.transient", tok.id, "failed", "wecom;operation="+tok.id)
@@ -432,6 +486,9 @@ func (s *Service) settle(sctx, uctx context.Context, j actionJob, tok *actionTok
 		}
 		if res.Result == "failed" {
 			data["code"] = res.Code
+		}
+		if res.PursuitID != "" {
+			data["pursuit_id"] = res.PursuitID
 		}
 		if _, err := writer.Append(ctx, tx, outbox.Event{Type: ActionExecuted, Subject: tok.id, PartitionKey: tok.signal, Data: data}); err != nil {
 			return err
@@ -476,6 +533,9 @@ func (s *Service) resultText(tok *actionToken, res *actionResult, current, objec
 			}
 		}
 		return code
+	}
+	if tok.action == "pursue" {
+		return pursueText(res)
 	}
 	switch res.Result {
 	case "failed":
@@ -523,6 +583,34 @@ func (s *Service) resultText(tok *actionToken, res *actionResult, current, objec
 	return text
 }
 
+// pursueText 是卡片“跟进”的结果文字（PRD 第6段 F1 第1、4条）。
+func pursueText(res *actionResult) string {
+	switch res.Result {
+	case "failed":
+		switch res.Code {
+		case "forbidden", "objective_not_found", "signal_not_found":
+			return "你没有在该目标上创建跟进的权限"
+		case "signal_updated":
+			return "这条信号已更新，请查看新卡片后再跟进"
+		case "signal_closed":
+			return "该信号已关闭，不能创建跟进"
+		case "not_applicable":
+			return "该信号不能创建跟进"
+		}
+		return "跟进未创建（" + res.Code + "）"
+	}
+	switch res.Pursuit {
+	case "existing_linked":
+		return "该对象已有进行中的跟进（负责人 " + res.Owner + "），已把这条信号关联到它"
+	case "existing":
+		if res.Owner != "" {
+			return "该对象已有进行中的跟进（负责人 " + res.Owner + "）；无变化"
+		}
+		return "该对象已有进行中的跟进；无变化"
+	}
+	return "已创建跟进，负责人为你；可在 Web 中添加任务与截止时间"
+}
+
 // replyResult 回写卡片：渠道支持时只更新点击者本人的这张卡片，否则（或更新失败时）另发一条结果消息。成功的反馈带“撤销”（10 分钟）；
 // SIGNAL_UPDATED 另发一张按新版本渲染、带新令牌的卡片。
 func (s *Service) replyResult(sctx, uctx context.Context, j actionJob, tok *actionToken, res *actionResult, replayed bool) {
@@ -547,7 +635,8 @@ func (s *Service) replyResult(sctx, uctx context.Context, j actionJob, tok *acti
 		text += "（已于 " + clock(*tok.executedAt, tenantLocation(), nil, "01-02 15:04") + " 执行）"
 	}
 	buttons := s.viewButton(sctx, tok)
-	if !replayed && res.Result == "succeeded" && tok.action != "undo" {
+	// “跟进”没有渠道内撤销（撤销创建在 Web 的跟进详情中，10 分钟内由创建者执行）
+	if !replayed && res.Result == "succeeded" && tok.action != "undo" && tok.action != "pursue" {
 		m := &minter{s: s, tenant: tenantOf(sctx), recipient: tok.recipient, now: s.businessNow()}
 		if undo, err := m.token(tok.signal, tok.objective, "undo", "", tok.card, tok.id, 0, domain.UndoTokenTTL); err == nil {
 			if err := s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
@@ -623,6 +712,7 @@ func (s *Service) freshCard(sctx, uctx context.Context, j actionJob, tok *action
 		}
 	}
 	m := &minter{s: s, tenant: tenantOf(sctx), recipient: tok.recipient, now: s.businessNow()}
+	m.pursue = s.pursueGrants(sctx, m.tenant, tok.recipient, []string{tok.objective})
 	msg, err := m.signalCard(code, title, tok.objective, it, c.ViewerCanFeedback, prefs)
 	if err != nil {
 		return

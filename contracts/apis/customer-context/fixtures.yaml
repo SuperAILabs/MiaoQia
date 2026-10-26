@@ -47,6 +47,27 @@ fixtures:
     - op: add
       path: /allowed/-
       value: can_feedback
+  - name: 分派跟进关系与目标的单元、模板和状态（第6段）
+    valid: true
+    patch:
+    - op: add
+      path: /allowed/-
+      value: can_assign
+    - op: add
+      path: /org_unit_id
+      value: root
+    - op: add
+      path: /template_id
+      value: APP-TENDER.A02
+    - op: add
+      path: /state
+      value: active
+  - name: 未知的目标状态
+    valid: false
+    patch:
+    - op: add
+      path: /state
+      value: archived
   - name: 允许列表必填
     valid: false
     patch:
