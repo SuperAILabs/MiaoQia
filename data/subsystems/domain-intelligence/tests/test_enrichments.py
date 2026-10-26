@@ -80,7 +80,7 @@ def test_real_console_register_apply_retry_disabled_and_no_config(plane):
     old_project = _projects(plane)[0]
     cutoff = datetime.now(timezone.utc)
     env = dict(os.environ, MIAOQIA_DOMAIN_INTELLIGENCE_DB_DSN=plane[4]["app"],
-        MIAOQIA_EVIDENCE_DB_DSN=str(plane[0].engine.url).replace("postgresql+psycopg:", "postgresql:"),
+        MIAOQIA_EVIDENCE_DB_DSN=plane[0].engine.url.render_as_string(hide_password=False).replace("postgresql+psycopg:", "postgresql:"),
         MIAOQIA_EVIDENCE_OBJECT_STORE_DIR=str(plane[2].store.root))
     args = [str(Path(sys.executable).parent / "mq-notice-enrich"), "--recipe", BUYER, notice["id"]]
     denied = subprocess.run(args, env=env, capture_output=True, text=True)
@@ -279,7 +279,7 @@ def test_pre_enrichment_migration_upgrade_preserves_existing_pair(plane):
     from miaoqia.kernel import db
     configs = []
     for migrations, owner, version in ((DOM, plane[4]["owner"], "0002"),
-        (EVD, str(plane[0].engine.url).replace("postgresql+psycopg:", "postgresql:").replace("_app:", "_owner:"), "0001")):
+        (EVD, plane[0].engine.url.render_as_string(hide_password=False).replace("postgresql+psycopg:", "postgresql:").replace("_app:", "_owner:"), "0001")):
         cfg = Config()
         cfg.set_main_option("script_location", migrations)
         cfg.set_main_option("sqlalchemy.url", db._url(owner))
