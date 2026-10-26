@@ -40,6 +40,7 @@ docs/
 │   ├── 11-policy-dsl.md
 │   ├── 12-capacity-plan.md
 │   ├── 13-contract-readiness.md
+│   ├── 14-web-application.md     Web 与 H5 专项设计
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
