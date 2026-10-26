@@ -41,3 +41,34 @@ func (l localApprovals) CloseApproval(ctx context.Context, id string, req *Close
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "CloseApproval", Idempotent: true},
 		func(ctx context.Context) (*ApprovalRequest, error) { return l.impl.CloseApproval(ctx, id, req) })
 }
+
+// ApprovalReaderBinding 是审批请求读取接口在绑定表中的名称（channels 简报的“待我处理”区与审批链接，PRD 第5段 F1 第8条、F5）。
+const ApprovalReaderBinding = "identity.ApprovalReader"
+
+// 审批读取的契约类型。
+type (
+	ApprovalList        = identityapi.ApprovalList
+	ListApprovalsParams = identityapi.ListApprovalsParams
+)
+
+// ApprovalReader 以请求上下文中的用户主体读取审批请求，可见性与公开接口 listApprovals、getApproval 相同：申请人本人，或此刻对
+// 请求资源有批准关系的成员（逐个资源实时判断）；不可见与不存在同为 404。只读、幂等。
+type ApprovalReader interface {
+	ListApprovals(ctx context.Context, params ListApprovalsParams) (*ApprovalList, error)
+	GetApproval(ctx context.Context, id string) (*ApprovalRequest, error)
+}
+
+// LocalApprovalReader 把本地实现包装为经调用管线的接口（与远程绑定行为一致）。
+func LocalApprovalReader(impl ApprovalReader) ApprovalReader { return localApprovalReader{impl} }
+
+type localApprovalReader struct{ impl ApprovalReader }
+
+func (l localApprovalReader) ListApprovals(ctx context.Context, params ListApprovalsParams) (*ApprovalList, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ListApprovals", Idempotent: true},
+		func(ctx context.Context) (*ApprovalList, error) { return l.impl.ListApprovals(ctx, params) })
+}
+
+func (l localApprovalReader) GetApproval(ctx context.Context, id string) (*ApprovalRequest, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetApproval", Idempotent: true},
+		func(ctx context.Context) (*ApprovalRequest, error) { return l.impl.GetApproval(ctx, id) })
+}

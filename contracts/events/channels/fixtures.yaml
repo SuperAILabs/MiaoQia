@@ -73,3 +73,105 @@ fixtures:
     - op: replace
       path: /state
       value: unbound
+- event: channels.delivery.sent.v1
+  base:
+    delivery_id: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    briefing_id: brf_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: wecom
+    kind: briefing
+    attempt: 1
+    messages: 4
+    dropped_sections: 0
+    accepted_at: '2026-10-20T07:30:05+08:00'
+  cases:
+  - name: 重新推送并删除失去访问的区
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: resend
+    - op: replace
+      path: /dropped_sections
+      value: 1
+  - name: 至多7条消息
+    valid: false
+    patch:
+    - op: replace
+      path: /messages
+      value: 8
+  - name: 不夹带条目内容
+    valid: false
+    patch:
+    - op: add
+      path: /items
+      value: [某管网工程]
+- event: channels.delivery.failed.v1
+  base:
+    delivery_id: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    briefing_id: brf_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: wecom
+    kind: briefing
+    attempt: 2
+    reason: channel_error
+    final: false
+  cases:
+  - name: 到截止时间停止重试
+    valid: true
+    patch:
+    - op: replace
+      path: /reason
+      value: cutoff
+    - op: replace
+      path: /final
+      value: true
+  - name: 未知原因
+    valid: false
+    patch:
+    - op: replace
+      path: /reason
+      value: timeout
+- event: channels.action.executed.v1
+  base:
+    operation_id: atk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    token_id: atk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    action: irrelevant
+    result: succeeded
+    parts:
+      feedback: changed
+      status: unchanged
+    channel: wecom
+    executed_at: '2026-10-20T08:15:00+08:00'
+  cases:
+  - name: 确定失败带错误代码
+    valid: true
+    patch:
+    - op: replace
+      path: /result
+      value: failed
+    - op: add
+      path: /code
+      value: signal_updated
+    - op: remove
+      path: /parts
+  - name: 失败缺少错误代码
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: failed
+  - name: 成功不带错误代码
+    valid: false
+    patch:
+    - op: add
+      path: /code
+      value: conflict
+  - name: 不含反馈原因
+    valid: false
+    patch:
+    - op: add
+      path: /reasons
+      value: [CATEGORY_MISMATCH]

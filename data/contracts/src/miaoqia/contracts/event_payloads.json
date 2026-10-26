@@ -476,6 +476,214 @@
       }
     },
     {
+      "event": "channels.delivery.sent.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T07:30:05+08:00",
+        "attempt": 1,
+        "briefing_id": "brf_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "delivery_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "dropped_sections": 0,
+        "kind": "briefing",
+        "messages": 4,
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.delivery.sent.v1",
+      "name": "重新推送并删除失去访问的区",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T07:30:05+08:00",
+        "attempt": 1,
+        "briefing_id": "brf_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "delivery_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "dropped_sections": 1,
+        "kind": "resend",
+        "messages": 4,
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.delivery.sent.v1",
+      "name": "至多7条消息",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T07:30:05+08:00",
+        "attempt": 1,
+        "briefing_id": "brf_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "delivery_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "dropped_sections": 0,
+        "kind": "briefing",
+        "messages": 8,
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.delivery.sent.v1",
+      "name": "不夹带条目内容",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T07:30:05+08:00",
+        "attempt": 1,
+        "briefing_id": "brf_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "delivery_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "dropped_sections": 0,
+        "items": [
+          "某管网工程"
+        ],
+        "kind": "briefing",
+        "messages": 4,
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.delivery.failed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "attempt": 2,
+        "briefing_id": "brf_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "delivery_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "final": false,
+        "kind": "briefing",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.delivery.failed.v1",
+      "name": "到截止时间停止重试",
+      "valid": true,
+      "value": {
+        "attempt": 2,
+        "briefing_id": "brf_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "delivery_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "final": true,
+        "kind": "briefing",
+        "reason": "cutoff",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.delivery.failed.v1",
+      "name": "未知原因",
+      "valid": false,
+      "value": {
+        "attempt": 2,
+        "briefing_id": "brf_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "channel": "wecom",
+        "delivery_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "final": false,
+        "kind": "briefing",
+        "reason": "timeout",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.action.executed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "action": "irrelevant",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": "changed",
+          "status": "unchanged"
+        },
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.action.executed.v1",
+      "name": "确定失败带错误代码",
+      "valid": true,
+      "value": {
+        "action": "irrelevant",
+        "channel": "wecom",
+        "code": "signal_updated",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "failed",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.action.executed.v1",
+      "name": "失败缺少错误代码",
+      "valid": false,
+      "value": {
+        "action": "irrelevant",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": "changed",
+          "status": "unchanged"
+        },
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "failed",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.action.executed.v1",
+      "name": "成功不带错误代码",
+      "valid": false,
+      "value": {
+        "action": "irrelevant",
+        "channel": "wecom",
+        "code": "conflict",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": "changed",
+          "status": "unchanged"
+        },
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.action.executed.v1",
+      "name": "不含反馈原因",
+      "valid": false,
+      "value": {
+        "action": "irrelevant",
+        "channel": "wecom",
+        "executed_at": "2026-10-20T08:15:00+08:00",
+        "operation_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "parts": {
+          "feedback": "changed",
+          "status": "unchanged"
+        },
+        "reasons": [
+          "CATEGORY_MISMATCH"
+        ],
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "result": "succeeded",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "token_id": "atk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
       "event": "customer_context.profile.updated.v1",
       "name": "base",
       "valid": true,
@@ -3675,6 +3883,114 @@
       ],
       "type": "object"
     },
+    "channels.action.executed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "code"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "result": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "code"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "relevant",
+            "irrelevant",
+            "undo"
+          ],
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "code": {
+          "description": "确定失败的稳定错误代码（forbidden、signal_updated、signal_closed、conflict、not_applicable、signal_not_found）",
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "executed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^atk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "parts": {
+          "additionalProperties": false,
+          "properties": {
+            "feedback": {
+              "enum": [
+                "changed",
+                "unchanged",
+                "not_applicable"
+              ],
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "changed",
+                "unchanged",
+                "not_applicable"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "succeeded",
+            "no_change",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "token_id": {
+          "pattern": "^atk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "token_id",
+        "recipient",
+        "signal_id",
+        "action",
+        "result",
+        "channel",
+        "executed_at"
+      ],
+      "type": "object"
+    },
     "channels.binding.changed.v1": {
       "additionalProperties": false,
       "allOf": [
@@ -3754,6 +4070,124 @@
         "subject",
         "version",
         "state"
+      ],
+      "type": "object"
+    },
+    "channels.delivery.failed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "briefing_id": {
+          "pattern": "^brf_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "delivery_id": {
+          "pattern": "^dlv_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "final": {
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "briefing",
+            "resend"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "channel_error",
+            "cutoff",
+            "member_inactive",
+            "binding_inactive",
+            "channel_not_enabled"
+          ],
+          "type": "string"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delivery_id",
+        "briefing_id",
+        "recipient",
+        "channel",
+        "kind",
+        "attempt",
+        "reason",
+        "final"
+      ],
+      "type": "object"
+    },
+    "channels.delivery.sent.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "attempt": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "briefing_id": {
+          "pattern": "^brf_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "delivery_id": {
+          "pattern": "^dlv_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "dropped_sections": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "briefing",
+            "resend"
+          ],
+          "type": "string"
+        },
+        "messages": {
+          "description": "本次投递的消息数（一张总览卡与至多6张信号卡片）",
+          "maximum": 7,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delivery_id",
+        "briefing_id",
+        "recipient",
+        "channel",
+        "kind",
+        "attempt",
+        "messages",
+        "dropped_sections",
+        "accepted_at"
       ],
       "type": "object"
     },

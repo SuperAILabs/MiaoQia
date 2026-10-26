@@ -36,6 +36,34 @@ type Handler interface {
 	//
 	// POST /v1/channels/installations/{installationID}/disable
 	DisableInstallation(ctx context.Context, req *VersionRequest, params DisableInstallationParams) (*Installation, error)
+	// GetBriefing implements getBriefing operation.
+	//
+	// 只属本人：他人的、其他租户的与不存在的简报同为 404
+	// briefing_not_found（管理员也看不到他人的简报内容）。条目内容为组装时的快照
+	// （content_as_of 为组装时间）；每条的当前处理状态经 detection
+	// 以调用者的权限读取，按“当前”叠加（status_as_of）。读取时逐区 再检查
+	// can_view_signals：已失去访问的区 state 为
+	// no_permission，不返回条目与标题；授权不可用时 503。.
+	//
+	// GET /v1/channels/briefings/{briefingID}
+	GetBriefing(ctx context.Context, params GetBriefingParams) (*Briefing, error)
+	// GetBriefingPreferences implements getBriefingPreferences operation.
+	//
+	// 有效成员读取本人的简报偏好；从未保存时返回缺省值（version 0）：工作日
+	// 07:30、租户时区 Asia/Shanghai、安静时段 21:00–07:00、
+	// 空简报不推送、各目标区条数取应用领域包的缺省值。effective_from
+	// 为当前版本开始生效的周期起点（修改从下一期生效）。.
+	//
+	// GET /v1/channels/briefing-preferences
+	GetBriefingPreferences(ctx context.Context) (*BriefingPreferences, error)
+	// GetDeliveryStats implements getDeliveryStats operation.
+	//
+	// 需要 can_manage_members（不要求强认证）。按投递状态与失败原因统计本租户
+	// since 起（默认 7 天内）的投递次数与空简报、部分简报期数，
+	// 不含任何简报条目、标题或收件人。.
+	//
+	// GET /v1/channels/delivery-stats
+	GetDeliveryStats(ctx context.Context, params GetDeliveryStatsParams) (*DeliveryStats, error)
 	// InstallChannel implements installChannel operation.
 	//
 	// 管理员 + 强认证。创建或重新开始本租户在该渠道的安装：状态
@@ -59,6 +87,16 @@ type Handler interface {
 	//
 	// GET /v1/channels/bindings
 	ListBindings(ctx context.Context, params ListBindingsParams) (*BindingList, error)
+	// ListBriefings implements listBriefings operation.
+	//
+	// 只列出调用者本人的简报，按周期终点新到旧；每页至多 limit
+	// 条（默认且至多 30）。还有更早的简报时给出 next_cursor：游标是 channels
+	// 签发的不透明值（整个位置载荷连同其 HMAC-SHA256
+	// 签名，绑定租户与调用者），签名不符或绑定不一致时 400 invalid_cursor，
+	// 在任何读取之前判断。每期显示周期、组装时间、各区条目数与推送状态。.
+	//
+	// GET /v1/channels/briefings
+	ListBriefings(ctx context.Context, params ListBriefingsParams) (*BriefingList, error)
 	// ListInstallations implements listInstallations operation.
 	//
 	// 需要
@@ -67,6 +105,19 @@ type Handler interface {
 	//
 	// GET /v1/channels/installations
 	ListInstallations(ctx context.Context) (*InstallationList, error)
+	// OpenBriefingLink implements openBriefingLink operation.
+	//
+	// 链接只指向对象（信号、完整简报、审批），不携带登录身份，7
+	// 天有效。以当前登录成员打开：链接发给的是另一成员时 409 account_mismatch
+	// （不切换账号）；过期时 410
+	// card_link_expired（登录后按当前权限打开同一对象）；链接不存在、属于其他租户、对象不存在或当前成员
+	// 无权查看时统一为 404
+	// content_unavailable，不返回标题、目标归属或负责人。授权按对象所有者：信号经
+	// detection（所属目标的 can_view_signals），审批经
+	// identity（申请人或批准人），简报为本人。打开后的页面按第4段计量对象查看，链接本身不计量。.
+	//
+	// POST /v1/channels/briefing-links:open
+	OpenBriefingLink(ctx context.Context, req *OpenCardLinkRequest) (*BriefingLinkTarget, error)
 	// OpenCardLink implements openCardLink operation.
 	//
 	// 以当前登录成员打开卡片上的短时授权链接，链接只指向对象，不携带登录身份。链接不存在、属于其他租户、对象不存在或当前成员
@@ -94,6 +145,17 @@ type Handler interface {
 	//
 	// POST /v1/channels/bindings:prepare
 	PrepareBinding(ctx context.Context, req *BindingLinkRequest) (*BindingPreview, error)
+	// ResendBriefing implements resendBriefing operation.
+	//
+	// 本人对当日一期（周期终点在成员时区的今天）发起新的投递，不重新组装简报；往期为
+	// 409 resend_not_allowed。推送前按当前状态再检查：
+	// 成员有效、绑定为“已绑定”（否则 409 not_bound）、各目标的
+	// can_view_signals（失去访问的区不发送）。新卡片使用新的动作令牌，
+	// 新令牌上的点击是新的操作。同一 Idempotency-Key
+	// 重放返回首次的投递。写入审计。.
+	//
+	// POST /v1/channels/briefings/{briefingID}/resend
+	ResendBriefing(ctx context.Context, params ResendBriefingParams) (*DeliverySummary, error)
 	// UnbindAccount implements unbindAccount operation.
 	//
 	// 绑定的成员本人可解绑（不要求强认证）；其他调用者须为管理员 +
@@ -106,6 +168,19 @@ type Handler interface {
 	//
 	// POST /v1/channels/bindings/{bindingID}/unbind
 	UnbindAccount(ctx context.Context, req *UnbindRequest, params UnbindAccountParams) (*Binding, error)
+	// UpdateBriefingPreferences implements updateBriefingPreferences operation.
+	//
+	// 按 expected_version 并发控制（从未保存时为 0；不一致时 409
+	// version_conflict，即“偏好已在其他设备修改”）。发送时间为 06:00–10:00
+	// 的整点或半点；时区为 IANA 时区名；发送日为
+	// 1（周一）–7（周日）的非空集合；安静时段为整点或半点；各目标区条数须在应用领域包
+	// 声明的范围内（A02 为 5–20），否则 422
+	// invalid_preferences。新版本从“修改时所在周期”的下一期生效：effective_from
+	// 为旧偏好下
+	// 修改时刻之后的第一个计划发送时间，新旧周期首尾相接。写入偏好版本与审计。.
+	//
+	// PUT /v1/channels/briefing-preferences
+	UpdateBriefingPreferences(ctx context.Context, req *UpdateBriefingPreferencesRequest, params UpdateBriefingPreferencesParams) (*BriefingPreferences, error)
 	// VerifyInstallation implements verifyInstallation operation.
 	//
 	// 管理员 + 强认证。安装须为

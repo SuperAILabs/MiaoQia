@@ -15,6 +15,7 @@
 //	MIAOQIA_HTTP_ADDR / MIAOQIA_INTERNAL_ADDR   对外与内部监听地址，默认 :8090 / :8091
 //	MIAOQIA_GATEWAY_ISSUER / MIAOQIA_GATEWAY_AUDIENCE   HTTPS Keycloak realm与资源受众
 //	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
+//	MIAOQIA_CHANNELS_SIGNING_KEY  简报卡片动作令牌与简报历史游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
 //	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
@@ -113,6 +114,11 @@ var remotes = map[string]remote{
 			return fmt.Errorf("identity remote missing approvals")
 		}
 		b.Provide(identityapi.ApprovalsBinding, approvals)
+		reader, ok := c.(identityapi.ApprovalReader)
+		if !ok {
+			return fmt.Errorf("identity remote missing approval reader")
+		}
+		b.Provide(identityapi.ApprovalReaderBinding, reader)
 		return nil
 	}},
 	ccapi.Name: {provide: func(u string, b *runtime.Bindings) error {
@@ -138,7 +144,8 @@ var remotes = map[string]remote{
 		b.Provide(ccapi.ActivePoliciesBinding, active)
 		return nil
 	}},
-	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看、经 detection 读取信号固定的求值输入（均以用户主体转交）
+	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看、经 detection 读取信号固定的求值输入（均以用户主体转交）；
+	// 简报（PRD 第5段）：channels 经 detection 读取简报条目与信号卡片、在渠道内处理（以收件人或点击者的用户主体转交）
 	commerceapi.Name: {provide: func(u string, b *runtime.Bindings) error {
 		meter, err := commerceremote.NewMetering(u)
 		if err != nil {
@@ -153,6 +160,11 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(detectionapi.ExplainerBinding, explainer)
+		briefing, err := detectionremote.NewBriefing(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(detectionapi.BriefingBinding, briefing)
 		return nil
 	}},
 }

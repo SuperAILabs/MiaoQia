@@ -58,6 +58,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(directory))
 			env.Bindings.Provide(api.ChannelSessionsBinding, api.LocalChannelSessions(directory))
 			env.Bindings.Provide(api.ApprovalsBinding, api.LocalApprovals(directory))
+			env.Bindings.Provide(api.ApprovalReaderBinding, api.LocalApprovalReader(directory))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
@@ -70,7 +71,9 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				"GET /internal/v1/identity/org-units/{unitID}", "POST /internal/v1/identity/participants:sync",
 				"POST /internal/v1/identity/channel-sessions", "GET /internal/v1/identity/channel-sessions", "POST /internal/v1/identity/channel-sessions:revoke",
 				"GET /internal/v1/identity/channel-members/{subject}", "POST /internal/v1/identity/approvals:request",
-				"POST /internal/v1/identity/approvals/{closeSegment}"} {
+				"POST /internal/v1/identity/approvals/{closeSegment}",
+				// channels 简报“待我处理”区与审批链接以收件人或点击者的用户主体读取（PRD 第5段 F1 第8条、F5）
+				"GET /internal/v1/identity/approvals", "GET /internal/v1/identity/approvals/{approvalID}"} {
 				internal.Handle(pattern, binding.InternalServer(api.Name, srv))
 			}
 			pub, err := identityapi.NewServer(handler, identityapi.WithErrorHandler(app.WriteProtocolError))

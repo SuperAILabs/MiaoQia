@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: channels 渠道安装、绑定与卡片跳转接口
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     channels 的对外接口（经 gateway，令牌派生租户与主体），PRD 第1段 F4–F7 的服务端切片。首批只有企业微信（wecom）；
     飞书、钉钉随各自适配器追加。租户只来自已验证的令牌，请求体与链接中的租户一律不信任。管理动作（安装、验证、停用、强制解绑）
@@ -10,6 +10,10 @@ info:
     它们以 channels 的本地绑定提供，对外路由随网关的未认证入口接入。绑定的权威在 channels：失效即时生效（状态 revoking，
     界面显示“解绑处理中”），identity 确认撤销免登会话且最后一张签发凭据过期（含5秒偏差）后才变为 invalidated。
     无权限与不存在使用同一错误（404 content_unavailable），不返回标题、归属、组织单元或负责人。
+    0.2.0（PRD 第5段简报与快捷动作的服务端切片）：追加简报偏好、简报历史与完整简报、本人重新推送、简报链接与管理员的投递统计。
+    简报、投递与链接只属于一名成员：他人的、其他租户的与不存在的简报同为 404 briefing_not_found。完整简报的条目是组装时的快照，
+    当前处理状态按“当前”叠加并单独标注时间轴；读取时按当前权限再检查各目标区，失去 can_view_signals 的区不返回条目。
+    卡片按钮的动作令牌只经渠道回调使用（不在本契约中）；简报链接只指向对象，不携带登录身份。
 servers:
 - url: /
 paths:
@@ -270,6 +274,176 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CardTarget'
+        default: *problem
+  /v1/channels/briefing-preferences:
+    get:
+      operationId: getBriefingPreferences
+      summary: 本人的简报偏好（GetPreferences）
+      description: >-
+        有效成员读取本人的简报偏好；从未保存时返回缺省值（version 0）：工作日 07:30、租户时区 Asia/Shanghai、安静时段 21:00–07:00、
+        空简报不推送、各目标区条数取应用领域包的缺省值。effective_from 为当前版本开始生效的周期起点（修改从下一期生效）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      responses:
+        '200':
+          description: 偏好
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingPreferences'
+        default: *problem
+    put:
+      operationId: updateBriefingPreferences
+      summary: 修改本人的简报偏好（UpdatePreferences）
+      description: >-
+        按 expected_version 并发控制（从未保存时为 0；不一致时 409 version_conflict，即“偏好已在其他设备修改”）。发送时间为 06:00–10:00
+        的整点或半点；时区为 IANA 时区名；发送日为 1（周一）–7（周日）的非空集合；安静时段为整点或半点；各目标区条数须在应用领域包
+        声明的范围内（A02 为 5–20），否则 422 invalid_preferences。新版本从“修改时所在周期”的下一期生效：effective_from 为旧偏好下
+        修改时刻之后的第一个计划发送时间，新旧周期首尾相接。写入偏好版本与审计。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBriefingPreferencesRequest'
+      responses:
+        '200':
+          description: 新的偏好版本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingPreferences'
+        default: *problem
+  /v1/channels/briefings:
+    get:
+      operationId: listBriefings
+      summary: 本人的简报历史（ListBriefings）
+      description: >-
+        只列出调用者本人的简报，按周期终点新到旧；每页至多 limit 条（默认且至多 30）。还有更早的简报时给出 next_cursor：游标是 channels
+        签发的不透明值（整个位置载荷连同其 HMAC-SHA256 签名，绑定租户与调用者），签名不符或绑定不一致时 400 invalid_cursor，
+        在任何读取之前判断。每期显示周期、组装时间、各区条目数与推送状态。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 30
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/BriefingCursor'
+      responses:
+        '200':
+          description: 简报历史
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingList'
+        default: *problem
+  /v1/channels/briefings/{briefingID}:
+    get:
+      operationId: getBriefing
+      summary: 完整简报（GetBriefing）
+      description: >-
+        只属本人：他人的、其他租户的与不存在的简报同为 404 briefing_not_found（管理员也看不到他人的简报内容）。条目内容为组装时的快照
+        （content_as_of 为组装时间）；每条的当前处理状态经 detection 以调用者的权限读取，按“当前”叠加（status_as_of）。读取时逐区
+        再检查 can_view_signals：已失去访问的区 state 为 no_permission，不返回条目与标题；授权不可用时 503。
+      x-timeout-ms: 10000
+      x-idempotent: true
+      parameters:
+      - &briefingID
+        name: briefingID
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/BriefingID'
+      responses:
+        '200':
+          description: 完整简报
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Briefing'
+        default: *problem
+  /v1/channels/briefings/{briefingID}/resend:
+    post:
+      operationId: resendBriefing
+      summary: 重新推送到企业微信（ResendBriefing）
+      description: >-
+        本人对当日一期（周期终点在成员时区的今天）发起新的投递，不重新组装简报；往期为 409 resend_not_allowed。推送前按当前状态再检查：
+        成员有效、绑定为“已绑定”（否则 409 not_bound）、各目标的 can_view_signals（失去访问的区不发送）。新卡片使用新的动作令牌，
+        新令牌上的点击是新的操作。同一 Idempotency-Key 重放返回首次的投递。写入审计。
+      x-timeout-ms: 10000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *briefingID
+      responses:
+        '200':
+          description: 新的投递
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverySummary'
+        default: *problem
+  /v1/channels/briefing-links:open:
+    post:
+      operationId: openBriefingLink
+      summary: 打开简报或卡片上的链接（F6）
+      description: >-
+        链接只指向对象（信号、完整简报、审批），不携带登录身份，7 天有效。以当前登录成员打开：链接发给的是另一成员时 409 account_mismatch
+        （不切换账号）；过期时 410 card_link_expired（登录后按当前权限打开同一对象）；链接不存在、属于其他租户、对象不存在或当前成员
+        无权查看时统一为 404 content_unavailable，不返回标题、目标归属或负责人。授权按对象所有者：信号经 detection（所属目标的
+        can_view_signals），审批经 identity（申请人或批准人），简报为本人。打开后的页面按第4段计量对象查看，链接本身不计量。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenCardLinkRequest'
+      responses:
+        '200':
+          description: 可打开的对象
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingLinkTarget'
+        default: *problem
+  /v1/channels/delivery-stats:
+    get:
+      operationId: getDeliveryStats
+      summary: 投递统计（设置 / 渠道）
+      description: >-
+        需要 can_manage_members（不要求强认证）。按投递状态与失败原因统计本租户 since 起（默认 7 天内）的投递次数与空简报、部分简报期数，
+        不含任何简报条目、标题或收件人。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: 投递统计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryStats'
         default: *problem
 components:
   schemas:
@@ -611,3 +785,668 @@ components:
           type: string
           description: 链接指向的对象；客户端按对象所有者的接口读取，读取时仍按当前成员权限判断
           pattern: ^(objective:obj|pursuit:pur|research_case:rsc)_[0-9A-HJKMNP-TV-Z]{26}$
+    BriefingID:
+      type: string
+      description: 简报标识 brf_<ULID>
+      pattern: ^brf_[0-9A-HJKMNP-TV-Z]{26}$
+    DeliveryID:
+      type: string
+      description: 投递标识 dlv_<ULID>
+      pattern: ^dlv_[0-9A-HJKMNP-TV-Z]{26}$
+    ClockTime:
+      type: string
+      description: 当地时间 HH:MM
+      pattern: ^([01][0-9]|2[0-3]):[0-5][0-9]$
+    SectionLimit:
+      type: object
+      additionalProperties: false
+      required:
+      - objective_code
+      - limit
+      properties:
+        objective_code:
+          type: string
+          pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+    BriefingPreferences:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      - send_time
+      - timezone
+      - send_days
+      - quiet_start
+      - quiet_end
+      - push_empty
+      - section_limits
+      properties:
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 偏好版本；0 为从未保存（缺省值）
+        send_time:
+          $ref: '#/components/schemas/ClockTime'
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z_]+(/[A-Za-z0-9_+-]+){0,2}$
+        send_days:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+            maximum: 7
+        quiet_start:
+          $ref: '#/components/schemas/ClockTime'
+        quiet_end:
+          $ref: '#/components/schemas/ClockTime'
+        push_empty:
+          type: boolean
+        section_limits:
+          type: array
+          maxItems: 16
+          items:
+            $ref: '#/components/schemas/SectionLimit'
+        effective_from:
+          type: string
+          format: date-time
+          description: 本版本开始生效的周期起点（缺省值不出现）
+        updated_at:
+          type: string
+          format: date-time
+    UpdateBriefingPreferencesRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - send_time
+      - timezone
+      - send_days
+      - quiet_start
+      - quiet_end
+      - push_empty
+      - section_limits
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 0
+        send_time:
+          $ref: '#/components/schemas/ClockTime'
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z_]+(/[A-Za-z0-9_+-]+){0,2}$
+        send_days:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+            maximum: 7
+        quiet_start:
+          $ref: '#/components/schemas/ClockTime'
+        quiet_end:
+          $ref: '#/components/schemas/ClockTime'
+        push_empty:
+          type: boolean
+        section_limits:
+          type: array
+          maxItems: 16
+          items:
+            $ref: '#/components/schemas/SectionLimit'
+    Period:
+      type: object
+      additionalProperties: false
+      description: 简报周期 [start, end)，带成员时区的偏移；timezone 为成员时区
+      required:
+      - start
+      - end
+      - timezone
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          maxLength: 64
+    DeliveryState:
+      type: string
+      description: >-
+        pending 待发送（含安静时段延后）；retrying 推送失败、等待退避重试；delivered 渠道已接受；in_app 重试截止后仍失败，已在站内；
+        cancelled 发送前再检查时取消（成员已退出或绑定已失效），只留在 Web 历史
+      enum:
+      - pending
+      - retrying
+      - delivered
+      - in_app
+      - cancelled
+    DeliverySummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - briefing_id
+      - kind
+      - state
+      - attempts
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/DeliveryID'
+        briefing_id:
+          $ref: '#/components/schemas/BriefingID'
+        kind:
+          type: string
+          enum:
+          - briefing
+          - resend
+        state:
+          $ref: '#/components/schemas/DeliveryState'
+        attempts:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          description: 失败或取消的原因
+          enum:
+          - channel_error
+          - cutoff
+          - member_inactive
+          - binding_inactive
+          - channel_not_enabled
+        created_at:
+          type: string
+          format: date-time
+        submitted_at:
+          type: string
+          format: date-time
+          description: 最近一次平台提交
+        accepted_at:
+          type: string
+          format: date-time
+          description: 渠道接受（全部消息）
+        read_receipts:
+          type: string
+          description: 渠道不提供已读回执（以打开或动作近似，标明近似）
+          enum:
+          - unsupported
+    PushState:
+      type: string
+      description: >-
+        delivered 已送达（渠道已接受）；pushing 投递中；in_app 推送失败，已在站内；not_pushed 未推送（empty 空简报且偏好不推送，
+        not_bound 成员无有效绑定，late 组装晚于当日 12:00）
+      enum:
+      - delivered
+      - pushing
+      - in_app
+      - not_pushed
+    BriefingSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - period
+      - assembled_at
+      - scheduled_at
+      - delayed
+      - empty
+      - partial
+      - item_count
+      - push_state
+      properties:
+        id:
+          $ref: '#/components/schemas/BriefingID'
+        period:
+          $ref: '#/components/schemas/Period'
+        assembled_at:
+          type: string
+          format: date-time
+        scheduled_at:
+          type: string
+          format: date-time
+          description: 计划发送时间（周期终点）
+        delayed:
+          type: boolean
+          description: 组装晚于计划时间（推送标“延迟发送（原定 07:30）”）
+        empty:
+          type: boolean
+        partial:
+          type: boolean
+          description: 有区来源中断或暂不可用
+        item_count:
+          type: integer
+          minimum: 0
+        push_state:
+          $ref: '#/components/schemas/PushState'
+        not_pushed_reason:
+          type: string
+          enum:
+          - empty
+          - not_bound
+          - late
+    BriefingCursor:
+      type: string
+      description: 不透明的翻页游标（channels 签发，整个载荷连同 HMAC 签名）
+      pattern: ^[A-Za-z0-9_-]{1,512}$
+    BriefingList:
+      type: object
+      additionalProperties: false
+      required:
+      - briefings
+      properties:
+        briefings:
+          type: array
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/BriefingSummary'
+        next_cursor:
+          $ref: '#/components/schemas/BriefingCursor'
+    DisplayLevel:
+      type: string
+      description: 字段按来源权利逐维取最严格后的展示级别（数据架构第12节）
+      enum:
+      - full_text
+      - excerpt
+      - citation_only
+      - none
+    DisplayField:
+      type: object
+      additionalProperties: false
+      description: >-
+        一个来源字段：value 只在展示级别为 full_text 或 excerpt 时出现（excerpt 为截断后的摘录）；citation_only 只给 source_url（“见原文”）；
+        none 两者都没有。state 为 known 已知、undisclosed 未公布（金额）、unknown 未能可靠识别。
+      required:
+      - level
+      - state
+      properties:
+        level:
+          $ref: '#/components/schemas/DisplayLevel'
+        state:
+          type: string
+          enum:
+          - known
+          - undisclosed
+          - unknown
+        value:
+          type: string
+          maxLength: 500
+        source_url:
+          type: string
+          format: uri
+    ItemUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - recorded_at
+      - changed_fields
+      - disposition_before
+      - disposition_after
+      - content_version
+      properties:
+        recorded_at:
+          type: string
+          format: date-time
+        changed_fields:
+          type: array
+          maxItems: 64
+          items:
+            type: string
+            maxLength: 128
+        disposition_before:
+          type: string
+          maxLength: 32
+        disposition_after:
+          type: string
+          maxLength: 32
+        content_version:
+          type: integer
+          format: int64
+          minimum: 1
+    ItemStatus:
+      type: object
+      additionalProperties: false
+      description: 当前处理状态（叠加，时间轴为“当前”，status_as_of 为读取时间）；查看者已不能查看该信号时不出现
+      required:
+      - status
+      - status_as_of
+      properties:
+        status:
+          type: string
+          enum:
+          - open
+          - triaged
+          - converted
+          - dismissed
+          - closed
+        handled_by:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        handled_at:
+          type: string
+          format: date-time
+        content_updated:
+          type: boolean
+          description: 组装后信号内容已更新（打开时提示“信号已更新”）
+        status_as_of:
+          type: string
+          format: date-time
+    BriefingItem:
+      type: object
+      additionalProperties: false
+      description: >-
+        区内的一条（组装时的快照）。kind：signal 完整条目；reference 同一采购项目已在靠前的区完整展示，本区为引用行（打开的仍是本目标
+        自己的信号）；approval “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）。
+      required:
+      - kind
+      - position
+      properties:
+        kind:
+          type: string
+          enum:
+          - signal
+          - reference
+          - approval
+        position:
+          type: integer
+          minimum: 0
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        content_version:
+          type: integer
+          format: int64
+          minimum: 0
+        category:
+          type: string
+          enum:
+          - new
+          - updated
+        correction:
+          type: boolean
+        score:
+          type: integer
+        disposition:
+          type: string
+          maxLength: 32
+        project:
+          $ref: '#/components/schemas/DisplayField'
+        winner:
+          $ref: '#/components/schemas/DisplayField'
+        amount:
+          $ref: '#/components/schemas/DisplayField'
+        region:
+          $ref: '#/components/schemas/DisplayField'
+        categories:
+          $ref: '#/components/schemas/DisplayField'
+        reasons:
+          type: array
+          maxItems: 2
+          items:
+            type: string
+            maxLength: 500
+        unknown_count:
+          type: integer
+          minimum: 0
+        same_lot_count:
+          type: integer
+          minimum: 1
+        discovered_at:
+          type: string
+          format: date-time
+          description: 发现时间（信号写入时间 created_at，不是求值时间）
+        updates:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ItemUpdate'
+        also_matched:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+        references:
+          type: string
+          description: 引用行指向的、完整展示该采购项目的区（目标编号）
+          pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+        approval_id:
+          type: string
+          pattern: ^apr_[0-9A-HJKMNP-TV-Z]{26}$
+        approval_type:
+          type: string
+          maxLength: 64
+        submitted_at:
+          type: string
+          format: date-time
+        current:
+          $ref: '#/components/schemas/ItemStatus'
+    DataAsOf:
+      type: object
+      additionalProperties: false
+      required:
+      - domain
+      - state
+      properties:
+        domain:
+          type: string
+          pattern: ^INF-[A-Z0-9-]{1,32}$
+        state:
+          type: string
+          description: current 正常；interrupted 来源中断；unknown 覆盖信息不可得（不以“正常”代替）
+          enum:
+          - current
+          - interrupted
+          - unknown
+        as_of:
+          type: string
+          format: date-time
+    BriefingSection:
+      type: object
+      additionalProperties: false
+      description: >-
+        一区。kind objective 为一个目标；pending 为“待我处理”。state：normal 正常；empty 无新信号；source_interrupted 来源中断（条目照常，
+        恢复后补齐的信号进入下一期）；unavailable 暂不可用（本期没能取数，窗口顺延到下一期）；objective_inactive 目标未激活；
+        no_permission 读取时已失去访问（不返回条目与标题）。window 为覆盖窗口 [start, end)，includes_previous 为含上一期未能生成的部分。
+      required:
+      - kind
+      - order
+      - state
+      - items
+      properties:
+        kind:
+          type: string
+          enum:
+          - objective
+          - pending
+        order:
+          type: integer
+          minimum: 0
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        objective_code:
+          type: string
+          pattern: ^APP-[A-Z0-9-]{1,32}\.[A-Z0-9]{1,8}$
+        title:
+          type: string
+          maxLength: 64
+        state:
+          type: string
+          enum:
+          - normal
+          - empty
+          - source_interrupted
+          - unavailable
+          - objective_inactive
+          - no_permission
+        window_start:
+          type: string
+          format: date-time
+        window_end:
+          type: string
+          format: date-time
+        includes_previous:
+          type: boolean
+        new_count:
+          type: integer
+          minimum: 0
+        updated_count:
+          type: integer
+          minimum: 0
+        handled_count:
+          type: integer
+          minimum: 0
+        backfill_count:
+          type: integer
+          minimum: 0
+        overflow_count:
+          type: integer
+          minimum: 0
+          description: 超出每区条数的条目数（“另有 N 条，在收件箱查看”）
+        quota:
+          type: integer
+          minimum: 0
+        data_as_of:
+          type: array
+          maxItems: 16
+          items:
+            $ref: '#/components/schemas/DataAsOf'
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/BriefingItem'
+    Briefing:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - source
+      - period
+      - assembled_at
+      - scheduled_at
+      - delayed
+      - empty
+      - partial
+      - rule_version
+      - preference_version
+      - content_as_of
+      - sections
+      - deliveries
+      properties:
+        id:
+          $ref: '#/components/schemas/BriefingID'
+        source:
+          type: string
+          description: 简报来源（日常简报定义，如 BRF-TENDER-DAILY）
+          pattern: ^BRF-[A-Z0-9-]{1,64}$
+        period:
+          $ref: '#/components/schemas/Period'
+        assembled_at:
+          type: string
+          format: date-time
+        scheduled_at:
+          type: string
+          format: date-time
+        delayed:
+          type: boolean
+        empty:
+          type: boolean
+        partial:
+          type: boolean
+        rule_version:
+          type: string
+          maxLength: 64
+        preference_version:
+          type: integer
+          format: int64
+          minimum: 0
+        content_as_of:
+          type: string
+          format: date-time
+          description: 条目内容的时间轴：组装时
+        status_as_of:
+          type: string
+          format: date-time
+          description: 当前处理状态的时间轴：读取时
+        sections:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/BriefingSection'
+        deliveries:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/DeliverySummary'
+    BriefingLinkTarget:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - id
+      properties:
+        kind:
+          type: string
+          enum:
+          - signal
+          - briefing
+          - approval
+        id:
+          type: string
+          pattern: ^(sig|brf|apr)_[0-9A-HJKMNP-TV-Z]{26}$
+        from_signal:
+          type: boolean
+          description: 从信号打开（第4段对象页带“来自信号”上下文）
+    DeliveryStats:
+      type: object
+      additionalProperties: false
+      required:
+      - since
+      - deliveries
+      - empty_briefings
+      - partial_briefings
+      properties:
+        since:
+          type: string
+          format: date-time
+        deliveries:
+          type: array
+          maxItems: 32
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - state
+            - count
+            properties:
+              state:
+                $ref: '#/components/schemas/DeliveryState'
+              reason:
+                type: string
+                maxLength: 64
+              count:
+                type: integer
+                minimum: 0
+        empty_briefings:
+          type: integer
+          minimum: 0
+        partial_briefings:
+          type: integer
+          minimum: 0

@@ -1,0 +1,26 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-26T12:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  PRD 第5段简报与卡片快捷动作的服务端切片在 C4a 冻结的 contracts/identifiers.yaml 中追加三个 channels 所有的前缀：
+  brf（一期简报）、dlv（一次投递）、atk（卡片按钮的动作令牌，标识即操作标识），版本 1.6.0 → 1.7.0；既有前缀不变、不复用。
+  identity 的 OpenAPI、事件契约与 OpenFGA 模型不变（channels 以本人身份经 identity 内部端口读取审批，使用既有 listApprovals /
+  getApproval；服务授权清单的 context_reader 追加 channels，只是 identity 代码中的登记，不改模型）。
+  mqc compat 对 origin/main 判定 breaking 0：channels 新增事件类型 channels.delivery.sent.v1、channels.delivery.failed.v1、
+  channels.action.executed.v1 与六条简报路径，detection 新增 briefing-signals 与 signal-cards 两条路径、撤销请求追加可选字段 channel。
+  channels 的 OpenAPI（0.1.0 → 0.2.0）与事件（0.1.0 → 0.2.0）、detection 的 OpenAPI（0.2.0 → 0.3.0）是草案，不在 C4a 冻结范围，只记录。
+  修订编号按“谁先合并谁占用”：主线已合并修订 10（INF-PROC 包），本记录顺延为 11；原冻结记录与修订 1–10 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.7.0
+  sha256: 3ee9eeddd0fa8aa5d1c0f0372c4ea88313f8335663f9f0ba41ebefbf943b4430
+verification:
+  base: ef7c348
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0、additive 12、doc 0：channels 三个新增事件类型与六条简报路径、detection 两条简报路径与撤销请求的可选字段 channel 均为追加）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；企业微信为内存实现 wecomtest，覆盖与来源权利为测试夹具，生产适配器未接入）

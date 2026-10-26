@@ -245,6 +245,210 @@ func (s *BatchItemResult) UnmarshalText(data []byte) error {
 	}
 }
 
+// 简报中的一条信号（每条信号只一行）：当前内容版本的行、类别与窗口内的实质更新.
+// Ref: #/components/schemas/BriefingSignal
+type BriefingSignal struct {
+	Signal     SignalRow              `json:"signal"`
+	Category   BriefingSignalCategory `json:"category"`
+	Correction bool                   `json:"correction"`
+	Updates    []SignalUpdate         `json:"updates"`
+}
+
+// GetSignal returns the value of Signal.
+func (s *BriefingSignal) GetSignal() SignalRow {
+	return s.Signal
+}
+
+// GetCategory returns the value of Category.
+func (s *BriefingSignal) GetCategory() BriefingSignalCategory {
+	return s.Category
+}
+
+// GetCorrection returns the value of Correction.
+func (s *BriefingSignal) GetCorrection() bool {
+	return s.Correction
+}
+
+// GetUpdates returns the value of Updates.
+func (s *BriefingSignal) GetUpdates() []SignalUpdate {
+	return s.Updates
+}
+
+// SetSignal sets the value of Signal.
+func (s *BriefingSignal) SetSignal(val SignalRow) {
+	s.Signal = val
+}
+
+// SetCategory sets the value of Category.
+func (s *BriefingSignal) SetCategory(val BriefingSignalCategory) {
+	s.Category = val
+}
+
+// SetCorrection sets the value of Correction.
+func (s *BriefingSignal) SetCorrection(val bool) {
+	s.Correction = val
+}
+
+// SetUpdates sets the value of Updates.
+func (s *BriefingSignal) SetUpdates(val []SignalUpdate) {
+	s.Updates = val
+}
+
+type BriefingSignalCategory string
+
+const (
+	BriefingSignalCategoryNew     BriefingSignalCategory = "new"
+	BriefingSignalCategoryUpdated BriefingSignalCategory = "updated"
+)
+
+// AllValues returns all BriefingSignalCategory values.
+func (BriefingSignalCategory) AllValues() []BriefingSignalCategory {
+	return []BriefingSignalCategory{
+		BriefingSignalCategoryNew,
+		BriefingSignalCategoryUpdated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BriefingSignalCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case BriefingSignalCategoryNew:
+		return []byte(s), nil
+	case BriefingSignalCategoryUpdated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BriefingSignalCategory) UnmarshalText(data []byte) error {
+	switch BriefingSignalCategory(data) {
+	case BriefingSignalCategoryNew:
+		*s = BriefingSignalCategoryNew
+		return nil
+	case BriefingSignalCategoryUpdated:
+		*s = BriefingSignalCategoryUpdated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/BriefingSignalPage
+type BriefingSignalPage struct {
+	ObjectiveID       string           `json:"objective_id"`
+	From              time.Time        `json:"from"`
+	To                time.Time        `json:"to"`
+	Signals           []BriefingSignal `json:"signals"`
+	PendingTotal      int              `json:"pending_total"`
+	NewCount          int              `json:"new_count"`
+	UpdatedCount      int              `json:"updated_count"`
+	HandledCount      int              `json:"handled_count"`
+	BackfillCount     int              `json:"backfill_count"`
+	ViewerCanFeedback bool             `json:"viewer_can_feedback"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *BriefingSignalPage) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetFrom returns the value of From.
+func (s *BriefingSignalPage) GetFrom() time.Time {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *BriefingSignalPage) GetTo() time.Time {
+	return s.To
+}
+
+// GetSignals returns the value of Signals.
+func (s *BriefingSignalPage) GetSignals() []BriefingSignal {
+	return s.Signals
+}
+
+// GetPendingTotal returns the value of PendingTotal.
+func (s *BriefingSignalPage) GetPendingTotal() int {
+	return s.PendingTotal
+}
+
+// GetNewCount returns the value of NewCount.
+func (s *BriefingSignalPage) GetNewCount() int {
+	return s.NewCount
+}
+
+// GetUpdatedCount returns the value of UpdatedCount.
+func (s *BriefingSignalPage) GetUpdatedCount() int {
+	return s.UpdatedCount
+}
+
+// GetHandledCount returns the value of HandledCount.
+func (s *BriefingSignalPage) GetHandledCount() int {
+	return s.HandledCount
+}
+
+// GetBackfillCount returns the value of BackfillCount.
+func (s *BriefingSignalPage) GetBackfillCount() int {
+	return s.BackfillCount
+}
+
+// GetViewerCanFeedback returns the value of ViewerCanFeedback.
+func (s *BriefingSignalPage) GetViewerCanFeedback() bool {
+	return s.ViewerCanFeedback
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *BriefingSignalPage) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetFrom sets the value of From.
+func (s *BriefingSignalPage) SetFrom(val time.Time) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *BriefingSignalPage) SetTo(val time.Time) {
+	s.To = val
+}
+
+// SetSignals sets the value of Signals.
+func (s *BriefingSignalPage) SetSignals(val []BriefingSignal) {
+	s.Signals = val
+}
+
+// SetPendingTotal sets the value of PendingTotal.
+func (s *BriefingSignalPage) SetPendingTotal(val int) {
+	s.PendingTotal = val
+}
+
+// SetNewCount sets the value of NewCount.
+func (s *BriefingSignalPage) SetNewCount(val int) {
+	s.NewCount = val
+}
+
+// SetUpdatedCount sets the value of UpdatedCount.
+func (s *BriefingSignalPage) SetUpdatedCount(val int) {
+	s.UpdatedCount = val
+}
+
+// SetHandledCount sets the value of HandledCount.
+func (s *BriefingSignalPage) SetHandledCount(val int) {
+	s.HandledCount = val
+}
+
+// SetBackfillCount sets the value of BackfillCount.
+func (s *BriefingSignalPage) SetBackfillCount(val int) {
+	s.BackfillCount = val
+}
+
+// SetViewerCanFeedback sets the value of ViewerCanFeedback.
+func (s *BriefingSignalPage) SetViewerCanFeedback(val bool) {
+	s.ViewerCanFeedback = val
+}
+
 // 系统处置（no_signal 不产生信号）.
 // Ref: #/components/schemas/Disposition
 type Disposition string
@@ -2236,6 +2440,52 @@ func (o OptSignalStatus) Or(d SignalStatus) SignalStatus {
 	return d
 }
 
+// NewOptStatusChange returns new OptStatusChange with value set to v.
+func NewOptStatusChange(v StatusChange) OptStatusChange {
+	return OptStatusChange{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptStatusChange is optional StatusChange.
+type OptStatusChange struct {
+	Value StatusChange
+	Set   bool
+}
+
+// IsSet returns true if OptStatusChange was set.
+func (o OptStatusChange) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptStatusChange) Reset() {
+	var v StatusChange
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptStatusChange) SetTo(v StatusChange) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptStatusChange) Get() (v StatusChange, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptStatusChange) Or(d StatusChange) StatusChange {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
@@ -2644,6 +2894,52 @@ func (o OptUndoItemFailure) Get() (v UndoItemFailure, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptUndoItemFailure) Or(d UndoItemFailure) UndoItemFailure {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptUndoRequestChannel returns new OptUndoRequestChannel with value set to v.
+func NewOptUndoRequestChannel(v UndoRequestChannel) OptUndoRequestChannel {
+	return OptUndoRequestChannel{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptUndoRequestChannel is optional UndoRequestChannel.
+type OptUndoRequestChannel struct {
+	Value UndoRequestChannel
+	Set   bool
+}
+
+// IsSet returns true if OptUndoRequestChannel was set.
+func (o OptUndoRequestChannel) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptUndoRequestChannel) Reset() {
+	var v UndoRequestChannel
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptUndoRequestChannel) SetTo(v UndoRequestChannel) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptUndoRequestChannel) Get() (v UndoRequestChannel, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptUndoRequestChannel) Or(d UndoRequestChannel) UndoRequestChannel {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -3576,6 +3872,58 @@ func (s *SignalBatchSummary) SetUnprocessed(val int) {
 	s.Unprocessed = val
 }
 
+// Ref: #/components/schemas/SignalCard
+type SignalCard struct {
+	Signal            SignalRow       `json:"signal"`
+	LastStatusChange  OptStatusChange `json:"last_status_change"`
+	ViewerCanFeedback bool            `json:"viewer_can_feedback"`
+}
+
+// GetSignal returns the value of Signal.
+func (s *SignalCard) GetSignal() SignalRow {
+	return s.Signal
+}
+
+// GetLastStatusChange returns the value of LastStatusChange.
+func (s *SignalCard) GetLastStatusChange() OptStatusChange {
+	return s.LastStatusChange
+}
+
+// GetViewerCanFeedback returns the value of ViewerCanFeedback.
+func (s *SignalCard) GetViewerCanFeedback() bool {
+	return s.ViewerCanFeedback
+}
+
+// SetSignal sets the value of Signal.
+func (s *SignalCard) SetSignal(val SignalRow) {
+	s.Signal = val
+}
+
+// SetLastStatusChange sets the value of LastStatusChange.
+func (s *SignalCard) SetLastStatusChange(val OptStatusChange) {
+	s.LastStatusChange = val
+}
+
+// SetViewerCanFeedback sets the value of ViewerCanFeedback.
+func (s *SignalCard) SetViewerCanFeedback(val bool) {
+	s.ViewerCanFeedback = val
+}
+
+// Ref: #/components/schemas/SignalCardList
+type SignalCardList struct {
+	Cards []SignalCard `json:"cards"`
+}
+
+// GetCards returns the value of Cards.
+func (s *SignalCardList) GetCards() []SignalCard {
+	return s.Cards
+}
+
+// SetCards sets the value of Cards.
+func (s *SignalCardList) SetCards(val []SignalCard) {
+	s.Cards = val
+}
+
 // Ref: #/components/schemas/SignalDetail
 type SignalDetail struct {
 	Signal            SignalRow        `json:"signal"`
@@ -4457,6 +4805,44 @@ func (s *SignalUpdate) SetMaterial(val bool) {
 // SetRecordedAt sets the value of RecordedAt.
 func (s *SignalUpdate) SetRecordedAt(val time.Time) {
 	s.RecordedAt = val
+}
+
+// 最近一次处理状态改变（操作者、改变后的状态与业务时间）.
+// Ref: #/components/schemas/StatusChange
+type StatusChange struct {
+	Actor  string       `json:"actor"`
+	Status SignalStatus `json:"status"`
+	At     time.Time    `json:"at"`
+}
+
+// GetActor returns the value of Actor.
+func (s *StatusChange) GetActor() string {
+	return s.Actor
+}
+
+// GetStatus returns the value of Status.
+func (s *StatusChange) GetStatus() SignalStatus {
+	return s.Status
+}
+
+// GetAt returns the value of At.
+func (s *StatusChange) GetAt() time.Time {
+	return s.At
+}
+
+// SetActor sets the value of Actor.
+func (s *StatusChange) SetActor(val string) {
+	s.Actor = val
+}
+
+// SetStatus sets the value of Status.
+func (s *StatusChange) SetStatus(val SignalStatus) {
+	s.Status = val
+}
+
+// SetAt sets the value of At.
+func (s *StatusChange) SetAt(val time.Time) {
+	s.At = val
 }
 
 // 求值单位（contracts/schemas/intelligence/defs.schema.json 的 subject_ref）；version
@@ -5947,6 +6333,8 @@ type UndoRequest struct {
 	OperationID       string    `json:"operation_id"`
 	TargetOperationID OptString `json:"target_operation_id"`
 	TargetBatchID     OptString `json:"target_batch_id"`
+	// 发起撤销的渠道（0.3.0）；写入撤销操作的处理记录与 signal.triaged 的 channel.
+	Channel OptUndoRequestChannel `json:"channel"`
 }
 
 // GetOperationID returns the value of OperationID.
@@ -5964,6 +6352,11 @@ func (s *UndoRequest) GetTargetBatchID() OptString {
 	return s.TargetBatchID
 }
 
+// GetChannel returns the value of Channel.
+func (s *UndoRequest) GetChannel() OptUndoRequestChannel {
+	return s.Channel
+}
+
 // SetOperationID sets the value of OperationID.
 func (s *UndoRequest) SetOperationID(val string) {
 	s.OperationID = val
@@ -5977,6 +6370,53 @@ func (s *UndoRequest) SetTargetOperationID(val OptString) {
 // SetTargetBatchID sets the value of TargetBatchID.
 func (s *UndoRequest) SetTargetBatchID(val OptString) {
 	s.TargetBatchID = val
+}
+
+// SetChannel sets the value of Channel.
+func (s *UndoRequest) SetChannel(val OptUndoRequestChannel) {
+	s.Channel = val
+}
+
+// 发起撤销的渠道（0.3.0）；写入撤销操作的处理记录与 signal.triaged 的 channel.
+type UndoRequestChannel string
+
+const (
+	UndoRequestChannelWeb   UndoRequestChannel = "web"
+	UndoRequestChannelWecom UndoRequestChannel = "wecom"
+)
+
+// AllValues returns all UndoRequestChannel values.
+func (UndoRequestChannel) AllValues() []UndoRequestChannel {
+	return []UndoRequestChannel{
+		UndoRequestChannelWeb,
+		UndoRequestChannelWecom,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s UndoRequestChannel) MarshalText() ([]byte, error) {
+	switch s {
+	case UndoRequestChannelWeb:
+		return []byte(s), nil
+	case UndoRequestChannelWecom:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *UndoRequestChannel) UnmarshalText(data []byte) error {
+	switch UndoRequestChannel(data) {
+	case UndoRequestChannelWeb:
+		*s = UndoRequestChannelWeb
+		return nil
+	case UndoRequestChannelWecom:
+		*s = UndoRequestChannelWecom
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/UndoResult

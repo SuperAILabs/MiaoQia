@@ -22,6 +22,8 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/api"
+	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
+	detection "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	identity "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 )
 
@@ -30,6 +32,10 @@ const Channel = "wecom"
 
 // Service 是 channels 的用例。Authz 是 identity 的授权决策点，Guard 是 identity 的强认证门禁（本地绑定；取不到时管理动作
 // 失败关闭），Sessions 是 identity 的免登会话签发与撤销，Members 是 identity 的会话核验（取当前成员版本），WeCom 是企业微信渠道适配器（缺省未接入）。Now 是业务时钟。
+//
+// 第5段（简报与快捷动作）另有：Detection 是 detection 的简报取数、信号卡片与渠道内处理；Access 与Policies 是 customer-context 的
+// 目标访问判断与生效策略；Approvals 是 identity 的审批读取（“待我处理”与审批链接）；Coverage 与 Rights 是覆盖与来源权利（缺省未接入）；
+// Key 是动作令牌与游标的签名密钥；Packs 是简报定义与快捷原因。
 type Service struct {
 	DB       *db.DB
 	Authz    authz.Decider
@@ -39,6 +45,15 @@ type Service struct {
 	WeCom    api.Provider
 	Now      func() time.Time
 	Log      *slog.Logger
+
+	Detection detection.Briefing
+	Access    customercontext.ObjectiveAccess
+	Policies  customercontext.ActivePolicies
+	Approvals identity.ApprovalReader
+	Coverage  api.Coverage
+	Rights    api.Rights
+	Key       []byte
+	Packs     *Packs
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }
@@ -90,6 +105,13 @@ func (s *Service) tx(ctx context.Context, fn func(context.Context, pgx.Tx) error
 func serviceContext(ctx context.Context, tenant, cell string) context.Context {
 	rc, _ := reqctx.From(ctx)
 	return reqctx.With(ctx, reqctx.Context{Tenant: tenant, Cell: cell, Principal: reqctx.Principal{ID: "svc:" + api.Name, Kind: "service"}, Purpose: rc.Purpose})
+}
+
+// userContext 是以成员本人（用户主体）在给定租户内执行的请求上下文：简报按收件人本人的权限组装，卡片动作以经有效绑定核验的点击者
+// 执行（PRD 第5段第5节“每人一份，按本人权限”“动作再次授权”）。只在 channels 已核对成员身份（Web 会话或有效绑定）后使用。
+func userContext(ctx context.Context, tenant, cell, subject string) context.Context {
+	rc, _ := reqctx.From(ctx)
+	return reqctx.With(ctx, reqctx.Context{Tenant: tenant, Cell: cell, Principal: reqctx.Principal{ID: subject, Kind: "user"}, Purpose: rc.Purpose})
 }
 
 // member 要求调用者是带租户的用户，且是该租户的有效成员（identity Check can_view_profile：对全体有效成员开放）。

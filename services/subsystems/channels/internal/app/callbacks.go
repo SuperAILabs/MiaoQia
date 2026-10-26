@@ -89,6 +89,9 @@ func (s *Service) ReceiveInbound(ctx context.Context, channel string, cb *api.Ca
 	if r == nil {
 		return &api.InboundResult{Outcome: api.InboundIgnored}, nil
 	}
+	if ev.Kind == "card_action" {
+		return s.receiveAction(ctx, r, ev)
+	}
 	out := &api.InboundResult{}
 	var token string
 	tctx := serviceContext(ctx, r.tenant, r.cell)
@@ -147,23 +150,12 @@ func (s *Service) ReceiveInbound(ctx context.Context, channel string, cb *api.Ca
 				return err
 			}
 		}
-		// 未绑定：发出新的一次性绑定链接；同一账号此前尚未打开的链接作废
-		if _, err := tx.Exec(ctx, `UPDATE chn_binding_requests SET state = 'voided', void_reason = 'superseded', updated_at = now()
- WHERE corp_id = $1 AND channel_user_id = $2 AND state = 'initiated'`, ev.CorpID, ev.UserID); err != nil {
-			return err
-		}
-		var digest string
-		token, digest, err = newToken()
-		if err != nil {
-			return err
-		}
-		id := ids.New("cbr")
-		if _, err := tx.Exec(ctx, `INSERT INTO chn_binding_requests (id, tenant_id, installation_id, channel, corp_id, channel_user_id, display_name, token_digest, state, expires_at)
- VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, 'initiated', $9)`, id, r.tenant, r.installation, Channel, ev.CorpID, ev.UserID, ev.Name, digest, s.businessNow().Add(domain.BindingLinkTTL)); err != nil {
+		// 未绑定：发出新的一次性绑定链接
+		if token, err = s.bindingRequest(ctx, tx, r, ev.CorpID, ev.UserID, ev.Name); err != nil {
 			return err
 		}
 		out.Outcome = api.InboundGuideSent
-		return record(ctx, tx, "channels.binding_request.created", id, "channel.inbound")
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -175,9 +167,32 @@ func (s *Service) ReceiveInbound(ctx context.Context, channel string, cb *api.Ca
 		s.rejectCallback(ctx, ev.CorpID, "duplicate")
 	}
 	if token != "" {
-		if err := s.provider().Send(ctx, ev.CorpID, ev.UserID, api.Message{Kind: "binding_guide", Text: "请先绑定妙洽账号", URL: "/channels/bind?link=" + token}); err != nil {
-			s.logger().WarnContext(ctx, "绑定引导发送失败", "corp", ev.CorpID, "error", err.Error())
-		}
+		s.sendGuide(ctx, ev.CorpID, ev.UserID, token)
 	}
 	return out, nil
+}
+
+// bindingRequest 为未绑定（或绑定已失效）的渠道账号发出新的一次性绑定链接：同一账号此前尚未打开的链接作废。返回链接令牌。
+func (s *Service) bindingRequest(ctx context.Context, tx pgx.Tx, r *corpRoute, corpID, userID, name string) (string, error) {
+	if _, err := tx.Exec(ctx, `UPDATE chn_binding_requests SET state = 'voided', void_reason = 'superseded', updated_at = now()
+ WHERE corp_id = $1 AND channel_user_id = $2 AND state = 'initiated'`, corpID, userID); err != nil {
+		return "", err
+	}
+	token, digest, err := newToken()
+	if err != nil {
+		return "", err
+	}
+	id := ids.New("cbr")
+	if _, err := tx.Exec(ctx, `INSERT INTO chn_binding_requests (id, tenant_id, installation_id, channel, corp_id, channel_user_id, display_name, token_digest, state, expires_at)
+ VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, 'initiated', $9)`, id, r.tenant, r.installation, Channel, corpID, userID, name, digest, s.businessNow().Add(domain.BindingLinkTTL)); err != nil {
+		return "", err
+	}
+	return token, record(ctx, tx, "channels.binding_request.created", id, "channel.inbound")
+}
+
+// sendGuide 发出绑定引导（只有一次性绑定链接，不含任何业务内容）。
+func (s *Service) sendGuide(ctx context.Context, corpID, userID, token string) {
+	if err := s.provider().Send(ctx, corpID, userID, api.Message{Kind: "binding_guide", Text: "请先绑定妙洽账号", URL: "/channels/bind?link=" + token}); err != nil {
+		s.logger().WarnContext(ctx, "绑定引导发送失败", "corp", corpID, "error", err.Error())
+	}
 }

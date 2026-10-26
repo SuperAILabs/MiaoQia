@@ -2,7 +2,8 @@
 // 生效策略与策略代次）、信号收件箱、处理与反馈、批量与撤销（docs/01-product/prd/03-signal-inbox-feedback.md）：视图组装与订阅反查
 // 尚未接入（api.NotWired，事件处理失败并重试、转入死信），测试与演示使用标明为夹具的内存实现（api/facttest）。
 // 第4段提供对象页的本租户信号分区（listObjectSignals；项目经归属边展开，归属边读取 api.ProjectLinks 尚未接入）与供 gateway
-// 读取信号固定求值输入的绑定（api.ExplainerBinding，内部端口为 explainSignal）。关注、回填、重新求值与漏报诊断随所属段落实现。
+// 读取信号固定求值输入的绑定（api.ExplainerBinding，内部端口为 explainSignal）。第5段提供简报取数、信号卡片与渠道内处理的绑定
+// （api.BriefingBinding，内部端口为 listBriefingSignals、listSignalCards、triageSignal、undoSignalTriage）。关注、回填、重新求值与漏报诊断随所属段落实现。
 package detection
 
 import (
@@ -40,7 +41,15 @@ var publicRoutes = []string{
 }
 
 // 内部接口（mTLS 内部端口）的路由：gateway 以用户主体读取信号固定的求值输入（远程绑定）。
-var internalRoutes = []string{"GET /internal/v1/detection/signals/{signalID}/explanation"}
+// 第5段起 channels 以收件人或点击者的用户主体读取简报条目与信号卡片，并在渠道内处理与撤销（api.BriefingBinding）。简报条目与卡片
+// 只经内部端口提供（不对外）。
+var internalRoutes = []string{
+	"GET /internal/v1/detection/signals/{signalID}/explanation",
+	"GET /internal/v1/detection/objectives/{objectiveID}/briefing-signals",
+	"GET /internal/v1/detection/signal-cards",
+	"POST /internal/v1/detection/signals/{signalID}/triage",
+	"POST /internal/v1/detection/triage-undos",
+}
 
 // Adapters 是匹配端口的适配器、业务时钟与批量作业的测试钩子。零值字段使用缺省：Facts 与 Candidates 为未接入（api.NotWired），
 // Now 为系统时钟，LeaseTTL 为 2 分钟，BatchHook 为空。
@@ -98,6 +107,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			}
 			svc.DB, svc.Access, svc.Context, svc.Policies, svc.Packs, svc.Cell, svc.Log = env.DB, access, reader, policies, packs, env.Cell, env.Log
 			env.Bindings.Provide(api.ExplainerBinding, api.LocalExplainer(app.Explainer{Service: svc}))
+			env.Bindings.Provide(api.BriefingBinding, api.LocalBriefing(app.Briefing{Service: svc}))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
