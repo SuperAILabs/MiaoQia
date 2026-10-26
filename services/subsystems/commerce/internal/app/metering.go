@@ -32,13 +32,15 @@ var (
 	keyPattern    = regexp.MustCompile(`^[A-Za-z0-9_-]{16,128}$`)
 )
 
-// Service 是 commerce 的查看计量。Quotas 为种类 → 每计量日额度；Zone 为计量日的时区（租户时区登记前全部租户共用，缺省 Asia/Shanghai）。
+// Service 是 commerce 的查看计量与覆盖判断。Quotas 为种类 → 每计量日额度；Zone 为计量日的时区（租户时区登记前全部租户共用，
+// 缺省 Asia/Shanghai）；Coverage 为数据覆盖包（产品目录接入前来自部署配置，nil 为未配置）。
 type Service struct {
-	DB     *db.DB
-	Log    *slog.Logger
-	Now    func() time.Time
-	Quotas map[string]int64
-	Zone   *time.Location
+	DB       *db.DB
+	Log      *slog.Logger
+	Now      func() time.Time
+	Quotas   map[string]int64
+	Zone     *time.Location
+	Coverage CoveragePlan
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }

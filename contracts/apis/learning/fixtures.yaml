@@ -149,6 +149,18 @@ fixtures:
     patch:
     - op: remove
       path: /changed_samples
+  - name: 无权查看的样本只给数量
+    valid: true
+    patch:
+    - op: add
+      path: /added_withheld
+      value: 1
+  - name: 未返回数量不能为负
+    valid: false
+    patch:
+    - op: add
+      path: /changed_withheld
+      value: -1
 - schema: UnknownReason
   base: data_not_connected
   cases:

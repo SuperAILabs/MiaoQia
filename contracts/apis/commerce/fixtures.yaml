@@ -82,3 +82,46 @@ fixtures:
     patch:
     - op: remove
       path: /metering_day
+- schema: CoverageDecision
+  base:
+    covered: false
+    info_domain: INF-PROC
+    region: '330881'
+    missing:
+    - region
+    source: deployment_config
+  cases:
+  - name: 覆盖内
+    valid: true
+    patch:
+    - op: replace
+      path: /covered
+      value: true
+    - op: replace
+      path: /missing
+      value: []
+  - name: 区域未知
+    valid: true
+    patch:
+    - op: remove
+      path: /region
+  - name: 未知缺失维度
+    valid: false
+    patch:
+    - op: replace
+      path: /missing
+      value:
+      - plan
+  - name: 不返回租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 区划代码不是六位
+    valid: false
+    patch:
+    - op: replace
+      path: /region
+      value: '33'
+

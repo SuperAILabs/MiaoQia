@@ -13,6 +13,161 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+// CheckCoverageParams is parameters of checkCoverage operation.
+type CheckCoverageParams struct {
+	InfoDomain string
+	Region     OptString `json:",omitempty,omitzero"`
+}
+
+func unpackCheckCoverageParams(packed middleware.Parameters) (params CheckCoverageParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "info_domain",
+			In:   "query",
+		}
+		params.InfoDomain = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "region",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Region = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeCheckCoverageParams(args [0]string, argsEscaped bool, r *http.Request) (params CheckCoverageParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: info_domain.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "info_domain",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.InfoDomain = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^INF-[A-Z]+$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.InfoDomain)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "info_domain",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: region.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "region",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotRegionVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotRegionVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Region.SetTo(paramsDotRegionVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Region.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     0,
+							MinLengthSet:  false,
+							MaxLength:     0,
+							MaxLengthSet:  false,
+							Email:         false,
+							Hostname:      false,
+							Regex:         regexMap["^[0-9]{6}$"],
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "region",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // RecordViewParams is parameters of recordView operation.
 type RecordViewParams struct {
 	IdempotencyKey string

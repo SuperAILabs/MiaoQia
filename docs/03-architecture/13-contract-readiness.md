@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.11 · 更新：2026-10-26 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.12 · 更新：2026-10-26 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -167,7 +167,7 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 平台资质体系登记（`qual:*` 体系与版本，行业包资质模板 `equivalents` 的加载与解析） | [可扩展性 2.4](04-extensibility.md#24-行业包) | INF-QUAL 首次启用，或首个跨资质体系比较资质的规则 | 新增 |
 | 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | 数据平面的首个生产读取实现（第4段服务端切片以 gateway 的 `api.PublicData` 端口与内存夹具代替，生产组装为未接入） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
 | evidence 的 `ResolveEvidence`（展示级别与原因、快照、来源可达状态、派生输入） | [evidence](subsystems/evidence.md)；PRD 第4段 F6 | 证据解析的生产实现（第4段切片以 `api.EvidenceResolver` 端口代替） | 新增 |
-| commerce 的覆盖判断与权益（`GetEntitlements`，对象所在区域与信息领域是否在数据覆盖包内）与按套餐的查看额度 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（第4段切片以 gateway 的 `api.Entitlements` 端口代替，额度来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt` 不变 |
+| commerce 的按租户权益（`GetEntitlements` 的订阅与按租户覆盖包）与按套餐的查看额度；覆盖判断 `checkCoverage` 已随 commerce OpenAPI 0.2.0 写入，覆盖包暂为部署配置 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（额度与覆盖包来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt`、`CoverageDecision` 不变 |
 | detection 的归属边读取（entity-graph 的 `part_of`，项目展开到采购项目） | [detection 第5节](subsystems/detection.md#5-接口) | entity-graph 关系读取的生产实现（第4段切片以 `api.ProjectLinks` 端口代替） | 随 entity-graph `GetRelationships` |
 | 简报各区的数据截至时间与来源中断（domain-intelligence 的 `GetCoverage`，按信息领域） | [PRD 第5段 F2 第4条](../01-product/prd/05-briefing-quick-actions.md#f2-推送到企业微信)；[channels 第6节](subsystems/channels.md#6-接口) | 覆盖的首个生产读取实现（第5段切片以 channels 的 `api.Coverage` 端口代替，未接入时各领域为“未知”） | 随 domain-intelligence OpenAPI；channels 的简报契约不变 |
 | 简报与卡片来源字段的展示级别（信号各展示字段的来源权利与原文链接） | [PRD 第5段 F3 第3条](../01-product/prd/05-briefing-quick-actions.md#f3-卡片内容与截断)；[数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 来源权利的生产读取（第5段切片以 channels 的 `api.Rights` 端口代替，未接入时来源字段失败关闭为 none） | 随权利条目 Schema；channels 的简报契约不变 |

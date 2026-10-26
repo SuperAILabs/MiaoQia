@@ -751,6 +751,52 @@ func (o OptFloat64) Or(d float64) float64 {
 	return d
 }
 
+// NewOptInt returns new OptInt with value set to v.
+func NewOptInt(v int) OptInt {
+	return OptInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt is optional int.
+type OptInt struct {
+	Value int
+	Set   bool
+}
+
+// IsSet returns true if OptInt was set.
+func (o OptInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt) SetTo(v int) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt) Get() (v int, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptInt64 returns new OptInt64 with value set to v.
 func NewOptInt64(v int64) OptInt64 {
 	return OptInt64{
@@ -1309,6 +1355,12 @@ type SimulationDiff struct {
 	AddedSamples   []SimulationSample `json:"added_samples"`
 	RemovedSamples []SimulationSample `json:"removed_samples"`
 	ChangedSamples []SimulationSample `json:"changed_samples"`
+	// 该列表中当前查看者无权查看、未返回的代表样本数.
+	AddedWithheld OptInt `json:"added_withheld"`
+	// 该列表中当前查看者无权查看、未返回的代表样本数.
+	RemovedWithheld OptInt `json:"removed_withheld"`
+	// 该列表中当前查看者无权查看、未返回的代表样本数.
+	ChangedWithheld OptInt `json:"changed_withheld"`
 }
 
 // GetAdded returns the value of Added.
@@ -1341,6 +1393,21 @@ func (s *SimulationDiff) GetChangedSamples() []SimulationSample {
 	return s.ChangedSamples
 }
 
+// GetAddedWithheld returns the value of AddedWithheld.
+func (s *SimulationDiff) GetAddedWithheld() OptInt {
+	return s.AddedWithheld
+}
+
+// GetRemovedWithheld returns the value of RemovedWithheld.
+func (s *SimulationDiff) GetRemovedWithheld() OptInt {
+	return s.RemovedWithheld
+}
+
+// GetChangedWithheld returns the value of ChangedWithheld.
+func (s *SimulationDiff) GetChangedWithheld() OptInt {
+	return s.ChangedWithheld
+}
+
 // SetAdded sets the value of Added.
 func (s *SimulationDiff) SetAdded(val int) {
 	s.Added = val
@@ -1369,6 +1436,21 @@ func (s *SimulationDiff) SetRemovedSamples(val []SimulationSample) {
 // SetChangedSamples sets the value of ChangedSamples.
 func (s *SimulationDiff) SetChangedSamples(val []SimulationSample) {
 	s.ChangedSamples = val
+}
+
+// SetAddedWithheld sets the value of AddedWithheld.
+func (s *SimulationDiff) SetAddedWithheld(val OptInt) {
+	s.AddedWithheld = val
+}
+
+// SetRemovedWithheld sets the value of RemovedWithheld.
+func (s *SimulationDiff) SetRemovedWithheld(val OptInt) {
+	s.RemovedWithheld = val
+}
+
+// SetChangedWithheld sets the value of ChangedWithheld.
+func (s *SimulationDiff) SetChangedWithheld(val OptInt) {
+	s.ChangedWithheld = val
 }
 
 // Ref: #/components/schemas/SimulationHint
@@ -1406,6 +1488,7 @@ const (
 	SimulationHintCodeZeroResults           SimulationHintCode = "zero_results"
 	SimulationHintCodeCoverageInsufficient  SimulationHintCode = "coverage_insufficient"
 	SimulationHintCodeFactTypesNotConnected SimulationHintCode = "fact_types_not_connected"
+	SimulationHintCodeSamplesUnavailable    SimulationHintCode = "samples_unavailable"
 )
 
 // AllValues returns all SimulationHintCode values.
@@ -1417,6 +1500,7 @@ func (SimulationHintCode) AllValues() []SimulationHintCode {
 		SimulationHintCodeZeroResults,
 		SimulationHintCodeCoverageInsufficient,
 		SimulationHintCodeFactTypesNotConnected,
+		SimulationHintCodeSamplesUnavailable,
 	}
 }
 
@@ -1434,6 +1518,8 @@ func (s SimulationHintCode) MarshalText() ([]byte, error) {
 	case SimulationHintCodeCoverageInsufficient:
 		return []byte(s), nil
 	case SimulationHintCodeFactTypesNotConnected:
+		return []byte(s), nil
+	case SimulationHintCodeSamplesUnavailable:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -1460,6 +1546,9 @@ func (s *SimulationHintCode) UnmarshalText(data []byte) error {
 		return nil
 	case SimulationHintCodeFactTypesNotConnected:
 		*s = SimulationHintCodeFactTypesNotConnected
+		return nil
+	case SimulationHintCodeSamplesUnavailable:
+		*s = SimulationHintCodeSamplesUnavailable
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -1733,7 +1822,9 @@ type SimulationReport struct {
 	Diff                OptSimulationDiff    `json:"diff"`
 	// 首次激活（没有对比一侧）时草案产生信号的代表样本.
 	Samples []SimulationSample `json:"samples"`
-	Rules   []RuleStats        `json:"rules"`
+	// Samples 中当前查看者无权查看、未返回的代表样本数.
+	SamplesWithheld OptInt      `json:"samples_withheld"`
+	Rules           []RuleStats `json:"rules"`
 	// 未知比例最高的规则（未知比例为0的不列）.
 	TopUnknownRules []string         `json:"top_unknown_rules"`
 	Hints           []SimulationHint `json:"hints"`
@@ -1767,6 +1858,11 @@ func (s *SimulationReport) GetDiff() OptSimulationDiff {
 // GetSamples returns the value of Samples.
 func (s *SimulationReport) GetSamples() []SimulationSample {
 	return s.Samples
+}
+
+// GetSamplesWithheld returns the value of SamplesWithheld.
+func (s *SimulationReport) GetSamplesWithheld() OptInt {
+	return s.SamplesWithheld
 }
 
 // GetRules returns the value of Rules.
@@ -1812,6 +1908,11 @@ func (s *SimulationReport) SetDiff(val OptSimulationDiff) {
 // SetSamples sets the value of Samples.
 func (s *SimulationReport) SetSamples(val []SimulationSample) {
 	s.Samples = val
+}
+
+// SetSamplesWithheld sets the value of SamplesWithheld.
+func (s *SimulationReport) SetSamplesWithheld(val OptInt) {
+	s.SamplesWithheld = val
 }
 
 // SetRules sets the value of Rules.

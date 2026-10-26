@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: learning 接口
-  version: 0.2.0
+  version: 0.3.0
   description: >-
     策略仿真（PRD 第7段 F3，docs/01-product/prd/07-policy-simulation-approval.md；规格见 docs/03-architecture/subsystems/learning.md）。
     草案：随第7段首个实现切片提交，未冻结。租户、cell 与调用主体来自请求上下文。仿真是候选变更仿真（反事实）：回答“如果当时就按这份
@@ -11,6 +11,10 @@ info:
     授权经 identity 的 Check：查看报告为目标的 can_view，发起仿真为目标的 can_draft_policy。错误为 application/problem+json 与稳定 code。
     0.2.0 起提供反馈汇总（PRD 第3段 F7）：learning 消费 detection.signal.detected.v1 与 detection.signal.triaged.v1 维护租户反馈集
     （以操作标识幂等），汇总只读、不创建草案或提案。
+    0.3.0 起代表样本按查看者本人的权限过滤（PRD 第7段 F3 第5条、用例11）：每次读取（simulatePolicy 与 getSimulation 的响应）按当前
+    调用者判断每条样本对应的公共事实能否查看（与对象页相同：租户上的 can_search_public，以及对象所在信息领域与区域在租户数据覆盖内），
+    无权的样本不返回，只计入同一列表的 *_withheld 数量；同一运行对不同查看者可返回不同样本，保存的报告不变。权限判断不可用时
+    全部样本按未返回计数，并给出提示 samples_unavailable，不当作有权。
 servers:
 - url: /internal
 paths:
@@ -347,6 +351,12 @@ components:
             $ref: '#/components/schemas/SimulationSample'
         removed_samples: *samples
         changed_samples: *samples
+        added_withheld: &withheld
+          type: integer
+          minimum: 0
+          description: 该列表中当前查看者无权查看、未返回的代表样本数
+        removed_withheld: *withheld
+        changed_withheld: *withheld
     UnknownReason:
       type: string
       description: >-
@@ -422,6 +432,7 @@ components:
           - zero_results
           - coverage_insufficient
           - fact_types_not_connected
+          - samples_unavailable
         detail:
           type: string
           maxLength: 2000
@@ -454,6 +465,10 @@ components:
           description: 首次激活（没有对比一侧）时草案产生信号的代表样本
           items:
             $ref: '#/components/schemas/SimulationSample'
+        samples_withheld:
+          type: integer
+          minimum: 0
+          description: samples 中当前查看者无权查看、未返回的代表样本数
         rules:
           type: array
           maxItems: 64

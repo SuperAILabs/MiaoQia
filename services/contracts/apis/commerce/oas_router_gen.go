@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	rn1AllowedHeaders = map[string]string{
+	rn3AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 )
@@ -54,29 +54,68 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/v1/commerce/view-meters"
+		case '/': // Prefix: "/v1/commerce/"
 
-			if l := len("/v1/commerce/view-meters"); len(elem) >= l && elem[0:l] == "/v1/commerce/view-meters" {
+			if l := len("/v1/commerce/"); len(elem) >= l && elem[0:l] == "/v1/commerce/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				// Leaf node.
-				switch r.Method {
-				case "POST":
-					s.handleRecordViewRequest([0]string{}, elemIsEscaped, w, r)
-				default:
-					s.notAllowed(w, r, notAllowedParams{
-						allowedMethods: "POST",
-						allowedHeaders: rn1AllowedHeaders,
-						acceptPost:     "application/json",
-						acceptPatch:    "",
-					})
+				break
+			}
+			switch elem[0] {
+			case 'c': // Prefix: "coverage"
+
+				if l := len("coverage"); len(elem) >= l && elem[0:l] == "coverage" {
+					elem = elem[l:]
+				} else {
+					break
 				}
 
-				return
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleCheckCoverageRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
+			case 'v': // Prefix: "view-meters"
+
+				if l := len("view-meters"); len(elem) >= l && elem[0:l] == "view-meters" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "POST":
+						s.handleRecordViewRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "POST",
+							allowedHeaders: rn3AllowedHeaders,
+							acceptPost:     "application/json",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
 			}
 
 		}
@@ -165,29 +204,68 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/v1/commerce/view-meters"
+		case '/': // Prefix: "/v1/commerce/"
 
-			if l := len("/v1/commerce/view-meters"); len(elem) >= l && elem[0:l] == "/v1/commerce/view-meters" {
+			if l := len("/v1/commerce/"); len(elem) >= l && elem[0:l] == "/v1/commerce/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				// Leaf node.
-				switch method {
-				case "POST":
-					r.name = RecordViewOperation
-					r.summary = "计一次对象查看或原文查看（RecordView）"
-					r.operationID = "recordView"
-					r.operationGroup = ""
-					r.pathPattern = "/v1/commerce/view-meters"
-					r.args = args
-					r.count = 0
-					return r, true
-				default:
-					return
+				break
+			}
+			switch elem[0] {
+			case 'c': // Prefix: "coverage"
+
+				if l := len("coverage"); len(elem) >= l && elem[0:l] == "coverage" {
+					elem = elem[l:]
+				} else {
+					break
 				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = CheckCoverageOperation
+						r.summary = "判断对象是否在租户的数据覆盖包内（GetEntitlements 的覆盖部分）"
+						r.operationID = "checkCoverage"
+						r.operationGroup = ""
+						r.pathPattern = "/v1/commerce/coverage"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+			case 'v': // Prefix: "view-meters"
+
+				if l := len("view-meters"); len(elem) >= l && elem[0:l] == "view-meters" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "POST":
+						r.name = RecordViewOperation
+						r.summary = "计一次对象查看或原文查看（RecordView）"
+						r.operationID = "recordView"
+						r.operationGroup = ""
+						r.pathPattern = "/v1/commerce/view-meters"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
 			}
 
 		}

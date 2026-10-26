@@ -104,7 +104,8 @@ var publicRoutes = []string{
 	"GET /v1/evidence/{evidenceID}",
 }
 
-// Adapters 是对象页的出站端口与业务时钟。零值字段使用缺省：数据平面、证据与覆盖为未接入（api.NotWired），Now 为系统时钟。
+// Adapters 是对象页的出站端口与业务时钟。零值字段使用缺省：数据平面与证据为未接入（api.NotWired），覆盖判断为 commerce 的
+// 覆盖判断绑定（本地或远程，启动时解析，缺失不启动），Now 为系统时钟。
 type Adapters struct {
 	Public       api.PublicData
 	Evidence     api.EvidenceResolver
@@ -116,7 +117,8 @@ type Adapters struct {
 func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
 // ModuleWith 返回使用给定适配器的 gateway 模块定义。对象页依赖的跨子系统绑定在启动时全部解析：identity 的授权决策点、commerce 的
-// 查看计量、detection 的信号固定求值输入与 customer-context 的上下文读取（本地或远程绑定），缺一不启动。
+// 查看计量与覆盖判断（未显式给出 Entitlements 时）、detection 的信号固定求值输入与 customer-context 的上下文读取（本地或远程绑定），
+// 缺一不启动。
 func ModuleWith(adapters Adapters) runtime.Module {
 	svc := &bff.Service{Public: adapters.Public, Evidence: adapters.Evidence, Entitlements: adapters.Entitlements, Now: adapters.Now}
 	if svc.Public == nil {
@@ -125,9 +127,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 	if svc.Evidence == nil {
 		svc.Evidence = api.NotWiredEvidence{}
 	}
-	if svc.Entitlements == nil {
-		svc.Entitlements = api.NotWired{}
-	}
+	coverageFromCommerce := svc.Entitlements == nil
 	return runtime.Module{
 		Name:     api.Name,
 		Database: "gwy",
@@ -147,6 +147,13 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			reader, ok := runtime.Lookup[ccapi.ContextReader](env.Bindings, ccapi.ContextBinding)
 			if !ok {
 				return fmt.Errorf("gateway：缺少 %s 绑定", ccapi.ContextBinding)
+			}
+			if coverageFromCommerce {
+				coverage, ok := runtime.Lookup[commerceapi.Coverage](env.Bindings, commerceapi.CoverageBinding)
+				if !ok {
+					return fmt.Errorf("gateway：缺少 %s 绑定", commerceapi.CoverageBinding)
+				}
+				svc.Entitlements = bff.CommerceCoverage{Coverage: coverage}
 			}
 			key, err := cursorKey(env)
 			if err != nil {

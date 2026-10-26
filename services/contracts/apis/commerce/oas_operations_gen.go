@@ -6,5 +6,6 @@ package commerceapi
 type OperationName = string
 
 const (
-	RecordViewOperation OperationName = "RecordView"
+	CheckCoverageOperation OperationName = "CheckCoverage"
+	RecordViewOperation    OperationName = "RecordView"
 )
