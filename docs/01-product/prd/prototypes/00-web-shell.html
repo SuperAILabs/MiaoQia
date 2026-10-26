@@ -1,0 +1,219 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>妙洽 Web 外壳原型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：左侧页面目录 + 顶部状态切换 + 中间线框画面（桌面/手机两种框）；与各段原型同一套样式 */
+:root{
+  --bg:#f4f5f3; --panel:#ffffff; --ink:#1d2320; --muted:#5d6862; --line:#cfd5d1;
+  --accent:#1f6f5c; --accent-soft:#e1efe9; --warn:#a2610b; --warn-soft:#fbf0dc;
+  --bad:#b03a2e; --bad-soft:#f8e3e0; --off:#9aa39e;
+  --f-ui:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1c2220; --ink:#e3e9e5; --muted:#9aa7a0; --line:#34403b;
+  --accent:#5cc3a6; --accent-soft:#1e3a32; --warn:#e0a24a; --warn-soft:#3a2e1a;
+  --bad:#ef8a7e; --bad-soft:#3d2421; --off:#5f6a65; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+header.top{max-width:1180px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+header.top h1{font-size:1.25rem;margin:0;text-wrap:balance}
+header.top p{margin:0;color:var(--muted);font-size:.85rem}
+nav.pages{display:flex;flex-direction:column;gap:4px}
+@media (max-width:760px){nav.pages{flex-direction:row;overflow-x:auto;padding-bottom:4px}}
+nav.pages button{all:unset;cursor:pointer;padding:8px 10px;border-radius:6px;font-size:.9rem;white-space:nowrap}
+nav.pages button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.pages button:focus-visible,.states button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.states button{font:inherit;font-size:.82rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.states button:disabled{color:var(--off);cursor:not-allowed;border-style:dashed}
+.note{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.stage{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.desk{flex:1 1 520px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.desk .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.75rem;color:var(--muted);overflow-wrap:anywhere}
+.phone{flex:0 0 300px;max-width:100%;background:var(--panel);border:2px solid var(--line);border-radius:22px;overflow:hidden}
+.phone .bar{padding:8px 14px;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.scr{padding:16px;display:flex;flex-direction:column;gap:12px}
+.scr h2{font-size:1.05rem;margin:0}
+.btn{display:inline-block;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer;text-align:center}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.msg{border-radius:6px;padding:10px 12px;font-size:.88rem}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--accent)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.off{color:var(--off)}
+.skel{height:12px;border-radius:4px;background:var(--line);opacity:.6}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:22px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.rules{margin-top:18px;font-size:.84rem;color:var(--muted)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+/* 应用外壳 */
+.shell{display:grid;grid-template-columns:150px minmax(0,1fr);min-height:340px}
+.shell.three{grid-template-columns:150px minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:900px){.shell.three{grid-template-columns:150px minmax(0,1fr)}.shell.three>.side{grid-column:2}}
+.nav{border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column;gap:2px;font-size:.84rem}
+.nav .it{padding:5px 8px;border-radius:6px;display:flex;justify-content:space-between;gap:6px}
+.nav .it.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav .it.soon{color:var(--off)}
+.nav .grp{margin-top:8px;font-size:.72rem;color:var(--muted)}
+.topbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--line);font-size:.82rem}
+.main{min-width:0;display:flex;flex-direction:column}
+.side{border-left:1px solid var(--line);min-width:0}
+.badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:999px;background:var(--bad);color:var(--panel);font-size:.72rem;text-align:center}
+.tabbar{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding:6px 0;font-size:.72rem;color:var(--muted)}
+.tabbar .on{color:var(--accent);font-weight:600}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.8rem;color:var(--muted)}
+.flow b{color:var(--ink);font-weight:500;border:1px solid var(--line);border-radius:6px;padding:2px 8px;background:var(--panel)}
+.hl{background:var(--warn-soft);color:var(--ink);padding:0 2px;border-radius:2px}
+.wm{position:relative}
+.wm::after{content:"浙江某管业 · 陈晨 · 10-26 09:40";position:absolute;inset:0;display:grid;place-items:center;color:var(--line);font-size:.8rem;transform:rotate(-14deg);pointer-events:none;opacity:.7}
+.modal{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel);box-shadow:0 6px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:10px;max-width:360px}
+@media (prefers-reduced-motion:no-preference){.skel{animation:p 1.2s ease-in-out infinite}@keyframes p{50%{opacity:.25}}}
+</style>
+
+<header class="top">
+  <h1>Web 外壳原型：导航、会话与跨段流程</h1>
+  <p>低保真线框 · 对应 docs/03-architecture/14-web-application.md · 示例数据 · 展示完整版本，未开放模块标开放批次</p>
+</header>
+<div class="wrap">
+  <nav class="pages" id="pages" aria-label="页面"></nav>
+  <main style="min-width:0">
+    <div class="label">状态</div>
+    <div class="states" id="states" role="group" aria-label="状态"></div>
+    <p class="note" id="note"></p>
+    <div class="stage" id="stage"></div>
+    <div class="rules" id="rules"></div>
+  </main>
+</div>
+
+<script>
+const ALL=["正常","空态","加载","无权限","过期","失败","部分成功","来源中断","数据未知"];
+const L=n=>Array.from({length:n},(_,i)=>`<div class="skel" style="width:${90-i*12}%"></div>`).join("");
+const desk=(url,body)=>`<div class="desk"><div class="bar">● ● ● &nbsp; app.miaoqia.example${url}</div>${body}</div>`;
+const phone=(title,body)=>`<div class="phone"><div class="bar">${title}</div><div class="scr">${body}</div></div>`;
+const NAV=[["今日简报","M2"],["信号","M2"],["检索","M3"],["关注","M3"],["研究","M3"],["跟进","M2"],["决策","M4"],["设置","M2"]];
+function nav(on,opts={}){
+  const items=NAV.map(([n,b])=>{const soon=b!=="M2"||(n==="跟进"&&opts.noPursuit);const tag=soon?`<span>${n==="跟进"?"随第6段":b}</span>`:(n==="信号"?`<span>12</span>`:"");return `<div class="it ${n===on?"on":""} ${soon?"soon":""}">${n}${tag}</div>`}).join("");
+  return `<div class="nav">${items}<div class="grp">信号 · 目标</div><div class="it ${on==="信号"?"on":""}">A02 进入供货<span>12</span></div><div class="it">A01 直接投标<span>3</span></div></div>`;
+}
+const topBar=(extra="")=>`<div class="topbar"><span>浙江某管业 · 陈晨（业务开拓者）</span><span class="row"><span>待我处理 <span class="badge">2</span></span><span style="color:var(--off)">问妙洽 · M3</span>${extra}</span></div>`;
+const shell=(on,body,side,opts)=>`<div class="shell ${side?"three":""}">${nav(on,opts)}<div class="main">${topBar()}${body}</div>${side?`<div class="side">${side}</div>`:""}</div>`;
+const coverage=`<div class="row" style="padding:8px 12px;font-size:.78rem;color:var(--muted)">采购公告截至 10-26 08:40 · 企业数据截至 10-25</div>`;
+const inboxRows=`<div class="tbl" style="padding:0 12px 12px"><table><tr><th></th><th>项目</th><th>中标方</th><th>金额</th><th>处置</th><th>理由</th></tr>
+<tr><td>☐</td><td>杭州某综合管廊二期</td><td>浙江某建工</td><td>中标金额 1,760 万</td><td><span class="pill ok">跟进候选</span></td><td>含我方品类 · 已有客户</td></tr>
+<tr><td>☐</td><td>宁波某市政雨污分流</td><td>宁波某市政</td><td>未公布</td><td><span class="pill warn">复核候选</span></td><td>品类未能确定（未知 1）</td></tr>
+<tr><td>☐</td><td>绍兴某供水改造</td><td>绍兴某水务</td><td>中标金额 620 万</td><td><span class="pill">观察</span></td><td>金额低于阈值</td></tr></table></div>`;
+
+const PAGES=[
+{id:"shell",name:"应用外壳与导航",
+ na:{"部分成功":"见“失败”：会话分区逐个降级，不是批量操作"},
+ rules:["一个响应式应用：≥1200 三栏、768–1199 两栏、<768 H5 单栏","导航展示完整版本：检索、关注、研究、决策、问妙洽可见、标开放批次、不可进入（WD6）","信号按目标分组，不提供“全部目标”","“待我处理”在顶栏：待我审批与到期任务","导航与角标来自 GET /v1/web/session，强认证状态只用于提示"],
+ s:{
+ "正常":()=>desk("/signals/obj_A02",shell("信号",coverage+inboxRows))+phone("企业微信内置浏览器 · H5",`<div class="row"><b>A02 进入供货 ▾</b><span class="pill">12 待处理</span></div><p class="note">采购公告截至 10-26 08:40</p><div class="card"><b>杭州某综合管廊二期</b><span>浙江某建工 · 中标金额 1,760 万</span><span><span class="pill ok">跟进候选</span> 含我方品类 · 已有客户</span></div><div class="tabbar"><span>简报</span><span class="on">信号</span><span>跟进</span><span>待办 2</span><span>我的</span></div>`),
+ "空态":()=>desk("/signals",shell("信号",`<div class="scr"><div class="empty"><div>你还不是任何已激活目标的参与人，暂时没有可看的信号。</div><div class="note">请目标负责人把你加为参与人；管理员能看到目标，不等于能看信号。</div></div></div>`)),
+ "加载":()=>desk("/signals/obj_A02",shell("信号",`<div class="scr">${L(5)}</div>`)),
+ "无权限":()=>desk("/settings/objectives/obj_A02/policy",shell("设置",`<div class="scr"><div class="msg warn">只读：你可以查看目标与策略，但没有编辑草案的权限。</div><p>A02 进入供货 · 生效版本 v4</p></div>`)),
+ "过期":()=>desk("/signals/obj_A02",`<div class="scr"><div class="msg warn">登录已过期，请重新登录。未提交的内容已保留，登录后回到这一页（不会自动提交）。</div><button class="btn">重新登录</button></div>`),
+ "失败":()=>desk("/signals/obj_A02",shell("信号",`<div class="msg bad" style="margin:12px">待我处理暂时取不到（审批服务不可用），其他功能照常。</div>`+coverage+inboxRows)),
+ "来源中断":()=>desk("/signals/obj_A02",shell("信号",`<div class="msg warn" style="margin:12px">采购公告来源中断：浙江省 · 自 10-25 22:00 起。恢复后自动补齐，补齐的信号标为新到达。</div>`+inboxRows)),
+ "数据未知":()=>desk("/me",shell("设置",`<div class="scr"><h2>个人设置</h2><p>验证器（TOTP）：<span class="pill off">状态暂不可得</span></p><p class="note">身份服务暂不可用，无法确认你是否已登记验证器。执行强认证动作时会提示。</p></div>`))}},
+{id:"login",name:"登录与会话",
+ na:{"空态":"登录页没有列表","部分成功":"单次登录","来源中断":"见“失败”：IdP 不可用","数据未知":"登录不展示业务数据"},
+ rules:["登录、TOTP、找回密码在 IdP 托管页面完成，应用不收集密码（WD5）","授权码 + PKCE，令牌留在 gateway，浏览器只有 HttpOnly 会话 Cookie（WD1）","登录后 Cookie 轮换；return_to 只接受站内路径","退出广播到同一浏览器的其他标签页并清除待续操作"],
+ s:{
+ "正常":()=>desk("/auth/login?return_to=/signals/obj_A02 → id.miaoqia.example",`<div class="scr" style="max-width:340px"><h2>登录妙洽</h2><div class="card">账号（邮箱）<span class="note">chenchen@example.com</span>密码<span class="note">••••••••</span></div><button class="btn">登录</button><p class="note">已登记验证器的账号下一步输入 6 位验证码。登录后回到“信号 · A02 进入供货”。</p></div>`),
+ "加载":()=>desk("/auth/callback",`<div class="scr">${L(2)}<p class="note">正在建立会话…</p></div>`),
+ "无权限":()=>desk("/login",`<div class="scr"><div class="msg bad">账号已停用或已退出该企业，无法登录。请联系企业管理员。</div></div>`),
+ "过期":()=>desk("/login?reason=session_expired",`<div class="scr"><div class="msg warn">登录已过期（空闲超过 12 小时或已满 7 天），请重新登录。</div><button class="btn">登录</button></div>`),
+ "失败":()=>desk("/login",`<div class="scr"><div class="msg bad">账号或密码错误。连续 5 次错误将锁定 15 分钟（还可尝试 3 次）。</div></div>`)}},
+{id:"stepup",name:"强认证与待续操作",
+ na:{"空态":"总针对一次具体动作","部分成功":"单次动作","来源中断":"见“失败”：IdP 不可用","数据未知":"不展示业务数据"},
+ rules:["是否满足由服务端判断（403 mfa_required / totp_enrollment_required）","被拒的动作保存为待续操作：操作标识 + 已填内容，只在本标签页","桌面：弹出窗口验证后自动以同一操作标识继续；H5 与内置浏览器：整页跳转，返回后再点一次（WD3）","取消则原动作不执行、内容保留；验证后主体变化则拒绝","免登会话验证后升级为账号密码会话"],
+ s:{
+ "正常":()=>desk("/approvals/apr_01",`<div class="scr"><h2>批准激活：A02 进入供货 v5</h2><div class="modal"><b>需要验证身份</b><span>批准激活是高影响动作，需要 15 分钟内验证过验证器。验证后会继续“批准”，你填写的意见不会丢失。</span><div class="row"><button class="btn">去验证</button><button class="btn ghost">取消</button></div></div></div>`)+phone("企业微信内置浏览器",`<b>验证完成</b><div class="msg ok">已回到审批页，你填写的意见已恢复。</div><div class="card">意见：同意，关注排除规则 X-SELF</div><button class="btn">继续批准</button><p class="note">整页跳转回来后不会自动提交，请再点一次。</p>`),
+ "加载":()=>desk("/approvals/apr_01",`<div class="scr"><div class="modal"><b>正在等待验证窗口…</b>${L(1)}<span class="note">验证窗口被拦截时，可改为在本页跳转验证。</span></div></div>`),
+ "无权限":()=>desk("/approvals/apr_01",`<div class="scr"><div class="msg bad">验证时登录的账号不是当前账号，已拒绝。请退出后以本人账号操作。</div></div>`),
+ "过期":()=>desk("/approvals/apr_01",`<div class="scr"><div class="msg warn">上次验证已超过 15 分钟。你可以先阅读审批内容，批准或驳回前需要重新验证。</div></div>`),
+ "失败":()=>desk("/approvals/apr_01",`<div class="scr"><div class="msg bad">首次执行需要先登记验证器。你取消了登记，批准没有执行，意见已保留。</div><button class="btn">去登记</button></div>`)}},
+{id:"card",name:"卡片落地与免登",
+ na:{"空态":"总指向一个对象","部分成功":"单次打开","数据未知":"落地页不展示字段"},
+ rules:["卡片链接只指向对象，不携带登录身份","内置浏览器：渠道网页授权 → channels 核对绑定 → identity 签发免登会话 chs_ → gateway 会话直接引用 chs_（WD2）","每次请求都经 identity 核验免登会话，解绑后下一次请求即失效","无权限与不存在使用同一通用页，不显示标题、归属、负责人","落地后地址替换为目标路由，链接令牌不留在历史中"],
+ s:{
+ "正常":()=>phone("企业微信 → 打开卡片",`<div class="flow"><b>卡片 · 查看</b>→<b>静默授权</b>→<b>免登</b>→<b>信号详情</b></div><h2>杭州某综合管廊二期</h2><span class="pill ok">跟进候选</span><p class="note">来自简报 10-26 07:30 · 内容截至 07:30；当前状态：待处理</p><button class="btn ghost">打开中标方 浙江某建工</button>`),
+ "加载":()=>phone("企业微信 → 打开卡片",`${L(3)}<p class="note">正在验证企业微信身份…</p>`),
+ "无权限":()=>phone("无法打开",`<div class="empty"><div>无法打开此内容</div><div class="note">内容不存在，或你没有查看权限。</div></div>`),
+ "过期":()=>phone("链接已过期",`<div class="msg warn">链接已过期（7 天有效）。登录后按你当前的权限打开同一内容。</div><button class="btn">登录后打开</button>`),
+ "失败":()=>phone("账号不一致",`<div class="msg bad">链接是发给 王磊 的，当前登录的是 陈晨。</div><button class="btn">退出并以 王磊 登录</button>`),
+ "来源中断":()=>phone("请登录",`<div class="msg warn">企业微信授权暂不可用，请用妙洽账号登录后继续打开。</div><button class="btn">登录</button>`)}},
+{id:"flow",name:"信号 → 对象页 → 证据",
+ na:{"空态":"从一条已存在的信号进入"},
+ rules:["桌面三栏：列表不离开，详情在右侧抽屉；H5 为新页面","信号详情一次读取 GET /v1/web/signals/{id}，分区各自给出状态","对象页带信号上下文：求值时间与生成时间分别标注；“当前”与“信号判断时”不混排","证据在对象页右侧面板，H5 全屏；按展示级别显示","对象页与证据带水印；每 60 秒检查版本，变化只提示不替换"],
+ s:{
+ "正常":()=>desk("/signals/obj_A02/s/sig_01",shell("信号",inboxRows,`<div class="scr"><h2>杭州某综合管廊二期</h2><span class="pill ok">跟进候选：得分 75 ≥ 60</span><div class="card"><b>规则轨迹</b><span>✓ 含我方品类（PE 管）</span><span>✓ 已有客户 +15</span><span>？ X-SELF 未关联本企业，未生效</span></div><p class="note">按 v4 判断 · 求值 10-25 22:10 · 生成 10-25 22:11</p><button class="btn ghost">打开对象页</button></div>`))+desk("/objects/pp_01?signal=sig_01",`<div class="wm"><div class="scr"><div class="msg ok">来自信号：A02 · 跟进候选 · 按公告版本 v2 判断 · 求值 10-25 22:10 · 生成 10-25 22:11</div><div class="row"><span class="pill ok">当前</span><span class="pill off">信号判断时</span></div><p>中标方 浙江某建工 <sup>[1]</sup> · 中标金额 1,760 万 <sup>[2]</sup> · 已更正</p><div class="card"><b>证据 [2]</b><span>……第二标包中标金额为 <span class="hl">壹仟柒佰陆拾万元</span>……</span><span class="note">快照 10-25 21:58 · 第 3 页</span></div></div></div>`),
+ "加载":()=>desk("/objects/pp_01",`<div class="scr">${L(2)}<p class="note">概要已显示，标包与时间线分区加载中…</p></div>`),
+ "无权限":()=>desk("/objects/org_09",`<div class="scr"><h2>浙江某建工</h2><div class="msg warn">该企业所在区域不在你们的数据覆盖范围内，无法查看详细内容。</div></div>`),
+ "过期":()=>desk("/objects/pp_01?signal=sig_01",`<div class="scr"><div class="msg warn">信号判断后公告已更正（v3），当前显示更正后的值，可切换到“信号判断时”查看。</div><div class="msg warn">该项目归属已调整（10-26 09:12），刷新后显示。</div></div>`),
+ "失败":()=>desk("/objects/pp_01",`<div class="scr"><div class="msg bad">公告时间线暂不可用，可重试。其他分区照常显示。</div><button class="btn ghost">重试此分区</button></div>`),
+ "部分成功":()=>desk("/objects/org_09",`<div class="scr"><div class="msg warn">2 个分区暂不可用</div><p>作为中标方：近 3 年 46 个项目（统计截至 10-26 03:00）</p><div class="msg warn">列表已显示 200 条，已到查看上限。请用年份或地区缩小范围。</div></div>`),
+ "来源中断":()=>desk("/evidence/evd_02",`<div class="scr"><div class="card"><b>证据</b><span>……中标金额为 <span class="hl">壹仟柒佰陆拾万元</span>……</span><span class="note">来自平台快照 10-25 21:58 · 来源网站暂不可达（10-26 08:00 起）</span></div></div>`),
+ "数据未知":()=>desk("/objects/pp_01",`<div class="scr"><p>品类：PE 管 <span class="pill warn">模型识别 · 置信度 0.62 · 低置信，待核对</span></p><p>合同金额：<span class="pill off">原文未提供</span></p><p>信用：<span class="pill off">企业信用数据未接入</span></p></div>`)}},
+{id:"inbox",name:"待我处理与审批",
+ na:{"部分成功":"见“失败”：审批与任务两个分区各自降级","来源中断":"只读写本租户数据"},
+ rules:["GET /v1/web/my-work：待我审批按提交时间、到期任务按截止时间","审批页 GET /v1/web/approvals/{id}：差异、仿真报告、数据未接入规则、回填选择","代表样本按审批人本人权限过滤，无权的只显示数量","申请人本人没有批准按钮；任一审批人决定后其他人看到“已由某人处理”"],
+ s:{
+ "正常":()=>desk("/inbox",shell("",`<div class="scr"><h2>待我处理</h2><div class="tbl"><table><tr><th>类型</th><th>事项</th><th>时间</th></tr><tr><td>审批</td><td>激活 A02 进入供货 v5（王磊提交）</td><td>提交 10-25 18:20 UTC+08:00</td></tr><tr><td>任务</td><td>联系浙江某建工采购部</td><td>截止 10-27（仅到日，Asia/Shanghai）</td></tr></table></div></div>`)),
+ "空态":()=>desk("/inbox",shell("",`<div class="scr"><div class="empty">没有待你处理的审批或任务。</div></div>`)),
+ "加载":()=>desk("/inbox",shell("",`<div class="scr">${L(3)}</div>`)),
+ "无权限":()=>desk("/approvals/apr_01",`<div class="scr"><h2>激活 A02 进入供货 v5</h2><div class="msg warn">这是你提交的申请，不能由你本人批准。</div></div>`),
+ "过期":()=>desk("/approvals/apr_01",`<div class="scr"><div class="msg warn">该申请已由 李娜 于 10-26 09:05 批准。</div></div>`),
+ "失败":()=>desk("/inbox",shell("",`<div class="scr"><div class="msg bad">任务暂时取不到，可重试；审批照常显示。</div></div>`)),
+ "数据未知":()=>desk("/approvals/apr_01",`<div class="scr"><p>平均每周：跟进候选 6 · 复核候选 9</p><div class="msg warn">B-PERMIT、P-CREDIT 所需数据未接入，本版本不生效。</div><p class="note">代表样本 20 条，其中 4 条你无权查看，只显示数量。</p></div>`)}},
+{id:"list",name:"统一列表与保存视图",
+ na:{"来源中断":"见各列表自身的数据截至时间","数据未知":"见各列表的字段状态"},
+ rules:["筛选与排序写入 URL，打开者按自己的权限看到结果","选择后固定为标识清单；“选择全部 N 条”上限 200","保存视图由 customer-context 拥有，只存条件不存结果（WD4）","团队视图：创建需目标上的 can_edit，可见需 can_view_signals","H5 下行变卡片，长按进入选择"],
+ s:{
+ "正常":()=>desk("/signals/obj_A02?view=svw_01&disposition=pursue",shell("信号",`<div class="row" style="padding:8px 12px"><span class="pill ok">视图：大额跟进候选（团队）</span><span class="pill">我的：本周未反馈</span><span class="note">+ 保存当前筛选</span></div>`+inboxRows)),
+ "空态":()=>desk("/signals/obj_A02?region=330200",shell("信号",`<div class="scr"><div class="empty">没有符合筛选的信号。<button class="btn ghost">清除筛选</button></div></div>`)),
+ "加载":()=>desk("/signals/obj_A02",shell("信号",`<div class="scr">${L(4)}</div>`)),
+ "无权限":()=>desk("/signals/obj_A02",shell("信号",`<div class="msg warn" style="margin:12px">只读：你可以查看信号，不能反馈，因此没有勾选框。</div>`+inboxRows)),
+ "过期":()=>desk("/signals/obj_A02",shell("信号",`<div class="msg warn" style="margin:12px">已选 23 条 · 另有 4 条已选不在当前视图 · 有 3 条新信号，点此刷新（不会改变已选）</div>`+inboxRows)),
+ "失败":()=>desk("/signals/obj_A02",shell("信号",`<div class="msg bad" style="margin:12px">保存视图失败：同名团队视图已被 李娜 修改，请查看当前内容后再保存。</div>`)),
+ "部分成功":()=>desk("/signals/obj_A02/batches/bat_01",shell("信号",`<div class="scr"><h2>批量结果</h2><p>成功 20 · 无变化 1 · 失败 2（信号已更新）· 暂时失败 0</p><div class="row"><button class="btn ghost">查看失败项</button><button class="btn ghost">撤销本次操作</button></div></div>`))}},
+{id:"soon",name:"未开放模块",
+ na:{"空态":"说明页","加载":"静态说明","无权限":"所有成员可见说明","过期":"静态说明","失败":"静态说明","部分成功":"静态说明","来源中断":"静态说明","数据未知":"静态说明"},
+ rules:["导航可见、标开放批次、不可进入，租户可关闭（WD6）","不提供可执行的研究入口（M2）","说明页写清这个模块将来做什么，与产品体验第3节一致"],
+ s:{
+ "正常":()=>desk("/research",shell("研究",`<div class="scr"><h2>研究 · M3 开放</h2><p>对企业、项目或市场发起深度研究，结果区分事实、推断、未知与建议，可追问、对比与导出。</p><p class="note">当前阶段可以从对象页查看公共事实与证据。</p></div>`))}}
+];
+
+let page=PAGES[0], state="正常";
+const $=id=>document.getElementById(id);
+function render(){
+  $("pages").innerHTML=PAGES.map(p=>`<button data-p="${p.id}" aria-current="${p===page}">${p.name}</button>`).join("");
+  $("states").innerHTML=ALL.map(s=>{const na=page.na[s];return `<button data-s="${s}" aria-pressed="${s===state}" ${na?`disabled title="${na}"`:""}>${s}</button>`}).join("");
+  const nas=Object.entries(page.na).map(([k,v])=>`${k}：${v}`).join("；");
+  $("note").textContent=nas?`不适用的状态：${nas}`:"";
+  $("stage").innerHTML=(page.s[state]||page.s["正常"])();
+  $("rules").innerHTML=`<div class="label">本页规则</div><ul>${page.rules.map(r=>`<li>${r}</li>`).join("")}</ul>`;
+}
+$("pages").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;page=PAGES.find(p=>p.id===b.dataset.p);state="正常";render()});
+$("states").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;state=b.dataset.s;render()});
+render();
+</script>

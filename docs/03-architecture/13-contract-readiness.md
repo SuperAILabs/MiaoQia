@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.10 · 更新：2026-10-19 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.11 · 更新：2026-10-26 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -173,3 +173,6 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 简报与卡片来源字段的展示级别（信号各展示字段的来源权利与原文链接） | [PRD 第5段 F3 第3条](../01-product/prd/05-briefing-quick-actions.md#f3-卡片内容与截断)；[数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 来源权利的生产读取（第5段切片以 channels 的 `api.Rights` 端口代替，未接入时来源字段失败关闭为 none） | 随权利条目 Schema；channels 的简报契约不变 |
 | 公开截止时间的变化事件（domain-intelligence 的投标截止、开标时间的更正与撤回，带业务有效值、来源发布时间与事实版本） | [PRD 第6段 F6](../01-product/prd/06-pursuit-follow-up.md#f6-公开截止时间变化)；[pursuit 第11节](subsystems/pursuit.md#11-实现状况) | pursuit 任务的公开截止绑定（第6段切片未实现 F6：任务只有手工截止，见 [A02 验收缺口 D-18](../05-delivery/09-a02-end-to-end-acceptance.md#41-数据供应d)） | domain-intelligence 领域事件追加；pursuit 的任务契约追加可选的绑定字段 |
 | 成员与租户时区（identity 成员或租户属性） | [PRD 第6段附“已知设计缺口”第4项](../01-product/prd/06-pursuit-follow-up.md#附已知设计缺口) | 第一个按负责人时区计算提醒或周期的功能（第6段切片按截止所填时区计算提醒，简报按缺省 Asia/Shanghai） | identity OpenAPI 追加可选字段 |
+| gateway 的 Web 页面聚合 `/v1/web/*` 与对象页版本检查 `GET /v1/objects/{objectID}/versions` | [Web 专项设计第7节](14-web-application.md#7-bff-契约) | 首个使用该端点的 Web 实现批次（W0～W5） | gateway OpenAPI 追加，升次版本 |
+| customer-context 的保存视图（`SavedView` 与接口） | [Web 专项设计第6.2节](14-web-application.md#62-保存视图的所有者) | Web 收件箱的个人视图（W2） | customer-context OpenAPI 追加 |
+| Web 页面需要的公开读取与命令：identity `ListMembers` / `PreviewInvitation` / 受邀账号准备，entity-graph `ResolveEntity`，evidence 证书文件上传，learning `ReportMiss` | [Web 专项设计第7.3节](14-web-application.md#73-端点清单) | 对应页面的 Web 实现批次（W1、W2） | 各所有者 OpenAPI 追加 |

@@ -1,6 +1,6 @@
 # 接入网关子系统（gateway）
 
-> 状态：评审中 · 版本：1.5 · 更新：2026-10-19 · 平面：交互
+> 状态：评审中 · 版本：1.6 · 更新：2026-10-26 · 平面：交互
 
 ## 1. 使命
 
@@ -35,6 +35,7 @@
 | `webhooks` | 出站订阅与投递 |
 | `edge` | 认证、租户上下文、限流、幂等、审计埋点 |
 | `jobs` | 异步作业查询 |
+| `web_session` | 浏览器会话：OIDC 授权码 + PKCE 登录、服务端保存令牌、会话 Cookie、强认证升级、渠道免登落地与后端通道登出（第11节） |
 
 ## 4. MCP 能力设计
 
@@ -102,3 +103,12 @@ Skills 是组合这些工具的工作流说明（如“每日信号评审”“�
 - **计量**：对象页与分区按 `object_view`、证据按 `evidence_view` 经 commerce 的 `ViewMetering` 绑定（远程时为内部接口 `POST /internal/v1/commerce/view-meters`）计量，客户端的 `Idempotency-Key` 作为尝试键（未给出时由网关生成）。额度用完 429 `quota.exhausted`；commerce 不可用时放行（回执 `deferred`）并在本子系统发件箱写入 `gateway.view_meter.deferred.v1`，写入失败则 503，不放行未登记的查看；
 - **端口与缺省**：数据平面读取（`api.PublicData`）、证据解析（`api.EvidenceResolver`）与覆盖判断（`api.Entitlements`）没有生产实现，`gateway.Module()` 使用 `api.NotWired`：对象页、分区与证据面板 503，不以空数据冒充没有记录。测试使用 `api/publictest` 的内存夹具，内容全部虚构；
 - **未实现**：版本检查（PRD 第4段第10节）、字段级状态与时间轴（由数据平面提供，本切片透传）、清单标记、跟进、报告漏报与报告数据问题、埋点。
+
+## 11. Web 会话与页面聚合（设计）
+
+Web 应用的浏览器端流程与 BFF 契约见 [Web 专项设计](../14-web-application.md)，本节只列 gateway 的职责，尚未实现（[贯通验收线 W-04](../../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)）：
+
+- **会话**：`web_session` 完成 OIDC 授权码 + PKCE 登录，刷新令牌加密保存在本子系统数据库（接入凭证），浏览器只持有 `__Host-mq_sid` 会话 Cookie；带 Cookie 的请求取出会话的访问令牌交给现有令牌校验，派生的请求上下文与 Bearer 请求相同，之后的租户路由与成员核对不变。免登会话（`channel` 来源）直接引用 identity 的 `chs_`，每次请求经本地 `ResolveChannelSession` 核验，远程绑定时失败关闭（Web 专项设计 WD2，2026-10-26 确认）。同一请求同时带 Cookie 与 `Authorization` 时拒绝；
+- **浏览器端点**：`/auth/login`、`/auth/callback`、`/auth/step-up`、`/auth/logout`、`/auth/backchannel-logout`、`/auth/channel/sso`、`/auth/channel/callback`、`/auth/channel/oauth`（[Web 专项设计第7.4节](../14-web-application.md#74-网关-auth-端点)）；带会话 Cookie 的非 GET 浏览器请求要求 CSRF 头与同源 `Origin`；登录、免登与强认证事务以事务 Cookie 绑定发起的浏览器；`/auth/backchannel-logout` 是 IdP 服务器调用，不适用浏览器 CSRF 规则，以完整校验的 `logout_token` 认证（签名、`iss`、`aud`、时间、`events`、`sid`/`sub`、`jti` 防重放）；
+- **页面聚合**：`/v1/web/*` 只组合各子系统接口，逐分区返回状态，不缓存，不实现业务规则（[Web 专项设计第7节](../14-web-application.md#7-bff-契约)）；对象页增加版本检查 `GET /v1/objects/{objectID}/versions`；
+- **配置**：`MIAOQIA_GATEWAY_SESSION_KEY`（刷新令牌加密密钥，非开发环境缺省不启动）、Keycloak 保密客户端 `miaoqia-web` 的凭证与回调地址。
