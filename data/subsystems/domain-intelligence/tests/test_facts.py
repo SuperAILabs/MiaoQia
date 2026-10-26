@@ -224,7 +224,7 @@ def test_fact_marked_suspect_by_the_extractor_is_not_materialized(plane):
     """证据与契约都合法、但解析器主动标为 suspect 的事实：修订为 suspect，不物化（评审 P2 回归）；warning 照常物化。"""
     from miaoqia.sdk import ExtractionResult
     evd_db, dom_db, pipeline, materializer, _ = plane
-    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.1.0")]
+    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.0")]
 
     def marking(status):
         class Marking:
@@ -247,3 +247,111 @@ def test_fact_marked_suspect_by_the_extractor_is_not_materialized(plane):
     _deliver(plane, [CORPUS / "official-award-20261014"])
     assert _events(evd_db, "evidence.extraction.revised.v1")[-1]["data"]["quality_status"] == "warning"
     assert [f["quality"]["status"] for f in _facts(dom_db)] == ["warning"]
+
+
+def test_read_binding_selects_recorded_versions_and_pins_without_future_leakage(plane):
+    from datetime import datetime, timezone
+    from miaoqia import domain_intelligence
+    from miaoqia.domain_intelligence.api import Basis
+
+    _deliver(plane, [CORPUS / "official-award-20261014"])
+    v1 = _facts(plane[1])[0]
+    cutoff = datetime.now(timezone.utc)
+    ref = _events(plane[0], "evidence.extraction.revised.v1")[0]["data"]["revision_ref"]
+    revision = plane[3].extractions.revision(ref)
+    changed = copy.deepcopy(list(revision.facts))
+    changed[0]["lots"][0]["bid_results"][0]["price"]["value"] = "695891"
+    with reqctx.use(reqctx.service("domain-intelligence")), plane[1].tx() as conn:
+        plane[3].materialize(conn, dataclasses.replace(revision, id="exr_" + "1" * 26, facts=tuple(changed)))
+    reader = domain_intelligence.queries(plane[1], allowed=lambda tags, purpose: purpose == "object_page")
+    ctx = dataclasses.replace(reqctx.service("test"), purpose="object_page")
+    basis = Basis("known_at", cutoff)
+    with reqctx.use(ctx):
+        old = reader.get_fact(v1["id"], basis)
+        assert old.basis == basis and old.fact == v1
+        assert reader.get_fact(v1["id"], Basis("current")).fact["version"] == 2
+        assert reader.get_fact(v1["id"], basis, version=2) is None
+        assert reader.get_fact(v1["id"], Basis("current"), version=1).fact == v1
+        page = reader.query_facts("INF-PROC", "tendering.notice", basis)
+        assert page.basis == basis and page.items == (v1,)
+        assert [r["fact"]["version"] for r in reader.get_fact_history(v1["id"], basis).items] == [1]
+        first = reader.get_fact_history(v1["id"], Basis("current"), limit=1)
+        assert first.next_cursor == "1"
+        assert [r["fact"]["version"] for r in reader.get_fact_history(v1["id"], Basis("current"), after=int(first.next_cursor)).items] == [2]
+        assert reader.bid_result_units(v1["id"], basis).items[0]["subject"]["version"] == 1
+    for invalid in (lambda: Basis("business_at", cutoff), lambda: Basis("known_at"),
+                    lambda: Basis("known_at", datetime(2026, 1, 1)), lambda: Basis("current", cutoff)):
+        with pytest.raises(ValueError):
+            invalid()
+
+
+def test_read_binding_checks_caller_and_current_rights_for_every_shape(plane):
+    from miaoqia import domain_intelligence
+    from miaoqia.domain_intelligence.api import Basis
+
+    _deliver(plane, [CORPUS / "official-award-20261014", CORPUS / "official-consortium-20261014"])
+    fact = _facts(plane[1])[0]
+    permitted = "tnt_01J0000000000000000000000A"
+    denied = "tnt_01J0000000000000000000B"
+    seen = []
+
+    def policy(tags, purpose):
+        ctx = reqctx.current()
+        seen.append((tags, ctx.tenant, purpose))
+        return ctx.tenant == permitted and purpose == "object_page"
+
+    reader = domain_intelligence.queries(plane[1], allowed=policy)
+    basis = Basis("current")
+    for tenant, yes in ((permitted, True), (denied, False)):
+        ctx = reqctx.Context(reqctx.Principal("usr_test", "user"), tenant=tenant, cell="cell-01", purpose="object_page")
+        with reqctx.use(ctx):
+            assert (reader.get_fact(fact["id"], basis) is not None) == yes
+            assert bool(reader.get_fact_history(fact["id"], basis).items) == yes
+            assert bool(reader.query_facts("INF-PROC", "tendering.notice", basis).items) == yes
+            assert bool(reader.bid_result_units(fact["id"], basis).items) == yes
+            assert reader.query_facts("INF-PROC' OR true --", "tendering.notice", basis).items == ()
+            for limit in (0, -1, 101, True):
+                with pytest.raises(ValueError):
+                    reader.query_facts("INF-PROC", "tendering.notice", basis, limit=limit)
+    assert seen and all("public-official-review" in tags for tags, _, _ in seen)
+    with reqctx.use(dataclasses.replace(reqctx.service("test"), purpose="object_page")), pytest.raises(PermissionError):
+        domain_intelligence.queries(plane[1]).get_fact(fact["id"], basis)
+    with reqctx.use(reqctx.service("test")), pytest.raises(PermissionError):
+        reader.get_fact(fact["id"], basis)
+    with pytest.raises(reqctx.MissingContext):
+        reader.get_fact(fact["id"], basis)
+
+
+def test_fact_query_pagination_does_not_duplicate_or_omit_permitted_facts(plane):
+    from miaoqia import domain_intelligence
+    from miaoqia.domain_intelligence.api import Basis
+    _deliver(plane, [CORPUS / f"official-{n}-20261014" for n in ("award", "candidate", "consortium")])
+    reader = domain_intelligence.queries(plane[1], allowed=lambda tags, purpose: True)
+    found, after = [], ""
+    with reqctx.use(dataclasses.replace(reqctx.service("test"), purpose="object_page")):
+        while True:
+            page = reader.query_facts("INF-PROC", "tendering.notice", Basis("current"), after=after, limit=1)
+            found.extend(f["id"] for f in page.items)
+            if page.next_cursor is None:
+                break
+            after = page.next_cursor
+    assert found == sorted(f["id"] for f in _facts(plane[1]))
+
+
+def test_building_pair_replays_to_readable_facts_and_no_invented_total(plane):
+    from miaoqia import domain_intelligence
+    from miaoqia.domain_intelligence.api import Basis
+    _deliver(plane, [CORPUS / f"official-building-{kind}-20261026" for kind in ("tender", "award")])
+    reader = domain_intelligence.queries(plane[1], allowed=lambda tags, purpose: True)
+    with reqctx.use(dataclasses.replace(reqctx.service("test"), purpose="object_page")):
+        facts = reader.query_facts("INF-PROC", "tendering.notice", Basis("current")).items
+        assert len(facts) == 2
+        assert {f["project_code"]["value"] for f in facts} == {"XCXCG-2025-008"}
+        award = next(f for f in facts if f["notice_type"] == "award")
+        (unit,) = reader.bid_result_units(award["id"], Basis("current")).items
+        assert unit["fields"]["winner"]["name_raw"] == "新兴铸管股份有限公司"
+        assert "amount" not in unit["fields"] and "amount_cny" not in unit["display"]
+        denied = domain_intelligence.queries(plane[1], allowed=lambda tags, purpose: False)
+        page = denied.query_facts("INF-PROC", "tendering.notice", Basis("current"), limit=1)
+        assert page.items == () and page.next_cursor is None
+    assert len(_events(plane[1], "domain.fact.upserted.v1")) == 2

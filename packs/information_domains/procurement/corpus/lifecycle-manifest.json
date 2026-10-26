@@ -1,5 +1,5 @@
 {
-  "version": "0.5.0",
+  "version": "0.6.0",
   "scope": "真实官方原件与人工契约映射，不能证明来源解析准确率或全国覆盖",
   "samples": [
     {
@@ -101,6 +101,18 @@
       "raw_sha256": "1fb7231b39eda09498f942f9a055696d7e1887bdddedf9771e77b5ecf3ae3807",
       "source_kind": "court_original_judgment",
       "gate_scope": "accepted_first_party_judicial_edge_case"
+    },
+    {
+      "sample": "official-building-tender-20261026",
+      "source_url": "https://qzygjy.com/jyxx/001004/001004001/001004001001/20251128/03dec294-8729-4cb4-9fcb-cf27a0877187.html",
+      "response_sha256": "85a2da40195ef4f2c44dc549aae559d4413bf5ce3d5538d9c101610884fbfc92",
+      "raw_sha256": "0dcce1714d74c88b17d110cd154a720182e45562f4771c38293afd731dde2c9e"
+    },
+    {
+      "sample": "official-building-award-20261026",
+      "source_url": "https://qzygjy.com/jyxx/001004/001004001/001004001003/20251222/3413d275-d1e8-4f45-a91c-6f0f9b739af2.html",
+      "response_sha256": "9cae7b42d6a0e5208b1b70259117294dc7967b500fc01745313be9dd743b4eb6",
+      "raw_sha256": "33ec4c2e0d2ed1f5301140c85a13ad39c7b495d8bcd2b3be84afdc8e22c368e9"
     }
   ]
 }

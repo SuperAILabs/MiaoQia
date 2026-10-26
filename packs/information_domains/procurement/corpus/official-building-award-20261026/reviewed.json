@@ -1,0 +1,133 @@
+{
+  "annotation_method": "manual",
+  "facts": [
+    {
+      "notice_type": "award",
+      "title": {
+        "value": "2026年度球墨铸铁管材及管件采购的结果公告",
+        "prov": {
+          "evidence_ref": "ev_WDB7E43MRHJ7FCGYVEQ78V58KG",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "project_code": {
+        "value": "XCXCG-2025-008",
+        "prov": {
+          "evidence_ref": "ev_NRKTH09BF1R4Y5Z7S9ZPMHX7BB",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "buyer": {
+        "name_raw": "江山市水务有限公司",
+        "prov": {
+          "evidence_ref": "ev_WBKC8SXQD1ZFZ208XD0WTFKMY1",
+          "method": "manual",
+          "confidence": 1,
+          "extractor": "manual-review@0.1.0"
+        }
+      },
+      "lots": [
+        {
+          "lot_key": "1",
+          "bid_results": [
+            {
+              "id": "bdr_E9S9H9H944Y2K5E7NWX7XFVJEY",
+              "stage": "award",
+              "result_kind": "contract_award",
+              "is_winner": true,
+              "bidder": {
+                "name_raw": "新兴铸管股份有限公司",
+                "prov": {
+                  "evidence_ref": "ev_WWF8RCS6J7EF0WGFN6DSDYVJW8",
+                  "method": "manual",
+                  "confidence": 1,
+                  "extractor": "manual-review@0.1.0"
+                }
+              }
+            }
+          ],
+          "conditions": {
+            "contract_pricing": {
+              "value": "76.5000%",
+              "prov": {
+                "evidence_ref": "ev_7G6Y657Y8SHNGGHYA8NCRVMKG1",
+                "method": "manual",
+                "confidence": 1,
+                "extractor": "manual-review@0.1.0"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "ev_WDB7E43MRHJ7FCGYVEQ78V58KG": {
+      "id": "ev_WDB7E43MRHJ7FCGYVEQ78V58KG",
+      "snapshot_ref": "snp_84Z1NAV8BF3XZ1M9Y101XQGYGC",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 1,
+        "char_start": 0,
+        "char_end": 22
+      },
+      "quote_hash": "sha256:2e6c73d4d26cdce4312d1e2cbc089dcf35bc22df57c06897bb7b4f6b0e360104"
+    },
+    "ev_NRKTH09BF1R4Y5Z7S9ZPMHX7BB": {
+      "id": "ev_NRKTH09BF1R4Y5Z7S9ZPMHX7BB",
+      "snapshot_ref": "snp_84Z1NAV8BF3XZ1M9Y101XQGYGC",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 7,
+        "char_end": 21,
+        "row": 0,
+        "col": 0
+      },
+      "quote_hash": "sha256:07e33dac2e66e6b8a23fde1a533beeb521883d83c6e791cb0cffcc28d2372302"
+    },
+    "ev_WBKC8SXQD1ZFZ208XD0WTFKMY1": {
+      "id": "ev_WBKC8SXQD1ZFZ208XD0WTFKMY1",
+      "snapshot_ref": "snp_84Z1NAV8BF3XZ1M9Y101XQGYGC",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 94,
+        "char_end": 103,
+        "row": 2,
+        "col": 0
+      },
+      "quote_hash": "sha256:c113e77e7328f91db8da2bb2befaeb5146d9b8aca72073198ae2eac887e6a0d6"
+    },
+    "ev_WWF8RCS6J7EF0WGFN6DSDYVJW8": {
+      "id": "ev_WWF8RCS6J7EF0WGFN6DSDYVJW8",
+      "snapshot_ref": "snp_84Z1NAV8BF3XZ1M9Y101XQGYGC",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 29,
+        "char_end": 39,
+        "row": 1,
+        "col": 0
+      },
+      "quote_hash": "sha256:3be5ce62ed17beebfa312325afde1f80ad4a17aaf27db4d0f77c5da56c3a7f22"
+    },
+    "ev_7G6Y657Y8SHNGGHYA8NCRVMKG1": {
+      "id": "ev_7G6Y657Y8SHNGGHYA8NCRVMKG1",
+      "snapshot_ref": "snp_84Z1NAV8BF3XZ1M9Y101XQGYGC",
+      "pipeline_version": "doc.html-dev@0.1.0",
+      "locator": {
+        "block": 2,
+        "char_start": 54,
+        "char_end": 62,
+        "row": 1,
+        "col": 0
+      },
+      "quote_hash": "sha256:b005f88ac2a3d53f1b9e9c86bb339c736641ecaf2b363822f78e6a537641340f"
+    }
+  }
+}
