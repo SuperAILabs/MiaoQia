@@ -1,0 +1,21 @@
+status: amended
+amends: contracts/reviews/first-batch-freeze.yaml
+amended_at: '2026-10-26T06:00:00+00:00'
+approval:
+  authority: 本记录随 A02 贯通验收 L1-1 的 PR 提交；按项目工作流程，PR 评审通过后合并生效，确认前不视为已登记的新基线
+reason: >-
+  L1-1 在 INF-PROC 包清单的 provides.extractors 中追加结果公告解析器（miaoqia_pack_procurement.extractors.result_notice），
+  包版本按追加式修改升为 1.2.0。领域 Schema、事件契约与冻结语料（含 reviewed.json 与 lifecycle-manifest.json）均不变；
+  新解析器只读取冻结语料并与人工映射比对，不修改人工映射。原冻结记录与修订 1–9 不改。
+  修订编号按“谁先合并谁占用”：主线若先合并修订 10，本记录合并前顺延编号。
+version_owners:
+- path: packs/information_domains/procurement/pack.yaml
+  version: 1.2.0
+  sha256: ba4405f9ced302c90be2da1aff66d601e7a89c49f7aa5fabef0d3b438f866cc9
+verification:
+  base: dc4c6d2
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mq-corpus check --gold reviewed（结果公告解析器关键字段 197/197；评测样本即开发样本，不代表泛化准确率）
+  - mq-corpus check --reviewed（人工契约映射 15 个原件、20 条事实，0 失败）

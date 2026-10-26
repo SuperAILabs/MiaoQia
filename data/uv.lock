@@ -626,11 +626,15 @@ name = "miaoqia-domain-intelligence"
 version = "0.1.0"
 source = { editable = "subsystems/domain-intelligence" }
 dependencies = [
+    { name = "miaoqia-evidence" },
     { name = "miaoqia-kernel" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "miaoqia-kernel", editable = "kernel" }]
+requires-dist = [
+    { name = "miaoqia-evidence", editable = "subsystems/evidence" },
+    { name = "miaoqia-kernel", editable = "kernel" },
+]
 
 [[package]]
 name = "miaoqia-entity-graph"
@@ -649,10 +653,14 @@ version = "0.1.0"
 source = { editable = "subsystems/evidence" }
 dependencies = [
     { name = "miaoqia-kernel" },
+    { name = "miaoqia-sdk" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "miaoqia-kernel", editable = "kernel" }]
+requires-dist = [
+    { name = "miaoqia-kernel", editable = "kernel" },
+    { name = "miaoqia-sdk", editable = "sdk" },
+]
 
 [[package]]
 name = "miaoqia-kernel"

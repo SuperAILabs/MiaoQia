@@ -1,6 +1,6 @@
 # A02 真实贯通验收线
 
-> 状态：已批准 · 版本：1.0 · 更新：2026-10-26 · 负责人：项目负责人、首席架构师、产品负责人
+> 状态：已批准 · 版本：1.1 · 更新：2026-10-26 · 负责人：项目负责人、首席架构师、产品负责人
 
 本文定义建材供应商 A02 首条旅程从“服务端切片”走到“真实客户可用”的验收线：汇总第1–4、7段服务端切片（PR #26–#32）登记的未实现与未接入项，按“激活策略 → 收到信号 → 查看原文 → 简报触达”梳理真实贯通所需的依赖，给出分级验收与建议顺序。各段的功能规则以[功能 PRD](../01-product/prd/README.md) 为准，首次使用门禁以[阶段基线](06-stage-baseline.md)为准；本文不改变任何门禁，只把分散在各 PRD 验收表与子系统“实现状况”中的缺口收拢成一张可跟踪的清单，并规定进度口径。
 
@@ -56,9 +56,9 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | 编号 | 缺口 | 来源 | 环节 | 最早级别 | 外部前置 |
 |---|---|---|---|---|---|
 | D-01 | acquisition 来源注册、调度、抓取与归档未实现（Python 骨架） | [阶段基线 M1](06-stage-baseline.md#3-m1-前置条件与能力交接) | ② | L4 | M1-P1、M1-P2、M1-P7 |
-| D-02 | evidence 快照、规范化文档与字段溯源的持久化与事件未实现（SDK 有规范化文档，子系统为骨架） | 同上 M1-P6 | ②③ | L1 | — |
-| D-03 | INF-PROC 只有招标公告解析器；A02 求值单位所需的中标结果公告（中标方、金额、标包）与更正公告解析器缺失 | `packs/information_domains/procurement/src/` | ② | L1 | — |
-| D-04 | domain-intelligence 的领域事实、项目聚合与 `domain.fact.upserted.v1` 生产者未实现；A02 结果视图投影不存在 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
+| D-02 | evidence 快照、规范化文档与字段溯源的持久化与事件未实现（SDK 有规范化文档，子系统为骨架）。**部分关闭（L1-1）**：公共实例的快照判定、原件与规范化文档入对象存储、解析修订、文档证据引用与两条事件已实现（`data/subsystems/evidence/`）；`ResolveEvidence` 等查询随 L1-2，PDF/OCR 管线、增强与重放随 M1 | 同上 M1-P6 | ②③ | L1 | — |
+| D-03 | INF-PROC 只有招标公告解析器；A02 求值单位所需的中标结果公告（中标方、金额、标包）与更正公告解析器缺失。**部分关闭（L1-1）**：结果公告解析器 `proc.result-notice@0.1.0`（中标、框架入围、候选人），CI 以人工映射为黄金标注评测；更正公告解析器仍缺 | `packs/information_domains/procurement/src/` | ② | L1 | — |
+| D-04 | domain-intelligence 的领域事实、项目聚合与 `domain.fact.upserted.v1` 生产者未实现；A02 结果视图投影不存在。**部分关闭（L1-1）**：公告事实版本链、`domain.fact.upserted.v1`（发件箱）与 `tendering.bid_result` 投影已实现；项目聚合（`pp_`/`lot_`）、`tendering.*` 领域事件与品类增强随 L1-2 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-05 | 信息领域服务状态与覆盖接口（`GetCoverage`）未实现，规则到信息领域的生产对应缺失（B-PERMIT 不能显示“数据未接入”） | PRD 第3段用例7、第4段用例24–27；[customer-context](../03-architecture/subsystems/customer-context.md) | ①②③ | L1 | — |
 | D-06 | detection 事实视图端口 `api.Facts` 的生产适配器未接入 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-07 | detection 订阅反查端口 `api.Candidates` 未接入；search 子系统为骨架 | 同上；`services/subsystems/search/` | ② | L1（可先用按目标区域与品类过滤的最小实现） | — |
@@ -144,3 +144,16 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D5 | L3 只在测试企业微信企业中验收，L3 与 L2 并行；测试企业与 C10 真实调用、凭证授权由项目负责人提供（U-01） |
 | D6 | L4 先在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7；B2b、D1c/D2、试点客户候选、C3/C7a 作为 L4/L5 阻断项跟踪 |
 | D7 | 按第6节维护缺口编号与负向验证 |
+
+## 8. L1 实施进度
+
+L1 按依赖拆成四个实现 PR，每个 PR 在第4节更新编号：
+
+| PR | 内容 | 关闭或推进 | 与主线 |
+|---|---|---|---|
+| L1-1 | 结果公告解析器与对照人工映射的评测；evidence 公共管线（快照、规范化文档、解析修订、证据引用、事件）；domain-intelligence 事实版本、`domain.fact.upserted.v1` 与 A02 结果视图投影；语料回放命令 `mq-evidence-replay` | D-02、D-03、D-04（部分） | 只改 Python 数据平面、INF-PROC 包与 CI，不碰 Go 服务端 |
+| L1-2 | data-api 内部读取接口（事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态）；按项目编号的项目聚合与 `tendering.*` 事件；建材品类规则增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`）；补一组建材类官方招标与中标结果原件进入冻结语料 | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
+| L1-3 | Go 端口生产适配器：detection `Facts`/`Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、commerce 覆盖判断（R-05）、learning `Dataset`/`DomainStatus` 与样本权限过滤（D-17） | D-06、D-07、D-09、D-10、D-11、D-17、R-05 | 改主线子系统，开工前与主线协调修订号与文件 |
+| L1-4 | 全端口生产装配的部署配置与启动检查、调度器任务、贯通 E2E（投放结果公告 → 收件箱信号 → 对象页回到原文 → 站内简报）及跨租户与无权限负向用例 | R-01、R-02、C-04（站内） | 依赖主线第5段服务端 |
+
+L1-1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力，不宣称 INF-PROC 就绪；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）。

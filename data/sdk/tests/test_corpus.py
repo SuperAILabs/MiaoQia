@@ -315,3 +315,20 @@ def validate(document, facts, evidence):
     module, _ = _registered_validator(tmp_path, monkeypatch, source)
     callback = module._semantic_validator('domains/example.json')
     assert callback(None, [], {}) == []
+
+
+def test_gold_reviewed_scores_declared_fields_and_cannot_mix_with_review(monkeypatch, capsys):
+    """以人工映射为黄金标注：只计解析器声明的关键字段；改动人工映射的取值会被计为错误。"""
+    root = Path(__file__).resolve().parents[3]
+    monkeypatch.chdir(root)
+    monkeypatch.syspath_prepend(str(root / "packs/information_domains/procurement/src"))
+    corpus = root / "packs/information_domains/procurement/corpus"
+    ref = "miaoqia_pack_procurement.extractors.result_notice:ResultNoticeExtractor"
+    assert check(corpus, ref, "domains/procurement/notice.schema.json", 0.95, gold_reviewed=True) == 0
+    assert "字段准确率" in capsys.readouterr().out
+    with pytest.raises(ValueError):
+        check(corpus, ref, "domains/procurement/notice.schema.json", None, reviewed=True, gold_reviewed=True)
+    from miaoqia.sdk import corpus as module
+    assert module._gold_pointers({"lots": [{"bid_results": [{"id": "bdr_x", "rank": 2}]}]},
+                                 ("/lots/*/bid_results/*/rank", "/lots/*/bid_results/*/missing")) == {"/lots/0/bid_results/0/rank": 2}
+    assert module._same("3480000", "3480000.00") and not module._same("3480000", "348000")

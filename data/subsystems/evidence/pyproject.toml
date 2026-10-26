@@ -3,10 +3,14 @@ name = "miaoqia-evidence"
 version = "0.1.0"
 description = "evidence 子系统：证据与内容理解（规格见 docs/03-architecture/subsystems/evidence.md）"
 requires-python = ">=3.12"
-dependencies = ["miaoqia-kernel"]
+dependencies = ["miaoqia-kernel", "miaoqia-sdk"]
+
+[project.scripts]
+mq-evidence-replay = "miaoqia.evidence.replay:main"
 
 [tool.uv.sources]
 miaoqia-kernel = { workspace = true }
+miaoqia-sdk = { workspace = true }
 
 [build-system]
 requires = ["hatchling==1.27.0"]

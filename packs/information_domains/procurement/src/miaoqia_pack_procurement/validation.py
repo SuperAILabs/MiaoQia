@@ -5,10 +5,26 @@ from miaoqia.sdk.document import Document
 from miaoqia.sdk.validation import validate_field_quotes
 
 
+def _literal_texts(node, path="facts"):
+    """文本字段（只有 value 与 prov 的对象，契约 text 类型）是原文摘录：取值必须等于证据定位处的原文。"""
+    if isinstance(node, dict):
+        if set(node) == {"value", "prov"} and isinstance(node["value"], str) and isinstance(node["prov"], dict):
+            yield path, node
+        for key, value in node.items():
+            yield from _literal_texts(value, f"{path}/{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            yield from _literal_texts(value, f"{path}/{i}")
+
+
 def validate(doc: Document, facts: list[dict], evidence: dict[str, dict]) -> list[str]:
     fields = {key: (key + "_prov", None) for key in ("name", "phone", "email", "uscc")}
     fields["name_raw"] = ("prov", None)
     errors = validate_field_quotes(doc, facts, evidence, fields)
+    for path, node in _literal_texts(facts):
+        ref = evidence.get(node["prov"].get("evidence_ref"))
+        if ref and doc.quote(ref["locator"]) != node["value"]:
+            errors.append(f"{path}: 文本字段与证据原文不一致")
     for i, fact in enumerate(facts):
         lots = fact.get("lots", [])
         keys = [lot.get("lot_key") for lot in lots]
