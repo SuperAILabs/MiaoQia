@@ -173,6 +173,9 @@
 | 起草单元内全部目标的策略（不经参与关系） | org_unit | can_draft_unit_policies | ✓ | — | — | — | — | — | — |
 | 查看单元内全部目标的信号（不经参与关系） | org_unit | can_view_unit_signals | ✓ | — | — | ✓ | — | — | — |
 | 反馈单元内全部目标的信号（不经参与关系） | org_unit | can_feedback_unit_signals | ✓ | — | — | ✓ | — | — | — |
+| 分派单元内全部目标的跟进（不经参与关系） | org_unit | can_assign_unit_objectives | ✓ | — | — | — | — | — | — |
+| 查看单元内全部推进（不经参与关系） | org_unit | can_view_unit_pursuits | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
+| 更新单元内全部推进（不经参与关系） | org_unit | can_edit_unit_pursuits | ✓ | — | — | — | — | — | — |
 | 查看一般知识资产 | knowledge_asset | can_view | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | 查看受限知识资产 | knowledge_asset:restricted | can_view | ◐ | ◐ | ◐ | ◐ | ✓ | ◐ | — |
 | 授予受限知识资产 | knowledge_asset:restricted | can_grant | — | — | — | — | ✓ | ✓ | — |

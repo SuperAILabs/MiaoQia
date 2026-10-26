@@ -1,13 +1,14 @@
 asyncapi: 3.0.0
 info:
   title: channels 渠道绑定事件
-  version: 0.2.0
+  version: 0.3.0
   description: >-
     由 channels 经发件箱发布（PRD 第1段第8节）。信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；
     本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。绑定的每次状态变化发布一条，按绑定版本单调递增；
     identity 消费 revoking 与 invalidated 撤销该绑定版本以下的免登会话（撤销水位只升不降，迟到的旧事件不改变结果），
     channels 自身消费 revoking 重试同步撤销。0.2.0（PRD 第5段）追加投递与卡片动作事件：channels.delivery.sent.v1、
-    channels.delivery.failed.v1 与 channels.action.executed.v1。事件只含标识、状态与结果代码，不含简报条目内容。
+    channels.delivery.failed.v1 与 channels.action.executed.v1。事件只含标识、状态与结果代码，不含简报条目内容。0.3.0（PRD 第6段）：卡片动作追加 pursue
+    （卡片上的“跟进”，经 pursuit 以点击者本人创建或关联跟进）与可选的 pursuit_id。
 channels:
   tenantChannels:
     address: cell-{cell}.channels
@@ -187,7 +188,8 @@ components:
       description: >-
         operation_id 即动作令牌标识（撤销另有令牌）。只在业务调用得到确定结果、结果固定在操作标识上时发布一次；操作开始前的拒绝
         （绑定无效、非收件人、令牌过期、他租户）与暂时失败只写审计，不发布本事件。parts 为各部分的变化（feedback 本人反馈、
-        status 处理状态），不含反馈原因与说明。
+        status 处理状态），不含反馈原因与说明。pursue（0.3.0）为卡片上的“跟进”：成功（新建或关联到已有跟进）与无变化（已有跟进且
+        信号已关联）带 pursuit_id（点击者不能查看已有跟进时不带），不带 parts。
       payload:
         type: object
         additionalProperties: false
@@ -217,6 +219,11 @@ components:
             - relevant
             - irrelevant
             - undo
+            - pursue
+          pursuit_id:
+            type: string
+            pattern: ^pur_[0-9A-HJKMNP-TV-Z]{26}$
+            description: 卡片“跟进”创建或关联到的跟进（只用于 action 为 pursue）
           result:
             type: string
             enum:
@@ -226,7 +233,8 @@ components:
           code:
             type: string
             pattern: ^[a-z][a-z0-9_]{1,63}$
-            description: 确定失败的稳定错误代码（forbidden、signal_updated、signal_closed、conflict、not_applicable、signal_not_found）
+            description: 确定失败的稳定错误代码（forbidden、signal_updated、signal_closed、conflict、not_applicable、signal_not_found；
+              pursue 另有 pursuit 的错误代码，例如 objective_not_found）
           parts:
             type: object
             additionalProperties: false

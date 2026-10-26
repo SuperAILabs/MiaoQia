@@ -80,6 +80,7 @@ func Module() runtime.Module {
 			env.Bindings.Provide(api.ContextBinding, api.Local(app.Reader{Service: svc}))
 			env.Bindings.Provide(api.PolicyBinding, api.LocalPolicy(app.PolicyReader{Service: svc}))
 			env.Bindings.Provide(api.AccessBinding, api.LocalAccess(app.ObjectiveAccessor{Service: svc}))
+			env.Bindings.Provide(api.ScopeBinding, api.LocalScope(app.ObjectiveAccessor{Service: svc}))
 			env.Bindings.Provide(api.ActivePoliciesBinding, api.LocalActivePolicies(app.ActivePolicyReader{Service: svc}))
 			return nil
 		},

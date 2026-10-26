@@ -25,6 +25,7 @@ import (
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	detection "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	identity "github.com/superailabs/miaoqia/services/subsystems/identity/api"
+	pursuit "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 )
 
 // 对外接口（经 gateway）的路由。渠道侧入口（安装回调、消息回调、免登）不带妙洽令牌，只以本地绑定 api.Callbacks 提供。
@@ -55,7 +56,7 @@ func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
 // ModuleWith 返回使用给定适配器的 channels 模块定义（测试使用内存实现，见 api/wecomtest）。配置：MIAOQIA_CHANNELS_SIGNING_KEY
 // （动作令牌与翻页游标的签名密钥，base64，至少 32 字节，同一部署的全部实例相同；只有 development 可缺省）、MIAOQIA_CHANNELS_PACKS_DIR
-// （应用领域包目录，默认 packs）。
+// （应用领域包目录，默认 packs）、MIAOQIA_CHANNELS_PURSUE_TENANTS（已开启卡片“跟进”入口的租户，逗号分隔，缺省为空）。
 func ModuleWith(adapters Adapters) runtime.Module {
 	svc := &app.Service{WeCom: adapters.WeCom, Coverage: adapters.Coverage, Rights: adapters.Rights, Now: adapters.Now}
 	return runtime.Module{
@@ -92,6 +93,11 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("channels：缺少 %s 绑定", identity.ApprovalReaderBinding)
 			}
+			// 第6段：卡片“跟进”经 pursuit 的渠道内动作接口（pursuit 先于 channels 加载，远程模式下为远程绑定）
+			pursuits, ok := runtime.Lookup[pursuit.Actions](env.Bindings, pursuit.ActionsBinding)
+			if !ok {
+				return fmt.Errorf("channels：缺少 %s 绑定", pursuit.ActionsBinding)
+			}
 			key, err := signingKey(env)
 			if err != nil {
 				return err
@@ -108,6 +114,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			guard, _ := runtime.Lookup[identity.Guard](env.Bindings, identity.GuardBinding)
 			svc.DB, svc.Authz, svc.Guard, svc.Sessions, svc.Members, svc.Log = env.DB, a, guard, sessions, members, env.Log
 			svc.Detection, svc.Access, svc.Policies, svc.Approvals, svc.Key, svc.Packs = briefing, access, policies, approvals, key, packs
+			svc.Pursuits, svc.PursueTenants = pursuits, pursueTenants(env.Config("PURSUE_TENANTS"))
 			env.Bindings.Provide(api.CallbacksBinding, api.LocalCallbacks(svc))
 			env.Bindings.Provide(api.MessagingBinding, api.LocalMessaging(svc))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(svc))
@@ -139,6 +146,18 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			}
 		},
 	}
+}
+
+// pursueTenants 解析 MIAOQIA_CHANNELS_PURSUE_TENANTS（逗号分隔的租户标识）：已开启卡片“跟进”入口的租户（发布开关，PRD 第6段 F9
+// 第4条；缺省为空，不显示）。
+func pursueTenants(v string) map[string]bool {
+	out := map[string]bool{}
+	for _, t := range strings.Split(v, ",") {
+		if t = strings.TrimSpace(t); t != "" {
+			out[t] = true
+		}
+	}
+	return out
 }
 
 // signingKey 读取 MIAOQIA_CHANNELS_SIGNING_KEY（base64，解码后至少 32 字节）；只有 development 可以缺省，此时每个进程随机生成

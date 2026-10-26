@@ -113,6 +113,48 @@ func (l localAccess) Access(ctx context.Context, objective string, relations []s
 		})
 }
 
+// ScopeBinding 是目标访问判断（带目标所在单元、模板与状态）在绑定表中的名称（PRD 第6段，pursuit 使用）。
+const ScopeBinding = "customer-context.ObjectiveScope"
+
+// Scope 是一次目标访问判断的结果：被允许的关系（总含 can_view）与目标所在单元、模板与状态。
+type Scope struct {
+	ObjectiveID string
+	Allowed     []string
+	OrgUnitID   string
+	TemplateID  string
+	State       string
+}
+
+// Has 判断关系是否被允许。
+func (s *Scope) Has(relation string) bool {
+	if s == nil {
+		return false
+	}
+	for _, r := range s.Allowed {
+		if r == relation {
+			return true
+		}
+	}
+	return false
+}
+
+// ObjectiveScope 与 ObjectiveAccess 口径相同（同一内部接口 getObjectiveAccess），另返回目标所在单元、模板与状态，供 pursuit 确定
+// 推进所在单元（推进的授权在该单元上判断）与结果原因代码所属的应用领域包。不能查看与不存在同样 404 objective_not_found；授权服务
+// 不可用为 503（失败关闭）。只读、幂等。
+type ObjectiveScope interface {
+	Scope(ctx context.Context, objective string, relations []string) (*Scope, error)
+}
+
+// LocalScope 把本地实现包装为经调用管线的接口。
+func LocalScope(impl ObjectiveScope) ObjectiveScope { return localScope{impl} }
+
+type localScope struct{ impl ObjectiveScope }
+
+func (l localScope) Scope(ctx context.Context, objective string, relations []string) (*Scope, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetObjectiveAccess", Idempotent: true},
+		func(ctx context.Context) (*Scope, error) { return l.impl.Scope(ctx, objective, relations) })
+}
+
 // Error 是可在传输边界暴露的错误（稳定 code）；基础设施错误不直接暴露。
 type Error struct {
 	Status int

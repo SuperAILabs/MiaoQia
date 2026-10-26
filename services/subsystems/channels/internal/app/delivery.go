@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/superailabs/miaoqia/services/kernel/ids"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
+	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/api"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/internal/domain"
 )
@@ -118,6 +120,7 @@ type minter struct {
 	now       time.Time
 	tokens    []tokenRow
 	links     []linkRow
+	pursue    map[string]bool // 目标 → 收件人此刻能在该目标上创建跟进（租户已开启跟进入口且有 can_assign）
 }
 
 // link 生成一条只指向对象的链接（7 天有效），返回打开它的地址。
@@ -173,8 +176,32 @@ func (m *minter) signalCard(code, title, objective string, it *SignalItem, feedb
 		}
 		buttons = append(buttons, api.Button{Key: "irrelevant:other", Label: "不相关 · 其他", URL: view + "&feedback=irrelevant"})
 	}
+	// “跟进”（PRD 第6段 F1 第1条）：排除信号不能创建跟进，不显示
+	if m.pursue[objective] && it.Disposition != "excluded" {
+		tok, err := m.token(it.SignalID, objective, "pursue", "", card, "", it.ContentVersion, domain.ActionTokenTTL)
+		if err != nil {
+			return api.Message{}, err
+		}
+		buttons = append(buttons, api.Button{Key: "pursue", Label: "跟进", Token: tok})
+	}
 	buttons = append(buttons, api.Button{Key: "view", Label: "查看", URL: view})
 	return api.Message{Kind: "signal_card", Card: &api.Card{CardID: card, Title: domain.Truncate(title, caps.TitleMax), Lines: lines, Buttons: buttons}}, nil
+}
+
+// pursueGrants 判断收件人此刻能在哪些目标上创建跟进：租户已开启跟进入口（发布开关）、pursuit 的渠道内动作可用，且收件人本人在目标上
+// 有 can_assign（customer-context 的当前口径）。判断失败的目标不显示按钮（失败关闭）；点击时 pursuit 仍按点击者当前的权限再判断。
+func (s *Service) pursueGrants(sctx context.Context, tenant, subject string, objectives []string) map[string]bool {
+	out := map[string]bool{}
+	if s.Pursuits == nil || !s.PursueTenants[tenant] || s.Access == nil {
+		return out
+	}
+	rc, _ := reqctx.From(sctx)
+	uctx := userContext(sctx, tenant, rc.Cell, subject)
+	for _, o := range objectives {
+		granted, err := s.Access.Access(uctx, o, []string{"can_view_signals", "can_assign"})
+		out[o] = err == nil && slices.Contains(granted, "can_assign")
+	}
+	return out
 }
 
 // tenantLocation 是租户时区（M2 的租户时区固定为缺省值 Asia/Shanghai）。
@@ -281,6 +308,13 @@ func (s *Service) planDelivery(sctx context.Context, tenant, subject string, doc
 	}
 	now := s.businessNow()
 	m := &minter{s: s, tenant: tenant, recipient: subject, now: now}
+	var objectives []string
+	for _, sec := range doc.Sections {
+		if sec.Kind == "objective" && sec.ObjectiveSection != nil {
+			objectives = append(objectives, sec.ObjectiveID)
+		}
+	}
+	m.pursue = s.pursueGrants(sctx, tenant, subject, objectives)
 	url, err := m.link("briefing", doc.ID)
 	if err != nil {
 		return nil, err
