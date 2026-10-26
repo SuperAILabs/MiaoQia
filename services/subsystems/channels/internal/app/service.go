@@ -25,6 +25,7 @@ import (
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	detection "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	identity "github.com/superailabs/miaoqia/services/subsystems/identity/api"
+	pursuit "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 )
 
 // Channel 是首批唯一的渠道（企业微信）。飞书、钉钉随各自适配器追加。
@@ -54,6 +55,11 @@ type Service struct {
 	Rights    api.Rights
 	Key       []byte
 	Packs     *Packs
+
+	// 第6段：卡片上的“跟进”经 pursuit 的渠道内动作接口执行；PursueTenants 是已开启跟进入口的租户（发布开关，PRD 第6段 F9 第4条），
+	// 未开启的租户不显示“跟进”按钮。
+	Pursuits      pursuit.Actions
+	PursueTenants map[string]bool
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }

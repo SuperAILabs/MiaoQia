@@ -1508,7 +1508,7 @@ func (s *ObjectiveAccess) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    5,
+			MaxLength:    8,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Allowed)); err != nil {
 			return errors.Wrap(err, "array")
@@ -1540,10 +1540,101 @@ func (s *ObjectiveAccess) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if value, ok := s.OrgUnitID.Get(); ok {
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     1,
+					MinLengthSet:  true,
+					MaxLength:     64,
+					MaxLengthSet:  true,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(value)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "org_unit_id",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.TemplateID.Get(); ok {
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^APP-[A-Z0-9-]{1,32}\\.[A-Z0-9]{1,8}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(value)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "template_id",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.State.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "state",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s ObjectiveAccessState) Validate() error {
+	switch s {
+	case "inactive":
+		return nil
+	case "active":
+		return nil
+	case "disabled":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s *ObjectiveList) Validate() error {
@@ -1718,6 +1809,8 @@ func (s ObjectiveRelation) Validate() error {
 	case "can_view_signals":
 		return nil
 	case "can_feedback":
+		return nil
+	case "can_assign":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

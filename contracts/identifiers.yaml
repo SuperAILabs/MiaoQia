@@ -1,6 +1,6 @@
 # 标识前缀登记（docs/03-architecture/02-data-architecture.md 第 4 节）。
 # 格式 <前缀>_<ULID>；新增前缀在此登记并经架构评审，禁止重复，分配后永不复用。
-version: 1.7.0
+version: 1.8.0
 prefixes:
   usr: { object: User, owner: identity }
   tnt: { object: Tenant, owner: identity }
@@ -53,6 +53,10 @@ prefixes:
   asm: { object: Assessment, owner: assessment }
   dec: { object: Decision, owner: assessment }
   pur: { object: Pursuit, owner: pursuit }
+  psl: { object: PursuitSignalLink, owner: pursuit }    # 信号与跟进的关联记录（PRD 第6段 F2 第5条；detection 以关联标识幂等）
+  tsk: { object: PursuitTask, owner: pursuit }          # 跟进的任务（PRD 第6段 F5）
+  otc: { object: PursuitOutcome, owner: pursuit }       # 追加式结果记录（PRD 第6段 F7；修订追加新记录）
+  rmd: { object: TaskReminder, owner: pursuit }         # 任务提醒（幂等键：任务 + 截止版本 + 提醒种类，PRD 第6段 F5 第5条）
   sim: { object: SimulationRun, owner: learning }         # 策略候选变更仿真运行（PRD 第7段 F3）
   # 交互平面
   chi: { object: ChannelInstallation, owner: channels }
