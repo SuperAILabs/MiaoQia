@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.10 · 更新：2026-10-19 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.11 · 更新：2026-10-26 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -169,3 +169,6 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | evidence 的 `ResolveEvidence`（展示级别与原因、快照、来源可达状态、派生输入） | [evidence](subsystems/evidence.md)；PRD 第4段 F6 | 证据解析的生产实现（第4段切片以 `api.EvidenceResolver` 端口代替） | 新增 |
 | commerce 的覆盖判断与权益（`GetEntitlements`，对象所在区域与信息领域是否在数据覆盖包内）与按套餐的查看额度 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（第4段切片以 gateway 的 `api.Entitlements` 端口代替，额度来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt` 不变 |
 | detection 的归属边读取（entity-graph 的 `part_of`，项目展开到采购项目） | [detection 第5节](subsystems/detection.md#5-接口) | entity-graph 关系读取的生产实现（第4段切片以 `api.ProjectLinks` 端口代替） | 随 entity-graph `GetRelationships` |
+| gateway 的 Web 页面聚合 `/v1/web/*` 与对象页版本检查 `GET /v1/objects/{objectID}/versions` | [Web 专项设计第7节](14-web-application.md#7-bff-契约) | 首个使用该端点的 Web 实现批次（W0～W5） | gateway OpenAPI 追加，升次版本 |
+| customer-context 的保存视图（`SavedView` 与接口） | [Web 专项设计第6.2节](14-web-application.md#62-保存视图的所有者) | Web 收件箱的个人视图（W2） | customer-context OpenAPI 追加 |
+| Web 页面需要的公开读取与命令：identity `ListMembers` / `PreviewInvitation` / 受邀账号准备，entity-graph `ResolveEntity`，evidence 证书文件上传，learning `ReportMiss` | [Web 专项设计第7.3节](14-web-application.md#73-端点清单) | 对应页面的 Web 实现批次（W1、W2） | 各所有者 OpenAPI 追加 |
