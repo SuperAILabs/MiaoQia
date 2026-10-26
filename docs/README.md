@@ -53,7 +53,8 @@ docs/
 │   ├── 05-m0-runtime-acceptance.md M0运行时验收
 │   ├── 06-stage-baseline.md       范围与阶段交接基线
 │   ├── 07-m0-identity-acceptance.md 身份生命周期与cell路由验收
-│   └── 08-model-vendor-evaluation.md 模型供应商评测方案（C3/C7a）
+│   ├── 08-model-vendor-evaluation.md 模型供应商评测方案（C3/C7a）
+│   └── 09-a02-end-to-end-acceptance.md A02 真实贯通验收线与缺口清单
 ```
 
 ## 2. 阅读路径
@@ -152,6 +153,7 @@ docs/
 | M0运行时验收证据 | `05-delivery/05-m0-runtime-acceptance.md` | 引用具体门禁，不扩展为整个M0完成 |
 | M0身份生命周期与cell核验 | `05-delivery/07-m0-identity-acceptance.md` | 引用具体身份/路由范围，生产身份流程另验收 |
 | 当前阶段基线与能力交接 | `05-delivery/06-stage-baseline.md` | 引用剩余项与首次使用节点 |
+| A02 贯通级别与未实现/未接入缺口 | `05-delivery/09-a02-end-to-end-acceptance.md` | 引用缺口编号与贯通级别 |
 | 立项事项状态 | `05-delivery/00-initiation-readiness.md` | 引用事项编号 |
 
 ADR 与架构文档都只表达现行决策；两者不一致即为缺陷，须在同一次变更中修正。
