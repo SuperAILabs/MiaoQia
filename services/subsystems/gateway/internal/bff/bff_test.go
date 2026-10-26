@@ -2,8 +2,11 @@ package bff
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/superailabs/miaoqia/services/kernel/authz"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
@@ -106,4 +109,78 @@ type panickingEvidence struct{ t *testing.T }
 func (p panickingEvidence) Resolve(context.Context, string, string) (*api.Evidence, error) {
 	p.t.Fatal("拒绝之前不得解析证据")
 	return nil, nil
+}
+
+// 展示级别的白名单：摘要不含记录原值与上下文，仅引用不含任何原文内容与定位，不展示只留来源链接；只允许保存元数据时没有正文。
+func TestProjectEvidenceWhitelist(t *testing.T) {
+	saved := time.Date(2026, 10, 16, 8, 0, 0, 0, time.UTC)
+	e := &api.Evidence{Snippet: "allowed excerpt", Context: "FULL CONTEXT", Locator: "p2", RecordKey: "k", RecordValue: "FULL RESTRICTED RECORD",
+		Transform: "t", SnapshotSavedAt: saved, Source: api.EvidenceSource{Name: "n", Title: "ti", URL: "https://example.invalid/x", Reachable: true}}
+	for _, c := range []struct {
+		level         string
+		present, gone []string
+	}{
+		{api.FullText, []string{"allowed excerpt", "FULL CONTEXT", "p2", "FULL RESTRICTED RECORD", "snapshot_saved_at"}, nil},
+		{api.Excerpt, []string{"allowed excerpt", "p2", `"record_key"`, "snapshot_saved_at", `"name"`}, []string{"FULL CONTEXT", "FULL RESTRICTED RECORD", "record_value", `"context"`}},
+		{api.CitationOnly, []string{`"name"`, `"title"`, "example.invalid", `"transform"`}, []string{"allowed excerpt", "FULL", "p2", "record_", "snapshot_saved_at"}},
+		{api.NoDisplay, []string{"example.invalid"}, []string{"allowed excerpt", "FULL", "p2", "record_", `"name"`, `"title"`, "transform", "snapshot_saved_at"}},
+		{"unknown", []string{"example.invalid"}, []string{"allowed excerpt", "FULL", `"name"`}},
+	} {
+		out := &Evidence{Snippet: "stale", RecordValue: "stale"}
+		project(e, c.level, out)
+		raw, _ := json.Marshal(out)
+		for _, w := range c.present {
+			if !strings.Contains(string(raw), w) {
+				t.Errorf("%s：缺少 %s：%s", c.level, w, raw)
+			}
+		}
+		for _, w := range append(c.gone, "stale") {
+			if strings.Contains(string(raw), w) {
+				t.Errorf("%s：不应含 %s：%s", c.level, w, raw)
+			}
+		}
+	}
+	meta := *e
+	meta.MetadataOnly = true
+	out := &Evidence{}
+	project(&meta, api.FullText, out)
+	if out.Snippet != "" || out.Context != "" || out.RecordValue != "" {
+		t.Fatalf("%+v", out)
+	}
+}
+
+// 游标签名：整个载荷受签名保护；合法签发的超过上限的位置为 limit.safety_cap；缺少密钥时失败关闭。
+func TestSectionCursorSealed(t *testing.T) {
+	s := &Service{CursorKey: []byte(strings.Repeat("k", MinCursorKey))}
+	bind := bindingOf("tnt_1", "usr_1", "org_1", "won_history", "current", int64(0), false)
+	tok, err := s.sealCursor(sectionCursor{Binding: bind, Offset: 20, Inner: "20"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c, err := s.openCursor(tok, bind); err != nil || c.Offset != 20 || c.Inner != "20" {
+		t.Fatalf("%+v %v", c, err)
+	}
+	if _, err := s.openCursor(tok, bindingOf("tnt_1", "usr_2", "org_1", "won_history", "current", int64(0), false)); err == nil {
+		t.Fatal("他人的游标被接受")
+	}
+	other := &Service{CursorKey: []byte(strings.Repeat("x", MinCursorKey))}
+	if _, err := other.openCursor(tok, bind); err == nil {
+		t.Fatal("其他密钥签发的游标被接受")
+	}
+	for _, c := range []sectionCursor{{Binding: bind, Offset: 0, Inner: "220"}, {Binding: bind, Offset: 20, Inner: ""}, {Binding: bind, Offset: 20, Inner: strings.Repeat("c", maxInnerCursor+1)}} {
+		tok, _ := s.sealCursor(c)
+		if code, _ := status(t, func() error { _, err := s.openCursor(tok, bind); return err }()); code != 400 {
+			t.Fatalf("%+v：%d", c, code)
+		}
+	}
+	if long, _ := s.sealCursor(sectionCursor{Binding: bind, Offset: 199, Inner: strings.Repeat("c", maxInnerCursor)}); len(long) > 1024 {
+		t.Fatalf("签名后的游标超过契约上限：%d", len(long))
+	}
+	none := &Service{}
+	if code, c := status(t, func() error { _, err := none.openCursor(tok, bind); return err }()); code != 503 || c != "cursor_key_unavailable" {
+		t.Fatalf("%d %s", code, c)
+	}
+	if _, err := none.sealCursor(sectionCursor{Binding: bind, Offset: 1, Inner: "1"}); err == nil {
+		t.Fatal("无密钥时签发了游标")
+	}
 }

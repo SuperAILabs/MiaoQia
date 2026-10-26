@@ -14,6 +14,7 @@
 //	MIAOQIA_BINDING_<子系统>       local（默认）或 remote；remote 时经 MIAOQIA_<子系统>_URL 调用远程接口
 //	MIAOQIA_HTTP_ADDR / MIAOQIA_INTERNAL_ADDR   对外与内部监听地址，默认 :8090 / :8091
 //	MIAOQIA_GATEWAY_ISSUER / MIAOQIA_GATEWAY_AUDIENCE   HTTPS Keycloak realm与资源受众
+//	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
 //	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA

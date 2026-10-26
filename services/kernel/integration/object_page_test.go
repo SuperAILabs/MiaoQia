@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -12,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -113,8 +115,11 @@ func TestObjectPageEvidence(t *testing.T) {
 
 	packs, _ := filepath.Abs(filepath.Join("..", "..", "..", "packs"))
 	config := func(k string) string {
-		if k == "PACKS_DIR" {
+		switch k {
+		case "PACKS_DIR":
 			return packs
+		case "CURSOR_KEY": // gateway 分区游标签名密钥（测试用固定值）
+			return base64.StdEncoding.EncodeToString([]byte("object-page-test-cursor-key-0123456789"))
 		}
 		return ""
 	}
@@ -743,16 +748,75 @@ func TestObjectPageEvidence(t *testing.T) {
 		if n != 200 || cursor != "" || last["capped"] != true {
 			t.Fatalf("%d %q %+v", n, cursor, last["capped"])
 		}
+		// 游标整体签名：降低偏移、替换内层游标、替换绑定、伪造签名与未签名的旧格式都在读取与计量之前 400 invalid_cursor，
+		// 不能借重置偏移绕过 200 条上限
 		prev := getJSON(t, dm, t1, "/v1/objects/"+orgA+"/sections/won_history", "", 200)["next_cursor"].(string)
-		rawCur, _ := base64.RawURLEncoding.DecodeString(prev)
+		const macSize = 32
+		split := func(tok string) ([]byte, []byte) {
+			raw, err := base64.RawURLEncoding.DecodeString(tok)
+			if err != nil || len(raw) <= macSize {
+				t.Fatalf("游标格式：%q", tok)
+			}
+			return raw[:len(raw)-macSize], raw[len(raw)-macSize:]
+		}
+		payload, sig := split(prev)
 		var c map[string]any
-		decode(t, rawCur, &c)
-		c["o"] = 200
-		forged, _ := json.Marshal(c)
-		calls := pub.Requests("section")
-		getJSON(t, dm, t1, "/v1/objects/"+orgA+"/sections/won_history?cursor="+base64.RawURLEncoding.EncodeToString(forged), "", 422, "limit.safety_cap")
+		decode(t, payload, &c)
+		join := func(p, m []byte) string {
+			return base64.RawURLEncoding.EncodeToString(append(append([]byte{}, p...), m...))
+		}
+		edit := func(change func(map[string]any)) []byte {
+			m := map[string]any{}
+			for k, v := range c {
+				m[k] = v
+			}
+			change(m)
+			raw, _ := json.Marshal(m)
+			return raw
+		}
+		reseal := func(change func(map[string]any)) string { return join(edit(change), sig) } // 保留原签名
+		_, otherSig := split(getJSON(t, bd, t1, "/v1/objects/"+orgA+"/sections/won_history", "", 200)["next_cursor"].(string))
+		unsigned, _ := json.Marshal(c)
+		tampered := map[string]string{
+			"降低偏移":    reseal(func(m map[string]any) { m["o"] = 0 }),
+			"偏移改为 1":  reseal(func(m map[string]any) { m["o"] = 1; m["c"] = "220" }),
+			"替换内层游标":  reseal(func(m map[string]any) { m["c"] = "220" }),
+			"替换绑定":    reseal(func(m map[string]any) { m["b"] = strings.Repeat("0", 24) }),
+			"他人的签名":   join(payload, otherSig),
+			"伪造签名":    join(payload, make([]byte, macSize)),
+			"未签名的旧格式": base64.RawURLEncoding.EncodeToString(unsigned),
+			"截断签名":    join(payload, sig[:16]),
+		}
+		calls, meterCount := pub.Requests("section"), usage(t, t1, "object_view")
+		for name, cur := range tampered {
+			if cur == prev {
+				t.Fatalf("%s：未改动", name)
+			}
+			getJSON(t, dm, t1, "/v1/objects/"+orgA+"/sections/won_history?cursor="+url.QueryEscape(cur), "", 400, "invalid_cursor")
+		}
+		if pub.Requests("section") != calls || usage(t, t1, "object_view") != meterCount {
+			t.Fatal("被篡改的游标仍读取了分区或计量")
+		}
+		// 他人签发的游标不能用（绑定查看者）
+		bdCur := getJSON(t, bd, t1, "/v1/objects/"+orgA+"/sections/won_history", "", 200)["next_cursor"].(string)
+		calls, meterCount = pub.Requests("section"), usage(t, t1, "object_view")
+		getJSON(t, dm, t1, "/v1/objects/"+orgA+"/sections/won_history?cursor="+url.QueryEscape(bdCur), "", 400, "invalid_cursor")
+		if pub.Requests("section") != calls || usage(t, t1, "object_view") != meterCount {
+			t.Fatal("被篡改的游标仍读取了分区或计量")
+		}
+		// 用服务端密钥签发的、位置已到上限的游标：422 limit.safety_cap，不读取、不计量
+		capPayload := edit(func(m map[string]any) { m["o"] = 200 })
+		mac := hmac.New(sha256.New, []byte("object-page-test-cursor-key-0123456789"))
+		mac.Write([]byte("miaoqia/gateway/section-cursor/v1\x00"))
+		mac.Write(capPayload)
+		calls = pub.Requests("section")
+		getJSON(t, dm, t1, "/v1/objects/"+orgA+"/sections/won_history?cursor="+join(capPayload, mac.Sum(nil)), "", 422, "limit.safety_cap")
 		if pub.Requests("section") != calls {
 			t.Fatal("超过安全上限仍读取了分区")
+		}
+		// 原游标照常可用
+		if s := getJSON(t, dm, t1, "/v1/objects/"+orgA+"/sections/won_history?cursor="+url.QueryEscape(prev), "", 200); len(s["items"].([]any)) != 20 {
+			t.Fatalf("%+v", s)
 		}
 	})
 
@@ -905,6 +969,20 @@ func TestObjectPageEvidence(t *testing.T) {
 		d := getJSON(t, dm, t1, "/v1/evidence/"+ev2, "", 200)
 		if d["display_level"] != "citation_only" || d["snippet"] != nil || d["transform"] == nil {
 			t.Fatalf("%+v", d)
+		}
+		// 派生证据本身全文、一个输入只允许摘要：按摘要返回，只有被引用的片段，记录原值与上下文不出现在响应的任何位置
+		ev5, ev6 := ids.New("ev"), ids.New("ev")
+		pub.PutEvidence(gwapi.Evidence{ID: ev6, Kind: "record", DisplayLevel: gwapi.Excerpt, ObjectID: orgA, RecordKey: "k", RecordValue: "FULL RESTRICTED RECORD",
+			Source: gwapi.EvidenceSource{Reachable: true}})
+		pub.PutEvidence(gwapi.Evidence{ID: ev5, Kind: "derivation", DisplayLevel: gwapi.FullText, ObjectID: orgA, Snippet: "allowed excerpt",
+			Context: "FULL RESTRICTED CONTEXT", RecordKey: "k", RecordValue: "FULL RESTRICTED RECORD", Transform: "t",
+			Inputs: []gwapi.EvidenceInput{{ID: ev6, DisplayLevel: gwapi.Excerpt}}, Source: gwapi.EvidenceSource{Reachable: true}})
+		raw := expectKey(t, dm, t1, false, "GET", "/v1/evidence/"+ev5, "", "", 200)
+		var x map[string]any
+		decode(t, raw, &x)
+		if x["display_level"] != "excerpt" || x["snippet"] != "allowed excerpt" || strings.Contains(string(raw), "record_value") ||
+			strings.Contains(string(raw), "FULL RESTRICTED") || x["context"] != nil {
+			t.Fatalf("摘要级别泄露了内容：%s", raw)
 		}
 		pub.SetLevel(t1, ev1, gwapi.NoDisplay)
 		r := getJSON(t, dm, t1, "/v1/evidence/"+ev1, "", 200)

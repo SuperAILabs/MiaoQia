@@ -5,10 +5,13 @@ package gateway
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
@@ -17,6 +20,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
+	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
 	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
 	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
@@ -144,7 +148,11 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("gateway：缺少 %s 绑定", ccapi.ContextBinding)
 			}
-			svc.DB, svc.Authz, svc.Meter, svc.Signals, svc.Context, svc.Log = env.DB, a, meter, signals, reader, env.Log
+			key, err := cursorKey(env)
+			if err != nil {
+				return err
+			}
+			svc.DB, svc.Authz, svc.Meter, svc.Signals, svc.Context, svc.Log, svc.CursorKey = env.DB, a, meter, signals, reader, env.Log, key
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
@@ -157,4 +165,33 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			}
 		},
 	}
+}
+
+// cursorKey 读取分区游标的签名密钥 MIAOQIA_GATEWAY_CURSOR_KEY（base64，解码后至少 32 字节；同一部署的全部 api 实例必须相同，
+// 否则跨实例翻页为 invalid_cursor）。缺省只在 MIAOQIA_ENV=development 时允许：每个进程随机生成，重启后已签发的游标失效；
+// 其他环境缺少或无效时不启动。
+func cursorKey(env *runtime.Env) ([]byte, error) {
+	v := strings.TrimSpace(env.Config("CURSOR_KEY"))
+	if v == "" {
+		if !transportsecurity.Development() {
+			return nil, fmt.Errorf("gateway：缺少 MIAOQIA_GATEWAY_CURSOR_KEY（分区游标签名密钥）")
+		}
+		key := make([]byte, bff.MinCursorKey)
+		if _, err := rand.Read(key); err != nil {
+			return nil, err
+		}
+		if env.Log != nil {
+			env.Log.Warn("gateway：未配置 MIAOQIA_GATEWAY_CURSOR_KEY，开发环境使用进程内随机密钥")
+		}
+		return key, nil
+	}
+	for _, enc := range []*base64.Encoding{base64.StdEncoding, base64.RawStdEncoding, base64.URLEncoding, base64.RawURLEncoding} {
+		if key, err := enc.DecodeString(v); err == nil {
+			if len(key) < bff.MinCursorKey {
+				break
+			}
+			return key, nil
+		}
+	}
+	return nil, fmt.Errorf("gateway：MIAOQIA_GATEWAY_CURSOR_KEY 须为 base64 编码、至少 %d 字节", bff.MinCursorKey)
 }

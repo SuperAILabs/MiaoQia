@@ -5,6 +5,7 @@ package bff
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -68,6 +69,8 @@ type Service struct {
 	Entitlements api.Entitlements
 	Now          func() time.Time
 	Log          *slog.Logger
+	// CursorKey 是分区游标的签名密钥（至少 MinCursorKey 字节；同一部署的全部 api 实例共用）。
+	CursorKey []byte
 }
 
 // Error 是可在传输边界暴露的错误。
@@ -440,11 +443,60 @@ func (s *Service) Page(ctx context.Context, objectID, viewName, signalID, key st
 		Sections: sections[obj.Type], Meter: *m, Watermark: Watermark{TenantID: v.rc.Tenant, Member: v.rc.Principal.ID, IssuedAt: s.now()}}, nil
 }
 
-// sectionCursor 是分区的分页位置：偏移（执行翻页深度上限）与数据平面的游标，绑定查看者、对象、分区、口径与筛选。
+// sectionCursor 是分区的分页位置：偏移（执行翻页深度上限）与数据平面的游标，绑定租户、查看者、对象、分区、口径与筛选。
+// 对外的游标是整个载荷连同其 HMAC-SHA256 签名（sealCursor）：绑定、偏移与内层游标任何一项被改动都在读取与计量之前拒绝，
+// 调用方不能通过重置偏移或替换内层游标绕过翻页深度上限。
 type sectionCursor struct {
 	Binding string `json:"b"`
 	Offset  int    `json:"o"`
 	Inner   string `json:"c"`
+}
+
+const (
+	// MinCursorKey 是游标签名密钥的最短长度（字节）。
+	MinCursorKey   = 32
+	maxInnerCursor = 512 // 数据平面游标的上限：签名后的游标须在契约的 1024 字符以内
+	cursorDomain   = "miaoqia/gateway/section-cursor/v1"
+)
+
+func (s *Service) cursorMAC(payload []byte) []byte {
+	mac := hmac.New(sha256.New, s.CursorKey)
+	mac.Write([]byte(cursorDomain))
+	mac.Write([]byte{0})
+	mac.Write(payload)
+	return mac.Sum(nil)
+}
+
+// sealCursor 签发游标：base64url(载荷 JSON ‖ HMAC-SHA256(载荷))，字符集符合契约的游标格式。
+func (s *Service) sealCursor(c sectionCursor) (string, error) {
+	if len(s.CursorKey) < MinCursorKey {
+		return "", failure(503, "cursor_key_unavailable")
+	}
+	raw, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(append(raw, s.cursorMAC(raw)...)), nil
+}
+
+// openCursor 先校验签名再解析游标；签名不符、格式错误、绑定不一致或位置越界都是 400 invalid_cursor。
+func (s *Service) openCursor(value, bind string) (sectionCursor, error) {
+	var c sectionCursor
+	if len(s.CursorKey) < MinCursorKey {
+		return c, failure(503, "cursor_key_unavailable")
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil || len(raw) <= sha256.Size {
+		return c, failure(400, "invalid_cursor")
+	}
+	payload, mac := raw[:len(raw)-sha256.Size], raw[len(raw)-sha256.Size:]
+	if !hmac.Equal(mac, s.cursorMAC(payload)) {
+		return c, failure(400, "invalid_cursor")
+	}
+	if json.Unmarshal(payload, &c) != nil || c.Binding != bind || c.Offset <= 0 || c.Inner == "" || len(c.Inner) > maxInnerCursor {
+		return sectionCursor{}, failure(400, "invalid_cursor")
+	}
+	return c, nil
 }
 
 func bindingOf(parts ...any) string {
@@ -469,12 +521,11 @@ func (s *Service) GetSection(ctx context.Context, objectID, section, viewName, s
 	if limit <= 0 || limit > pageLimit {
 		limit = pageLimit
 	}
-	bind := bindingOf(v.rc.Principal.ID, obj.ID, section, v.basis.View, v.basis.RecordedCutoff.UnixNano(), mine)
+	bind := bindingOf(v.rc.Tenant, v.rc.Principal.ID, obj.ID, section, v.basis.View, v.basis.RecordedCutoff.UnixNano(), mine)
 	pos := sectionCursor{Binding: bind}
 	if after != "" {
-		raw, err := base64.RawURLEncoding.DecodeString(after)
-		if err != nil || json.Unmarshal(raw, &pos) != nil || pos.Binding != bind || pos.Offset < 0 || pos.Inner == "" {
-			return nil, failure(400, "invalid_cursor")
+		if pos, err = s.openCursor(after, bind); err != nil {
+			return nil, err
 		}
 	}
 	// 安全上限在读取内容与计量之前判断：超过翻页深度不读取、不计量
@@ -551,11 +602,16 @@ func (s *Service) GetSection(ctx context.Context, objectID, section, viewName, s
 	}
 	if data.NextCursor != "" {
 		next := pos.Offset + len(out.Items)
-		if next >= depthCap {
+		switch {
+		case next >= depthCap:
 			out.Capped = true
-		} else {
-			raw, _ := json.Marshal(sectionCursor{Binding: bind, Offset: next, Inner: data.NextCursor})
-			out.NextCursor = base64.RawURLEncoding.EncodeToString(raw)
+		case len(data.NextCursor) > maxInnerCursor || len(out.Items) == 0:
+			s.logger().WarnContext(ctx, "数据平面游标无效", "section", section, "length", len(data.NextCursor), "items", len(out.Items))
+			return &Section{ObjectID: obj.ID, Section: section, Basis: out.Basis, Items: []map[string]any{}, Status: "unavailable", ReasonCode: "public_data_unavailable"}, nil
+		default:
+			if out.NextCursor, err = s.sealCursor(sectionCursor{Binding: bind, Offset: next, Inner: data.NextCursor}); err != nil {
+				return nil, err
+			}
 		}
 	}
 	m, err := s.meter(ctx, v.rc, commerce.ObjectView, obj.ID, requestKey(key))
@@ -575,6 +631,50 @@ func strictest(a, b string) string {
 		return api.NoDisplay
 	}
 	return levels[max(ia, ib)]
+}
+
+// project 按最终展示级别以白名单填入证据内容（PRD 第4段 F6 第3条），不从数据平面的结果整体复制，未列出的字段一律不返回：
+//   - full_text：片段、上下文、定位、记录键与原值、转换说明、快照保存时间与完整来源信息；
+//   - excerpt：只有被引用的片段，加定位所需的元数据（定位、记录键、转换说明、快照保存时间与来源信息）；不含上下文与记录原值；
+//   - citation_only：来源名称、公告标题、原文链接与可达状态，以及平台自己的转换说明；不含任何原文内容与定位；
+//   - none（及未知级别）：只保留来源链接作为替代。
+//
+// 来源只允许保存元数据（metadata_only）时没有快照正文：任何级别都不返回片段、上下文与记录原值。
+func project(e *api.Evidence, level string, out *Evidence) {
+	out.Snippet, out.Context, out.Locator, out.RecordKey, out.RecordValue, out.Transform, out.SnapshotSavedAt = "", "", "", "", "", "", nil
+	source := func() EvidenceSource {
+		src := EvidenceSource{Name: e.Source.Name, Title: e.Source.Title, URL: e.Source.URL}
+		reachable := e.Source.Reachable
+		src.Reachable = &reachable
+		if !e.Source.UnreachableSince.IsZero() {
+			t := e.Source.UnreachableSince.UTC()
+			src.UnreachableSince = &t
+		}
+		return src
+	}
+	saved := func() *time.Time {
+		if e.SnapshotSavedAt.IsZero() {
+			return nil
+		}
+		t := e.SnapshotSavedAt.UTC()
+		return &t
+	}
+	switch level {
+	case api.FullText:
+		out.Source, out.SnapshotSavedAt = source(), saved()
+		out.Snippet, out.Context, out.Locator, out.RecordKey, out.RecordValue, out.Transform = e.Snippet, e.Context, e.Locator, e.RecordKey, e.RecordValue, e.Transform
+	case api.Excerpt:
+		out.Source, out.SnapshotSavedAt = source(), saved()
+		out.Snippet, out.Locator, out.RecordKey, out.Transform = e.Snippet, e.Locator, e.RecordKey, e.Transform
+	case api.CitationOnly:
+		out.Source = source()
+		out.Transform = e.Transform
+	default:
+		out.Source = EvidenceSource{URL: e.Source.URL}
+	}
+	if e.MetadataOnly {
+		out.Snippet, out.Context, out.RecordValue = "", "", ""
+	}
 }
 
 // GetEvidence 返回证据面板并计一次原文查看。展示级别按 evidence 返回的级别与派生证据全部输入的级别取最严格的一个，
@@ -625,31 +725,7 @@ func (s *Service) GetEvidence(ctx context.Context, evidenceID, key string) (*Evi
 	if level != api.FullText && out.ReasonCode == "" {
 		out.ReasonCode = "rights.restricted"
 	}
-	out.Source = EvidenceSource{Name: e.Source.Name, Title: e.Source.Title, URL: e.Source.URL}
-	reachable := e.Source.Reachable
-	out.Source.Reachable = &reachable
-	if !e.Source.UnreachableSince.IsZero() {
-		t := e.Source.UnreachableSince.UTC()
-		out.Source.UnreachableSince = &t
-	}
-	if !e.SnapshotSavedAt.IsZero() {
-		t := e.SnapshotSavedAt.UTC()
-		out.SnapshotSavedAt = &t
-	}
-	switch level {
-	case api.FullText:
-		out.Snippet, out.Context, out.Locator, out.RecordKey, out.RecordValue, out.Transform = e.Snippet, e.Context, e.Locator, e.RecordKey, e.RecordValue, e.Transform
-	case api.Excerpt:
-		out.Snippet, out.Locator, out.RecordKey, out.RecordValue, out.Transform = e.Snippet, e.Locator, e.RecordKey, e.RecordValue, e.Transform
-	case api.CitationOnly:
-		out.Transform = e.Transform
-	default:
-		// 不展示：只保留来源链接作为替代
-		out.Source = EvidenceSource{URL: e.Source.URL}
-	}
-	if e.MetadataOnly {
-		out.Snippet, out.Context = "", ""
-	}
+	project(e, level, out)
 	m, err := s.meter(ctx, rc, commerce.EvidenceView, e.ID, requestKey(key))
 	if err != nil {
 		return nil, err
