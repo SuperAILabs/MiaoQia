@@ -62,6 +62,15 @@ jobs:
           --schema domains/procurement/notice.schema.json
           --min-accuracy 0.95
 
+      - name: INF-PROC 结果公告解析器对照人工映射评测（关键字段准确率 ≥ 95%）
+        working-directory: data
+        run: >
+          uv run --locked --package miaoqia-sdk mq-corpus check ../packs/information_domains/procurement/corpus
+          --extractor miaoqia_pack_procurement.extractors.result_notice:ResultNoticeExtractor
+          --path ../packs/information_domains/procurement/src
+          --schema domains/procurement/notice.schema.json
+          --gold reviewed --min-accuracy 0.95
+
       - name: 生命周期真实原件与人工契约映射
         working-directory: data
         run: >
