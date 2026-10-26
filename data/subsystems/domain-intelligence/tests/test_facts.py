@@ -56,7 +56,7 @@ def _deliver(plane, samples):
 
 def _facts(dom_db):
     with reqctx.use(reqctx.service("test")), dom_db.tx() as conn:
-        ids = conn.execute(text("SELECT id FROM dom_facts ORDER BY created_at, id")).scalars().all()
+        ids = conn.execute(text("SELECT id FROM dom_facts WHERE object_type = 'tendering.notice' ORDER BY created_at, id")).scalars().all()
         return [fact_version(conn, i) for i in ids]
 
 
@@ -379,4 +379,4 @@ def test_building_pair_replays_to_readable_facts_and_no_invented_total(plane):
         denied = domain_intelligence.queries(plane[1], allowed=lambda tags, purpose: False)
         page = denied.query_facts("INF-PROC", "tendering.notice", Basis("current"), limit=1)
         assert page.items == () and page.next_cursor is None
-    assert len(_events(plane[1], "domain.fact.upserted.v1")) == 2
+    assert len(_events(plane[1], "domain.fact.upserted.v1")) == 4

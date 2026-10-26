@@ -3,7 +3,7 @@
   "$id": "https://schemas.miaoqia.com/domains/procurement/notice.schema.json",
   "x-version": "1.1.0",
   "title": "Notice 公告",
-  "description": "一条公告按原文表达的领域事实（随解析修订产生新版本）。跨公告的当前状态见 procurement-project.schema.json。未分包的公告视为一个标包（lot_key = \"1\"）。",
+  "description": "一条公告按原文表达的领域事实（随解析修订产生新版本）。跨公告的当前状态见 procurement-project.schema.json。未分包的公告使用公告内兼容容器（lot_key = \"1\"）；默认容器不证明存在可跨公告关联的标包。",
   "type": "object",
   "allOf": [
     {

@@ -3,7 +3,7 @@ pack:
   id: INF-PROC
   kind: information_domain
   namespace: tendering                 # 领域事件与事实类型的命名空间（tendering.*）
-  version: 1.3.0                       # C4b 冻结基线；解析器支持非政府采购招标公告与嵌套折扣率结果表
+  version: 1.4.0                       # 项目契约允许未知标包，公告兼容容器不作为跨公告标包依据
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-ORG@^1.0                     # 采购人、代理、投标人解析为组织

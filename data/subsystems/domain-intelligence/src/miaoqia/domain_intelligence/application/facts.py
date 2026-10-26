@@ -1,5 +1,5 @@
 """领域事实物化：消费 evidence.extraction.revised.v1，把解析修订中的领域字段写成领域事实的新版本，并经发件箱发布
-domain.fact.upserted.v1（与版本写入同事务）。
+domain.fact.upserted.v1；冻结来源的项目聚合及首批 tendering 事件也在同一事务中。
 
 - 只物化公共来源、已登记信息领域与对象类型的修订；质量为 suspect（证据或领域语义校验不通过）的修订进入复核，不物化；
 - 取值（去掉溯源与部分标识）与当前版本相同时不产生新版本、不发布事件；同一修订重复投递幂等；
@@ -63,6 +63,9 @@ class Materializer:
         object_type, prefix, model, schema_version = OBJECT_TYPES[revision.pack_id]
         conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
                      {"k": f"{revision.pack_id}|{revision.source_id}|{revision.source_key}"})
+        # 多事实修订先按稳定顺序锁住全部身份；避免来源A/B以相反顺序竞争两个项目。
+        from .projects import lock_identities
+        lock_identities(conn, revision)
         published = []
         for ordinal, extracted in enumerate(revision.facts):
             row = conn.execute(text("""SELECT f.id, f.current_version, v.content FROM dom_facts f
@@ -78,36 +81,50 @@ class Materializer:
                             {"f": fact_id, "r": revision.id}).first():
                 continue
             fact = stabilize_result_ids(prev, copy.deepcopy(extracted))
-            digest = value_hash(fact)
-            if prev is not None and value_hash(prev) == digest:
-                continue
-            fields = changed_fields(prev, fact)
-            now = datetime.now(timezone.utc)
-            full = {**fact, "id": fact_id, "schema_version": schema_version, "version": version + 1,
-                    "info_domain": revision.pack_id, "snapshot_ref": revision.snapshot_ref, "revision_ref": revision.id,
-                    "rights_tags": list(revision.rights_tags), "classification": "public",
-                    "observed_at": _iso(revision.observed_at), "recorded_at": _iso(now)}
-            model.model_validate(full)                      # 契约校验；失败即事务失败
-            if prev is None:
-                conn.execute(text("""INSERT INTO dom_facts (id, info_domain, object_type, source_id, source_key, ordinal, current_version)
-                                     VALUES (:id, :d, :t, :s, :k, :o, 1)"""),
-                             {"id": fact_id, "d": revision.pack_id, "t": object_type, "s": revision.source_id,
-                              "k": revision.source_key, "o": ordinal})
-            else:
-                conn.execute(text("UPDATE dom_facts SET current_version = :v, updated_at = now() WHERE id = :id"),
-                             {"v": version + 1, "id": fact_id})
-            conn.execute(text("""INSERT INTO dom_fact_versions (fact_id, version, content, value_hash, schema_version, snapshot_ref,
-                                                                revision_ref, changed_fields, rights_tags, observed_at, recorded_at)
-                                 VALUES (:f, :v, CAST(:c AS jsonb), :h, :sv, :snp, :exr, CAST(:cf AS jsonb), CAST(:r AS jsonb), :o, :rec)"""),
-                         {"f": fact_id, "v": version + 1, "c": json.dumps(full, ensure_ascii=False), "h": digest,
-                          "sv": schema_version, "snp": revision.snapshot_ref, "exr": revision.id, "cf": json.dumps(fields),
-                          "r": json.dumps(list(revision.rights_tags)), "o": revision.observed_at, "rec": now})
-            writer.append(conn, outbox.Event(type=FACT_UPSERTED, subject=fact_id, partition_key=fact_id, data={
-                "info_domain": revision.pack_id, "fact_id": fact_id, "changed_fields": fields,
-                "rights_tags": list(revision.rights_tags), "snapshot_ref": revision.snapshot_ref, "revision_ref": revision.id,
-                "object_type": object_type, "fact_version": version + 1, "schema_version": schema_version}))
-            published.append(full)
+            full = write_version(conn, revision, fact, fact_id=fact_id, version=version, prev=prev,
+                                 object_type=object_type, model=model, schema_version=schema_version,
+                                 source_id=revision.source_id, source_key=revision.source_key, ordinal=ordinal)
+            if full is not None:
+                from .projects import aggregate_notice
+                aggregate_notice(conn, revision, full)
+                published.append(full)
         return published
+
+
+def write_version(conn, revision, fact, *, fact_id, version, prev, object_type, model, schema_version,
+                  source_id, source_key, ordinal=0, derivation_key="base", rights_tags=None):
+    """共用事实版本写入；调用者先持有来源/聚合事务锁。"""
+    digest = value_hash(fact)
+    if prev is not None and value_hash(prev) == digest:
+        return None
+    info_domain = revision.pack_id
+    rights_tags = list(revision.rights_tags) if rights_tags is None else rights_tags
+    fields = changed_fields(prev, fact)
+    now = datetime.now(timezone.utc)
+    full = {**fact, "id": fact_id, "schema_version": schema_version, "version": version + 1,
+            "info_domain": info_domain, "snapshot_ref": revision.snapshot_ref, "revision_ref": revision.id,
+            "rights_tags": rights_tags, "classification": "public",
+            "observed_at": _iso(revision.observed_at), "recorded_at": _iso(now)}
+    model.model_validate(full)                      # 契约校验；失败即事务失败
+    if prev is None:
+        conn.execute(text("""INSERT INTO dom_facts (id, info_domain, object_type, source_id, source_key, ordinal, current_version)
+                             VALUES (:id, :d, :t, :s, :k, :o, 1)"""),
+                     {"id": fact_id, "d": info_domain, "t": object_type, "s": source_id,
+                      "k": source_key, "o": ordinal})
+    else:
+        conn.execute(text("UPDATE dom_facts SET current_version = :v, updated_at = now() WHERE id = :id"),
+                     {"v": version + 1, "id": fact_id})
+    conn.execute(text("""INSERT INTO dom_fact_versions (fact_id, version, content, value_hash, schema_version, snapshot_ref,
+                                                        revision_ref, derivation_key, changed_fields, rights_tags, observed_at, recorded_at)
+                         VALUES (:f, :v, CAST(:c AS jsonb), :h, :sv, :snp, :exr, :dk, CAST(:cf AS jsonb), CAST(:r AS jsonb), :o, :rec)"""),
+                 {"f": fact_id, "v": version + 1, "c": json.dumps(full, ensure_ascii=False), "h": digest,
+                  "sv": schema_version, "dk": derivation_key, "snp": revision.snapshot_ref, "exr": revision.id, "cf": json.dumps(fields),
+                  "r": json.dumps(rights_tags), "o": revision.observed_at, "rec": now})
+    writer.append(conn, outbox.Event(type=FACT_UPSERTED, subject=fact_id, partition_key=fact_id, data={
+        "info_domain": info_domain, "fact_id": fact_id, "changed_fields": fields,
+        "rights_tags": rights_tags, "snapshot_ref": revision.snapshot_ref, "revision_ref": revision.id,
+        "object_type": object_type, "fact_version": version + 1, "schema_version": schema_version}))
+    return full
 
 
 def fact_version(conn: Connection, fact_id: str, version: int | None = None) -> dict | None:

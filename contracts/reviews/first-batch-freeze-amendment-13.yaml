@@ -1,0 +1,31 @@
+status: amended
+amends: contracts/reviews/first-batch-freeze.yaml
+amended_at: '2026-10-26T15:41:18.455514+00:00'
+approval:
+  authority: 随本 PR 评审合并后生效；A02 保持 L0，E1–E5 仍为建议
+reason: >-
+  ProcurementProject 1.2.0 兼容放宽 lots 为空，表达尚无已确认标包；INF-PROC 升至 1.4.0。
+  Notice 默认 lot_key=1 仅为公告内兼容容器，说明澄清不改变其数据形状与版本；
+  tendering 的 fact_version 说明明确指 notice_id 的固定 Notice 版本，不改变事件载荷形状。
+  冻结 official-qzygjy 招标/中标实现局部保守归并及四事件，不构成真实来源启用、完整生命周期或 L1 验收。
+version_owners:
+- path: contracts/schemas/domains/procurement/procurement-project.schema.json
+  version: 1.2.0
+  sha256: df368d151e11851820d06bf250a95cf1753112e0e1cf0eb51a0a21bfd4a27529
+- path: contracts/schemas/domains/procurement/notice.schema.json
+  version: 1.1.0
+  sha256: 46cb2fdda9e1a7cf1df81b5facaeb0560991f7b627301645645f78f11f55708c
+- path: contracts/events/tendering/events.asyncapi.yaml
+  version: 1.0.1
+  sha256: d23114bb593c589120837ece50cc846a0d22866c133660bfd88f1f7e68d82d6d
+- path: packs/information_domains/procurement/pack.yaml
+  version: 1.4.0
+  sha256: 0949a568dd290407be7b1b3d0198e04376acd7ac8e5b0a6140125be21fd7ba35
+verification:
+  base: c0694cf0aa1f8af03ff79c0fb0bcccdf449e8808
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main
+  - mqc generate --check
+  - PostgreSQL pytest subsystems

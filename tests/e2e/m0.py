@@ -309,7 +309,7 @@ def main() -> None:
             time.sleep(1)
             procs.check_alive()
             with psycopg.connect(f"postgres://dom_owner:dom_owner@{PG}/dom") as c:
-                fact = c.execute("SELECT fact_id, version FROM dom_fact_versions WHERE revision_ref = %s", (revision,)).fetchone()
+                fact = c.execute("SELECT v.fact_id, v.version FROM dom_fact_versions v JOIN dom_facts f ON f.id = v.fact_id WHERE v.revision_ref = %s AND f.object_type = 'tendering.notice'", (revision,)).fetchone()
         if fact is None:
             fail(f"解析修订 {revision} 未物化为领域事实")
         with psycopg.connect(f"postgres://dom_owner:dom_owner@{PG}/dom") as c:

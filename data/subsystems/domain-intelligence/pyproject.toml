@@ -5,6 +5,9 @@ description = "domain-intelligence 子系统：领域情报（规格见 docs/03-
 requires-python = ">=3.12"
 dependencies = ["miaoqia-kernel", "miaoqia-evidence"]
 
+[project.scripts]
+mq-project-backfill = "miaoqia.domain_intelligence.application.backfill:main"
+
 [tool.uv.sources]
 miaoqia-kernel = { workspace = true }
 miaoqia-evidence = { workspace = true }

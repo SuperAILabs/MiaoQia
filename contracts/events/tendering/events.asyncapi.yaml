@@ -57,6 +57,7 @@ components:
           type: string
           pattern: ^ntc_[0-9A-HJKMNP-TV-Z]{26}$
         fact_version:
+          description: notice_id 所指 Notice 的固定版本；采购项目聚合版本不复用此字段
           type: integer
           minimum: 1
         rights_tags:
