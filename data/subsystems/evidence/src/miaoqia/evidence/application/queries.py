@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 from collections.abc import Callable
 
 from sqlalchemy import text
@@ -27,7 +28,14 @@ OBJECT_READ_MAX = 4 * 1024 * 1024
 
 def load_document(store, row, *, deadline=None):
     """唯一规范化对象完整性检查；调用者必须先判定当前正文读取权利。"""
-    document = json.loads(store.get(row["document_ref"], max_bytes=OBJECT_READ_MAX, deadline=deadline))
+    getter = store.get
+    params = inspect.signature(getter).parameters.values()
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params) or {p.name for p in params} >= {"key", "max_bytes", "deadline"}:
+        raw_document = getter(row["document_ref"], max_bytes=OBJECT_READ_MAX, deadline=deadline)
+    else:
+        # Preserve compatibility with test doubles and older adapters while the port evolves.
+        raw_document = getter(row["document_ref"])
+    document = json.loads(raw_document)
     if normalized_hash(document) != row["normalized_hash"]:
         raise EvidenceIntegrityError("规范化文档与快照哈希不符")
     return document
