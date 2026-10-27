@@ -1,6 +1,6 @@
 # 渠道与会话子系统（channels）
 
-> 状态：评审中 · 版本：3.8 · 更新：2026-10-27 · 平面：交互
+> 状态：评审中 · 版本：3.9 · 更新：2026-10-27 · 平面：交互
 
 ## 1. 使命
 
@@ -173,7 +173,7 @@
 - **对账**：`api.Maintenance.ReconcileChannelSessions` 分页读取 identity 中仍有有效会话的全部绑定，对本子系统中不是有效绑定的（含不存在的）撤销到两边版本的较大者；本子系统查询失败或 identity 不可用时中止并返回错误，不把未知当作失效；
 - **卡片跳转**（`POST /v1/channels/card-links:open`）：出站编排经本地绑定 `api.Messaging.CreateCardLink` 为收件人与对象生成链接（只保存令牌摘要）。打开时不切换账号：链接收件人不是当前成员时 409 `account_mismatch` 并带出收件人，由客户端提示切换；链接不存在、属于其他租户、对象不存在与无权查看（实时 `Check can_view`）都是同一个 404 `content_unavailable`，响应不含标题、归属或负责人；过期 410 `card_link_expired`。`api.Messaging.DeliveryTarget` 只在渠道已启用、绑定有效且经上述核对仍属于成员当前的成员资格时投到渠道，否则改投站内并给出原因；查询失败或 identity 不可用时返回错误，不当作“未绑定”；
 - **回调**：先验签（失败 401 `callback_signature_invalid`），再核对时间戳在业务时钟前后 5 分钟内（否则 401 `callback_replayed`），再按（渠道、企业、渠道事件标识）去重，去重与业务写入在同一事务中；被拒绝与重复的回调不改变任何业务状态，计入该企业路由上的被拒回调数（安装列表的 `rejected_callbacks`）；
-- 尚未实现：网关的未认证入口（安装回调、消息回调与免登目前只以本地绑定提供）、生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态“异常”（只有被拒回调计数）、渠道内对话、即时通知、飞书、钉钉与 Telegram。简报、偏好与卡片快捷动作见下文第5段实现状况。定时任务由 `scheduler` 角色逐个 active 租户以 `svc:channels` 调用（`services/subsystems/channels/jobs.go`，验收线 R-01）：撤销重试与简报投递每分钟、免登会话对账每 15 分钟、简报按到时组装（`ComposeDue`，More 为真时本轮继续）每分钟、卡片动作每 15 秒、渠道通知投递（`Notices.DeliverNotices`）每分钟。
+- 尚未实现：网关的未认证入口（安装回调、消息回调与免登目前只以本地绑定提供）、生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态“异常”（只有被拒回调计数）、渠道内对话、飞书、钉钉与 Telegram。简报、偏好与卡片快捷动作见下文第5段实现状况，信号的即时通知见下文 C-08 实现状况。定时任务由 `scheduler` 角色逐个 active 租户以 `svc:channels` 调用（`services/subsystems/channels/jobs.go`，验收线 R-01）：撤销重试与简报投递每分钟、免登会话对账每 15 分钟、简报按到时组装（`ComposeDue`，More 为真时本轮继续）每分钟、卡片动作每 15 秒、渠道通知投递（`Notices.DeliverNotices`）每分钟。
 
 本切片选定的缺省值（规格未定处）：
 
@@ -202,7 +202,7 @@
 - **简报链接**（`POST /v1/channels/briefing-links:open`）：链接只指向对象（信号、简报、审批），7 天有效；他人打开 409 `account_mismatch`，不存在、其他租户与无权限同为 404 `content_unavailable`，过期 410；
 - **偏好**（`GET/PUT /v1/channels/briefing-preferences`）：`expected_version` 乐观并发（409 `version_conflict`），非法值 422 `invalid_preferences`，生效时刻为下一个周期边界；写审计；
 - **投递统计**（`GET /v1/channels/delivery-stats`）：需要 `can_manage_members`，只有状态、原因与计数；C-11 追加渠道通知的计数 `notices`（见第6段 C-11 实现状况）；
-- 尚未实现：定时任务与工作进程、企业微信生产适配器、覆盖与来源权利的生产适配器（`api.Coverage` / `api.Rights` 为 NotWired）、即时通知（F7）、AI 摘要、“关注变化”区。
+- 尚未实现：企业微信生产适配器、覆盖与来源权利的生产适配器（`api.Coverage` / `api.Rights` 为 NotWired）、AI 摘要（M2 不开启，C-18）、“关注变化”区（关注开放前不显示，C-19）。定时任务已由 `scheduler` 角色调用（R-01），即时通知（F7）见下文 C-08 实现状况。
 
 本切片选定的缺省值（规格未定处）：
 
@@ -250,11 +250,35 @@
 | 统计 | 只对管理员开放；白名单外的原因记为 `other`；转交未展开的行不计 |
 | 持续跟踪的“查看” | `/pursuits/tracking/{id}` |
 
+**实现状况（C-08：信号的即时通知，PRD 第5段 F7、用例5与41；[channels 契约](../../../contracts/apis/channels/openapi.yaml) 0.5.0、[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.6.0、[customer-context 契约](../../../contracts/apis/customer-context/openapi.yaml) 0.6.0）**：
+
+- **记录**：消费者 `channels.signal-notices` 订阅 detection 主题的 `detection.signal.detected.v1`，每条信号记一行待展开的通知（种类 `signal_immediate`、收件人 `*`，`chn_notices` 追加 `signal_id`、`objective_id` 与渲染来源 `item`，迁移 `00006`）；排除与回填的信号、标识不合法的事件不记。事件只是触发：信号、目标、处置与可见性在发送前都以收件人本人重新读取，伪造或改写的事件不能让任何人看到其无权查看的内容；重放同一事件不新增通知（唯一键：租户 + 种类 + 信号 + 收件人）；
+- **展开**：由 `Notices.DeliverNotices` 认领后以 channels 服务主体经 customer-context `getActivePolicies` 读取目标当前的生效策略（0.6.0 起带 `owner` 与 `participants`），按 `route` 中该处置的 `notify`：`mode` 为 `immediate` 时把受众 `objective_owner` / `objective_members` 展开为每名候选收件人一行（`role:<角色>` 尚不支持，C-20）；`digest`、目标未激活或不存在都展开为零行。展开写审计 `channels.notice.expanded`（`route=immediate|digest|inactive`）；
+- **发送前再检查**（每次发送与重试前，任何一步不满足之前不渲染、不签发令牌）：即时通知开关（成员最新偏好 `instant_notify`，`preference_off`）→ 安静时段（延后到结束、写审计 `channels.notice.deferred`）→ 成员有效（`member_inactive`）→ 以收件人本人判断目标的 `can_view_signals`（`objective_not_visible`）→ 以收件人本人经 detection `listSignalCards` 读取信号（不可见或不属于该目标为 `signal_not_visible`，已不待处理为 `signal_handled`，回填为 `not_immediate`）→ 目标当前生效策略对信号当前的系统处置仍为 `immediate`（`not_immediate`）且收件人仍在受众中（`not_in_audience`）→ 只在第一次尝试前：节流（本人最近一小时已送达 6 张，`throttled`）与并入简报（安静时段内到达、结束时当期简报在 60 分钟内发送，`merged_into_briefing`）→ 投递目标（未绑定为 `in_app`/`not_bound`）。依赖暂时不可用时按退避重排，不当作失去访问；渠道重试时限沿用 24 小时（`cutoff`）；
+- **卡片**：与简报信号卡片同一模板、按钮与动作（F3–F5，含“跟进”的显示条件），文字前缀“即时通知：”；第一次发送前渲染并固定（重试发送同一张卡片、令牌不变；重新绑定后按新绑定重新渲染），每次发送前按当前来源权利收紧后重新渲染正文；点击沿用 `Briefings.ProcessActions` 的令牌与执行检查；
+- **与简报的关系**：组装时，本人已送达即时通知、仍待处理的信号标 `notified`（总览行后加“（已通知）”），不再推送信号卡片；尚未送达的即时通知随本期简报结束（`merged_into_briefing`，与简报保存同一事务），安静时段内到达的条目标 `arrived_overnight`、卡片标“夜间到达”；
+- **偏好**：`BriefingPreferences.instant_notify`（缺省开启）。与其他偏好不同，开关立即生效（发送前读取最新版本）；更新请求不提供时保持当前值；
+- **投递事件与统计**：`channels.signal_notice.sent.v1` / `channels.signal_notice.failed.v1`，与 `channels.notice.*.v1` 同一语义（送达一次，每次渠道失败与结束各一次，与状态变化同一事务）；字段白名单为通知、种类、收件人、渠道、信号、目标与尝试数（`signalNoticeEventData`），不含项目、中标方、金额、理由或卡片正文；原因按状态白名单（`signalNoticeReasons`）。`getDeliveryStats` 的 `notices` 计入种类 `signal_immediate`，未展开的行不计；
+- **与 4.5 的差异**：当前不生成合并卡片——超出节流的不单独推送、留给下一期简报（C-20）；`detection.signal.updated.v1` 的实质更新与紧急更正不即时通知（C-21）；
+- **证据**：`services/kernel/integration/notify_test.go`（`TestInstantNotifications`：channels 经 mTLS 远程绑定调用 detection 与 customer-context，由 `scheduler` 角色的 `channels.deliver-notices` 任务驱动；“C-08 用例41 …”与“C-08 越权与反例测试 …”子测试覆盖另一租户、非成员、失去目标可见性、来源权利撤销、伪造与重放的事件、安静时段、节流与偏好关闭），`services/subsystems/channels/internal/app/signalnotices_internal_test.go`、`services/subsystems/channels/internal/domain/briefing_test.go`（TestMergeIntoBriefing）。
+
+本切片选定的缺省值（规格未定处）：
+
+| 事项 | 取值 |
+|---|---|
+| 节流 | 每名收件人每小时至多 6 张即时通知卡片；超出的不单独推送（`throttled`），信号照常进入下一期简报；不生成合并卡片 |
+| “简报即将发送” | 安静时段结束后 60 分钟内有本人的计划发送 |
+| 即时通知开关 | `instant_notify` 缺省开启、立即生效，更新时不提供则保持当前值 |
+| 不即时通知 | 排除、回填与人工处置；以发送时信号当前的系统处置重新判断 `route` |
+| 节流与并入的判断时刻 | 只在第一次尝试前；之后的重试不再因节流或并入取消 |
+| 投递事件 | 新事件类型 `channels.signal_notice.*.v1`，不扩展 `channels.notice.*.v1` 的必填字段 |
+| 卡片文字 | 前缀“即时通知：” |
+
 ## 7. 事件
 
 **消费**：`identity.member.changed.v1`（成员停用或退出时使其绑定失效）、`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（简报中的当前状态叠加）、`assessment.assessment.created.v1`、`assessment.decision.drafted.v1`、`identity.approval.requested.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`、`research.case.awaiting_input.v1`。
 
-**发布**：`channels.binding.changed.v1`、`channels.delivery.sent.v1`、`channels.delivery.failed.v1`、`channels.notice.sent.v1`、`channels.notice.failed.v1`、`channels.action.executed.v1`、`channels.conversation.message_received.v1`。
+**发布**：`channels.binding.changed.v1`、`channels.delivery.sent.v1`、`channels.delivery.failed.v1`、`channels.notice.sent.v1`、`channels.notice.failed.v1`、`channels.signal_notice.sent.v1`、`channels.signal_notice.failed.v1`、`channels.action.executed.v1`、`channels.conversation.message_received.v1`。
 
 ## 8. 扩展点
 

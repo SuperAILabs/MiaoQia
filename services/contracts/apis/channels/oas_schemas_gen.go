@@ -684,7 +684,11 @@ type BriefingID string
 // “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）；task
 // “待我处理”中的跟进任务
 // （分派给本人、未完成、截止在下一期简报之前或已逾期；escalated
-// 为无有效负责人的跟进转给决策者的任务；0.3.0）。.
+// 为无有效负责人的跟进转给决策者的任务；0.3.0）。 0.5.0（C-08，PRD 第5段 F7
+// 第3条、F2 第2条）：notified
+// 为组装时该信号已即时通知本人（本期不再推送它的信号卡片，只在总览中列出）；
+// arrived_overnight
+// 为即时通知在安静时段内到达、结束时简报即将发送而并入本期（卡片标“夜间到达”）。.
 // Ref: #/components/schemas/BriefingItem
 type BriefingItem struct {
 	Kind           BriefingItemKind        `json:"kind"`
@@ -708,18 +712,20 @@ type BriefingItem struct {
 	Updates      []ItemUpdate `json:"updates"`
 	AlsoMatched  []string     `json:"also_matched"`
 	// 引用行指向的、完整展示该采购项目的区（目标编号）.
-	References   OptString         `json:"references"`
-	ApprovalID   OptString         `json:"approval_id"`
-	ApprovalType OptString         `json:"approval_type"`
-	SubmittedAt  OptDateTime       `json:"submitted_at"`
-	TaskID       OptString         `json:"task_id"`
-	PursuitID    OptString         `json:"pursuit_id"`
-	ObjectiveID  OptString         `json:"objective_id"`
-	TaskTitle    OptString         `json:"task_title"`
-	Due          OptTaskDue        `json:"due"`
-	Escalated    OptBool           `json:"escalated"`
-	Current      OptItemStatus     `json:"current"`
-	TaskCurrent  OptTaskItemStatus `json:"task_current"`
+	References       OptString         `json:"references"`
+	ApprovalID       OptString         `json:"approval_id"`
+	ApprovalType     OptString         `json:"approval_type"`
+	SubmittedAt      OptDateTime       `json:"submitted_at"`
+	TaskID           OptString         `json:"task_id"`
+	PursuitID        OptString         `json:"pursuit_id"`
+	ObjectiveID      OptString         `json:"objective_id"`
+	TaskTitle        OptString         `json:"task_title"`
+	Due              OptTaskDue        `json:"due"`
+	Escalated        OptBool           `json:"escalated"`
+	Current          OptItemStatus     `json:"current"`
+	TaskCurrent      OptTaskItemStatus `json:"task_current"`
+	Notified         OptBool           `json:"notified"`
+	ArrivedOvernight OptBool           `json:"arrived_overnight"`
 }
 
 // GetKind returns the value of Kind.
@@ -877,6 +883,16 @@ func (s *BriefingItem) GetTaskCurrent() OptTaskItemStatus {
 	return s.TaskCurrent
 }
 
+// GetNotified returns the value of Notified.
+func (s *BriefingItem) GetNotified() OptBool {
+	return s.Notified
+}
+
+// GetArrivedOvernight returns the value of ArrivedOvernight.
+func (s *BriefingItem) GetArrivedOvernight() OptBool {
+	return s.ArrivedOvernight
+}
+
 // SetKind sets the value of Kind.
 func (s *BriefingItem) SetKind(val BriefingItemKind) {
 	s.Kind = val
@@ -1030,6 +1046,16 @@ func (s *BriefingItem) SetCurrent(val OptItemStatus) {
 // SetTaskCurrent sets the value of TaskCurrent.
 func (s *BriefingItem) SetTaskCurrent(val OptTaskItemStatus) {
 	s.TaskCurrent = val
+}
+
+// SetNotified sets the value of Notified.
+func (s *BriefingItem) SetNotified(val OptBool) {
+	s.Notified = val
+}
+
+// SetArrivedOvernight sets the value of ArrivedOvernight.
+func (s *BriefingItem) SetArrivedOvernight(val OptBool) {
+	s.ArrivedOvernight = val
 }
 
 type BriefingItemCategory string
@@ -1251,6 +1277,10 @@ type BriefingPreferences struct {
 	QuietEnd      ClockTime      `json:"quiet_end"`
 	PushEmpty     bool           `json:"push_empty"`
 	SectionLimits []SectionLimit `json:"section_limits"`
+	// 是否接收即时通知卡片（0.5.0，C-08；缺省
+	// true）。与其他偏好不同，修改立即生效（不按周期）：关闭后尚未送达的即时通知在发送前
+	// 取消（preference_off），信号照常进入简报.
+	InstantNotify OptBool `json:"instant_notify"`
 	// 本版本开始生效的周期起点（缺省值不出现）.
 	EffectiveFrom OptDateTime `json:"effective_from"`
 	UpdatedAt     OptDateTime `json:"updated_at"`
@@ -1294,6 +1324,11 @@ func (s *BriefingPreferences) GetPushEmpty() bool {
 // GetSectionLimits returns the value of SectionLimits.
 func (s *BriefingPreferences) GetSectionLimits() []SectionLimit {
 	return s.SectionLimits
+}
+
+// GetInstantNotify returns the value of InstantNotify.
+func (s *BriefingPreferences) GetInstantNotify() OptBool {
+	return s.InstantNotify
 }
 
 // GetEffectiveFrom returns the value of EffectiveFrom.
@@ -1344,6 +1379,11 @@ func (s *BriefingPreferences) SetPushEmpty(val bool) {
 // SetSectionLimits sets the value of SectionLimits.
 func (s *BriefingPreferences) SetSectionLimits(val []SectionLimit) {
 	s.SectionLimits = val
+}
+
+// SetInstantNotify sets the value of InstantNotify.
+func (s *BriefingPreferences) SetInstantNotify(val OptBool) {
+	s.InstantNotify = val
 }
 
 // SetEffectiveFrom sets the value of EffectiveFrom.
@@ -3071,13 +3111,15 @@ func (s *ItemUpdate) SetContentVersion(val int64) {
 type LinkToken string
 
 // 渠道通知的种类：task_due 任务提醒卡片；authorization_rejected
-// 授权被拒时给操作者的通知（0.4.0）.
+// 授权被拒时给操作者的通知（0.4.0）；signal_immediate 信号的
+// 即时通知卡片（0.5.0，C-08）.
 // Ref: #/components/schemas/NoticeKind
 type NoticeKind string
 
 const (
 	NoticeKindTaskDue               NoticeKind = "task_due"
 	NoticeKindAuthorizationRejected NoticeKind = "authorization_rejected"
+	NoticeKindSignalImmediate       NoticeKind = "signal_immediate"
 )
 
 // AllValues returns all NoticeKind values.
@@ -3085,6 +3127,7 @@ func (NoticeKind) AllValues() []NoticeKind {
 	return []NoticeKind{
 		NoticeKindTaskDue,
 		NoticeKindAuthorizationRejected,
+		NoticeKindSignalImmediate,
 	}
 }
 
@@ -3094,6 +3137,8 @@ func (s NoticeKind) MarshalText() ([]byte, error) {
 	case NoticeKindTaskDue:
 		return []byte(s), nil
 	case NoticeKindAuthorizationRejected:
+		return []byte(s), nil
+	case NoticeKindSignalImmediate:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -3109,6 +3154,9 @@ func (s *NoticeKind) UnmarshalText(data []byte) error {
 	case NoticeKindAuthorizationRejected:
 		*s = NoticeKindAuthorizationRejected
 		return nil
+	case NoticeKindSignalImmediate:
+		*s = NoticeKindSignalImmediate
+		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
@@ -3117,21 +3165,37 @@ func (s *NoticeKind) UnmarshalText(data []byte) error {
 // 按状态白名单：retrying 为 channel_error；in_app 为 not_bound、cutoff；cancelled 为
 // member_inactive、task_not_visible、
 // task_closed、superseded、reassigned、pursuit_not_visible；不在白名单内的为
-// other；pending 与 delivered 不带原因（0.4.0）.
+// other；pending 与 delivered 不带原因（0.4.0）。 0.5.0（signal_immediate）的 cancelled
+// 另有：preference_off 收件人关闭了即时通知；not_immediate
+// 目标的生效策略对信号当前处置 不再是
+// immediate（或目标未激活、信号为回填）；not_in_audience
+// 收件人已不在受众中；objective_not_visible 收件人已不能查看目标的
+// 信号；signal_not_visible 信号对收件人不可见或不属于该目标；signal_handled
+// 信号已不是待处理；throttled 超过每名收件人的即时
+// 通知上限，留给简报；merged_into_briefing
+// 安静时段内到达、结束时简报即将发送，并入简报.
 // Ref: #/components/schemas/NoticeReason
 type NoticeReason string
 
 const (
-	NoticeReasonChannelError      NoticeReason = "channel_error"
-	NoticeReasonNotBound          NoticeReason = "not_bound"
-	NoticeReasonCutoff            NoticeReason = "cutoff"
-	NoticeReasonMemberInactive    NoticeReason = "member_inactive"
-	NoticeReasonTaskNotVisible    NoticeReason = "task_not_visible"
-	NoticeReasonTaskClosed        NoticeReason = "task_closed"
-	NoticeReasonSuperseded        NoticeReason = "superseded"
-	NoticeReasonReassigned        NoticeReason = "reassigned"
-	NoticeReasonPursuitNotVisible NoticeReason = "pursuit_not_visible"
-	NoticeReasonOther             NoticeReason = "other"
+	NoticeReasonChannelError        NoticeReason = "channel_error"
+	NoticeReasonNotBound            NoticeReason = "not_bound"
+	NoticeReasonCutoff              NoticeReason = "cutoff"
+	NoticeReasonMemberInactive      NoticeReason = "member_inactive"
+	NoticeReasonTaskNotVisible      NoticeReason = "task_not_visible"
+	NoticeReasonTaskClosed          NoticeReason = "task_closed"
+	NoticeReasonSuperseded          NoticeReason = "superseded"
+	NoticeReasonReassigned          NoticeReason = "reassigned"
+	NoticeReasonPursuitNotVisible   NoticeReason = "pursuit_not_visible"
+	NoticeReasonPreferenceOff       NoticeReason = "preference_off"
+	NoticeReasonNotImmediate        NoticeReason = "not_immediate"
+	NoticeReasonNotInAudience       NoticeReason = "not_in_audience"
+	NoticeReasonObjectiveNotVisible NoticeReason = "objective_not_visible"
+	NoticeReasonSignalNotVisible    NoticeReason = "signal_not_visible"
+	NoticeReasonSignalHandled       NoticeReason = "signal_handled"
+	NoticeReasonThrottled           NoticeReason = "throttled"
+	NoticeReasonMergedIntoBriefing  NoticeReason = "merged_into_briefing"
+	NoticeReasonOther               NoticeReason = "other"
 )
 
 // AllValues returns all NoticeReason values.
@@ -3146,6 +3210,14 @@ func (NoticeReason) AllValues() []NoticeReason {
 		NoticeReasonSuperseded,
 		NoticeReasonReassigned,
 		NoticeReasonPursuitNotVisible,
+		NoticeReasonPreferenceOff,
+		NoticeReasonNotImmediate,
+		NoticeReasonNotInAudience,
+		NoticeReasonObjectiveNotVisible,
+		NoticeReasonSignalNotVisible,
+		NoticeReasonSignalHandled,
+		NoticeReasonThrottled,
+		NoticeReasonMergedIntoBriefing,
 		NoticeReasonOther,
 	}
 }
@@ -3170,6 +3242,22 @@ func (s NoticeReason) MarshalText() ([]byte, error) {
 	case NoticeReasonReassigned:
 		return []byte(s), nil
 	case NoticeReasonPursuitNotVisible:
+		return []byte(s), nil
+	case NoticeReasonPreferenceOff:
+		return []byte(s), nil
+	case NoticeReasonNotImmediate:
+		return []byte(s), nil
+	case NoticeReasonNotInAudience:
+		return []byte(s), nil
+	case NoticeReasonObjectiveNotVisible:
+		return []byte(s), nil
+	case NoticeReasonSignalNotVisible:
+		return []byte(s), nil
+	case NoticeReasonSignalHandled:
+		return []byte(s), nil
+	case NoticeReasonThrottled:
+		return []byte(s), nil
+	case NoticeReasonMergedIntoBriefing:
 		return []byte(s), nil
 	case NoticeReasonOther:
 		return []byte(s), nil
@@ -3207,6 +3295,30 @@ func (s *NoticeReason) UnmarshalText(data []byte) error {
 		return nil
 	case NoticeReasonPursuitNotVisible:
 		*s = NoticeReasonPursuitNotVisible
+		return nil
+	case NoticeReasonPreferenceOff:
+		*s = NoticeReasonPreferenceOff
+		return nil
+	case NoticeReasonNotImmediate:
+		*s = NoticeReasonNotImmediate
+		return nil
+	case NoticeReasonNotInAudience:
+		*s = NoticeReasonNotInAudience
+		return nil
+	case NoticeReasonObjectiveNotVisible:
+		*s = NoticeReasonObjectiveNotVisible
+		return nil
+	case NoticeReasonSignalNotVisible:
+		*s = NoticeReasonSignalNotVisible
+		return nil
+	case NoticeReasonSignalHandled:
+		*s = NoticeReasonSignalHandled
+		return nil
+	case NoticeReasonThrottled:
+		*s = NoticeReasonThrottled
+		return nil
+	case NoticeReasonMergedIntoBriefing:
+		*s = NoticeReasonMergedIntoBriefing
 		return nil
 	case NoticeReasonOther:
 		*s = NoticeReasonOther
@@ -4650,6 +4762,8 @@ type UpdateBriefingPreferencesRequest struct {
 	QuietEnd        ClockTime      `json:"quiet_end"`
 	PushEmpty       bool           `json:"push_empty"`
 	SectionLimits   []SectionLimit `json:"section_limits"`
+	// 是否接收即时通知（0.5.0，C-08）；不提供时保持当前值（从未设置为 true）.
+	InstantNotify OptBool `json:"instant_notify"`
 }
 
 // GetExpectedVersion returns the value of ExpectedVersion.
@@ -4692,6 +4806,11 @@ func (s *UpdateBriefingPreferencesRequest) GetSectionLimits() []SectionLimit {
 	return s.SectionLimits
 }
 
+// GetInstantNotify returns the value of InstantNotify.
+func (s *UpdateBriefingPreferencesRequest) GetInstantNotify() OptBool {
+	return s.InstantNotify
+}
+
 // SetExpectedVersion sets the value of ExpectedVersion.
 func (s *UpdateBriefingPreferencesRequest) SetExpectedVersion(val int64) {
 	s.ExpectedVersion = val
@@ -4730,6 +4849,11 @@ func (s *UpdateBriefingPreferencesRequest) SetPushEmpty(val bool) {
 // SetSectionLimits sets the value of SectionLimits.
 func (s *UpdateBriefingPreferencesRequest) SetSectionLimits(val []SectionLimit) {
 	s.SectionLimits = val
+}
+
+// SetInstantNotify sets the value of InstantNotify.
+func (s *UpdateBriefingPreferencesRequest) SetInstantNotify(val OptBool) {
+	s.InstantNotify = val
 }
 
 // Ref: #/components/schemas/VersionRequest

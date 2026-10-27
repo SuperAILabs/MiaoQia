@@ -3632,6 +3632,8 @@ func (s NoticeKind) Validate() error {
 		return nil
 	case "authorization_rejected":
 		return nil
+	case "signal_immediate":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
@@ -3656,6 +3658,22 @@ func (s NoticeReason) Validate() error {
 	case "reassigned":
 		return nil
 	case "pursuit_not_visible":
+		return nil
+	case "preference_off":
+		return nil
+	case "not_immediate":
+		return nil
+	case "not_in_audience":
+		return nil
+	case "objective_not_visible":
+		return nil
+	case "signal_not_visible":
+		return nil
+	case "signal_handled":
+		return nil
+	case "throttled":
+		return nil
+	case "merged_into_briefing":
 		return nil
 	case "other":
 		return nil

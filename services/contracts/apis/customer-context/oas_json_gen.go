@@ -74,9 +74,25 @@ func (s *ActivePolicy) encodeFields(e *jx.Encoder) {
 		e.FieldStart("effective_at")
 		json.EncodeDateTime(e, s.EffectiveAt)
 	}
+	{
+		if s.Owner.Set {
+			e.FieldStart("owner")
+			s.Owner.Encode(e)
+		}
+	}
+	{
+		if s.Participants != nil {
+			e.FieldStart("participants")
+			e.ArrStart()
+			for _, elem := range s.Participants {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
 }
 
-var jsonFieldsNameOfActivePolicy = [12]string{
+var jsonFieldsNameOfActivePolicy = [14]string{
 	0:  "objective_id",
 	1:  "objective_code",
 	2:  "objective_state",
@@ -89,6 +105,8 @@ var jsonFieldsNameOfActivePolicy = [12]string{
 	9:  "enabled_domains",
 	10: "document",
 	11: "effective_at",
+	12: "owner",
+	13: "participants",
 }
 
 // Decode decodes ActivePolicy from json.
@@ -245,6 +263,33 @@ func (s *ActivePolicy) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"effective_at\"")
+			}
+		case "owner":
+			if err := func() error {
+				s.Owner.Reset()
+				if err := s.Owner.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"owner\"")
+			}
+		case "participants":
+			if err := func() error {
+				s.Participants = make([]Subject, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem Subject
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Participants = append(s.Participants, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"participants\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)

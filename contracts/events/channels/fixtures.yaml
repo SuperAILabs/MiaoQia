@@ -392,3 +392,116 @@ fixtures:
     - op: add
       path: /lines
       value: [截止 2026-10-25]
+- event: channels.signal_notice.sent.v1
+  base:
+    notice_id: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    kind: signal_immediate
+    recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: wecom
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    attempt: 1
+    accepted_at: '2026-10-20T10:15:00+08:00'
+  cases:
+  - name: 第二次尝试送达
+    valid: true
+    patch:
+    - op: replace
+      path: /attempt
+      value: 2
+  - name: 缺信号
+    valid: false
+    patch:
+    - op: remove
+      path: /signal_id
+  - name: 不含项目名称
+    valid: false
+    patch:
+    - op: add
+      path: /project
+      value: 某管网工程
+  - name: 不含跟进或任务
+    valid: false
+    patch:
+    - op: add
+      path: /task_id
+      value: tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 尝试从1起
+    valid: false
+    patch:
+    - op: replace
+      path: /attempt
+      value: 0
+- event: channels.signal_notice.failed.v1
+  base:
+    notice_id: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    kind: signal_immediate
+    recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    channel: wecom
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    attempt: 1
+    state: retrying
+    reason: channel_error
+    final: false
+  cases:
+  - name: 安静时段后并入简报
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: cancelled
+    - op: replace
+      path: /reason
+      value: merged_into_briefing
+    - op: replace
+      path: /final
+      value: true
+    - op: replace
+      path: /attempt
+      value: 0
+  - name: 失去目标访问
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: cancelled
+    - op: replace
+      path: /reason
+      value: objective_not_visible
+    - op: replace
+      path: /final
+      value: true
+  - name: 重试不是结束
+    valid: false
+    patch:
+    - op: replace
+      path: /final
+      value: true
+  - name: 结束须为 final
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: in_app
+    - op: replace
+      path: /reason
+      value: cutoff
+  - name: 未登记的原因
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: cancelled
+    - op: replace
+      path: /reason
+      value: other
+    - op: replace
+      path: /final
+      value: true
+  - name: 不含卡片正文
+    valid: false
+    patch:
+    - op: add
+      path: /lines
+      value: [中标金额 600 万元]

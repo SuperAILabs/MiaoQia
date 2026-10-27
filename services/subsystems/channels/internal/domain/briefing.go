@@ -39,12 +39,14 @@ type Preferences struct {
 	PushEmpty     bool
 	SectionLimits map[string]int
 	EffectiveFrom *time.Time
+	// InstantNotify 为是否接收即时通知（C-08，缺省是）。与其他字段不同，按最新版本立即生效（不按周期）。
+	InstantNotify bool
 }
 
 // Defaults 是从未保存时的偏好（第13节第4项）。
 func Defaults() Preferences {
 	return Preferences{SendTime: "07:30", Timezone: DefaultTimezone, SendDays: []int{1, 2, 3, 4, 5}, QuietStart: "21:00", QuietEnd: "07:00",
-		SectionLimits: map[string]int{}}
+		SectionLimits: map[string]int{}, InstantNotify: true}
 }
 
 // ParseClock 解析 HH:MM。
@@ -236,6 +238,25 @@ func QuietUntil(p Preferences, t time.Time) time.Time {
 		return end
 	}
 	return time.Time{}
+}
+
+// 即时通知（C-08，PRD 第5段 F7、F2 第2条、channels 4.5）的缺省值。
+const (
+	// ImmediateLimit 与 ImmediateWindow 是节流：每名收件人在任意 ImmediateWindow 内至多送达 ImmediateLimit 张即时通知卡片（与每期简报至多
+	// 6 张信号卡片一致）；超出的不单独推送，信号照常进入简报与收件箱。
+	ImmediateLimit  = 6
+	ImmediateWindow = time.Hour
+	// MergeWindow 是“当期简报即将发送”的口径：安静时段内到达的即时通知延后到结束时，下一次计划发送时间在 MergeWindow 内的并入简报。
+	MergeWindow = time.Hour
+)
+
+// MergeIntoBriefing 判断一条即时通知是否并入简报（F2 第2条）：到达时刻 arrived 落在安静时段内，此刻 now 已不在安静时段，且下一期简报的
+// 计划发送时间 next 在 now 之后 MergeWindow 以内。next 为零值（没有下一期）时不并入。
+func MergeIntoBriefing(p Preferences, arrived, now, next time.Time) bool {
+	if QuietUntil(p, arrived).IsZero() || !QuietUntil(p, now).IsZero() || next.IsZero() || next.Before(now) {
+		return false
+	}
+	return next.Sub(now) <= MergeWindow
 }
 
 // Backoff 是投递第 attempt 次失败后的退避（1、2、4… 分钟，至多 30 分钟）。

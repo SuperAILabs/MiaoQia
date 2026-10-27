@@ -1293,3 +1293,22 @@ fixtures:
     - op: replace
       path: /version
       value: 0
+  - name: 负责人与参与人（0.6.0）
+    valid: true
+    patch:
+    - op: add
+      path: /owner
+      value: dm-fixture
+    - op: add
+      path: /participants
+      value:
+      - dm-fixture
+      - bd-fixture
+  - name: 参与人不得重复
+    valid: false
+    patch:
+    - op: add
+      path: /participants
+      value:
+      - bd-fixture
+      - bd-fixture

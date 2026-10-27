@@ -27,6 +27,9 @@ type ActivePolicy struct {
 	EnabledDomains  []string        `json:"enabled_domains"`
 	Document        json.RawMessage `json:"document"`
 	EffectiveAt     time.Time       `json:"effective_at"`
+	// 目标当前版本的负责人与参与人（契约 0.6.0，C-08）：channels 据此确定 route 受众的即时通知候选收件人，发送前以收件人本人再检查访问
+	Owner        string   `json:"owner,omitempty"`
+	Participants []string `json:"participants"`
 }
 
 // ActivePolicyPage 是一页生效策略（契约 ActivePolicyList）。
@@ -61,7 +64,7 @@ func (s *Service) ActivePolicies(ctx context.Context, limit int, cursor string) 
 	out := &ActivePolicyPage{Policies: []ActivePolicy{}}
 	err = s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `SELECT o.id, o.template_id, o.state, o.org_unit_id, p.policy_id, p.generation, p.active_version,
- v.template_id, v.template_version, v.enabled_domains, v.document, a.effective_at
+ v.template_id, v.template_version, v.enabled_domains, v.document, a.effective_at, o.owner, o.participants
  FROM ctx_policies p
  JOIN ctx_objectives o ON o.id = p.objective_id
  JOIN ctx_policy_versions v ON v.objective_id = p.objective_id AND v.version = p.active_version
@@ -76,12 +79,15 @@ func (s *Service) ActivePolicies(ctx context.Context, limit int, cursor string) 
 			var a ActivePolicy
 			var doc []byte
 			if err := rows.Scan(&a.ObjectiveID, &a.ObjectiveCode, &a.ObjectiveState, &a.OrgUnitID, &a.PolicyID, &a.Generation, &a.Version,
-				&a.TemplateID, &a.TemplateVersion, &a.EnabledDomains, &doc, &a.EffectiveAt); err != nil {
+				&a.TemplateID, &a.TemplateVersion, &a.EnabledDomains, &doc, &a.EffectiveAt, &a.Owner, &a.Participants); err != nil {
 				return err
 			}
 			a.Document, a.EffectiveAt = doc, a.EffectiveAt.UTC()
 			if a.EnabledDomains == nil {
 				a.EnabledDomains = []string{}
+			}
+			if a.Participants == nil {
+				a.Participants = []string{}
 			}
 			out.Policies = append(out.Policies, a)
 		}

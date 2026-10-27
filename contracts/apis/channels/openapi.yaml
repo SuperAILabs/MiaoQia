@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: channels 渠道安装、绑定与卡片跳转接口
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     channels 的对外接口（经 gateway，令牌派生租户与主体），PRD 第1段 F4–F7 的服务端切片。首批只有企业微信（wecom）；
     飞书、钉钉随各自适配器追加。租户只来自已验证的令牌，请求体与链接中的租户一律不信任。管理动作（安装、验证、停用、强制解绑）
@@ -18,6 +18,9 @@ info:
     pursuit getTask 再检查，已不能查看的任务不返回，其余叠加 task_current）。提醒卡片与授权被拒通知上的“查看”是 Web 跟进详情的
     地址（只指向对象、不带令牌，打开时由 pursuit 以当前登录成员授权），不经简报链接。
     0.4.0（C-11）：投递统计追加可选的 notices（渠道通知按种类、状态与原因的计数）；均为追加。
+    0.5.0（PRD 第5段 F7，C-08）：即时通知。NoticeKind 追加 signal_immediate（信号即时通知卡片，按生效策略 route 的
+    notify immediate 发给受众），NoticeReason 追加其取消原因；简报条目追加 notified（已即时通知、本期不再推送信号卡片）与
+    arrived_overnight（安静时段内到达、并入本期简报）；简报偏好追加 instant_notify（是否接收即时通知，缺省是；修改立即生效）。均为追加。
 servers:
 - url: /
 paths:
@@ -861,6 +864,11 @@ components:
           maxItems: 16
           items:
             $ref: '#/components/schemas/SectionLimit'
+        instant_notify:
+          type: boolean
+          description: >-
+            是否接收即时通知卡片（0.5.0，C-08；缺省 true）。与其他偏好不同，修改立即生效（不按周期）：关闭后尚未送达的即时通知在发送前
+            取消（preference_off），信号照常进入简报
         effective_from:
           type: string
           format: date-time
@@ -912,6 +920,9 @@ components:
           maxItems: 16
           items:
             $ref: '#/components/schemas/SectionLimit'
+        instant_notify:
+          type: boolean
+          description: 是否接收即时通知（0.5.0，C-08）；不提供时保持当前值（从未设置为 true）
     Period:
       type: object
       additionalProperties: false
@@ -932,10 +943,13 @@ components:
           maxLength: 64
     NoticeKind:
       type: string
-      description: 渠道通知的种类：task_due 任务提醒卡片；authorization_rejected 授权被拒时给操作者的通知（0.4.0）
+      description: >-
+        渠道通知的种类：task_due 任务提醒卡片；authorization_rejected 授权被拒时给操作者的通知（0.4.0）；signal_immediate 信号的
+        即时通知卡片（0.5.0，C-08）
       enum:
       - task_due
       - authorization_rejected
+      - signal_immediate
     NoticeState:
       type: string
       description: >-
@@ -951,7 +965,11 @@ components:
       type: string
       description: >-
         按状态白名单：retrying 为 channel_error；in_app 为 not_bound、cutoff；cancelled 为 member_inactive、task_not_visible、
-        task_closed、superseded、reassigned、pursuit_not_visible；不在白名单内的为 other；pending 与 delivered 不带原因（0.4.0）
+        task_closed、superseded、reassigned、pursuit_not_visible；不在白名单内的为 other；pending 与 delivered 不带原因（0.4.0）。
+        0.5.0（signal_immediate）的 cancelled 另有：preference_off 收件人关闭了即时通知；not_immediate 目标的生效策略对信号当前处置
+        不再是 immediate（或目标未激活、信号为回填）；not_in_audience 收件人已不在受众中；objective_not_visible 收件人已不能查看目标的
+        信号；signal_not_visible 信号对收件人不可见或不属于该目标；signal_handled 信号已不是待处理；throttled 超过每名收件人的即时
+        通知上限，留给简报；merged_into_briefing 安静时段内到达、结束时简报即将发送，并入简报
       enum:
       - channel_error
       - not_bound
@@ -962,6 +980,14 @@ components:
       - superseded
       - reassigned
       - pursuit_not_visible
+      - preference_off
+      - not_immediate
+      - not_in_audience
+      - objective_not_visible
+      - signal_not_visible
+      - signal_handled
+      - throttled
+      - merged_into_briefing
       - other
     DeliveryState:
       type: string
@@ -1191,6 +1217,8 @@ components:
         区内的一条（组装时的快照）。kind：signal 完整条目；reference 同一采购项目已在靠前的区完整展示，本区为引用行（打开的仍是本目标
         自己的信号）；approval “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）；task “待我处理”中的跟进任务
         （分派给本人、未完成、截止在下一期简报之前或已逾期；escalated 为无有效负责人的跟进转给决策者的任务；0.3.0）。
+        0.5.0（C-08，PRD 第5段 F7 第3条、F2 第2条）：notified 为组装时该信号已即时通知本人（本期不再推送它的信号卡片，只在总览中列出）；
+        arrived_overnight 为即时通知在安静时段内到达、结束时简报即将发送而并入本期（卡片标“夜间到达”）。
       required:
       - kind
       - position
@@ -1294,6 +1322,10 @@ components:
           $ref: '#/components/schemas/ItemStatus'
         task_current:
           $ref: '#/components/schemas/TaskItemStatus'
+        notified:
+          type: boolean
+        arrived_overnight:
+          type: boolean
     TaskDue:
       type: object
       additionalProperties: false

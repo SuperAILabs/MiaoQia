@@ -77,6 +77,15 @@ func appendNoticeFailed(ctx context.Context, tx pgx.Tx, id, kind, recipient, pur
 	return err
 }
 
+// appendRowFailed 为一条通知发布失败或结束事件：即时通知（signal_immediate）为 channels.signal_notice.failed.v1，其余为
+// channels.notice.failed.v1。
+func appendRowFailed(ctx context.Context, tx pgx.Tx, n *noticeRow, state, reason string) error {
+	if n.kind == NoticeSignalImmediate {
+		return appendSignalNoticeFailed(ctx, tx, n.id, n.recipient, n.signal, n.objective, n.attempts, state, reason)
+	}
+	return appendNoticeFailed(ctx, tx, n.id, n.kind, n.recipient, n.pursuit, n.task, n.deadline, n.escalated, n.attempts, state, reason)
+}
+
 // 渠道通知消费的 pursuit 事件。
 const (
 	PursuitTaskDue               = "pursuit.task.due.v1"
@@ -244,6 +253,8 @@ func (s *Service) DeliverNotices(ctx context.Context, limit int) (int, error) {
 
 type noticeRow struct {
 	id, kind, source, recipient, pursuit, task, binding, corp, user string
+	signal, objective                                               string              // 即时通知（signal_immediate，C-08）
+	item                                                            *signalNoticeSource // 即时通知卡片的渲染来源（条目快照）
 	deadline                                                        int64
 	escalated                                                       bool
 	fireAt                                                          *time.Time
@@ -260,13 +271,14 @@ func (s *Service) deliverNotice(sctx context.Context, id string) {
 	var n noticeRow
 	claimed := false
 	err := s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
-		var task, binding, corp, user *string
+		var pursuit, task, binding, corp, user, signal, objective *string
 		var dv *int64
-		var msg []byte
+		var msg, item []byte
 		err := tx.QueryRow(ctx, `UPDATE chn_notices SET next_attempt_at = $2 WHERE id = $1 AND state IN ('pending', 'retrying') AND next_attempt_at <= $3
- RETURNING kind, source, recipient, pursuit_id, task_id, deadline_version, escalated, fire_at, payload, binding_id, corp_id, channel_user_id, message, attempts, cutoff_at`,
-			id, now.Add(2*time.Minute), now).Scan(&n.kind, &n.source, &n.recipient, &n.pursuit, &task, &dv, &n.escalated, &n.fireAt, &n.payload, &binding, &corp, &user,
-			&msg, &n.attempts, &n.cutoff)
+ RETURNING kind, source, recipient, pursuit_id, task_id, deadline_version, escalated, fire_at, payload, binding_id, corp_id, channel_user_id, message, attempts, cutoff_at,
+ signal_id, objective_id, item`,
+			id, now.Add(2*time.Minute), now).Scan(&n.kind, &n.source, &n.recipient, &pursuit, &task, &dv, &n.escalated, &n.fireAt, &n.payload, &binding, &corp, &user,
+			&msg, &n.attempts, &n.cutoff, &signal, &objective, &item)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -277,13 +289,19 @@ func (s *Service) deliverNotice(sctx context.Context, id string) {
 		for _, p := range []struct {
 			src *string
 			dst *string
-		}{{task, &n.task}, {binding, &n.binding}, {corp, &n.corp}, {user, &n.user}} {
+		}{{pursuit, &n.pursuit}, {task, &n.task}, {binding, &n.binding}, {corp, &n.corp}, {user, &n.user}, {signal, &n.signal}, {objective, &n.objective}} {
 			if p.src != nil {
 				*p.dst = *p.src
 			}
 		}
 		if dv != nil {
 			n.deadline = *dv
+		}
+		if item != nil {
+			n.item = &signalNoticeSource{}
+			if err := json.Unmarshal(item, n.item); err != nil {
+				return err
+			}
 		}
 		if msg != nil {
 			n.message = &api.Message{}
@@ -303,7 +321,15 @@ func (s *Service) deliverNotice(sctx context.Context, id string) {
 		return
 	}
 	if n.recipient == "*" {
+		if n.kind == NoticeSignalImmediate {
+			s.expandSignalNotice(sctx, &n)
+			return
+		}
 		s.expandNotice(sctx, rc, &n)
+		return
+	}
+	if n.kind == NoticeSignalImmediate {
+		s.deliverSignalNotice(sctx, rc, &n, now)
 		return
 	}
 	// 安静时段内延后到结束（不丢弃）：在任何渲染与令牌签发之前判断
@@ -694,9 +720,12 @@ func (s *Service) recordNotice(sctx context.Context, n *noticeRow, now time.Time
 			if err != nil || tag.RowsAffected() == 0 {
 				return err
 			}
-			d := noticeEventData(n.id, n.kind, n.recipient, n.pursuit, n.task, n.deadline, n.escalated, n.attempts)
+			typ, d := NoticeSent, noticeEventData(n.id, n.kind, n.recipient, n.pursuit, n.task, n.deadline, n.escalated, n.attempts)
+			if n.kind == NoticeSignalImmediate {
+				typ, d = SignalNoticeSent, signalNoticeEventData(n.id, n.recipient, n.signal, n.objective, n.attempts)
+			}
 			d["accepted_at"] = now.Format(time.RFC3339Nano)
-			if _, err := writer.Append(ctx, tx, outbox.Event{Type: NoticeSent, Subject: n.id, PartitionKey: n.recipient, Data: d}); err != nil {
+			if _, err := writer.Append(ctx, tx, outbox.Event{Type: typ, Subject: n.id, PartitionKey: n.recipient, Data: d}); err != nil {
 				return err
 			}
 			return recordAs(ctx, tx, "channels.notice.delivered", n.id, "succeeded", fmt.Sprintf("wecom;kind=%s;attempt=%d", n.kind, n.attempts))
@@ -706,7 +735,7 @@ func (s *Service) recordNotice(sctx context.Context, n *noticeRow, now time.Time
 		if err != nil || tag.RowsAffected() == 0 {
 			return err
 		}
-		if err := appendNoticeFailed(ctx, tx, n.id, n.kind, n.recipient, n.pursuit, n.task, n.deadline, n.escalated, n.attempts, "retrying", "channel_error"); err != nil {
+		if err := appendRowFailed(ctx, tx, n, "retrying", "channel_error"); err != nil {
 			return err
 		}
 		return recordAs(ctx, tx, "channels.notice.retrying", n.id, "failed", fmt.Sprintf("wecom;kind=%s;attempt=%d", n.kind, n.attempts))
@@ -724,7 +753,7 @@ func (s *Service) finishNotice(sctx context.Context, n *noticeRow, state, reason
 		if err != nil || tag.RowsAffected() == 0 {
 			return err
 		}
-		if err := appendNoticeFailed(ctx, tx, n.id, n.kind, n.recipient, n.pursuit, n.task, n.deadline, n.escalated, n.attempts, state, reason); err != nil {
+		if err := appendRowFailed(ctx, tx, n, state, reason); err != nil {
 			return err
 		}
 		return recordAs(ctx, tx, "channels.notice."+state, n.id, "failed", "wecom;kind="+n.kind+";"+reason)

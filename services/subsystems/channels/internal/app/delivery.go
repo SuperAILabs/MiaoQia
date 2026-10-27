@@ -168,7 +168,7 @@ func (m *minter) signalCard(code, title, objective string, it *SignalItem, feedb
 		return api.Message{}, err
 	}
 	tenantTZ := tenantLocation()
-	lines, _ := domain.FitCard(cardLines(title, it, false, prefs.Location(), tenantTZ), caps.LineMax, caps.LinesMax)
+	lines, _ := domain.FitCard(cardLines(title, it, it.ArrivedOvernight, prefs.Location(), tenantTZ), caps.LineMax, caps.LinesMax)
 	view, err := m.link("signal", it.SignalID)
 	if err != nil {
 		return api.Message{}, err
@@ -285,6 +285,9 @@ func overview(doc *briefingDoc, secs []section, url string, prefs domain.Prefere
 			if it.Kind == "reference" {
 				text += "（也命中 " + it.References + "，见上方）"
 			}
+			if it.Notified {
+				text += "（已通知）"
+			}
 			lines = append(lines, "  · "+domain.Truncate(text, max(caps.LineMax, 8)))
 			shown++
 		}
@@ -352,7 +355,8 @@ func (s *Service) planDelivery(sctx context.Context, tenant, subject string, doc
 		}
 		n := 0
 		for _, it := range sec.Items {
-			if it.Kind != "signal" || n == domain.CardsPerSection || cards == domain.CardsPerBriefing {
+			// 已即时通知本人的信号不再推送信号卡片，只在总览中列出（PRD 第5段 F7 第3条，C-08）
+			if it.Kind != "signal" || it.Notified || n == domain.CardsPerSection || cards == domain.CardsPerBriefing {
 				continue
 			}
 			msg, err := m.signalCard(sec.ObjectiveCode, sec.Title, sec.ObjectiveID, it.SignalItem, feedback[sec.ObjectiveID], prefs)
@@ -542,7 +546,7 @@ func (s *Service) deliverOne(sctx context.Context, id string) {
 				continue
 			}
 			it := restrictItem(m.Item, rights[m.Item.SignalID])
-			m.Message.Card.Lines, _ = domain.FitCard(cardLines(m.Title, it, false, prefs.Location(), tenantLocation()), caps.LineMax, caps.LinesMax)
+			m.Message.Card.Lines, _ = domain.FitCard(cardLines(m.Title, it, it.ArrivedOvernight, prefs.Location(), tenantLocation()), caps.LineMax, caps.LinesMax)
 		case m.Objective == "" && m.Message.Card != nil && len(m.Message.Card.Buttons) > 0:
 			var doc briefingDoc
 			if err := s.briefingHeader(sctx, d.briefing, &doc); err != nil {
