@@ -440,6 +440,18 @@ fixtures:
     - op: replace
       path: /send_days
       value: [0]
+  - name: 关闭即时通知（0.5.0）
+    valid: true
+    patch:
+    - op: add
+      path: /instant_notify
+      value: false
+  - name: 即时通知开关是布尔值
+    valid: false
+    patch:
+    - op: add
+      path: /instant_notify
+      value: 'off'
 - schema: UpdateBriefingPreferencesRequest
   base:
     expected_version: 0
@@ -464,6 +476,14 @@ fixtures:
     - op: add
       path: /version
       value: 3
+  - name: 不提供即时通知开关时保持当前值
+    valid: true
+  - name: 关闭即时通知
+    valid: true
+    patch:
+    - op: add
+      path: /instant_notify
+      value: false
 - schema: Period
   base: &period
     start: '2026-10-19T07:30:00+08:00'
@@ -484,6 +504,9 @@ fixtures:
 - schema: NoticeKind
   base: task_due
   cases:
+  - name: 信号即时通知（0.5.0）
+    valid: true
+    instance: signal_immediate
   - name: 简报不是通知种类
     valid: false
     instance: briefing
@@ -496,6 +519,12 @@ fixtures:
 - schema: NoticeReason
   base: reassigned
   cases:
+  - name: 并入简报（0.5.0）
+    valid: true
+    instance: merged_into_briefing
+  - name: 节流（0.5.0）
+    valid: true
+    instance: throttled
   - name: 其他原因
     valid: true
     instance: other
@@ -692,6 +721,21 @@ fixtures:
       position: 3
       signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX2
       references: APP-TENDER.A01
+  - name: 已即时通知、夜间到达（0.5.0）
+    valid: true
+    patch:
+    - op: add
+      path: /notified
+      value: false
+    - op: add
+      path: /arrived_overnight
+      value: true
+  - name: 已通知是布尔值
+    valid: false
+    patch:
+    - op: add
+      path: /notified
+      value: 'yes'
   - name: 待我处理中的审批
     valid: true
     instance:

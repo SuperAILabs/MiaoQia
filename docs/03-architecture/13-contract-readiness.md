@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.14 · 更新：2026-10-27 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.15 · 更新：2026-10-27 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -181,5 +181,7 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 目标的分派规则（customer-context 的规则配置与读取）与信号上的候选负责人（detection 按规则在生成信号时写入） | [customer-context 第11节](subsystems/customer-context.md#11-分派配置)；PRD 第6段 F1 第2条；[A02 验收缺口 C-14](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 分派规则的配置功能；pursuit 已以端口 `api.CandidateOwners`（缺省未接入）与 `getCreateDefaults` 预留 | customer-context OpenAPI 与 detection 信号字段追加 |
 | 跟进目标中的标包标识（`lot_`，用于把互相提示缩小到同一标包） | PRD 第6段 F2 第1条；[A02 验收缺口 C-15](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 通用项目与标包聚合（D-04 的 `lot_`） | pursuit `Target` 与信号主体追加可选字段 |
 | 持久化的评估报告（含跟进结果部分）与报告事件 | [learning 实现状况](subsystems/learning.md)；PRD 第6段 F7 第5条；[A02 验收缺口 C-16](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 评估报告功能（目前 `getOutcomeSummary` 只读计算） | learning OpenAPI 与事件追加 |
+| 简报“关注变化”区的数据来源：关注（watch）对象与按成员、期间读取关注对象变化的内部接口，及 channels 简报区种类 | PRD 第5段第13节第9项；[A02 验收缺口 C-19](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 关注功能开放（第4段第2节，不在 M2） | detection 或数据平面新增内部接口；channels `BriefingSection.kind` 追加 |
+| 简报 AI 开头摘要：ai-platform 的生成接口与生成标识，channels `Briefing` 的摘要字段 | PRD 第5段第13节第8项；[A02 验收缺口 C-18](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | M3 研究入口（M2 不开启） | ai-platform 新增；channels OpenAPI 追加可选字段 |
 
-已随功能写入并从本表删除：渠道通知的投递事件与统计（C-11：channels 事件 0.5.0 新增 `channels.notice.sent.v1` / `channels.notice.failed.v1`，channels OpenAPI 0.4.0 的 `getDeliveryStats` 追加可选 `notices`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-17.yaml`）。
+已随功能写入并从本表删除：渠道通知的投递事件与统计（C-11：channels 事件 0.5.0 新增 `channels.notice.sent.v1` / `channels.notice.failed.v1`，channels OpenAPI 0.4.0 的 `getDeliveryStats` 追加可选 `notices`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-17.yaml`）；信号的即时通知（C-08：channels 事件 0.6.0 新增 `channels.signal_notice.sent.v1` / `channels.signal_notice.failed.v1`，channels OpenAPI 0.5.0 追加通知种类 `signal_immediate` 与取消原因、偏好 `instant_notify`、简报条目 `notified` 与 `arrived_overnight`，customer-context OpenAPI 0.6.0 的 `ActivePolicy` 追加 `owner` 与 `participants`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-18.yaml`）。

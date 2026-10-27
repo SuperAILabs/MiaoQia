@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.12 · 更新：2026-10-26 · 平面：客户智能
+> 状态：评审中 · 版本：1.13 · 更新：2026-10-27 · 平面：客户智能
 
 ## 1. 使命
 
@@ -85,7 +85,7 @@
 - **执行**：消费 `identity.approval.decided.v1`，按目标行锁 → 策略行 → 请求行的顺序加锁，按事件中的绑定（不是本地登记）核验：激活要求草案修订仍等于绑定的对象版本、锁定者为空或本审批、修订通过校验、仿真对应该修订与基准；回滚要求目标版本存在、不是生效版本、证据等于该版本激活时的仿真；两者都要求目标未停用、生效版本与代次等于基准。不满足时记为执行失败（`baseline_changed`、`object_changed`、`objective_disabled`），生效版本不变，发布 `customer_context.policy.execution_failed.v1`。决定先于登记送达时直接按事件登记为最终状态，迟到的 `requested` 不再改变状态；重复投递以审批标识幂等。激活写入新版本（最新版本号加一，复制修订的合成文档与该修订仿真时固定的启用领域集合）、原生效版本记为已替代、代次加一、清除草案，目标从未激活或重新启用后的未激活变为生效，发布 `policy.activated` 与 `objective.changed`（`activated`）；回滚恢复目标版本原来的文档与领域集合，发布 `policy.rolled_back`，不锁定也不清除草案，草案报告因对比基准变化而过期；
 - **进程角色**：customer-context 加入 `consumer` 角色（`deploy/platform/roles.yaml`），审批与仿真结果的消费者在该角色运行；`services/cmd/platform` 的 `TestEveryRoleResolvesBindings` 对每个角色在本地与远程绑定组合下组装并启动子系统，断言依赖的绑定都可解析；
 - **失效**：消费 `identity.approval.closed.v1`，请求记为撤回、过期或失效并解锁草案。目标停用时本子系统在提交后以 `CloseApproval`（`objective_disabled`）使进行中的审批失效；失效未送达而批准先到时，执行前的目标状态核验拒绝执行。重新启用的目标回到未激活并保留原生效版本，下一次激活后变为生效；
-- **生效策略读取（PRD 第3段切片，契约 0.4.0 草案）**：`GetActivePolicies`（内部接口 `GET /internal/v1/customer-context/active-policies`，本地绑定 `customer-context.ActivePolicies`，`MIAOQIA_BINDING_CUSTOMER_CONTEXT=remote` 时为远程客户端）以服务主体（`tenant#can_read_context`）读主库，按目标标识升序分页（每页至多 200，游标），返回每个有生效版本的目标的状态、组织单元、策略标识、生效版本与代次、模板版本、启用领域集合与合成文档；激活与回滚在同一事务中切换生效版本与代次，因此返回后开始的读取一律看到新代次。策略标识（`pol_`，迁移 `00003_policy_ids.sql`）每个目标一个、建立后不变，已有的行由目标标识确定性派生。`ObjectiveAccess` 的关系追加 `can_view_signals` 与 `can_feedback`，按本节口径（单元关系 `can_view_unit_signals` / `can_feedback_unit_signals`，或本地当前版本的负责人/参与人且 identity 对目标判断通过）放行，供 detection 与 learning 使用；
+- **生效策略读取（PRD 第3段切片，契约 0.4.0 草案）**：`GetActivePolicies`（内部接口 `GET /internal/v1/customer-context/active-policies`，本地绑定 `customer-context.ActivePolicies`，`MIAOQIA_BINDING_CUSTOMER_CONTEXT=remote` 时为远程客户端）以服务主体（`tenant#can_read_context`）读主库，按目标标识升序分页（每页至多 200，游标），返回每个有生效版本的目标的状态、组织单元、策略标识、生效版本与代次、模板版本、启用领域集合与合成文档（契约 0.6.0 起另带目标当前的负责人 `owner` 与参与人 `participants`，供 channels 确定即时通知 `route` 受众的候选收件人，见 [channels C-08 实现状况](channels.md#6-接口)；候选收件人在发送前仍以本人再检查）；激活与回滚在同一事务中切换生效版本与代次，因此返回后开始的读取一律看到新代次。策略标识（`pol_`，迁移 `00003_policy_ids.sql`）每个目标一个、建立后不变，已有的行由目标标识确定性派生。`ObjectiveAccess` 的关系追加 `can_view_signals` 与 `can_feedback`，按本节口径（单元关系 `can_view_unit_signals` / `can_feedback_unit_signals`，或本地当前版本的负责人/参与人且 identity 对目标判断通过）放行，供 detection 与 learning 使用；
 - **未实现**：回填的实际执行（随 detection）、通知（随 channels）、升级草案（F7）、按规则显示“数据未接入”（规则到信息领域的生产对应随 domain-intelligence 的覆盖接口）、组织单元迁移时使进行中的审批失效。
 
 **实现状况（PRD 第6段，契约 0.5.0 草案）**：`ObjectiveAccess` 的关系追加 `can_assign`（决策者经单元关系 `org_unit#can_assign_unit_objectives`，业务开拓者经参与关系），并返回目标所在单元、模板与状态（可选字段）；本地绑定与远程客户端另提供 `customer-context.ObjectiveScope`（同一判断，带目标所在单元与模板），供 pursuit 判断创建权限与被分派人的目标访问。分派规则的候选负责人尚未提供给 pursuit。

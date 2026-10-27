@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: customer-context 接口
-  version: 0.5.0
+  version: 0.6.0
   description: >-
     客户档案、上下文版本与快照、目标配置（PRD 第2段，docs/01-product/prd/02-profile-and-objectives.md；
     规格见 docs/03-architecture/subsystems/customer-context.md）。草案：随第2段首个实现切片提交，未冻结。
@@ -16,6 +16,8 @@ info:
     can_view_signals 与 can_feedback（detection 的信号收件箱与反馈按本子系统的口径授权）；策略状态带策略标识 pol_。
     0.5.0 起（PRD 第6段）：目标访问判断追加 can_assign（单元关系 can_assign_unit_objectives，或本地当前版本的负责人/参与人且
     identity 判断通过），响应追加目标所在单元、模板与状态（可选字段，供 pursuit 确定推进所在单元与结果原因代码）。
+    0.6.0 起（PRD 第5段 F7，C-08）：生效策略读取的每个目标追加可选的负责人 owner 与参与人 participants（目标当前版本的值），
+    供 channels 按策略 route 的 notify 受众（objective_owner、objective_members）确定即时通知的收件人；收件人在发送前仍以本人再检查访问。
 servers:
 - url: /internal
 paths:
@@ -1846,7 +1848,9 @@ components:
     ActivePolicy:
       type: object
       additionalProperties: false
-      description: 一个目标的生效策略（读取时的当前代次）
+      description: >-
+        一个目标的生效策略（读取时的当前代次）。owner 与 participants（0.6.0，C-08）为目标当前版本的负责人与参与人：channels 据此确定
+        route 受众 objective_owner / objective_members 的即时通知候选收件人，发送前仍以收件人本人再检查目标与信号的访问
       required:
       - objective_id
       - objective_code
@@ -1902,6 +1906,15 @@ components:
           type: string
           format: date-time
           description: 本代次生效（激活或回滚执行）的业务时间
+        owner:
+          $ref: '#/components/schemas/Subject'
+        participants:
+          type: array
+          description: 目标当前版本的参与人（0.6.0，C-08；可以包含负责人），route 受众 objective_members 为负责人与参与人
+          uniqueItems: true
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/Subject'
     PolicySimulationInput:
       type: object
       additionalProperties: false

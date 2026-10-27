@@ -160,7 +160,12 @@ func cardLines(title string, it *SignalItem, overnight bool, tz *time.Location, 
 		marks = append(marks, "也命中 "+m)
 	}
 	if len(marks) > 0 {
-		lines = append(lines, domain.CardLine{Text: "标记：" + strings.Join(marks, "、"), Priority: 6})
+		// “夜间到达”说明这条为何没有单独推送（C-08），放不下时先于地区与品类、理由与发现时间保留
+		priority := 6
+		if overnight {
+			priority = 2
+		}
+		lines = append(lines, domain.CardLine{Text: "标记：" + strings.Join(marks, "、"), Priority: priority})
 	}
 	return lines
 }

@@ -1101,6 +1101,219 @@
       }
     },
     {
+      "event": "channels.signal_notice.sent.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T10:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.signal_notice.sent.v1",
+      "name": "第二次尝试送达",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T10:15:00+08:00",
+        "attempt": 2,
+        "channel": "wecom",
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.signal_notice.sent.v1",
+      "name": "缺信号",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T10:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.signal_notice.sent.v1",
+      "name": "不含项目名称",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T10:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "project": "某管网工程",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.signal_notice.sent.v1",
+      "name": "不含跟进或任务",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T10:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.signal_notice.sent.v1",
+      "name": "尝试从1起",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T10:15:00+08:00",
+        "attempt": 0,
+        "channel": "wecom",
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.signal_notice.failed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": false,
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "retrying"
+      }
+    },
+    {
+      "event": "channels.signal_notice.failed.v1",
+      "name": "安静时段后并入简报",
+      "valid": true,
+      "value": {
+        "attempt": 0,
+        "channel": "wecom",
+        "final": true,
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "merged_into_briefing",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "cancelled"
+      }
+    },
+    {
+      "event": "channels.signal_notice.failed.v1",
+      "name": "失去目标访问",
+      "valid": true,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": true,
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "objective_not_visible",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "cancelled"
+      }
+    },
+    {
+      "event": "channels.signal_notice.failed.v1",
+      "name": "重试不是结束",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": true,
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "retrying"
+      }
+    },
+    {
+      "event": "channels.signal_notice.failed.v1",
+      "name": "结束须为 final",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": false,
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "cutoff",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "in_app"
+      }
+    },
+    {
+      "event": "channels.signal_notice.failed.v1",
+      "name": "未登记的原因",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": true,
+        "kind": "signal_immediate",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "other",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "cancelled"
+      }
+    },
+    {
+      "event": "channels.signal_notice.failed.v1",
+      "name": "不含卡片正文",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": false,
+        "kind": "signal_immediate",
+        "lines": [
+          "中标金额 600 万元"
+        ],
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "signal_id": "sig_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "retrying"
+      }
+    },
+    {
       "event": "customer_context.profile.updated.v1",
       "name": "base",
       "valid": true,
@@ -6070,6 +6283,164 @@
         "recipient",
         "channel",
         "pursuit_id",
+        "attempt",
+        "accepted_at"
+      ],
+      "type": "object"
+    },
+    "channels.signal_notice.failed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "final": {
+                "const": true
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "state": {
+                "const": "retrying"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "final": {
+                "const": false
+              },
+              "reason": {
+                "const": "channel_error"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "attempt": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "final": {
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "signal_immediate"
+          ],
+          "type": "string"
+        },
+        "notice_id": {
+          "pattern": "^dlv_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "channel_error",
+            "not_bound",
+            "cutoff",
+            "member_inactive",
+            "preference_off",
+            "not_immediate",
+            "not_in_audience",
+            "objective_not_visible",
+            "signal_not_visible",
+            "signal_handled",
+            "throttled",
+            "merged_into_briefing"
+          ],
+          "type": "string"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "retrying",
+            "in_app",
+            "cancelled"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "notice_id",
+        "kind",
+        "recipient",
+        "channel",
+        "signal_id",
+        "objective_id",
+        "attempt",
+        "state",
+        "reason",
+        "final"
+      ],
+      "type": "object"
+    },
+    "channels.signal_notice.sent.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "attempt": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "signal_immediate"
+          ],
+          "type": "string"
+        },
+        "notice_id": {
+          "pattern": "^dlv_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "signal_id": {
+          "pattern": "^sig_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "notice_id",
+        "kind",
+        "recipient",
+        "channel",
+        "signal_id",
+        "objective_id",
         "attempt",
         "accepted_at"
       ],

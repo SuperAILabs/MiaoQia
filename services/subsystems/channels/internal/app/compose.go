@@ -83,8 +83,20 @@ type composedSection struct {
 	domains  []string
 }
 
-// Compose 是 Briefings.Compose。
+// Compose 是 Briefings.Compose。组装期间本人有即时通知过了发送闸门时（errNoticeRaced）按新状态重做，至多 3 次。
 func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*api.ComposeResult, error) {
+	for i := 0; ; i++ {
+		res, err := s.compose(ctx, subject, at)
+		if !errors.Is(err, errNoticeRaced) {
+			return res, err
+		}
+		if i == 2 {
+			return nil, failure(503, "channels_unavailable")
+		}
+	}
+}
+
+func (s *Service) compose(ctx context.Context, subject string, at time.Time) (*api.ComposeResult, error) {
 	rc, err := requireService(ctx)
 	if err != nil {
 		return nil, err
@@ -137,7 +149,7 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 	// 当日 12:00 之后：不推送，各区窗口不前移（下一期覆盖本期，第13节第12项）
 	if domain.ComposeLate(end, at, loc) {
 		doc.Partial = true
-		id, err := s.saveBriefing(sctx, rc, subject, doc, nil, "not_pushed", "late", nil)
+		id, err := s.saveBriefing(sctx, rc, subject, doc, nil, "not_pushed", "late", nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -151,6 +163,12 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 	if !audience {
 		return &api.ComposeResult{Outcome: "skipped"}, nil
 	}
+	// 即时通知（C-08）：本人已送达的信号标“已通知”、不再推送信号卡片；尚未送达的随本期简报结束（并入简报），安静时段内到达的标“夜间到达”
+	marks, err := s.signalNoticeMarks(sctx, subject, listedSignals(sections), prefs)
+	if err != nil {
+		return nil, err
+	}
+	applyNoticeMarks(sections, marks)
 	doc.Partial = partial
 	items := 0
 	doc.Empty = !partial
@@ -193,7 +211,7 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 			return nil, err
 		}
 	}
-	id, err := s.saveBriefing(sctx, rc, subject, doc, sections, pushState, reason, plan)
+	id, err := s.saveBriefing(sctx, rc, subject, doc, sections, pushState, reason, plan, marks)
 	if err != nil {
 		return nil, err
 	}
@@ -445,10 +463,10 @@ func (s *Service) coverage(sctx context.Context, domains []string) []dataAsOf {
 	return out
 }
 
-// saveBriefing 在一个事务中保存简报、前移取数成功的区的窗口并创建投递（含令牌与链接）。同一期并发组装时只有一份生效：
-// 返回已有的标识，本次的窗口与投递随事务回滚。
+// saveBriefing 在一个事务中保存简报、前移取数成功的区的窗口并创建投递（含令牌与链接），并结束本期已列入、尚未送达的即时通知（pending，
+// merged_into_briefing）。同一期并发组装时只有一份生效：返回已有的标识，本次的窗口、投递与通知变化随事务回滚。
 func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject string, doc *briefingDoc, secs []composedSection, pushState, reason string,
-	plan *deliveryPlan) (string, error) {
+	plan *deliveryPlan, marks *noticeMarks) (string, error) {
 	raw, err := json.Marshal(doc.Sections)
 	if err != nil {
 		return "", err
@@ -462,6 +480,7 @@ func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject 
 		}
 	}
 	id := doc.ID
+	raced := false // s.tx 不外泄内部错误，组装重做靠这个标记
 	err = s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "chn-briefing/"+rc.Tenant+"/"+subject); err != nil {
 			return err
@@ -502,7 +521,14 @@ func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject 
 				return err
 			}
 		}
+		if err := mergePendingNotices(ctx, tx, doc.ID, subject, listedSignals(secs), marks); err != nil {
+			raced = errors.Is(err, errNoticeRaced)
+			return err
+		}
 		return recordAs(ctx, tx, "channels.briefing.composed", doc.ID, "succeeded", "briefing;"+pushState+";"+reason)
 	})
+	if raced {
+		return "", errNoticeRaced
+	}
 	return id, err
 }

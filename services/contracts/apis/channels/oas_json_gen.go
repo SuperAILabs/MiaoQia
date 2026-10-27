@@ -1717,9 +1717,21 @@ func (s *BriefingItem) encodeFields(e *jx.Encoder) {
 			s.TaskCurrent.Encode(e)
 		}
 	}
+	{
+		if s.Notified.Set {
+			e.FieldStart("notified")
+			s.Notified.Encode(e)
+		}
+	}
+	{
+		if s.ArrivedOvernight.Set {
+			e.FieldStart("arrived_overnight")
+			s.ArrivedOvernight.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfBriefingItem = [31]string{
+var jsonFieldsNameOfBriefingItem = [33]string{
 	0:  "kind",
 	1:  "position",
 	2:  "signal_id",
@@ -1751,6 +1763,8 @@ var jsonFieldsNameOfBriefingItem = [31]string{
 	28: "escalated",
 	29: "current",
 	30: "task_current",
+	31: "notified",
+	32: "arrived_overnight",
 }
 
 // Decode decodes BriefingItem from json.
@@ -1758,7 +1772,7 @@ func (s *BriefingItem) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode BriefingItem to nil")
 	}
-	var requiredBitSet [4]uint8
+	var requiredBitSet [5]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -2099,6 +2113,26 @@ func (s *BriefingItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"task_current\"")
 			}
+		case "notified":
+			if err := func() error {
+				s.Notified.Reset()
+				if err := s.Notified.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"notified\"")
+			}
+		case "arrived_overnight":
+			if err := func() error {
+				s.ArrivedOvernight.Reset()
+				if err := s.ArrivedOvernight.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"arrived_overnight\"")
+			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
 		}
@@ -2108,8 +2142,9 @@ func (s *BriefingItem) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [4]uint8{
+	for i, mask := range [5]uint8{
 		0b00000011,
+		0b00000000,
 		0b00000000,
 		0b00000000,
 		0b00000000,
@@ -2585,6 +2620,12 @@ func (s *BriefingPreferences) encodeFields(e *jx.Encoder) {
 		e.ArrEnd()
 	}
 	{
+		if s.InstantNotify.Set {
+			e.FieldStart("instant_notify")
+			s.InstantNotify.Encode(e)
+		}
+	}
+	{
 		if s.EffectiveFrom.Set {
 			e.FieldStart("effective_from")
 			s.EffectiveFrom.Encode(e, json.EncodeDateTime)
@@ -2598,17 +2639,18 @@ func (s *BriefingPreferences) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfBriefingPreferences = [10]string{
-	0: "version",
-	1: "send_time",
-	2: "timezone",
-	3: "send_days",
-	4: "quiet_start",
-	5: "quiet_end",
-	6: "push_empty",
-	7: "section_limits",
-	8: "effective_from",
-	9: "updated_at",
+var jsonFieldsNameOfBriefingPreferences = [11]string{
+	0:  "version",
+	1:  "send_time",
+	2:  "timezone",
+	3:  "send_days",
+	4:  "quiet_start",
+	5:  "quiet_end",
+	6:  "push_empty",
+	7:  "section_limits",
+	8:  "instant_notify",
+	9:  "effective_from",
+	10: "updated_at",
 }
 
 // Decode decodes BriefingPreferences from json.
@@ -2723,6 +2765,16 @@ func (s *BriefingPreferences) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"section_limits\"")
+			}
+		case "instant_notify":
+			if err := func() error {
+				s.InstantNotify.Reset()
+				if err := s.InstantNotify.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"instant_notify\"")
 			}
 		case "effective_from":
 			if err := func() error {
@@ -6309,6 +6361,8 @@ func (s *NoticeKind) Decode(d *jx.Decoder) error {
 		*s = NoticeKindTaskDue
 	case NoticeKindAuthorizationRejected:
 		*s = NoticeKindAuthorizationRejected
+	case NoticeKindSignalImmediate:
+		*s = NoticeKindSignalImmediate
 	default:
 		*s = NoticeKind(v)
 	}
@@ -6363,6 +6417,22 @@ func (s *NoticeReason) Decode(d *jx.Decoder) error {
 		*s = NoticeReasonReassigned
 	case NoticeReasonPursuitNotVisible:
 		*s = NoticeReasonPursuitNotVisible
+	case NoticeReasonPreferenceOff:
+		*s = NoticeReasonPreferenceOff
+	case NoticeReasonNotImmediate:
+		*s = NoticeReasonNotImmediate
+	case NoticeReasonNotInAudience:
+		*s = NoticeReasonNotInAudience
+	case NoticeReasonObjectiveNotVisible:
+		*s = NoticeReasonObjectiveNotVisible
+	case NoticeReasonSignalNotVisible:
+		*s = NoticeReasonSignalNotVisible
+	case NoticeReasonSignalHandled:
+		*s = NoticeReasonSignalHandled
+	case NoticeReasonThrottled:
+		*s = NoticeReasonThrottled
+	case NoticeReasonMergedIntoBriefing:
+		*s = NoticeReasonMergedIntoBriefing
 	case NoticeReasonOther:
 		*s = NoticeReasonOther
 	default:
@@ -8159,9 +8229,15 @@ func (s *UpdateBriefingPreferencesRequest) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		if s.InstantNotify.Set {
+			e.FieldStart("instant_notify")
+			s.InstantNotify.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfUpdateBriefingPreferencesRequest = [8]string{
+var jsonFieldsNameOfUpdateBriefingPreferencesRequest = [9]string{
 	0: "expected_version",
 	1: "send_time",
 	2: "timezone",
@@ -8170,6 +8246,7 @@ var jsonFieldsNameOfUpdateBriefingPreferencesRequest = [8]string{
 	5: "quiet_end",
 	6: "push_empty",
 	7: "section_limits",
+	8: "instant_notify",
 }
 
 // Decode decodes UpdateBriefingPreferencesRequest from json.
@@ -8177,7 +8254,7 @@ func (s *UpdateBriefingPreferencesRequest) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode UpdateBriefingPreferencesRequest to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -8285,6 +8362,16 @@ func (s *UpdateBriefingPreferencesRequest) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"section_limits\"")
 			}
+		case "instant_notify":
+			if err := func() error {
+				s.InstantNotify.Reset()
+				if err := s.InstantNotify.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"instant_notify\"")
+			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
 		}
@@ -8294,8 +8381,9 @@ func (s *UpdateBriefingPreferencesRequest) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b11111111,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

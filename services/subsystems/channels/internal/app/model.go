@@ -62,6 +62,10 @@ type SignalItem struct {
 	Updates        []itemUpdate  `json:"updates,omitempty"`
 	AlsoMatched    []string      `json:"also_matched,omitempty"`
 	References     string        `json:"references,omitempty"`
+	// 即时通知（C-08，PRD 第5段 F7 第3条、F2 第2条）：Notified 为组装时已即时通知本人（本期不再推送信号卡片，只在总览中列出）；
+	// ArrivedOvernight 为即时通知在安静时段内到达、并入本期简报（卡片标“夜间到达”）
+	Notified         bool `json:"notified,omitempty"`
+	ArrivedOvernight bool `json:"arrived_overnight,omitempty"`
 }
 
 // ApprovalItem 是“待我处理”中的审批。

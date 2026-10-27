@@ -14,7 +14,10 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
-// 一个目标的生效策略（读取时的当前代次）.
+// 一个目标的生效策略（读取时的当前代次）。owner 与
+// participants（0.6.0，C-08）为目标当前版本的负责人与参与人：channels 据此确定
+// route 受众 objective_owner / objective_members
+// 的即时通知候选收件人，发送前仍以收件人本人再检查目标与信号的访问.
 // Ref: #/components/schemas/ActivePolicy
 type ActivePolicy struct {
 	ObjectiveID     string                     `json:"objective_id"`
@@ -29,7 +32,11 @@ type ActivePolicy struct {
 	EnabledDomains  []DomainCode               `json:"enabled_domains"`
 	Document        PolicyDocument             `json:"document"`
 	// 本代次生效（激活或回滚执行）的业务时间.
-	EffectiveAt time.Time `json:"effective_at"`
+	EffectiveAt time.Time  `json:"effective_at"`
+	Owner       OptSubject `json:"owner"`
+	// 目标当前版本的参与人（0.6.0，C-08；可以包含负责人），route 受众
+	// objective_members 为负责人与参与人.
+	Participants []Subject `json:"participants"`
 }
 
 // GetObjectiveID returns the value of ObjectiveID.
@@ -92,6 +99,16 @@ func (s *ActivePolicy) GetEffectiveAt() time.Time {
 	return s.EffectiveAt
 }
 
+// GetOwner returns the value of Owner.
+func (s *ActivePolicy) GetOwner() OptSubject {
+	return s.Owner
+}
+
+// GetParticipants returns the value of Participants.
+func (s *ActivePolicy) GetParticipants() []Subject {
+	return s.Participants
+}
+
 // SetObjectiveID sets the value of ObjectiveID.
 func (s *ActivePolicy) SetObjectiveID(val string) {
 	s.ObjectiveID = val
@@ -150,6 +167,16 @@ func (s *ActivePolicy) SetDocument(val PolicyDocument) {
 // SetEffectiveAt sets the value of EffectiveAt.
 func (s *ActivePolicy) SetEffectiveAt(val time.Time) {
 	s.EffectiveAt = val
+}
+
+// SetOwner sets the value of Owner.
+func (s *ActivePolicy) SetOwner(val OptSubject) {
+	s.Owner = val
+}
+
+// SetParticipants sets the value of Participants.
+func (s *ActivePolicy) SetParticipants(val []Subject) {
+	s.Participants = val
 }
 
 // Ref: #/components/schemas/ActivePolicyList

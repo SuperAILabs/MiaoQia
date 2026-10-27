@@ -529,7 +529,7 @@ func (s *Service) DeliveryStats(ctx context.Context, params chn.GetDeliveryStats
 				rows.Close()
 				return err
 			}
-			key := noticeStat{Kind: r.Kind, State: r.State, Reason: noticeStatsReason(r.State, r.Reason)}
+			key := noticeStat{Kind: r.Kind, State: r.State, Reason: noticeKindStatsReason(r.Kind, r.State, r.Reason)}
 			merged[key] += r.Count
 		}
 		rows.Close()
@@ -549,6 +549,21 @@ func (s *Service) DeliveryStats(ctx context.Context, params chn.GetDeliveryStats
 		return nil, err
 	}
 	return convert[chn.DeliveryStats](out)
+}
+
+// noticeKindStatsReason 按通知种类与状态白名单投影统计的原因：即时通知（signal_immediate）用 signalNoticeReasons，其余同 noticeStatsReason。
+func noticeKindStatsReason(kind, state, reason string) string {
+	if kind != NoticeSignalImmediate {
+		return noticeStatsReason(state, reason)
+	}
+	switch {
+	case state == "pending" || state == "delivered":
+		return ""
+	case signalNoticeReasons[state][reason]:
+		return reason
+	default:
+		return "other"
+	}
 }
 
 // noticeStatsReason 按状态白名单投影通知统计的原因：pending 与 delivered 不带原因，白名单外的记为 other（不把未登记的文本交给调用者）。

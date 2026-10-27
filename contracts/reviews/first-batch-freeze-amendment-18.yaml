@@ -1,0 +1,28 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-27T22:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在提交进入评审，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  C-08（PRD 第5段剩余：即时通知 F7，用例5、41）只改草案契约，不新增前缀（即时通知沿用渠道通知的 dlv_），contracts/identifiers.yaml 1.8.0
+  不变（原样登记）。草案改动均为追加：
+  channels 事件 0.5.0 → 0.6.0（新事件 channels.signal_notice.sent.v1 与 channels.signal_notice.failed.v1，字段白名单为通知、种类、收件人、
+  渠道、信号、目标与尝试数，个人数据只有收件人）；
+  channels OpenAPI 0.4.0 → 0.5.0（NoticeKind 追加 signal_immediate、NoticeReason 追加即时通知的取消原因，BriefingItem 追加可选的 notified 与
+  arrived_overnight，BriefingPreferences 与 UpdateBriefingPreferencesRequest 追加可选的 instant_notify）；
+  customer-context OpenAPI 0.5.0 → 0.6.0（ActivePolicy 追加可选的 owner 与 participants，供 channels 确定 route 受众的候选收件人）。
+  这些是草案，不在 C4a 冻结范围，只记录。AI 开头摘要与“关注变化”区没有契约改动（登记为缺口 C-18、C-19）。
+  修订编号按“谁先合并谁占用”：主线最后为修订 17，本记录顺延为 18；原冻结记录与修订 1–17 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.8.0
+  sha256: 40bfde27b723d3077cc9e9b4fce2bf8d3ee6064988d5d14bbbfea0e3f07b8cd9
+verification:
+  base: eb6addb
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0：只追加事件类型、可选字段与枚举值）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；即时通知经 scheduler 角色的 channels.deliver-notices 任务驱动，channels 经 mTLS
+    内部端口的远程绑定读取 customer-context 的生效策略与 detection 的信号卡片；企业微信为内存实现）
