@@ -3113,6 +3113,8 @@ func TestPursuitFollowUp(t *testing.T) {
 			t.Fatal(err)
 		}
 		recips, _ = pgx.CollectRows(rows, pgx.RowTo[string])
+		// 按字节序比较：ORDER BY 走数据库排序规则（CI 的 PostgreSQL 忽略“-”），与 slices.Sort 不同
+		slices.Sort(recips)
 		want := []string{dm, dm2}
 		slices.Sort(want)
 		if fmt.Sprint(recips) != fmt.Sprint(want) {
