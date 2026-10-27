@@ -191,9 +191,20 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, actions := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
 						_, reminders := runtime.Lookup[pursuitapi.Reminders](b, pursuitapi.RemindersBinding)
 						_, trackings := runtime.Lookup[pursuitapi.Trackings](b, pursuitapi.TrackingsBinding)
-						if !authz || !directory || !members || !scope || (role == "api" && !briefing) || !actions || !reminders || !trackings {
-							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v actions=%v reminders=%v trackings=%v", authz,
-								directory, members, scope, briefing, actions, reminders, trackings)
+						// C-14：服务创建面板的 api 角色经 detection 读取信号的候选负责人（本地或远程）
+						_, candidates := runtime.Lookup[detectionapi.SignalCandidates](b, detectionapi.CandidatesBinding)
+						if !authz || !directory || !members || !scope || (role == "api" && (!briefing || !candidates)) || !actions || !reminders || !trackings {
+							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v candidates=%v actions=%v reminders=%v trackings=%v",
+								authz, directory, members, scope, briefing, candidates, actions, reminders, trackings)
+						}
+					}
+					// C-14：customer-context 以被分派人本人核验分派规则的被分派人（identity 会话核验，本地或远程）
+					if m.Name == "customer-context" {
+						b := envs[i].Bindings
+						_, sessions := runtime.Lookup[idapi.SessionResolver](b, idapi.SessionBinding)
+						_, authz := runtime.Lookup[idapi.Authorizer](b, idapi.AuthorizerBinding)
+						if !sessions || !authz {
+							t.Fatalf("customer-context 的绑定不完整：sessions=%v authz=%v", sessions, authz)
 						}
 					}
 				}

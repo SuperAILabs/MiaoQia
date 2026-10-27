@@ -248,3 +248,11 @@ func (b Briefing) Triage(ctx context.Context, signal, key string, req *api.Triag
 func (b Briefing) Undo(ctx context.Context, key string, req *api.UndoRequest) (*api.UndoResult, error) {
 	return (&Server{Service: b.Service}).UndoSignalTriage(ctx, req, det.UndoSignalTriageParams{IdempotencyKey: key})
 }
+
+func (s *Server) GetSignalCandidateOwner(ctx context.Context, p det.GetSignalCandidateOwnerParams) (*det.SignalCandidate, error) {
+	out, err := s.Service.GetSignalCandidate(ctx, p.SignalID)
+	if err != nil {
+		return nil, err
+	}
+	return convert[det.SignalCandidate](out)
+}

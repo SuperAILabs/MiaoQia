@@ -1,6 +1,6 @@
 # 监测与匹配子系统（detection）
 
-> 状态：评审中 · 版本：2.3 · 更新：2026-10-19 · 平面：客户智能
+> 状态：评审中 · 版本：2.4 · 更新：2026-10-27 · 平面：客户智能
 
 ## 1. 使命
 
@@ -109,6 +109,8 @@
 - 延迟目标：领域事件到信号生成 P95 < 1 分钟（规模化后的目标，具体见 [质量与验收](../../05-delivery/02-quality-and-acceptance.md)）。
 
 **实现状况（生效边界上的匹配，PRD 第7段第5节）**：消费公共域的 `domain.fact.upserted.v1`，经订阅反查端口（`api.Candidates`）得到候选租户、经事实视图端口（`api.Facts`）得到求值单位（A02 结果视图为“公告 + 一条中标结果”，`subject` 为 `ntc_` 与 `part_id` `bdr_`），每个候选租户在各自的租户事务中处理。每批开始时以服务主体经 `customer-context.ActivePolicies` 读取全部生效策略（按目标分页读完）与 `GetContextVersion`，任一读取失败时事件返回错误、按消费框架退避重试，不用缓存求值；编译结果与上下文快照只按不可变的键缓存（目标、版本与文档摘要；租户、组织单元与上下文版本），不决定使用哪个版本。只对状态为生效的目标、范围内的事实类型与启用领域内的事实求值；启用领域外的关联视图项不进入求值输入（读为未知，`DOMAIN_NOT_ENABLED`）。匹配记录 `det_matches` 以（目标、求值单位、事实版本）为主键、不含代次：同一事实版本最多求值一次，激活或回滚后的重复投递不按新代次重算，已有信号保留原策略版本与解释（PRD 第7段用例 16）。每条信号固定策略标识、版本与代次、模板版本、启用领域集合、上下文版本、视图快照哈希（快照按哈希保存）、触发事件与 `evaluated_at`（业务时间，触发事件时间），`created_at` 为写入时间。未知原因按“数据未接入 > 品类未能可靠识别 > 低于证据门槛 > 未关联本企业 > 字段缺失”取一个。缺省与缺口：同一求值单位的后续版本记为 `not_triggered`（A02 结果视图没有声明重新求值的触发字段，重新求值未实现）；客户、禁合作与竞争对手清单为空；`HISTORY_INSUFFICIENT` 不产生；规则到信息领域的生产对应未接入，B-PERMIT 在结果视图上按事件类型判为不满足而不是“数据未接入”。两个端口的生产适配器（按视图声明向数据所有者 domain-intelligence 与 entity-graph 组装视图、search 的订阅反查，[策略 DSL 5.1](../11-policy-dsl.md#51-变量)）未接入：`detection.Module()` 使用 `api.NotWired`，事件处理失败并重试、转入死信；测试使用 `api/facttest` 的内存夹具，事实全部虚构。
+
+**实现状况（候选负责人，C-14；PRD 第6段 F1 第2条，契约 0.4.0 草案）**：生成信号时按目标的分派规则算出候选负责人，与所用的分派配置版本一同写入信号（`det_signals.candidate_owner`、`assignment_version`，迁移 `00004_candidate_owner.sql`）。规则、负责人与参与人来自批次开始时同一次 `GetActivePolicies` 读取（customer-context 0.7.0 的 `assignment`）；按顺序取第一条命中的规则（区域按 `region.within`、品类按 `category.any_match` 的同一口径，`kernel/policy` 的 `RegionWithin` / `CategoryCovered`，匹配信号的地点与品类），被分派人已不是该读取中的负责人或参与人的规则跳过；提供方没有给出分派配置时两列为空，读取时说明为“分派规则不可用”（`rules_unavailable`），不当作“没有候选”。候选只是建议，不授予访问，也不参与求值与处置。只经内部端口的 `getSignalCandidateOwner`（`GET /internal/v1/detection/signals/{signalID}/candidate-owner`，绑定 `detection.SignalCandidates`，本地与远程）以调用者的用户主体判断：不可见、不存在与他租户 404 `signal_not_found`，能查看信号而没有 `can_assign` 403（候选人标识按级别白名单只对能分派跟进的成员可见）；只返回生成时记录的值，不重新求值规则，使用方（pursuit 的创建面板）以候选本人再检查。规则变更后已有信号的候选不重算，候选也不在 `getSignal`、卡片与通知中展示（[A02 验收缺口 C-23](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)）。证据：`services/kernel/integration/assignment_test.go`（`TestAssignmentRules`）、`services/subsystems/detection/internal/app/assignment_test.go`。
 
 ## 9. 安全要点
 

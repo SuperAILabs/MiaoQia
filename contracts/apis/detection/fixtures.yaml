@@ -971,3 +971,36 @@ fixtures:
     - op: replace
       path: /cards
       value: [{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}]
+- schema: SignalCandidate
+  base:
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    state: assigned
+    candidate_owner: bd-fixture
+    assignment_version: 2
+  cases:
+  - name: 规则未命中
+    valid: true
+    instance:
+      signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      state: none
+      assignment_version: 2
+  - name: 生成时分派规则不可用
+    valid: true
+    instance:
+      signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      state: rules_unavailable
+  - name: 未登记的状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: expired
+  - name: 未登记的字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1

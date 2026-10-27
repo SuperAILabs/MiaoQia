@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: detection 接口
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     信号收件箱、命中理由与反馈（PRD 第3段，docs/01-product/prd/03-signal-inbox-feedback.md；规格见
     docs/03-architecture/subsystems/detection.md 第5、12节）。草案：随第3段首个实现切片提交，未冻结。租户、cell 与调用主体来自
@@ -17,6 +17,9 @@ info:
     0.3.0（PRD 第5段简报与快捷动作）：追加只经内部端口提供的 listBriefingSignals（简报取数）与 listSignalCards（卡片的当前版本与
     状态叠加），triageSignal 与 undoSignalTriage 另经内部端口供 channels 以点击者（经有效绑定核验的收件人本人）的用户主体调用；
     UndoRequest 追加可选的 channel。授权与公开接口相同，channels 不另作判断。
+    0.4.0（PRD 第6段 F1 第2条，C-14）：信号生成时按目标的分派规则（customer-context 0.7.0 的 ActivePolicy.assignment）算出候选负责人，
+    与所用的分派配置版本一同写入信号；只经内部端口提供的 getSignalCandidateOwner 供 pursuit 的创建面板读取（以调用者的用户主体判断，
+    需要目标的 can_view_signals 与 can_assign）。候选只是生成时的建议，不授予访问，使用方以候选本人再检查。
 servers:
 - url: /internal
 paths:
@@ -381,6 +384,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/Explanation'
         default: *problem
+  /v1/detection/signals/{signalID}/candidate-owner:
+    get:
+      operationId: getSignalCandidateOwner
+      summary: 信号的候选负责人（只经内部端口，C-14）
+      description: >-
+        信号生成时按目标的分派规则算出的候选负责人（只是建议）。以调用者的用户主体判断：不属于本租户、不存在与没有 can_view_signals
+        同为 404 signal_not_found；能查看信号而没有 can_assign 为 403 forbidden（候选人标识只对能分派跟进的成员可见）。state 为
+        assigned（有候选，candidate_owner 与 assignment_version 出现）、none（规则未命中或没有规则）或 rules_unavailable（信号生成时
+        分派规则不可用，例如 C-14 之前的信号）。不重新求值规则，也不判断候选此刻是否仍有效：调用方以候选本人再检查成员状态与目标访问。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *signalID
+      responses:
+        '200':
+          description: 候选负责人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalCandidate'
+        default: *problem
   /v1/detection/signals/{signalID}/triage-records:
     get:
       operationId: listSignalTriage
@@ -568,6 +592,34 @@ paths:
         default: *problem
 components:
   schemas:
+    SignalCandidate:
+      type: object
+      additionalProperties: false
+      description: 信号的候选负责人（0.4.0，C-14），见 getSignalCandidateOwner
+      required:
+      - signal_id
+      - objective_id
+      - state
+      properties:
+        signal_id:
+          type: string
+          pattern: ^sig_[0-9A-HJKMNP-TV-Z]{26}$
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        state:
+          type: string
+          enum:
+          - assigned
+          - none
+          - rules_unavailable
+        candidate_owner:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$
+        assignment_version:
+          type: integer
+          format: int64
+          minimum: 0
     Problem:
       type: object
       additionalProperties: false

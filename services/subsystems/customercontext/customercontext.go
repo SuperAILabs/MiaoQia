@@ -29,6 +29,7 @@ var (
 		"GET /v1/customer-context/objectives", "POST /v1/customer-context/objectives",
 		"GET /v1/customer-context/objectives/{objectiveID}", "PUT /v1/customer-context/objectives/{objectiveID}",
 		"PUT /v1/customer-context/objectives/{objectiveID}/state",
+		"GET /v1/customer-context/objectives/{objectiveID}/assignment", "PUT /v1/customer-context/objectives/{objectiveID}/assignment",
 		"GET /v1/customer-context/objectives/{objectiveID}/policy",
 		"PUT /v1/customer-context/objectives/{objectiveID}/policy/draft",
 		"POST /v1/customer-context/objectives/{objectiveID}/policy/draft:discard",
@@ -43,7 +44,7 @@ var (
 		"GET /internal/v1/customer-context/objectives/{objectiveID}/access", "GET /internal/v1/customer-context/active-policies"}
 )
 
-// Module 返回 customer-context 的模块定义。配置：MIAOQIA_CUSTOMER_CONTEXT_PACKS_DIR（扩展包目录，默认 packs）。
+// Module 返回 customer-context 的模块定义。C-14 起提供目标的分派规则（customer-context.md 第11节）。配置：MIAOQIA_CUSTOMER_CONTEXT_PACKS_DIR（扩展包目录，默认 packs）。
 func Module() runtime.Module {
 	svc := &app.Service{}
 	return runtime.Module{
@@ -75,7 +76,11 @@ func Module() runtime.Module {
 			if !ok {
 				return fmt.Errorf("customer-context：缺少 %s 绑定", identity.ApprovalsBinding)
 			}
-			svc.DB, svc.Authz, svc.Directory, svc.Catalog, svc.Log = env.DB, a, directory, catalog, env.Log
+			sessions, ok := runtime.Lookup[identity.SessionResolver](env.Bindings, identity.SessionBinding)
+			if !ok {
+				return fmt.Errorf("customer-context：缺少 %s 绑定", identity.SessionBinding)
+			}
+			svc.DB, svc.Authz, svc.Directory, svc.Catalog, svc.Log, svc.Sessions = env.DB, a, directory, catalog, env.Log, sessions
 			svc.Policies, svc.Features, svc.Approvals = policies.Templates, policies.Features, approvals
 			env.Bindings.Provide(api.ContextBinding, api.Local(app.Reader{Service: svc}))
 			env.Bindings.Provide(api.PolicyBinding, api.LocalPolicy(app.PolicyReader{Service: svc}))

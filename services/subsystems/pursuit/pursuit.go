@@ -58,8 +58,9 @@ var (
 // （从信号创建时核对）只在服务对外接口的 api 角色上必需，其他角色（consumer、workflow-worker）不服务创建，缺少时从信号创建失败关闭为 503。
 func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
-// Adapters 是 pursuit 的业务时钟（零值为系统时钟；测试使用可控时钟）与出站端口（零值为未接入：分派规则的候选负责人
-// 使用 api.NotWired，创建面板的默认负责人退回本人并说明 rules_unavailable）。
+// Adapters 是 pursuit 的业务时钟（零值为系统时钟；测试使用可控时钟）与出站端口。Candidates 为零值时使用生产适配器（C-14）：
+// 经 detection 的 SignalCandidates 绑定读取信号生成时按目标分派规则算出的候选负责人（本地或远程）；服务对外接口的 api 角色缺少该绑定时
+// 不启动，其他角色（不服务创建面板）缺少时为 api.NotWired。
 type Adapters struct {
 	Now        func() time.Time
 	Candidates api.CandidateOwners
@@ -68,9 +69,6 @@ type Adapters struct {
 // ModuleWith 返回使用给定适配器的 pursuit 模块定义。
 func ModuleWith(adapters Adapters) runtime.Module {
 	svc := &app.Service{Now: adapters.Now, Candidates: adapters.Candidates}
-	if svc.Candidates == nil {
-		svc.Candidates = api.NotWired{}
-	}
 	return runtime.Module{
 		Name:       api.Name,
 		Database:   "pur",
@@ -95,6 +93,17 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			signals, ok := runtime.Lookup[detection.Briefing](env.Bindings, detection.BriefingBinding)
 			if !ok && env.Role == "api" {
 				return fmt.Errorf("pursuit：缺少 %s 绑定", detection.BriefingBinding)
+			}
+			if adapters.Candidates == nil {
+				candidates, ok := runtime.Lookup[detection.SignalCandidates](env.Bindings, detection.CandidatesBinding)
+				switch {
+				case ok:
+					svc.Candidates = detectionCandidates{candidates}
+				case env.Role == "api":
+					return fmt.Errorf("pursuit：缺少 %s 绑定", detection.CandidatesBinding)
+				default:
+					svc.Candidates = api.NotWired{}
+				}
 			}
 			key, err := signingKey(env)
 			if err != nil {

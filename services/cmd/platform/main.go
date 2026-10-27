@@ -181,6 +181,12 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(detectionapi.BriefingBinding, briefing)
+		// C-14：pursuit 的创建面板读取信号的候选负责人（以调用者的用户主体转交）
+		candidates, err := detectionremote.NewCandidates(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(detectionapi.CandidatesBinding, candidates)
 		return nil
 	}},
 	// 跟进（PRD 第6段）：channels 的卡片“跟进”与提醒卡片“完成”经 pursuit 的渠道内动作接口、授权被拒通知经持续跟踪读取（以点击者或收件人的用户主体转交）

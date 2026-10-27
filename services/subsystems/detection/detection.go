@@ -49,6 +49,8 @@ var internalRoutes = []string{
 	"GET /internal/v1/detection/signal-cards",
 	"POST /internal/v1/detection/signals/{signalID}/triage",
 	"POST /internal/v1/detection/triage-undos",
+	// C-14：pursuit 的创建面板以调用者的用户主体读取信号的候选负责人（只经内部端口）
+	"GET /internal/v1/detection/signals/{signalID}/candidate-owner",
 }
 
 // Adapters 是匹配端口的适配器、业务时钟与批量作业的测试钩子。零值字段使用缺省：Facts 与 Candidates 为未接入（api.NotWired），
@@ -108,6 +110,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			svc.DB, svc.Access, svc.Context, svc.Policies, svc.Packs, svc.Cell, svc.Log = env.DB, access, reader, policies, packs, env.Cell, env.Log
 			env.Bindings.Provide(api.ExplainerBinding, api.LocalExplainer(app.Explainer{Service: svc}))
 			env.Bindings.Provide(api.BriefingBinding, api.LocalBriefing(app.Briefing{Service: svc}))
+			env.Bindings.Provide(api.CandidatesBinding, api.LocalCandidates(app.Candidates{Service: svc}))
 			return nil
 		},
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {

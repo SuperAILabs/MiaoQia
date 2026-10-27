@@ -282,3 +282,66 @@ func objectiveOut(o *Objective) *cc.Objective {
 	}
 	return out
 }
+
+// assignmentFields 是分派规则读取的字段级白名单（C-14）：每个读取级别只输出列出的字段，其余一律不出现。full 为能管理参与人或能分派
+// 跟进的成员（看得到候选人标识），summary 为其他能查看目标的成员（只见版本与规则条数，不出现规则与候选人）。
+var assignmentFields = map[string][]string{
+	AssignmentFull:    {"objective_id", "version", "rule_count", "view", "rules", "updated_at"},
+	AssignmentSummary: {"objective_id", "version", "rule_count", "view"},
+}
+
+// assignmentOut 按读取级别的白名单输出分派规则；未登记的级别失败关闭为 summary。
+func assignmentOut(a *Assignment, level string) *cc.AssignmentRules {
+	fields, ok := assignmentFields[level]
+	if !ok {
+		level, fields = AssignmentSummary, assignmentFields[AssignmentSummary]
+	}
+	out := &cc.AssignmentRules{}
+	for _, f := range fields {
+		switch f {
+		case "objective_id":
+			out.ObjectiveID = a.ObjectiveID
+		case "version":
+			out.Version = a.Version
+		case "rule_count":
+			out.RuleCount = len(a.Rules)
+		case "view":
+			out.View = cc.AssignmentRulesView(level)
+		case "rules":
+			out.Rules = rulesOut(a.Rules)
+		case "updated_at":
+			if a.UpdatedAt != nil {
+				out.UpdatedAt = cc.NewOptDateTime(*a.UpdatedAt)
+			}
+		}
+	}
+	return out
+}
+
+func rulesOut(in []domain.AssignmentRule) []cc.AssignmentRule {
+	out := []cc.AssignmentRule{}
+	for _, r := range in {
+		out = append(out, cc.AssignmentRule{Assignee: cc.Subject(r.Assignee), Regions: r.Regions, Categories: r.Categories})
+	}
+	return out
+}
+
+func (s *Server) GetAssignmentRules(ctx context.Context, params cc.GetAssignmentRulesParams) (*cc.AssignmentRules, error) {
+	a, level, err := s.Service.GetAssignment(ctx, params.ObjectiveID)
+	if err != nil {
+		return nil, err
+	}
+	return assignmentOut(a, level), nil
+}
+
+func (s *Server) UpdateAssignmentRules(ctx context.Context, req *cc.UpdateAssignmentRulesRequest, params cc.UpdateAssignmentRulesParams) (*cc.AssignmentRules, error) {
+	rules := []domain.AssignmentRule{}
+	for _, r := range req.Rules {
+		rules = append(rules, domain.AssignmentRule{Assignee: string(r.Assignee), Regions: r.Regions, Categories: r.Categories})
+	}
+	a, err := s.Service.UpdateAssignment(ctx, params.ObjectiveID, req.ExpectedVersion, rules, params.IdempotencyKey)
+	if err != nil {
+		return nil, err
+	}
+	return assignmentOut(a, AssignmentFull), nil
+}

@@ -98,6 +98,17 @@ type Invoker interface {
 	//
 	// GET /v1/customer-context/active-policies
 	GetActivePolicies(ctx context.Context, params GetActivePoliciesParams) (*ActivePolicyList, error)
+	// GetAssignmentRules invokes getAssignmentRules operation.
+	//
+	// 需要 can_view；无权限与不存在同样返回 404
+	// objective_not_found。字段按调用者的级别白名单返回：能管理参与人（can_manage_participants）
+	// 或能分派跟进（can_assign）的成员得到
+	// view=full（规则全文、更新时间）；其他能查看目标的成员得到
+	// view=summary（只有版本与规则条数，
+	// 不出现规则与候选人）。从未配置时版本为 0、没有规则。.
+	//
+	// GET /v1/customer-context/objectives/{objectiveID}/assignment
+	GetAssignmentRules(ctx context.Context, params GetAssignmentRulesParams) (*AssignmentRules, error)
 	// GetContextSnapshot invokes getContextSnapshot operation.
 	//
 	// 按（租户、组织单元、上下文版本）返回合成快照，同一键永远返回同一结果；缺省版本为当前版本。
@@ -234,6 +245,23 @@ type Invoker interface {
 	//
 	// PUT /v1/customer-context/objectives/{objectiveID}/state
 	SetObjectiveState(ctx context.Context, request *SetObjectiveStateRequest, params SetObjectiveStateParams) (*Objective, error)
+	// UpdateAssignmentRules invokes updateAssignmentRules operation.
+	//
+	// 需要 can_manage_participants 与
+	// can_edit（目标单元的决策者，与调整负责人和参与人相同）。整份替换并带
+	// expected_version（分派配置 版本，从未配置时为 0），不一致返回 409
+	// version_conflict。规则按顺序匹配，第一条命中的规则给出候选负责人；没有条件的规则匹配全部信号。
+	// 每条规则的 assignee
+	// 须是目标当前版本的负责人或参与人（与目标在同一锁下核对），并在写入前以其本人判断仍是本租户有效成员且能查看
+	// 该目标的信号，否则 422
+	// assignee_no_access，不写入、不授予任何权限；区域须是有效的行政区划代码（422
+	// invalid_region），品类须属于 已安装行业包（422 unknown_category）。同一
+	// Idempotency-Key
+	// 重放返回首次结果，包括首次的确定失败（4xx）；键相同而请求不同返回 409
+	// idempotency_conflict；暂时失败（503）不固定在键上。.
+	//
+	// PUT /v1/customer-context/objectives/{objectiveID}/assignment
+	UpdateAssignmentRules(ctx context.Context, request *UpdateAssignmentRulesRequest, params UpdateAssignmentRulesParams) (*AssignmentRules, error)
 	// UpdateProfile invokes updateProfile operation.
 	//
 	// 需要 can_edit_profile。整份替换档案内容并形成新的档案版本；expected_version
@@ -1005,6 +1033,110 @@ func (c *Client) sendGetActivePolicies(ctx context.Context, params GetActivePoli
 
 	stage = "DecodeResponse"
 	result, err := decodeGetActivePoliciesResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetAssignmentRules invokes getAssignmentRules operation.
+//
+// 需要 can_view；无权限与不存在同样返回 404
+// objective_not_found。字段按调用者的级别白名单返回：能管理参与人（can_manage_participants）
+// 或能分派跟进（can_assign）的成员得到
+// view=full（规则全文、更新时间）；其他能查看目标的成员得到
+// view=summary（只有版本与规则条数，
+// 不出现规则与候选人）。从未配置时版本为 0、没有规则。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/assignment
+func (c *Client) GetAssignmentRules(ctx context.Context, params GetAssignmentRulesParams) (*AssignmentRules, error) {
+	res, err := c.sendGetAssignmentRules(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetAssignmentRules(ctx context.Context, params GetAssignmentRulesParams) (res *AssignmentRules, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getAssignmentRules"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/assignment"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetAssignmentRulesOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/assignment"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetAssignmentRulesResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2537,6 +2669,133 @@ func (c *Client) sendSetObjectiveState(ctx context.Context, request *SetObjectiv
 
 	stage = "DecodeResponse"
 	result, err := decodeSetObjectiveStateResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdateAssignmentRules invokes updateAssignmentRules operation.
+//
+// 需要 can_manage_participants 与
+// can_edit（目标单元的决策者，与调整负责人和参与人相同）。整份替换并带
+// expected_version（分派配置 版本，从未配置时为 0），不一致返回 409
+// version_conflict。规则按顺序匹配，第一条命中的规则给出候选负责人；没有条件的规则匹配全部信号。
+// 每条规则的 assignee
+// 须是目标当前版本的负责人或参与人（与目标在同一锁下核对），并在写入前以其本人判断仍是本租户有效成员且能查看
+// 该目标的信号，否则 422
+// assignee_no_access，不写入、不授予任何权限；区域须是有效的行政区划代码（422
+// invalid_region），品类须属于 已安装行业包（422 unknown_category）。同一
+// Idempotency-Key
+// 重放返回首次结果，包括首次的确定失败（4xx）；键相同而请求不同返回 409
+// idempotency_conflict；暂时失败（503）不固定在键上。.
+//
+// PUT /v1/customer-context/objectives/{objectiveID}/assignment
+func (c *Client) UpdateAssignmentRules(ctx context.Context, request *UpdateAssignmentRulesRequest, params UpdateAssignmentRulesParams) (*AssignmentRules, error) {
+	res, err := c.sendUpdateAssignmentRules(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateAssignmentRules(ctx context.Context, request *UpdateAssignmentRulesRequest, params UpdateAssignmentRulesParams) (res *AssignmentRules, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updateAssignmentRules"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.URLTemplateKey.String("/v1/customer-context/objectives/{objectiveID}/assignment"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UpdateAssignmentRulesOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/customer-context/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/assignment"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PUT", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateAssignmentRulesRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeUpdateAssignmentRulesResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
