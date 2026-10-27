@@ -182,7 +182,8 @@ class Queries:
         from miaoqia.evidence.api.provenance import Closure
         basis = body.get("basis")
         if isinstance(basis, dict):
-            basis = Basis(basis["view"], basis.get("recorded_cutoff"))
+            from datetime import datetime
+            basis = Basis(basis["view"], datetime.fromisoformat(basis["recorded_cutoff"].replace("Z", "+00:00")) if basis.get("recorded_cutoff") else None)
         facts = []
         with self.database.tx(deadline=deadline) as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))

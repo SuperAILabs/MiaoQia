@@ -131,39 +131,43 @@ def routes(facts, evidence, *, admit=None, before_send=None, collectors=None, co
 
     def get_fact(body, deadline):
         body = closed(body, {"fact_id", "basis", "version"})
+        basis = _basis(body["basis"])
         final = admission("data.get_fact", body, deadline)
         fact_id = _fact_id(body["fact_id"])
         version = body["version"]
         if version is not None and (type(version) is not int or version < 1):
             raise ValueError("invalid version")
-        value = facts.get_fact(fact_id, _basis(body["basis"]), version=version, deadline=deadline)
+        value = facts.get_fact(fact_id, basis, version=version, deadline=deadline)
         return wrap(None if value is None else {"basis": {"view": value.basis.view, "recorded_cutoff": value.basis.recorded_cutoff.isoformat() if value.basis.recorded_cutoff else None}, "fact": value.fact}, "data.get_fact", final)
 
     def history(body, deadline):
         body = closed(body, {"fact_id", "basis", "after", "limit"})
+        basis = _basis(body["basis"])
         final = admission("data.fact_history", body, deadline)
         after, limit = body["after"], body["limit"]
         if type(after) is not int or after < 0 or type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("invalid page")
-        value = facts.get_fact_history(_fact_id(body["fact_id"]), _basis(body["basis"]), after=after, limit=limit, deadline=deadline)
+        value = facts.get_fact_history(_fact_id(body["fact_id"]), basis, after=after, limit=limit, deadline=deadline)
         return wrap(_page(value), "data.fact_history", final)
 
     def query(body, deadline):
         body = closed(body, {"info_domain", "object_type", "basis", "after", "limit"})
+        basis = _basis(body["basis"])
         final = admission("data.query_facts", body, deadline)
         if not all(isinstance(body[k], str) and body[k] for k in ("info_domain", "object_type", "after")):
             raise ValueError("invalid query")
         if type(body["limit"]) is not int or not 1 <= body["limit"] <= 100:
             raise ValueError("invalid page")
-        return wrap(_page(facts.query_facts(body["info_domain"], body["object_type"], _basis(body["basis"]), after=body["after"], limit=body["limit"], deadline=deadline)), "data.query_facts", final)
+        return wrap(_page(facts.query_facts(body["info_domain"], body["object_type"], basis, after=body["after"], limit=body["limit"], deadline=deadline)), "data.query_facts", final)
 
     def units(body, deadline):
         body = closed(body, {"fact_id", "basis", "version"})
+        basis = _basis(body["basis"])
         final = admission("data.bid_result_units", body, deadline)
         version = body["version"]
         if version is not None and (type(version) is not int or version < 1):
             raise ValueError("invalid version")
-        value = facts.bid_result_units(_fact_id(body["fact_id"]), _basis(body["basis"]), version=version, deadline=deadline)
+        value = facts.bid_result_units(_fact_id(body["fact_id"]), basis, version=version, deadline=deadline)
         return wrap(_page(value), "data.bid_result_units", final)
 
     def resolve(body, deadline):
