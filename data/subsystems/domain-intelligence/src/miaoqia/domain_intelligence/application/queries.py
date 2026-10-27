@@ -134,14 +134,14 @@ class Queries:
                                       ORDER BY f.id""",
                               {"d": info_domain, "t": object_type, "a": after, "r": basis.recorded_cutoff}, basis, limit, deadline=deadline)
 
-    def _topic_context(self, conn, fact, basis):
+    def _topic_context(self, conn, fact, basis, *, deadline=None):
         if not fact.get("subject_categories"):
             return None
         link = conn.execute(text("SELECT * FROM dom_notice_links WHERE notice_id=:n AND notice_version=:v"),
                             {"n": fact["id"], "v": fact["version"]}).mappings().one_or_none()
         if not link or link["status"] != "confirmed" or not link["project_id"]:
             return None
-        project = self._select_fact(conn, link["project_id"], basis, link["reason"].get("project_version")) if link["reason"].get("project_version") else None
+        project = self._select_fact(conn, link["project_id"], basis, link["reason"].get("project_version"), deadline=deadline) if link["reason"].get("project_version") else None
         if not project:
             return None
         deps = conn.execute(text("SELECT notice_id,notice_version FROM dom_project_dependencies WHERE project_id=:p AND project_version=:v"),
@@ -149,15 +149,15 @@ class Queries:
         if ({(d[0], d[1]) for d in deps} != {(d["id"], d["version"]) for d in project.get("notice_refs", [])}
                 or (fact["id"], fact["version"]) not in deps):
             return None
-        if any(self._select_fact(conn, d[0], basis, d[1]) is None for d in deps):
+        if any(self._select_fact(conn, d[0], basis, d[1], deadline=deadline) is None for d in deps):
             return None
         receipts = conn.execute(text("""SELECT * FROM dom_enrichment_receipts WHERE notice_id=:n AND output_version<=:v
             AND recipe='proc.building-topic@0.1.0' AND (CAST(:r AS timestamptz) IS NULL OR recorded_at<=:r)
             ORDER BY output_version DESC, recorded_at DESC"""),
             {"n": fact["id"], "v": fact["version"], "r": basis.recorded_cutoff}).mappings().all()
         for receipt in receipts:
-            source = self._select_fact(conn, fact["id"], basis, receipt["source_base_version"])
-            output_fact = self._select_fact(conn, fact["id"], basis, receipt["output_version"])
+            source = self._select_fact(conn, fact["id"], basis, receipt["source_base_version"], deadline=deadline)
+            output_fact = self._select_fact(conn, fact["id"], basis, receipt["output_version"], deadline=deadline)
             outputs = receipt["outputs"]
             if not source or not output_fact or len(outputs) != 1:
                 continue
@@ -213,5 +213,5 @@ class Queries:
         with self.database.tx(deadline=deadline) as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
             fact = self._select_fact(conn, fact_id, basis, version, deadline=deadline)
-            context = self._topic_context(conn, fact, basis) if fact else None
+            context = self._topic_context(conn, fact, basis, deadline=deadline) if fact else None
             return Page(basis, tuple(bid_result_units(fact, context)) if fact is not None else ())
