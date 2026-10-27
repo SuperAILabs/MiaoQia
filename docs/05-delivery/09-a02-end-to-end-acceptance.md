@@ -11,9 +11,9 @@
 - **每个子系统的缺省装配都是“未接入”**：learning 的数据集、detection 的事实视图与订阅反查、gateway 的数据平面读取、channels 的企业微信适配器、identity 的 IdP 管理接口，在 `Module()` 缺省下都返回不可用；
 - **数据供应平面部分实现**：evidence 的公共文档管线、INF-PROC 招标与结果解析器、domain-intelligence 的事实版本与 `domain.fact.upserted.v1` 生产者已有实现及本地读取绑定；冻结来源招标/中标的保守项目聚合与四种领域事件已有局部实现；acquisition 的持续采集、通用项目/标包聚合、品类增强、组织解析与数据端口装配仍待接入；
 - **Web 与 H5 尚未实现**：`web/` 只有契约生成包；[Web 专项设计](../03-architecture/14-web-application.md)已给出浏览器端流程、BFF 契约、保存视图所有者与 PRD 中“随 Web”行为的页面落点（W-01），实现按 D4 在 L1 之后开始；
-- **调度器角色只有登记**：`scheduler` 进程角色存在，但邀请到期、审批到期、绑定重试、简报定时、跟进提醒都没有装配到任何定时任务。
+- **调度器已完成服务端装配**：`scheduler` 进程角色已运行 identity、channels 与 pursuit 的周期任务；长期运行、生产部署和全端口贯通仍待 L1-4 验收。
 
-因此 M2 的进度应同时按两个口径衡量：段的**服务端切片**（PRD 验收表中“部分（服务端）”的覆盖）与段的**贯通级别**（第3节）。第1–7段已有服务端切片（第6段跟进随 PR #38 评审中）；整条旅程的贯通级别仍为 L0。
+因此 M2 的进度应同时按两个口径衡量：段的**服务端切片**（PRD 验收表中“部分（服务端）”的覆盖）与段的**贯通级别**（第3节）。第1–7段服务端切片均已实现；整条旅程的贯通级别仍为 L0。
 
 ## 2. 贯通链路与依赖
 
@@ -60,7 +60,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D-03 | **部分关闭**：INF-PROC 招标解析器 `proc.tender-notice@0.3.0` 与结果公告解析器 `proc.result-notice@0.2.0`（中标、框架入围、候选人、嵌套折扣率结果表），CI 以人工映射为黄金标注评测；更正公告解析器仍缺 | `packs/information_domains/procurement/src/` | ② | L1 | — |
 | D-04 | **部分关闭**：公告事实版本链、`domain.fact.upserted.v1`（发件箱）与 `tendering.bid_result` 投影已实现；冻结来源的 `pp_` 聚合与四事件已局部实现，`lot_`、其他来源/生命周期与品类增强仍随 L1-2 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-05 | 信息领域服务状态与覆盖接口（`GetCoverage`）未实现，规则到信息领域的生产对应缺失（B-PERMIT 不能显示“数据未接入”） | PRD 第3段用例7、第4段用例24–27；[customer-context](../03-architecture/subsystems/customer-context.md) | ①②③ | L1 | — |
-| D-06 | detection 事实视图端口 `api.Facts` 的生产适配器未接入 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
+| D-06 | **适配器基础已实现，生产装配未关闭**：`detection/api/remote.NewFacts` 已把 data-api `bid-result-units` 映射为严格校验的 `api.Facts`；订阅反查、真实 data-api listener 装配与 L1 进程验收仍待完成 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-07 | detection 订阅反查端口 `api.Candidates` 未接入；search 子系统为骨架 | 同上；`services/subsystems/search/` | ② | L1（可先用按目标区域与品类过滤的最小实现） | — |
 | D-08 | INF-ORG 企业主数据未接入；X-SELF 需要“关联本企业” | PRD 第2段用例1、7–9；第3段用例7 | ①② | L1 用夹具，L4 用供应商 | B2b |
 | D-09 | learning 仿真数据集 `api.Dataset` 未接入，样本只含夹具事实；接入非虚构样本受 D-17 阻断 | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
@@ -138,7 +138,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 建议的顺序按依赖排列，不给日期；每一级的开始以前一级的通过证据为准，周数按[路线图](01-roadmap.md)的规划窗口在每个交接点校准。
 
-1. **L1 回放贯通**：已交付 L1-1 与 L1-2a，剩余实现与主线第6段服务端并行。工作集中在数据供应平面（D-02～D-07、D-09～D-12，Python 与适配器）、运行装配（R-01、R-02）与覆盖判断（R-05）；仿真接入真实数据集之前先关闭样本权限过滤（D-17）。简报服务端已随 PR #36 合并，L1 先接站内，并补齐调度器、覆盖与来源权利适配器及贯通 E2E。
+1. **L1 回放贯通**：L1-1、L1-2a、L1-2b 与 L1-3a 已交付；剩余工作集中在数据供应平面（D-02～D-12 的未关闭部分）、Go 端口适配器、全端口生产装配（R-02）与贯通 E2E。R-01、R-05、D-17 已关闭；简报、通知和跟进的 scheduler 周期任务已有服务端实现，仍需在同一环境中完成 L1 真实进程走查与负向用例。
    - 与主线的分工：数据平面的 Python 子系统、INF-PROC 结果公告解析器与贯通 E2E 测试由独立线程实现，和主线改动的 Go 服务端基本不重叠；detection、learning、gateway 端口的生产适配器会改到主线也在改的子系统，开工前与主线协调，按“谁先合并谁占用修订号，后合并的顺延”处理；
 2. **L2 界面贯通**：Web 专项设计已完成（W-01 已关闭），实现等 L1 的端到端测试通过后开始，按[Web 专项设计第10节](../03-architecture/14-web-application.md#101-批次)的批次覆盖第2节四个环节需要的页面（W-02～W-07）；同时完成 R-03 与 C-03 的 Web 登录部分；
 3. **L3 真实渠道**：与 L2 并行，前提是 U-01 测试企业与 C10 真实调用授权到位；交付 C-01、C-02（生产企业微信适配器、渠道网页授权与 `ChannelSSO` 的生产接入、外网回调入口），以及 W-04 中浏览器免登会话与卡片落地在真实渠道下的验收（按 Web 专项设计 WD2）；
@@ -159,7 +159,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | # | 已确认事项 |
 |---|---|
 | D1 | M2 进度同时按服务端切片覆盖与贯通级别（L0–L5）汇报 |
-| D2 | L1 回放贯通与主线服务端并行推进；当前第5段服务端已合并，第6段服务端切片已实现（PR #38 评审中）；数据平面 Python 子系统、INF-PROC 中标结果公告解析器与贯通 E2E 由独立线程实现，改 detection、learning、gateway、commerce 的端口适配器前与主线协调 |
+| D2 | L1 回放贯通与主线服务端并行推进；第1–7段服务端切片均已实现；数据平面 Python 子系统、INF-PROC 中标结果公告解析器与贯通 E2E 由独立线程实现，改 detection、learning、gateway、commerce 的端口适配器前与主线协调 |
 | D3 | L1 使用仓库内冻结的官方公告语料与标明为夹具的企业主数据；订阅反查先用按目标区域与品类过滤的最小实现；仿真接入真实数据集前先关闭 D-17 |
 | D4 | W-01 Web 专项设计现在开始（文档 PR）；Web 实现在 L1 端到端测试通过后开始，先做四个环节的最小页面集与 H5 落地页 |
 | D5 | L3 只在测试企业微信企业中验收，L3 与 L2 并行；测试企业与 C10 真实调用、凭证授权由项目负责人提供（U-01） |
@@ -178,7 +178,7 @@ L1 按依赖拆分，下表为实施建议；PR #35 的 E1–E5 仍为建议，�
 | L1-2 后续 | data-api 内部读取接口（事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态）；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；建材品类规则增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
 | L1-3a | commerce 覆盖判断 `checkCoverage` 与 gateway 覆盖适配器；learning 代表样本按查看者权限过滤 | R-05、D-17（关闭） | 改 commerce、gateway、learning，已与主线确认文件不重叠 |
 | R-01 | `scheduler` 角色周期任务运行器与主备锁；identity、channels（含简报组装与渠道通知）、pursuit 维护任务；`identity.Tenants` 租户枚举 | R-01（关闭） | 新增 kernel/scheduler 与各子系统 `jobs.go`，channels、pursuit 只加 `Jobs` 字段；`ComposeDue` 与 `DeliverNotices` 由主线 C-09（PR #46）提供 |
-| L1-3 后续 | Go 端口生产适配器：detection `Facts`/`Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、learning `Dataset`/`DomainStatus` | D-06、D-07、D-09、D-10、D-11 | 改主线子系统，开工前与主线协调修订号与文件 |
+| L1-3 后续 | Go 端口生产适配器：detection `Facts` 的 data-api 映射基础已实现；仍需 `Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、learning `Dataset`/`DomainStatus`，以及生产绑定 | D-06（部分）、D-07、D-09、D-10、D-11 | 改主线子系统，开工前与主线协调修订号与文件 |
 | L1-4 | 全端口生产装配的部署配置与启动检查、调度器任务、贯通 E2E（投放结果公告 → 收件箱信号 → 对象页回到原文 → 站内简报）及跨租户与无权限负向用例 | R-01、R-02、C-04（站内） | 第5段服务端已合并，仍待适配器与运行装配 |
 
 L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力，不宣称 INF-PROC 就绪；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）。
