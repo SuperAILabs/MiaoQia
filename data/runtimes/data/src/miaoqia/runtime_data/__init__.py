@@ -10,6 +10,7 @@ from miaoqia.kernel.internal_http import Client, Identity, Server, TLS
 
 def modules() -> list[runtime.Module]:
     from miaoqia import evidence
+    from miaoqia.evidence.api import Unbound
     from miaoqia.evidence import module as evidence_module
     from miaoqia.domain_intelligence import module as domain_intelligence_module
     from miaoqia.entity_graph import module as entity_graph_module
@@ -81,7 +82,7 @@ def serve():
         def evidence_groups(body, deadline):
             try:
                 closure = provenance.evidence(body["evidence_ref"], deadline=deadline)
-            except Exception:
+            except Unbound:
                 return []
             return [source.dto() for source in closure.sources]
         collector = {
