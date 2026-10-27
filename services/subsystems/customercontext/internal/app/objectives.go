@@ -266,6 +266,10 @@ func (s *Service) ConfigureObjective(ctx context.Context, id string, expected in
 				o.ID, o.Owner, o.Participants, o.Params, o.Version); err != nil {
 				return err
 			}
+			// 分派规则只能从目标的负责人与参与人中选人（C-14）：同一目标行锁下移除指向已不是负责人或参与人的规则
+			if err := pruneAssignment(ctx, tx, rc, o); err != nil {
+				return err
+			}
 			*out = *o
 			return emitObjective(ctx, tx, o, "configured", "can_edit")
 		})

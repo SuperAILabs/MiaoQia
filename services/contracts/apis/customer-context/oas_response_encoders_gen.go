@@ -90,6 +90,19 @@ func encodeGetActivePoliciesResponse(response *ActivePolicyList, w http.Response
 	return nil
 }
 
+func encodeGetAssignmentRulesResponse(response *AssignmentRules, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodeGetContextSnapshotResponse(response *ContextSnapshot, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
@@ -260,6 +273,19 @@ func encodeRequestPolicyRollbackResponse(response *PolicyRequest, w http.Respons
 }
 
 func encodeSetObjectiveStateResponse(response *Objective, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeUpdateAssignmentRulesResponse(response *AssignmentRules, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 

@@ -1,0 +1,28 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-27T23:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在提交进入评审，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  C-14（PRD 第6段 F1 第2条、用例4：目标分派规则的配置、信号生成时按规则计算候选负责人与 pursuit CandidateOwners 的生产适配器）只改草案
+  契约，不新增前缀（分派配置随目标 obj_，候选随信号 sig_），contracts/identifiers.yaml 1.8.0 不变（原样登记）。草案改动均为追加：
+  customer-context OpenAPI 0.6.0 → 0.7.0（新操作 getAssignmentRules / updateAssignmentRules 与类型 AssignmentRule、AssignmentRules、
+  UpdateAssignmentRulesRequest、ActiveAssignment；ActivePolicy 追加可选的 assignment，供 detection 生成信号时计算候选；读取按级别白名单
+  view=full / summary；确定失败固定在幂等键上）；
+  detection OpenAPI 0.3.0 → 0.4.0（只经内部端口的新操作 getSignalCandidateOwner 与类型 SignalCandidate，候选人标识只对能分派跟进的成员
+  可见）。事件契约不变（分派配置的变更只记审计，不发领域事件）。
+  这些是草案，不在 C4a 冻结范围，只记录。按我方主体与组织单元匹配的规则条件尚未提供（登记为缺口 C-22）。
+  修订编号按“谁先合并谁占用”：主线最后为修订 18，本记录顺延为 19；原冻结记录与修订 1–18 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.8.0
+  sha256: 40bfde27b723d3077cc9e9b4fce2bf8d3ee6064988d5d14bbbfea0e3f07b8cd9
+verification:
+  base: 871a134
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0：只追加操作、类型与可选字段）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；pursuit 经 mTLS 内部端口的远程绑定读取 detection 的候选负责人，
+    TestAssignmentRules 的“C-14 越权与反例测试 …”子测试）

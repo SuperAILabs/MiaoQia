@@ -14,6 +14,39 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// 目标当前的分派配置（0.7.0，C-14）：只在目标配置过分派规则时出现，版本从
+// 1 开始，规则按顺序（可以为空：已配置为空规则，信号记为 没有候选
+// none）。detection
+// 生成信号时用同一次读取中的负责人与参与人过滤规则（assignee
+// 已不是负责人或参与人的规则跳过），第一条命中的
+// 规则给出候选负责人，都不命中为
+// none；没有本字段（目标从未配置分派规则，或旧版本的提供方）时信号记为“分派规则不可用”rules_unavailable.
+// Ref: #/components/schemas/ActiveAssignment
+type ActiveAssignment struct {
+	Version int64            `json:"version"`
+	Rules   []AssignmentRule `json:"rules"`
+}
+
+// GetVersion returns the value of Version.
+func (s *ActiveAssignment) GetVersion() int64 {
+	return s.Version
+}
+
+// GetRules returns the value of Rules.
+func (s *ActiveAssignment) GetRules() []AssignmentRule {
+	return s.Rules
+}
+
+// SetVersion sets the value of Version.
+func (s *ActiveAssignment) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetRules sets the value of Rules.
+func (s *ActiveAssignment) SetRules(val []AssignmentRule) {
+	s.Rules = val
+}
+
 // 一个目标的生效策略（读取时的当前代次）。owner 与
 // participants（0.6.0，C-08）为目标当前版本的负责人与参与人：channels 据此确定
 // route 受众 objective_owner / objective_members
@@ -36,7 +69,8 @@ type ActivePolicy struct {
 	Owner       OptSubject `json:"owner"`
 	// 目标当前版本的参与人（0.6.0，C-08；可以包含负责人），route 受众
 	// objective_members 为负责人与参与人.
-	Participants []Subject `json:"participants"`
+	Participants []Subject           `json:"participants"`
+	Assignment   OptActiveAssignment `json:"assignment"`
 }
 
 // GetObjectiveID returns the value of ObjectiveID.
@@ -109,6 +143,11 @@ func (s *ActivePolicy) GetParticipants() []Subject {
 	return s.Participants
 }
 
+// GetAssignment returns the value of Assignment.
+func (s *ActivePolicy) GetAssignment() OptActiveAssignment {
+	return s.Assignment
+}
+
 // SetObjectiveID sets the value of ObjectiveID.
 func (s *ActivePolicy) SetObjectiveID(val string) {
 	s.ObjectiveID = val
@@ -179,6 +218,11 @@ func (s *ActivePolicy) SetParticipants(val []Subject) {
 	s.Participants = val
 }
 
+// SetAssignment sets the value of Assignment.
+func (s *ActivePolicy) SetAssignment(val OptActiveAssignment) {
+	s.Assignment = val
+}
+
 // Ref: #/components/schemas/ActivePolicyList
 type ActivePolicyList struct {
 	Policies   []ActivePolicy `json:"policies"`
@@ -247,6 +291,162 @@ func (s *ActivePolicyObjectiveState) UnmarshalText(data []byte) error {
 		return nil
 	case ActivePolicyObjectiveStateDisabled:
 		*s = ActivePolicyObjectiveStateDisabled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 一条分派规则（C-14）：regions 与 categories
+// 都是可选条件，同时给出时须都满足；regions 按行政区划包含（与策略
+// region.within 一致， 000000 为全国），categories 按行业包品类代码及其上级（与
+// category.any_match
+// 一致），信号任一品类命中即满足；两者都不给出时匹配全部信号。
+// 按区域、品类之外的条件（我方主体、组织单元）尚未提供（缺口 C-22）.
+// Ref: #/components/schemas/AssignmentRule
+type AssignmentRule struct {
+	Assignee   Subject  `json:"assignee"`
+	Regions    []string `json:"regions"`
+	Categories []string `json:"categories"`
+}
+
+// GetAssignee returns the value of Assignee.
+func (s *AssignmentRule) GetAssignee() Subject {
+	return s.Assignee
+}
+
+// GetRegions returns the value of Regions.
+func (s *AssignmentRule) GetRegions() []string {
+	return s.Regions
+}
+
+// GetCategories returns the value of Categories.
+func (s *AssignmentRule) GetCategories() []string {
+	return s.Categories
+}
+
+// SetAssignee sets the value of Assignee.
+func (s *AssignmentRule) SetAssignee(val Subject) {
+	s.Assignee = val
+}
+
+// SetRegions sets the value of Regions.
+func (s *AssignmentRule) SetRegions(val []string) {
+	s.Regions = val
+}
+
+// SetCategories sets the value of Categories.
+func (s *AssignmentRule) SetCategories(val []string) {
+	s.Categories = val
+}
+
+// 目标的分派规则（C-14）。view 为字段级别：full 带规则与更新时间；summary
+// 只带版本与规则条数（不出现规则与候选人）.
+// Ref: #/components/schemas/AssignmentRules
+type AssignmentRules struct {
+	ObjectiveID string              `json:"objective_id"`
+	Version     int64               `json:"version"`
+	RuleCount   int                 `json:"rule_count"`
+	View        AssignmentRulesView `json:"view"`
+	Rules       []AssignmentRule    `json:"rules"`
+	UpdatedAt   OptDateTime         `json:"updated_at"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *AssignmentRules) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetVersion returns the value of Version.
+func (s *AssignmentRules) GetVersion() int64 {
+	return s.Version
+}
+
+// GetRuleCount returns the value of RuleCount.
+func (s *AssignmentRules) GetRuleCount() int {
+	return s.RuleCount
+}
+
+// GetView returns the value of View.
+func (s *AssignmentRules) GetView() AssignmentRulesView {
+	return s.View
+}
+
+// GetRules returns the value of Rules.
+func (s *AssignmentRules) GetRules() []AssignmentRule {
+	return s.Rules
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *AssignmentRules) GetUpdatedAt() OptDateTime {
+	return s.UpdatedAt
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *AssignmentRules) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetVersion sets the value of Version.
+func (s *AssignmentRules) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetRuleCount sets the value of RuleCount.
+func (s *AssignmentRules) SetRuleCount(val int) {
+	s.RuleCount = val
+}
+
+// SetView sets the value of View.
+func (s *AssignmentRules) SetView(val AssignmentRulesView) {
+	s.View = val
+}
+
+// SetRules sets the value of Rules.
+func (s *AssignmentRules) SetRules(val []AssignmentRule) {
+	s.Rules = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *AssignmentRules) SetUpdatedAt(val OptDateTime) {
+	s.UpdatedAt = val
+}
+
+type AssignmentRulesView string
+
+const (
+	AssignmentRulesViewFull    AssignmentRulesView = "full"
+	AssignmentRulesViewSummary AssignmentRulesView = "summary"
+)
+
+// AllValues returns all AssignmentRulesView values.
+func (AssignmentRulesView) AllValues() []AssignmentRulesView {
+	return []AssignmentRulesView{
+		AssignmentRulesViewFull,
+		AssignmentRulesViewSummary,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AssignmentRulesView) MarshalText() ([]byte, error) {
+	switch s {
+	case AssignmentRulesViewFull:
+		return []byte(s), nil
+	case AssignmentRulesViewSummary:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AssignmentRulesView) UnmarshalText(data []byte) error {
+	switch AssignmentRulesView(data) {
+	case AssignmentRulesViewFull:
+		*s = AssignmentRulesViewFull
+		return nil
+	case AssignmentRulesViewSummary:
+		*s = AssignmentRulesViewSummary
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -1425,6 +1625,52 @@ func (s *ObjectiveTemplateUnavailableReason) UnmarshalText(data []byte) error {
 	}
 }
 
+// NewOptActiveAssignment returns new OptActiveAssignment with value set to v.
+func NewOptActiveAssignment(v ActiveAssignment) OptActiveAssignment {
+	return OptActiveAssignment{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptActiveAssignment is optional ActiveAssignment.
+type OptActiveAssignment struct {
+	Value ActiveAssignment
+	Set   bool
+}
+
+// IsSet returns true if OptActiveAssignment was set.
+func (o OptActiveAssignment) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptActiveAssignment) Reset() {
+	var v ActiveAssignment
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptActiveAssignment) SetTo(v ActiveAssignment) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptActiveAssignment) Get() (v ActiveAssignment, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptActiveAssignment) Or(d ActiveAssignment) ActiveAssignment {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptContextPolicyViewEntities returns new OptContextPolicyViewEntities with value set to v.
 func NewOptContextPolicyViewEntities(v ContextPolicyViewEntities) OptContextPolicyViewEntities {
 	return OptContextPolicyViewEntities{
@@ -1511,6 +1757,52 @@ func (o OptDate) Get() (v time.Time, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDate) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptDateTime returns new OptDateTime with value set to v.
+func NewOptDateTime(v time.Time) OptDateTime {
+	return OptDateTime{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDateTime is optional time.Time.
+type OptDateTime struct {
+	Value time.Time
+	Set   bool
+}
+
+// IsSet returns true if OptDateTime was set.
+func (o OptDateTime) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDateTime) Reset() {
+	var v time.Time
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDateTime) SetTo(v time.Time) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDateTime) Get() (v time.Time, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDateTime) Or(d time.Time) time.Time {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -4798,6 +5090,32 @@ func (s *SetObjectiveStateRequestState) UnmarshalText(data []byte) error {
 }
 
 type Subject string
+
+// Ref: #/components/schemas/UpdateAssignmentRulesRequest
+type UpdateAssignmentRulesRequest struct {
+	ExpectedVersion int64            `json:"expected_version"`
+	Rules           []AssignmentRule `json:"rules"`
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *UpdateAssignmentRulesRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// GetRules returns the value of Rules.
+func (s *UpdateAssignmentRulesRequest) GetRules() []AssignmentRule {
+	return s.Rules
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *UpdateAssignmentRulesRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// SetRules sets the value of Rules.
+func (s *UpdateAssignmentRulesRequest) SetRules(val []AssignmentRule) {
+	s.Rules = val
+}
 
 // Ref: #/components/schemas/UpdateProfileRequest
 type UpdateProfileRequest struct {

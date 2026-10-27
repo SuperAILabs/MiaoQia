@@ -63,6 +63,20 @@ type Invoker interface {
 	//
 	// GET /v1/detection/signal-batches/{batchID}
 	GetSignalBatch(ctx context.Context, params GetSignalBatchParams) (*SignalBatch, error)
+	// GetSignalCandidateOwner invokes getSignalCandidateOwner operation.
+	//
+	// 信号生成时按目标的分派规则算出的候选负责人（只是建议）。以调用者的用户主体判断：不属于本租户、不存在与没有
+	// can_view_signals 同为 404 signal_not_found；能查看信号而没有 can_assign 为 403
+	// forbidden（候选人标识只对能分派跟进的成员可见）。state 为
+	// assigned（有候选，candidate_owner 与 assignment_version
+	// 出现）、none（已配置分派规则但都不命中，或配置为空规则）或
+	// rules_unavailable
+	// （信号生成时分派规则不可用：目标从未配置分派规则、提供方没有给出分派配置，或
+	// C-14
+	// 之前的信号）。不重新求值规则，也不判断候选此刻是否仍有效：调用方以候选本人再检查成员状态与目标访问。.
+	//
+	// GET /v1/detection/signals/{signalID}/candidate-owner
+	GetSignalCandidateOwner(ctx context.Context, params GetSignalCandidateOwnerParams) (*SignalCandidate, error)
 	// ListBriefingSignals invokes listBriefingSignals operation.
 	//
 	// Channels 以简报收件人的用户主体调用（PRD 第5段 F1 第4–7条）。需要目标的
@@ -652,6 +666,113 @@ func (c *Client) sendGetSignalBatch(ctx context.Context, params GetSignalBatchPa
 
 	stage = "DecodeResponse"
 	result, err := decodeGetSignalBatchResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetSignalCandidateOwner invokes getSignalCandidateOwner operation.
+//
+// 信号生成时按目标的分派规则算出的候选负责人（只是建议）。以调用者的用户主体判断：不属于本租户、不存在与没有
+// can_view_signals 同为 404 signal_not_found；能查看信号而没有 can_assign 为 403
+// forbidden（候选人标识只对能分派跟进的成员可见）。state 为
+// assigned（有候选，candidate_owner 与 assignment_version
+// 出现）、none（已配置分派规则但都不命中，或配置为空规则）或
+// rules_unavailable
+// （信号生成时分派规则不可用：目标从未配置分派规则、提供方没有给出分派配置，或
+// C-14
+// 之前的信号）。不重新求值规则，也不判断候选此刻是否仍有效：调用方以候选本人再检查成员状态与目标访问。.
+//
+// GET /v1/detection/signals/{signalID}/candidate-owner
+func (c *Client) GetSignalCandidateOwner(ctx context.Context, params GetSignalCandidateOwnerParams) (*SignalCandidate, error) {
+	res, err := c.sendGetSignalCandidateOwner(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetSignalCandidateOwner(ctx context.Context, params GetSignalCandidateOwnerParams) (res *SignalCandidate, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getSignalCandidateOwner"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/detection/signals/{signalID}/candidate-owner"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetSignalCandidateOwnerOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/detection/signals/"
+	{
+		// Encode "signalID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "signalID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.SignalID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/candidate-owner"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetSignalCandidateOwnerResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

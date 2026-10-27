@@ -11,6 +11,8 @@ import (
 // 创建面板的缺省值（PRD 第6段 F1 第2条、用例4；C-10）：默认负责人优先取目标分派规则给出的候选负责人，候选须此刻以其本人仍是租户
 // 有效成员且能查看该目标的信号；没有候选、候选无效或分派规则未接入时默认负责人为创建者本人，并说明原因。候选只是建议：
 // 不因被建议而获得访问，创建时仍按 createPursuit 的分派检查判断；候选无效时不返回其标识（不泄露规则配置给无关成员以外的信息）。
+// C-14 起候选经生产适配器（pursuit 包的 candidates.go）读取 detection 在信号生成时写入的候选；信号生成时分派规则不可用
+// （api.ErrRulesUnavailable）同样说明为 rules_unavailable。
 
 // CreateDefaults 是契约 CreateDefaults。
 type CreateDefaults struct {

@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.13 · 更新：2026-10-27 · 平面：客户智能
+> 状态：评审中 · 版本：1.14 · 更新：2026-10-27 · 平面：客户智能
 
 ## 1. 使命
 
@@ -70,7 +70,8 @@
 | `RequestPolicyActivation` / `RequestPolicyRollback` | 命令 | 按类型绑定后调用 `identity.RequestApproval` 创建审批，带幂等键；同一目标同时只有一个进行中的申请。激活：绑定草案当前修订、该修订未过期的仿真报告（对比版本须为当前生效版本）与申请时的生效版本和策略代次，提交后锁定草案。回滚：绑定目标版本（曾经生效过）、其激活时的报告与申请时的生效版本和策略代次，不绑定、不锁定草案 |
 | `ActivatePolicy` / `RollbackPolicy` | 命令 | 审批通过后由系统执行，执行前核验绑定：激活要求草案仍是申请的修订、生效版本与策略代次仍等于基准；回滚要求目标版本存在且曾经生效、生效版本与策略代次仍等于基准。不满足则不执行并通知。回滚恢复目标版本原来的合成文档与启用领域集合；执行后若有草案，其报告的对比基准失效，标为过期 |
 | `CreateUpgradeDraft` | 命令 | 模板新版本或信息领域上线后，按规则 `id` 对齐保留租户覆盖创建草案；被删除或改为锁定的覆盖逐条列出待确认 |
-| `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界） |
+| `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界）；契约 0.7.0 起每个目标另带分派配置（版本与规则），detection 据此在生成信号时计算候选负责人（第 11 节） |
+| `GetAssignmentRules` / `UpdateAssignmentRules` | 查询/命令 | 目标的分派规则（第 11 节）：整份替换，带分派配置版本 `expected_version`；读取按级别白名单 |
 | `UploadKnowledgeAsset` | 命令 | 上传与分级 |
 | `ListSavedViews` / `CreateSavedView` / `UpdateSavedView` / `DeleteSavedView` / `SetDefaultView` | 查询/命令 | 保存视图（第4节）；更新带 `expected_version`；团队视图的变更写审计。契约随第一个使用保存视图的 Web 实现写入（[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)） |
 
@@ -88,7 +89,7 @@
 - **生效策略读取（PRD 第3段切片，契约 0.4.0 草案）**：`GetActivePolicies`（内部接口 `GET /internal/v1/customer-context/active-policies`，本地绑定 `customer-context.ActivePolicies`，`MIAOQIA_BINDING_CUSTOMER_CONTEXT=remote` 时为远程客户端）以服务主体（`tenant#can_read_context`）读主库，按目标标识升序分页（每页至多 200，游标），返回每个有生效版本的目标的状态、组织单元、策略标识、生效版本与代次、模板版本、启用领域集合与合成文档（契约 0.6.0 起另带目标当前的负责人 `owner` 与参与人 `participants`，供 channels 确定即时通知 `route` 受众的候选收件人，见 [channels C-08 实现状况](channels.md#6-接口)；候选收件人在发送前仍以本人再检查）；激活与回滚在同一事务中切换生效版本与代次，因此返回后开始的读取一律看到新代次。策略标识（`pol_`，迁移 `00003_policy_ids.sql`）每个目标一个、建立后不变，已有的行由目标标识确定性派生。`ObjectiveAccess` 的关系追加 `can_view_signals` 与 `can_feedback`，按本节口径（单元关系 `can_view_unit_signals` / `can_feedback_unit_signals`，或本地当前版本的负责人/参与人且 identity 对目标判断通过）放行，供 detection 与 learning 使用；
 - **未实现**：回填的实际执行（随 detection）、通知（随 channels）、升级草案（F7）、按规则显示“数据未接入”（规则到信息领域的生产对应随 domain-intelligence 的覆盖接口）、组织单元迁移时使进行中的审批失效。
 
-**实现状况（PRD 第6段，契约 0.5.0 草案）**：`ObjectiveAccess` 的关系追加 `can_assign`（决策者经单元关系 `org_unit#can_assign_unit_objectives`，业务开拓者经参与关系），并返回目标所在单元、模板与状态（可选字段）；本地绑定与远程客户端另提供 `customer-context.ObjectiveScope`（同一判断，带目标所在单元与模板），供 pursuit 判断创建权限与被分派人的目标访问。分派规则的候选负责人尚未提供给 pursuit。
+**实现状况（PRD 第6段，契约 0.5.0 草案）**：`ObjectiveAccess` 的关系追加 `can_assign`（决策者经单元关系 `org_unit#can_assign_unit_objectives`，业务开拓者经参与关系），并返回目标所在单元、模板与状态（可选字段）；本地绑定与远程客户端另提供 `customer-context.ObjectiveScope`（同一判断，带目标所在单元与模板），供 pursuit 判断创建权限与被分派人的目标访问。分派规则与候选负责人见第 11 节的实现状况（C-14）。
 
 ## 7. 事件
 
@@ -129,7 +130,18 @@
 
 规则：
 
-- 分派规则随目标配置保存，形成上下文版本；规则只能从该目标的参与人中选人，不能引入目标外的成员；
+- 分派规则随目标配置保存，有自己的分派配置版本（不递增租户上下文版本：规则不是策略求值的输入，不改变处置）；规则只能从该目标的负责人与参与人中选人，不能引入目标外的成员；
 - 分派写入业务对象时，业务所有者同时在 `identity` 写入参与关系（推进负责人、协作者），并先检查被分派人是否是租户成员、是否有该目标的访问；无权限的分派被拒绝，不自动授予权限；
 - 通知受众不能超出访问权限：`channels` 发送前逐人检查，收到通知不等于获得访问，候选负责人也不因被建议而获得访问；
 - 改派、成员停用与截止变更按 [pursuit 第 10 节](pursuit.md#10-分阶段交付)处理，本子系统不保存分派历史。
+
+**实现状况（C-14，契约 0.7.0 草案；PRD 第6段 F1 第2条、用例4）**：
+
+- **规则**：每个目标一份按顺序的规则（至多 50 条，`ctx_assignment_rules`，迁移 `00004_assignment_rules.sql`），每条为被分派人 `assignee` 与可选条件 `regions`（行政区划代码，按 `region.within` 包含下级，`000000` 为全国）、`categories`（已安装行业包的品类代码，按 `category.any_match` 包含下级，信号任一品类命中即满足）；两个条件同时给出须都满足，都不给出时匹配全部信号；第一条命中的规则给出候选。按我方主体与组织单元的条件、按角色选人尚未提供（[A02 验收缺口 C-22](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)）；
+- **版本**：分派配置版本独立于目标版本（从未配置为 0，即没有配置记录；首次写入为 1——包括配置为空规则——之后每次有变化的写入加一，相同内容为无变化；已配置的版本因此总是不小于 1）；不递增租户上下文版本，也不发布领域事件，变更记审计 `customer_context.objective.assignment_configured`；
+- **写入**：`PUT /v1/customer-context/objectives/{objectiveID}/assignment`（`updateAssignmentRules`）需要目标上的 `can_manage_participants` 与 `can_edit`（目标单元的决策者，与调整负责人和参与人相同），不可见 404、无权 403。每个被分派人先以其本人判断此刻仍是本租户有效成员（identity 会话核验，退出、停用与他租户的用户被拒）且能查看该目标的信号（本子系统 `can_view_signals` 的口径），再在目标行锁（与 `ConfigureObjective` 同一把锁）下核对仍是目标当前的负责人或参与人，任一不满足 422 `assignee_no_access`，整份不写入、不授予任何权限；区域与品类无效 422 `invalid_region` / `unknown_category`；分派配置版本不一致 409 `version_conflict`。同一幂等键重放返回首次结果，包括首次的确定失败（4xx，`ctx_commands` 中登记为失败）；暂时失败（503）不固定在键上；
+- **参与人变化**：`ConfigureObjective` 移出负责人或参与人时，在同一事务与同一目标行锁下移除指向他的规则，分派配置版本加一并审计 `customer_context.objective.assignment_pruned`；写入规则与移除参与人因此串行，提交后的规则只指向当前的负责人或参与人；
+- **读取**：`GET …/assignment`（`getAssignmentRules`）需要 `can_view`；字段按级别白名单输出：能管理参与人或能分派跟进（`can_assign`）的成员为 `full`（规则全文与更新时间），其他能查看目标的成员为 `summary`（只有版本与规则条数，不出现规则与候选人）。从未配置时返回 `version` 0、`rule_count` 0、没有 `updated_at`（`full` 时 `rules` 为空数组）；配置为空规则后为 `version` ≥ 1 且有 `updated_at`，两者可以区分；
+- **供 detection 读取**：`GetActivePolicies` 的目标在配置过分派规则时追加 `assignment`（版本 ≥ 1 与规则，规则可以为空），从未配置的目标不出现 `assignment`（不以版本 0、空规则代替），与负责人、参与人来自同一次读取；detection 据此区分“分派规则不可用”（`rules_unavailable`）与“已配置但没有候选”（`none`）；detection 生成信号时据此计算候选（[detection 实现状况](detection.md#8-伸缩与可靠性)）；
+- **绑定**：本子系统另依赖 identity 的 `SessionResolver`（本地或远程），`TestEveryRoleResolvesBindings` 断言；
+- **证据**：`services/kernel/integration/assignment_test.go`（`TestAssignmentRules`），`services/subsystems/customercontext/internal/domain/assignment_test.go`。

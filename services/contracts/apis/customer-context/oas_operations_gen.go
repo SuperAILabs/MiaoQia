@@ -12,6 +12,7 @@ const (
 	DraftPolicyChangeOperation        OperationName = "DraftPolicyChange"
 	EnableObjectiveOperation          OperationName = "EnableObjective"
 	GetActivePoliciesOperation        OperationName = "GetActivePolicies"
+	GetAssignmentRulesOperation       OperationName = "GetAssignmentRules"
 	GetContextSnapshotOperation       OperationName = "GetContextSnapshot"
 	GetContextVersionOperation        OperationName = "GetContextVersion"
 	GetObjectiveOperation             OperationName = "GetObjective"
@@ -26,5 +27,6 @@ const (
 	RequestPolicyActivationOperation  OperationName = "RequestPolicyActivation"
 	RequestPolicyRollbackOperation    OperationName = "RequestPolicyRollback"
 	SetObjectiveStateOperation        OperationName = "SetObjectiveState"
+	UpdateAssignmentRulesOperation    OperationName = "UpdateAssignmentRules"
 	UpdateProfileOperation            OperationName = "UpdateProfile"
 )

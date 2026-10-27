@@ -1,6 +1,6 @@
 # PRD 第6段：跟进
 
-> 状态：设计交接通过 · 版本：1.4 · 更新：2026-10-27 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/06-pursuit-follow-up.html](prototypes/06-pursuit-follow-up.html)
+> 状态：设计交接通过 · 版本：1.5 · 更新：2026-10-27 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/06-pursuit-follow-up.html](prototypes/06-pursuit-follow-up.html)
 
 本段让销售团队把值得做的 A02 信号变成有负责人、有截止时间、有结果记录的跟进：从信号（Web 详情或企业微信卡片）或对象页创建跟进，指派与改派负责人，安排任务与提醒，公开截止时间变化时任务自动改时，结束时记录结果、金额与获知时间，结果进入本租户的评估。它承接第3段（信号与处理状态）、第4段（对象页）与第5段（卡片上的“跟进”与“待我处理”），是首条旅程的最后一段。
 
@@ -382,14 +382,14 @@
 
 证据位置在实现时逐条填入。
 
-服务端切片：pursuit 契约 0.1.0 草案（事件 0.1.0）实现创建与关联、撤销创建、改派与协作者、任务与截止、提醒、完成与撤销完成、关闭与结果修订、列表与详情、授权同步；channels 事件 0.3.0 追加卡片“跟进”；customer-context 契约 0.5.0 追加 `can_assign` 与目标范围；detection 消费关联事件维护“已转跟进”；learning 消费结果事件。C-10 追加 pursuit 契约与事件 0.3.0（持续跟踪、创建缺省值、互相提示）与 learning 契约 0.4.0（结果汇总），持续跟踪的周期以本地绑定 `pursuit.Reminders.RunTracking` 提供；C-11 追加 channels 事件 0.5.0（通知投递事件）、channels 契约 0.4.0（投递统计的通知计数）与 pursuit 契约 0.4.0（转交口径说明，内部端口提供 `getTracking`）；`notices_internal_test.go` 指 `services/subsystems/channels/internal/app/notices_internal_test.go`；`outcome_summary_test.go` 指 `services/subsystems/learning/internal/app/outcome_summary_test.go`。见 [pursuit 第11节实现状况](../../03-architecture/subsystems/pursuit.md#11-实现状况)。定时任务未接入：提醒与授权同步补做以本地绑定 `pursuit.Reminders` 提供，由测试直接驱动；企业微信为内存实现。下表“全部”只指服务端可自动化的部分。证据均在 `services/kernel/integration/pursuit_test.go` 的 `TestPursuitFollowUp` 中（另注明的除外；真实 PostgreSQL 与 OpenFGA，channels 经 mTLS 内部端口的远程绑定调用 pursuit，identity 的参与关系同步可注入不可用）；`domain_internal_test.go` 指 `services/subsystems/pursuit/internal/app/domain_internal_test.go`，`pursue_internal_test.go` 指 `services/subsystems/channels/internal/app/pursue_internal_test.go`。
+服务端切片：pursuit 契约 0.1.0 草案（事件 0.1.0）实现创建与关联、撤销创建、改派与协作者、任务与截止、提醒、完成与撤销完成、关闭与结果修订、列表与详情、授权同步；channels 事件 0.3.0 追加卡片“跟进”；customer-context 契约 0.5.0 追加 `can_assign` 与目标范围；detection 消费关联事件维护“已转跟进”；learning 消费结果事件。C-10 追加 pursuit 契约与事件 0.3.0（持续跟踪、创建缺省值、互相提示）与 learning 契约 0.4.0（结果汇总），持续跟踪的周期以本地绑定 `pursuit.Reminders.RunTracking` 提供；C-11 追加 channels 事件 0.5.0（通知投递事件）、channels 契约 0.4.0（投递统计的通知计数）与 pursuit 契约 0.4.0（转交口径说明，内部端口提供 `getTracking`）；C-14 追加 customer-context 契约 0.7.0（目标分派规则 `getAssignmentRules` / `updateAssignmentRules`，生效策略读取带分派配置）与 detection 契约 0.4.0（信号上的候选负责人，内部端口 `getSignalCandidateOwner`），pursuit 的候选端口接入生产适配器；`notices_internal_test.go` 指 `services/subsystems/channels/internal/app/notices_internal_test.go`；`outcome_summary_test.go` 指 `services/subsystems/learning/internal/app/outcome_summary_test.go`。见 [pursuit 第11节实现状况](../../03-architecture/subsystems/pursuit.md#11-实现状况)。定时任务未接入：提醒与授权同步补做以本地绑定 `pursuit.Reminders` 提供，由测试直接驱动；企业微信为内存实现。下表“全部”只指服务端可自动化的部分。证据均在 `services/kernel/integration/pursuit_test.go` 的 `TestPursuitFollowUp` 中（另注明的除外；真实 PostgreSQL 与 OpenFGA，channels 经 mTLS 内部端口的远程绑定调用 pursuit，identity 的参与关系同步可注入不可用）；`domain_internal_test.go` 指 `services/subsystems/pursuit/internal/app/domain_internal_test.go`，`pursue_internal_test.go` 指 `services/subsystems/channels/internal/app/pursue_internal_test.go`。
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|
 | 1 | 全部（服务端）：信号详情创建一次写入负责人、协作者与第一项任务；信号转为已转跟进；负责人不是本人时在授权同步后收到一次分派通知 | 子测试“用例1、55、15、16、49” |
 | 2 | 全部（服务端）：卡片创建以点击者为负责人、没有任务，渠道为企业微信；卡片结果“已创建跟进” | 子测试“用例2、24、45…” |
 | 3 | 部分：从目标对象手动创建（target）；漏报提示属于界面 | 子测试“用例3、13、52” |
-| 4 | 部分（服务端）：`getCreateDefaults` 在候选以其本人判断仍有效时默认候选，否则默认本人并以 `candidate_state` 说明（`no_access` / `none` / `rules_unavailable`），失效候选不返回标识；分派规则的配置与按规则计算候选未实现，生产为“规则未接入”（C-14） | 子测试“C-10 用例4 …” |
+| 4 | 全部（服务端）：`getCreateDefaults` 在候选以其本人判断仍有效时默认候选，否则默认本人并以 `candidate_state` 说明（`no_access` / `none` / `rules_unavailable`），失效候选不返回标识。C-14：决策者在 customer-context 配置目标的分派规则（按区域与品类，第一条命中的规则；被分派人须是目标的负责人或参与人并以其本人核验访问），detection 生成信号时按规则写入候选，pursuit 的生产适配器经 detection 内部端口读取；信号生成时规则不可用（目标从未配置分派规则，或提供方没有给出分派配置）为 `rules_unavailable`，已配置但规则为空或都不命中为 `none`。按我方主体、组织单元与角色的规则条件、信号详情中显示候选与 Web 配置页未实现（C-22、C-23） | 子测试“C-10 用例4 …”；`services/kernel/integration/assignment_test.go`（`TestAssignmentRules` 的“C-14 用例4 …”与“C-14 越权与反例测试 …”） |
 | 5 | 全部（服务端）：被分派人（负责人或协作者）不是目标参与人 422 `assignee_no_access`，不写入；退出成员同样（改派时） | 子测试“越权与反例测试 用例6、48、5”“用例27、58…” |
 | 6 | 全部（服务端）：业务专家 403、非参与人 404；卡片上没有“跟进” | 子测试“越权与反例测试 用例6、48、5”“用例2、24、45…” |
 | 7 | 全部（服务端）：旧内容版本 409 `signal_updated` 带当前版本，不创建 | 子测试“用例7、8” |
