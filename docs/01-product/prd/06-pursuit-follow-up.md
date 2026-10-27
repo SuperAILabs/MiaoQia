@@ -1,6 +1,6 @@
 # PRD 第6段：跟进
 
-> 状态：设计交接通过 · 版本：1.3 · 更新：2026-10-27 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/06-pursuit-follow-up.html](prototypes/06-pursuit-follow-up.html)
+> 状态：设计交接通过 · 版本：1.4 · 更新：2026-10-27 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/06-pursuit-follow-up.html](prototypes/06-pursuit-follow-up.html)
 
 本段让销售团队把值得做的 A02 信号变成有负责人、有截止时间、有结果记录的跟进：从信号（Web 详情或企业微信卡片）或对象页创建跟进，指派与改派负责人，安排任务与提醒，公开截止时间变化时任务自动改时，结束时记录结果、金额与获知时间，结果进入本租户的评估。它承接第3段（信号与处理状态）、第4段（对象页）与第5段（卡片上的“跟进”与“待我处理”），是首条旅程的最后一段。
 
@@ -382,7 +382,7 @@
 
 证据位置在实现时逐条填入。
 
-服务端切片：pursuit 契约 0.1.0 草案（事件 0.1.0）实现创建与关联、撤销创建、改派与协作者、任务与截止、提醒、完成与撤销完成、关闭与结果修订、列表与详情、授权同步；channels 事件 0.3.0 追加卡片“跟进”；customer-context 契约 0.5.0 追加 `can_assign` 与目标范围；detection 消费关联事件维护“已转跟进”；learning 消费结果事件。C-10 追加 pursuit 契约与事件 0.3.0（持续跟踪、创建缺省值、互相提示）与 learning 契约 0.4.0（结果汇总），持续跟踪的周期以本地绑定 `pursuit.Reminders.RunTracking` 提供；`outcome_summary_test.go` 指 `services/subsystems/learning/internal/app/outcome_summary_test.go`。见 [pursuit 第11节实现状况](../../03-architecture/subsystems/pursuit.md#11-实现状况)。定时任务未接入：提醒与授权同步补做以本地绑定 `pursuit.Reminders` 提供，由测试直接驱动；企业微信为内存实现。下表“全部”只指服务端可自动化的部分。证据均在 `services/kernel/integration/pursuit_test.go` 的 `TestPursuitFollowUp` 中（另注明的除外；真实 PostgreSQL 与 OpenFGA，channels 经 mTLS 内部端口的远程绑定调用 pursuit，identity 的参与关系同步可注入不可用）；`domain_internal_test.go` 指 `services/subsystems/pursuit/internal/app/domain_internal_test.go`，`pursue_internal_test.go` 指 `services/subsystems/channels/internal/app/pursue_internal_test.go`。
+服务端切片：pursuit 契约 0.1.0 草案（事件 0.1.0）实现创建与关联、撤销创建、改派与协作者、任务与截止、提醒、完成与撤销完成、关闭与结果修订、列表与详情、授权同步；channels 事件 0.3.0 追加卡片“跟进”；customer-context 契约 0.5.0 追加 `can_assign` 与目标范围；detection 消费关联事件维护“已转跟进”；learning 消费结果事件。C-10 追加 pursuit 契约与事件 0.3.0（持续跟踪、创建缺省值、互相提示）与 learning 契约 0.4.0（结果汇总），持续跟踪的周期以本地绑定 `pursuit.Reminders.RunTracking` 提供；C-11 追加 channels 事件 0.5.0（通知投递事件）、channels 契约 0.4.0（投递统计的通知计数）与 pursuit 契约 0.4.0（转交口径说明，内部端口提供 `getTracking`）；`notices_internal_test.go` 指 `services/subsystems/channels/internal/app/notices_internal_test.go`；`outcome_summary_test.go` 指 `services/subsystems/learning/internal/app/outcome_summary_test.go`。见 [pursuit 第11节实现状况](../../03-architecture/subsystems/pursuit.md#11-实现状况)。定时任务未接入：提醒与授权同步补做以本地绑定 `pursuit.Reminders` 提供，由测试直接驱动；企业微信为内存实现。下表“全部”只指服务端可自动化的部分。证据均在 `services/kernel/integration/pursuit_test.go` 的 `TestPursuitFollowUp` 中（另注明的除外；真实 PostgreSQL 与 OpenFGA，channels 经 mTLS 内部端口的远程绑定调用 pursuit，identity 的参与关系同步可注入不可用）；`domain_internal_test.go` 指 `services/subsystems/pursuit/internal/app/domain_internal_test.go`，`pursue_internal_test.go` 指 `services/subsystems/channels/internal/app/pursue_internal_test.go`。
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|
@@ -412,7 +412,7 @@
 | 24 | 全部（服务端）：卡片结果不带撤销；Web 中创建者 10 分钟内可撤销 | 子测试“用例2、24、45…” |
 | 25 | 全部（服务端）：新负责人在同步后收到一次通知，原负责人失去“分派给我”，审计记录前后负责人；改派给当前负责人无变化、不通知 | 子测试“用例26、25、56” |
 | 26 | 全部（服务端）：基于同一版本的后提交者 409 `conflict` 带当前负责人 | 子测试“用例26、25、56” |
-| 27 | 全部（服务端）：负责人退出后“无有效负责人”并置顶，提醒转给决策者（`escalated`），决策者待办中出现；重新加入不恢复；改派后恢复；迟到或重放的退出事件（早于当前分派）不使重新加入后被重新分派的负责人失效，授予之后的退出仍判无效；事件迟到期间重新加入、被改为协作者或负责人的成员，之后送达的旧事件不撤销这次分派 | 子测试“用例27、58…”“越权与反例测试（复审）：迟到或重放的成员退出事件…”“越权与反例测试（复审二）：成员退出、目标变化事件迟到期间…” |
+| 27 | 全部（服务端）：负责人退出后“无有效负责人”并置顶，提醒转给决策者（`escalated`），决策者待办中出现；重新加入不恢复；改派后恢复；迟到或重放的退出事件（早于当前分派）不使重新加入后被重新分派的负责人失效，授予之后的退出仍判无效；事件迟到期间重新加入、被改为协作者或负责人的成员，之后送达的旧事件不撤销这次分派；负责人仍在团队中但写入准入不满足（例如角色改为业务专家）时提醒同样转给单元上能更新跟进的决策者，`getTask` 与 `listMyTasks` 同一口径，负责人恢复准入后转交结束（C-11） | 子测试“用例27、58…”“越权与反例测试（复审）：迟到或重放的成员退出事件…”“越权与反例测试（复审二）：成员退出、目标变化事件迟到期间…”；“C-11 越权与反例测试 用例27、43、44…” |
 | 28 | 全部（服务端）：只填日期保存日期与时区；换算值随时区 | 子测试“用例28、29、31、32”；`domain_internal_test.go`（TestLocalTimeInstant） |
 | 29 | 全部（服务端）：各种类提醒各一次，已过的只发最晚一条，重复与并发执行不重复 | 子测试“用例28、29、31、32”；`domain_internal_test.go`（TestReminderPlan） |
 | 30 | 全部（服务端）：提醒在收件人安静时段内到时延后到安静时段结束（不丢弃、延后前不渲染不签发令牌），结束后发出；渠道失败重试同一张卡片 | 子测试“C-09 用例44、30…” |
@@ -424,8 +424,8 @@
 | 40 | 全部（服务端）：修订追加记录并引用旧记录，详情显示修订历史；对非当前记录修订 409 | 同上 |
 | 41 | 全部（服务端）：首次提示与同日不判定、用户给出时优先；没有“妙洽带来的金额” | 同上；`domain_internal_test.go`（TestContribution） |
 | 42 | 部分（服务端）：learning 以结果记录标识写入，有获知时间的为时点评估、缺失的为事后统计；`getOutcomeSummary` 给出评估报告的结果部分（两部分分开、每个跟进取当前记录、金额分组精确合计），只凭参与关系的成员 403；持久化的评估报告未实现（C-16） | 同上；子测试“C-10 用例42 …”；`outcome_summary_test.go` |
-| 43 | 全部（服务端）：简报“待我处理”含本人已逾期或截止在下一期之前的任务（之后的不含），读取时叠加当前状态，他人的简报不含；无有效负责人的任务出现在决策者的简报中（`escalated`） | 子测试“C-09 用例43…”“C-09 用例43、44：无有效负责人的任务提醒转给决策者…”“用例27、58…” |
-| 44 | 服务端（企业微信为内存实现）：卡片“完成”以本人完成、带“撤销”（10 分钟）；再点返回已固定的结果；非收件人点击被拒绝且不消耗令牌，篡改、伪造签名、他租户与换卡片的令牌在执行前拒绝；投递重试发送同一张卡片；截止改变后旧卡片为 `deadline_changed`，未发的旧提醒按版本丢弃，新提醒是新卡片与新令牌；授权同步中不作废令牌、同步后同一令牌完成；改派与成员退出后的未发提醒取消；转给决策者的提醒只发给已绑定的决策者。已完成的任务再点“完成”回写“无变化”（pursuit 的 `no_change`），渠道用例未单独覆盖 | 子测试“C-09 …”（`TestPursuitFollowUp`） |
+| 43 | 全部（服务端）：简报“待我处理”含本人已逾期或截止在下一期之前的任务（之后的不含），读取时叠加当前状态，他人的简报不含；无有效负责人的任务出现在决策者的简报中（`escalated`）；转交的口径含负责人仍在团队但写入准入不满足（C-11） | 子测试“C-09 用例43…”“C-09 用例43、44：无有效负责人的任务提醒转给决策者…”“用例27、58…”；“C-11 越权与反例测试 用例27、43、44…” |
+| 44 | 服务端（企业微信为内存实现）：卡片“完成”以本人完成、带“撤销”（10 分钟）；再点返回已固定的结果；非收件人点击被拒绝且不消耗令牌，篡改、伪造签名、他租户与换卡片的令牌在执行前拒绝；投递重试发送同一张卡片；截止改变后旧卡片为 `deadline_changed`，未发的旧提醒按版本丢弃，新提醒是新卡片与新令牌；授权同步中不作废令牌、同步后同一令牌完成；改派与成员退出后的未发提醒取消；转给决策者的提醒只发给已绑定的决策者。已完成的任务再点“完成”回写“无变化”（pursuit 的 `no_change`），渠道用例未单独覆盖；通知的投递事件（送达、渠道失败、转站内与取消，字段按种类白名单）与投递统计（本租户管理员）；转交提醒分页展开、不设上限，撤销决策者角色后其未发的一条取消，授予待同步的新负责人收不到（C-11） | 子测试“C-09 …”（`TestPursuitFollowUp`）；“C-11 用例44…”“C-11 越权与反例测试 用例44…”“C-11 越权与反例测试 投递统计…” |
 | 45 | 全部（服务端）：发布开关未开启的租户与无 `can_assign` 的收件人没有“跟进”，判断失败不显示 | 子测试“用例2、24、45…”；`pursue_internal_test.go`（TestPursueButtonReleaseFlagAndFailClosed） |
 | 46–47 | 部分（服务端）：创建、暂停、恢复、停止；暂停期间不生成、恢复后不补；停止保留已结束的各期；每期记录实际期间、期末成员快照与成员版本、对比基准；修改对象集合后旧一期仍是当期成员；执行者停止后错过的周期合并为一期。每期的变化简报（channels 消费 `pursuit.tracking.period_closed.v1`）与对象合并、来源版本未实现（C-12、C-13）；周期执行待调度器（R-01） | 子测试“C-10 用例46、47 …”“C-10 越权与反例测试 …”；`domain_internal_test.go`（TestCadenceNext、TestTrackingMembers） |
 | 48 | 全部（服务端）：他租户的目标、跟进与任务标识创建、查看、改派、完成、关闭都与不存在相同；他租户的卡片令牌按第5段拒绝 | 子测试“越权与反例测试 用例48、列表”“越权与反例测试 用例6、48、5” |
@@ -438,7 +438,7 @@
 | 55 | 全部（服务端）：identity 不可用时本地创建成功并返回“授权同步中”，新负责人同步前不能修改任务、不在待办、提醒延后；同步后一次通知。5 分钟告警未实现 | 子测试“用例1、55、15、16、49” |
 | 56 | 全部（服务端）：改派时 identity 不可用：原负责人立即被 pursuit 拒绝（identity 中残留关系），新负责人同步前也不能；同步后反转；甲→乙→甲改派且同步失败时 identity 中残留甲的旧关系，甲在新参与版本应用前仍不能写入（决策者可以），同步后同一操作成功 | 子测试“用例26、25、56”“越权与反例测试（复审）：负责人 A→B→A…”；`domain_internal_test.go` 的 TestGrantTracksCurrentRoleVersion |
 | 57 | 全部（服务端）：撤销时 identity 不可用返回“授权清理中”，立即不接受操作；恢复后关系删除 | 子测试“用例19、20、23、57” |
-| 58 | 全部（服务端）：identity 拒绝同步前已退出的被分派人，跟进标“无有效负责人”并记录；超过 24 小时只允许决策者改派或关闭，只凭参与关系的负责人也不能新增、修改、完成任务或撤销完成（403 `authorization_syncing`）；渠道通知最近一次变更团队的操作者（`pursuit.pursuit.authorization_rejected.v1`），操作者已不能查看该跟进时不发 | 子测试“用例58”“用例27、58…”“越权与反例测试（复审）：授权同步失败超过 24 小时…”“C-09 用例58…” |
+| 58 | 全部（服务端）：identity 拒绝同步前已退出的被分派人，跟进标“无有效负责人”并记录；超过 24 小时只允许决策者改派或关闭，只凭参与关系的负责人也不能新增、修改、完成任务或撤销完成（403 `authorization_syncing`）；渠道通知最近一次变更团队的操作者（`pursuit.pursuit.authorization_rejected.v1`），操作者已不能查看该跟进时不发；持续跟踪的授权被拒通知经 `getTracking` 以操作者本人再检查后发出，不能查看的操作者与他租户不发（C-11） | 子测试“用例58”“用例27、58…”“越权与反例测试（复审）：授权同步失败超过 24 小时…”“C-09 用例58…”；“C-11 越权与反例测试 用例58（C-12 部分）…” |
 
 其余服务端行为的证据：每个进程角色在本地与远程绑定组合下（含 `MIAOQIA_BINDING_PURSUIT=remote`）都能组装启动 pursuit 与 channels（`services/cmd/platform/roles_test.go` 的 `TestEveryRoleResolvesBindings`）；翻页游标篡改、换用途与过长在读取前拒绝（`domain_internal_test.go` 的 TestCursorSealRejectsTamper）。
 

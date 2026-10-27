@@ -160,6 +160,7 @@ func TestChannelBindingAndSSO(t *testing.T) {
 	chnDB := testenv.NewDatabase(t)
 	// 第6段：channels 依赖 pursuit 的渠道内动作；本用例不开启卡片“跟进”入口，以未接入的实现占位
 	bindings.Provide(pursuitapi.ActionsBinding, pursuitapi.Actions(unwiredPursuits{}))
+	bindings.Provide(pursuitapi.TrackingsBinding, pursuitapi.Trackings(unwiredPursuits{}))
 	module := channels.ModuleWith(channels.Adapters{WeCom: wc, Now: clock.Now})
 	if err := db.Migrate(ctx, chnDB.OwnerDSN, chnDB.Name+"_app", module.Migrations); err != nil {
 		t.Fatal(err)

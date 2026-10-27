@@ -38,6 +38,15 @@ func refuseRedirect(*http.Request, []*http.Request) error {
 	return errors.New("pursuit remote refuses redirects")
 }
 
+// NewTrackings 返回远程持续跟踪读取接口（C-11/C-12）；baseURL 同 NewActions。
+func NewTrackings(baseURL string) (api.Trackings, error) {
+	a, err := NewActions(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return a.(client), nil
+}
+
 type client struct{ c *pur.Client }
 
 // translate 把远程 Problem 还原为与本地绑定相同的稳定错误（保留冲突时的当前值）；5xx 为暂时性错误。
@@ -128,6 +137,17 @@ func (c client) GetPursuit(ctx context.Context, pursuit string) (*api.Pursuit, e
 	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetPursuit", Idempotent: true},
 		func(ctx context.Context) (*api.Pursuit, error) {
 			out, err := c.c.GetPursuit(ctx, pur.GetPursuitParams{PursuitID: pur.PursuitID(pursuit)})
+			if err != nil {
+				return nil, translate(err)
+			}
+			return out, nil
+		})
+}
+
+func (c client) GetTracking(ctx context.Context, tracking string) (*api.Tracking, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetTracking", Idempotent: true},
+		func(ctx context.Context) (*api.Tracking, error) {
+			out, err := c.c.GetTracking(ctx, pur.GetTrackingParams{PursuitID: pur.PursuitID(tracking)})
 			if err != nil {
 				return nil, translate(err)
 			}

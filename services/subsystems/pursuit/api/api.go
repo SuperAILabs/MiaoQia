@@ -38,6 +38,7 @@ type (
 	TaskView             = pur.TaskView
 	MyTaskList           = pur.MyTaskList
 	Pursuit              = pur.Pursuit
+	Tracking             = pur.Tracking
 )
 
 // ActionsBinding 是渠道内跟进动作在绑定表中的名称（PRD 第5段第26条延后的卡片“跟进”按钮与第6段 F9 的提醒卡片“完成”）。
@@ -95,6 +96,25 @@ func (l localActions) ListMyTasks(ctx context.Context, before *time.Time, limit 
 func (l localActions) GetPursuit(ctx context.Context, pursuit string) (*Pursuit, error) {
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetPursuit", Idempotent: true},
 		func(ctx context.Context) (*Pursuit, error) { return l.impl.GetPursuit(ctx, pursuit) })
+}
+
+// TrackingsBinding 是持续跟踪读取在绑定表中的名称（C-11/C-12：授权被拒通知的操作者为持续跟踪时，channels 以操作者本人再检查）。
+const TrackingsBinding = "pursuit.Trackings"
+
+// Trackings 供 channels 以收件人本人的用户主体调用，授权与公开接口 getTracking 相同（推进的 can_view，每次按当前权限判断；交易型跟进、
+// 他租户、不存在与无权查看同为 404 pursuit_not_found）。
+type Trackings interface {
+	GetTracking(ctx context.Context, tracking string) (*Tracking, error)
+}
+
+// LocalTrackings 把本地实现包装为经调用管线的接口（与远程绑定行为一致）。
+func LocalTrackings(impl Trackings) Trackings { return localTrackings{impl} }
+
+type localTrackings struct{ impl Trackings }
+
+func (l localTrackings) GetTracking(ctx context.Context, tracking string) (*Tracking, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetTracking", Idempotent: true},
+		func(ctx context.Context) (*Tracking, error) { return l.impl.GetTracking(ctx, tracking) })
 }
 
 // RemindersBinding 是任务提醒的持久定时器与授权同步重试在绑定表中的名称（本地绑定；定时任务角色尚未接入，

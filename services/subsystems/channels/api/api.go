@@ -161,7 +161,8 @@ const NoticesBinding = "channels.Notices"
 //   - DeliverNotices 发送到时的渠道通知（每次至多 limit 条）：任务提醒卡片（消费 pursuit.task.due.v1 记下）与授权被拒时给操作者的
 //     通知（消费 pursuit.pursuit.authorization_rejected.v1 记下）。转给决策者的提醒先展开为各决策者的通知；每次发送前按收件人当前
 //     状态再检查（成员、绑定、以收件人本人读取的任务或跟进），安静时段内延后到结束，失败退避重试，超过时限留在 Web 与站内。
-//     返回本次处理的条数。卡片上的“完成”与“撤销”由 Briefings.ProcessActions 执行。
+//     返回本次处理的条数。卡片上的“完成”与“撤销”由 Briefings.ProcessActions 执行。C-11：转交按页展开（每次认领一页，未处理完的
+//     留到下一轮，不设总上限）；每条通知的送达、渠道失败与结束发布 channels.notice.sent.v1 / channels.notice.failed.v1。
 type Notices interface {
 	DeliverNotices(ctx context.Context, limit int) (int, error)
 }

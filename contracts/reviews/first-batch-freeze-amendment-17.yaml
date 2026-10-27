@@ -1,0 +1,26 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-27T18:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随所在提交进入评审，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  C-11（PRD 第6段渠道侧剩余：渠道通知的投递事件与统计、负责人仍在团队中但写入准入不满足时的转交接收者、转交提醒的分页展开）与
+  C-12 中授权被拒通知对持续跟踪的再检查，只改草案契约，不新增前缀（通知沿用 dlv_），contracts/identifiers.yaml 1.8.0 不变（原样登记）。
+  草案改动均为追加：
+  channels 事件 0.4.0 → 0.5.0（新事件 channels.notice.sent.v1 与 channels.notice.failed.v1，字段按通知种类白名单，个人数据只有收件人）；
+  channels OpenAPI 0.3.0 → 0.4.0（DeliveryStats 追加可选字段 notices，新增 NoticeKind、NoticeState、NoticeReason）；
+  pursuit OpenAPI 0.3.0 → 0.4.0（只改说明：viewer_escalated 与 listMyTasks 的 escalated 追加“负责人仍在团队中但此刻不满足写入准入、
+  且当前截止版本已有转交提醒发出”，getTracking 另经内部端口提供；结构不变）。这些是草案，不在 C4a 冻结范围，只记录。
+  修订编号按“谁先合并谁占用”：主线最后为修订 16，本记录顺延为 17；原冻结记录与修订 1–16 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.8.0
+  sha256: 40bfde27b723d3077cc9e9b4fce2bf8d3ee6064988d5d14bbbfea0e3f07b8cd9
+verification:
+  base: 82ac9e1
+  commands:
+  - mqc check
+  - mqc freeze-check
+  - mqc compat --base origin/main（breaking 0：只追加事件类型、可选字段与枚举结构，pursuit 只改说明）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；通知投递经 scheduler 角色的 channels.deliver-notices 任务驱动，转交提醒以每页 2 名已绑定成员覆盖分页；企业微信为内存实现）

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: channels 渠道安装、绑定与卡片跳转接口
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     channels 的对外接口（经 gateway，令牌派生租户与主体），PRD 第1段 F4–F7 的服务端切片。首批只有企业微信（wecom）；
     飞书、钉钉随各自适配器追加。租户只来自已验证的令牌，请求体与链接中的租户一律不信任。管理动作（安装、验证、停用、强制解绑）
@@ -17,6 +17,7 @@ info:
     0.3.0（PRD 第6段 F9，C-09）：“待我处理”区追加任务条目（kind task，经 pursuit listMyTasks 以收件人本人取数；读取时以本人经
     pursuit getTask 再检查，已不能查看的任务不返回，其余叠加 task_current）。提醒卡片与授权被拒通知上的“查看”是 Web 跟进详情的
     地址（只指向对象、不带令牌，打开时由 pursuit 以当前登录成员授权），不经简报链接。
+    0.4.0（C-11）：投递统计追加可选的 notices（渠道通知按种类、状态与原因的计数）；均为追加。
 servers:
 - url: /
 paths:
@@ -430,7 +431,8 @@ paths:
       summary: 投递统计（设置 / 渠道）
       description: >-
         需要 can_manage_members（不要求强认证）。按投递状态与失败原因统计本租户 since 起（默认 7 天内）的投递次数与空简报、部分简报期数，
-        不含任何简报条目、标题或收件人。
+        不含任何简报条目、标题或收件人。0.4.0：notices 为渠道通知（任务提醒卡片与授权被拒通知，每个收件人一条；转给决策者的提醒按展开后的
+        各条计）按种类、状态与原因的计数；原因按状态白名单（不在白名单内的记为 other），不含收件人、跟进、任务或标题。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -928,6 +930,39 @@ components:
         timezone:
           type: string
           maxLength: 64
+    NoticeKind:
+      type: string
+      description: 渠道通知的种类：task_due 任务提醒卡片；authorization_rejected 授权被拒时给操作者的通知（0.4.0）
+      enum:
+      - task_due
+      - authorization_rejected
+    NoticeState:
+      type: string
+      description: >-
+        pending 待发送（含安静时段延后）；retrying 发送失败、等待退避重试；delivered 渠道已接受；in_app 未绑定或重试时限内仍未送达，
+        留在 Web 与站内；cancelled 发送前以收件人本人再检查时取消（0.4.0）
+      enum:
+      - pending
+      - retrying
+      - delivered
+      - in_app
+      - cancelled
+    NoticeReason:
+      type: string
+      description: >-
+        按状态白名单：retrying 为 channel_error；in_app 为 not_bound、cutoff；cancelled 为 member_inactive、task_not_visible、
+        task_closed、superseded、reassigned、pursuit_not_visible；不在白名单内的为 other；pending 与 delivered 不带原因（0.4.0）
+      enum:
+      - channel_error
+      - not_bound
+      - cutoff
+      - member_inactive
+      - task_not_visible
+      - task_closed
+      - superseded
+      - reassigned
+      - pursuit_not_visible
+      - other
     DeliveryState:
       type: string
       description: >-
@@ -1515,3 +1550,24 @@ components:
         partial_briefings:
           type: integer
           minimum: 0
+        notices:
+          type: array
+          maxItems: 64
+          description: 渠道通知的计数（0.4.0）；服务端总是返回，没有通知时为空数组
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - kind
+            - state
+            - count
+            properties:
+              kind:
+                $ref: '#/components/schemas/NoticeKind'
+              state:
+                $ref: '#/components/schemas/NoticeState'
+              reason:
+                $ref: '#/components/schemas/NoticeReason'
+              count:
+                type: integer
+                minimum: 0

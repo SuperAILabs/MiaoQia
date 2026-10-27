@@ -1,12 +1,14 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	purapi "github.com/superailabs/miaoqia/services/contracts/apis/pursuit"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -459,7 +461,9 @@ func (s *Service) OpenBriefingLink(ctx context.Context, req *chn.OpenCardLinkReq
 	return out, nil
 }
 
-// DeliveryStats 返回本租户的投递统计（需要 can_manage_members）：只有状态、原因与计数，不含条目、标题或收件人。
+// DeliveryStats 返回本租户的投递统计（需要 can_manage_members）：只有状态、原因与计数，不含条目、标题或收件人。C-11 追加渠道通知
+// （notices）：按种类、状态与原因计数（每个收件人一条；转给决策者尚未展开的行不计），原因按状态白名单（noticeReasons，其余记 other），
+// 不含收件人、跟进、任务或标题。只统计调用者所在租户（显式租户条件 + 行级安全）。
 func (s *Service) DeliveryStats(ctx context.Context, params chn.GetDeliveryStatsParams) (*chn.DeliveryStats, error) {
 	rc, err := s.member(ctx)
 	if err != nil {
@@ -478,12 +482,19 @@ func (s *Service) DeliveryStats(ctx context.Context, params chn.GetDeliveryStats
 		Reason string `json:"reason,omitempty"`
 		Count  int    `json:"count"`
 	}
+	type noticeStat struct {
+		Kind   string `json:"kind"`
+		State  string `json:"state"`
+		Reason string `json:"reason,omitempty"`
+		Count  int    `json:"count"`
+	}
 	out := struct {
-		Since   time.Time `json:"since"`
-		Rows    []row     `json:"deliveries"`
-		Empty   int       `json:"empty_briefings"`
-		Partial int       `json:"partial_briefings"`
-	}{Since: since, Rows: []row{}}
+		Since   time.Time    `json:"since"`
+		Rows    []row        `json:"deliveries"`
+		Empty   int          `json:"empty_briefings"`
+		Partial int          `json:"partial_briefings"`
+		Notices []noticeStat `json:"notices"`
+	}{Since: since, Rows: []row{}, Notices: []noticeStat{}}
 	err = s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `SELECT state, CASE WHEN state IN ('pending', 'delivered') THEN '' ELSE COALESCE(reason, '') END, count(*) FROM chn_deliveries WHERE tenant_id = $1 AND created_at >= $2
  GROUP BY 1, 2 ORDER BY 1, 2 LIMIT 32`, rc.Tenant, since)
@@ -502,11 +513,52 @@ func (s *Service) DeliveryStats(ctx context.Context, params chn.GetDeliveryStats
 		if err := rows.Err(); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE empty), count(*) FILTER (WHERE partial) FROM chn_briefings WHERE tenant_id = $1 AND assembled_at >= $2`,
-			rc.Tenant, since).Scan(&out.Empty, &out.Partial)
+		if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE empty), count(*) FILTER (WHERE partial) FROM chn_briefings WHERE tenant_id = $1 AND assembled_at >= $2`,
+			rc.Tenant, since).Scan(&out.Empty, &out.Partial); err != nil {
+			return err
+		}
+		rows, err = tx.Query(ctx, `SELECT kind, state, COALESCE(reason, ''), count(*) FROM chn_notices WHERE tenant_id = $1 AND created_at >= $2 AND recipient <> '*'
+ AND state IN ('pending', 'retrying', 'delivered', 'in_app', 'cancelled') GROUP BY 1, 2, 3`, rc.Tenant, since)
+		if err != nil {
+			return err
+		}
+		merged := map[noticeStat]int{}
+		for rows.Next() {
+			var r noticeStat
+			if err := rows.Scan(&r.Kind, &r.State, &r.Reason, &r.Count); err != nil {
+				rows.Close()
+				return err
+			}
+			key := noticeStat{Kind: r.Kind, State: r.State, Reason: noticeStatsReason(r.State, r.Reason)}
+			merged[key] += r.Count
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		for k, c := range merged {
+			k.Count = c
+			out.Notices = append(out.Notices, k)
+		}
+		slices.SortFunc(out.Notices, func(a, b noticeStat) int {
+			return cmp.Or(cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.State, b.State), cmp.Compare(a.Reason, b.Reason))
+		})
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return convert[chn.DeliveryStats](out)
+}
+
+// noticeStatsReason 按状态白名单投影通知统计的原因：pending 与 delivered 不带原因，白名单外的记为 other（不把未登记的文本交给调用者）。
+func noticeStatsReason(state, reason string) string {
+	switch {
+	case state == "pending" || state == "delivered":
+		return ""
+	case noticeReasons[state][reason]:
+		return reason
+	default:
+		return "other"
+	}
 }

@@ -46,7 +46,9 @@ var (
 	internalRoutes = []string{"POST /internal/v1/pursuit/pursuits", "GET /internal/v1/pursuit/tasks/{taskID}",
 		"POST /internal/v1/pursuit/tasks/{taskID}/complete", "POST /internal/v1/pursuit/tasks/{taskID}/reopen",
 		// C-09：简报“待我处理”中的任务与授权被拒通知的再检查（以收件人本人）
-		"GET /internal/v1/pursuit/my-tasks", "GET /internal/v1/pursuit/pursuits/{pursuitID}"}
+		"GET /internal/v1/pursuit/my-tasks", "GET /internal/v1/pursuit/pursuits/{pursuitID}",
+		// C-11/C-12：持续跟踪的授权被拒通知以操作者本人再检查
+		"GET /internal/v1/pursuit/tracking/{pursuitID}"}
 )
 
 // Module 返回 pursuit 的模块定义。配置：MIAOQIA_PURSUIT_SIGNING_KEY（翻页游标签名密钥，base64，至少 32 字节，同一部署的全部实例相同；
@@ -110,6 +112,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			svc.Key, svc.Outcomes, svc.Log = key, outcomes, env.Log
 			env.Bindings.Provide(api.ActionsBinding, api.LocalActions(app.Actions{Service: svc}))
 			env.Bindings.Provide(api.RemindersBinding, api.LocalReminders(svc))
+			env.Bindings.Provide(api.TrackingsBinding, api.LocalTrackings(app.Actions{Service: svc}))
 			return nil
 		},
 		Jobs: jobs(clock(adapters.Now)),

@@ -79,6 +79,9 @@ func (unwiredPursuits) ListMyTasks(context.Context, *time.Time, int, string) (*p
 func (unwiredPursuits) GetPursuit(context.Context, string) (*pursuitapi.Pursuit, error) {
 	return nil, binding.ErrTransient
 }
+func (unwiredPursuits) GetTracking(context.Context, string) (*pursuitapi.Tracking, error) {
+	return nil, binding.ErrTransient
+}
 
 // PRD 第6段服务端切片（交易型跟进）：真实 PostgreSQL（各子系统自己的库、行级安全、应用账号）+ 真实 identity 目录与 OpenFGA + 外部网关
 // 令牌校验 + 生成的 HTTP 服务端。channels 经 mTLS 内部端口的远程绑定调用 pursuit 的渠道内动作（卡片“跟进”）；企业微信为内存实现
@@ -231,10 +234,16 @@ func TestPursuitFollowUp(t *testing.T) {
 		t.Fatal(err)
 	}
 	bindings.Provide(pursuitapi.ActionsBinding, remoteActions)
+	remoteTrackings, err := pursuitremote.NewTrackings(intern.URL + "/internal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	trackingsN := &flakyTrackings{Trackings: remoteTrackings}
+	bindings.Provide(pursuitapi.TrackingsBinding, pursuitapi.Trackings(trackingsN))
 
 	wc := wecomtest.New()
 	chnModule := channels.ModuleWith(channels.Adapters{WeCom: wc, Coverage: &fakeCoverage{interrupted: map[string]time.Time{}},
-		Rights: &fakeRights{override: map[string]map[string]chapi.FieldRight{}}, Now: clock.Now})
+		Rights: &fakeRights{override: map[string]map[string]chapi.FieldRight{}}, Now: clock.Now, NoticeExpandPage: 2})
 	chns := start(chnModule, "api")
 	chnModule.Routes(chns.env, public, internal)
 	chnOwner := chns.owner
@@ -1800,7 +1809,7 @@ func TestPursuitFollowUp(t *testing.T) {
 	}
 	deliverN := func(t *testing.T) {
 		t.Helper()
-		for range 3 { // 展开转给决策者的提醒后，新行在下一轮发送
+		for range 8 { // 展开转给决策者的提醒（每页 2 名已绑定成员，C-11）后，新行在下一轮发送
 			var roundErr error
 			r := &scheduler.Runner{OnRound: func(_ string, _ scheduler.Outcome, _ int, err error) { roundErr = err }}
 			if o := r.Once(ctx, scheduler.Bound{Job: noticeJob, DB: chns.env.DB}); o != scheduler.Ran {
@@ -2860,9 +2869,502 @@ func TestPursuitFollowUp(t *testing.T) {
 		expectAs(t, admin2, t2, "GET", path, "", "", 404, "objective_not_found")
 	})
 
+	// ---- C-11：渠道通知的投递事件与统计、负责人仍在团队但写入准入不满足时转给决策者、转交提醒的分页展开；C-12 部分：持续跟踪的
+	// 授权被拒通知经 getTracking 以操作者本人再检查 ----
+	keysOf := func(m map[string]any) string {
+		var k []string
+		for key := range m {
+			k = append(k, key)
+		}
+		slices.Sort(k)
+		return strings.Join(k, ",")
+	}
+	noticeIDOf := func(t *testing.T, task, recipient string) string {
+		t.Helper()
+		var id string
+		if err := chnOwner.QueryRow(ctx, `SELECT id FROM chn_notices WHERE task_id = $1 AND recipient = $2 ORDER BY created_at DESC, id DESC LIMIT 1`, task, recipient).
+			Scan(&id); err != nil {
+			t.Fatalf("%s → %s：%v", task, recipient, err)
+		}
+		return id
+	}
+	noticeEvents := func(id string) (sent, failed []map[string]any) {
+		return eventsFor("channels.notice.sent.v1", "notice_id", id), eventsFor("channels.notice.failed.v1", "notice_id", id)
+	}
+	const taskDueKeys = "accepted_at,attempt,channel,deadline_version,escalated,kind,notice_id,pursuit_id,recipient,task_id"
+	const taskFailKeys = "attempt,channel,deadline_version,escalated,final,kind,notice_id,pursuit_id,reason,recipient,state,task_id"
+	localDue := func(tm time.Time) string { return tm.In(shanghai).Format("2006-01-02T15:04") }
+	dueEnvelope := func(t *testing.T, task string) outbox.Envelope {
+		t.Helper()
+		var env outbox.Envelope
+		for _, e := range delivered {
+			if e.Type == "pursuit.task.due.v1" && strings.Contains(string(e.Data), task) {
+				env = e
+			}
+		}
+		if env.ID == "" {
+			t.Fatalf("没有 %s 的提醒事件", task)
+		}
+		return env
+	}
+	noticeRoute := route{chnModule, chns.env, "channels.pursuit-notices"}
+
+	var c11P, c11T string
+	run("C-11 用例44：任务提醒的投递事件——渠道失败发布 final 为假的 channels.notice.failed.v1，送达发布一次 channels.notice.sent.v1，未绑定转站内发布 final 为真的失败；字段按种类白名单（不含标题、截止值与正文）；重放提醒事件不重复发布，记下时即被取代的旧提醒发布一次失败、重放不再发布", func(t *testing.T) {
+		pclock.set(at(105, 10, 0), 0)
+		clock.set(at(105, 10, 0), 0)
+		sig := newSignal(t, pursueBid())[0]
+		c11P = pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd)), 200))
+		drained(t)
+		c11T = taskOf(addTask(t, bd, c11P, fmt.Sprintf(`{"title":"投递事件机密标题","note":"机密备注","due":{"value":%q,"precision":"minute","timezone":"Asia/Shanghai"}}`,
+			localDue(at(107, 10, 0))), 200))
+		drained(t)
+		runDue(t, at(106, 10, 1))
+		id := noticeIDOf(t, c11T, bd)
+		clock.set(at(106, 10, 2), 0)
+		wc.FailNextSends(1)
+		deliverN(t)
+		sent, failed := noticeEvents(id)
+		if st, _ := noticeOf(t, c11T, bd); st != "retrying" || len(sent) != 0 || len(failed) != 1 {
+			t.Fatalf("%s %+v %+v", st, sent, failed)
+		}
+		if f := failed[0]; keysOf(f) != taskFailKeys || f["state"] != "retrying" || f["reason"] != "channel_error" || f["final"] != false || num(f, "attempt") != 1 ||
+			f["recipient"] != bd || f["task_id"] != c11T || f["pursuit_id"] != c11P || f["escalated"] != false || f["kind"] != "task_due" {
+			t.Fatalf("%+v", f)
+		}
+		clock.set(at(106, 10, 10), 0)
+		deliverN(t)
+		deliverN(t)
+		sent, failed = noticeEvents(id)
+		if st, _ := noticeOf(t, c11T, bd); st != "delivered" || len(sent) != 1 || len(failed) != 1 {
+			t.Fatalf("%s %+v %+v", st, sent, failed)
+		}
+		if e := sent[0]; keysOf(e) != taskDueKeys || num(e, "attempt") != 2 || num(e, "deadline_version") != 1 || e["recipient"] != bd || e["channel"] != "wecom" {
+			t.Fatalf("%+v", e)
+		}
+		for _, e := range delivered {
+			if strings.HasPrefix(e.Type, "channels.notice.") && (strings.Contains(string(e.Data), "机密") || strings.Contains(string(e.Data), localDue(at(107, 10, 0)))) {
+				t.Fatalf("投递事件含标题、备注或截止值：%s", e.Data)
+			}
+		}
+		// 重放同一提醒事件：不新增通知、不再发布
+		before := len(eventsOf("channels.notice.sent.v1")) + len(eventsOf("channels.notice.failed.v1"))
+		rows := count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE task_id = $1`, c11T)
+		env := dueEnvelope(t, c11T)
+		env.ID = ids.New("evt")
+		if err := handle(t, noticeRoute, env); err != nil {
+			t.Fatal(err)
+		}
+		drained(t)
+		if count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE task_id = $1`, c11T) != rows ||
+			len(eventsOf("channels.notice.sent.v1"))+len(eventsOf("channels.notice.failed.v1")) != before {
+			t.Fatal("重放提醒事件重复记下或重复发布")
+		}
+		// 乱序到达的更早提醒（同一截止版本、更早的提醒时刻）：记下时即被取代，发布一次 final 失败（attempt 0）；重放不再发布
+		var data map[string]any
+		_ = json.Unmarshal(env.Data, &data)
+		data["reminder_id"] = ids.New("rmd")
+		data["fire_at"] = at(106, 9, 0).UTC().Format(time.RFC3339)
+		env.Data, _ = json.Marshal(data)
+		env.ID = ids.New("evt")
+		for range 2 {
+			if err := handle(t, noticeRoute, env); err != nil {
+				t.Fatal(err)
+			}
+		}
+		pump(t)
+		var stale string
+		if err := chnOwner.QueryRow(ctx, `SELECT id FROM chn_notices WHERE source = $1`, data["reminder_id"]).Scan(&stale); err != nil {
+			t.Fatal(err)
+		}
+		if _, f := noticeEvents(stale); len(f) != 1 || f[0]["reason"] != "superseded" || f[0]["state"] != "cancelled" || f[0]["final"] != true || num(f[0], "attempt") != 0 {
+			t.Fatalf("%+v", f)
+		}
+		// 未绑定的负责人（lead）：转站内，发布 final 为真的失败（in_app / not_bound）
+		sig2 := newSignal(t, pursueBid())[0]
+		lp := pursuitOf(create(t, bd, fromSignal(t, bd, sig2, fmt.Sprintf(`,"owner":%q`, lead)), 200))
+		drained(t)
+		lt := taskOf(addTask(t, lead, lp, fmt.Sprintf(`{"title":"未绑定","due":{"value":%q,"precision":"minute","timezone":"Asia/Shanghai"}}`, localDue(at(107, 11, 0))), 200))
+		drained(t)
+		runDue(t, at(106, 11, 1))
+		clock.set(at(106, 11, 2), 0)
+		deliverN(t)
+		lid := noticeIDOf(t, lt, lead)
+		if s, f := noticeEvents(lid); len(s) != 0 || len(f) != 1 || f[0]["state"] != "in_app" || f[0]["reason"] != "not_bound" || f[0]["final"] != true {
+			t.Fatalf("%+v %+v", s, f)
+		}
+	})
+
+	run("C-11 越权与反例测试 用例44：伪造或改写的提醒事件（他租户的成员、不能查看该跟进的管理员与没有角色的成员、能查看但不是负责人的业务开拓者）在发送前以收件人本人再检查后取消，不渲染卡片、不签发令牌；失败事件只有白名单字段", func(t *testing.T) {
+		env := dueEnvelope(t, c11T)
+		forge := func(t *testing.T, tenant, recipient string) {
+			t.Helper()
+			var data map[string]any
+			_ = json.Unmarshal(env.Data, &data)
+			data["reminder_id"] = ids.New("rmd")
+			data["recipient"] = recipient
+			data["fire_at"] = at(106, 12, 0).UTC().Format(time.RFC3339)
+			e := env
+			e.Data, _ = json.Marshal(data)
+			e.ID, e.Tenant = ids.New("evt"), tenant
+			if err := handle(t, noticeRoute, e); err != nil {
+				t.Fatal(err)
+			}
+		}
+		bindN(t, bd3)
+		tokens := count(t, chnOwner, `SELECT count(*) FROM chn_action_tokens WHERE task_id = $1`, c11T)
+		forge(t, t2, admin2) // 他租户的成员收到本租户任务的提醒事件
+		forge(t, t1, admin)  // 没有单元关系、不在团队中的成员（不能查看该跟进）
+		forge(t, t1, user("nobody"))
+		forge(t, t1, bd3) // 按单元关系能查看、但不是负责人也不是转交给他的决策者
+		clock.set(at(106, 12, 1), 0)
+		deliverN(t)
+		for _, c := range []struct{ who, reason string }{{admin, "task_not_visible"}, {user("nobody"), "task_not_visible"}, {bd3, "reassigned"}} {
+			who := c.who
+			id := noticeIDOf(t, c11T, who)
+			st, reason := noticeOf(t, c11T, who)
+			if st != "cancelled" || reason != c.reason || len(taskCards(who, c11T)) != 0 {
+				t.Fatalf("%s：%s %s", who, st, reason)
+			}
+			if s, f := noticeEvents(id); len(s) != 0 || len(f) != 1 || keysOf(f[0]) != taskFailKeys || f[0]["recipient"] != who {
+				t.Fatalf("%s：%+v %+v", who, s, f)
+			}
+		}
+		var st2, reason2 string
+		if err := chnOwner.QueryRow(ctx, `SELECT state, reason FROM chn_notices WHERE tenant_id = $1 AND task_id = $2 AND recipient = $3`, t2, c11T, admin2).
+			Scan(&st2, &reason2); err != nil || st2 != "cancelled" || reason2 != "task_not_visible" {
+			t.Fatalf("他租户：%s %s %v", st2, reason2, err)
+		}
+		if count(t, chnOwner, `SELECT count(*) FROM chn_action_tokens WHERE task_id = $1`, c11T) != tokens {
+			t.Fatal("取消的通知签发了令牌")
+		}
+	})
+
+	var escT string
+	run("C-11 越权与反例测试 用例27、43、44：负责人仍在团队中但写入准入不满足（角色改为业务专家，仍有效、仍能查看）时提醒转给决策者：getTask 与 listMyTasks 同一口径；channels 分页展开（每页 2 名已绑定成员）只给已绑定且在单元上能更新跟进的决策者各一条，负责人本人、业务专家与没有角色的成员不收到；撤销决策者角色后其未发的一条取消，授予待同步的新负责人收不到也不能处理，同步后转交结束", func(t *testing.T) {
+		bindN(t, dm)
+		bindN(t, dm2)
+		bindN(t, bd2)
+		pclock.set(at(110, 10, 0), 0)
+		sig := newSignal(t, pursueBid())[0]
+		p := pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd2)), 200))
+		drained(t)
+		escT = taskOf(addTask(t, bd2, p, fmt.Sprintf(`{"title":"写入准入不满足","due":{"value":%q,"precision":"minute","timezone":"Asia/Shanghai"}}`, localDue(at(112, 22, 30))), 200))
+		drained(t)
+		putMember(t, bd2, "active", `["domain_expert"]`)
+		drained(t)
+		if d := detail(t, dm, p); d["owner"] != bd2 || d["owner_valid"] != true {
+			t.Fatalf("负责人应仍在团队中：%+v", d)
+		}
+		taskView := func(t *testing.T, who string) map[string]any {
+			t.Helper()
+			return obj(t, expect(t, who, "GET", "/v1/pursuit/tasks/"+escT, "", 200))
+		}
+		// 提醒发出前：负责人不能更新，但尚无转交提醒，决策者不视为转交
+		if v := taskView(t, bd2); v["viewer_can_edit"] != false || v["viewer_is_assignee"] != true {
+			t.Fatalf("%+v", v)
+		}
+		if v := taskView(t, dm); v["viewer_escalated"] == true {
+			t.Fatalf("尚无转交提醒：%+v", v)
+		}
+		runDue(t, at(111, 22, 31)) // 提前 24 小时，在安静时段内
+		due := eventsFor("pursuit.task.due.v1", "task_id", escT)
+		if len(due) != 1 || due[0]["escalated"] != true || due[0]["recipient"] != nil {
+			t.Fatalf("%+v", due)
+		}
+		// getTask 与 listMyTasks 同一口径：决策者 dm、dm2 为转交；负责人本人、业务专家不是；他租户 404
+		for _, who := range []string{dm, dm2} {
+			if v := taskView(t, who); v["viewer_escalated"] != true || v["viewer_can_edit"] != true {
+				t.Fatalf("%s：%+v", who, v)
+			}
+			found := false
+			for _, it := range obj(t, expect(t, who, "GET", "/v1/pursuit/my-tasks", "", 200))["items"].([]any) {
+				m := it.(map[string]any)
+				if m["task"].(map[string]any)["id"] == escT {
+					found = m["escalated"] == true
+				}
+			}
+			if !found {
+				t.Fatalf("%s 的待办应含转交的任务", who)
+			}
+		}
+		for _, who := range []string{bd2, expert} {
+			if v := taskView(t, who); v["viewer_escalated"] == true {
+				t.Fatalf("%s：%+v", who, v)
+			}
+		}
+		expectAs(t, admin2, t2, "GET", "/v1/pursuit/tasks/"+escT, "", "", 404, "task_not_found")
+		// 分页展开：已绑定成员多于一页
+		var bound int
+		if err := chnOwner.QueryRow(ctx, `SELECT count(DISTINCT subject) FROM chn_bindings WHERE tenant_id = $1 AND state = 'bound'`, t1).Scan(&bound); err != nil || bound <= 4 {
+			t.Fatalf("已绑定成员应多于两页：%d %v", bound, err)
+		}
+		clock.set(at(111, 22, 32), 0)
+		deliverN(t)
+		var reason string
+		var after *string
+		if err := chnOwner.QueryRow(ctx, `SELECT reason, expand_after FROM chn_notices WHERE task_id = $1 AND recipient = '*'`, escT).Scan(&reason, &after); err != nil ||
+			reason != "recipients=2" || after != nil {
+			t.Fatalf("%s %v %v", reason, after, err)
+		}
+		var recips []string
+		rows, err := chnOwner.Query(ctx, `SELECT recipient FROM chn_notices WHERE task_id = $1 AND recipient <> '*' ORDER BY recipient`, escT)
+		if err != nil {
+			t.Fatal(err)
+		}
+		recips, _ = pgx.CollectRows(rows, pgx.RowTo[string])
+		// 按字节序比较：ORDER BY 走数据库排序规则（CI 的 PostgreSQL 忽略“-”），与 slices.Sort 不同
+		slices.Sort(recips)
+		want := []string{dm, dm2}
+		slices.Sort(want)
+		if fmt.Sprint(recips) != fmt.Sprint(want) {
+			t.Fatalf("展开的收件人：%v", recips)
+		}
+		// 安静时段内延后；07:00 前撤销 dm2 的决策者角色
+		putMember(t, dm2, "active", `["business_developer"]`)
+		drained(t)
+		clock.set(at(112, 7, 1), 0)
+		deliverN(t)
+		cards := taskCards(dm, escT)
+		if len(cards) != 1 || !strings.Contains(cards[0].Title, "待你决定") {
+			t.Fatalf("%+v", cards)
+		}
+		if st, r := noticeOf(t, escT, dm2); st != "cancelled" || r != "reassigned" || len(taskCards(dm2, escT)) != 0 {
+			t.Fatalf("撤销角色后：%s %s", st, r)
+		}
+		for _, who := range []string{bd2, expert, bd, user("nobody"), bd3} {
+			if len(taskCards(who, escT)) != 0 {
+				t.Fatalf("%s 不是决策者却收到了转交的提醒", who)
+			}
+		}
+		if s, _ := noticeEvents(noticeIDOf(t, escT, dm)); len(s) != 1 || s[0]["escalated"] != true || keysOf(s[0]) != taskDueKeys {
+			t.Fatalf("%+v", s)
+		}
+		if _, f := noticeEvents(noticeIDOf(t, escT, dm2)); len(f) != 1 || f[0]["reason"] != "reassigned" || f[0]["escalated"] != true {
+			t.Fatalf("%+v", f)
+		}
+		if audits(t, chnOwner, "channels.notice.expanded", "dlv_") < 2 {
+			t.Fatal("展开审计")
+		}
+		// 授予待同步：决策者把跟进改派给 bd 时 identity 不可用，任务转给 bd；bd 在同步前不能处理、不在其待办，决策者仍视为转交
+		pclock.set(at(112, 7, 10), 0)
+		directory.fail.Store(true)
+		assign(t, dm, p, bd, nil, 200)
+		pump(t)
+		if v := taskView(t, bd); v["viewer_can_edit"] != false || v["viewer_escalated"] == true {
+			t.Fatalf("授予待同步：%+v", v)
+		}
+		for _, it := range obj(t, expect(t, bd, "GET", "/v1/pursuit/my-tasks", "", 200))["items"].([]any) {
+			if it.(map[string]any)["task"].(map[string]any)["id"] == escT {
+				t.Fatal("授予待同步的负责人待办中出现了任务")
+			}
+		}
+		if v := taskView(t, dm); v["viewer_escalated"] != true {
+			t.Fatalf("同步前仍转给决策者：%+v", v)
+		}
+		// 同步完成后转交结束：决策者不再视为转交，bd 可处理且在其待办
+		directory.fail.Store(false)
+		drained(t)
+		if v := taskView(t, dm); v["viewer_escalated"] == true {
+			t.Fatalf("同步后转交应结束：%+v", v)
+		}
+		if v := taskView(t, bd); v["viewer_can_edit"] != true || v["viewer_is_assignee"] != true {
+			t.Fatalf("%+v", v)
+		}
+		mine := false
+		for _, it := range obj(t, expect(t, bd, "GET", "/v1/pursuit/my-tasks", "", 200))["items"].([]any) {
+			if it.(map[string]any)["task"].(map[string]any)["id"] == escT {
+				mine = true
+			}
+		}
+		if !mine {
+			t.Fatal("同步后新负责人的待办应含任务")
+		}
+		putMember(t, bd2, "active", `["business_developer"]`)
+		putMember(t, dm2, "active", `["decision_maker"]`)
+		drained(t)
+	})
+
+	run("C-11 越权与反例测试 用例58（C-12 部分）：持续跟踪的授权被拒通知以操作者本人经 getTracking 再检查——能查看的操作者收到（“查看”指向持续跟踪）；getTracking 暂时不可用时重试、不当作不可见；没有关系的成员与他租户的操作者不发；投递事件只带跟进标识", func(t *testing.T) {
+		pclock.set(at(113, 10, 0), 0)
+		clock.set(at(113, 10, 0), 0)
+		directory.fail.Store(true)
+		res := obj(t, expect(t, dm, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"授权被拒","members":[%q],"owner":%q}`,
+			opID("tc"), objective.ID, orgC, lead), 200))
+		tid := res["tracking"].(map[string]any)["id"].(string)
+		routesMu.Lock()
+		saved := routes["identity.member.changed.v1"]
+		routes["identity.member.changed.v1"] = saved[:1]
+		routesMu.Unlock()
+		putMember(t, lead, "removed", `[]`)
+		routesMu.Lock()
+		routes["identity.member.changed.v1"] = saved
+		routesMu.Unlock()
+		directory.fail.Store(false)
+		drained(t)
+		rej := eventsFor("pursuit.pursuit.authorization_rejected.v1", "pursuit_id", tid)
+		if len(rej) != 1 || rej[0]["operator"] != dm || rej[0]["owner_invalid"] != true {
+			t.Fatalf("%+v", rej)
+		}
+		// getPursuit 对持续跟踪为 404（交易型接口）
+		expect(t, dm, "GET", "/v1/pursuit/pursuits/"+tid, "", 404, "pursuit_not_found")
+		var nid string
+		if err := chnOwner.QueryRow(ctx, `SELECT id FROM chn_notices WHERE kind = 'authorization_rejected' AND pursuit_id = $1 AND recipient = $2`, tid, dm).Scan(&nid); err != nil {
+			t.Fatal(err)
+		}
+		// getTracking 暂时不可用：重试，不取消、不发送
+		trackingsN.fail.Store(true)
+		clock.set(at(113, 10, 1), 0)
+		deliverN(t)
+		var st string
+		if err := chnOwner.QueryRow(ctx, `SELECT state FROM chn_notices WHERE id = $1`, nid).Scan(&st); err != nil || st != "pending" {
+			t.Fatalf("%s %v", st, err)
+		}
+		trackingsN.fail.Store(false)
+		clock.set(at(113, 10, 5), 0)
+		deliverN(t)
+		var got *chapi.Message
+		for _, m := range wc.Messages(corpN, accountOf[dm]) {
+			if m.Kind == "authorization_rejected" && m.Card != nil && btn(*m.Card, "view").URL == "/pursuits/tracking/"+tid {
+				mm := m
+				got = &mm
+			}
+		}
+		if got == nil || !strings.Contains(strings.Join(got.Card.Lines, "\n"), "1 人未获授权") || !strings.Contains(strings.Join(got.Card.Lines, "\n"), "负责人已失效") {
+			t.Fatalf("操作者应收到持续跟踪的授权被拒通知：%+v", got)
+		}
+		if s, _ := noticeEvents(nid); len(s) != 1 || keysOf(s[0]) != "accepted_at,attempt,channel,kind,notice_id,pursuit_id,recipient" ||
+			s[0]["kind"] != "authorization_rejected" || s[0]["pursuit_id"] != tid || strings.Contains(fmt.Sprint(s[0]), lead) {
+			t.Fatalf("%+v", s)
+		}
+		// 改写操作者：没有关系的成员、他租户的成员
+		var env outbox.Envelope
+		for _, e := range delivered {
+			if e.Type == "pursuit.pursuit.authorization_rejected.v1" && strings.Contains(string(e.Data), tid) {
+				env = e
+			}
+		}
+		for i, c := range []struct{ tenant, who string }{{t1, user("nobody")}, {t1, admin}, {t2, admin2}} {
+			var data map[string]any
+			_ = json.Unmarshal(env.Data, &data)
+			data["operator"] = c.who
+			data["participation_version"] = num(data, "participation_version") + 100 + int64(i)
+			e := env
+			e.Data, _ = json.Marshal(data)
+			e.ID, e.Tenant = ids.New("evt"), c.tenant
+			if err := handle(t, noticeRoute, e); err != nil {
+				t.Fatal(err)
+			}
+		}
+		clock.set(at(113, 10, 6), 0)
+		deliverN(t)
+		for _, c := range []struct{ tenant, who string }{{t1, user("nobody")}, {t1, admin}, {t2, admin2}} {
+			var st, reason, id string
+			if err := chnOwner.QueryRow(ctx, `SELECT id, state, COALESCE(reason, '') FROM chn_notices WHERE tenant_id = $1 AND kind = 'authorization_rejected' AND pursuit_id = $2
+ AND recipient = $3`, c.tenant, tid, c.who).Scan(&id, &st, &reason); err != nil || st != "cancelled" || reason != "pursuit_not_visible" {
+				t.Fatalf("%s：%s %s %v", c.who, st, reason, err)
+			}
+			if _, f := noticeEvents(id); len(f) != 1 || keysOf(f[0]) != "attempt,channel,final,kind,notice_id,pursuit_id,reason,recipient,state" {
+				t.Fatalf("%s：%+v", c.who, f)
+			}
+			for _, m := range wc.Messages(corpN, accountOf[c.who]) {
+				if m.Kind == "authorization_rejected" && m.Card != nil && btn(*m.Card, "view").URL == "/pursuits/tracking/"+tid {
+					t.Fatalf("%s 收到了不能查看的持续跟踪的通知", c.who)
+				}
+			}
+		}
+		putMember(t, lead, "active", `["pursuit_lead"]`)
+		setParticipants(t, bd, bd2, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		trackCmd(t, dm, tid, "stop", 200)
+		drained(t)
+	})
+
+	run("C-11 越权与反例测试 投递统计：渠道通知计数——只有本租户管理员（can_manage_members）可读，决策者与业务开拓者 403；计数与本租户的通知一致（不含他租户、不含未展开的转交行），他租户管理员只见本租户；不含收件人、跟进与任务；白名单外的原因记为 other；since 之后没有通知时为空", func(t *testing.T) {
+		since := "2026-01-01T00:00:00Z"
+		path := "/v1/channels/delivery-stats?since=" + url.QueryEscape(since)
+		for _, who := range []string{dm, bd, expert} {
+			expect(t, who, "GET", path, "", 403, "forbidden")
+		}
+		// 他租户一条带未登记原因的通知（直接写入，模拟历史数据）
+		if _, err := chnOwner.Exec(ctx, `INSERT INTO chn_notices (id, tenant_id, kind, source, recipient, pursuit_id, task_id, deadline_version, payload, state, reason,
+ next_attempt_at, cutoff_at, created_at) VALUES ($1, $2, 'task_due', $3, $4, $5, $6, 1, '{}', 'cancelled', '负责人张三已离职', now(), now(), now())`,
+			ids.New("dlv"), t2, ids.New("rmd"), admin2, c11P, c11T); err != nil {
+			t.Fatal(err)
+		}
+		type stat struct{ kind, state, reason string }
+		statsOf := func(t *testing.T, raw []byte) map[stat]int64 {
+			t.Helper()
+			out := map[stat]int64{}
+			for _, x := range obj(t, raw)["notices"].([]any) {
+				m := x.(map[string]any)
+				r, _ := m["reason"].(string)
+				if keysOf(m) != "count,kind,reason,state" && keysOf(m) != "count,kind,state" {
+					t.Fatalf("统计行含白名单外字段：%+v", m)
+				}
+				out[stat{m["kind"].(string), m["state"].(string), r}] += num(m, "count")
+			}
+			return out
+		}
+		dbStats := func(t *testing.T, tenant string) map[stat]int64 {
+			t.Helper()
+			rows, err := chnOwner.Query(ctx, `SELECT kind, state, COALESCE(reason, ''), count(*) FROM chn_notices WHERE tenant_id = $1 AND recipient <> '*' AND state <> 'expanded'
+ GROUP BY 1, 2, 3`, tenant)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			out := map[stat]int64{}
+			for rows.Next() {
+				var s stat
+				var n int64
+				if err := rows.Scan(&s.kind, &s.state, &s.reason, &n); err != nil {
+					t.Fatal(err)
+				}
+				if s.state == "pending" || s.state == "delivered" {
+					s.reason = ""
+				}
+				out[s] += n
+			}
+			return out
+		}
+		raw := expect(t, admin, "GET", path, "", 200)
+		got, want := statsOf(t, raw), dbStats(t, t1)
+		if fmt.Sprint(got) != fmt.Sprint(want) || got[stat{"task_due", "delivered", ""}] < 2 || got[stat{"authorization_rejected", "cancelled", "pursuit_not_visible"}] < 2 {
+			t.Fatalf("统计 %v，本租户 %v", got, want)
+		}
+		for _, leak := range []string{bd, dm, c11T, c11P, "负责人张三"} {
+			if strings.Contains(string(raw), leak) {
+				t.Fatalf("统计含 %s：%s", leak, raw)
+			}
+		}
+		raw2 := expectAs(t, admin2, t2, "GET", path, "", "", 200)
+		got2 := statsOf(t, raw2)
+		if got2[stat{"task_due", "cancelled", "other"}] != 1 || got2[stat{"task_due", "cancelled", "task_not_visible"}] != 1 || len(got2) != 3 ||
+			strings.Contains(string(raw2), "负责人张三") || strings.Contains(string(raw2), admin2) {
+			t.Fatalf("他租户统计：%v %s", got2, raw2)
+		}
+		if empty := obj(t, expect(t, admin, "GET", "/v1/channels/delivery-stats?since="+url.QueryEscape("2030-01-01T00:00:00Z"), "", 200)); len(empty["notices"].([]any)) != 0 {
+			t.Fatalf("%+v", empty)
+		}
+	})
+
 	if len(pending) != 0 {
 		t.Fatalf("结束时仍有 %d 个事件待重试", len(pending))
 	}
+}
+
+// flakyTrackings 包装 pursuit 的持续跟踪读取（远程绑定），可注入暂时失败（C-11）。
+type flakyTrackings struct {
+	pursuitapi.Trackings
+	fail atomic.Bool
+}
+
+func (f *flakyTrackings) GetTracking(ctx context.Context, id string) (*pursuitapi.Tracking, error) {
+	if f.fail.Load() {
+		return nil, binding.ErrTransient
+	}
+	return f.Trackings.GetTracking(ctx, id)
 }
 
 // fakeCandidates 是分派规则候选负责人的内存实现（C-10 测试注入；生产为 pursuitapi.NotWired）。

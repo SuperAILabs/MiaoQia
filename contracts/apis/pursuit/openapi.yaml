@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: pursuit 跟进接口
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     pursuit 的对外接口（经 gateway，令牌派生租户与主体），PRD 第6段跟进的服务端切片（docs/01-product/prd/06-pursuit-follow-up.md；
     规格见 docs/03-architecture/subsystems/pursuit.md）。草案：随第6段首个实现切片提交，未冻结。M2 只有交易型跟进（deal）；
@@ -23,6 +23,10 @@ info:
     updateTrackingMembers、listTrackingPeriods、getTrackingPeriod；持续型跟进与交易型共用跟进标识与授权口径，交易型的接口对持续型的标识
     为 404）；创建面板的默认负责人 getCreateDefaults（分派规则的候选，缺省为本人）；Pursuit 追加 sibling_hints（同一采购项目其他中标方的
     进行中跟进，按查看者权限分级投影）；TimelineEntry 的 kind 追加持续跟踪的变化。均为追加。
+    0.4.0（C-11、C-12 部分）：只改说明，结构不变。转交（viewer_escalated 与 listMyTasks 的 escalated）在“任务负责人已不在团队中”之外，
+    追加“任务负责人仍在团队中、但此刻不满足写入准入（以负责人本人判断：能否更新、授权同步与本人角色的授予版本），且该任务当前截止版本
+    已有一条转给决策者的提醒发出”；负责人本人判断不可用时 503（失败关闭，不当作转交也不当作未转交）。内部端口另提供 getTracking
+    （授权被拒通知的操作者为持续跟踪时，以操作者本人再检查）。
 servers:
 - url: /
 paths:
@@ -271,7 +275,8 @@ paths:
       description: >-
         需要任务所属推进的 can_view；viewer_can_edit 为调用者当前能否更新（与写命令同一准入：含授权同步与本地负责人判断），
         viewer_is_assignee 为调用者是否仍是任务负责人（且仍是跟进的有效负责人或协作者），viewer_escalated 为任务已转给调用者处理
-        （跟进无有效负责人或任务负责人已不在团队中，且调用者在单元上有 can_edit_unit_pursuits）。他租户、不存在与无权查看同为
+        （跟进无有效负责人或任务负责人已不在团队中；或任务负责人仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出
+        （0.4.0）；且调用者在单元上有 can_edit_unit_pursuits）。负责人本人的判断不可用时 503。他租户、不存在与无权查看同为
         404 task_not_found。
       x-timeout-ms: 5000
       x-idempotent: true
@@ -374,7 +379,8 @@ paths:
       summary: 待我处理的任务（ListMyTasks）
       description: >-
         分派给调用者、未完成、截止在 before 之前（缺省为不限）或已逾期的任务（跟进进行中、调用者当前能更新），按截止时间升序；
-        调用者在单元上有 can_edit_unit_pursuits 时另含该单元内无有效负责人的跟进的任务（escalated）。每页至多 limit 条（默认且至多 100），
+        调用者在单元上有 can_edit_unit_pursuits 时另含该单元内转给决策者的任务（escalated，与 getTask 的 viewer_escalated 同一口径：
+        任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出，0.4.0）。每页至多 limit 条（默认且至多 100），
         next_cursor 为签名游标。
       x-timeout-ms: 5000
       x-idempotent: true
@@ -503,6 +509,7 @@ paths:
       summary: 持续跟踪详情（0.3.0，C-10）
       description: >-
         需要推进的 can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为 404 pursuit_not_found。
+        另经内部端口供 channels 以授权被拒通知的操作者本人再检查（0.4.0）。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -1190,7 +1197,7 @@ components:
           type: boolean
         viewer_escalated:
           type: boolean
-          description: 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0）
+          description: 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0；负责人仍在团队中但写入准入不满足、且已发出转交提醒，0.4.0）
     PursuitStatus:
       type: string
       enum:
@@ -1542,7 +1549,7 @@ components:
           $ref: '#/components/schemas/ObjectiveID'
         escalated:
           type: boolean
-          description: 跟进无有效负责人，任务转给决策者
+          description: 任务转给决策者（与 getTask 的 viewer_escalated 同一口径）
     MyTaskList:
       type: object
       additionalProperties: false

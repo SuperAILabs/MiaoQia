@@ -481,6 +481,27 @@ fixtures:
   - name: 已读不是投递状态
     valid: false
     instance: read
+- schema: NoticeKind
+  base: task_due
+  cases:
+  - name: 简报不是通知种类
+    valid: false
+    instance: briefing
+- schema: NoticeState
+  base: cancelled
+  cases:
+  - name: 展开不对外
+    valid: false
+    instance: expanded
+- schema: NoticeReason
+  base: reassigned
+  cases:
+  - name: 其他原因
+    valid: true
+    instance: other
+  - name: 自由文本不是原因
+    valid: false
+    instance: 负责人已离职
 - schema: DeliverySummary
   base: &delivery
     id: dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1
@@ -823,3 +844,50 @@ fixtures:
     - op: add
       path: /deliveries/0/recipient
       value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 渠道通知按种类、状态与原因计数
+    valid: true
+    patch:
+    - op: add
+      path: /notices
+      value:
+      - kind: task_due
+        state: delivered
+        count: 12
+      - kind: task_due
+        state: cancelled
+        reason: reassigned
+        count: 1
+      - kind: authorization_rejected
+        state: in_app
+        reason: not_bound
+        count: 1
+  - name: 渠道通知不含收件人
+    valid: false
+    patch:
+    - op: add
+      path: /notices
+      value:
+      - kind: task_due
+        state: delivered
+        count: 1
+        recipient: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 渠道通知不含任务
+    valid: false
+    patch:
+    - op: add
+      path: /notices
+      value:
+      - kind: task_due
+        state: delivered
+        count: 1
+        task_id: tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 渠道通知的原因只取白名单
+    valid: false
+    patch:
+    - op: add
+      path: /notices
+      value:
+      - kind: task_due
+        state: cancelled
+        reason: 负责人张三已离职
+        count: 1

@@ -313,6 +313,7 @@ func TestBriefingQuickActions(t *testing.T) {
 	rights := &fakeRights{override: map[string]map[string]chapi.FieldRight{}}
 	// 第6段：channels 依赖 pursuit 的渠道内动作；本用例不开启卡片“跟进”入口，以未接入的实现占位
 	bindings.Provide(pursuitapi.ActionsBinding, pursuitapi.Actions(unwiredPursuits{}))
+	bindings.Provide(pursuitapi.TrackingsBinding, pursuitapi.Trackings(unwiredPursuits{}))
 	chnModule := channels.ModuleWith(channels.Adapters{WeCom: wc, Coverage: coverage, Rights: rights, Now: clock.Now})
 	chns := start(chnModule)
 	chnModule.Routes(chns.env, public, internal)

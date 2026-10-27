@@ -44,11 +44,14 @@ var publicRoutes = []string{
 // Now 为系统时钟。生产企业微信适配器未获授权接入（C10 只批准了设计）。
 //
 // Coverage 与 Rights 是简报组装的覆盖与来源权利端口（缺省未接入：覆盖为“未知”，来源字段失败关闭为 none）。
+//
+// NoticeExpandPage 是转给决策者的提醒每次展开的已绑定成员数（零值为缺省 200；C-11，测试以小页覆盖分页）。
 type Adapters struct {
-	WeCom    api.Provider
-	Coverage api.Coverage
-	Rights   api.Rights
-	Now      func() time.Time
+	WeCom            api.Provider
+	Coverage         api.Coverage
+	Rights           api.Rights
+	Now              func() time.Time
+	NoticeExpandPage int
 }
 
 // Module 返回 channels 的模块定义（企业微信未接入）。
@@ -58,7 +61,7 @@ func Module() runtime.Module { return ModuleWith(Adapters{}) }
 // （动作令牌与翻页游标的签名密钥，base64，至少 32 字节，同一部署的全部实例相同；只有 development 可缺省）、MIAOQIA_CHANNELS_PACKS_DIR
 // （应用领域包目录，默认 packs）、MIAOQIA_CHANNELS_PURSUE_TENANTS（已开启卡片“跟进”入口的租户，逗号分隔，缺省为空）。
 func ModuleWith(adapters Adapters) runtime.Module {
-	svc := &app.Service{WeCom: adapters.WeCom, Coverage: adapters.Coverage, Rights: adapters.Rights, Now: adapters.Now}
+	svc := &app.Service{WeCom: adapters.WeCom, Coverage: adapters.Coverage, Rights: adapters.Rights, Now: adapters.Now, ExpandPage: adapters.NoticeExpandPage}
 	return runtime.Module{
 		Name:       api.Name,
 		Database:   "chn",
@@ -98,6 +101,11 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("channels：缺少 %s 绑定", pursuit.ActionsBinding)
 			}
+			// C-11/C-12：授权被拒通知所指的跟进为持续跟踪时经 pursuit 的持续跟踪读取以收件人本人再检查
+			trackings, ok := runtime.Lookup[pursuit.Trackings](env.Bindings, pursuit.TrackingsBinding)
+			if !ok {
+				return fmt.Errorf("channels：缺少 %s 绑定", pursuit.TrackingsBinding)
+			}
 			key, err := signingKey(env)
 			if err != nil {
 				return err
@@ -114,7 +122,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			guard, _ := runtime.Lookup[identity.Guard](env.Bindings, identity.GuardBinding)
 			svc.DB, svc.Authz, svc.Guard, svc.Sessions, svc.Members, svc.Log = env.DB, a, guard, sessions, members, env.Log
 			svc.Detection, svc.Access, svc.Policies, svc.Approvals, svc.Key, svc.Packs = briefing, access, policies, approvals, key, packs
-			svc.Pursuits, svc.PursueTenants = pursuits, pursueTenants(env.Config("PURSUE_TENANTS"))
+			svc.Pursuits, svc.PursueTenants, svc.Trackings = pursuits, pursueTenants(env.Config("PURSUE_TENANTS")), trackings
 			env.Bindings.Provide(api.CallbacksBinding, api.LocalCallbacks(svc))
 			env.Bindings.Provide(api.MessagingBinding, api.LocalMessaging(svc))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(svc))
