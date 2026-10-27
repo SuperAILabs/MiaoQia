@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: channels 渠道绑定事件
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     由 channels 经发件箱发布（PRD 第1段第8节）。信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；
     本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。绑定的每次状态变化发布一条，按绑定版本单调递增；
@@ -9,7 +9,9 @@ info:
     channels 自身消费 revoking 重试同步撤销。0.2.0（PRD 第5段）追加投递与卡片动作事件：channels.delivery.sent.v1、
     channels.delivery.failed.v1 与 channels.action.executed.v1。事件只含标识、状态与结果代码，不含简报条目内容。0.3.0（PRD 第6段）：卡片动作追加 pursue
     （卡片上的“跟进”，经 pursuit 以点击者本人创建或关联跟进）与可选的 pursuit_id。0.4.0（PRD 第6段 F9，C-09）：追加
-    channels.task_action.executed.v1（任务提醒卡片上的“完成”与“撤销”得到确定结果）。
+    channels.task_action.executed.v1（任务提醒卡片上的“完成”与“撤销”得到确定结果）。0.5.0（C-11）：追加渠道通知（任务提醒卡片与
+    授权被拒通知）的投递事件 channels.notice.sent.v1 与 channels.notice.failed.v1（简报的 channels.delivery.* 不变）；字段按通知种类
+    逐项白名单，个人数据只有收件人（与简报投递事件相同），不含任务标题、正文、被拒成员或操作说明。
 channels:
   tenantChannels:
     address: cell-{cell}.channels
@@ -27,6 +29,10 @@ channels:
         $ref: '#/components/messages/actionExecuted'
       taskActionExecuted:
         $ref: '#/components/messages/taskActionExecuted'
+      noticeSent:
+        $ref: '#/components/messages/noticeSent'
+      noticeFailed:
+        $ref: '#/components/messages/noticeFailed'
 operations:
   publishChannelsEvents:
     action: send
@@ -340,3 +346,156 @@ components:
             not:
               required:
               - target_operation_id
+    noticeSent:
+      name: channels.notice.sent.v1
+      x-fixtures-required: true
+      summary: 一条渠道通知已被渠道接受
+      description: >-
+        任务提醒卡片（kind 为 task_due，消费 pursuit.task.due.v1）或授权被拒通知（authorization_rejected，消费
+        pursuit.pursuit.authorization_rejected.v1）在某次尝试（attempt，从1起）后被渠道接受。每条通知（notice_id，每个来源与收件人
+        一条）只发布一次。字段按种类白名单：task_due 带 task_id、pursuit_id、deadline_version 与 escalated（转给决策者的提醒展开后的
+        一条）；authorization_rejected 只带 pursuit_id（交易型或持续跟踪的跟进标识）。不含标题、正文、截止值、被拒成员与原因。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - notice_id
+        - kind
+        - recipient
+        - channel
+        - pursuit_id
+        - attempt
+        - accepted_at
+        properties:
+          notice_id: *deliveryID
+          kind: &noticeKind
+            type: string
+            enum:
+            - task_due
+            - authorization_rejected
+          recipient: *member
+          channel: *channel
+          pursuit_id: &pursuitID
+            type: string
+            pattern: ^pur_[0-9A-HJKMNP-TV-Z]{26}$
+          task_id: &taskID
+            type: string
+            pattern: ^tsk_[0-9A-HJKMNP-TV-Z]{26}$
+          deadline_version: &deadlineVersion
+            type: integer
+            minimum: 1
+          escalated: &escalated
+            type: boolean
+            description: 转给决策者的提醒（负责人无效或其写入准入不满足时，展开为单元上能更新跟进的决策者各一条）
+          attempt:
+            type: integer
+            minimum: 1
+          accepted_at:
+            type: string
+            format: date-time
+        allOf:
+        - if:
+            properties:
+              kind:
+                const: task_due
+          then:
+            required:
+            - task_id
+            - deadline_version
+            - escalated
+          else:
+            not:
+              anyOf:
+              - required:
+                - task_id
+              - required:
+                - deadline_version
+              - required:
+                - escalated
+    noticeFailed:
+      name: channels.notice.failed.v1
+      x-fixtures-required: true
+      summary: 一条渠道通知的某次尝试失败，或通知在送达前结束（留在站内或取消）
+      description: >-
+        final 为假时（state 为 retrying，reason 为 channel_error）将退避重试同一张卡片；为真时通知结束、不再发布：state 为 in_app
+        （not_bound 未绑定渠道、cutoff 重试时限内仍未送达，留在 Web 与站内）或 cancelled（发送前以收件人本人再检查时取消：
+        member_inactive、task_not_visible、task_closed、superseded、reassigned、pursuit_not_visible）。乱序到达的旧提醒在记下时即被
+        取消的（superseded，attempt 为 0）也发布一次。字段白名单与 channels.notice.sent.v1 相同。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - notice_id
+        - kind
+        - recipient
+        - channel
+        - pursuit_id
+        - attempt
+        - state
+        - reason
+        - final
+        properties:
+          notice_id: *deliveryID
+          kind: *noticeKind
+          recipient: *member
+          channel: *channel
+          pursuit_id: *pursuitID
+          task_id: *taskID
+          deadline_version: *deadlineVersion
+          escalated: *escalated
+          attempt:
+            type: integer
+            minimum: 0
+          state:
+            type: string
+            enum:
+            - retrying
+            - in_app
+            - cancelled
+          reason:
+            type: string
+            enum:
+            - channel_error
+            - not_bound
+            - cutoff
+            - member_inactive
+            - task_not_visible
+            - task_closed
+            - superseded
+            - reassigned
+            - pursuit_not_visible
+          final:
+            type: boolean
+        allOf:
+        - if:
+            properties:
+              kind:
+                const: task_due
+          then:
+            required:
+            - task_id
+            - deadline_version
+            - escalated
+          else:
+            not:
+              anyOf:
+              - required:
+                - task_id
+              - required:
+                - deadline_version
+              - required:
+                - escalated
+        - if:
+            properties:
+              state:
+                const: retrying
+          then:
+            properties:
+              final:
+                const: false
+              reason:
+                const: channel_error
+          else:
+            properties:
+              final:
+                const: true

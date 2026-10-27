@@ -813,6 +813,294 @@
       }
     },
     {
+      "event": "channels.notice.sent.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "转给决策者的提醒",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": true,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "授权被拒通知只带跟进",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "kind": "authorization_rejected",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "授权被拒通知不带任务",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "kind": "authorization_rejected",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "任务提醒缺截止版本",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "escalated": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "不含任务标题",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_title": "联系总包采购"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "不含被拒成员",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "rejected": [
+          "usr_01JA8ZXXXXXXXXXXXXXXXXXXX2"
+        ],
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "尝试从1起",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 0,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "final": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "retrying",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "再检查时取消",
+      "valid": true,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "final": true,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "reassigned",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "cancelled",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "记下时即被取代",
+      "valid": true,
+      "value": {
+        "attempt": 0,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "final": true,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "superseded",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "cancelled",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "授权被拒通知未绑定留在站内",
+      "valid": true,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": true,
+        "kind": "authorization_rejected",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "not_bound",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "in_app"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "重试不能是结束",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "final": true,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "retrying",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "结束不能标为重试",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "final": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "in_app",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "未知原因",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "final": false,
+        "kind": "task_due",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "other",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "retrying",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "不含正文",
+      "valid": false,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "deadline_version": 1,
+        "escalated": false,
+        "final": false,
+        "kind": "task_due",
+        "lines": [
+          "截止 2026-10-25"
+        ],
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "channel_error",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "retrying",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
       "event": "customer_context.profile.updated.v1",
       "name": "base",
       "valid": true,
@@ -5536,6 +5824,253 @@
         "attempt",
         "messages",
         "dropped_sections",
+        "accepted_at"
+      ],
+      "type": "object"
+    },
+    "channels.notice.failed.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "task_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "deadline_version"
+                  ]
+                },
+                {
+                  "required": [
+                    "escalated"
+                  ]
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "task_due"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "task_id",
+              "deadline_version",
+              "escalated"
+            ]
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "final": {
+                "const": true
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "state": {
+                "const": "retrying"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "final": {
+                "const": false
+              },
+              "reason": {
+                "const": "channel_error"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "attempt": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "deadline_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "escalated": {
+          "description": "转给决策者的提醒（负责人无效或其写入准入不满足时，展开为单元上能更新跟进的决策者各一条）",
+          "type": "boolean"
+        },
+        "final": {
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "task_due",
+            "authorization_rejected"
+          ],
+          "type": "string"
+        },
+        "notice_id": {
+          "pattern": "^dlv_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "channel_error",
+            "not_bound",
+            "cutoff",
+            "member_inactive",
+            "task_not_visible",
+            "task_closed",
+            "superseded",
+            "reassigned",
+            "pursuit_not_visible"
+          ],
+          "type": "string"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "retrying",
+            "in_app",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^tsk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "notice_id",
+        "kind",
+        "recipient",
+        "channel",
+        "pursuit_id",
+        "attempt",
+        "state",
+        "reason",
+        "final"
+      ],
+      "type": "object"
+    },
+    "channels.notice.sent.v1": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "task_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "deadline_version"
+                  ]
+                },
+                {
+                  "required": [
+                    "escalated"
+                  ]
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "task_due"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "task_id",
+              "deadline_version",
+              "escalated"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "accepted_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "attempt": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "channel": {
+          "enum": [
+            "wecom"
+          ],
+          "type": "string"
+        },
+        "deadline_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "escalated": {
+          "description": "转给决策者的提醒（负责人无效或其写入准入不满足时，展开为单元上能更新跟进的决策者各一条）",
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "task_due",
+            "authorization_rejected"
+          ],
+          "type": "string"
+        },
+        "notice_id": {
+          "pattern": "^dlv_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "recipient": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^tsk_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "notice_id",
+        "kind",
+        "recipient",
+        "channel",
+        "pursuit_id",
+        "attempt",
         "accepted_at"
       ],
       "type": "object"

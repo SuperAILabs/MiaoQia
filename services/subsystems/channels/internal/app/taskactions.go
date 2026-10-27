@@ -34,6 +34,9 @@ const TaskActionExecuted = "channels.task_action.executed.v1"
 func taskURL(task string) string       { return "/pursuits/tasks/" + task }
 func pursuitURL(pursuit string) string { return "/pursuits/" + pursuit }
 
+// trackingURL 是持续跟踪的 Web 详情地址（只指向对象、不带令牌，打开时由 pursuit 以当前登录成员授权；C-11/C-12）。
+func trackingURL(tracking string) string { return "/pursuits/tracking/" + tracking }
+
 // taskToken 签发任务提醒卡片上的动作令牌（令牌标识即操作标识）。
 func (m *minter) taskToken(task, objective, action, card, targetOp string, deadline int64, ttl time.Duration) (string, error) {
 	t := tokenRow{id: ids.New("atk"), recipient: m.recipient, objective: objective, action: action, card: card, task: task, deadline: deadline,

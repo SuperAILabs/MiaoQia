@@ -80,7 +80,10 @@ type Invoker interface {
 	//
 	// 需要 can_manage_members（不要求强认证）。按投递状态与失败原因统计本租户
 	// since 起（默认 7 天内）的投递次数与空简报、部分简报期数，
-	// 不含任何简报条目、标题或收件人。.
+	// 不含任何简报条目、标题或收件人。0.4.0：notices
+	// 为渠道通知（任务提醒卡片与授权被拒通知，每个收件人一条；转给决策者的提醒按展开后的
+	// 各条计）按种类、状态与原因的计数；原因按状态白名单（不在白名单内的记为
+	// other），不含收件人、跟进、任务或标题。.
 	//
 	// GET /v1/channels/delivery-stats
 	GetDeliveryStats(ctx context.Context, params GetDeliveryStatsParams) (*DeliveryStats, error)
@@ -662,7 +665,10 @@ func (c *Client) sendGetBriefingPreferences(ctx context.Context) (res *BriefingP
 //
 // 需要 can_manage_members（不要求强认证）。按投递状态与失败原因统计本租户
 // since 起（默认 7 天内）的投递次数与空简报、部分简报期数，
-// 不含任何简报条目、标题或收件人。.
+// 不含任何简报条目、标题或收件人。0.4.0：notices
+// 为渠道通知（任务提醒卡片与授权被拒通知，每个收件人一条；转给决策者的提醒按展开后的
+// 各条计）按种类、状态与原因的计数；原因按状态白名单（不在白名单内的记为
+// other），不含收件人、跟进、任务或标题。.
 //
 // GET /v1/channels/delivery-stats
 func (c *Client) GetDeliveryStats(ctx context.Context, params GetDeliveryStatsParams) (*DeliveryStats, error) {

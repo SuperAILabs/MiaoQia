@@ -1,6 +1,6 @@
 # 渠道与会话子系统（channels）
 
-> 状态：评审中 · 版本：3.7 · 更新：2026-10-26 · 平面：交互
+> 状态：评审中 · 版本：3.8 · 更新：2026-10-27 · 平面：交互
 
 ## 1. 使命
 
@@ -201,7 +201,7 @@
 - **重新推送**（`POST /v1/channels/briefings/{id}/resend`）：只限本人当日一期（409 `resend_not_allowed`）与有效绑定（409 `not_bound`），不重新组装，新的投递与新的令牌；同一幂等键重放返回首次的投递。重新推送的重试时限为发起后 2 小时，不受 18:00 截止与安静时段限制；
 - **简报链接**（`POST /v1/channels/briefing-links:open`）：链接只指向对象（信号、简报、审批），7 天有效；他人打开 409 `account_mismatch`，不存在、其他租户与无权限同为 404 `content_unavailable`，过期 410；
 - **偏好**（`GET/PUT /v1/channels/briefing-preferences`）：`expected_version` 乐观并发（409 `version_conflict`），非法值 422 `invalid_preferences`，生效时刻为下一个周期边界；写审计；
-- **投递统计**（`GET /v1/channels/delivery-stats`）：需要 `can_manage_members`，只有状态、原因与计数；
+- **投递统计**（`GET /v1/channels/delivery-stats`）：需要 `can_manage_members`，只有状态、原因与计数；C-11 追加渠道通知的计数 `notices`（见第6段 C-11 实现状况）；
 - 尚未实现：定时任务与工作进程、企业微信生产适配器、覆盖与来源权利的生产适配器（`api.Coverage` / `api.Rights` 为 NotWired）、即时通知（F7）、AI 摘要、“关注变化”区。
 
 本切片选定的缺省值（规格未定处）：
@@ -222,19 +222,39 @@
 **实现状况（PRD 第6段渠道侧 C-09，[channels 契约](../../../contracts/apis/channels/openapi.yaml) 0.3.0、[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.4.0）**：
 
 - **通知记录**：消费者 `channels.pursuit-notices` 订阅 pursuit 主题：`pursuit.task.due.v1` 为每个（提醒、收件人）记一行 `chn_notices`（转给决策者的提醒没有收件人，记为 `*`）；乱序按（截止版本、提醒时刻）比较，同一任务已有更新的通知时新到的旧事件记为取消（`superseded`），否则取消同一任务更早的未发通知。`pursuit.pursuit.authorization_rejected.v1` 带操作者（成员，非服务主体）时给操作者记一行，每个跟进的每个参与版本一条；
-- **投递**（本地绑定 `channels.Notices.DeliverNotices`，调度器周期调用）：以租约认领；渠道重试时限为事件时刻起 24 小时（安静时段延后时顺延），之后留在 Web 与站内（`in_app`）。转给决策者的一行先展开：以每个已绑定成员本人经 pursuit `getTask` 判断 `viewer_escalated`（至多 500 名），满足的各记一行（未绑定的决策者在简报“待我处理”与 Web 中看到）。每次发送（含重试）前按收件人当前状态再检查，顺序为：安静时段（收件人本人当前偏好；延后到结束、不丢弃，在任何渲染与令牌签发之前）→ 成员有效 → 以收件人本人经 pursuit 读取（任务：不能查看取消、跟进关闭或任务非待办取消、截止版本已变取消 `superseded`、已不是负责人也不是转交给他的决策者取消 `reassigned`、写入准入不满足（授权同步中）稍后重试；同一任务已有更新的通知取消；授权被拒通知：操作者已不能查看该跟进取消 `pursuit_not_visible`）→ 投递目标（未绑定为 `in_app`）。卡片在第一次发送前渲染并固定（重试发送同一张卡片、令牌不变；解绑后重新绑定的按新绑定重新渲染），正文每次按当前值重新渲染；结果只写审计（`channels.notice.*`），不发布 `channels.delivery.*`（其契约以简报为单位）；
+- **投递**（本地绑定 `channels.Notices.DeliverNotices`，调度器周期调用）：以租约认领；渠道重试时限为事件时刻起 24 小时（安静时段延后时顺延），之后留在 Web 与站内（`in_app`）。转给决策者的一行先展开：以每个已绑定成员本人经 pursuit `getTask` 判断 `viewer_escalated`（C-11 起分页展开、不设总上限，见下文），满足的各记一行（未绑定的决策者在简报“待我处理”与 Web 中看到）。每次发送（含重试）前按收件人当前状态再检查，顺序为：安静时段（收件人本人当前偏好；延后到结束、不丢弃，在任何渲染与令牌签发之前）→ 成员有效 → 以收件人本人经 pursuit 读取（任务：不能查看取消、跟进关闭或任务非待办取消、截止版本已变取消 `superseded`、已不是负责人也不是转交给他的决策者取消 `reassigned`、写入准入不满足（授权同步中）稍后重试；同一任务已有更新的通知取消；授权被拒通知：操作者已不能查看该跟进取消 `pursuit_not_visible`）→ 投递目标（未绑定为 `in_app`）。卡片在第一次发送前渲染并固定（重试发送同一张卡片、令牌不变；解绑后重新绑定的按新绑定重新渲染），正文每次按当前值重新渲染；结果写审计（`channels.notice.*`），C-11 起另发布通知投递事件 `channels.notice.*.v1`（`channels.delivery.*` 仍只用于简报）；
 - **任务提醒卡片**：标题为任务名（转给决策者的为“待你决定的任务”），正文为截止（所填值与时区）、逾期、转交说明与备注；按钮“完成”（动作令牌，24 小时，令牌带任务与提醒所在的截止版本）与“查看”（Web 任务地址 `/pursuits/tasks/{id}`，只指向对象、不带令牌，打开时由 pursuit 以当前登录成员授权）。授权被拒通知：被移出的人数（负责人、协作者）与原因，负责人失效时说明任务转给决策者，“查看”为 `/pursuits/{id}`；
 - **“完成”与“撤销”**：点击沿用第5段的回调、令牌与执行检查（签名、租户、卡片、点击者的有效绑定与成员资格、点击者是收件人、已固定的结果、到期；任一不满足不消耗令牌），由 `Briefings.ProcessActions` 执行：以点击者本人经 `getTask` 再判断——不能查看为确定失败 `forbidden`；令牌的截止版本不是当前版本为确定失败 `deadline_changed`（截止改变后的新提醒是新卡片与新令牌）；已不是负责人也不是转交给他的决策者为 `forbidden`——之后以点击者调用 `completeTask`（所见任务版本在首次执行时固定在令牌上）或 `reopenTask`（`channel` 为 `wecom`；操作标识为令牌标识，每次尝试的幂等键为“令牌标识-序号”）。成功、无变化与确定失败固定在令牌上并发布 `channels.task_action.executed.v1`；暂时失败与 `authorization_syncing` 不作废令牌（同步完成后同一令牌可再执行）。成功的“完成”带“撤销”（10 分钟，pursuit 的渠道撤销时限），回写卡片显示点击者此刻可见的当前状态；
 - **简报“待我处理”中的任务**：组装时以成员本人经 pursuit `listMyTasks`（截止早于下一期计划发送，含已逾期；含转给本人决定的 escalated 任务）读取，排在审批之后；pursuit 不可用时本区暂不可用。读取完整简报、重新推送与每次投递发送前以本人经 `getTask` 再检查：已不能查看的整条移除，其余叠加 `task_current`（todo / done / cancelled / reassigned / pursuit_closed），总览卡只计仍待处理的；
 - **调度器入口**：`Notices.DeliverNotices`（通知投递与安静时段结束后的延后通知）与 `Briefings.ComposeDue`（为本租户已绑定成员中、按本人偏好与时区在 `at` 已到计划发送时间且本期尚未组装的成员组装简报；同一成员同一期只组装一次，未生成简报的记在 `chn_compose_marks`；已错过的上一期不补，由下一期覆盖；每次至多 `limit` 名，`More` 表示还有）。两者都只有本地绑定（与 `Briefings` 其他方法相同），调度器接入见 [A02 验收缺口 R-01](../../05-delivery/09-a02-end-to-end-acceptance.md#43-运行装配r)；
 - **证据**：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 C-09 用例：安静时段延后与重试同一张卡片、篡改 / 伪造签名 / 他租户 / 换卡片的令牌、非收件人点击、完成与重放与撤销、截止改变后的旧卡片与未发旧提醒、授权同步中不作废令牌、改派与成员退出后的未发提醒取消、授权被拒通知与已不能查看的操作者、转给决策者的展开与简报）与 `services/kernel/integration/briefing_test.go`（`ComposeDue`：限额与 More、重复调用、已错过的上一期、未绑定与已退出成员、他租户、时区边界）；
-- **未实现**：通知的投递事件与统计（`channels.delivery.*` 与投递统计只覆盖简报）、负责人仍在团队但授权同步滞后时转交提醒没有接收者、展开上限之外的决策者，见 [A02 验收缺口 C-11](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)。
+- **未实现**：C-09 登记的三项（通知的投递事件与统计、负责人仍在团队但写入准入不满足时转交提醒没有接收者、展开上限）已由 C-11 实现，见下文。
+
+**实现状况（C-11：渠道通知的投递事件与统计、写入准入不满足时的转交、分页展开；C-12 中持续跟踪的授权被拒通知，[channels 契约](../../../contracts/apis/channels/openapi.yaml) 0.4.0、[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.5.0、[pursuit 契约](../../../contracts/apis/pursuit/openapi.yaml) 0.4.0）**：
+
+- **投递事件**：每条收件人确定的通知（任务提醒卡片，含转交展开后的各条；授权被拒通知）在状态确实改变时、与状态变化在同一事务中发布：送达一次 `channels.notice.sent.v1`（`attempt` 从 1 起）；每次渠道失败 `channels.notice.failed.v1`（`state` 为 `retrying`、`reason` 为 `channel_error`、`final` 为假）；结束一次 `channels.notice.failed.v1`（`final` 为真：`in_app` 的 `not_bound` / `cutoff`，`cancelled` 的 `member_inactive`、`task_not_visible`、`task_closed`、`superseded`、`reassigned`、`pursuit_not_visible`）。消费提醒事件时即被取代的旧提醒（乱序到达）与被新提醒取消的未发通知也各发布一次结束事件（`attempt` 为记下的尝试数）；重放同一提醒事件不新增通知、不再发布。转交尚未展开的行（收件人 `*`）不是一次投递，不发布；
+- **字段白名单**：按通知种类逐项列出（`noticeEventData`）：共有 `notice_id`、`kind`、`recipient`、`channel`、`pursuit_id`、`attempt`；`task_due` 另有 `task_id`、`deadline_version`、`escalated`；`authorization_rejected` 只有跟进标识（交易型或持续跟踪）。个人数据只有收件人（与简报投递事件相同），不含标题、正文、备注、截止值、被拒成员与原因；原因只取状态白名单（`noticeReasons`），白名单外的不发布；
+- **投递统计**：`getDeliveryStats` 追加 `notices`（按种类、状态与原因计数，每个收件人一条；转交未展开的行与 `expanded` 不计）。仍只对本租户管理员（`can_manage_members`）开放，查询带显式租户条件并受行级安全约束；原因按状态白名单投影，其余为 `other`，`pending` 与 `delivered` 不带原因；不含收件人、跟进、任务或标题；
+- **转交的口径**（pursuit）：pursuit 发出提醒时以任务负责人本人判断写入准入（与写命令同一 `admitWrite`：能否更新、授权同步与本人当前角色的授予版本），不满足（含已不在团队中）即转给决策者（`escalated`）。`getTask` 的 `viewer_escalated` 与 `listMyTasks` 的 `escalated` 同一口径：调用者在单元上有 `can_edit_unit_pursuits`，且任务负责人已不在团队中，或仍在团队中、此刻以本人判断不满足写入准入、且当前截止版本已有一条转交提醒发出；负责人本人的判断不可用时 503（失败关闭）。负责人恢复写入准入后转交即结束：决策者尚未送达的转交通知在发送前再检查时取消（`reassigned`）；
+- **分页展开**：转给决策者的一行每次认领至多处理一页已绑定成员（缺省 200，按 `subject` 升序的键集位置保存在 `chn_notices.expand_after`，不交给客户端），每人以本人经 `getTask` 判断；一页处理完立即重排到下一轮，最后一页处理完标为 `expanded`（`reason` 为累计条数）并写审计。任一判断暂时失败时整页重排、位置不前移（已记下的行唯一约束去重）。展开出的每一条在发送前仍以收件人本人再检查（撤销决策者角色、不再可见、负责人恢复准入都取消）；
+- **持续跟踪的授权被拒通知**（C-12 的一部分）：授权被拒通知先以操作者本人经 `getPursuit`（交易型），确定失败时再经 `getTracking`（持续跟踪；pursuit 内部端口新增 `GET /internal/v1/pursuit/tracking/{id}` 与绑定 `pursuit.Trackings`，本地与远程两种装配）；两者都确定失败才取消（`pursuit_not_visible`），任一暂时失败重试。“查看”为 `/pursuits/tracking/{id}`；
+- **证据**：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 “C-11 …” 子测试）与 `services/subsystems/channels/internal/app/notices_internal_test.go`。
+
+本切片选定的缺省值（规格未定处）：
+
+| 事项 | 取值 |
+|---|---|
+| 通知投递事件 | 新事件类型 `channels.notice.sent.v1` / `channels.notice.failed.v1`，不复用以简报为单位的 `channels.delivery.*` |
+| 转交展开 | 分页，每页 200 名已绑定成员，不设总上限 |
+| 转交的锚点 | 负责人仍在团队中时，以当前截止版本已发出的转交提醒为锚点，再以负责人本人实时判断 |
+| 统计 | 只对管理员开放；白名单外的原因记为 `other`；转交未展开的行不计 |
+| 持续跟踪的“查看” | `/pursuits/tracking/{id}` |
 
 ## 7. 事件
 
 **消费**：`identity.member.changed.v1`（成员停用或退出时使其绑定失效）、`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（简报中的当前状态叠加）、`assessment.assessment.created.v1`、`assessment.decision.drafted.v1`、`identity.approval.requested.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`、`research.case.awaiting_input.v1`。
 
-**发布**：`channels.binding.changed.v1`、`channels.delivery.sent.v1`、`channels.delivery.failed.v1`、`channels.action.executed.v1`、`channels.conversation.message_received.v1`。
+**发布**：`channels.binding.changed.v1`、`channels.delivery.sent.v1`、`channels.delivery.failed.v1`、`channels.notice.sent.v1`、`channels.notice.failed.v1`、`channels.action.executed.v1`、`channels.conversation.message_received.v1`。
 
 ## 8. 扩展点
 

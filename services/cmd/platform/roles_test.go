@@ -163,9 +163,11 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, pursuits := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
 						// C-09：渠道通知（任务提醒卡片与授权被拒的通知）的投递入口
 						_, notices := runtime.Lookup[chnapi.Notices](b, chnapi.NoticesBinding)
-						if !briefing || !access || !active || !approvals || !own || !pursuits || !notices {
-							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v pursuit=%v notices=%v", briefing, access, active,
-								approvals, own, pursuits, notices)
+						// C-11/C-12：授权被拒通知所指的持续跟踪经 pursuit 的持续跟踪读取再检查（本地或远程）
+						_, trackings := runtime.Lookup[pursuitapi.Trackings](b, pursuitapi.TrackingsBinding)
+						if !briefing || !access || !active || !approvals || !own || !pursuits || !notices || !trackings {
+							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v pursuit=%v notices=%v trackings=%v", briefing,
+								access, active, approvals, own, pursuits, notices, trackings)
 						}
 					}
 					// C-10：learning 的跟进结果汇总经 customer-context 读取目标所在单元、经 identity 判断单元关系
@@ -188,9 +190,10 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, briefing := runtime.Lookup[detectionapi.Briefing](b, detectionapi.BriefingBinding)
 						_, actions := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
 						_, reminders := runtime.Lookup[pursuitapi.Reminders](b, pursuitapi.RemindersBinding)
-						if !authz || !directory || !members || !scope || (role == "api" && !briefing) || !actions || !reminders {
-							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v actions=%v reminders=%v", authz, directory,
-								members, scope, briefing, actions, reminders)
+						_, trackings := runtime.Lookup[pursuitapi.Trackings](b, pursuitapi.TrackingsBinding)
+						if !authz || !directory || !members || !scope || (role == "api" && !briefing) || !actions || !reminders || !trackings {
+							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v actions=%v reminders=%v trackings=%v", authz,
+								directory, members, scope, briefing, actions, reminders, trackings)
 						}
 					}
 				}

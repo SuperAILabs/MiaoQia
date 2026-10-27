@@ -183,13 +183,19 @@ var remotes = map[string]remote{
 		b.Provide(detectionapi.BriefingBinding, briefing)
 		return nil
 	}},
-	// 跟进（PRD 第6段）：channels 的卡片“跟进”与提醒卡片“完成”经 pursuit 的渠道内动作接口（以点击者的用户主体转交）
+	// 跟进（PRD 第6段）：channels 的卡片“跟进”与提醒卡片“完成”经 pursuit 的渠道内动作接口、授权被拒通知经持续跟踪读取（以点击者或收件人的用户主体转交）
 	pursuitapi.Name: {provide: func(u string, b *runtime.Bindings) error {
 		actions, err := pursuitremote.NewActions(u)
 		if err != nil {
 			return err
 		}
 		b.Provide(pursuitapi.ActionsBinding, actions)
+		// C-11/C-12：持续跟踪的授权被拒通知以操作者本人再检查
+		trackings, err := pursuitremote.NewTrackings(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(pursuitapi.TrackingsBinding, trackings)
 		return nil
 	}},
 }

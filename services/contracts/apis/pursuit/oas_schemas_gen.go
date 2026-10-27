@@ -1374,7 +1374,7 @@ func (s *LocalTimePrecision) UnmarshalText(data []byte) error {
 type MyTask struct {
 	Task        Task        `json:"task"`
 	ObjectiveID ObjectiveID `json:"objective_id"`
-	// 跟进无有效负责人，任务转给决策者.
+	// 任务转给决策者（与 getTask 的 viewer_escalated 同一口径）.
 	Escalated bool `json:"escalated"`
 }
 
@@ -5308,7 +5308,7 @@ type TaskView struct {
 	PursuitState     PursuitStatus `json:"pursuit_state"`
 	ViewerCanEdit    bool          `json:"viewer_can_edit"`
 	ViewerIsAssignee bool          `json:"viewer_is_assignee"`
-	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0）.
+	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0；负责人仍在团队中但写入准入不满足、且已发出转交提醒，0.4.0）.
 	ViewerEscalated OptBool `json:"viewer_escalated"`
 }
 

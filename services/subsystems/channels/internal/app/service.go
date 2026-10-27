@@ -60,6 +60,10 @@ type Service struct {
 	// 未开启的租户不显示“跟进”按钮。
 	Pursuits      pursuit.Actions
 	PursueTenants map[string]bool
+	// C-11/C-12：授权被拒通知所指的跟进为持续跟踪时经 getTracking 以收件人本人再检查；ExpandPage 为转给决策者的提醒每次展开的
+	// 已绑定成员数（零值取 noticeExpandPage）。
+	Trackings  pursuit.Trackings
+	ExpandPage int
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }

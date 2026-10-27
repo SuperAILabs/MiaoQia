@@ -417,7 +417,7 @@ type tasksCursor struct {
 }
 
 // ListMyTasks 列出待我处理的任务（契约 listMyTasks；F9 第1条）：分派给调用者、调用者当前能更新的待办任务；调用者在单元上能更新跟进
-// （决策者）时另含该单元内无有效负责人的跟进上的任务（escalated）。
+// （决策者）时另含该单元内转给决策者的任务（escalated，口径见 escalatedFor）。
 func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int, cursor string) (*MyTaskList, error) {
 	rc, err := userContext(ctx)
 	if err != nil {
@@ -441,13 +441,16 @@ func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int,
 	scanned := 0
 	for {
 		type row struct {
-			t   *Task
-			key time.Time
+			t      *Task
+			key    time.Time
+			handed bool
 		}
 		var batch []row
 		err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-			rows, err := tx.Query(ctx, `SELECT `+prefixed("t.", taskColumns)+`, COALESCE(t.due_at, $3::timestamptz) FROM pur_tasks t JOIN pur_pursuits p ON p.id = t.pursuit_id
- WHERE t.status = 'todo' AND p.state = 'open' AND (t.assignee = $1 OR NOT p.owner_valid OR NOT (t.assignee = p.owner OR t.assignee = ANY(p.collaborators)))
+			rows, err := tx.Query(ctx, `SELECT `+prefixed("t.", taskColumns)+`, COALESCE(t.due_at, $3::timestamptz), EXISTS (SELECT 1 FROM pur_reminders r
+ WHERE r.task_id = t.id AND r.deadline_version = t.deadline_version AND r.state = 'sent' AND r.escalated) FROM pur_tasks t JOIN pur_pursuits p ON p.id = t.pursuit_id
+ WHERE t.status = 'todo' AND p.state = 'open' AND (t.assignee = $1 OR NOT p.owner_valid OR NOT (t.assignee = p.owner OR t.assignee = ANY(p.collaborators))
+ OR EXISTS (SELECT 1 FROM pur_reminders r WHERE r.task_id = t.id AND r.deadline_version = t.deadline_version AND r.state = 'sent' AND r.escalated))
  AND ($2::timestamptz IS NULL OR t.due_at < $2) AND (COALESCE(t.due_at, $3::timestamptz), t.id) > ($4, $5)
  ORDER BY COALESCE(t.due_at, $3::timestamptz), t.id LIMIT 100`, rc.Principal.ID, before, infinity, c.Due, c.ID)
 			if err != nil {
@@ -458,7 +461,7 @@ func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int,
 				var t Task
 				var note, value, precision, tz *string
 				if err := rows.Scan(&t.ID, &t.PursuitID, &t.Title, &t.Assignee, &note, &t.Status, &value, &precision, &tz, &t.DueAt, &t.Version, &t.DeadlineVersion,
-					&t.CreatedAt, &t.CompletedAt, &r.key); err != nil {
+					&t.CreatedAt, &t.CompletedAt, &r.key, &r.handed); err != nil {
 					rows.Close()
 					return err
 				}
@@ -497,8 +500,13 @@ func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int,
 			if err != nil {
 				return nil, err
 			}
-			escalated := !p.involves(r.t.Assignee) && rights.UnitEdit
 			mine := r.t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID) && rights.Edit
+			escalated := false
+			if !mine {
+				if escalated, err = s.escalatedFor(ctx, rc, p, r.t, rights, r.handed); err != nil {
+					return nil, err
+				}
+			}
 			if mine || escalated {
 				if len(out.Items) == limit {
 					return s.tasksPage(out, c)
@@ -545,8 +553,18 @@ func (s *Service) GetTask(ctx context.Context, id string) (*GetTaskView, error) 
 	}
 	// viewer_can_edit 与写命令同一准入（admitWrite：授权同步与本人当前角色的授予版本）；viewer_escalated 与 listMyTasks 同一口径
 	open := p.State == "open"
+	handed := false
+	if open && r.UnitEdit && p.involves(t.Assignee) && t.Assignee != rc.Principal.ID {
+		if handed, err = s.handedOver(ctx, t); err != nil {
+			return nil, err
+		}
+	}
+	escalated, err := s.escalatedFor(ctx, rc, p, t, r, handed)
+	if err != nil {
+		return nil, err
+	}
 	return &GetTaskView{Task: t.view(p), ObjectiveID: p.ObjectiveID, PursuitState: p.State, ViewerEdit: open && s.admitWrite(p, r, rc.Principal.ID) == nil,
-		ViewerIs: t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID), Escalated: open && !p.involves(t.Assignee) && r.UnitEdit}, nil
+		ViewerIs: t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID), Escalated: escalated}, nil
 }
 
 func (s *Service) sealTasks(out *MyTaskList, c tasksCursor) error {

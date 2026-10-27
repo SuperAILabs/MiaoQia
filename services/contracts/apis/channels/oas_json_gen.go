@@ -4187,13 +4187,24 @@ func (s *DeliveryStats) encodeFields(e *jx.Encoder) {
 		e.FieldStart("partial_briefings")
 		e.Int(s.PartialBriefings)
 	}
+	{
+		if s.Notices != nil {
+			e.FieldStart("notices")
+			e.ArrStart()
+			for _, elem := range s.Notices {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
 }
 
-var jsonFieldsNameOfDeliveryStats = [4]string{
+var jsonFieldsNameOfDeliveryStats = [5]string{
 	0: "since",
 	1: "deliveries",
 	2: "empty_briefings",
 	3: "partial_briefings",
+	4: "notices",
 }
 
 // Decode decodes DeliveryStats from json.
@@ -4258,6 +4269,23 @@ func (s *DeliveryStats) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"partial_briefings\"")
+			}
+		case "notices":
+			if err := func() error {
+				s.Notices = make([]DeliveryStatsNoticesItem, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem DeliveryStatsNoticesItem
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Notices = append(s.Notices, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"notices\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
@@ -4439,6 +4467,149 @@ func (s *DeliveryStatsDeliveriesItem) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *DeliveryStatsDeliveriesItem) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *DeliveryStatsNoticesItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *DeliveryStatsNoticesItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("kind")
+		s.Kind.Encode(e)
+	}
+	{
+		e.FieldStart("state")
+		s.State.Encode(e)
+	}
+	{
+		if s.Reason.Set {
+			e.FieldStart("reason")
+			s.Reason.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("count")
+		e.Int(s.Count)
+	}
+}
+
+var jsonFieldsNameOfDeliveryStatsNoticesItem = [4]string{
+	0: "kind",
+	1: "state",
+	2: "reason",
+	3: "count",
+}
+
+// Decode decodes DeliveryStatsNoticesItem from json.
+func (s *DeliveryStatsNoticesItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeliveryStatsNoticesItem to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "kind":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Kind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "state":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.State.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"state\"")
+			}
+		case "reason":
+			if err := func() error {
+				s.Reason.Reset()
+				if err := s.Reason.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"reason\"")
+			}
+		case "count":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.Count = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"count\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode DeliveryStatsNoticesItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfDeliveryStatsNoticesItem) {
+					name = jsonFieldsNameOfDeliveryStatsNoticesItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeliveryStatsNoticesItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeliveryStatsNoticesItem) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -6118,6 +6289,148 @@ func (s *LinkToken) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes NoticeKind as json.
+func (s NoticeKind) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes NoticeKind from json.
+func (s *NoticeKind) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode NoticeKind to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch NoticeKind(v) {
+	case NoticeKindTaskDue:
+		*s = NoticeKindTaskDue
+	case NoticeKindAuthorizationRejected:
+		*s = NoticeKindAuthorizationRejected
+	default:
+		*s = NoticeKind(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s NoticeKind) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *NoticeKind) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes NoticeReason as json.
+func (s NoticeReason) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes NoticeReason from json.
+func (s *NoticeReason) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode NoticeReason to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch NoticeReason(v) {
+	case NoticeReasonChannelError:
+		*s = NoticeReasonChannelError
+	case NoticeReasonNotBound:
+		*s = NoticeReasonNotBound
+	case NoticeReasonCutoff:
+		*s = NoticeReasonCutoff
+	case NoticeReasonMemberInactive:
+		*s = NoticeReasonMemberInactive
+	case NoticeReasonTaskNotVisible:
+		*s = NoticeReasonTaskNotVisible
+	case NoticeReasonTaskClosed:
+		*s = NoticeReasonTaskClosed
+	case NoticeReasonSuperseded:
+		*s = NoticeReasonSuperseded
+	case NoticeReasonReassigned:
+		*s = NoticeReasonReassigned
+	case NoticeReasonPursuitNotVisible:
+		*s = NoticeReasonPursuitNotVisible
+	case NoticeReasonOther:
+		*s = NoticeReasonOther
+	default:
+		*s = NoticeReason(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s NoticeReason) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *NoticeReason) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes NoticeState as json.
+func (s NoticeState) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes NoticeState from json.
+func (s *NoticeState) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode NoticeState to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch NoticeState(v) {
+	case NoticeStatePending:
+		*s = NoticeStatePending
+	case NoticeStateRetrying:
+		*s = NoticeStateRetrying
+	case NoticeStateDelivered:
+		*s = NoticeStateDelivered
+	case NoticeStateInApp:
+		*s = NoticeStateInApp
+	case NoticeStateCancelled:
+		*s = NoticeStateCancelled
+	default:
+		*s = NoticeState(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s NoticeState) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *NoticeState) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes OAuthCode as json.
 func (s OAuthCode) Encode(e *jx.Encoder) {
 	unwrapped := string(s)
@@ -6685,6 +6998,39 @@ func (s OptItemStatus) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptItemStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes NoticeReason as json.
+func (o OptNoticeReason) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes NoticeReason from json.
+func (o *OptNoticeReason) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptNoticeReason to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptNoticeReason) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptNoticeReason) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

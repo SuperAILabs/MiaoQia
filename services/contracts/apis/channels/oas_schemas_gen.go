@@ -2087,6 +2087,8 @@ type DeliveryStats struct {
 	Deliveries       []DeliveryStatsDeliveriesItem `json:"deliveries"`
 	EmptyBriefings   int                           `json:"empty_briefings"`
 	PartialBriefings int                           `json:"partial_briefings"`
+	// 渠道通知的计数（0.4.0）；服务端总是返回，没有通知时为空数组.
+	Notices []DeliveryStatsNoticesItem `json:"notices"`
 }
 
 // GetSince returns the value of Since.
@@ -2109,6 +2111,11 @@ func (s *DeliveryStats) GetPartialBriefings() int {
 	return s.PartialBriefings
 }
 
+// GetNotices returns the value of Notices.
+func (s *DeliveryStats) GetNotices() []DeliveryStatsNoticesItem {
+	return s.Notices
+}
+
 // SetSince sets the value of Since.
 func (s *DeliveryStats) SetSince(val time.Time) {
 	s.Since = val
@@ -2127,6 +2134,11 @@ func (s *DeliveryStats) SetEmptyBriefings(val int) {
 // SetPartialBriefings sets the value of PartialBriefings.
 func (s *DeliveryStats) SetPartialBriefings(val int) {
 	s.PartialBriefings = val
+}
+
+// SetNotices sets the value of Notices.
+func (s *DeliveryStats) SetNotices(val []DeliveryStatsNoticesItem) {
+	s.Notices = val
 }
 
 type DeliveryStatsDeliveriesItem struct {
@@ -2162,6 +2174,53 @@ func (s *DeliveryStatsDeliveriesItem) SetReason(val OptString) {
 
 // SetCount sets the value of Count.
 func (s *DeliveryStatsDeliveriesItem) SetCount(val int) {
+	s.Count = val
+}
+
+type DeliveryStatsNoticesItem struct {
+	Kind   NoticeKind      `json:"kind"`
+	State  NoticeState     `json:"state"`
+	Reason OptNoticeReason `json:"reason"`
+	Count  int             `json:"count"`
+}
+
+// GetKind returns the value of Kind.
+func (s *DeliveryStatsNoticesItem) GetKind() NoticeKind {
+	return s.Kind
+}
+
+// GetState returns the value of State.
+func (s *DeliveryStatsNoticesItem) GetState() NoticeState {
+	return s.State
+}
+
+// GetReason returns the value of Reason.
+func (s *DeliveryStatsNoticesItem) GetReason() OptNoticeReason {
+	return s.Reason
+}
+
+// GetCount returns the value of Count.
+func (s *DeliveryStatsNoticesItem) GetCount() int {
+	return s.Count
+}
+
+// SetKind sets the value of Kind.
+func (s *DeliveryStatsNoticesItem) SetKind(val NoticeKind) {
+	s.Kind = val
+}
+
+// SetState sets the value of State.
+func (s *DeliveryStatsNoticesItem) SetState(val NoticeState) {
+	s.State = val
+}
+
+// SetReason sets the value of Reason.
+func (s *DeliveryStatsNoticesItem) SetReason(val OptNoticeReason) {
+	s.Reason = val
+}
+
+// SetCount sets the value of Count.
+func (s *DeliveryStatsNoticesItem) SetCount(val int) {
 	s.Count = val
 }
 
@@ -3011,6 +3070,219 @@ func (s *ItemUpdate) SetContentVersion(val int64) {
 
 type LinkToken string
 
+// 渠道通知的种类：task_due 任务提醒卡片；authorization_rejected
+// 授权被拒时给操作者的通知（0.4.0）.
+// Ref: #/components/schemas/NoticeKind
+type NoticeKind string
+
+const (
+	NoticeKindTaskDue               NoticeKind = "task_due"
+	NoticeKindAuthorizationRejected NoticeKind = "authorization_rejected"
+)
+
+// AllValues returns all NoticeKind values.
+func (NoticeKind) AllValues() []NoticeKind {
+	return []NoticeKind{
+		NoticeKindTaskDue,
+		NoticeKindAuthorizationRejected,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s NoticeKind) MarshalText() ([]byte, error) {
+	switch s {
+	case NoticeKindTaskDue:
+		return []byte(s), nil
+	case NoticeKindAuthorizationRejected:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *NoticeKind) UnmarshalText(data []byte) error {
+	switch NoticeKind(data) {
+	case NoticeKindTaskDue:
+		*s = NoticeKindTaskDue
+		return nil
+	case NoticeKindAuthorizationRejected:
+		*s = NoticeKindAuthorizationRejected
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 按状态白名单：retrying 为 channel_error；in_app 为 not_bound、cutoff；cancelled 为
+// member_inactive、task_not_visible、
+// task_closed、superseded、reassigned、pursuit_not_visible；不在白名单内的为
+// other；pending 与 delivered 不带原因（0.4.0）.
+// Ref: #/components/schemas/NoticeReason
+type NoticeReason string
+
+const (
+	NoticeReasonChannelError      NoticeReason = "channel_error"
+	NoticeReasonNotBound          NoticeReason = "not_bound"
+	NoticeReasonCutoff            NoticeReason = "cutoff"
+	NoticeReasonMemberInactive    NoticeReason = "member_inactive"
+	NoticeReasonTaskNotVisible    NoticeReason = "task_not_visible"
+	NoticeReasonTaskClosed        NoticeReason = "task_closed"
+	NoticeReasonSuperseded        NoticeReason = "superseded"
+	NoticeReasonReassigned        NoticeReason = "reassigned"
+	NoticeReasonPursuitNotVisible NoticeReason = "pursuit_not_visible"
+	NoticeReasonOther             NoticeReason = "other"
+)
+
+// AllValues returns all NoticeReason values.
+func (NoticeReason) AllValues() []NoticeReason {
+	return []NoticeReason{
+		NoticeReasonChannelError,
+		NoticeReasonNotBound,
+		NoticeReasonCutoff,
+		NoticeReasonMemberInactive,
+		NoticeReasonTaskNotVisible,
+		NoticeReasonTaskClosed,
+		NoticeReasonSuperseded,
+		NoticeReasonReassigned,
+		NoticeReasonPursuitNotVisible,
+		NoticeReasonOther,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s NoticeReason) MarshalText() ([]byte, error) {
+	switch s {
+	case NoticeReasonChannelError:
+		return []byte(s), nil
+	case NoticeReasonNotBound:
+		return []byte(s), nil
+	case NoticeReasonCutoff:
+		return []byte(s), nil
+	case NoticeReasonMemberInactive:
+		return []byte(s), nil
+	case NoticeReasonTaskNotVisible:
+		return []byte(s), nil
+	case NoticeReasonTaskClosed:
+		return []byte(s), nil
+	case NoticeReasonSuperseded:
+		return []byte(s), nil
+	case NoticeReasonReassigned:
+		return []byte(s), nil
+	case NoticeReasonPursuitNotVisible:
+		return []byte(s), nil
+	case NoticeReasonOther:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *NoticeReason) UnmarshalText(data []byte) error {
+	switch NoticeReason(data) {
+	case NoticeReasonChannelError:
+		*s = NoticeReasonChannelError
+		return nil
+	case NoticeReasonNotBound:
+		*s = NoticeReasonNotBound
+		return nil
+	case NoticeReasonCutoff:
+		*s = NoticeReasonCutoff
+		return nil
+	case NoticeReasonMemberInactive:
+		*s = NoticeReasonMemberInactive
+		return nil
+	case NoticeReasonTaskNotVisible:
+		*s = NoticeReasonTaskNotVisible
+		return nil
+	case NoticeReasonTaskClosed:
+		*s = NoticeReasonTaskClosed
+		return nil
+	case NoticeReasonSuperseded:
+		*s = NoticeReasonSuperseded
+		return nil
+	case NoticeReasonReassigned:
+		*s = NoticeReasonReassigned
+		return nil
+	case NoticeReasonPursuitNotVisible:
+		*s = NoticeReasonPursuitNotVisible
+		return nil
+	case NoticeReasonOther:
+		*s = NoticeReasonOther
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Pending 待发送（含安静时段延后）；retrying
+// 发送失败、等待退避重试；delivered 渠道已接受；in_app
+// 未绑定或重试时限内仍未送达， 留在 Web 与站内；cancelled
+// 发送前以收件人本人再检查时取消（0.4.0）.
+// Ref: #/components/schemas/NoticeState
+type NoticeState string
+
+const (
+	NoticeStatePending   NoticeState = "pending"
+	NoticeStateRetrying  NoticeState = "retrying"
+	NoticeStateDelivered NoticeState = "delivered"
+	NoticeStateInApp     NoticeState = "in_app"
+	NoticeStateCancelled NoticeState = "cancelled"
+)
+
+// AllValues returns all NoticeState values.
+func (NoticeState) AllValues() []NoticeState {
+	return []NoticeState{
+		NoticeStatePending,
+		NoticeStateRetrying,
+		NoticeStateDelivered,
+		NoticeStateInApp,
+		NoticeStateCancelled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s NoticeState) MarshalText() ([]byte, error) {
+	switch s {
+	case NoticeStatePending:
+		return []byte(s), nil
+	case NoticeStateRetrying:
+		return []byte(s), nil
+	case NoticeStateDelivered:
+		return []byte(s), nil
+	case NoticeStateInApp:
+		return []byte(s), nil
+	case NoticeStateCancelled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *NoticeState) UnmarshalText(data []byte) error {
+	switch NoticeState(data) {
+	case NoticeStatePending:
+		*s = NoticeStatePending
+		return nil
+	case NoticeStateRetrying:
+		*s = NoticeStateRetrying
+		return nil
+	case NoticeStateDelivered:
+		*s = NoticeStateDelivered
+		return nil
+	case NoticeStateInApp:
+		*s = NoticeStateInApp
+		return nil
+	case NoticeStateCancelled:
+		*s = NoticeStateCancelled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type OAuthCode string
 
 // Ref: #/components/schemas/OpenCardLinkRequest
@@ -3666,6 +3938,52 @@ func (o OptItemStatus) Get() (v ItemStatus, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptItemStatus) Or(d ItemStatus) ItemStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptNoticeReason returns new OptNoticeReason with value set to v.
+func NewOptNoticeReason(v NoticeReason) OptNoticeReason {
+	return OptNoticeReason{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptNoticeReason is optional NoticeReason.
+type OptNoticeReason struct {
+	Value NoticeReason
+	Set   bool
+}
+
+// IsSet returns true if OptNoticeReason was set.
+func (o OptNoticeReason) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptNoticeReason) Reset() {
+	var v NoticeReason
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptNoticeReason) SetTo(v NoticeReason) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptNoticeReason) Get() (v NoticeReason, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptNoticeReason) Or(d NoticeReason) NoticeReason {
 	if v, ok := o.Get(); ok {
 		return v
 	}
