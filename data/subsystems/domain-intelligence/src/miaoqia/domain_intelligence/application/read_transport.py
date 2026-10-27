@@ -103,7 +103,8 @@ def routes(facts, evidence, *, admit=None, before_send=None, collectors=None, co
         if not isinstance(collectors, dict):
             raise ValueError("route collectors required")
         unknown = set(collectors) - {"data.get_fact", "data.fact_history", "data.query_facts", "data.bid_result_units", "data.resolve_evidence"}
-        if unknown or any(not callable(v) for v in collectors.values()):
+        required = {"data.get_fact", "data.fact_history", "data.query_facts", "data.bid_result_units", "data.resolve_evidence"}
+        if unknown or set(collectors) != required or any(not callable(v) for v in collectors.values()):
             raise ValueError("invalid route collectors")
 
     def admission(operation, body, deadline):
