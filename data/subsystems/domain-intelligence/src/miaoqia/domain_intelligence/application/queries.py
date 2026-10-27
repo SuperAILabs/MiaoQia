@@ -201,9 +201,13 @@ class Queries:
                 if fact is not None: facts.append(fact)
             elif operation == "data.fact_history":
                 rows = conn.execute(text("SELECT content FROM dom_fact_versions WHERE fact_id=:f AND version>:a AND (CAST(:r AS timestamptz) IS NULL OR recorded_at<=:r) ORDER BY version"), {"f": body["fact_id"], "a": body.get("after", 0), "r": basis.recorded_cutoff}).all()
+                if len(rows) > 1000:
+                    raise ValueError("source-group collector result too large")
                 facts = [r[0] for r in rows]
             elif operation == "data.query_facts":
                 rows = conn.execute(text("""SELECT selected.content FROM dom_facts f JOIN LATERAL (SELECT content FROM dom_fact_versions v WHERE v.fact_id=f.id AND (CAST(:r AS timestamptz) IS NULL OR v.recorded_at<=:r) ORDER BY v.version DESC LIMIT 1) selected ON true WHERE f.info_domain=:d AND f.object_type=:t AND f.id>:a ORDER BY f.id"""), {"d": body["info_domain"], "t": body["object_type"], "a": body.get("after", ""), "r": basis.recorded_cutoff}).all()
+                if len(rows) > 1000:
+                    raise ValueError("source-group collector result too large")
                 facts = [r[0] for r in rows]
             closures = [requirements.read(conn, f) for f in facts]
         merged = Closure.merge(*closures) if closures else None
