@@ -585,25 +585,80 @@ func TestAssignmentRules(t *testing.T) {
 	rules := fmt.Sprintf(`[{"assignee":%q,"regions":["330100"],"categories":["CAT-PIPE-PE-GAS"]},{"assignee":%q,"regions":["330200"]},{"assignee":%q}]`, lead, bd2, bd)
 	var sigHZ, sigNB, sigWZ string
 
-	run("C-14 用例4：决策者配置分派规则（版本 0→1）；读取按级别白名单；生效策略读取带分派配置；信号生成时第一条命中的规则写入候选；创建面板经远程绑定默认候选并以候选本人再检查", func(t *testing.T) {
-		if r := obj(t, expect(t, dm, "GET", rulesPath, "", 200)); r["version"] != float64(0) || r["view"] != "full" || len(r["rules"].([]any)) != 0 {
+	run("C-14 越权与反例测试 未配置分派规则：从未配置的目标读取为版本 0、没有更新时间，生效策略读取不带分派配置，信号记为 rules_unavailable（不是 none）；配置为空规则后版本为 1、带分派配置，之后的信号为 none；已生成的信号不重新求值", func(t *testing.T) {
+		r := obj(t, expect(t, dm, "GET", rulesPath, "", 200))
+		if r["version"] != float64(0) || r["rule_count"] != float64(0) || r["view"] != "full" || len(r["rules"].([]any)) != 0 {
+			t.Fatalf("%+v", r)
+		}
+		if _, ok := r["updated_at"]; ok {
+			t.Fatalf("从未配置时不应有更新时间：%+v", r)
+		}
+		svc := reqctx.Service(reqctx.With(ctx, reqctx.Context{Tenant: t1, Cell: "cell-01"}), "detection")
+		page, err := localActive.ActivePolicies(svc, 0, "")
+		if err != nil || len(page.Policies) != 1 || page.Policies[0].Assignment.Set {
+			t.Fatalf("从未配置时生效策略读取不应带分派配置：%v %+v", err, page)
+		}
+		unconfigured := newSignal(t, facttest.Bid{Location: "330106", Categories: []string{"CAT-PIPE-PE-GAS"}})
+		if o, v := stored(t, unconfigured); o != nil || v != nil {
+			t.Fatalf("从未配置时候选与版本应为空：%v %v", o, v)
+		}
+		for _, c := range []detapi.SignalCandidates{localCandidates, remoteCandidates} {
+			got, err := c.SignalCandidate(userCtx(dm, t1), unconfigured)
+			if err != nil || string(got.State) != "rules_unavailable" || got.CandidateOwner.Set || got.AssignmentVersion.Set {
+				t.Fatalf("%v %+v", err, got)
+			}
+		}
+		expectDefault(t, bd, unconfigured, bd, "self", "rules_unavailable")
+
+		// 配置为空规则：版本 0→1，有更新时间；生效策略读取带分派配置（版本 1、没有规则）
+		res := putRules(t, dm, 0, `[]`, "", 200)
+		if res["version"] != float64(1) || res["rule_count"] != float64(0) || len(res["rules"].([]any)) != 0 {
+			t.Fatalf("%+v", res)
+		}
+		if _, ok := res["updated_at"]; !ok {
+			t.Fatalf("已配置时应有更新时间：%+v", res)
+		}
+		page, err = localActive.ActivePolicies(svc, 0, "")
+		if err != nil || len(page.Policies) != 1 {
+			t.Fatalf("%v %+v", err, page)
+		}
+		if a, ok := page.Policies[0].Assignment.Get(); !ok || a.Version != 1 || len(a.Rules) != 0 {
+			t.Fatalf("已配置为空规则时应带分派配置：%+v", page.Policies[0].Assignment)
+		}
+		empty := newSignal(t, facttest.Bid{Location: "330106", Categories: []string{"CAT-PIPE-PE-GAS"}})
+		expectStored(t, empty, "", 1)
+		for _, c := range []detapi.SignalCandidates{localCandidates, remoteCandidates} {
+			got, err := c.SignalCandidate(userCtx(dm, t1), empty)
+			if err != nil || string(got.State) != "none" || got.CandidateOwner.Set || got.AssignmentVersion.Or(-1) != 1 {
+				t.Fatalf("%v %+v", err, got)
+			}
+		}
+		expectDefault(t, bd, empty, bd, "self", "none")
+		// 配置之前生成的信号不重新求值（C-23）：仍为 rules_unavailable
+		if o, v := stored(t, unconfigured); o != nil || v != nil {
+			t.Fatalf("%v %v", o, v)
+		}
+	})
+
+	run("C-14 用例4：决策者配置分派规则（此前已配置为空规则，版本 1→2）；读取按级别白名单；生效策略读取带分派配置；信号生成时第一条命中的规则写入候选；创建面板经远程绑定默认候选并以候选本人再检查", func(t *testing.T) {
+		if r := obj(t, expect(t, dm, "GET", rulesPath, "", 200)); r["version"] != float64(1) || r["rule_count"] != float64(0) || r["view"] != "full" || len(r["rules"].([]any)) != 0 {
 			t.Fatalf("%+v", r)
 		}
 		key := "assign-" + suffix + "-0001"
-		res := putRules(t, dm, 0, rules, key, 200)
-		if res["version"] != float64(1) || res["rule_count"] != float64(3) || res["view"] != "full" {
+		res := putRules(t, dm, 1, rules, key, 200)
+		if res["version"] != float64(2) || res["rule_count"] != float64(3) || res["view"] != "full" {
 			t.Fatalf("%+v", res)
 		}
 		// 同一键重放返回首次结果，不再写入
-		if again := putRules(t, dm, 0, rules, key, 200); again["version"] != float64(1) {
+		if again := putRules(t, dm, 1, rules, key, 200); again["version"] != float64(2) {
 			t.Fatalf("%+v", again)
 		}
 		// 同样的规则、当前版本：无变化，版本不变
-		if same := putRules(t, dm, 1, rules, "", 200); same["version"] != float64(1) {
+		if same := putRules(t, dm, 2, rules, "", 200); same["version"] != float64(2) {
 			t.Fatalf("%+v", same)
 		}
 		if n := count(t, ccs.owner, `SELECT count(*) FROM kernel_outbox WHERE envelope->>'type' = 'audit.entry.recorded.v1'
- AND envelope->'data'->>'action' = 'customer_context.objective.assignment_configured'`); n != 1 {
+ AND envelope->'data'->>'action' = 'customer_context.objective.assignment_configured'`); n != 2 {
 			t.Fatalf("审计 %d 条", n)
 		}
 		// 级别白名单：能分派跟进的业务开拓者看全文；只能查看目标的业务专家只见版本与条数
@@ -611,7 +666,7 @@ func TestAssignmentRules(t *testing.T) {
 			t.Fatalf("%+v", r)
 		}
 		r := obj(t, expect(t, expert, "GET", rulesPath, "", 200))
-		if _, leaked := r["rules"]; leaked || r["view"] != "summary" || r["rule_count"] != float64(3) || r["version"] != float64(1) {
+		if _, leaked := r["rules"]; leaked || r["view"] != "summary" || r["rule_count"] != float64(3) || r["version"] != float64(2) {
 			t.Fatalf("%+v", r)
 		}
 		if _, leaked := r["updated_at"]; leaked {
@@ -622,18 +677,18 @@ func TestAssignmentRules(t *testing.T) {
 		if err != nil || len(page.Policies) != 1 {
 			t.Fatalf("%v %+v", err, page)
 		}
-		if a, ok := page.Policies[0].Assignment.Get(); !ok || a.Version != 1 || len(a.Rules) != 3 || string(a.Rules[0].Assignee) != lead {
+		if a, ok := page.Policies[0].Assignment.Get(); !ok || a.Version != 2 || len(a.Rules) != 3 || string(a.Rules[0].Assignee) != lead {
 			t.Fatalf("%+v", page.Policies[0].Assignment)
 		}
 		sigHZ = newSignal(t, facttest.Bid{Location: "330106", Categories: []string{"CAT-PIPE-PE-GAS"}})
 		sigNB = newSignal(t, facttest.Bid{Location: "330206"})
 		sigWZ = newSignal(t, facttest.Bid{Location: "330302"})
-		expectStored(t, sigHZ, lead, 1)
-		expectStored(t, sigNB, bd2, 1)
-		expectStored(t, sigWZ, bd, 1)
+		expectStored(t, sigHZ, lead, 2)
+		expectStored(t, sigNB, bd2, 2)
+		expectStored(t, sigWZ, bd, 2)
 		// 杭州但不是燃气管：跳过规则 1，规则 2 区域不符，落到规则 3
 		other := newSignal(t, facttest.Bid{Location: "330106", Categories: []string{"CAT-PIPE-PE"}})
-		expectStored(t, other, bd, 1)
+		expectStored(t, other, bd, 2)
 		expectDefault(t, bd, sigHZ, lead, "candidate", "valid")
 		expectDefault(t, dm, sigNB, bd2, "candidate", "valid")
 		expectDefault(t, bd, sigWZ, bd, "candidate", "valid")
@@ -641,15 +696,15 @@ func TestAssignmentRules(t *testing.T) {
 		expect(t, dm, "GET", "/v1/detection/signals/"+sigHZ+"/candidate-owner", "", 404)
 		// 内部读取（远程绑定，以调用者本人）：能分派跟进的成员得到候选与配置版本
 		c, err := remoteCandidates.SignalCandidate(userCtx(bd, t1), sigHZ)
-		if err != nil || string(c.State) != "assigned" || c.CandidateOwner.Or("") != lead || c.AssignmentVersion.Or(-1) != 1 || c.ObjectiveID != objective.ID {
+		if err != nil || string(c.State) != "assigned" || c.CandidateOwner.Or("") != lead || c.AssignmentVersion.Or(-1) != 2 || c.ObjectiveID != objective.ID {
 			t.Fatalf("%v %+v", err, c)
 		}
 	})
 
 	run("C-14 用例4：规则清空后没有候选（none）；信号生成时分派规则不可用（旧版本提供方或 C-14 之前的信号）为 rules_unavailable，不当作没有候选", func(t *testing.T) {
-		putRules(t, dm, 1, `[]`, "", 200)
+		putRules(t, dm, 2, `[]`, "", 200)
 		none := newSignal(t, facttest.Bid{Location: "330106"})
-		expectStored(t, none, "", 2)
+		expectStored(t, none, "", 3)
 		expectDefault(t, bd, none, bd, "self", "none")
 		legacy.strip.Store(true)
 		old := newSignal(t, facttest.Bid{Location: "330106"})
@@ -662,19 +717,19 @@ func TestAssignmentRules(t *testing.T) {
 		if err != nil || string(c.State) != "rules_unavailable" || c.CandidateOwner.Set || c.AssignmentVersion.Set {
 			t.Fatalf("%v %+v", err, c)
 		}
-		putRules(t, dm, 2, rules, "", 200)
+		putRules(t, dm, 3, rules, "", 200)
 	})
 
 	run("C-14 越权与反例测试 另一租户：他租户成员读写分派规则、读取候选与创建面板一律 404，不暴露目标或信号是否存在", func(t *testing.T) {
 		expectAs(t, admin2, t2, "GET", rulesPath, "", "", 404, "objective_not_found")
-		expectAs(t, admin2, t2, "PUT", rulesPath, fmt.Sprintf(`{"expected_version":3,"rules":[{"assignee":%q}]}`, admin2), "", 404, "objective_not_found")
+		expectAs(t, admin2, t2, "PUT", rulesPath, fmt.Sprintf(`{"expected_version":4,"rules":[{"assignee":%q}]}`, admin2), "", 404, "objective_not_found")
 		expectAs(t, admin2, t2, "GET", "/v1/pursuit/create-defaults?objective_id="+objective.ID+"&signal_id="+sigHZ, "", "", 404, "objective_not_found")
 		for _, c := range []detapi.SignalCandidates{localCandidates, remoteCandidates} {
 			if e := candidateErr(t, c, admin2, t2, sigHZ); e.Status != 404 || e.Code != "signal_not_found" {
 				t.Fatalf("%+v", e)
 			}
 		}
-		if v := rulesVersion(t); v != 3 {
+		if v := rulesVersion(t); v != 4 {
 			t.Fatalf("%d", v)
 		}
 	})
@@ -682,10 +737,10 @@ func TestAssignmentRules(t *testing.T) {
 	run("C-14 越权与反例测试 非管理员写配置：业务开拓者、业务专家与租户管理员（参与人）403，非参与人 404，不写入", func(t *testing.T) {
 		body := fmt.Sprintf(`[{"assignee":%q}]`, bd)
 		for _, who := range []string{bd, expert, admin} {
-			putRules(t, who, 3, body, "", 403, "forbidden")
+			putRules(t, who, 4, body, "", 403, "forbidden")
 		}
-		putRules(t, bd3, 3, body, "", 404, "objective_not_found")
-		if v := rulesVersion(t); v != 3 {
+		putRules(t, bd3, 4, body, "", 404, "objective_not_found")
+		if v := rulesVersion(t); v != 4 {
 			t.Fatalf("%d", v)
 		}
 		// 业务专家能查看信号但不能分派跟进：候选人标识不可见（403），不能查看的非参与人 404
@@ -698,21 +753,21 @@ func TestAssignmentRules(t *testing.T) {
 	})
 
 	run("C-14 越权与反例测试 规则指向他租户成员或非参与人：422 assignee_no_access 不写入；即使经篡改写入规则，候选也以本人再检查为无访问且不返回标识", func(t *testing.T) {
-		putRules(t, dm, 3, fmt.Sprintf(`[{"assignee":%q}]`, bdx), "", 422, "assignee_no_access")
-		putRules(t, dm, 3, fmt.Sprintf(`[{"assignee":%q}]`, bd3), "", 422, "assignee_no_access")
-		putRules(t, dm, 3, fmt.Sprintf(`[{"assignee":%q}]`, admin2), "", 422, "assignee_no_access")
-		putRules(t, dm, 3, fmt.Sprintf(`[{"assignee":%q,"regions":["001100"]}]`, bd), "", 422, "invalid_region")
-		putRules(t, dm, 3, fmt.Sprintf(`[{"assignee":%q,"categories":["CAT-NOT-INSTALLED"]}]`, bd), "", 422, "unknown_category")
-		if v := rulesVersion(t); v != 3 {
+		putRules(t, dm, 4, fmt.Sprintf(`[{"assignee":%q}]`, bdx), "", 422, "assignee_no_access")
+		putRules(t, dm, 4, fmt.Sprintf(`[{"assignee":%q}]`, bd3), "", 422, "assignee_no_access")
+		putRules(t, dm, 4, fmt.Sprintf(`[{"assignee":%q}]`, admin2), "", 422, "assignee_no_access")
+		putRules(t, dm, 4, fmt.Sprintf(`[{"assignee":%q,"regions":["001100"]}]`, bd), "", 422, "invalid_region")
+		putRules(t, dm, 4, fmt.Sprintf(`[{"assignee":%q,"categories":["CAT-NOT-INSTALLED"]}]`, bd), "", 422, "unknown_category")
+		if v := rulesVersion(t); v != 4 {
 			t.Fatalf("%d", v)
 		}
 		// 篡改：直接改写存储的规则指向他租户成员（bdx 在参与人名单中，但不是本租户成员）
-		if _, err := ccs.owner.Exec(ctx, `UPDATE ctx_assignment_rules SET rules = $2, version = 4 WHERE objective_id = $1`, objective.ID,
+		if _, err := ccs.owner.Exec(ctx, `UPDATE ctx_assignment_rules SET rules = $2, version = 5 WHERE objective_id = $1`, objective.ID,
 			fmt.Sprintf(`[{"assignee":%q}]`, bdx)); err != nil {
 			t.Fatal(err)
 		}
 		s := newSignal(t, facttest.Bid{Location: "330106"})
-		expectStored(t, s, bdx, 4)
+		expectStored(t, s, bdx, 5)
 		expectDefault(t, bd, s, bd, "self", "no_access")
 		// 篡改：信号上存储的候选改为非参与人
 		if _, err := dets.owner.Exec(ctx, `UPDATE det_signals SET candidate_owner = $2 WHERE id = $1`, sigHZ, bd3); err != nil {
@@ -727,8 +782,8 @@ func TestAssignmentRules(t *testing.T) {
 			fmt.Sprintf(`[{"assignee":%q},{"assignee":%q}]`, bd3, bd2)); err != nil {
 			t.Fatal(err)
 		}
-		expectStored(t, newSignal(t, facttest.Bid{Location: "330106"}), bd2, 4)
-		putRules(t, dm, 4, rules, "", 200)
+		expectStored(t, newSignal(t, facttest.Bid{Location: "330106"}), bd2, 5)
+		putRules(t, dm, 5, rules, "", 200)
 	})
 
 	run("C-14 越权与反例测试 过期配置版本：409 version_conflict 不覆盖；同一键重放返回同一失败（确定失败固定在键上），键相同请求不同 409 idempotency_conflict", func(t *testing.T) {
@@ -736,15 +791,15 @@ func TestAssignmentRules(t *testing.T) {
 		body := fmt.Sprintf(`[{"assignee":%q}]`, bd2)
 		putRules(t, dm, 1, body, key, 409, "version_conflict")
 		putRules(t, dm, 1, body, key, 409, "version_conflict")
-		putRules(t, dm, 5, body, key, 409, "idempotency_conflict")
-		if v := rulesVersion(t); v != 5 {
+		putRules(t, dm, 6, body, key, 409, "idempotency_conflict")
+		if v := rulesVersion(t); v != 6 {
 			t.Fatalf("%d", v)
 		}
 		// 422 同样固定：被分派人之后成为参与人，同一键重放仍是首次的失败
 		key = "assign-" + suffix + "-no-access"
-		putRules(t, dm, 5, fmt.Sprintf(`[{"assignee":%q}]`, bd3), key, 422, "assignee_no_access")
+		putRules(t, dm, 6, fmt.Sprintf(`[{"assignee":%q}]`, bd3), key, 422, "assignee_no_access")
 		setParticipants(t, bd, bd2, lead, expert, admin, bdx, bd3)
-		putRules(t, dm, 5, fmt.Sprintf(`[{"assignee":%q}]`, bd3), key, 422, "assignee_no_access")
+		putRules(t, dm, 6, fmt.Sprintf(`[{"assignee":%q}]`, bd3), key, 422, "assignee_no_access")
 		setParticipants(t, bd, bd2, lead, expert, admin, bdx)
 		if n := count(t, ccs.owner, `SELECT count(*) FROM ctx_commands WHERE operation = 'objective.assignment' AND response ? 'failure'`); n < 2 {
 			t.Fatalf("登记的确定失败 %d 条", n)

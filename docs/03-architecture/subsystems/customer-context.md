@@ -138,10 +138,10 @@
 **实现状况（C-14，契约 0.7.0 草案；PRD 第6段 F1 第2条、用例4）**：
 
 - **规则**：每个目标一份按顺序的规则（至多 50 条，`ctx_assignment_rules`，迁移 `00004_assignment_rules.sql`），每条为被分派人 `assignee` 与可选条件 `regions`（行政区划代码，按 `region.within` 包含下级，`000000` 为全国）、`categories`（已安装行业包的品类代码，按 `category.any_match` 包含下级，信号任一品类命中即满足）；两个条件同时给出须都满足，都不给出时匹配全部信号；第一条命中的规则给出候选。按我方主体与组织单元的条件、按角色选人尚未提供（[A02 验收缺口 C-22](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)）；
-- **版本**：分派配置版本独立于目标版本（从未配置为 0，每次有变化的写入加一，相同内容为无变化）；不递增租户上下文版本，也不发布领域事件，变更记审计 `customer_context.objective.assignment_configured`；
+- **版本**：分派配置版本独立于目标版本（从未配置为 0，即没有配置记录；首次写入为 1——包括配置为空规则——之后每次有变化的写入加一，相同内容为无变化；已配置的版本因此总是不小于 1）；不递增租户上下文版本，也不发布领域事件，变更记审计 `customer_context.objective.assignment_configured`；
 - **写入**：`PUT /v1/customer-context/objectives/{objectiveID}/assignment`（`updateAssignmentRules`）需要目标上的 `can_manage_participants` 与 `can_edit`（目标单元的决策者，与调整负责人和参与人相同），不可见 404、无权 403。每个被分派人先以其本人判断此刻仍是本租户有效成员（identity 会话核验，退出、停用与他租户的用户被拒）且能查看该目标的信号（本子系统 `can_view_signals` 的口径），再在目标行锁（与 `ConfigureObjective` 同一把锁）下核对仍是目标当前的负责人或参与人，任一不满足 422 `assignee_no_access`，整份不写入、不授予任何权限；区域与品类无效 422 `invalid_region` / `unknown_category`；分派配置版本不一致 409 `version_conflict`。同一幂等键重放返回首次结果，包括首次的确定失败（4xx，`ctx_commands` 中登记为失败）；暂时失败（503）不固定在键上；
 - **参与人变化**：`ConfigureObjective` 移出负责人或参与人时，在同一事务与同一目标行锁下移除指向他的规则，分派配置版本加一并审计 `customer_context.objective.assignment_pruned`；写入规则与移除参与人因此串行，提交后的规则只指向当前的负责人或参与人；
-- **读取**：`GET …/assignment`（`getAssignmentRules`）需要 `can_view`；字段按级别白名单输出：能管理参与人或能分派跟进（`can_assign`）的成员为 `full`（规则全文与更新时间），其他能查看目标的成员为 `summary`（只有版本与规则条数，不出现规则与候选人）；
-- **供 detection 读取**：`GetActivePolicies` 的每个目标追加 `assignment`（版本与规则），与负责人、参与人来自同一次读取；detection 生成信号时据此计算候选（[detection 实现状况](detection.md#8-伸缩与可靠性)）；
+- **读取**：`GET …/assignment`（`getAssignmentRules`）需要 `can_view`；字段按级别白名单输出：能管理参与人或能分派跟进（`can_assign`）的成员为 `full`（规则全文与更新时间），其他能查看目标的成员为 `summary`（只有版本与规则条数，不出现规则与候选人）。从未配置时返回 `version` 0、`rule_count` 0、没有 `updated_at`（`full` 时 `rules` 为空数组）；配置为空规则后为 `version` ≥ 1 且有 `updated_at`，两者可以区分；
+- **供 detection 读取**：`GetActivePolicies` 的目标在配置过分派规则时追加 `assignment`（版本 ≥ 1 与规则，规则可以为空），从未配置的目标不出现 `assignment`（不以版本 0、空规则代替），与负责人、参与人来自同一次读取；detection 据此区分“分派规则不可用”（`rules_unavailable`）与“已配置但没有候选”（`none`）；detection 生成信号时据此计算候选（[detection 实现状况](detection.md#8-伸缩与可靠性)）；
 - **绑定**：本子系统另依赖 identity 的 `SessionResolver`（本地或远程），`TestEveryRoleResolvesBindings` 断言；
 - **证据**：`services/kernel/integration/assignment_test.go`（`TestAssignmentRules`），`services/subsystems/customercontext/internal/domain/assignment_test.go`。

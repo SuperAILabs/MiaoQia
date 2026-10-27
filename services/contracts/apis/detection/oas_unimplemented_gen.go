@@ -66,8 +66,10 @@ func (UnimplementedHandler) GetSignalBatch(ctx context.Context, params GetSignal
 // can_view_signals 同为 404 signal_not_found；能查看信号而没有 can_assign 为 403
 // forbidden（候选人标识只对能分派跟进的成员可见）。state 为
 // assigned（有候选，candidate_owner 与 assignment_version
-// 出现）、none（规则未命中或没有规则）或 rules_unavailable（信号生成时
-// 分派规则不可用，例如 C-14
+// 出现）、none（已配置分派规则但都不命中，或配置为空规则）或
+// rules_unavailable
+// （信号生成时分派规则不可用：目标从未配置分派规则、提供方没有给出分派配置，或
+// C-14
 // 之前的信号）。不重新求值规则，也不判断候选此刻是否仍有效：调用方以候选本人再检查成员状态与目标访问。.
 //
 // GET /v1/detection/signals/{signalID}/candidate-owner

@@ -18,7 +18,8 @@ import (
 //   - 规则来自批次开始时以服务主体读取的生效策略（customer-context 0.7.0 的 ActivePolicy.assignment），与负责人、参与人是同一次读取；
 //   - 按顺序取第一条命中的规则：regions 按 region.within、categories 按 category.any_match（kernel/policy 的同一口径）匹配信号的
 //     地点与品类，两者都给出时须都满足，都不给出时匹配全部信号；被分派人已不是该读取中的负责人或参与人的规则跳过；
-//   - 提供方没有给出分派配置（旧版本）时不计算，信号记为“分派规则不可用”（assignment_version 为空），不当作“没有候选”；
+//   - 提供方没有给出分派配置（目标从未配置分派规则，或旧版本的提供方）时不计算，信号记为“分派规则不可用”（assignment_version 为空），
+//     不当作“没有候选”；已配置但规则为空或都不命中为“没有候选”（none，带所用的版本，版本从 1 开始）；
 //   - 读取（getSignalCandidateOwner）只返回生成时记录的值，不重新求值规则；使用方（pursuit 的创建面板）以候选本人再检查。
 
 const relAssign = "can_assign"
@@ -26,7 +27,7 @@ const relAssign = "can_assign"
 // candidateOwner 返回信号的候选负责人与所用的分派配置版本；ok 为假表示分派规则不可用。
 func candidateOwner(p cc.ActivePolicy, location string, categories []string) (owner string, version int64, ok bool) {
 	a, set := p.Assignment.Get()
-	if !set {
+	if !set || a.Version < 1 {
 		return "", 0, false
 	}
 	involved := func(subject string) bool {

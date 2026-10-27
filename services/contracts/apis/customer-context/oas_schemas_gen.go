@@ -14,10 +14,13 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
-// 目标当前的分派配置（0.7.0，C-14）：版本（从未配置为
-// 0）与按顺序的规则。detection
-// 生成信号时用同一次读取中的负责人与参与人过滤规则 （assignee
-// 已不是负责人或参与人的规则跳过），第一条命中的规则给出候选负责人；没有本字段（旧版本的提供方）时信号记为“分派规则不可用”.
+// 目标当前的分派配置（0.7.0，C-14）：只在目标配置过分派规则时出现，版本从
+// 1 开始，规则按顺序（可以为空：已配置为空规则，信号记为 没有候选
+// none）。detection
+// 生成信号时用同一次读取中的负责人与参与人过滤规则（assignee
+// 已不是负责人或参与人的规则跳过），第一条命中的
+// 规则给出候选负责人，都不命中为
+// none；没有本字段（目标从未配置分派规则，或旧版本的提供方）时信号记为“分派规则不可用”rules_unavailable.
 // Ref: #/components/schemas/ActiveAssignment
 type ActiveAssignment struct {
 	Version int64            `json:"version"`

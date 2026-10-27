@@ -32,6 +32,12 @@ func TestCandidateOwner(t *testing.T) {
 			t.Fatalf("%s %v：%q v%d %v，期望 %q", tc.location, tc.categories, owner, version, ok, tc.want)
 		}
 	}
+	// 已配置但规则为空：没有候选（none），带所用的版本；与从未配置（不可用）区分
+	p.Assignment = cc.NewOptActiveAssignment(cc.ActiveAssignment{Version: 4, Rules: []cc.AssignmentRule{}})
+	if owner, version, ok := candidateOwner(p, "330106", []string{"CAT-PIPE-PE-GAS"}); !ok || owner != "" || version != 4 {
+		t.Fatalf("已配置为空规则应为 none：%q v%d %v", owner, version, ok)
+	}
+	// 从未配置（提供方不给出 assignment）：不可用
 	p.Assignment = cc.OptActiveAssignment{}
 	if _, _, ok := candidateOwner(p, "330106", nil); ok {
 		t.Fatal("没有分派配置时应为不可用")

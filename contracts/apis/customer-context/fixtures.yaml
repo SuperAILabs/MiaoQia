@@ -1333,9 +1333,14 @@ fixtures:
         version: 2
 - schema: ActiveAssignment
   base:
-    version: 0
+    version: 1
     rules: []
   cases:
+  - name: 已配置为空规则（信号记为没有候选）
+    valid: true
+    instance:
+      version: 1
+      rules: []
   - name: 按区域与品类的规则
     valid: true
     patch:
@@ -1353,6 +1358,12 @@ fixtures:
     - op: replace
       path: /version
       value: -1
+  - name: 从未配置时不出现本字段，版本0无效
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
 - schema: AssignmentRule
   base:
     assignee: bd-fixture

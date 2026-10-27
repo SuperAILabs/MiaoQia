@@ -107,8 +107,12 @@ func (UnimplementedHandler) GetActivePolicies(ctx context.Context, params GetAct
 // objective_not_found。字段按调用者的级别白名单返回：能管理参与人（can_manage_participants）
 // 或能分派跟进（can_assign）的成员得到
 // view=full（规则全文、更新时间）；其他能查看目标的成员得到
-// view=summary（只有版本与规则条数，
-// 不出现规则与候选人）。从未配置时版本为 0、没有规则。.
+// view=summary（只有版本与规则条数， 不出现规则与候选人）。从未配置时
+// version 为 0、rule_count 为 0、没有 updated_at（view=full 时 rules
+// 为空数组）；已配置的版本 从 1 开始（配置为空规则也是 1
+// 及以上），因此“从未配置”（目标的信号记为分派规则不可用
+// rules_unavailable）与“已配置但规则为空” （信号记为没有候选
+// none）可以区分。.
 //
 // GET /v1/customer-context/objectives/{objectiveID}/assignment
 func (UnimplementedHandler) GetAssignmentRules(ctx context.Context, params GetAssignmentRulesParams) (r *AssignmentRules, _ error) {

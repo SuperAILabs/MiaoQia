@@ -998,6 +998,12 @@ fixtures:
     - op: replace
       path: /state
       value: expired
+  - name: 分派配置版本从1开始
+    valid: false
+    patch:
+    - op: replace
+      path: /assignment_version
+      value: 0
   - name: 未登记的字段
     valid: false
     patch:
