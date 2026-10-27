@@ -20,6 +20,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	"github.com/superailabs/miaoqia/services/subsystems/detection/api"
+	detectionremote "github.com/superailabs/miaoqia/services/subsystems/detection/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/detection/internal/app"
 	"github.com/superailabs/miaoqia/services/subsystems/detection/migrations"
 )
@@ -69,6 +70,7 @@ func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
 // ModuleWith 返回使用给定适配器的 detection 模块定义。配置：MIAOQIA_DETECTION_PACKS_DIR（扩展包目录，默认 packs）。
 func ModuleWith(adapters Adapters) runtime.Module {
+	factsConfigured := adapters.Facts != nil
 	svc := &app.Service{Facts: adapters.Facts, Candidates: adapters.Candidates, Links: adapters.ProjectLinks, Now: adapters.Now, LeaseTTL: adapters.LeaseTTL}
 	if adapters.BatchHook != nil {
 		svc.Hook = adapters.BatchHook
@@ -87,6 +89,15 @@ func ModuleWith(adapters Adapters) runtime.Module {
 		Database:   "det",
 		Migrations: migrations.FS,
 		Start: func(ctx context.Context, env *runtime.Env) error {
+			if !factsConfigured {
+				if baseURL := env.Config("DATA_API_URL"); baseURL != "" {
+					facts, err := detectionremote.NewFacts(baseURL)
+					if err != nil {
+						return fmt.Errorf("detection：data-api Facts 绑定失败: %w", err)
+					}
+					svc.Facts = facts
+				}
+			}
 			dir := env.Config("PACKS_DIR")
 			if dir == "" {
 				dir = "packs"
