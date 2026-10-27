@@ -166,7 +166,7 @@ L1 按依赖拆分，下表为实施建议；PR #35 的 E1–E5 仍为建议，�
 | L1-2c1 | 复用固定标题证据和行业YAML，复核官方pair的Notice主题品类及固定pp/receipt守卫的A02回退；只输出DI、明确notice_subject，不表示实际供货 | D-02、D-04（有界局部，不关闭生产能力） | Python、Notice1.2.0/INF-PROC1.6.0/APP-TENDER0.8.0；显式本地启用 |
 | L1-2d0 | acquisition 持久化当前来源权利、受限本地 CLI 与内部 mTLS 只读 endpoint/client；冻结 building 组合，原始与当前权利全输入交集 | d1/d2 查询和状态装配、完整来源治理仍未完成 | 只改 Python 与契约 |
 | L1-2d1a | 本地固定版本可信分组闭包、不可变参考审批绑定、有限 owner 迁移和显式审计回填；兼容旧 callback 的 structured 授权端口 | 候选须独立实现安全审查；远程查询/最终响应确认、状态与完整 R2 未完成，A02仍L0 | Python数据平面内部基础 |
-| L1-2 后续 | data-api listener 的 collector/查询结果装配（当前 listener、TLS/身份 admission 与五路由入口已存在，但 query/history/source-group collectors fail-closed）；事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；广泛来源品类增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
+| L1-2 后续 | data-api 真实网络 smoke 与生产权限/覆盖装配（listener、TLS/身份 admission、deadline 和五路由 source-group collectors 已实现）；事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；广泛来源品类增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
 | L1-3 | Go 端口生产适配器：detection `Facts`/`Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、commerce 覆盖判断（R-05）、learning `Dataset`/`DomainStatus` 与样本权限过滤（D-17） | D-06、D-07、D-09、D-10、D-11、D-17、R-05 | 改主线子系统，开工前与主线协调修订号与文件 |
 | L1-4 | 全端口生产装配的部署配置与启动检查、调度器任务、贯通 E2E（投放结果公告 → 收件箱信号 → 对象页回到原文 → 站内简报）及跨租户与无权限负向用例 | R-01、R-02、C-04（站内） | 第5段服务端已合并，仍待适配器与运行装配 |
 

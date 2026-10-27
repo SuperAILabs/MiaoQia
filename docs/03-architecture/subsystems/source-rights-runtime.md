@@ -1,6 +1,6 @@
 # 冻结语料的当前来源权利与可信来源闭包
 
-acquisition 提供冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 已接通最小事实/证据查询 listener、TLS/身份 admission 与路由入口，但 query/history 等 source-group collectors 仍 fail-closed，尚不能提供生产查询结果；Go 生产适配器与完整 R2 仍未完成。A02 保持 L0，E1–E5 仍为建议。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
+acquisition 提供冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 已接通最小事实/证据查询 listener、TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络 smoke、Go 生产适配器与完整 R2 仍未完成。A02 保持 L0，E1–E5 仍为建议。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
 
 ## 权威与引用
 
