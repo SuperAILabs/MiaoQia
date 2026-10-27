@@ -23,8 +23,18 @@ ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCount
 tunnel_pid=$!
 cleanup() { kill "$tunnel_pid" 2>/dev/null || true; wait "$tunnel_pid" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
-sleep 1
-if ! kill -0 "$tunnel_pid" 2>/dev/null || ! nc -z 127.0.0.1 "$local_port" >/dev/null 2>&1; then
+ready=0
+for _ in $(seq 1 20); do
+  if ! kill -0 "$tunnel_pid" 2>/dev/null; then
+    break
+  fi
+  if nc -z 127.0.0.1 "$local_port" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 0.5
+done
+if [ "$ready" -ne 1 ]; then
   echo "Kafka SSH tunnel did not become ready on 127.0.0.1:${local_port}" >&2
   exit 1
 fi
