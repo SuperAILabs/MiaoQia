@@ -72,7 +72,7 @@ def test_roles_are_scram_separate_immutable_and_audited(provenance_roles):
         row = conn.execute("SELECT source_kind,source_id,rights_tags,actor,reason,db_actor,manifest_hash FROM evd_provenance.bindings").fetchone()
         assert row[:4] == ("reference", "reference-proc-building-topic-v0-1", ["review:building-topic-pair"], "reviewer")
         assert row[5] == roles["binder_role"] and row[6].startswith("sha256:")
-        assert row[6] != "sha256:2c9665eddde185bfde5a5cff31e18ba9cee34435c8c4ec279f1127aac1d95178"
+        assert row[6] == "sha256:2b5aef8fb787639360a27918f62ee56c4fb1c573f0c564ed288e1660fd13e258"
     for target in ("app", "binder", "owner"):
         for table in ("evd_provenance.manifest", "evd_provenance.bindings"):
             with pytest.raises(psycopg.Error), psycopg.connect(roles[target]) as conn:

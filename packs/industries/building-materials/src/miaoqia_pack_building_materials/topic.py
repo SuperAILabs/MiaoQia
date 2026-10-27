@@ -101,4 +101,4 @@ def build_recipe(packs_dir):
     return Recipe(RECIPE, "/title/value", TRANSFORM, REFERENCE, content, transform, outputs)
 
 
-EXPECTED_REFERENCE = "sha256:2c9665eddde185bfde5a5cff31e18ba9cee34435c8c4ec279f1127aac1d95178"
+EXPECTED_REFERENCE = "sha256:2b5aef8fb787639360a27918f62ee56c4fb1c573f0c564ed288e1660fd13e258"
