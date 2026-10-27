@@ -29,7 +29,7 @@ import (
 
 // 对外接口（经 gateway）的路由。
 var publicRoutes = []string{"POST /v1/learning/simulations", "GET /v1/learning/simulations/{simulationID}",
-	"GET /v1/learning/objectives/{objectiveID}/feedback-summary"}
+	"GET /v1/learning/objectives/{objectiveID}/feedback-summary", "GET /v1/learning/objectives/{objectiveID}/outcome-summary"}
 
 // Adapters 是仿真端口的适配器与业务时钟。零值字段使用缺省：Dataset 与 Domains 为未接入（api.NotWired，仿真运行失败），
 // Now 为系统时钟。
@@ -73,6 +73,12 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("learning：缺少 %s 绑定", customercontext.AccessBinding)
 			}
+			// 结果汇总（C-10）按目标所在单元判断 can_view_unit_pursuits
+			scope, ok := runtime.Lookup[customercontext.ObjectiveScope](env.Bindings, customercontext.ScopeBinding)
+			if !ok {
+				return fmt.Errorf("learning：缺少 %s 绑定", customercontext.ScopeBinding)
+			}
+			svc.Scope = scope
 			reader, ok := runtime.Lookup[customercontext.ContextReader](env.Bindings, customercontext.ContextBinding)
 			if !ok {
 				return fmt.Errorf("learning：缺少 %s 绑定", customercontext.ContextBinding)

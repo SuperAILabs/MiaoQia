@@ -168,6 +168,15 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 								approvals, own, pursuits, notices)
 						}
 					}
+					// C-10：learning 的跟进结果汇总经 customer-context 读取目标所在单元、经 identity 判断单元关系
+					if m.Name == "learning" {
+						b := envs[i].Bindings
+						_, scope := runtime.Lookup[ccapi.ObjectiveScope](b, ccapi.ScopeBinding)
+						_, authz := runtime.Lookup[idapi.Authorizer](b, idapi.AuthorizerBinding)
+						if !scope || !authz {
+							t.Fatalf("learning 的绑定不完整：scope=%v authz=%v", scope, authz)
+						}
+					}
 					// 第6段新增的跨子系统绑定：pursuit 经 identity 授权、同步参与关系与核验成员，经 customer-context 判断成员的目标访问；
 					// 服务对外接口的 api 角色经 detection 核对信号；并提供 Actions 与 Reminders
 					if m.Name == "pursuit" {
@@ -206,7 +215,7 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						"channels.retry-revocations", "channels.reconcile-sessions", "channels.compose-briefings", "channels.deliver-briefings",
 						"channels.process-card-actions", "channels.deliver-notices"}
 					if v["MIAOQIA_BINDING_PURSUIT"] != "remote" {
-						want = append(want, "pursuit.run-due-reminders", "pursuit.retry-authorization-sync")
+						want = append(want, "pursuit.run-due-reminders", "pursuit.retry-authorization-sync", "pursuit.run-tracking")
 					}
 					for _, name := range want {
 						if !got[name] {

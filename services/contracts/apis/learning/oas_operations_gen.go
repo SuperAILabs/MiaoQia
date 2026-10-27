@@ -7,6 +7,7 @@ type OperationName = string
 
 const (
 	GetFeedbackSummaryOperation OperationName = "GetFeedbackSummary"
+	GetOutcomeSummaryOperation  OperationName = "GetOutcomeSummary"
 	GetSimulationOperation      OperationName = "GetSimulation"
 	SimulatePolicyOperation     OperationName = "SimulatePolicy"
 )

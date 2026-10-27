@@ -4666,6 +4666,163 @@
       }
     },
     {
+      "event": "pursuit.tracking.changed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "changed_at": "2026-10-21T02:00:00Z",
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 1,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "reason": "created",
+        "state": "tracking",
+        "version": 1
+      }
+    },
+    {
+      "event": "pursuit.tracking.changed.v1",
+      "name": "暂停",
+      "valid": true,
+      "value": {
+        "changed_at": "2026-10-21T02:00:00Z",
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 1,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "reason": "paused",
+        "state": "paused",
+        "version": 2
+      }
+    },
+    {
+      "event": "pursuit.tracking.changed.v1",
+      "name": "未登记的状态",
+      "valid": false,
+      "value": {
+        "changed_at": "2026-10-21T02:00:00Z",
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 1,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "reason": "created",
+        "state": "archived",
+        "version": 1
+      }
+    },
+    {
+      "event": "pursuit.tracking.changed.v1",
+      "name": "不得夹带名称",
+      "valid": false,
+      "value": {
+        "changed_at": "2026-10-21T02:00:00Z",
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 1,
+        "name": "竞争对手周报",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "reason": "created",
+        "state": "tracking",
+        "version": 1
+      }
+    },
+    {
+      "event": "pursuit.tracking.period_closed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "baseline_seq": 1,
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 2,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "owner": "bd-2",
+        "owner_valid": true,
+        "period_end": "2026-11-02T00:00:00Z",
+        "period_start": "2026-10-26T00:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "recorded_at": "2026-11-02T00:00:05Z",
+        "seq": 2,
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "event": "pursuit.tracking.period_closed.v1",
+      "name": "第一期没有对比基准",
+      "valid": true,
+      "value": {
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 2,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "owner": "bd-2",
+        "owner_valid": true,
+        "period_end": "2026-11-02T00:00:00Z",
+        "period_start": "2026-10-26T00:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "recorded_at": "2026-11-02T00:00:05Z",
+        "seq": 1,
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "event": "pursuit.tracking.period_closed.v1",
+      "name": "缺成员快照",
+      "valid": false,
+      "value": {
+        "baseline_seq": 1,
+        "members_version": 2,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "owner": "bd-2",
+        "owner_valid": true,
+        "period_end": "2026-11-02T00:00:00Z",
+        "period_start": "2026-10-26T00:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "recorded_at": "2026-11-02T00:00:05Z",
+        "seq": 2,
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "event": "pursuit.tracking.period_closed.v1",
+      "name": "期序号从 1 开始",
+      "valid": false,
+      "value": {
+        "baseline_seq": 1,
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 2,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "owner": "bd-2",
+        "owner_valid": true,
+        "period_end": "2026-11-02T00:00:00Z",
+        "period_start": "2026-10-26T00:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "recorded_at": "2026-11-02T00:00:05Z",
+        "seq": 0,
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
       "event": "tendering.acceptance.published.v1",
       "name": "base",
       "valid": true,
@@ -9356,6 +9513,149 @@
         "pursuit_id",
         "participation_version",
         "reason"
+      ],
+      "type": "object"
+    },
+    "pursuit.tracking.changed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "changed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "members_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "created",
+            "paused",
+            "resumed",
+            "stopped",
+            "members_changed"
+          ],
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "tracking",
+            "paused",
+            "stopped"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "org_unit_id",
+        "state",
+        "members",
+        "members_version",
+        "version",
+        "reason",
+        "changed_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.tracking.period_closed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "members": {
+          "items": {
+            "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "members_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "owner": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$",
+          "type": "string"
+        },
+        "owner_valid": {
+          "type": "boolean"
+        },
+        "period_end": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timezone": {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "org_unit_id",
+        "seq",
+        "period_start",
+        "period_end",
+        "timezone",
+        "members",
+        "members_version",
+        "owner",
+        "owner_valid",
+        "recorded_at"
       ],
       "type": "object"
     },

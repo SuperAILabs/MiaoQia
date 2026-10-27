@@ -87,6 +87,33 @@ type Invoker interface {
 	//
 	// POST /v1/pursuit/pursuits/{pursuitID}/tasks
 	CreateTask(ctx context.Context, request *CreateTaskRequest, params CreateTaskParams) (*CommandResult, error)
+	// CreateTracking invokes createTracking operation.
+	//
+	// 需要目标上的
+	// can_assign（决策者或参与该目标的业务开拓者）。为一组组织（企业清单之外手选的组织标识）创建持续型跟进：名称、对象集合、
+	// 周期（缺省每周一
+	// 08:00，Asia/Shanghai）与负责人（缺省调用者本人；须为租户有效成员且能查看该目标的信号，否则
+	// 422 assignee_no_access，
+	// 不自动授予权限）。创建即进入跟踪中，第一期从创建时起到下一个周期时点。负责人经授权同步获得参与关系（与交易型跟进相同）。
+	// 结果固定在操作标识上（created）。.
+	//
+	// POST /v1/pursuit/tracking
+	CreateTracking(ctx context.Context, request *CreateTrackingRequest, params CreateTrackingParams) (*TrackingCommandResult, error)
+	// GetCreateDefaults invokes getCreateDefaults operation.
+	//
+	// 需要目标上的 can_assign（无权 403 forbidden，目标不可见 404
+	// objective_not_found）。给出 Web 创建面板的默认负责人（PRD 第6段 F1 第2条、
+	// 第13节第5项）：带 signal_id
+	// 时取该信号上由目标的分派规则给出的候选负责人，候选此刻仍是租户有效成员且能查看该目标的信号（以候选本人
+	// 判断）时默认候选；没有候选、候选无访问或分派规则不可用时默认调用者本人，candidate_state
+	// 说明原因。只是默认值：createPursuit 不带 owner
+	// 时仍以调用者本人为负责人，选用候选须在请求中写明
+	// owner（写入前照常检查被分派人）。候选不因被建议而获得访问；只有候选有效时
+	// 才返回其标识。信号不可见、他租户或不属于该目标为 404
+	// signal_not_found；判断不可用为 503（不当作无访问）。.
+	//
+	// GET /v1/pursuit/create-defaults
+	GetCreateDefaults(ctx context.Context, params GetCreateDefaultsParams) (*CreateDefaults, error)
 	// GetPursuit invokes getPursuit operation.
 	//
 	// 需要推进的 can_view（见
@@ -107,6 +134,22 @@ type Invoker interface {
 	//
 	// GET /v1/pursuit/tasks/{taskID}
 	GetTask(ctx context.Context, params GetTaskParams) (*TaskView, error)
+	// GetTracking invokes getTracking operation.
+	//
+	// 需要推进的
+	// can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为
+	// 404 pursuit_not_found。.
+	//
+	// GET /v1/pursuit/tracking/{pursuitID}
+	GetTracking(ctx context.Context, params GetTrackingParams) (*Tracking, error)
+	// GetTrackingPeriod invokes getTrackingPeriod operation.
+	//
+	// 需要推进的
+	// can_view（读取时按当前权限判断，不以该期结束时的负责人为准）。返回该期的实际期间、当期成员快照与对比基准；对象集合之后的
+	// 修改不影响已结束的期。不存在的期 404 period_not_found。.
+	//
+	// GET /v1/pursuit/tracking/{pursuitID}/periods/{seq}
+	GetTrackingPeriod(ctx context.Context, params GetTrackingPeriodParams) (*TrackingPeriod, error)
 	// ListMyTasks invokes listMyTasks operation.
 	//
 	// 分派给调用者、未完成、截止在 before
@@ -129,6 +172,29 @@ type Invoker interface {
 	//
 	// GET /v1/pursuit/pursuits
 	ListPursuits(ctx context.Context, params ListPursuitsParams) (*PursuitList, error)
+	// ListTracking invokes listTracking operation.
+	//
+	// 只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多
+	// limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的
+	// objective_id，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。.
+	//
+	// GET /v1/pursuit/tracking
+	ListTracking(ctx context.Context, params ListTrackingParams) (*TrackingList, error)
+	// ListTrackingPeriods invokes listTrackingPeriods operation.
+	//
+	// 需要推进的 can_view；按期序号倒序，每页至多 limit 条（默认且至多
+	// 50），next_cursor 为签名游标（绑定租户、调用者与该跟踪）。.
+	//
+	// GET /v1/pursuit/tracking/{pursuitID}/periods
+	ListTrackingPeriods(ctx context.Context, params ListTrackingPeriodsParams) (*TrackingPeriodList, error)
+	// PauseTracking invokes pauseTracking operation.
+	//
+	// 需要推进的 can_edit（与跟进的写命令同一准入）。跟踪中 →
+	// 已暂停：暂停期间不生成变化简报，进行中的一期不再结束（不补）。已暂停为
+	// no_change；已停止 409 invalid_transition；否则版本不一致 409 conflict。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/pause
+	PauseTracking(ctx context.Context, request *VersionRequest, params PauseTrackingParams) (*TrackingCommandResult, error)
 	// ReopenTask invokes reopenTask operation.
 	//
 	// 撤销本人的一次完成（target_operation_id）：在撤销时限内、任务版本仍为完成后的版本时恢复为待办、恢复完成前的截止与未发送的提醒；
@@ -137,6 +203,14 @@ type Invoker interface {
 	//
 	// POST /v1/pursuit/tasks/{taskID}/reopen
 	ReopenTask(ctx context.Context, request *ReopenTaskRequest, params ReopenTaskParams) (*CommandResult, error)
+	// ResumeTracking invokes resumeTracking operation.
+	//
+	// 需要推进的 can_edit。已暂停 →
+	// 跟踪中：下一期从恢复时起到恢复后的下一个周期时点，不补暂停期间的各期。跟踪中为
+	// no_change； 已停止 409 invalid_transition；否则版本不一致 409 conflict。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/resume
+	ResumeTracking(ctx context.Context, request *VersionRequest, params ResumeTrackingParams) (*TrackingCommandResult, error)
 	// ReviseOutcome invokes reviseOutcome operation.
 	//
 	// 需要推进的
@@ -146,6 +220,14 @@ type Invoker interface {
 	//
 	// POST /v1/pursuit/pursuits/{pursuitID}/outcomes
 	ReviseOutcome(ctx context.Context, request *ReviseOutcomeRequest, params ReviseOutcomeParams) (*CommandResult, error)
+	// StopTracking invokes stopTracking operation.
+	//
+	// 需要推进的 can_edit。跟踪中或已暂停 →
+	// 已停止：不再生成变化简报，已有各期保留。已停止为
+	// no_change；否则版本不一致 409 conflict。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/stop
+	StopTracking(ctx context.Context, request *VersionRequest, params StopTrackingParams) (*TrackingCommandResult, error)
 	// UpdateTask invokes updateTask operation.
 	//
 	// 需要推进的
@@ -155,6 +237,14 @@ type Invoker interface {
 	//
 	// POST /v1/pursuit/tasks/{taskID}/update
 	UpdateTask(ctx context.Context, request *UpdateTaskRequest, params UpdateTaskParams) (*CommandResult, error)
+	// UpdateTrackingMembers invokes updateTrackingMembers operation.
+	//
+	// 需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为
+	// no_change；已停止 409 invalid_transition；否则版本不一致 409
+	// conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/members
+	UpdateTrackingMembers(ctx context.Context, request *TrackingMembersRequest, params UpdateTrackingMembersParams) (*TrackingCommandResult, error)
 	// VoidPursuit invokes voidPursuit operation.
 	//
 	// 只有创建者、创建后 10
@@ -809,6 +899,239 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest,
 	return result, nil
 }
 
+// CreateTracking invokes createTracking operation.
+//
+// 需要目标上的
+// can_assign（决策者或参与该目标的业务开拓者）。为一组组织（企业清单之外手选的组织标识）创建持续型跟进：名称、对象集合、
+// 周期（缺省每周一
+// 08:00，Asia/Shanghai）与负责人（缺省调用者本人；须为租户有效成员且能查看该目标的信号，否则
+// 422 assignee_no_access，
+// 不自动授予权限）。创建即进入跟踪中，第一期从创建时起到下一个周期时点。负责人经授权同步获得参与关系（与交易型跟进相同）。
+// 结果固定在操作标识上（created）。.
+//
+// POST /v1/pursuit/tracking
+func (c *Client) CreateTracking(ctx context.Context, request *CreateTrackingRequest, params CreateTrackingParams) (*TrackingCommandResult, error) {
+	res, err := c.sendCreateTracking(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendCreateTracking(ctx context.Context, request *CreateTrackingRequest, params CreateTrackingParams) (res *TrackingCommandResult, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("createTracking"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CreateTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/pursuit/tracking"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateTrackingRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCreateTrackingResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetCreateDefaults invokes getCreateDefaults operation.
+//
+// 需要目标上的 can_assign（无权 403 forbidden，目标不可见 404
+// objective_not_found）。给出 Web 创建面板的默认负责人（PRD 第6段 F1 第2条、
+// 第13节第5项）：带 signal_id
+// 时取该信号上由目标的分派规则给出的候选负责人，候选此刻仍是租户有效成员且能查看该目标的信号（以候选本人
+// 判断）时默认候选；没有候选、候选无访问或分派规则不可用时默认调用者本人，candidate_state
+// 说明原因。只是默认值：createPursuit 不带 owner
+// 时仍以调用者本人为负责人，选用候选须在请求中写明
+// owner（写入前照常检查被分派人）。候选不因被建议而获得访问；只有候选有效时
+// 才返回其标识。信号不可见、他租户或不属于该目标为 404
+// signal_not_found；判断不可用为 503（不当作无访问）。.
+//
+// GET /v1/pursuit/create-defaults
+func (c *Client) GetCreateDefaults(ctx context.Context, params GetCreateDefaultsParams) (*CreateDefaults, error) {
+	res, err := c.sendGetCreateDefaults(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetCreateDefaults(ctx context.Context, params GetCreateDefaultsParams) (res *CreateDefaults, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getCreateDefaults"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/pursuit/create-defaults"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetCreateDefaultsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/pursuit/create-defaults"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "objective_id" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "objective_id",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if unwrapped := string(params.ObjectiveID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "signal_id" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "signal_id",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.SignalID.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetCreateDefaultsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetPursuit invokes getPursuit operation.
 //
 // 需要推进的 can_view（见
@@ -1012,6 +1335,231 @@ func (c *Client) sendGetTask(ctx context.Context, params GetTaskParams) (res *Ta
 
 	stage = "DecodeResponse"
 	result, err := decodeGetTaskResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetTracking invokes getTracking operation.
+//
+// 需要推进的
+// can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为
+// 404 pursuit_not_found。.
+//
+// GET /v1/pursuit/tracking/{pursuitID}
+func (c *Client) GetTracking(ctx context.Context, params GetTrackingParams) (*Tracking, error) {
+	res, err := c.sendGetTracking(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetTracking(ctx context.Context, params GetTrackingParams) (res *Tracking, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getTracking"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking/{pursuitID}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/v1/pursuit/tracking/"
+	{
+		// Encode "pursuitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "pursuitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.PursuitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetTrackingResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetTrackingPeriod invokes getTrackingPeriod operation.
+//
+// 需要推进的
+// can_view（读取时按当前权限判断，不以该期结束时的负责人为准）。返回该期的实际期间、当期成员快照与对比基准；对象集合之后的
+// 修改不影响已结束的期。不存在的期 404 period_not_found。.
+//
+// GET /v1/pursuit/tracking/{pursuitID}/periods/{seq}
+func (c *Client) GetTrackingPeriod(ctx context.Context, params GetTrackingPeriodParams) (*TrackingPeriod, error) {
+	res, err := c.sendGetTrackingPeriod(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetTrackingPeriod(ctx context.Context, params GetTrackingPeriodParams) (res *TrackingPeriod, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getTrackingPeriod"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking/{pursuitID}/periods/{seq}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetTrackingPeriodOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/v1/pursuit/tracking/"
+	{
+		// Encode "pursuitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "pursuitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.PursuitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/periods/"
+	{
+		// Encode "seq" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "seq",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.Seq))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetTrackingPeriodResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -1322,6 +1870,414 @@ func (c *Client) sendListPursuits(ctx context.Context, params ListPursuitsParams
 	return result, nil
 }
 
+// ListTracking invokes listTracking operation.
+//
+// 只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多
+// limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的
+// objective_id，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。.
+//
+// GET /v1/pursuit/tracking
+func (c *Client) ListTracking(ctx context.Context, params ListTrackingParams) (*TrackingList, error) {
+	res, err := c.sendListTracking(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListTracking(ctx context.Context, params ListTrackingParams) (res *TrackingList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listTracking"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/v1/pursuit/tracking"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "objective_id" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "objective_id",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.ObjectiveID.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListTrackingResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListTrackingPeriods invokes listTrackingPeriods operation.
+//
+// 需要推进的 can_view；按期序号倒序，每页至多 limit 条（默认且至多
+// 50），next_cursor 为签名游标（绑定租户、调用者与该跟踪）。.
+//
+// GET /v1/pursuit/tracking/{pursuitID}/periods
+func (c *Client) ListTrackingPeriods(ctx context.Context, params ListTrackingPeriodsParams) (*TrackingPeriodList, error) {
+	res, err := c.sendListTrackingPeriods(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListTrackingPeriods(ctx context.Context, params ListTrackingPeriodsParams) (res *TrackingPeriodList, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listTrackingPeriods"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking/{pursuitID}/periods"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListTrackingPeriodsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/pursuit/tracking/"
+	{
+		// Encode "pursuitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "pursuitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.PursuitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/periods"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListTrackingPeriodsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// PauseTracking invokes pauseTracking operation.
+//
+// 需要推进的 can_edit（与跟进的写命令同一准入）。跟踪中 →
+// 已暂停：暂停期间不生成变化简报，进行中的一期不再结束（不补）。已暂停为
+// no_change；已停止 409 invalid_transition；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/pause
+func (c *Client) PauseTracking(ctx context.Context, request *VersionRequest, params PauseTrackingParams) (*TrackingCommandResult, error) {
+	res, err := c.sendPauseTracking(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendPauseTracking(ctx context.Context, request *VersionRequest, params PauseTrackingParams) (res *TrackingCommandResult, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("pauseTracking"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking/{pursuitID}/pause"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, PauseTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/pursuit/tracking/"
+	{
+		// Encode "pursuitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "pursuitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.PursuitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/pause"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodePauseTrackingRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodePauseTrackingResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ReopenTask invokes reopenTask operation.
 //
 // 撤销本人的一次完成（target_operation_id）：在撤销时限内、任务版本仍为完成后的版本时恢复为待办、恢复完成前的截止与未发送的提醒；
@@ -1436,6 +2392,127 @@ func (c *Client) sendReopenTask(ctx context.Context, request *ReopenTaskRequest,
 
 	stage = "DecodeResponse"
 	result, err := decodeReopenTaskResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ResumeTracking invokes resumeTracking operation.
+//
+// 需要推进的 can_edit。已暂停 →
+// 跟踪中：下一期从恢复时起到恢复后的下一个周期时点，不补暂停期间的各期。跟踪中为
+// no_change； 已停止 409 invalid_transition；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/resume
+func (c *Client) ResumeTracking(ctx context.Context, request *VersionRequest, params ResumeTrackingParams) (*TrackingCommandResult, error) {
+	res, err := c.sendResumeTracking(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendResumeTracking(ctx context.Context, request *VersionRequest, params ResumeTrackingParams) (res *TrackingCommandResult, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("resumeTracking"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking/{pursuitID}/resume"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ResumeTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/pursuit/tracking/"
+	{
+		// Encode "pursuitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "pursuitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.PursuitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/resume"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeResumeTrackingRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeResumeTrackingResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -1565,6 +2642,127 @@ func (c *Client) sendReviseOutcome(ctx context.Context, request *ReviseOutcomeRe
 	return result, nil
 }
 
+// StopTracking invokes stopTracking operation.
+//
+// 需要推进的 can_edit。跟踪中或已暂停 →
+// 已停止：不再生成变化简报，已有各期保留。已停止为
+// no_change；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/stop
+func (c *Client) StopTracking(ctx context.Context, request *VersionRequest, params StopTrackingParams) (*TrackingCommandResult, error) {
+	res, err := c.sendStopTracking(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendStopTracking(ctx context.Context, request *VersionRequest, params StopTrackingParams) (res *TrackingCommandResult, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("stopTracking"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking/{pursuitID}/stop"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, StopTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/pursuit/tracking/"
+	{
+		// Encode "pursuitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "pursuitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.PursuitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/stop"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeStopTrackingRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeStopTrackingResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // UpdateTask invokes updateTask operation.
 //
 // 需要推进的
@@ -1680,6 +2878,127 @@ func (c *Client) sendUpdateTask(ctx context.Context, request *UpdateTaskRequest,
 
 	stage = "DecodeResponse"
 	result, err := decodeUpdateTaskResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdateTrackingMembers invokes updateTrackingMembers operation.
+//
+// 需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为
+// no_change；已停止 409 invalid_transition；否则版本不一致 409
+// conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/members
+func (c *Client) UpdateTrackingMembers(ctx context.Context, request *TrackingMembersRequest, params UpdateTrackingMembersParams) (*TrackingCommandResult, error) {
+	res, err := c.sendUpdateTrackingMembers(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateTrackingMembers(ctx context.Context, request *TrackingMembersRequest, params UpdateTrackingMembersParams) (res *TrackingCommandResult, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updateTrackingMembers"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/pursuit/tracking/{pursuitID}/members"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UpdateTrackingMembersOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/pursuit/tracking/"
+	{
+		// Encode "pursuitID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "pursuitID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.PursuitID); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/members"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateTrackingMembersRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IdempotencyKey))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeUpdateTrackingMembersResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

@@ -23,6 +23,24 @@ type Handler interface {
 	//
 	// GET /v1/learning/objectives/{objectiveID}/feedback-summary
 	GetFeedbackSummary(ctx context.Context, params GetFeedbackSummaryParams) (*FeedbackSummary, error)
+	// GetOutcomeSummary implements getOutcomeSummary operation.
+	//
+	// 需要能查看目标（customer-context 的当前口径；不能查看与不存在同为 404
+	// objective_not_found）且在目标所在单元上能查看全部跟进 （identity 的
+	// org_unit#can_view_unit_pursuits；只凭参与关系查看个别跟进的成员 403
+	// forbidden，不按聚合泄露其看不到的跟进）； 授权不可用为
+	// 503。口径（learning.md 第8.1节）：只计记录时间不晚于
+	// as_of（缺省为当前时间）的结果记录，每个跟进取此时记录链上的
+	// 当前记录（被同样不晚于 as_of 的修订取代的不计，计入
+	// superseded）；有获知时间且获知时间在 [from, as_of) 内的计入时点评估
+	// （point_in_time），获知时间晚于 as_of 的不计（计入
+	// known_after_as_of）；没有获知时间的只计入事后统计（post_hoc，按记录时间在
+	// [from, as_of)
+	// 内）。金额按（类型、币种、取值性质）分别合计，不同类型、币种与性质不相加、不换算；贡献关系分别计数，不计算
+	// “妙洽带来的金额”。只用于本租户的评估。.
+	//
+	// GET /v1/learning/objectives/{objectiveID}/outcome-summary
+	GetOutcomeSummary(ctx context.Context, params GetOutcomeSummaryParams) (*OutcomeSummary, error)
 	// GetSimulation implements getSimulation operation.
 	//
 	// 需要目标的 can_view（同样按 customer-context 的当前口径）；授权或

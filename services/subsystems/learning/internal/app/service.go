@@ -37,6 +37,7 @@ const SimulationCompleted = "learning.simulation.completed.v1"
 type Service struct {
 	DB       *db.DB
 	Access   customercontext.ObjectiveAccess
+	Scope    customercontext.ObjectiveScope // 目标所在单元（结果汇总的单元授权，C-10）
 	Authz    authz.Decider
 	Coverage commerce.Coverage
 	Context  customercontext.ContextReader

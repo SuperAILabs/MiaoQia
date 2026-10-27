@@ -78,6 +78,8 @@ type Service struct {
 	Outcomes  map[string]*OutcomeDef
 	Now       func() time.Time
 	Log       *slog.Logger
+	// Candidates 是分派规则候选负责人的出站端口（C-10；缺省未接入）。
+	Candidates api.CandidateOwners
 }
 
 var (
@@ -309,8 +311,10 @@ func fingerprint(parts ...any) string {
 
 // 签名用途（域分隔）。
 const (
-	purposeListCursor  = "pursuit/list-cursor/v1"
-	purposeTasksCursor = "pursuit/my-tasks-cursor/v1"
+	purposeListCursor     = "pursuit/list-cursor/v1"
+	purposeTasksCursor    = "pursuit/my-tasks-cursor/v1"
+	purposeTrackingCursor = "pursuit/tracking-cursor/v1"
+	purposePeriodsCursor  = "pursuit/tracking-periods-cursor/v1"
 )
 
 func (s *Service) mac(purpose string, payload []byte) []byte {

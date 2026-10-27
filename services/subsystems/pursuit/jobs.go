@@ -40,6 +40,8 @@ func jobs(now func() time.Time) func(env *runtime.Env) ([]scheduler.Job, error) 
 				Run: perTenant(func(ctx context.Context) (int, error) { return reminders.RunDue(ctx, now(), jobBatch) })},
 			{Name: "pursuit.retry-authorization-sync", Every: time.Minute,
 				Run: perTenant(func(ctx context.Context) (int, error) { return reminders.RetrySync(ctx, jobBatch) })},
+			{Name: "pursuit.run-tracking", Every: time.Minute,
+				Run: perTenant(func(ctx context.Context) (int, error) { return reminders.RunTracking(ctx, now(), jobBatch) })},
 		}, nil
 	}
 }

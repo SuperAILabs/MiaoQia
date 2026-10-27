@@ -18,16 +18,19 @@ import (
 )
 
 var regexMap = map[string]ogenregex.Regexp{
-	"^INF-[A-Z0-9]{2,16}$":         ogenregex.MustCompile("^INF-[A-Z0-9]{2,16}$"),
-	"^TPL-[A-Z0-9-]{1,64}$":        ogenregex.MustCompile("^TPL-[A-Z0-9-]{1,64}$"),
-	"^[0-9]+\\.[0-9]+\\.[0-9]+$":   ogenregex.MustCompile("^[0-9]+\\.[0-9]+\\.[0-9]+$"),
-	"^[A-Z][A-Z0-9-]{0,63}$":       ogenregex.MustCompile("^[A-Z][A-Z0-9-]{0,63}$"),
-	"^[A-Z][A-Z0-9_]{1,63}$":       ogenregex.MustCompile("^[A-Z][A-Z0-9_]{1,63}$"),
-	"^[RXWBP]-[A-Z0-9-]+$":         ogenregex.MustCompile("^[RXWBP]-[A-Z0-9-]+$"),
-	"^[a-z]+\\.[a-z_]+$":           ogenregex.MustCompile("^[a-z]+\\.[a-z_]+$"),
-	"^[a-z][a-z0-9_]{0,63}$":       ogenregex.MustCompile("^[a-z][a-z0-9_]{0,63}$"),
-	"^obj_[0-9A-HJKMNP-TV-Z]{26}$": ogenregex.MustCompile("^obj_[0-9A-HJKMNP-TV-Z]{26}$"),
-	"^sim_[0-9A-HJKMNP-TV-Z]{26}$": ogenregex.MustCompile("^sim_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^-?[0-9]{1,24}(\\.[0-9]{1,4})?$": ogenregex.MustCompile("^-?[0-9]{1,24}(\\.[0-9]{1,4})?$"),
+	"^INF-[A-Z0-9]{2,16}$":            ogenregex.MustCompile("^INF-[A-Z0-9]{2,16}$"),
+	"^TPL-[A-Z0-9-]{1,64}$":           ogenregex.MustCompile("^TPL-[A-Z0-9-]{1,64}$"),
+	"^[0-9]+\\.[0-9]+\\.[0-9]+$":      ogenregex.MustCompile("^[0-9]+\\.[0-9]+\\.[0-9]+$"),
+	"^[A-Z][A-Z0-9-]{0,63}$":          ogenregex.MustCompile("^[A-Z][A-Z0-9-]{0,63}$"),
+	"^[A-Z][A-Z0-9_]{1,63}$":          ogenregex.MustCompile("^[A-Z][A-Z0-9_]{1,63}$"),
+	"^[A-Z]{3}$":                      ogenregex.MustCompile("^[A-Z]{3}$"),
+	"^[RXWBP]-[A-Z0-9-]+$":            ogenregex.MustCompile("^[RXWBP]-[A-Z0-9-]+$"),
+	"^[a-z]+\\.[a-z_]+$":              ogenregex.MustCompile("^[a-z]+\\.[a-z_]+$"),
+	"^[a-z][a-z0-9_]{0,63}$":          ogenregex.MustCompile("^[a-z][a-z0-9_]{0,63}$"),
+	"^[a-z][a-z0-9_]{1,63}$":          ogenregex.MustCompile("^[a-z][a-z0-9_]{1,63}$"),
+	"^obj_[0-9A-HJKMNP-TV-Z]{26}$":    ogenregex.MustCompile("^obj_[0-9A-HJKMNP-TV-Z]{26}$"),
+	"^sim_[0-9A-HJKMNP-TV-Z]{26}$":    ogenregex.MustCompile("^sim_[0-9A-HJKMNP-TV-Z]{26}$"),
 }
 var (
 	// Allocate option closure once.
