@@ -133,7 +133,7 @@ A02 贯通验收 L1-1（[验收线第8节](../../05-delivery/09-a02-end-to-end-a
 
 L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolver(database, store, display=...)`，以及互斥的 keyword-only `authorize(groups,purpose)` 可信分组模式（[闭包与绑定](source-rights-runtime.md#固定版本可信来源闭包)）。原回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
 
-本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。它尚未装配到 data-api 或 gateway，生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待后续接入。未实现：`GetDocument` 等远程查询，结构化记录集/记录证据、生产增强器、质量规则、语料快照与重放工作流，S3 对象存储实现（R-03）。
+本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。data-api 已有内部 listener、TLS/身份 admission 与五路由入口；当前 runtime 装配仍对证据及查询所需的 source-group collector fail-closed，因此 listener 尚不能提供生产事实/证据结果。生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待后续接入。未实现：`GetDocument` 等远程查询，结构化记录集/记录证据、生产增强器、质量规则、语料快照与重放工作流，S3 对象存储实现（R-03）。
 
 `evidence.enrichments(...)` 本地装配提供不可变参考数据登记、封闭recipe运行登记与 `api.Enrichments.get(run_key)`。结果、派生证据及参考内容保存在既有对象存储的 `enrichment/<sha256>.json`，PG存固定输入引用、对象键/哈希、完整分组来源闭包及运行元数据；`evd_reference_data`、`evd_derivations`、`evd_enrichments` 不可更新或删除。对象先写，登记与现有 `evidence.enrichment.completed.v1` 发件箱同事务；回滚可留下未引用对象，重跑按指纹复用证据ID和结果。当前事件唯一键为快照、真实解析修订及recipe，当前recipe明确拒绝多事实修订，不默选序号。
 

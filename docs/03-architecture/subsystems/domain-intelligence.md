@@ -145,4 +145,4 @@ uv run --locked --all-packages mq-notice-enrich --enable-test-recipe --recipe te
 
 `bid_result_units` 在同一只读事务选定Notice版本、其confirmed link、reason.project_version对应固定pp及deps，逐项检查当前rights与known_at cutoff；不读取实时EVD或当前pp来污染历史。真实item/lot语义保持原口径；仅当整个award公告恰一个有效contract_award且没有其它候选/框架/分包/冲突、不可变receipt的重验scope证明可用时，将同版subject_categories回退为categories并带 `categories_scope=notice_subject`。求值单位引用实际固定pp版本，证据从固定Notice的prov追踪，confidence取已发布品类最小值。pp/成员权限拒绝、pending关联、scope未知、多结果或历史无topic均不产生主题品类。这表示采购相关性，不表示供应商实际供货。
 
-未实现：本地绑定的 data-api 远程传输与认证装配、生产来源权利策略、`GetCoverage` 与服务状态，其他来源的自动项目聚合、标包关联、更正与完整生命周期事件、统计、业务有效区间、撤回与恢复。广泛来源的项目链/品类、INF-ORG 夹具及组织归属仍属 L1-2 后续工作。A02 保持 L0；冻结语料不构成真实来源启用。
+data-api 已装配最小内部 listener、TLS/身份 admission 与五路由入口；runtime 的 source-group collectors（包括 fact-history、query-facts 及其它读取所需 collector）仍 fail-closed，故查询/历史结果尚不可达。生产来源权利策略、`GetCoverage` 与服务状态，其他来源的自动项目聚合、标包关联、更正与完整生命周期事件、统计、业务有效区间、撤回与恢复仍未实现。广泛来源的项目链/品类、INF-ORG 夹具及组织归属仍属 L1-2 后续工作。A02 保持 L0；冻结语料不构成真实来源启用。
