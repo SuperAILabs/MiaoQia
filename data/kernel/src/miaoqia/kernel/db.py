@@ -43,7 +43,7 @@ class Database:
                 raise TimeoutError("request deadline expired")
             # SQLAlchemy's QueuePool timeout is configured at engine creation;
             # fail before checkout when the request cannot afford that wait.
-            if remaining < min(self.pool_timeout, 0.1):
+            if remaining < self.pool_timeout:
                 raise TimeoutError("request deadline shorter than pool checkout bound")
         with self.engine.begin() as conn:
             if deadline is not None:

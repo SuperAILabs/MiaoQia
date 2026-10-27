@@ -33,20 +33,20 @@ class Queries:
             raise PermissionError("未装配来源权利判定或缺少用途")
         return context
 
-    def requirements(self, fact_id, version):
+    def requirements(self, fact_id, version, *, deadline=None):
         """Return the owner-verified immutable closure for one fixed version."""
         from . import requirements
         from miaoqia.evidence.api import Unbound
         if type(version) is not int or version < 1:
             raise ValueError("fixed positive version required")
-        with self.database.tx() as conn:
+        with self.database.tx(deadline=deadline) as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
             fact = fact_version(conn, fact_id, version)
             if fact is None:
                 raise Unbound("fact unavailable")
             return requirements.read(conn, fact).with_dependency("fact", fact["id"]+":"+str(fact["version"]), fingerprint(fact))
 
-    def _allowed(self, conn, fact):
+    def _allowed(self, conn, fact, *, deadline=None):
         context = self._require_access()
         if self.authorize is not None:
             from miaoqia.evidence.api import Unbound
@@ -54,7 +54,7 @@ class Queries:
                 return False
             try:
                 from . import requirements
-                groups = self.provenance.resolve(requirements.read(conn, fact))
+                groups = self.provenance.resolve(requirements.read(conn, fact), deadline=deadline)
             except Unbound:
                 return False
             return self.authorize(groups, context.purpose) is True
@@ -65,7 +65,7 @@ class Queries:
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("limit 必须在 1–100 之间")
 
-    def _select_fact(self, conn, fact_id, basis, version):
+    def _select_fact(self, conn, fact_id, basis, version, *, deadline=None):
         if version is not None and (type(version) is not int or version < 1):
             raise ValueError("version 必须为正整数")
         if version is not None or basis.view == "current":
@@ -76,16 +76,16 @@ class Queries:
         if fact is not None and basis.view == "known_at":
             if datetime.fromisoformat(fact["recorded_at"].replace("Z", "+00:00")) > basis.recorded_cutoff:
                 return None
-        return fact if fact is not None and self._allowed(conn, fact) else None
+        return fact if fact is not None and self._allowed(conn, fact, deadline=deadline) else None
 
-    def get_fact(self, fact_id: str, basis: Basis, *, version: int | None = None) -> FactRead | None:
+    def get_fact(self, fact_id: str, basis: Basis, *, version: int | None = None, deadline=None) -> FactRead | None:
         self._require_access()
-        with self.database.tx() as conn:
+        with self.database.tx(deadline=deadline) as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
-            fact = self._select_fact(conn, fact_id, basis, version)
+            fact = self._select_fact(conn, fact_id, basis, version, deadline=deadline)
             return FactRead(basis, fact) if fact is not None else None
 
-    def _page(self, conn, statement, params, basis, limit, *, history=False):
+    def _page(self, conn, statement, params, basis, limit, *, history=False, deadline=None):
         permitted = []
         # 单条 SELECT 的一致快照；流式扫描先按权利过滤，再按可见结果分页，游标不暴露被过滤的对象标识。
         result = conn.execution_options(stream_results=True).execute(text(statement), params)
@@ -93,7 +93,7 @@ class Queries:
             while len(permitted) <= limit:
                 rows = result.fetchmany(100)
                 for row in rows:
-                    if self._allowed(conn, row[0]):
+                    if self._allowed(conn, row[0], deadline=deadline):
                         permitted.append(row)
                         if len(permitted) > limit:
                             break
@@ -106,23 +106,23 @@ class Queries:
         cursor = str(selected[-1][0]["version" if history else "id"]) if len(permitted) > limit else None
         return Page(basis, items, cursor)
 
-    def get_fact_history(self, fact_id: str, basis: Basis, *, after: int = 0, limit: int = 50) -> Page:
+    def get_fact_history(self, fact_id: str, basis: Basis, *, after: int = 0, limit: int = 50, deadline=None) -> Page:
         self._require_access()
         self._limit(limit)
         if type(after) is not int or after < 0:
             raise ValueError("历史游标必须为非负版本号")
-        with self.database.tx() as conn:
+        with self.database.tx(deadline=deadline) as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
             return self._page(conn, """SELECT content, changed_fields FROM dom_fact_versions
                                       WHERE fact_id = :f AND version > :a
                                         AND (CAST(:r AS timestamptz) IS NULL OR recorded_at <= :r)
                                       ORDER BY version""",
-                              {"f": fact_id, "a": after, "r": basis.recorded_cutoff}, basis, limit, history=True)
+                              {"f": fact_id, "a": after, "r": basis.recorded_cutoff}, basis, limit, history=True, deadline=deadline)
 
-    def query_facts(self, info_domain: str, object_type: str, basis: Basis, *, after: str = "", limit: int = 50) -> Page:
+    def query_facts(self, info_domain: str, object_type: str, basis: Basis, *, after: str = "", limit: int = 50, deadline=None) -> Page:
         self._require_access()
         self._limit(limit)
-        with self.database.tx() as conn:
+        with self.database.tx(deadline=deadline) as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
             return self._page(conn, """SELECT selected.content FROM dom_facts f
                                       JOIN LATERAL (
@@ -132,7 +132,7 @@ class Queries:
                                       ) selected ON true
                                       WHERE f.info_domain = :d AND f.object_type = :t AND f.id > :a
                                       ORDER BY f.id""",
-                              {"d": info_domain, "t": object_type, "a": after, "r": basis.recorded_cutoff}, basis, limit)
+                              {"d": info_domain, "t": object_type, "a": after, "r": basis.recorded_cutoff}, basis, limit, deadline=deadline)
 
     def _topic_context(self, conn, fact, basis):
         if not fact.get("subject_categories"):
@@ -176,10 +176,42 @@ class Queries:
             return {"project": project, "categories": output["value"]}
         return None
 
-    def bid_result_units(self, fact_id: str, basis: Basis, *, version: int | None = None) -> Page:
-        self._require_access()
-        with self.database.tx() as conn:
+    def collect_source_groups(self, operation, body, deadline=None):
+        """Collect the persisted source-group union before content admission."""
+        from . import requirements
+        from miaoqia.evidence.api.provenance import Closure
+        basis = body.get("basis")
+        if isinstance(basis, dict):
+            basis = Basis(basis["view"], basis.get("recorded_cutoff"))
+        facts = []
+        with self.database.tx(deadline=deadline) as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
-            fact = self._select_fact(conn, fact_id, basis, version)
+            if operation in ("data.get_fact", "data.bid_result_units"):
+                # Collector runs before rights admission; read persisted closure
+                # directly and never apply the response authorization callback.
+                version = body.get("version")
+                if version is None:
+                    fact = fact_version(conn, body["fact_id"], None)
+                else:
+                    fact = fact_version(conn, body["fact_id"], version)
+                if fact is not None and basis.view == "known_at" and basis.recorded_cutoff is not None:
+                    if datetime.fromisoformat(fact["recorded_at"].replace("Z", "+00:00")) > basis.recorded_cutoff:
+                        fact = None
+                if fact is not None: facts.append(fact)
+            elif operation == "data.fact_history":
+                rows = conn.execute(text("SELECT content FROM dom_fact_versions WHERE fact_id=:f AND version>:a AND (CAST(:r AS timestamptz) IS NULL OR recorded_at<=:r) ORDER BY version"), {"f": body["fact_id"], "a": body.get("after", 0), "r": basis.recorded_cutoff}).all()
+                facts = [r[0] for r in rows]
+            elif operation == "data.query_facts":
+                rows = conn.execute(text("""SELECT selected.content FROM dom_facts f JOIN LATERAL (SELECT content FROM dom_fact_versions v WHERE v.fact_id=f.id AND (CAST(:r AS timestamptz) IS NULL OR v.recorded_at<=:r) ORDER BY v.version DESC LIMIT 1) selected ON true WHERE f.info_domain=:d AND f.object_type=:t AND f.id>:a ORDER BY f.id"""), {"d": body["info_domain"], "t": body["object_type"], "a": body.get("after", ""), "r": basis.recorded_cutoff}).all()
+                facts = [r[0] for r in rows]
+            closures = [requirements.read(conn, f) for f in facts]
+        merged = Closure.merge(*closures) if closures else None
+        return [] if merged is None else [x.dto() for x in merged.sources]
+
+    def bid_result_units(self, fact_id: str, basis: Basis, *, version: int | None = None, deadline=None) -> Page:
+        self._require_access()
+        with self.database.tx(deadline=deadline) as conn:
+            conn.execute(text("SET TRANSACTION READ ONLY"))
+            fact = self._select_fact(conn, fact_id, basis, version, deadline=deadline)
             context = self._topic_context(conn, fact, basis) if fact else None
             return Page(basis, tuple(bid_result_units(fact, context)) if fact is not None else ())

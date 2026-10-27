@@ -37,6 +37,13 @@ class ReadAuthorization:
         self.identity.resolve(deadline=deadline)
         self.rights.status(deadline=deadline)
         request = {"operation": operation, "inputs": list(inputs)}
+        # Empty result sets still perform status admission, but there is no
+        # source-rights decision to resolve or receipt to confirm.
+        if not inputs:
+            def confirm_empty(remaining_deadline):
+                self.identity.resolve(deadline=remaining_deadline)
+                self.rights.status(deadline=remaining_deadline)
+            return confirm_empty
         decision = self.rights.resolve(request, deadline=deadline)
         if not decision.get("allowed") or "receipt" not in decision:
             raise PermissionError("source groups denied")
@@ -129,7 +136,7 @@ def routes(facts, evidence, *, admit=None, before_send=None, collectors=None, co
         version = body["version"]
         if version is not None and (type(version) is not int or version < 1):
             raise ValueError("invalid version")
-        value = facts.get_fact(fact_id, _basis(body["basis"]), version=version)
+        value = facts.get_fact(fact_id, _basis(body["basis"]), version=version, deadline=deadline)
         return wrap(None if value is None else {"basis": {"view": value.basis.view, "recorded_cutoff": value.basis.recorded_cutoff.isoformat() if value.basis.recorded_cutoff else None}, "fact": value.fact}, "data.get_fact", final)
 
     def history(body, deadline):
@@ -138,7 +145,7 @@ def routes(facts, evidence, *, admit=None, before_send=None, collectors=None, co
         after, limit = body["after"], body["limit"]
         if type(after) is not int or after < 0 or type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("invalid page")
-        value = facts.get_fact_history(_fact_id(body["fact_id"]), _basis(body["basis"]), after=after, limit=limit)
+        value = facts.get_fact_history(_fact_id(body["fact_id"]), _basis(body["basis"]), after=after, limit=limit, deadline=deadline)
         return wrap(_page(value), "data.fact_history", final)
 
     def query(body, deadline):
@@ -148,7 +155,7 @@ def routes(facts, evidence, *, admit=None, before_send=None, collectors=None, co
             raise ValueError("invalid query")
         if type(body["limit"]) is not int or not 1 <= body["limit"] <= 100:
             raise ValueError("invalid page")
-        return wrap(_page(facts.query_facts(body["info_domain"], body["object_type"], _basis(body["basis"]), after=body["after"], limit=body["limit"])), "data.query_facts", final)
+        return wrap(_page(facts.query_facts(body["info_domain"], body["object_type"], _basis(body["basis"]), after=body["after"], limit=body["limit"], deadline=deadline)), "data.query_facts", final)
 
     def units(body, deadline):
         body = closed(body, {"fact_id", "basis", "version"})
@@ -156,7 +163,7 @@ def routes(facts, evidence, *, admit=None, before_send=None, collectors=None, co
         version = body["version"]
         if version is not None and (type(version) is not int or version < 1):
             raise ValueError("invalid version")
-        value = facts.bid_result_units(_fact_id(body["fact_id"]), _basis(body["basis"]), version=version)
+        value = facts.bid_result_units(_fact_id(body["fact_id"]), _basis(body["basis"]), version=version, deadline=deadline)
         return wrap(_page(value), "data.bid_result_units", final)
 
     def resolve(body, deadline):

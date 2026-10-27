@@ -76,12 +76,20 @@ def serve():
         facts = queries(dom, authorize=allowed, provenance=provenance)
         resolver = evidence.resolver(evd, FilesystemObjectStore(root), authorize=allowed)
         auth = ReadAuthorization(rights, identity)
+        def fact_groups(operation):
+            return lambda body, deadline: facts.collect_source_groups(operation, body, deadline)
+        def evidence_groups(body, deadline):
+            try:
+                closure = provenance.evidence(body["evidence_ref"], deadline=deadline)
+            except Exception:
+                return []
+            return [source.dto() for source in closure.sources]
         collector = {
-            "data.get_fact": lambda b, d: _groups(facts, provenance, b, d),
-            "data.fact_history": _query_groups_unavailable,
-            "data.query_facts": _query_groups_unavailable,
-            "data.bid_result_units": lambda b, d: _groups(facts, provenance, b, d),
-            "data.resolve_evidence": lambda b, d: _evidence_groups(provenance, b, d),
+            "data.get_fact": fact_groups("data.get_fact"),
+            "data.fact_history": fact_groups("data.fact_history"),
+            "data.query_facts": fact_groups("data.query_facts"),
+            "data.bid_result_units": fact_groups("data.bid_result_units"),
+            "data.resolve_evidence": evidence_groups,
         }
         delegations = _delegations(os.environ.get("MIAOQIA_DATA_DELEGATIONS", ""))
         host, port = listen.rsplit(":", 1)
