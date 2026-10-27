@@ -42,6 +42,13 @@ def _evidence_groups(provenance, body, deadline):
     return [source.dto() for source in provenance.resolve(provenance.evidence(body["evidence_ref"]))]
 
 
+def _query_groups_unavailable(_body, _deadline):
+    # A query must provide its persisted source-group union before any fact
+    # lookup.  Failing closed is safer than treating an unknown union as an
+    # empty authorization set.
+    raise ValueError("query source-group collector unavailable")
+
+
 def serve():
     """Run the data-api listener; missing remote dependencies fail closed."""
     from miaoqia import evidence
@@ -71,8 +78,8 @@ def serve():
         auth = ReadAuthorization(rights, identity)
         collector = {
             "data.get_fact": lambda b, d: _groups(facts, provenance, b, d),
-            "data.fact_history": lambda b, d: [],
-            "data.query_facts": lambda b, d: [],
+            "data.fact_history": _query_groups_unavailable,
+            "data.query_facts": _query_groups_unavailable,
             "data.bid_result_units": lambda b, d: _groups(facts, provenance, b, d),
             "data.resolve_evidence": lambda b, d: _evidence_groups(provenance, b, d),
         }
