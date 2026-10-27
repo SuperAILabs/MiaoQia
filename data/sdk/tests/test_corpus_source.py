@@ -104,6 +104,16 @@ def test_known_legacy_judgment_kind_keeps_existing_http_corpus():
     assert result.artifact_origin == 'public_http' and result.source_key == meta['source_url']
 
 
+def test_crcc18_provided_notice_records_platform_entrypoint_and_digest():
+    sample = CORPUS.parents[1] / 'procurement/corpus/crcc18-g228-concrete-202610'
+    meta = yaml.safe_load((sample / 'meta.yaml').read_text())
+    raw = (sample / 'raw.html').read_bytes()
+    result = corpus_source(sample, meta, raw, for_replay=True)
+    assert result.source_url == 'https://www.crccep.cn'
+    assert meta['rights_tag'] == 'public-tender'
+    assert meta.get('source_id') == 'crcc18-g228-concrete-202610'
+
+
 def test_generic_envelope_does_not_encode_organization_namespace_or_tags(tmp_path):
     from miaoqia.sdk.corpus_source import SYNTHETIC_MARKER
     sample = tmp_path / 'toy-sample'; sample.mkdir()
