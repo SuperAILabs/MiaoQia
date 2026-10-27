@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1083,6 +1084,140 @@ func TestInstantNotifications(t *testing.T) {
 		}
 		if audits(t, "channels.briefing_preferences.updated", dm) < 3 {
 			t.Fatal("偏好变更写审计")
+		}
+	})
+
+	// 简报中各信号条目（只取完整展示的）
+	briefingItems := func(t *testing.T, subject, id string) map[string]map[string]any {
+		t.Helper()
+		out := map[string]map[string]any{}
+		b := obj(t, expect(t, subject, false, "GET", "/v1/channels/briefings/"+id, "", 200))
+		for _, s := range b["sections"].([]any) {
+			for _, it := range s.(map[string]any)["items"].([]any) {
+				m := it.(map[string]any)
+				if m["kind"] == "signal" {
+					out[m["signal_id"].(string)] = m
+				}
+			}
+		}
+		return out
+	}
+	// 某信号推送给收件人的信号卡片张数（即时卡片与简报卡片同一模板）
+	cardCount := func(t *testing.T, subject, signal string, from int) int {
+		t.Helper()
+		n := 0
+		for _, m := range wc.Messages(corp1, account[subject])[from:] {
+			if m.Kind != "signal_card" || m.Card == nil {
+				continue
+			}
+			if _, _, target := linkTarget(t, button(*m.Card, "view").URL); target == signal {
+				n++
+			}
+		}
+		return n
+	}
+
+	run("C-08 越权与反例测试 简报先于展开：收件人 '*' 的行尚未展开时组装的简报照常推送该信号，之后展开出的通知在发送闸门处发现本人已有含该信号的简报而并入（merged_into_briefing），不发即时卡片；先展开后组装的照常并入；组装前已过发送闸门（发送失败待重试）的标“已通知”、简报不推送其卡片", func(t *testing.T) {
+		activate(t, map[string]any{"audience": []string{"objective_owner"}, "mode": "immediate"}, "恢复跟进候选即时通知")
+		compose(t, dm, at(23, 7, 31)) // 前移简报窗口，下一期只含本用例的信号
+		// 组装前已过发送闸门：第一次发送失败，待重试
+		wc.SetSendFailure(true)
+		attempted := newSignal(t, at(24, 7, 5), pursueBid("夹具闸门已过"))
+		deliverN(t, at(24, 7, 6), 2)
+		if st, _ := noticeOf(t, attempted, dm); st != "retrying" {
+			t.Fatal(st)
+		}
+		// 先展开后组装：组装时已有本人的待发送行
+		expandedFirst := newSignal(t, at(24, 7, 15), pursueBid("夹具先展开"))
+		clock.set(at(24, 7, 16), 0)
+		r := &scheduler.Runner{}
+		if o := r.Once(ctx, scheduler.Bound{Job: noticeJob, DB: chns.env.DB}); o != scheduler.Ran { // 只展开（失败待重试的再次失败）
+			t.Fatal(o)
+		}
+		pump(t)
+		wc.SetSendFailure(false)
+		if st, _ := noticeOf(t, expandedFirst, dm); st != "pending" {
+			t.Fatal(st)
+		}
+		if st, _ := noticeOf(t, attempted, dm); st != "retrying" {
+			t.Fatal(st)
+		}
+		// 简报先于展开：组装时只有收件人 '*' 的行
+		composedFirst := newSignal(t, at(24, 7, 20), pursueBid("夹具简报先于展开"))
+		if count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE signal_id = $1 AND recipient = '*' AND state = 'pending'`, composedFirst) != 1 {
+			t.Fatal("组装前尚未展开")
+		}
+		from := sent(dm)
+		res := compose(t, dm, at(24, 7, 31))
+		items := briefingItems(t, dm, res.BriefingID)
+		for _, sig := range []string{composedFirst, expandedFirst} {
+			if items[sig] == nil || items[sig]["notified"] == true || cardCount(t, dm, sig, from) != 1 {
+				t.Fatalf("简报照常列出并推送卡片：%s %+v", sig, items[sig])
+			}
+		}
+		if items[attempted] == nil || items[attempted]["notified"] != true || cardCount(t, dm, attempted, from) != 0 {
+			t.Fatalf("已过发送闸门的标“已通知”、不推送卡片：%+v", items[attempted])
+		}
+		if st, reason := noticeOf(t, expandedFirst, dm); st != "cancelled" || reason != "merged_into_briefing" {
+			t.Fatalf("先展开后组装：%s %s", st, reason)
+		}
+		// 组装之后展开与发送：发送闸门发现本人已有含该信号的简报
+		after := sent(dm)
+		deliverN(t, at(24, 7, 40), 3)
+		if st, reason := noticeOf(t, composedFirst, dm); st != "cancelled" || reason != "merged_into_briefing" || cardCount(t, dm, composedFirst, after) != 0 {
+			t.Fatalf("简报先于展开：%s %s", st, reason)
+		}
+		if f := failedFor(composedFirst, dm); len(f) != 1 || f[0]["reason"] != "merged_into_briefing" || f[0]["final"] != true || f[0]["attempt"] != float64(0) {
+			t.Fatalf("%+v", f)
+		}
+		if count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE signal_id = $1 AND recipient = $2 AND message IS NOT NULL`, composedFirst, dm) != 0 {
+			t.Fatal("并入的通知不渲染、不签发令牌")
+		}
+		// 已过闸门的照常重试送达，仍只有一张卡片
+		if st, _ := noticeOf(t, attempted, dm); st != "delivered" || cardCount(t, dm, attempted, from) != 1 {
+			t.Fatal(st)
+		}
+		// 并发：组装与发送同时进行（周三至周五各一期）。两者在同一把收件人咨询锁下“检查后写入”：发送闸门先提交的，组装保存时发现状态变化
+		// 而重做并标“已通知”；组装先提交的，发送闸门发现本人已有含该信号的简报而并入。无论谁先，同一信号只以一张卡片送达，且简报的“已通知”
+		// 与通知状态一致
+		for day := 25; day <= 27; day++ {
+			concurrent := newSignal(t, at(day, 7, 20), pursueBid(fmt.Sprintf("夹具并发%d", day)))
+			clock.set(at(day, 7, 21), 0)
+			if o := r.Once(ctx, scheduler.Bound{Job: noticeJob, DB: chns.env.DB}); o != scheduler.Ran { // 只展开
+				t.Fatal(o)
+			}
+			pump(t)
+			from := sent(dm)
+			clock.set(at(day, 7, 31), 0)
+			var wg sync.WaitGroup
+			var composed *chapi.ComposeResult
+			var composeErr error
+			var outcome scheduler.Outcome
+			wg.Add(2)
+			go func() {
+				defer wg.Done()
+				composed, composeErr = briefings.Compose(svc(t1), dm, at(day, 7, 31))
+			}()
+			go func() {
+				defer wg.Done()
+				outcome = (&scheduler.Runner{}).Once(ctx, scheduler.Bound{Job: noticeJob, DB: chns.env.DB})
+			}()
+			wg.Wait()
+			if composeErr != nil || outcome != scheduler.Ran {
+				t.Fatal(composeErr, outcome)
+			}
+			deliverN(t, at(day, 7, 33), 2)
+			st, reason := noticeOf(t, concurrent, dm)
+			items := briefingItems(t, dm, composed.BriefingID)
+			if items[concurrent] == nil || cardCount(t, dm, concurrent, from) != 1 {
+				t.Fatalf("并发时只送达一张卡片：%s %s %d", st, reason, cardCount(t, dm, concurrent, from))
+			}
+			switch {
+			case st == "delivered" && items[concurrent]["notified"] == true:
+			case st == "cancelled" && reason == "merged_into_briefing" && items[concurrent]["notified"] != true:
+			default:
+				t.Fatalf("简报标记与通知状态不一致：%s %s %+v", st, reason, items[concurrent])
+			}
 		}
 	})
 }

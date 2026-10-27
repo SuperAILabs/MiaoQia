@@ -27,7 +27,7 @@ import (
 //   - 每次发送（含重试）前按收件人当前状态依次再检查（任何一步之前不渲染、不签发令牌）：即时通知开关（最新偏好）→ 安静时段（延后到结束，
 //     不丢弃）→ 成员有效 → 以收件人本人判断目标的 can_view_signals → 以收件人本人读取信号卡片（不可见、不属于该目标、不再待处理、回填）→
 //     目标当前生效策略对信号当前处置仍为 immediate 且收件人仍在受众中 → 节流（每人每小时至多 6 张）→ 安静时段内到达、结束时简报即将发送的
-//     并入简报 → 投递目标（未绑定为站内）。卡片与简报信号卡片同一模板与按钮（F3–F5）：第一次发送前渲染并固定（重试发送同一张卡片、令牌
+//     并入简报（含本人已有含该信号的简报）→ 投递目标（未绑定为站内）→ 发送闸门（claimSignalSend，与简报保存互斥）。卡片与简报信号卡片同一模板与按钮（F3–F5）：第一次发送前渲染并固定（重试发送同一张卡片、令牌
 //     不变），每次发送前按当前来源权利收紧后重新渲染正文；
 //   - 投递事件 channels.signal_notice.sent.v1 / channels.signal_notice.failed.v1（与 channels.notice.* 同一语义，字段白名单见
 //     signalNoticeEventData）；统计并入 getDeliveryStats 的 notices（种类 signal_immediate）。
@@ -353,6 +353,19 @@ func (s *Service) deliverSignalNotice(sctx context.Context, rc reqctx.Context, n
 			s.finishNotice(sctx, n, "cancelled", "merged_into_briefing")
 			return
 		}
+		// 本人已有含该信号的简报（简报先于展开组装）：并入，不渲染、不签发令牌。这里只是提前判断，发送闸门在锁下再判断一次
+		var merged bool
+		if err := s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
+			var err error
+			merged, err = mergeIntoComposed(ctx, tx, rc.Tenant, n)
+			return err
+		}); err != nil {
+			retry()
+			return
+		}
+		if merged {
+			return
+		}
 	}
 	target, err := s.DeliveryTarget(sctx, n.recipient)
 	if err != nil {
@@ -379,12 +392,86 @@ func (s *Service) deliverSignalNotice(sctx context.Context, rc reqctx.Context, n
 	rights := s.fieldRights(sctx, []string{n.signal})
 	it := restrictItem(n.item.Item, rights[n.signal])
 	n.message.Card.Lines, _ = domain.FitCard(cardLines(n.item.Title, it, false, current.Location(), tenantLocation()), caps.LineMax, caps.LinesMax)
+	pass, err := s.claimSignalSend(sctx, rc.Tenant, n)
+	if err != nil {
+		retry()
+		return
+	}
+	if !pass {
+		return
+	}
 	n.attempts++
 	if err := s.provider().Send(sctx, n.corp, n.user, *n.message); err != nil {
 		s.recordNotice(sctx, n, now, "retrying", now.Add(domain.Backoff(n.attempts)))
 		return
 	}
 	s.recordNotice(sctx, n, now, "delivered", time.Time{})
+}
+
+// mergeIntoComposed 在收件人已有含该信号的简报（推送中、已送达或已在站内）时把尚未发送过的即时通知结束为 merged_into_briefing
+// （发布结束事件、写审计），返回是否已并入。调用方保证通知尚未发送过；并发安全由发送闸门的咨询锁保证（见 claimSignalSend）。
+func mergeIntoComposed(ctx context.Context, tx pgx.Tx, tenant string, n *noticeRow) (bool, error) {
+	item, err := json.Marshal([]map[string]any{{"items": []map[string]any{{"kind": "signal", "signal_id": n.signal}}}})
+	if err != nil {
+		return false, err
+	}
+	var briefing string
+	err = tx.QueryRow(ctx, `SELECT id FROM chn_briefings WHERE tenant_id = $1 AND subject = $2 AND push_state IN ('pushing', 'delivered', 'in_app')
+ AND sections @> $3::jsonb ORDER BY assembled_at DESC, id LIMIT 1`, tenant, n.recipient, item).Scan(&briefing)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE chn_notices SET state = 'cancelled', reason = 'merged_into_briefing' WHERE id = $1 AND state IN ('pending', 'retrying')
+ AND attempts = 0`, n.id)
+	if err != nil || tag.RowsAffected() == 0 {
+		return false, err
+	}
+	if err := appendSignalNoticeFailed(ctx, tx, n.id, n.recipient, n.signal, n.objective, 0, "cancelled", "merged_into_briefing"); err != nil {
+		return false, err
+	}
+	return true, recordAs(ctx, tx, "channels.notice.cancelled", n.id, "failed", "wecom;kind=signal_immediate;merged_into_briefing;briefing="+briefing)
+}
+
+// claimSignalSend 是即时通知的发送闸门，与组装简报的保存（saveBriefing）互斥：持有同一把收件人的简报咨询锁并锁定通知行，
+//   - 通知已不是待发送（组装时已并入简报，或已被其他检查结束）时不发送；
+//   - 第一次发送前（attempts 为 0），收件人已有含该信号的简报（推送中、已送达或已在站内）时取消为 merged_into_briefing，不发送——覆盖
+//     简报先于展开组装的顺序：组装时收件人 '*' 的行尚未展开，简报照常推送该信号；
+//   - 否则在同一事务中把 attempts 加一再发送：之后组装的简报把该信号标“已通知”、不再推送信号卡片；已读取旧状态、尚未保存的组装在保存时
+//     发现状态变化而重做（errNoticeRaced）。
+//
+// 两条路径都在同一把锁下“检查后写入”，因此无论先后与并发，同一信号对同一收件人只会以即时卡片或简报卡片之一送达。进程在闸门之后、记录结果
+// 之前退出时，attempts 已加一：之后的简报按“已通知”处理，租约过期后照常重试同一张卡片。
+func (s *Service) claimSignalSend(sctx context.Context, tenant string, n *noticeRow) (bool, error) {
+	pass := false
+	err := s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "chn-briefing/"+tenant+"/"+n.recipient); err != nil {
+			return err
+		}
+		var state string
+		var attempts int
+		err := tx.QueryRow(ctx, `SELECT state, attempts FROM chn_notices WHERE id = $1 FOR UPDATE`, n.id).Scan(&state, &attempts)
+		if errors.Is(err, pgx.ErrNoRows) || err == nil && state != "pending" && state != "retrying" {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if attempts == 0 {
+			merged, err := mergeIntoComposed(ctx, tx, tenant, n)
+			if err != nil || merged {
+				return err
+			}
+		}
+		if _, err := tx.Exec(ctx, `UPDATE chn_notices SET attempts = attempts + 1 WHERE id = $1`, n.id); err != nil {
+			return err
+		}
+		pass = true
+		return nil
+	})
+	return pass, err
 }
 
 // renderSignalNotice 按收件人本人读取的信号卡片渲染即时通知卡片（与简报信号卡片同一模板与按钮），签发令牌，并与投递目标一起固定在通知上。
@@ -442,8 +529,9 @@ func (s *Service) renderSignalNotice(sctx context.Context, tenant string, n *not
 	return nil
 }
 
-// noticeMarks 是组装简报时本人对已列入条目的信号的即时通知：notified 为已送达（本期不再推送信号卡片），pending 为尚未送达（随本期简报
-// 结束，标为 merged_into_briefing），merged 为已并入简报的；overnight 为到达时在安静时段内（条目标“夜间到达”）。
+// noticeMarks 是组装简报时本人对已列入条目的信号的即时通知：notified 为已送达或已过发送闸门（attempts > 0：发送中或渠道失败待重试，本期
+// 不再推送信号卡片），pending 为尚未发送过（随本期简报结束，标为 merged_into_briefing）；overnight 为到达时在安静时段内（条目标“夜间到达”）。
+// 收件人为 '*' 的未展开行不在此列：展开后的每一条在发送闸门处发现本人已有含该信号的简报而并入（见 claimSignalSend）。
 type noticeMarks struct {
 	notified, overnight map[string]bool
 	pending             []noticeRow
@@ -471,10 +559,11 @@ func (s *Service) signalNoticeMarks(sctx context.Context, subject string, signal
 			}
 			n.kind, n.recipient = NoticeSignalImmediate, subject
 			arrivedQuiet := n.fireAt != nil && !domain.QuietUntil(prefs, *n.fireAt).IsZero()
-			switch state {
-			case "delivered":
+			switch {
+			case state == "delivered" || n.attempts > 0:
+				// 已送达，或已过发送闸门（发送中或渠道失败待重试）：本期不再推送信号卡片
 				out.notified[n.signal] = true
-			case "cancelled":
+			case state == "cancelled":
 				out.overnight[n.signal] = out.overnight[n.signal] || arrivedQuiet
 			default:
 				out.pending = append(out.pending, n)
@@ -505,11 +594,34 @@ func applyNoticeMarks(secs []composedSection, marks *noticeMarks) {
 	}
 }
 
-// mergePendingNotices 在保存简报的事务中结束本期已列入、尚未送达的即时通知（merged_into_briefing，发布结束事件），简报之后不再单独推送。
-func mergePendingNotices(ctx context.Context, tx pgx.Tx, briefing string, pending []noticeRow) error {
-	for i := range pending {
-		n := &pending[i]
-		tag, err := tx.Exec(ctx, `UPDATE chn_notices SET state = 'cancelled', reason = 'merged_into_briefing' WHERE id = $1 AND state IN ('pending', 'retrying')`, n.id)
+// errNoticeRaced 表示组装读取即时通知之后、保存简报之前，本人有即时通知过了发送闸门：组装按新状态重做（Compose 内重试）。
+var errNoticeRaced = errors.New("channels：组装期间即时通知已发送")
+
+// mergePendingNotices 在保存简报的事务中（已持有收件人的简报咨询锁，与发送闸门互斥）先确认组装时读取的即时通知状态仍然成立：本期列出的信号中，
+// 有已送达或已过发送闸门、而组装时未标“已通知”的，返回 errNoticeRaced（否则同一信号会既有即时卡片又有简报卡片）；之后结束本期已列入、
+// 尚未发送过的即时通知（merged_into_briefing，发布结束事件），简报之后不再单独推送。
+func mergePendingNotices(ctx context.Context, tx pgx.Tx, briefing, subject string, listed []string, marks *noticeMarks) error {
+	if marks == nil || len(listed) == 0 {
+		return nil
+	}
+	rows, err := tx.Query(ctx, `SELECT DISTINCT signal_id FROM chn_notices WHERE kind = 'signal_immediate' AND recipient = $1 AND signal_id = ANY($2)
+ AND (state = 'delivered' OR (state IN ('pending', 'retrying') AND attempts > 0))`, subject, listed)
+	if err != nil {
+		return err
+	}
+	sent, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return err
+	}
+	for _, sig := range sent {
+		if !marks.notified[sig] {
+			return errNoticeRaced
+		}
+	}
+	for i := range marks.pending {
+		n := &marks.pending[i]
+		tag, err := tx.Exec(ctx, `UPDATE chn_notices SET state = 'cancelled', reason = 'merged_into_briefing' WHERE id = $1 AND state IN ('pending', 'retrying')
+ AND attempts = 0`, n.id)
 		if err != nil {
 			return err
 		}

@@ -83,8 +83,20 @@ type composedSection struct {
 	domains  []string
 }
 
-// Compose 是 Briefings.Compose。
+// Compose 是 Briefings.Compose。组装期间本人有即时通知过了发送闸门时（errNoticeRaced）按新状态重做，至多 3 次。
 func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*api.ComposeResult, error) {
+	for i := 0; ; i++ {
+		res, err := s.compose(ctx, subject, at)
+		if !errors.Is(err, errNoticeRaced) {
+			return res, err
+		}
+		if i == 2 {
+			return nil, failure(503, "channels_unavailable")
+		}
+	}
+}
+
+func (s *Service) compose(ctx context.Context, subject string, at time.Time) (*api.ComposeResult, error) {
 	rc, err := requireService(ctx)
 	if err != nil {
 		return nil, err
@@ -199,7 +211,7 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 			return nil, err
 		}
 	}
-	id, err := s.saveBriefing(sctx, rc, subject, doc, sections, pushState, reason, plan, marks.pending)
+	id, err := s.saveBriefing(sctx, rc, subject, doc, sections, pushState, reason, plan, marks)
 	if err != nil {
 		return nil, err
 	}
@@ -454,7 +466,7 @@ func (s *Service) coverage(sctx context.Context, domains []string) []dataAsOf {
 // saveBriefing 在一个事务中保存简报、前移取数成功的区的窗口并创建投递（含令牌与链接），并结束本期已列入、尚未送达的即时通知（pending，
 // merged_into_briefing）。同一期并发组装时只有一份生效：返回已有的标识，本次的窗口、投递与通知变化随事务回滚。
 func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject string, doc *briefingDoc, secs []composedSection, pushState, reason string,
-	plan *deliveryPlan, pending []noticeRow) (string, error) {
+	plan *deliveryPlan, marks *noticeMarks) (string, error) {
 	raw, err := json.Marshal(doc.Sections)
 	if err != nil {
 		return "", err
@@ -468,6 +480,7 @@ func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject 
 		}
 	}
 	id := doc.ID
+	raced := false // s.tx 不外泄内部错误，组装重做靠这个标记
 	err = s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "chn-briefing/"+rc.Tenant+"/"+subject); err != nil {
 			return err
@@ -508,10 +521,14 @@ func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject 
 				return err
 			}
 		}
-		if err := mergePendingNotices(ctx, tx, doc.ID, pending); err != nil {
+		if err := mergePendingNotices(ctx, tx, doc.ID, subject, listedSignals(secs), marks); err != nil {
+			raced = errors.Is(err, errNoticeRaced)
 			return err
 		}
 		return recordAs(ctx, tx, "channels.briefing.composed", doc.ID, "succeeded", "briefing;"+pushState+";"+reason)
 	})
+	if raced {
+		return "", errNoticeRaced
+	}
 	return id, err
 }
