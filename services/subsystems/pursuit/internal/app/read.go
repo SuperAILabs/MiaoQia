@@ -66,6 +66,70 @@ type Detail struct {
 	ViewerCanEdit   bool             `json:"viewer_can_edit"`
 	ViewerCanManage bool             `json:"viewer_can_manage_team"`
 	ViewerCanVoid   bool             `json:"viewer_can_void"`
+	SiblingHints    []SiblingHint    `json:"sibling_hints,omitempty"`
+}
+
+// SiblingHint 是契约 SiblingHint：同一目标、同一采购项目（同一事实类型与主体）上另一家中标方的进行中跟进（PRD 第6段 F2 第1条、用例12）。
+// 跟进目标中的部分是各中标结果自身的标识、不含标包，因此尚不能缩小到同一标包（G-C10-03）。
+// 按查看者对那个跟进的当前权限分级投影（白名单）：能查看为 full；不能查看为 owner_only，只给负责人。
+type SiblingHint struct {
+	Visibility  string     `json:"visibility"`
+	Owner       string     `json:"owner"`
+	PursuitID   string     `json:"pursuit_id,omitempty"`
+	WinnerOrgID string     `json:"winner_org_id,omitempty"`
+	OwnerValid  *bool      `json:"owner_valid,omitempty"`
+	CreatedAt   *time.Time `json:"created_at,omitempty"`
+}
+
+// maxSiblingHints 是一次读取给出的互相提示上限（契约 maxItems）。
+const maxSiblingHints = 20
+
+// siblingHint 按查看者当前的权限投影一条互相提示：字段按级别白名单逐个给出，不从跟进行整体复制。
+func siblingHint(p *Pursuit, canView bool) SiblingHint {
+	if !canView {
+		return SiblingHint{Visibility: "owner_only", Owner: p.Owner}
+	}
+	valid, created := p.OwnerValid, p.CreatedAt
+	return SiblingHint{Visibility: "full", Owner: p.Owner, PursuitID: p.ID, WinnerOrgID: p.Target.WinnerOrgID, OwnerValid: &valid, CreatedAt: &created}
+}
+
+// siblingHints 读取同一目标、同一事实类型与主体上目标对象键不同的进行中交易型跟进（即同一采购项目的其他中标方），每条按查看者
+// 此刻的权限判断（不以快照或创建时的权限为准）。判断失败返回错误（失败关闭）。
+func (s *Service) siblingHints(ctx context.Context, rc reqctx.Context, p *Pursuit) ([]SiblingHint, error) {
+	if p.State != "open" || p.Target.SubjectID == "" {
+		return nil, nil
+	}
+	var siblings []*Pursuit
+	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT `+pursuitColumns+` FROM pur_pursuits WHERE objective_id = $1 AND kind = 'deal' AND state = 'open'
+ AND fact_type = $2 AND subject_id = $3 AND target_key <> $4 AND id <> $5 ORDER BY created_at, id LIMIT $6`,
+			p.ObjectiveID, p.Target.FactType, p.Target.SubjectID, p.Target.key(), p.ID, maxSiblingHints)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			sib, err := scanPursuit(rows)
+			if err != nil {
+				return err
+			}
+			siblings = append(siblings, sib)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	cache := unitRights{}
+	var out []SiblingHint
+	for _, sib := range siblings {
+		r, err := s.rights(ctx, rc, sib, cache)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, siblingHint(sib, r.View))
+	}
+	return out, nil
 }
 
 // GetPursuit 读取跟进详情（契约 getPursuit）。
@@ -153,6 +217,9 @@ func (s *Service) GetPursuit(ctx context.Context, id string) (*Detail, error) {
 	if err != nil {
 		return nil, err
 	}
+	if d.SiblingHints, err = s.siblingHints(ctx, rc, p); err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
@@ -217,11 +284,11 @@ func (s *Service) ListPursuits(ctx context.Context, view, objective string, limi
 				if c.Closed != nil {
 					after = *c.Closed
 				}
-				rows, err = tx.Query(ctx, `SELECT `+pursuitColumns+`, closed_at FROM pur_pursuits WHERE state = 'closed' AND ($1 = '' OR objective_id = $1) AND $2 <> ''
+				rows, err = tx.Query(ctx, `SELECT `+pursuitColumns+`, closed_at FROM pur_pursuits WHERE state = 'closed' AND kind = 'deal' AND ($1 = '' OR objective_id = $1) AND $2 <> ''
  AND (closed_at, id) < ($3, $4) ORDER BY closed_at DESC, id DESC LIMIT 100`, objective, rc.Principal.ID, after, cursorID(c.ID, c.Closed == nil))
 			} else {
 				rows, err = tx.Query(ctx, `WITH c AS (SELECT p.id AS pid, COALESCE((SELECT min(t.due_at) FROM pur_tasks t WHERE t.pursuit_id = p.id AND t.status = 'todo'), $5::timestamptz) AS nd
- FROM pur_pursuits p WHERE p.state = 'open' AND ($1 = '' OR p.objective_id = $1) AND `+qualify(filter)+`)
+ FROM pur_pursuits p WHERE p.state = 'open' AND p.kind = 'deal' AND ($1 = '' OR p.objective_id = $1) AND `+qualify(filter)+`)
  SELECT `+pursuitColumns+`, c.nd FROM pur_pursuits JOIN c ON c.pid = pur_pursuits.id WHERE (owner_valid, c.nd, id) > ($3, $4, $6) ORDER BY owner_valid, c.nd, id LIMIT 100`,
 					objective, rc.Principal.ID, c.Valid, c.Due, infinity, c.ID)
 			}

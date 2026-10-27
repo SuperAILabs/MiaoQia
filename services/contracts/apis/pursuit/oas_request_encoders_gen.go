@@ -80,8 +80,50 @@ func encodeCreateTaskRequest(
 	return nil
 }
 
+func encodeCreateTrackingRequest(
+	req *CreateTrackingRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodePauseTrackingRequest(
+	req *VersionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeReopenTaskRequest(
 	req *ReopenTaskRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeResumeTrackingRequest(
+	req *VersionRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
@@ -108,8 +150,36 @@ func encodeReviseOutcomeRequest(
 	return nil
 }
 
+func encodeStopTrackingRequest(
+	req *VersionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeUpdateTaskRequest(
 	req *UpdateTaskRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeUpdateTrackingMembersRequest(
+	req *TrackingMembersRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

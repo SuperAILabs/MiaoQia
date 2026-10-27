@@ -1,6 +1,6 @@
 # 反馈学习与评估子系统（learning）
 
-> 状态：评审中 · 版本：1.7 · 更新：2026-10-26 · 平面：客户智能
+> 状态：评审中 · 版本：1.8 · 更新：2026-10-27 · 平面：客户智能
 
 ## 1. 使命
 
@@ -73,7 +73,7 @@
 - **口径**：按上表 `GetFeedbackSummary` 的口径，窗口为发现时间近 30 天；样本为相关、不相关与分歧之和，少于 20 时不给比例（`sample_sufficient` 为假）。原因分布按不相关信号计数，并按应用领域包反馈原因的 `relates` 给出相关的规则、参数与画像字段提示；
 - **缺省与缺口**：信号的内容版本只从 `triaged` 事件得知（`signal.updated` 尚未发布），信号更新后在有人基于新版本处理之前，旧版本反馈仍按当前版本计入；`learning.feedback.recorded.v1` 未发布。
 
-**实现状况（PRD 第6段结果进入评估）**：消费 `pursuit.outcome.recorded.v1`（`learning.pursuit-outcomes`），以结果记录标识幂等写入本租户的结果集 `lrn_outcomes`（结果、原因、金额条目、贡献关系、来源信号与被取代的记录）；有获知时间的记为时点评估（`point_in_time`），缺失的只进入事后统计（`post_hoc`）。结果不改变策略、信号或公共事实；评估报告中的结果汇总尚未实现。
+**实现状况（PRD 第6段结果进入评估）**：消费 `pursuit.outcome.recorded.v1`（`learning.pursuit-outcomes`），以结果记录标识幂等写入本租户的结果集 `lrn_outcomes`（结果、原因、金额条目、贡献关系、来源信号与被取代的记录）；有获知时间的记为时点评估（`point_in_time`），缺失的只进入事后统计（`post_hoc`）。结果不改变策略、信号或公共事实。评估报告的结果部分（C-10，契约 0.4.0 `getOutcomeSummary`）：按截至时间 `as_of`（缺省当前）只计记录时间不晚于它的记录，每个跟进取此时记录链上的当前记录（被取代的计入 `superseded`）；获知时间在 [`from`, `as_of`) 内的计入时点评估，晚于 `as_of` 的计入 `known_after_as_of`，获知时间缺失的按记录时间计入事后统计；两部分分别给出结果、原因、贡献关系计数与按（类型、币种、性质）精确合计的金额，不合并、不换算。授权为能查看目标（customer-context `ObjectiveScope`）且在目标所在单元上有 identity 的 `can_view_unit_pursuits`，只凭参与关系的成员 403（不按聚合泄露其看不到的跟进）。只读计算、不持久化；持久化的评估报告与 Web 展示见 [A02 验收缺口 C-16](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)。证据：`services/kernel/integration/pursuit_test.go`（“C-10 用例42 …”）与 `services/subsystems/learning/internal/app/outcome_summary_test.go`。
 
 ## 6. 事件
 

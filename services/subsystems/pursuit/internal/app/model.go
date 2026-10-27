@@ -78,6 +78,8 @@ type Pursuit struct {
 	CreatedAt, UpdatedAt                             time.Time
 	ClosedAt, VoidedAt                               *time.Time
 	Grants                                           map[string]Grant
+	// Kind 是形态：deal 交易型、continuous 持续型（持续跟踪，C-10）。交易型的接口对持续型的标识按不存在处理，反之亦然。
+	Kind string
 }
 
 // Grant 是一个参与成员当前角色的授予记录：角色（owner / collaborator）、授予时的参与版本与授予时该成员在 identity 的成员版本。
@@ -141,7 +143,7 @@ func (p *Pursuit) desired() (owner string, collaborators []string) {
 const pursuitColumns = `id, tenant_id, objective_id, org_unit_id, template_id, fact_type, subject_id, part_id, winner_org_id, source_kind, source_signal_id,
  source_content_version, source_signal_created_at, channel, previous_pursuit_id, state, owner, owner_valid, collaborators, note, created_by, create_operation_id,
  changed_by, version, participation_version, applied_version, sync_pending_since, notify_version, notify_assignee, notify_by, notify_kind, result,
- current_outcome_id, created_at, updated_at, closed_at, voided_at, grants`
+ current_outcome_id, created_at, updated_at, closed_at, voided_at, grants, kind`
 
 func scanPursuit(row pgx.Row, extra ...any) (*Pursuit, error) {
 	var p Pursuit
@@ -151,7 +153,7 @@ func scanPursuit(row pgx.Row, extra ...any) (*Pursuit, error) {
 	dest := []any{&p.ID, &p.TenantID, &p.ObjectiveID, &p.OrgUnitID, &p.TemplateID, &p.Target.FactType, &p.Target.SubjectID, &part, &winner, &p.SourceKind,
 		&signal, &content, &p.SignalCreatedAt, &p.Channel, &prev, &p.State, &p.Owner, &p.OwnerValid, &p.Collaborators, &note, &p.CreatedBy, &p.CreateOp,
 		&p.ChangedBy, &p.Version, &p.Participation, &p.Applied, &p.PendingSince, &p.NotifyVersion, &nAssignee, &nBy, &nKind, &result, &outcome,
-		&p.CreatedAt, &p.UpdatedAt, &p.ClosedAt, &p.VoidedAt, &grants}
+		&p.CreatedAt, &p.UpdatedAt, &p.ClosedAt, &p.VoidedAt, &grants, &p.Kind}
 	err := row.Scan(append(dest, extra...)...)
 	if err != nil {
 		return nil, err

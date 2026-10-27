@@ -353,3 +353,124 @@ fixtures:
     - op: add
       path: /feedback
       value: []
+- schema: OutcomeResultCounts
+  base:
+    success: 1
+    failure: 0
+    abandoned: 2
+  cases:
+  - name: 负数
+    valid: false
+    patch:
+    - op: replace
+      path: /failure
+      value: -1
+- schema: OutcomeReasonCount
+  base:
+    result: failure
+    reason_code: PRICE_UNCOMPETITIVE
+    count: 1
+  cases:
+  - name: 未登记的结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: won
+- schema: OutcomeContributionCount
+  base:
+    contribution: first_alert
+    count: 2
+  cases:
+  - name: 计数为零
+    valid: false
+    patch:
+    - op: replace
+      path: /count
+      value: 0
+- schema: OutcomeAmountTotal
+  base:
+    type: own_supply_amount
+    currency: CNY
+    nature: estimate
+    total: '1200000'
+    count: 1
+  cases:
+  - name: 带小数
+    valid: true
+    patch:
+    - op: replace
+      path: /total
+      value: '1200000.50'
+  - name: 未登记的取值性质
+    valid: false
+    patch:
+    - op: replace
+      path: /nature
+      value: mixed
+  - name: 合计不是十进制文本
+    valid: false
+    patch:
+    - op: replace
+      path: /total
+      value: 1.2e6
+- schema: OutcomeSection
+  base: &outcome_section
+    total: 1
+    results:
+      success: 1
+      failure: 0
+      abandoned: 0
+    reasons:
+    - result: success
+      reason_code: EXISTING_RELATIONSHIP
+      count: 1
+    contributions:
+    - contribution: first_alert
+      count: 1
+    amounts:
+    - type: own_supply_amount
+      currency: CNY
+      nature: estimate
+      total: '1200000'
+      count: 1
+  cases:
+  - name: 缺金额
+    valid: false
+    patch:
+    - op: remove
+      path: /amounts
+- schema: OutcomeSummary
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    as_of: '2026-11-04T00:00:00Z'
+    point_in_time: *outcome_section
+    post_hoc:
+      total: 0
+      results:
+        success: 0
+        failure: 0
+        abandoned: 0
+      reasons: []
+      contributions: []
+      amounts: []
+    superseded: 1
+    known_after_as_of: 0
+  cases:
+  - name: 带起点
+    valid: true
+    patch:
+    - op: add
+      path: /from
+      value: '2026-10-01T00:00:00Z'
+  - name: 不得合并为单一价值
+    valid: false
+    patch:
+    - op: add
+      path: /value_total
+      value: '1200000'
+  - name: 缺事后统计
+    valid: false
+    patch:
+    - op: remove
+      path: /post_hoc

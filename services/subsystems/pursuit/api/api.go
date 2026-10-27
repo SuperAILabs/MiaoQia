@@ -107,9 +107,14 @@ const RemindersBinding = "pursuit.Reminders"
 //     截止版本与种类只一次）；负责人无效时转给目标所在单元的决策者（escalated）；参与版本尚未同步的留到同步完成后；同一任务同一截止
 //     版本有更晚的已到时提醒时只发最晚的一条。返回已发送的数量。可重复执行，并发执行不重复发送。
 //   - RetrySync 重试授权同步待处理的跟进（期望版本高于已应用版本），至多 limit 个，返回本次同步成功的数量。
+//   - RunTracking（C-10，持续跟踪 F10）结束到达周期时点（next_run_at 不晚于 now）的跟踪中各期，至多 limit 个跟踪：每个跟踪在自己的事务
+//     中加行锁（跳过已被并发执行者锁住的）后按当前值再检查（仍为跟踪中、时点仍已到），记录一期（实际期间为进行中的一期的开始到不晚于
+//     now 的最近一个周期时点，期末成员快照与对比基准）并发布 pursuit.tracking.period_closed.v1，再计划下一期。暂停与停止的不处理，
+//     恢复后不补。返回本次结束的期数。可重复执行，并发执行不重复。
 type Reminders interface {
 	RunDue(ctx context.Context, now time.Time, limit int) (int, error)
 	RetrySync(ctx context.Context, limit int) (int, error)
+	RunTracking(ctx context.Context, now time.Time, limit int) (int, error)
 }
 
 // LocalReminders 把本地实现包装为经调用管线的接口。
@@ -125,4 +130,9 @@ func (l localReminders) RunDue(ctx context.Context, now time.Time, limit int) (i
 func (l localReminders) RetrySync(ctx context.Context, limit int) (int, error) {
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "RetryAuthorizationSync", Timeout: 60 * time.Second},
 		func(ctx context.Context) (int, error) { return l.impl.RetrySync(ctx, limit) })
+}
+
+func (l localReminders) RunTracking(ctx context.Context, now time.Time, limit int) (int, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "RunTrackingPeriods", Timeout: 60 * time.Second},
+		func(ctx context.Context) (int, error) { return l.impl.RunTracking(ctx, now, limit) })
 }

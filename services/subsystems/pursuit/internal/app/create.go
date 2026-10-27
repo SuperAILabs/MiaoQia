@@ -461,8 +461,9 @@ func (s *Service) restorationHint(ctx context.Context, id string) string {
 	return "信号在没有其他有效关联且状态未变时回到转跟进前的状态"
 }
 
-// access 读取跟进并判断调用者的当前权限；不存在与他租户返回 404 pursuit_not_found。
-func (s *Service) access(ctx context.Context, rc reqctx.Context, id string) (*Pursuit, Rights, error) {
+// accessKind 读取给定形态的跟进并判断调用者的当前权限（每次实时判断）；不存在、他租户、无权查看与形态不符同为 404 pursuit_not_found。
+// 判断前先比较形态，不为形态不符的跟进调用授权服务。
+func (s *Service) accessKind(ctx context.Context, rc reqctx.Context, id, kind string) (*Pursuit, Rights, error) {
 	var p *Pursuit
 	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		var err error
@@ -472,7 +473,7 @@ func (s *Service) access(ctx context.Context, rc reqctx.Context, id string) (*Pu
 	if err != nil {
 		return nil, Rights{}, err
 	}
-	if p == nil {
+	if p == nil || p.Kind != kind {
 		return nil, Rights{}, failure(404, "pursuit_not_found")
 	}
 	r, err := s.rights(ctx, rc, p, unitRights{})
@@ -483,6 +484,12 @@ func (s *Service) access(ctx context.Context, rc reqctx.Context, id string) (*Pu
 		return nil, Rights{}, failure(404, "pursuit_not_found")
 	}
 	return p, r, nil
+}
+
+// access 读取交易型跟进并判断调用者的当前权限；不存在、他租户、无权查看与持续型跟进的标识同为 404 pursuit_not_found
+// （交易型的接口不接受持续型的标识，C-10）。
+func (s *Service) access(ctx context.Context, rc reqctx.Context, id string) (*Pursuit, Rights, error) {
+	return s.accessKind(ctx, rc, id, "deal")
 }
 
 // AssignRequest 是契约 AssignRequest。

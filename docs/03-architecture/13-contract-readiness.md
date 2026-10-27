@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.12 · 更新：2026-10-26 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.13 · 更新：2026-10-27 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -177,3 +177,8 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | gateway 的 Web 页面聚合 `/v1/web/*` 与对象页版本检查 `GET /v1/objects/{objectID}/versions` | [Web 专项设计第7节](14-web-application.md#7-bff-契约) | 首个使用该端点的 Web 实现批次（W0～W5） | gateway OpenAPI 追加，升次版本 |
 | customer-context 的保存视图（`SavedView` 与接口） | [Web 专项设计第6.2节](14-web-application.md#62-保存视图的所有者) | Web 收件箱的个人视图（W2） | customer-context OpenAPI 追加 |
 | Web 页面需要的公开读取与命令：identity `ListMembers` / `PreviewInvitation` / 受邀账号准备，entity-graph `ResolveEntity`，evidence 证书文件上传，learning `ReportMiss` | [Web 专项设计第7.3节](14-web-application.md#73-端点清单) | 对应页面的 Web 实现批次（W1、W2） | 各所有者 OpenAPI 追加 |
+| 持续跟踪每期的变化简报：channels 消费 `pursuit.tracking.period_closed.v1` 的简报种类与投递事件，及数据平面按对象集合与期间读取变化（组织的事实与关系变化，按期末成员快照与上一期对比）的内部接口；detection 的关注消费 `pursuit.tracking.changed.v1` | [pursuit 第11节](subsystems/pursuit.md#11-实现状况)；PRD 第6段 F10；[A02 验收缺口 C-12](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 持续跟踪变化简报的实现（依赖数据平面的变化读取，L1 后续） | channels 事件与 domain-intelligence / entity-graph 内部读取追加；pursuit 事件 0.3.0 不变 |
+| 持续跟踪对象的来源版本与合并（成员快照中每个组织的 entity-graph 版本、`entity.merged` 后的对象替换）与企业名单导入 | PRD 第6段 F10 第3条；[A02 验收缺口 C-13](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | entity-graph 组织解析与合并事件（D-12） | pursuit 契约与事件追加字段 |
+| 目标的分派规则（customer-context 的规则配置与读取）与信号上的候选负责人（detection 按规则在生成信号时写入） | [customer-context 第11节](subsystems/customer-context.md#11-分派配置)；PRD 第6段 F1 第2条；[A02 验收缺口 C-14](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 分派规则的配置功能；pursuit 已以端口 `api.CandidateOwners`（缺省未接入）与 `getCreateDefaults` 预留 | customer-context OpenAPI 与 detection 信号字段追加 |
+| 跟进目标中的标包标识（`lot_`，用于把互相提示缩小到同一标包） | PRD 第6段 F2 第1条；[A02 验收缺口 C-15](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 通用项目与标包聚合（D-04 的 `lot_`） | pursuit `Target` 与信号主体追加可选字段 |
+| 持久化的评估报告（含跟进结果部分）与报告事件 | [learning 实现状况](subsystems/learning.md)；PRD 第6段 F7 第5条；[A02 验收缺口 C-16](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 评估报告功能（目前 `getOutcomeSummary` 只读计算） | learning OpenAPI 与事件追加 |

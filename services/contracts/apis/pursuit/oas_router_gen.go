@@ -20,22 +20,37 @@ var (
 	rn5AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn15AllowedHeaders = map[string]string{
+	rn27AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn11AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn17AllowedHeaders = map[string]string{
+	rn31AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn9AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn14AllowedHeaders = map[string]string{
+	rn24AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn16AllowedHeaders = map[string]string{
+	rn29AllowedHeaders = map[string]string{
+		"POST": "Content-Type,Idempotency-Key",
+	}
+	rn13AllowedHeaders = map[string]string{
+		"POST": "Content-Type,Idempotency-Key",
+	}
+	rn30AllowedHeaders = map[string]string{
+		"POST": "Content-Type,Idempotency-Key",
+	}
+	rn22AllowedHeaders = map[string]string{
+		"POST": "Content-Type,Idempotency-Key",
+	}
+	rn26AllowedHeaders = map[string]string{
+		"POST": "Content-Type,Idempotency-Key",
+	}
+	rn28AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 )
@@ -70,7 +85,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	args := [1]string{}
+	args := [2]string{}
 
 	// Static code generated router with unwrapped path search.
 	switch {
@@ -91,6 +106,31 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			switch elem[0] {
+			case 'c': // Prefix: "create-defaults"
+
+				if l := len("create-defaults"); len(elem) >= l && elem[0:l] == "create-defaults" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleGetCreateDefaultsRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
 			case 'm': // Prefix: "my-tasks"
 
 				if l := len("my-tasks"); len(elem) >= l && elem[0:l] == "my-tasks" {
@@ -261,7 +301,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "POST",
-										allowedHeaders: rn15AllowedHeaders,
+										allowedHeaders: rn27AllowedHeaders,
 										acceptPost:     "application/json",
 										acceptPatch:    "",
 									})
@@ -315,7 +355,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "POST",
-										allowedHeaders: rn17AllowedHeaders,
+										allowedHeaders: rn31AllowedHeaders,
 										acceptPost:     "application/json",
 										acceptPatch:    "",
 									})
@@ -330,132 +370,412 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				}
 
-			case 't': // Prefix: "tasks/"
+			case 't': // Prefix: "t"
 
-				if l := len("tasks/"); len(elem) >= l && elem[0:l] == "tasks/" {
+				if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
-				// Param: "taskID"
-				// Match until "/"
-				idx := strings.IndexByte(elem, '/')
-				if idx < 0 {
-					idx = len(elem)
-				}
-				args[0] = elem[:idx]
-				elem = elem[idx:]
-
 				if len(elem) == 0 {
-					switch r.Method {
-					case "GET":
-						s.handleGetTaskRequest([1]string{
-							args[0],
-						}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "GET",
-							allowedHeaders: nil,
-							acceptPost:     "",
-							acceptPatch:    "",
-						})
-					}
-
-					return
+					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case 'a': // Prefix: "asks/"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("asks/"); len(elem) >= l && elem[0:l] == "asks/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "taskID"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleGetTaskRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "complete"
+
+							if l := len("complete"); len(elem) >= l && elem[0:l] == "complete" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleCompleteTaskRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn9AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						case 'r': // Prefix: "reopen"
+
+							if l := len("reopen"); len(elem) >= l && elem[0:l] == "reopen" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleReopenTaskRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn24AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						case 'u': // Prefix: "update"
+
+							if l := len("update"); len(elem) >= l && elem[0:l] == "update" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleUpdateTaskRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn29AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						}
+
+					}
+
+				case 'r': // Prefix: "racking"
+
+					if l := len("racking"); len(elem) >= l && elem[0:l] == "racking" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						break
+						switch r.Method {
+						case "GET":
+							s.handleListTrackingRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateTrackingRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET,POST",
+								allowedHeaders: rn13AllowedHeaders,
+								acceptPost:     "application/json",
+								acceptPatch:    "",
+							})
+						}
+
+						return
 					}
 					switch elem[0] {
-					case 'c': // Prefix: "complete"
+					case '/': // Prefix: "/"
 
-						if l := len("complete"); len(elem) >= l && elem[0:l] == "complete" {
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
+						// Param: "pursuitID"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
 						if len(elem) == 0 {
-							// Leaf node.
 							switch r.Method {
-							case "POST":
-								s.handleCompleteTaskRequest([1]string{
+							case "GET":
+								s.handleGetTrackingRequest([1]string{
 									args[0],
 								}, elemIsEscaped, w, r)
 							default:
 								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn9AllowedHeaders,
-									acceptPost:     "application/json",
+									allowedMethods: "GET",
+									allowedHeaders: nil,
+									acceptPost:     "",
 									acceptPatch:    "",
 								})
 							}
 
 							return
 						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
 
-					case 'r': // Prefix: "reopen"
-
-						if l := len("reopen"); len(elem) >= l && elem[0:l] == "reopen" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleReopenTaskRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn14AllowedHeaders,
-									acceptPost:     "application/json",
-									acceptPatch:    "",
-								})
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
 							}
 
-							return
-						}
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case 'm': // Prefix: "members"
 
-					case 'u': // Prefix: "update"
+								if l := len("members"); len(elem) >= l && elem[0:l] == "members" {
+									elem = elem[l:]
+								} else {
+									break
+								}
 
-						if l := len("update"); len(elem) >= l && elem[0:l] == "update" {
-							elem = elem[l:]
-						} else {
-							break
-						}
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleUpdateTrackingMembersRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "POST",
+											allowedHeaders: rn30AllowedHeaders,
+											acceptPost:     "application/json",
+											acceptPatch:    "",
+										})
+									}
 
-						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleUpdateTaskRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn16AllowedHeaders,
-									acceptPost:     "application/json",
-									acceptPatch:    "",
-								})
+									return
+								}
+
+							case 'p': // Prefix: "p"
+
+								if l := len("p"); len(elem) >= l && elem[0:l] == "p" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									break
+								}
+								switch elem[0] {
+								case 'a': // Prefix: "ause"
+
+									if l := len("ause"); len(elem) >= l && elem[0:l] == "ause" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "POST":
+											s.handlePauseTrackingRequest([1]string{
+												args[0],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, notAllowedParams{
+												allowedMethods: "POST",
+												allowedHeaders: rn22AllowedHeaders,
+												acceptPost:     "application/json",
+												acceptPatch:    "",
+											})
+										}
+
+										return
+									}
+
+								case 'e': // Prefix: "eriods"
+
+									if l := len("eriods"); len(elem) >= l && elem[0:l] == "eriods" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										switch r.Method {
+										case "GET":
+											s.handleListTrackingPeriodsRequest([1]string{
+												args[0],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, notAllowedParams{
+												allowedMethods: "GET",
+												allowedHeaders: nil,
+												acceptPost:     "",
+												acceptPatch:    "",
+											})
+										}
+
+										return
+									}
+									switch elem[0] {
+									case '/': // Prefix: "/"
+
+										if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+											elem = elem[l:]
+										} else {
+											break
+										}
+
+										// Param: "seq"
+										// Leaf parameter, slashes are prohibited
+										idx := strings.IndexByte(elem, '/')
+										if idx >= 0 {
+											break
+										}
+										args[1] = elem
+										elem = ""
+
+										if len(elem) == 0 {
+											// Leaf node.
+											switch r.Method {
+											case "GET":
+												s.handleGetTrackingPeriodRequest([2]string{
+													args[0],
+													args[1],
+												}, elemIsEscaped, w, r)
+											default:
+												s.notAllowed(w, r, notAllowedParams{
+													allowedMethods: "GET",
+													allowedHeaders: nil,
+													acceptPost:     "",
+													acceptPatch:    "",
+												})
+											}
+
+											return
+										}
+
+									}
+
+								}
+
+							case 'r': // Prefix: "resume"
+
+								if l := len("resume"); len(elem) >= l && elem[0:l] == "resume" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleResumeTrackingRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "POST",
+											allowedHeaders: rn26AllowedHeaders,
+											acceptPost:     "application/json",
+											acceptPatch:    "",
+										})
+									}
+
+									return
+								}
+
+							case 's': // Prefix: "stop"
+
+								if l := len("stop"); len(elem) >= l && elem[0:l] == "stop" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleStopTrackingRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, notAllowedParams{
+											allowedMethods: "POST",
+											allowedHeaders: rn28AllowedHeaders,
+											acceptPost:     "application/json",
+											acceptPatch:    "",
+										})
+									}
+
+									return
+								}
+
 							}
 
-							return
 						}
 
 					}
@@ -477,7 +797,7 @@ type Route struct {
 	operationGroup string
 	pathPattern    string
 	count          int
-	args           [1]string
+	args           [2]string
 }
 
 // Name returns ogen operation name.
@@ -562,6 +882,31 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				break
 			}
 			switch elem[0] {
+			case 'c': // Prefix: "create-defaults"
+
+				if l := len("create-defaults"); len(elem) >= l && elem[0:l] == "create-defaults" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = GetCreateDefaultsOperation
+						r.summary = "创建面板的默认负责人（0.3.0，C-10）"
+						r.operationID = "getCreateDefaults"
+						r.operationGroup = ""
+						r.pathPattern = "/v1/pursuit/create-defaults"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
 			case 'm': // Prefix: "my-tasks"
 
 				if l := len("my-tasks"); len(elem) >= l && elem[0:l] == "my-tasks" {
@@ -796,68 +1141,200 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 				}
 
-			case 't': // Prefix: "tasks/"
+			case 't': // Prefix: "t"
 
-				if l := len("tasks/"); len(elem) >= l && elem[0:l] == "tasks/" {
+				if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
-				// Param: "taskID"
-				// Match until "/"
-				idx := strings.IndexByte(elem, '/')
-				if idx < 0 {
-					idx = len(elem)
-				}
-				args[0] = elem[:idx]
-				elem = elem[idx:]
-
 				if len(elem) == 0 {
-					switch method {
-					case "GET":
-						r.name = GetTaskOperation
-						r.summary = "读取任务（提醒卡片发送前的再检查）"
-						r.operationID = "getTask"
-						r.operationGroup = ""
-						r.pathPattern = "/v1/pursuit/tasks/{taskID}"
-						r.args = args
-						r.count = 1
-						return r, true
-					default:
-						return
-					}
+					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case 'a': // Prefix: "asks/"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("asks/"); len(elem) >= l && elem[0:l] == "asks/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "taskID"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = GetTaskOperation
+							r.summary = "读取任务（提醒卡片发送前的再检查）"
+							r.operationID = "getTask"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/pursuit/tasks/{taskID}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "complete"
+
+							if l := len("complete"); len(elem) >= l && elem[0:l] == "complete" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = CompleteTaskOperation
+									r.summary = "完成任务（CompleteTask）"
+									r.operationID = "completeTask"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/pursuit/tasks/{taskID}/complete"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'r': // Prefix: "reopen"
+
+							if l := len("reopen"); len(elem) >= l && elem[0:l] == "reopen" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = ReopenTaskOperation
+									r.summary = "撤销完成（ReopenTask）"
+									r.operationID = "reopenTask"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/pursuit/tasks/{taskID}/reopen"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'u': // Prefix: "update"
+
+							if l := len("update"); len(elem) >= l && elem[0:l] == "update" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = UpdateTaskOperation
+									r.summary = "修改任务（UpdateTask）"
+									r.operationID = "updateTask"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/pursuit/tasks/{taskID}/update"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					}
+
+				case 'r': // Prefix: "racking"
+
+					if l := len("racking"); len(elem) >= l && elem[0:l] == "racking" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						break
+						switch method {
+						case "GET":
+							r.name = ListTrackingOperation
+							r.summary = "持续跟踪列表（0.3.0，C-10）"
+							r.operationID = "listTracking"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/pursuit/tracking"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateTrackingOperation
+							r.summary = "创建持续跟踪（0.3.0，C-10；PRD 第6段 F10）"
+							r.operationID = "createTracking"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/pursuit/tracking"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
 					}
 					switch elem[0] {
-					case 'c': // Prefix: "complete"
+					case '/': // Prefix: "/"
 
-						if l := len("complete"); len(elem) >= l && elem[0:l] == "complete" {
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
+						// Param: "pursuitID"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
 						if len(elem) == 0 {
-							// Leaf node.
 							switch method {
-							case "POST":
-								r.name = CompleteTaskOperation
-								r.summary = "完成任务（CompleteTask）"
-								r.operationID = "completeTask"
+							case "GET":
+								r.name = GetTrackingOperation
+								r.summary = "持续跟踪详情（0.3.0，C-10）"
+								r.operationID = "getTracking"
 								r.operationGroup = ""
-								r.pathPattern = "/v1/pursuit/tasks/{taskID}/complete"
+								r.pathPattern = "/v1/pursuit/tracking/{pursuitID}"
 								r.args = args
 								r.count = 1
 								return r, true
@@ -865,55 +1342,195 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return
 							}
 						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
 
-					case 'r': // Prefix: "reopen"
-
-						if l := len("reopen"); len(elem) >= l && elem[0:l] == "reopen" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = ReopenTaskOperation
-								r.summary = "撤销完成（ReopenTask）"
-								r.operationID = "reopenTask"
-								r.operationGroup = ""
-								r.pathPattern = "/v1/pursuit/tasks/{taskID}/reopen"
-								r.args = args
-								r.count = 1
-								return r, true
-							default:
-								return
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
 							}
-						}
 
-					case 'u': // Prefix: "update"
-
-						if l := len("update"); len(elem) >= l && elem[0:l] == "update" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = UpdateTaskOperation
-								r.summary = "修改任务（UpdateTask）"
-								r.operationID = "updateTask"
-								r.operationGroup = ""
-								r.pathPattern = "/v1/pursuit/tasks/{taskID}/update"
-								r.args = args
-								r.count = 1
-								return r, true
-							default:
-								return
+							if len(elem) == 0 {
+								break
 							}
+							switch elem[0] {
+							case 'm': // Prefix: "members"
+
+								if l := len("members"); len(elem) >= l && elem[0:l] == "members" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = UpdateTrackingMembersOperation
+										r.summary = "修改持续跟踪的对象集合（0.3.0）"
+										r.operationID = "updateTrackingMembers"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/members"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							case 'p': // Prefix: "p"
+
+								if l := len("p"); len(elem) >= l && elem[0:l] == "p" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									break
+								}
+								switch elem[0] {
+								case 'a': // Prefix: "ause"
+
+									if l := len("ause"); len(elem) >= l && elem[0:l] == "ause" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "POST":
+											r.name = PauseTrackingOperation
+											r.summary = "暂停持续跟踪（PauseTracking，0.3.0）"
+											r.operationID = "pauseTracking"
+											r.operationGroup = ""
+											r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/pause"
+											r.args = args
+											r.count = 1
+											return r, true
+										default:
+											return
+										}
+									}
+
+								case 'e': // Prefix: "eriods"
+
+									if l := len("eriods"); len(elem) >= l && elem[0:l] == "eriods" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										switch method {
+										case "GET":
+											r.name = ListTrackingPeriodsOperation
+											r.summary = "持续跟踪的各期（0.3.0）"
+											r.operationID = "listTrackingPeriods"
+											r.operationGroup = ""
+											r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/periods"
+											r.args = args
+											r.count = 1
+											return r, true
+										default:
+											return
+										}
+									}
+									switch elem[0] {
+									case '/': // Prefix: "/"
+
+										if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+											elem = elem[l:]
+										} else {
+											break
+										}
+
+										// Param: "seq"
+										// Leaf parameter, slashes are prohibited
+										idx := strings.IndexByte(elem, '/')
+										if idx >= 0 {
+											break
+										}
+										args[1] = elem
+										elem = ""
+
+										if len(elem) == 0 {
+											// Leaf node.
+											switch method {
+											case "GET":
+												r.name = GetTrackingPeriodOperation
+												r.summary = "持续跟踪的一期（0.3.0）"
+												r.operationID = "getTrackingPeriod"
+												r.operationGroup = ""
+												r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/periods/{seq}"
+												r.args = args
+												r.count = 2
+												return r, true
+											default:
+												return
+											}
+										}
+
+									}
+
+								}
+
+							case 'r': // Prefix: "resume"
+
+								if l := len("resume"); len(elem) >= l && elem[0:l] == "resume" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = ResumeTrackingOperation
+										r.summary = "恢复持续跟踪（ResumeTracking，0.3.0）"
+										r.operationID = "resumeTracking"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/resume"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							case 's': // Prefix: "stop"
+
+								if l := len("stop"); len(elem) >= l && elem[0:l] == "stop" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = StopTrackingOperation
+										r.summary = "停止持续跟踪（StopTracking，0.3.0）"
+										r.operationID = "stopTracking"
+										r.operationGroup = ""
+										r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/stop"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							}
+
 						}
 
 					}

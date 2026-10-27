@@ -204,7 +204,8 @@ func TestPursuitFollowUp(t *testing.T) {
 	localDirectory, _ := runtime.Lookup[idapi.Directory](bindings, idapi.DirectoryBinding)
 	directory := &flakyDirectory{Directory: localDirectory}
 	bindings.Provide(idapi.DirectoryBinding, idapi.Directory(directory))
-	purModule := pursuit.ModuleWith(pursuit.Adapters{Now: pclock.Now})
+	cands := &fakeCandidates{owners: map[string]string{}}
+	purModule := pursuit.ModuleWith(pursuit.Adapters{Now: pclock.Now, Candidates: cands})
 	purs := start(purModule, "api")
 	purModule.Routes(purs.env, public, internal)
 	purOwner := purs.owner
@@ -2300,7 +2301,555 @@ func TestPursuitFollowUp(t *testing.T) {
 		drained(t)
 	})
 
+	// ---- C-10：持续跟踪（F10，用例46、47）、分派规则的候选负责人（用例4）、同一标包的互相提示（用例12）、评估报告的结果部分（用例42） ----
+	trackPath := "/v1/pursuit/tracking"
+	trackingVersion := func(t *testing.T, id string) int64 {
+		t.Helper()
+		return num(obj(t, expect(t, dm, "GET", trackPath+"/"+id, "", 200)), "version")
+	}
+	trackCmd := func(t *testing.T, who, id, action string, status int, code ...string) map[string]any {
+		t.Helper()
+		return obj(t, expect(t, who, "POST", trackPath+"/"+id+"/"+action, fmt.Sprintf(`{"operation_id":%q,"expected_version":%d}`, opID("tr"), trackingVersion(t, id)),
+			status, code...))
+	}
+	runTracking := func(t *testing.T, when time.Time) int {
+		t.Helper()
+		n, err := reminders.RunTracking(svc(t1), when, 100)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pump(t)
+		return n
+	}
+	timeOf := func(t *testing.T, m map[string]any, k string) time.Time {
+		t.Helper()
+		v, _ := m[k].(string)
+		ts, err := time.Parse(time.RFC3339Nano, v)
+		if err != nil {
+			t.Fatalf("%s：%v：%+v", k, err, m)
+		}
+		return ts
+	}
+	period := func(t *testing.T, who, id string, seq int) map[string]any {
+		t.Helper()
+		return obj(t, expect(t, who, "GET", fmt.Sprintf("%s/%s/periods/%d", trackPath, id, seq), "", 200))
+	}
+	strs := func(v any) []string {
+		var out []string
+		for _, x := range v.([]any) {
+			out = append(out, x.(string))
+		}
+		return out
+	}
+	kinds := func(d map[string]any) []string {
+		var out []string
+		for _, e := range d["timeline"].([]any) {
+			out = append(out, e.(map[string]any)["kind"].(string))
+		}
+		return out
+	}
+	orgA, orgB, orgC := ids.New("org"), ids.New("org"), ids.New("org")
+	var trackID string
+
+	run("C-10 用例46、47：创建持续跟踪（缺省每周一 08:00），到周期时点结束一期并固定成员快照；修改对象集合只影响之后的各期；暂停期间不生成、恢复后不补；执行者停止后错过的周期合并为一期；停止后保留已结束的各期", func(t *testing.T) {
+		created := at(58, 10, 0)
+		pclock.set(created, 0)
+		// 对象集合不得重复（契约 uniqueItems）
+		expect(t, bd, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"重复","members":[%q,%q]}`, opID("tc"), objective.ID, orgA, orgA), 400)
+		body := fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"重点竞品","members":[%q,%q]}`, opID("tc"), objective.ID, orgA, orgB)
+		key := "track-create-" + suffix
+		res := obj(t, expectAs(t, bd, t1, "POST", trackPath, body, key, 200))
+		tr := res["tracking"].(map[string]any)
+		if res["result"] != "created" || tr["state"] != "tracking" || tr["owner"] != bd || num(tr, "members_count") != 2 || num(tr, "members_version") != 1 {
+			t.Fatalf("%+v", res)
+		}
+		trackID = tr["id"].(string)
+		// 同键重放返回同一结果
+		if again := obj(t, expectAs(t, bd, t1, "POST", trackPath, body, key, 200)); again["result"] != "created" || again["tracking"].(map[string]any)["id"] != trackID {
+			t.Fatalf("%+v", again)
+		}
+		next := timeOf(t, tr, "next_run_at")
+		if l := next.In(shanghai); l.Weekday() != time.Monday || l.Hour() != 8 || l.Minute() != 0 || !next.After(created) || next.Sub(created) > 7*24*time.Hour {
+			t.Fatalf("缺省周期：%s", l)
+		}
+		drained(t)
+		d := obj(t, expect(t, bd, "GET", trackPath+"/"+trackID, "", 200))
+		cad := d["cadence"].(map[string]any)
+		if num(cad, "weekday") != 1 || cad["time"] != "08:00" || cad["timezone"] != "Asia/Shanghai" || !slices.Equal(strs(d["members"]), []string{orgA, orgB}) ||
+			d["viewer_can_edit"] != true || !timeOf(t, d, "period_start").Equal(created) || kinds(d)[0] != "created" {
+			t.Fatalf("%+v", d)
+		}
+		if ev := eventsFor("pursuit.tracking.changed.v1", "pursuit_id", trackID); len(ev) != 1 || ev[0]["reason"] != "created" {
+			t.Fatalf("%+v", ev)
+		}
+		if n := audits(t, purOwner, "pursuit.tracking.create", trackID); n != 1 {
+			t.Fatalf("%d", n)
+		}
+		// 第一期：周期时点之前不结束；到点结束一次（重复执行不重复）
+		if n := runTracking(t, next.Add(-time.Minute)); n != 0 {
+			t.Fatalf("%d", n)
+		}
+		if n := runTracking(t, next); n != 1 {
+			t.Fatalf("%d", n)
+		}
+		if n := runTracking(t, next.Add(time.Minute)); n != 0 {
+			t.Fatalf("%d", n)
+		}
+		p1st := period(t, bd, trackID, 1)
+		if !timeOf(t, p1st, "period_start").Equal(created) || !timeOf(t, p1st, "period_end").Equal(next) || !slices.Equal(strs(p1st["members"]), []string{orgA, orgB}) ||
+			num(p1st, "members_version") != 1 || p1st["baseline_seq"] != nil || p1st["owner"] != bd || p1st["owner_valid"] != true || p1st["briefing_state"] != "requested" {
+			t.Fatalf("%+v", p1st)
+		}
+		if ev := eventsFor("pursuit.tracking.period_closed.v1", "pursuit_id", trackID); len(ev) != 1 {
+			t.Fatalf("%+v", ev)
+		}
+		// 修改对象集合：成员版本加一；已结束的一期保留其快照
+		pclock.set(next.Add(time.Hour), 0)
+		mbody := fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"members":[%q,%q]}`, opID("tm"), trackingVersion(t, trackID), orgA, orgC)
+		mkey := "track-members-" + suffix
+		m := obj(t, expectAs(t, bd, t1, "POST", trackPath+"/"+trackID+"/members", mbody, mkey, 200))
+		if m["result"] != "succeeded" || num(m["tracking"].(map[string]any), "members_version") != 2 {
+			t.Fatalf("%+v", m)
+		}
+		if again := obj(t, expectAs(t, bd, t1, "POST", trackPath+"/"+trackID+"/members", mbody, mkey, 200)); again["result"] != "succeeded" {
+			t.Fatalf("%+v", again)
+		}
+		same := fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"members":[%q,%q]}`, opID("tm"), trackingVersion(t, trackID), orgC, orgA)
+		if r := obj(t, expect(t, bd, "POST", trackPath+"/"+trackID+"/members", same, 200)); r["result"] != "no_change" {
+			t.Fatalf("%+v", r)
+		}
+		stale := fmt.Sprintf(`{"operation_id":%q,"expected_version":1,"members":[%q]}`, opID("tm"), orgB)
+		expect(t, bd, "POST", trackPath+"/"+trackID+"/members", stale, 409, "conflict")
+		if p := period(t, bd, trackID, 1); !slices.Equal(strs(p["members"]), []string{orgA, orgB}) {
+			t.Fatalf("已结束一期的快照被改变：%+v", p)
+		}
+		next2 := next.AddDate(0, 0, 7)
+		if n := runTracking(t, next2); n != 1 {
+			t.Fatalf("%d", n)
+		}
+		p2 := period(t, bd, trackID, 2)
+		if num(p2, "baseline_seq") != 1 || num(p2, "members_version") != 2 || !slices.Equal(strs(p2["members"]), []string{orgA, orgC}) ||
+			!timeOf(t, p2, "period_start").Equal(next) || !timeOf(t, p2, "period_end").Equal(next2) {
+			t.Fatalf("%+v", p2)
+		}
+		// 暂停：不生成；再暂停无变化
+		pclock.set(next2.Add(time.Hour), 0)
+		if r := trackCmd(t, bd, trackID, "pause", 200); r["result"] != "succeeded" || r["tracking"].(map[string]any)["state"] != "paused" || r["tracking"].(map[string]any)["next_run_at"] != nil {
+			t.Fatalf("%+v", r)
+		}
+		if r := trackCmd(t, bd, trackID, "pause", 200); r["result"] != "no_change" {
+			t.Fatalf("%+v", r)
+		}
+		if n := runTracking(t, next2.AddDate(0, 0, 7)); n != 0 {
+			t.Fatalf("暂停期间生成了 %d 期", n)
+		}
+		// 恢复：从恢复时起到下一个周期时点为一期，不补暂停期间的各期
+		resumed := next2.AddDate(0, 0, 8).Add(2 * time.Hour)
+		pclock.set(resumed, 0)
+		r := trackCmd(t, bd, trackID, "resume", 200)
+		if r["result"] != "succeeded" || !timeOf(t, r["tracking"].(map[string]any), "next_run_at").Equal(next2.AddDate(0, 0, 14)) {
+			t.Fatalf("%+v", r)
+		}
+		if r := trackCmd(t, bd, trackID, "resume", 200); r["result"] != "no_change" {
+			t.Fatalf("%+v", r)
+		}
+		if n := runTracking(t, next2.AddDate(0, 0, 14)); n != 1 {
+			t.Fatalf("%d", n)
+		}
+		if p3 := period(t, bd, trackID, 3); !timeOf(t, p3, "period_start").Equal(resumed) || num(p3, "baseline_seq") != 2 {
+			t.Fatalf("%+v", p3)
+		}
+		// 执行者停止三周后：错过的周期时点合并为一期，如实记录实际期间
+		if n := runTracking(t, next2.AddDate(0, 0, 35).Add(time.Hour)); n != 1 {
+			t.Fatalf("%d", n)
+		}
+		if p4 := period(t, bd, trackID, 4); !timeOf(t, p4, "period_start").Equal(next2.AddDate(0, 0, 14)) || !timeOf(t, p4, "period_end").Equal(next2.AddDate(0, 0, 35)) {
+			t.Fatalf("%+v", p4)
+		}
+		// 停止：保留各期；停止后不能恢复或修改对象
+		pclock.set(next2.AddDate(0, 0, 36), 0)
+		if r := trackCmd(t, bd, trackID, "stop", 200); r["result"] != "succeeded" || r["tracking"].(map[string]any)["state"] != "stopped" {
+			t.Fatalf("%+v", r)
+		}
+		if r := trackCmd(t, bd, trackID, "stop", 200); r["result"] != "no_change" {
+			t.Fatalf("%+v", r)
+		}
+		trackCmd(t, bd, trackID, "resume", 409, "invalid_transition")
+		trackCmd(t, bd, trackID, "pause", 409, "invalid_transition")
+		expect(t, bd, "POST", trackPath+"/"+trackID+"/members", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"members":[%q]}`, opID("tm"), trackingVersion(t, trackID), orgB),
+			409, "invalid_transition")
+		if n := runTracking(t, next2.AddDate(0, 0, 60)); n != 0 {
+			t.Fatalf("%d", n)
+		}
+		list := obj(t, expect(t, bd, "GET", trackPath+"/"+trackID+"/periods", "", 200))["items"].([]any)
+		if len(list) != 4 || num(list[0].(map[string]any), "seq") != 4 {
+			t.Fatalf("%+v", list)
+		}
+		page := obj(t, expect(t, bd, "GET", trackPath+"/"+trackID+"/periods?limit=3", "", 200))
+		cur, _ := page["next_cursor"].(string)
+		rest := obj(t, expect(t, bd, "GET", trackPath+"/"+trackID+"/periods?limit=3&cursor="+url.QueryEscape(cur), "", 200))["items"].([]any)
+		if cur == "" || len(rest) != 1 || num(rest[0].(map[string]any), "seq") != 1 {
+			t.Fatalf("%+v %+v", page, rest)
+		}
+		expect(t, bd, "GET", trackPath+"/"+trackID+"/periods/9", "", 404, "period_not_found")
+		d = obj(t, expect(t, bd, "GET", trackPath+"/"+trackID, "", 200))
+		for _, k := range []string{"members_changed", "tracking_paused", "tracking_resumed", "tracking_stopped"} {
+			if !slices.Contains(kinds(d), k) {
+				t.Fatalf("时间线缺少 %s：%v", k, kinds(d))
+			}
+		}
+		if d["viewer_can_edit"] != false || d["stopped_at"] == nil {
+			t.Fatalf("%+v", d)
+		}
+		var reasons []string
+		for _, e := range eventsFor("pursuit.tracking.changed.v1", "pursuit_id", trackID) {
+			reasons = append(reasons, e["reason"].(string))
+		}
+		if !slices.Equal(reasons, []string{"created", "members_changed", "paused", "resumed", "stopped"}) {
+			t.Fatalf("%v", reasons)
+		}
+		if n := len(eventsFor("pursuit.tracking.period_closed.v1", "pursuit_id", trackID)); n != 4 {
+			t.Fatalf("%d", n)
+		}
+		items := obj(t, expect(t, dm, "GET", trackPath+"?objective_id="+objective.ID, "", 200))["items"].([]any)
+		if len(items) == 0 || items[0].(map[string]any)["id"] != trackID {
+			t.Fatalf("%+v", items)
+		}
+		// 持续跟踪不出现在交易型列表中
+		for _, v := range []string{"team", "mine"} {
+			for _, it := range obj(t, expect(t, dm, "GET", "/v1/pursuit/pursuits?view="+v, "", 200))["items"].([]any) {
+				if it.(map[string]any)["id"] == trackID {
+					t.Fatalf("持续跟踪出现在交易型列表 %s", v)
+				}
+			}
+		}
+		drained(t)
+	})
+
+	run("C-10 越权与反例测试 用例46、47、48：他租户、不参与且无单元关系的成员与不存在相同（404）；只能查看的业务专家不能写（403）；交易型与持续型的标识互不相通；篡改与他人的游标 400；确定失败固定在操作标识上", func(t *testing.T) {
+		vbody := func() string { return fmt.Sprintf(`{"operation_id":%q,"expected_version":1}`, opID("x")) }
+		// 他租户
+		expectAs(t, admin2, t2, "GET", trackPath+"/"+trackID, "", "", 404, "pursuit_not_found")
+		expectAs(t, admin2, t2, "GET", trackPath+"/"+trackID+"/periods", "", "", 404, "pursuit_not_found")
+		expectAs(t, admin2, t2, "GET", trackPath+"/"+trackID+"/periods/1", "", "", 404, "pursuit_not_found")
+		expectAs(t, admin2, t2, "POST", trackPath+"/"+trackID+"/pause", vbody(), "", 404, "pursuit_not_found")
+		expectAs(t, admin2, t2, "POST", trackPath+"/"+trackID+"/members", fmt.Sprintf(`{"operation_id":%q,"expected_version":1,"members":[%q]}`, opID("x"), orgA), "", 404, "pursuit_not_found")
+		expectAs(t, admin2, t2, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"越权","members":[%q]}`, opID("x"), objective.ID, orgA), "", 404, "objective_not_found")
+		if items := obj(t, expectAs(t, admin2, t2, "GET", trackPath, "", "", 200))["items"].([]any); len(items) != 0 {
+			t.Fatalf("他租户看到 %d 个持续跟踪", len(items))
+		}
+		// 管理员 admin 是目标参与人但没有单元关系、不在该跟踪中：与不存在相同
+		expect(t, admin, "GET", trackPath+"/"+trackID, "", 404, "pursuit_not_found")
+		expect(t, admin, "GET", trackPath+"/"+trackID+"/periods/1", "", 404, "pursuit_not_found")
+		expect(t, admin, "POST", trackPath+"/"+trackID+"/stop", vbody(), 404, "pursuit_not_found")
+		for _, it := range obj(t, expect(t, admin, "GET", trackPath, "", 200))["items"].([]any) {
+			if it.(map[string]any)["id"] == trackID {
+				t.Fatal("无权的持续跟踪出现在列表中")
+			}
+		}
+		// 业务专家：能查看（单元关系）但不能写；没有 can_assign 不能创建
+		pclock.set(at(100, 9, 0), 0)
+		live := obj(t, expect(t, bd, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"在跟","members":[%q]}`, opID("tc"), objective.ID, orgA), 200))
+		liveID := live["tracking"].(map[string]any)["id"].(string)
+		drained(t)
+		if d := obj(t, expect(t, expert, "GET", trackPath+"/"+liveID, "", 200)); d["viewer_can_edit"] != false {
+			t.Fatalf("%+v", d)
+		}
+		trackCmd(t, expert, liveID, "pause", 403, "forbidden")
+		expect(t, expert, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"x","members":[%q]}`, opID("x"), objective.ID, orgA), 403, "forbidden")
+		expect(t, bd3, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"x","members":[%q]}`, opID("x"), objective.ID, orgA), 404, "objective_not_found")
+		// 交易型与持续型的标识互不相通
+		expect(t, bd, "GET", "/v1/pursuit/pursuits/"+liveID, "", 404, "pursuit_not_found")
+		expect(t, bd, "POST", "/v1/pursuit/pursuits/"+liveID+"/assign", fmt.Sprintf(`{"operation_id":%q,"expected_version":1,"owner":%q,"collaborators":[]}`, opID("x"), bd2), 404, "pursuit_not_found")
+		expect(t, bd, "POST", "/v1/pursuit/pursuits/"+liveID+"/close", fmt.Sprintf(`{"operation_id":%q,"expected_version":1,"outcome":{"result":"abandoned","reason_code":"TOO_SMALL"}}`, opID("x")), 404, "pursuit_not_found")
+		expect(t, bd, "GET", trackPath+"/"+p1, "", 404, "pursuit_not_found")
+		expect(t, bd, "POST", trackPath+"/"+p1+"/pause", vbody(), 404, "pursuit_not_found")
+		expect(t, bd, "GET", trackPath+"/"+p1+"/periods", "", 404, "pursuit_not_found")
+		// 校验：非组织标识 400；不存在的时区 422 invalid_cadence
+		expect(t, bd, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"x","members":["usr_x"]}`, opID("x"), objective.ID), 400)
+		expect(t, bd, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"x","members":[%q],"cadence":{"weekday":1,"time":"08:00","timezone":"Asia/Atlantis"}}`,
+			opID("x"), objective.ID, orgA), 422, "invalid_cadence")
+		// 游标：limit=1 取下一页；篡改、换人、换筛选都 400；各期游标不能用于别的跟踪
+		page := obj(t, expect(t, bd, "GET", trackPath+"?limit=1", "", 200))
+		cur, _ := page["next_cursor"].(string)
+		if cur == "" {
+			t.Fatalf("%+v", page)
+		}
+		expect(t, bd, "GET", trackPath+"?limit=1&cursor="+url.QueryEscape(cur), "", 200)
+		raw, _ := base64.RawURLEncoding.DecodeString(cur)
+		raw[2] ^= 1
+		expect(t, bd, "GET", trackPath+"?limit=1&cursor="+base64.RawURLEncoding.EncodeToString(raw), "", 400, "invalid_cursor")
+		expect(t, dm, "GET", trackPath+"?limit=1&cursor="+url.QueryEscape(cur), "", 400, "invalid_cursor")
+		expect(t, bd, "GET", trackPath+"?limit=1&objective_id="+objective.ID+"&cursor="+url.QueryEscape(cur), "", 400, "invalid_cursor")
+		pcur, _ := obj(t, expect(t, bd, "GET", trackPath+"/"+trackID+"/periods?limit=1", "", 200))["next_cursor"].(string)
+		if pcur == "" {
+			t.Fatal("没有各期游标")
+		}
+		expect(t, bd, "GET", trackPath+"/"+liveID+"/periods?cursor="+url.QueryEscape(pcur), "", 400, "invalid_cursor")
+		expect(t, dm, "GET", trackPath+"/"+trackID+"/periods?cursor="+url.QueryEscape(pcur), "", 400, "invalid_cursor")
+		expect(t, bd, "GET", trackPath+"?cursor="+url.QueryEscape(pcur), "", 400, "invalid_cursor")
+		// 确定失败固定在操作标识上：负责人 bd3 不能查看该目标的信号 → 422，新键重放同一失败；同键不同请求 409；他人用同一操作标识 409
+		before := count(t, purOwner, `SELECT count(*) FROM pur_tracking`)
+		op := opID("tfixed")
+		body := fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"x","members":[%q],"owner":%q}`, op, objective.ID, orgA, bd3)
+		expect(t, bd, "POST", trackPath, body, 422, "assignee_no_access")
+		expect(t, bd, "POST", trackPath, body, 422, "assignee_no_access")
+		key := "track-fixed-" + suffix
+		expectAs(t, bd, t1, "POST", trackPath, body, key, 422, "assignee_no_access")
+		expectAs(t, bd, t1, "POST", trackPath, strings.Replace(body, bd3, bd2, 1), key, 409, "idempotency_conflict")
+		expect(t, bd2, "POST", trackPath, body, 409, "operation_conflict")
+		if n := count(t, purOwner, `SELECT count(*) FROM pur_tracking`); n != before {
+			t.Fatalf("拒绝的创建写入了 %d 个持续跟踪", n-before)
+		}
+		// 服务主体不能调用用户接口；本地绑定的 RunTracking 不接受用户主体
+		uctx := reqctx.With(ctx, reqctx.Context{Tenant: t1, Cell: "cell-01", Principal: reqctx.Principal{ID: bd, Kind: "user"}})
+		if _, err := reminders.RunTracking(uctx, at(130, 0, 0), 10); err == nil {
+			t.Fatal("用户主体执行了持续跟踪")
+		}
+		// 他租户的执行者不结束本租户的各期
+		if n, err := reminders.RunTracking(svc(t2), at(130, 0, 0), 10); err != nil || n != 0 {
+			t.Fatalf("%d %v", n, err)
+		}
+		trackCmd(t, bd, liveID, "stop", 200)
+		drained(t)
+	})
+
+	run("C-10 越权与反例测试 用例27、F12：持续跟踪的负责人移出目标参与人后立即不能查看与写入（按当前权限重新判断，不以创建时的授予为准）；成员退出后标“无有效负责人”，之后结束的一期如实记录", func(t *testing.T) {
+		pclock.set(at(101, 9, 0), 0)
+		mk := func(t *testing.T, owner string) string {
+			t.Helper()
+			res := obj(t, expect(t, dm, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"负责人 %s","members":[%q],"owner":%q}`,
+				opID("tc"), objective.ID, owner, orgB, owner), 200))
+			return res["tracking"].(map[string]any)["id"].(string)
+		}
+		// 前面的用例让 lead 退出又重新加入（参与关系未重写）：先移出再加入，使其重新取得目标参与关系
+		setParticipants(t, bd, bd2, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+		id, lid := mk(t, admin), mk(t, lead)
+		drained(t)
+		// admin 只凭负责人身份查看（没有单元关系、不是业务开拓者或项目推进者，不能写）；lead 是负责人且是项目推进者，可以写
+		if d := obj(t, expect(t, admin, "GET", trackPath+"/"+id, "", 200)); d["owner"] != admin || d["viewer_can_edit"] != false {
+			t.Fatalf("%+v", d)
+		}
+		trackCmd(t, admin, id, "pause", 403, "forbidden")
+		if r := trackCmd(t, lead, lid, "pause", 200); r["result"] != "succeeded" {
+			t.Fatalf("%+v", r)
+		}
+		trackCmd(t, lead, lid, "resume", 200)
+		drained(t)
+		// 移出目标参与人：负责人失效；admin 不再能查看，lead 不再能写（仍按单元关系查看）
+		setParticipants(t, bd, bd2, expert)
+		drained(t)
+		expect(t, admin, "GET", trackPath+"/"+id, "", 404, "pursuit_not_found")
+		expect(t, admin, "GET", trackPath+"/"+id+"/periods", "", 404, "pursuit_not_found")
+		trackCmd(t, lead, lid, "pause", 403, "forbidden")
+		for _, x := range []string{id, lid} {
+			if d := obj(t, expect(t, dm, "GET", trackPath+"/"+x, "", 200)); d["owner_valid"] != false {
+				t.Fatalf("%+v", d)
+			}
+		}
+		// 重新加入不恢复
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+		d := obj(t, expect(t, dm, "GET", trackPath+"/"+id, "", 200))
+		if d["owner_valid"] != false {
+			t.Fatalf("%+v", d)
+		}
+		expect(t, admin, "GET", trackPath+"/"+id, "", 404, "pursuit_not_found")
+		trackCmd(t, lead, lid, "pause", 403, "forbidden")
+		next := timeOf(t, d, "next_run_at")
+		if n := runTracking(t, next); n != 2 {
+			t.Fatalf("%d", n)
+		}
+		if p := period(t, dm, id, 1); p["owner"] != admin || p["owner_valid"] != false {
+			t.Fatalf("%+v", p)
+		}
+		trackCmd(t, dm, lid, "stop", 200)
+		trackCmd(t, dm, id, "stop", 200)
+		drained(t)
+	})
+
+	run("C-10 用例4：创建面板的默认负责人取分派规则的候选（以候选本人判断仍有效）；没有候选、候选无访问或规则未接入时为本人并说明原因；判断不可用 503", func(t *testing.T) {
+		sig := newSignal(t, pursueBid())[0]
+		defaults := func(t *testing.T, who, signal string, status int, code ...string) map[string]any {
+			t.Helper()
+			q := "/v1/pursuit/create-defaults?objective_id=" + objective.ID
+			if signal != "" {
+				q += "&signal_id=" + signal
+			}
+			return obj(t, expect(t, who, "GET", q, "", status, code...))
+		}
+		cands.set(sig, lead, nil, false)
+		if d := defaults(t, bd, sig, 200); d["owner"] != lead || d["owner_source"] != "candidate" || d["candidate_state"] != "valid" || d["candidate"] != lead {
+			t.Fatalf("%+v", d)
+		}
+		if d := defaults(t, bd, "", 200); d["owner"] != bd || d["owner_source"] != "self" || d["candidate_state"] != "none" {
+			t.Fatalf("%+v", d)
+		}
+		cands.set(sig, "", nil, false)
+		if d := defaults(t, bd, sig, 200); d["owner"] != bd || d["candidate_state"] != "none" {
+			t.Fatalf("%+v", d)
+		}
+		cands.set(sig, "", nil, true)
+		if d := defaults(t, bd, sig, 200); d["owner"] != bd || d["owner_source"] != "self" || d["candidate_state"] != "rules_unavailable" {
+			t.Fatalf("%+v", d)
+		}
+		cands.set(sig, "", errors.New("规则读取失败"), false)
+		defaults(t, bd, sig, 503, "assignment_rules_unavailable")
+		// 候选不能查看该目标的信号（非参与人）、他租户的用户：默认本人，不返回候选标识
+		for _, c := range []string{bd3, admin2} {
+			cands.set(sig, c, nil, false)
+			d := defaults(t, bd, sig, 200)
+			if _, leaked := d["candidate"]; leaked || d["owner"] != bd || d["owner_source"] != "self" || d["candidate_state"] != "no_access" {
+				t.Fatalf("%s：%+v", c, d)
+			}
+		}
+		// 候选已退出租户：无访问；重新加入后有效
+		cands.set(sig, lead, nil, false)
+		putMember(t, lead, "removed", `[]`)
+		if d := defaults(t, bd, sig, 200); d["candidate_state"] != "no_access" || d["owner"] != bd {
+			t.Fatalf("%+v", d)
+		}
+		// 重新加入后重新取得目标参与关系（先移出再加入）：候选再次有效
+		putMember(t, lead, "active", `["pursuit_lead"]`)
+		setParticipants(t, bd, bd2, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+		if d := defaults(t, bd, sig, 200); d["candidate_state"] != "valid" {
+			t.Fatalf("%+v", d)
+		}
+		// 授权：没有 can_assign 403；非参与人与他租户 404；信号不可见或不存在 404
+		defaults(t, expert, sig, 403, "forbidden")
+		defaults(t, bd3, sig, 404, "objective_not_found")
+		expectAs(t, admin2, t2, "GET", "/v1/pursuit/create-defaults?objective_id="+objective.ID+"&signal_id="+sig, "", "", 404, "objective_not_found")
+		defaults(t, bd, ids.New("sig"), 404, "signal_not_found")
+		// 只是默认值：不写 owner 时仍以本人为负责人；写明候选时照常检查被分派人
+		res := create(t, bd, fromSignal(t, bd, sig, ""), 200)
+		if res["pursuit"].(map[string]any)["owner"] != bd {
+			t.Fatalf("%+v", res)
+		}
+		cands.set(sig, "", nil, false)
+		drained(t)
+	})
+
+	run("C-10 用例12：同一标包另一家中标方的进行中跟进互相提示；越权与反例测试：看不到那个跟进的成员只见负责人（白名单投影），权限变化后下一次读取即按当前权限", func(t *testing.T) {
+		lot2 := newSignal(t, facttest.Bid{Amount: 6_000_000, HistoryCategories: []string{"CAT-PIPE-PE"}, Lot: "L2"},
+			facttest.Bid{Amount: 6_100_000, HistoryCategories: []string{"CAT-PIPE-PE"}, Lot: "L2"})
+		a := pursuitOf(create(t, dm, fromSignal(t, dm, lot2[0], fmt.Sprintf(`,"owner":%q`, admin)), 200))
+		b := pursuitOf(create(t, dm, fromSignal(t, dm, lot2[1], fmt.Sprintf(`,"owner":%q`, bd2)), 200))
+		drained(t)
+		hints := func(t *testing.T, who, id string) []map[string]any {
+			t.Helper()
+			var out []map[string]any
+			if list, ok := detail(t, who, id)["sibling_hints"].([]any); ok {
+				for _, h := range list {
+					out = append(out, h.(map[string]any))
+				}
+			}
+			return out
+		}
+		// 决策者能查看两个跟进：完整提示
+		h := hints(t, dm, a)
+		if len(h) != 1 || h[0]["visibility"] != "full" || h[0]["pursuit_id"] != b || h[0]["owner"] != bd2 || h[0]["owner_valid"] != true || h[0]["winner_org_id"] == nil || h[0]["created_at"] == nil {
+			t.Fatalf("%+v", h)
+		}
+		if h := hints(t, dm, b); len(h) != 1 || h[0]["pursuit_id"] != a {
+			t.Fatalf("%+v", h)
+		}
+		// admin（无单元关系、不在 b 中）：只给负责人，没有其他字段
+		h = hints(t, admin, a)
+		if len(h) != 1 || h[0]["visibility"] != "owner_only" || h[0]["owner"] != bd2 || len(h[0]) != 2 {
+			t.Fatalf("白名单投影：%+v", h)
+		}
+		// 把 admin 加为 b 的协作者：同步后下一次读取即为完整提示
+		assign(t, dm, b, bd2, []string{admin}, 200)
+		drained(t)
+		if h := hints(t, admin, a); len(h) != 1 || h[0]["visibility"] != "full" || h[0]["pursuit_id"] != b {
+			t.Fatalf("%+v", h)
+		}
+		// 移出协作者：立即回到只见负责人
+		assign(t, dm, b, bd2, nil, 200)
+		drained(t)
+		if h := hints(t, admin, a); len(h) != 1 || h[0]["visibility"] != "owner_only" || len(h[0]) != 2 {
+			t.Fatalf("%+v", h)
+		}
+		// 他租户读取与不存在相同；关闭后的跟进不再提示
+		expectAs(t, admin2, t2, "GET", "/v1/pursuit/pursuits/"+a, "", "", 404, "pursuit_not_found")
+		expect(t, dm, "POST", "/v1/pursuit/pursuits/"+b+"/close", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"outcome":{"result":"abandoned","reason_code":"TOO_SMALL"}}`,
+			opID("close"), versionOf(t, b)), 200)
+		drained(t)
+		if h := hints(t, dm, a); len(h) != 0 {
+			t.Fatalf("%+v", h)
+		}
+	})
+
+	run("C-10 用例42：评估报告的结果部分——时点评估与事后统计分开，每个跟进取当前记录（被取代的不计），金额按类型、币种与性质分别合计；越权与反例测试：只凭参与关系的成员 403，非参与人与他租户 404", func(t *testing.T) {
+		path := "/v1/learning/objectives/" + objective.ID + "/outcome-summary"
+		asOf := "2027-06-01T00:00:00Z"
+		sum := obj(t, expect(t, dm, "GET", path+"?as_of="+asOf, "", 200))
+		var total, superseded, known, unknown int
+		if err := lrns.owner.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE o.outcome_id IN (SELECT supersedes FROM lrn_outcomes WHERE supersedes IS NOT NULL)),
+ count(*) FILTER (WHERE known_at_utc IS NOT NULL AND o.outcome_id NOT IN (SELECT supersedes FROM lrn_outcomes WHERE supersedes IS NOT NULL)),
+ count(*) FILTER (WHERE known_at_utc IS NULL AND o.outcome_id NOT IN (SELECT supersedes FROM lrn_outcomes WHERE supersedes IS NOT NULL))
+ FROM lrn_outcomes o WHERE objective_id = $1`, objective.ID).Scan(&total, &superseded, &known, &unknown); err != nil {
+			t.Fatal(err)
+		}
+		pit, post := sum["point_in_time"].(map[string]any), sum["post_hoc"].(map[string]any)
+		if num(sum, "superseded") != int64(superseded) || superseded < 1 || num(pit, "total") != int64(known) || num(post, "total") != int64(unknown) || num(sum, "known_after_as_of") != 0 {
+			t.Fatalf("合计 %d 取代 %d 时点 %d 事后 %d：%+v", total, superseded, known, unknown, sum)
+		}
+		// 被取代的估计金额不计；修订后的已发生金额单独一组
+		amounts := pit["amounts"].([]any)
+		if len(amounts) != 1 {
+			t.Fatalf("%+v", amounts)
+		}
+		if m := amounts[0].(map[string]any); m["type"] != "own_supply_amount" || m["currency"] != "CNY" || m["nature"] != "actual" || m["total"] != "1180000" || num(m, "count") != 1 {
+			t.Fatalf("%+v", m)
+		}
+		if res := post["results"].(map[string]any); num(res, "abandoned") < 1 {
+			t.Fatalf("%+v", post)
+		}
+		// 截至时间早于获知时间：时点评估不计，计入 known_after_as_of
+		early := obj(t, expect(t, dm, "GET", path+"?as_of=2026-11-02T00:00:00Z", "", 200))
+		if num(early["point_in_time"].(map[string]any), "total")+num(early, "known_after_as_of") > int64(known) {
+			t.Fatalf("%+v", early)
+		}
+		expect(t, dm, "GET", path+"?from="+asOf+"&as_of="+asOf, "", 400, "invalid_window")
+		// 业务开拓者有单元关系可读；只凭参与关系的管理员 403；非参与人与他租户 404
+		expect(t, bd, "GET", path+"?as_of="+asOf, "", 200)
+		expect(t, admin, "GET", path, "", 403, "forbidden")
+		expect(t, bd3, "GET", path, "", 404, "objective_not_found")
+		expectAs(t, admin2, t2, "GET", path, "", "", 404, "objective_not_found")
+	})
+
 	if len(pending) != 0 {
 		t.Fatalf("结束时仍有 %d 个事件待重试", len(pending))
 	}
+}
+
+// fakeCandidates 是分派规则候选负责人的内存实现（C-10 测试注入；生产为 pursuitapi.NotWired）。
+type fakeCandidates struct {
+	mu       sync.Mutex
+	owners   map[string]string // 信号 → 候选
+	err      error
+	notWired bool
+}
+
+func (f *fakeCandidates) CandidateOwner(_ context.Context, _, signal string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.notWired {
+		return "", pursuitapi.ErrNotWired
+	}
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.owners[signal], nil
+}
+
+func (f *fakeCandidates) set(signal, owner string, err error, notWired bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.owners[signal], f.err, f.notWired = owner, err, notWired
 }

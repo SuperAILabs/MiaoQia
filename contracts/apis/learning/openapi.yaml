@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: learning 接口
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     策略仿真（PRD 第7段 F3，docs/01-product/prd/07-policy-simulation-approval.md；规格见 docs/03-architecture/subsystems/learning.md）。
     草案：随第7段首个实现切片提交，未冻结。租户、cell 与调用主体来自请求上下文。仿真是候选变更仿真（反事实）：回答“如果当时就按这份
@@ -15,6 +15,8 @@ info:
     调用者判断每条样本对应的公共事实能否查看（与对象页相同：租户上的 can_search_public，以及对象所在信息领域与区域在租户数据覆盖内），
     无权的样本不返回，只计入同一列表的 *_withheld 数量；同一运行对不同查看者可返回不同样本，保存的报告不变。权限判断不可用时
     全部样本按未返回计数，并给出提示 samples_unavailable，不当作有权。
+    0.4.0 起提供跟进结果汇总（PRD 第6段 F7 第5条、用例42，C-10）：getOutcomeSummary 按 pursuit.outcome.recorded.v1 写入的本租户结果集，
+    分时点评估与事后统计汇总当前结果（追加式修订按记录链取统计截至时的当前记录），只读、不生成报告记录。
 servers:
 - url: /internal
 paths:
@@ -96,6 +98,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FeedbackSummary'
+        default: *problem
+  /v1/learning/objectives/{objectiveID}/outcome-summary:
+    get:
+      operationId: getOutcomeSummary
+      summary: 跟进结果汇总（评估报告的结果部分，0.4.0）
+      description: >-
+        需要能查看目标（customer-context 的当前口径；不能查看与不存在同为 404 objective_not_found）且在目标所在单元上能查看全部跟进
+        （identity 的 org_unit#can_view_unit_pursuits；只凭参与关系查看个别跟进的成员 403 forbidden，不按聚合泄露其看不到的跟进）；
+        授权不可用为 503。口径（learning.md 第8.1节）：只计记录时间不晚于 as_of（缺省为当前时间）的结果记录，每个跟进取此时记录链上的
+        当前记录（被同样不晚于 as_of 的修订取代的不计，计入 superseded）；有获知时间且获知时间在 [from, as_of) 内的计入时点评估
+        （point_in_time），获知时间晚于 as_of 的不计（计入 known_after_as_of）；没有获知时间的只计入事后统计（post_hoc，按记录时间在
+        [from, as_of) 内）。金额按（类型、币种、取值性质）分别合计，不同类型、币种与性质不相加、不换算；贡献关系分别计数，不计算
+        “妙洽带来的金额”。只用于本租户的评估。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: objectiveID
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: as_of
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: 结果汇总
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutcomeSummary'
         default: *problem
 components:
   schemas:
@@ -691,3 +734,152 @@ components:
           maxItems: 64
           items:
             $ref: '#/components/schemas/FeedbackReasonCount'
+    OutcomeResultCounts:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - failure
+      - abandoned
+      properties:
+        success:
+          type: integer
+          minimum: 0
+        failure:
+          type: integer
+          minimum: 0
+        abandoned:
+          type: integer
+          minimum: 0
+    OutcomeReasonCount:
+      type: object
+      additionalProperties: false
+      required:
+      - result
+      - reason_code
+      - count
+      properties:
+        result:
+          type: string
+          enum:
+          - success
+          - failure
+          - abandoned
+        reason_code:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]{1,63}$
+        count:
+          type: integer
+          minimum: 1
+    OutcomeContributionCount:
+      type: object
+      additionalProperties: false
+      required:
+      - contribution
+      - count
+      properties:
+        contribution:
+          type: string
+          enum:
+          - first_alert
+          - decision_basis
+          - self_found
+          - external_notice
+          - undetermined
+        count:
+          type: integer
+          minimum: 1
+    OutcomeAmountTotal:
+      type: object
+      additionalProperties: false
+      description: 同一金额类型、币种与取值性质的合计（十进制文本）；不同组之间不相加、不换算
+      required:
+      - type
+      - currency
+      - nature
+      - total
+      - count
+      properties:
+        type:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{1,63}$
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        nature:
+          type: string
+          enum:
+          - actual
+          - estimate
+          - customer_stated
+        total:
+          type: string
+          pattern: ^-?[0-9]{1,24}(\.[0-9]{1,4})?$
+        count:
+          type: integer
+          minimum: 1
+    OutcomeSection:
+      type: object
+      additionalProperties: false
+      required:
+      - total
+      - results
+      - reasons
+      - contributions
+      - amounts
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: 计入本部分的跟进数（每个跟进一条当前记录）
+        results:
+          $ref: '#/components/schemas/OutcomeResultCounts'
+        reasons:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/OutcomeReasonCount'
+        contributions:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/OutcomeContributionCount'
+        amounts:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/OutcomeAmountTotal'
+    OutcomeSummary:
+      type: object
+      additionalProperties: false
+      description: 跟进结果汇总（0.4.0）：时点评估与事后统计分开给出，不合并
+      required:
+      - objective_id
+      - as_of
+      - point_in_time
+      - post_hoc
+      - superseded
+      - known_after_as_of
+      properties:
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        from:
+          type: string
+          format: date-time
+        as_of:
+          type: string
+          format: date-time
+          description: 统计截至时间（不含）
+        point_in_time:
+          $ref: '#/components/schemas/OutcomeSection'
+        post_hoc:
+          $ref: '#/components/schemas/OutcomeSection'
+        superseded:
+          type: integer
+          minimum: 0
+          description: 已被截至时间之前的修订取代、不计入的记录数
+        known_after_as_of:
+          type: integer
+          minimum: 0
+          description: 当前记录的获知时间晚于截至时间、不计入时点评估的跟进数

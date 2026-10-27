@@ -87,6 +87,39 @@ func (UnimplementedHandler) CreateTask(ctx context.Context, req *CreateTaskReque
 	return r, ht.ErrNotImplemented
 }
 
+// CreateTracking implements createTracking operation.
+//
+// 需要目标上的
+// can_assign（决策者或参与该目标的业务开拓者）。为一组组织（企业清单之外手选的组织标识）创建持续型跟进：名称、对象集合、
+// 周期（缺省每周一
+// 08:00，Asia/Shanghai）与负责人（缺省调用者本人；须为租户有效成员且能查看该目标的信号，否则
+// 422 assignee_no_access，
+// 不自动授予权限）。创建即进入跟踪中，第一期从创建时起到下一个周期时点。负责人经授权同步获得参与关系（与交易型跟进相同）。
+// 结果固定在操作标识上（created）。.
+//
+// POST /v1/pursuit/tracking
+func (UnimplementedHandler) CreateTracking(ctx context.Context, req *CreateTrackingRequest, params CreateTrackingParams) (r *TrackingCommandResult, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetCreateDefaults implements getCreateDefaults operation.
+//
+// 需要目标上的 can_assign（无权 403 forbidden，目标不可见 404
+// objective_not_found）。给出 Web 创建面板的默认负责人（PRD 第6段 F1 第2条、
+// 第13节第5项）：带 signal_id
+// 时取该信号上由目标的分派规则给出的候选负责人，候选此刻仍是租户有效成员且能查看该目标的信号（以候选本人
+// 判断）时默认候选；没有候选、候选无访问或分派规则不可用时默认调用者本人，candidate_state
+// 说明原因。只是默认值：createPursuit 不带 owner
+// 时仍以调用者本人为负责人，选用候选须在请求中写明
+// owner（写入前照常检查被分派人）。候选不因被建议而获得访问；只有候选有效时
+// 才返回其标识。信号不可见、他租户或不属于该目标为 404
+// signal_not_found；判断不可用为 503（不当作无访问）。.
+//
+// GET /v1/pursuit/create-defaults
+func (UnimplementedHandler) GetCreateDefaults(ctx context.Context, params GetCreateDefaultsParams) (r *CreateDefaults, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetPursuit implements getPursuit operation.
 //
 // 需要推进的 can_view（见
@@ -110,6 +143,28 @@ func (UnimplementedHandler) GetPursuit(ctx context.Context, params GetPursuitPar
 //
 // GET /v1/pursuit/tasks/{taskID}
 func (UnimplementedHandler) GetTask(ctx context.Context, params GetTaskParams) (r *TaskView, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetTracking implements getTracking operation.
+//
+// 需要推进的
+// can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为
+// 404 pursuit_not_found。.
+//
+// GET /v1/pursuit/tracking/{pursuitID}
+func (UnimplementedHandler) GetTracking(ctx context.Context, params GetTrackingParams) (r *Tracking, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetTrackingPeriod implements getTrackingPeriod operation.
+//
+// 需要推进的
+// can_view（读取时按当前权限判断，不以该期结束时的负责人为准）。返回该期的实际期间、当期成员快照与对比基准；对象集合之后的
+// 修改不影响已结束的期。不存在的期 404 period_not_found。.
+//
+// GET /v1/pursuit/tracking/{pursuitID}/periods/{seq}
+func (UnimplementedHandler) GetTrackingPeriod(ctx context.Context, params GetTrackingPeriodParams) (r *TrackingPeriod, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -141,6 +196,38 @@ func (UnimplementedHandler) ListPursuits(ctx context.Context, params ListPursuit
 	return r, ht.ErrNotImplemented
 }
 
+// ListTracking implements listTracking operation.
+//
+// 只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多
+// limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的
+// objective_id，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。.
+//
+// GET /v1/pursuit/tracking
+func (UnimplementedHandler) ListTracking(ctx context.Context, params ListTrackingParams) (r *TrackingList, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ListTrackingPeriods implements listTrackingPeriods operation.
+//
+// 需要推进的 can_view；按期序号倒序，每页至多 limit 条（默认且至多
+// 50），next_cursor 为签名游标（绑定租户、调用者与该跟踪）。.
+//
+// GET /v1/pursuit/tracking/{pursuitID}/periods
+func (UnimplementedHandler) ListTrackingPeriods(ctx context.Context, params ListTrackingPeriodsParams) (r *TrackingPeriodList, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// PauseTracking implements pauseTracking operation.
+//
+// 需要推进的 can_edit（与跟进的写命令同一准入）。跟踪中 →
+// 已暂停：暂停期间不生成变化简报，进行中的一期不再结束（不补）。已暂停为
+// no_change；已停止 409 invalid_transition；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/pause
+func (UnimplementedHandler) PauseTracking(ctx context.Context, req *VersionRequest, params PauseTrackingParams) (r *TrackingCommandResult, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ReopenTask implements reopenTask operation.
 //
 // 撤销本人的一次完成（target_operation_id）：在撤销时限内、任务版本仍为完成后的版本时恢复为待办、恢复完成前的截止与未发送的提醒；
@@ -149,6 +236,17 @@ func (UnimplementedHandler) ListPursuits(ctx context.Context, params ListPursuit
 //
 // POST /v1/pursuit/tasks/{taskID}/reopen
 func (UnimplementedHandler) ReopenTask(ctx context.Context, req *ReopenTaskRequest, params ReopenTaskParams) (r *CommandResult, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ResumeTracking implements resumeTracking operation.
+//
+// 需要推进的 can_edit。已暂停 →
+// 跟踪中：下一期从恢复时起到恢复后的下一个周期时点，不补暂停期间的各期。跟踪中为
+// no_change； 已停止 409 invalid_transition；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/resume
+func (UnimplementedHandler) ResumeTracking(ctx context.Context, req *VersionRequest, params ResumeTrackingParams) (r *TrackingCommandResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -164,6 +262,17 @@ func (UnimplementedHandler) ReviseOutcome(ctx context.Context, req *ReviseOutcom
 	return r, ht.ErrNotImplemented
 }
 
+// StopTracking implements stopTracking operation.
+//
+// 需要推进的 can_edit。跟踪中或已暂停 →
+// 已停止：不再生成变化简报，已有各期保留。已停止为
+// no_change；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/stop
+func (UnimplementedHandler) StopTracking(ctx context.Context, req *VersionRequest, params StopTrackingParams) (r *TrackingCommandResult, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // UpdateTask implements updateTask operation.
 //
 // 需要推进的
@@ -173,6 +282,17 @@ func (UnimplementedHandler) ReviseOutcome(ctx context.Context, req *ReviseOutcom
 //
 // POST /v1/pursuit/tasks/{taskID}/update
 func (UnimplementedHandler) UpdateTask(ctx context.Context, req *UpdateTaskRequest, params UpdateTaskParams) (r *CommandResult, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// UpdateTrackingMembers implements updateTrackingMembers operation.
+//
+// 需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为
+// no_change；已停止 409 invalid_transition；否则版本不一致 409
+// conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/members
+func (UnimplementedHandler) UpdateTrackingMembers(ctx context.Context, req *TrackingMembersRequest, params UpdateTrackingMembersParams) (r *TrackingCommandResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
