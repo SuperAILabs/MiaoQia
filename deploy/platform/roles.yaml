@@ -14,8 +14,9 @@ roles:
     data_scopes: {search: tenant}
     cell: cell-01
     subsystems: [research, learning, customer-context, pursuit, governance, search]
-  scheduler:
-    subsystems: [operations]
+  scheduler:                # 周期任务（kernel/scheduler，验收线 R-01）；identity 须本地加载（租户枚举只有本地绑定）
+    cell: cell-01
+    subsystems: [identity, commerce, customer-context, detection, pursuit, channels, operations]
 
   public-search-api:
     subsystems: [search]

@@ -194,6 +194,35 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						}
 					}
 				}
+				// R-01：scheduler 角色声明本地加载子系统的周期任务；按租户的任务依赖只有本地绑定的 identity.Tenants，
+				// identity 配置为远程时声明失败（角色不启动），不静默少跑任务
+				if role == "scheduler" {
+					jobs, err := collectJobs(loaded, envs)
+					if v["MIAOQIA_BINDING_IDENTITY"] == "remote" {
+						if err == nil {
+							t.Fatal("identity 远程时 scheduler 角色应拒绝启动")
+						}
+						return
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					got := map[string]bool{}
+					for _, j := range jobs {
+						got[j.Name] = true
+					}
+					want := []string{"identity.expire-invitations", "identity.retry-tenant-bindings", "identity.expire-approvals",
+						"channels.retry-revocations", "channels.reconcile-sessions", "channels.compose-briefings", "channels.deliver-briefings",
+						"channels.process-card-actions", "channels.deliver-notices"}
+					if v["MIAOQIA_BINDING_PURSUIT"] != "remote" {
+						want = append(want, "pursuit.run-due-reminders", "pursuit.retry-authorization-sync", "pursuit.run-tracking")
+					}
+					for _, name := range want {
+						if !got[name] {
+							t.Fatalf("scheduler 角色缺少任务 %s：%v", name, got)
+						}
+					}
+				}
 			})
 		}
 	}

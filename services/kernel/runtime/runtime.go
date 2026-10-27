@@ -10,6 +10,7 @@ import (
 
 	"github.com/superailabs/miaoqia/services/kernel/consumer"
 	"github.com/superailabs/miaoqia/services/kernel/db"
+	"github.com/superailabs/miaoqia/services/kernel/scheduler"
 )
 
 // Module 描述一个子系统在各进程角色中的职责。未使用的字段留空。
@@ -24,6 +25,8 @@ type Module struct {
 	Routes func(env *Env, public, internal *http.ServeMux)
 	// Consumers 在 consumer 角色中运行的事件消费者。
 	Consumers func(env *Env) []*consumer.Consumer
+	// Jobs 在 scheduler 角色中运行的周期任务（kernel/scheduler），在 Start 之后调用；任务只调用本子系统可重复执行的维护入口。
+	Jobs func(env *Env) ([]scheduler.Job, error)
 }
 
 // Env 是子系统运行环境：本子系统的数据库与配置、事件总线地址、其他子系统接口的绑定。

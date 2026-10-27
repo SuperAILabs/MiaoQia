@@ -56,11 +56,13 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.DirectoryBinding, api.LocalDirectory(directory))
 			env.Bindings.Provide(api.GuardBinding, api.LocalGuard(directory))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(directory))
+			env.Bindings.Provide(api.TenantsBinding, api.LocalTenants(directory))
 			env.Bindings.Provide(api.ChannelSessionsBinding, api.LocalChannelSessions(directory))
 			env.Bindings.Provide(api.ApprovalsBinding, api.LocalApprovals(directory))
 			env.Bindings.Provide(api.ApprovalReaderBinding, api.LocalApprovalReader(directory))
 			return nil
 		},
+		Jobs: jobs,
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
 			handler := &app.Server{Decider: decider, Directory: directory}
 			srv, err := identityapi.NewServer(handler, identityapi.WithPathPrefix("/internal"), identityapi.WithErrorHandler(app.WriteProtocolError))

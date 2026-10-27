@@ -1,6 +1,6 @@
 # 身份与权限子系统（identity）
 
-> 状态：评审中 · 版本：1.12 · 更新：2026-10-26 · 平面：平台
+> 状态：评审中 · 版本：1.13 · 更新：2026-10-26 · 平面：平台
 
 ## 1. 使命
 
@@ -76,7 +76,7 @@
 - **接受**：独立授权，不经成员管理接口，调用者只需是已认证用户（令牌通常不带租户）。按链接存在、未撤回、链接代次等于当前代次、未过期、IdP 中账号的已验证邮箱与邀请一致、账号不是其他租户的有效成员、不是本租户的有效成员、邀请含租户管理员角色时有 15 分钟内的强认证的顺序核验；通过后在一个事务中（租户行锁、邀请行锁）按邀请限定的角色与单元角色经成员写入的内部逻辑写入成员资格（清除旧参与关系、发布 `identity.member.changed.v1`），把邀请置为已接受并保存首次结果，登记待写入 IdP 的租户归属，发布 `identity.invitation.changed.v1`。同一账号以同一链接再次接受（含并发与响应丢失后的重试）返回首次结果（`already_accepted`），不再写入或发布；其他账号接受已接受的邀请 409。接受请求不能携带角色或单元。M2 一个账号只属于一个租户：接受与成员命令的加入都按账号加咨询锁并核对其他租户的有效成员资格，不同租户的并发加入只有一个成功；平台运营开通租户时指定的首位管理员暂未核对；
 - **IdP 租户归属**：接受提交后写入 IdP 中账号的租户与 cell（`identity_tenant_bindings`）；写入成功前 `access` 为 `provisioning`，令牌不带租户，访问失败关闭。写入在归属行锁与账号咨询锁内执行，写入前核对接受人仍是该租户的有效成员（否则取消），加入其他租户须先取得同一把账号锁，因此旧租户的迟到写入不会覆盖新租户的归属。未完成的写入由重复接受与 `identity.Maintenance.RetryTenantBindings` 重试；
 - **出站端口**：IdP 账号查询与租户归属写入（`api.IdentityProvider`）、邀请邮件（`api.Notifier`）是端口，测试使用内存实现（`api/idptest`）。生产 Keycloak 管理接口与邮件渠道的适配器尚未实现，`identity.Module()` 缺省使用“未接入”实现：接受邀请返回 503 `identity_unavailable`，邀请邮件记为发送失败，强认证的登记状态视为未知；
-- **定时维护**：`identity.Maintenance`（本地绑定）提供 `ExpireDueInvitations` 与 `RetryTenantBindings`，定时任务角色尚未接入；在此之前到期的邀请在列表、创建、重发、撤回与接受前按业务时钟置为已过期，接受与撤回在行锁内再次核对，不会接受或撤回到期的邀请；
+- **定时维护**：`identity.Maintenance`（本地绑定）提供 `ExpireDueInvitations`、`RetryTenantBindings` 与 `ExpireDueApprovals`，由 `scheduler` 角色的周期任务 `identity.expire-invitations`（每 5 分钟）、`identity.retry-tenant-bindings` 与 `identity.expire-approvals`（每分钟）以 `svc:identity` 调用（`services/subsystems/identity/jobs.go`，验收线 R-01）；`identity.Tenants`（本地绑定）的 `ActiveTenants` 供其他子系统的按租户任务枚举本 cell 的 active 租户：只读、按 ID 分页（每页至多 1000），只接受不带租户上下文的 `svc:scheduler`，其他主体 403、参数无效 400，停用租户与其他 cell 不返回（证据 `services/kernel/integration/tenants_test.go`）。调度间隔内到期的邀请在列表、创建、重发、撤回与接受前按业务时钟置为已过期，接受与撤回在行锁内再次核对，不会接受或撤回到期的邀请；
 - 邀请尚未实现：批量粘贴（客户端逐行调用，每行带幂等键）、接受前的确认页查询、新账号经邀请链接注册与邮箱验证（IdP 流程）、接受后以登录邮箱建立邮件渠道绑定（随 channels）、退出成员的 IdP 租户归属清除。
 
 **邀请状态机**：
@@ -122,7 +122,7 @@
 - **提交**：由所属子系统以申请人的请求上下文转交（不是服务主体），要求申请关系与 15 分钟内的强认证，带幂等键（相同键与内容返回首次结果，内容不同 409）。绑定 `ApprovalBinding` 固定对象版本（激活为草案修订、回滚为目标版本）、证据（仿真运行标识）、申请时的生效版本与策略代次，以及只用于首次激活的回填天数：激活带回填而基准版本不为 0、回滚带回填、回滚的基准版本为 0 或目标版本等于基准版本时 400。回滚目标可以是比基准新的曾生效版本（先回滚再回到较新版本，PRD 用例 26），identity 只判断绑定形式，版本是否曾经生效由 customer-context 核验。同一资源同时只有一个待审批请求（咨询锁与部分唯一索引，409 `approval_in_progress`）；
 - **决定**：顺序为申请人本人 403 `self_approval_forbidden` → 无批准关系与不存在同为 404 `approval_not_found` → 强认证 → 幂等回执 → 锁内重核批准关系 → 非待审批或已到期 409 `approval_not_pending` → `expected_version` 不符 409 `version_conflict` → 重核申请人（已退出或失去申请关系时本事务内失效，返回 409 `approval_invalidated`，不作出决定；失效与一条失败回执同事务提交，同一幂等键重试返回同一 409，不返回空的成功结果）。驳回必须写原因。并发的两个决定在请求行锁上串行，只有一个生效；
 - **撤回与失效**：只有申请人能撤回（有批准关系的他人 403，其余 404），带 `expected_version`。成员退出、角色或单元角色变化（成员行排他锁内）与参与关系同步（资源登记行排他锁内）时逐个重核申请人，失权的请求以 `applicant_left` / `applicant_lost_permission` 失效；决定对申请人成员行与资源登记行加共享锁，因此失权与批准不会交错。所属子系统以服务主体调用 `CloseApproval` 报告绑定不成立（`object_changed`、`baseline_changed`、`objective_disabled`），其他服务主体 403；
-- **到期**：7 天（PRD 第13节第3项），按业务时钟判断。读取、列表、决定、撤回与提交前先在独立事务中把到期的请求置为已过期，`effective_at` 为到期时间；`ExpireDueApprovals` 供定时任务批量处理，本切片未接入调度器，到期请求在下一次被访问时关闭并发布事件；
+- **到期**：7 天（PRD 第13节第3项），按业务时钟判断。读取、列表、决定、撤回与提交前先在独立事务中把到期的请求置为已过期，`effective_at` 为到期时间；`ExpireDueApprovals` 由 `scheduler` 角色每分钟批量处理（无人访问的请求也会关闭并发布事件，证据 `TestPolicySimulationApproval` 用例13（R-01））；两轮之间到期的请求在被访问时即关闭；
 - **列表**：`role=approver`（缺省）逐个资源实时判断批准关系（同一资源只判断一次，一次至多检查 500 条，达到时返回已找到的部分与游标），`role=applicant` 只列本人申请；每页缺省与上限 100，游标绑定租户、调用者、角色与状态，换用于其他角色或状态 400 `invalid_cursor`；
 - **事件**：`identity.approval.requested.v1`、`identity.approval.decided.v1`、`identity.approval.closed.v1` 的信封带租户与 cell，载荷带类型、资源、申请人、绑定、请求版本与生效时间，按请求版本单调递增；所有状态变化写审计（`identity.approval.*`）；
 - **读取绑定**（PRD 第5段）：`identity.ApprovalReader` 提供 `ListApprovals` 与 `GetApproval`，本地与远程（内部接口 `GET /internal/v1/identity/approvals`、`GET /internal/v1/identity/approvals/{approvalID}`）行为一致，以调用者的用户主体判断可见性，与公共接口相同；channels 以简报收件人本人的身份读取待其批准的审批（“待我处理”区）与简报链接指向的审批；

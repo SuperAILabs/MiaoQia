@@ -1,6 +1,6 @@
 # 推进与结果子系统（pursuit）
 
-> 状态：评审中 · 版本：1.8 · 更新：2026-10-27 · 平面：客户智能
+> 状态：评审中 · 版本：1.9 · 更新：2026-10-27 · 平面：客户智能
 
 ## 1. 使命
 
@@ -166,5 +166,5 @@ M2 切片的用户流程、唯一性、撤销创建、提醒与结果规则见 [
   - **互相提示（用例12 的提示部分）**：`getPursuit` 追加 `sibling_hints`：同一目标、同一事实类型与主体上目标对象键不同的进行中交易型跟进（至多 20 个），每次读取按查看者对那个跟进的当前权限分级投影（白名单）：能查看为 `full`，否则 `owner_only` 只给负责人。跟进目标的部分是中标结果自身的标识、不含标包，暂不能缩小到同一标包（[A02 验收缺口 C-15](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)）；
   - **结果汇总（用例42）**：learning `getOutcomeSummary` 按截至时间读取每个跟进记录链上的当前记录，时点评估（获知时间在窗口内）与事后统计（获知时间缺失）分开给出，金额按类型、币种与性质精确合计；调用者须能查看目标且在目标所在单元上有 `can_view_unit_pursuits`（只凭参与关系的成员 403）。只读计算，不持久化报告（C-16）；
   - **证据**：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 “C-10 …” 子测试，含他租户、无关系成员、只能查看的成员、负责人被移出、篡改与他人游标、标识形态混用、确定失败固定的负向用例）、`services/subsystems/pursuit/internal/app/domain_internal_test.go`（周期、对象集合、提示白名单）、`services/subsystems/learning/internal/app/outcome_summary_test.go`；剩余项见 [A02 验收缺口 C-12～C-16](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)；
-- **未实现**：公开截止绑定（F6，依赖 domain-intelligence 的截止事件，见[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)）、持续跟踪的变化简报与关注（C-12）、持续跟踪的改派与对象来源版本（C-13）、分派规则的配置与按规则计算候选（C-14）、定时任务（`Reminders` 的 `RunDue`、`RetrySync` 与 `RunTracking` 由调度器调用，[A02 验收缺口 R-01](../../05-delivery/09-a02-end-to-end-acceptance.md#43-运行装配r)）。证据：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`）、`services/subsystems/pursuit/internal/app/domain_internal_test.go`；
+- **未实现**：公开截止绑定（F6，依赖 domain-intelligence 的截止事件，见[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)）、持续跟踪的变化简报与关注（C-12）、持续跟踪的改派与对象来源版本（C-13）、分派规则的配置与按规则计算候选（C-14）。`Reminders` 由 `scheduler` 角色的 `pursuit.run-due-reminders`、`pursuit.retry-authorization-sync` 与 `pursuit.run-tracking`（每分钟，逐个 active 租户以 `svc:pursuit` 调用，`services/subsystems/pursuit/jobs.go`，[A02 验收缺口 R-01](../../05-delivery/09-a02-end-to-end-acceptance.md#43-运行装配r)）调用。证据：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`）、`services/subsystems/pursuit/internal/app/domain_internal_test.go`；
 - **渠道侧（C-09，channels 实现）**：任务提醒卡片（“完成”“撤销”“查看”）、简报“待我处理”中的任务、授权被拒时通知操作者与提醒的安静时段由 channels 消费 `pursuit.task.due.v1` 与 `pursuit.pursuit.authorization_rejected.v1` 实现，每次发送与点击都以收件人或点击者本人经 `getTask` / `getPursuit` / `completeTask` / `reopenTask` 再判断，见 [channels 实现状况](channels.md)。
