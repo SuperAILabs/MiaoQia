@@ -474,3 +474,21 @@ def test_initial_manifest_is_exact_reviewed_and_inactive():
             value = policy(command["policy"])
             assert value["scopes"] == [{"tenant": CTX.tenant, "cell": CTX.cell}]
             assert value["display"] == "excerpt" and not value["redistribution"]
+
+
+def test_reference_group_requires_independent_policy_and_explicit_activation(registry):
+    read, write, _ = registry
+    reference = "reference-proc-building-topic-v0-1"
+    tags = ["review:building-topic-pair"]
+    p = grant("building-topic-reference", source_id=reference)
+    req = {"operation": "fact_read", "inputs": [{"source_id": reference, "tags": tags}]}
+    with reqctx.use(CTX):
+        write.command({"action": "register", "policy": p}, "reviewer", "reviewed reference only")
+        write.command({"action": "bind", "source_id": reference, "tags": tags,
+            "entry_id": p["entry_id"], "version": 1}, "reviewer", "exact reference alias")
+        assert not Decisions(read).evaluate(req)["allowed"]
+        write.command({"action": "activate", "entry_id": p["entry_id"], "version": 1}, "reviewer", "explicit test activation")
+        assert Decisions(read).evaluate(req)["allowed"]
+        with pytest.raises(Exception):
+            write.command({"action": "bind", "source_id": SOURCE, "tags": [TENDER,"public-official-review"],
+                "entry_id": p["entry_id"], "version": 1}, "reviewer", "cannot borrow official identity")

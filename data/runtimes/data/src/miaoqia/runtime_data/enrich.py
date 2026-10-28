@@ -25,6 +25,21 @@ def test_display(tags, purpose):
                               or t.startswith("corpus:") for t in tags) else "none"
 
 
+def assemble(database, evd_database, root, *, packs, enable_test_recipe=False, enable_building_topic=False):
+    """Explicit offline local recipe assembly shared by enrichment and audited backfill."""
+    queries = domain_intelligence.queries(database, allowed=lambda tags, purpose: test_display(tags, purpose) == "full_text")
+    def fixed(fact_id, version):
+        result = queries.get_fact(fact_id, Basis("current"), version=version)
+        return result.fact if result else None
+    recipes = []
+    if enable_building_topic:
+        recipes.append(evidence.load_recipe(Path(packs) / "industries/building-materials",
+            "miaoqia_pack_building_materials.topic:build_recipe", packs))
+    service = evidence.enrichments(evd_database, FilesystemObjectStore(root), facts=fixed,
+                                   display=test_display, enable_test_recipe=enable_test_recipe, recipes=recipes, fact_requirements=queries.requirements)
+    return service, recipes
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="mq-notice-enrich")
     parser.add_argument("--recipe", required=True)
@@ -42,16 +57,8 @@ def main(argv=None):
     database, evd_database, reader = db.Database(dom_dsn), db.Database(evd_dsn), evidence.extractions(evd_dsn)
     try:
         with reqctx.use(dataclasses.replace(reqctx.service("notice-enrich-test"), purpose="enrichment_test")):
-            queries = domain_intelligence.queries(database, allowed=lambda tags, purpose: test_display(tags, purpose) == "full_text")
-            def fixed(fact_id, version):
-                result = queries.get_fact(fact_id, Basis("current"), version=version)
-                return result.fact if result else None
-            recipes = []
-            if args.enable_building_topic:
-                recipes.append(evidence.load_recipe(Path(args.packs) / "industries/building-materials",
-                    "miaoqia_pack_building_materials.topic:build_recipe", args.packs))
-            service = evidence.enrichments(evd_database, FilesystemObjectStore(root), facts=fixed,
-                                           display=test_display, enable_test_recipe=args.enable_test_recipe, recipes=recipes)
+            service, recipes = assemble(database, evd_database, root, packs=args.packs,
+                enable_test_recipe=args.enable_test_recipe, enable_building_topic=args.enable_building_topic)
             if args.recipe not in service.recipes:
                 raise ValueError("recipe未登记/未启用（测试recipe须显式启用）")
             if args.enable_test_recipe:

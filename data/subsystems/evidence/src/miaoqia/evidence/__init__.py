@@ -30,17 +30,17 @@ def module() -> Module:
     return Module(name=NAME, database="evd", migrations=MIGRATIONS, consumers=consumers)
 
 
-def resolver(database, store, *, display=None, enrichments=None):
+def resolver(database, store, *, display=None, enrichments=None, authorize=None):
     """api.EvidenceResolver 的本地绑定；必须注入按当前请求上下文判定展示级别的策略。"""
     from .application.queries import Resolver
 
-    return Resolver(database, store, display, enrichments=enrichments)
+    return Resolver(database, store, display, enrichments=enrichments, authorize=authorize)
 
 
-def enrichments(database, store, *, facts, display=None, enable_test_recipe=False, recipes=()):
+def enrichments(database, store, *, facts, display=None, enable_test_recipe=False, recipes=(), authorize=None, fact_requirements=None):
     """公开本地派生登记/读取装配，默认无recipe且拒绝访问。"""
     from .application.enrichments import EnrichmentStore
-    return EnrichmentStore(database, store, facts=facts, display=display, enable_test_recipe=enable_test_recipe, recipes=recipes)
+    return EnrichmentStore(database, store, facts=facts, display=display, enable_test_recipe=enable_test_recipe, recipes=recipes, authorize=authorize, fact_requirements=fact_requirements)
 
 
 def load_recipe(pack_dir, entrypoint, packs_dir):
@@ -48,3 +48,9 @@ def load_recipe(pack_dir, entrypoint, packs_dir):
     from .extensions.packs import _load_module
     module, name = entrypoint.split(":")
     return getattr(_load_module(pack_dir, module), name)(packs_dir)
+
+
+def source_requirements(database):
+    """Owner metadata-only port; no content objects or caller source assertions."""
+    from .application.provenance import Provenance
+    return Provenance(database)
