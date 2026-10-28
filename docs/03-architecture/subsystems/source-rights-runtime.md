@@ -1,6 +1,6 @@
 # 冻结语料的当前来源权利与可信来源闭包
 
-acquisition 提供冻结语料的持久化当前权利端口，供后续 data-api 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。它没有接通事实/证据查询 listener、Go 生产适配器或完整 R2；A02 保持 L0，E1–E5 仍为建议。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
+acquisition 提供冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 已接通最小事实/证据查询 listener、TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络 smoke、Go 生产适配器与完整 R2 仍未完成。A02 保持 L0，E1–E5 仍为建议。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
 
 ## 权威与引用
 
@@ -16,7 +16,7 @@ acquisition 提供冻结语料的持久化当前权利端口，供后续 data-ap
 | official-qzygjy | public-official-review + corpus:official-building-award-20261026 | building-award@1 |
 | reference-proc-building-topic-v0-1 | review:building-topic-pair | building-topic-reference@1 |
 
-`public-official-review` 单独不足授权，其他 source、未知或多余 tag、前缀近似、空输入、撤销或缺当前指针都拒绝。旧事实、事件、快照和 tags 原样保留。调用方必须从已验证的持久化来源/固定依赖取得每个原始输入的 source 和完整 tags；不得从用户传参宣称来源，也不得把聚合 tags 并集猜成单个授权条目。受认证 data peer 对这种来源绑定负责；d0 不读取 data 私库核验任意来源断言，本地可信装配通过下述 owner 元数据端口提供；远程 listener 与响应提交集成仍待独立实现。
+`public-official-review` 单独不足授权，其他 source、未知或多余 tag、前缀近似、空输入、撤销或缺当前指针都拒绝。旧事实、事件、快照和 tags 原样保留。调用方必须从已验证的持久化来源/固定依赖取得每个原始输入的 source 和完整 tags；不得从用户传参宣称来源，也不得把聚合 tags 并集猜成单个授权条目。受认证 data peer 对这种来源绑定负责；d0 不读取 data 私库核验任意来源断言，本地可信装配通过下述 owner 元数据端口提供；listener 的最终响应提交与 collector/查询结果装配仍待独立实现。
 
 ## 固定版本可信来源闭包
 
@@ -65,4 +65,4 @@ receipt 是最长30秒的随机 nonce/epoch/到期/HMAC 完整性封套，绑定
 5. 需要 fixture 读取时，另写显式 activate 命令数组（action/entry_id/version）；撤销数组为 action=revoke + entry_id。版本登记为 action=register + policy，别名绑定为 action=bind + source_id/tags/entry_id/version。必须提供 actor/reason，不接受 SQL、通配目标或网络管理请求。
 6. 参考[关闭的配置示例](../../../deploy/acquisition/source-rights.env.example)，发放实际证书，配置精确 data peer→rights.resolve/confirm/status→interactive；设置 reader DSN、identity HTTPS/peer 和监听地址后才显式启用 `MIAOQIA_ACQUISITION_RIGHTS_ENABLED=1`，以 `mq-acquisition --role acq-admin` 启动。8092 是可配置推荐值，并非已有生产端口。
 
-现有 identity peer 使用 `spiffe://miaoqia/service/platform-api`；data-api/acq-admin 的 URI 随角色证书显式发放，示例不是生产默认许可。迁移仅 acquisition 自库，不借用 data/evidence/domain 凭据。停止依赖、失联、过期和撤销时失败关闭；不使用缺撤销保障的本地权利快照。后续 data listener、最终响应确认和真实状态装配须独立实现/评审。
+现有 identity peer 使用 `spiffe://miaoqia/service/platform-api`；data-api/acq-admin 的 URI 随角色证书显式发放，示例不是生产默认许可。迁移仅 acquisition 自库，不借用 data/evidence/domain 凭据。停止依赖、失联、过期和撤销时失败关闭；不使用缺撤销保障的本地权利快照。最终响应确认、collector/查询结果装配和真实状态装配须独立实现/评审。

@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+import time
 from pathlib import Path
 from typing import Protocol
 
@@ -21,7 +22,7 @@ class ObjectConflict(RuntimeError):
 class ObjectStore(Protocol):
     def put(self, key: str, data: bytes) -> None: ...
 
-    def get(self, key: str) -> bytes: ...
+    def get(self, key: str, *, max_bytes: int | None = None, deadline: float | None = None) -> bytes: ...
 
 
 class FilesystemObjectStore:
@@ -54,5 +55,22 @@ class FilesystemObjectStore:
         finally:
             os.unlink(tmp)
 
-    def get(self, key: str) -> bytes:
-        return self._path(key).read_bytes()
+    def get(self, key: str, *, max_bytes: int | None = None, deadline: float | None = None) -> bytes:
+        path = self._path(key)
+        if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 0):
+            raise ValueError("invalid object size cap")
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError("object read deadline expired")
+        if max_bytes is not None and path.stat().st_size > max_bytes:
+            raise ValueError("object exceeds bounded read")
+        with path.open("rb") as stream:
+            data = bytearray()
+            while True:
+                if deadline is not None and time.monotonic() >= deadline:
+                    raise TimeoutError("object read deadline expired")
+                chunk = stream.read(min(64 * 1024, (max_bytes - len(data) + 1) if max_bytes is not None else 64 * 1024))
+                if not chunk:
+                    return bytes(data)
+                data.extend(chunk)
+                if max_bytes is not None and len(data) > max_bytes:
+                    raise ValueError("object exceeds bounded read")

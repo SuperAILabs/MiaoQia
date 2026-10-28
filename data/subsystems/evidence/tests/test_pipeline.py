@@ -142,6 +142,24 @@ def test_object_store_never_overwrites_and_rejects_escaping_keys(tmp_path):
             store.put(key, b"x")
 
 
+def test_load_document_keeps_bounded_read_for_current_object_store():
+    from miaoqia.evidence.application.queries import OBJECT_READ_MAX, load_document
+    from miaoqia.evidence.domain.snapshot import normalized_hash
+
+    document = {"blocks": []}
+    calls = []
+
+    class CurrentStore:
+        def get(self, key, *, max_bytes=None, deadline=None):
+            calls.append((key, max_bytes, deadline))
+            return json.dumps(document).encode()
+
+    deadline = 123.0
+    row = {"document_ref": "normalized/example", "normalized_hash": normalized_hash(document)}
+    assert load_document(CurrentStore(), row, deadline=deadline) == document
+    assert calls == [("normalized/example", OBJECT_READ_MAX, deadline)]
+
+
 def test_failed_semantic_validation_is_recorded_as_suspect(evd):
     """领域语义校验不通过的解析结果记为 suspect（进入复核），下游不物化。"""
     database, pipeline, _ = evd
