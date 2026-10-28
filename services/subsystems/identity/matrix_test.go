@@ -142,7 +142,7 @@ func fixture(t *testing.T, binding string) (check func(user, relation, object st
 func TestPermissionMatrix(t *testing.T) {
 	for _, binding := range []string{"tenant", "org_unit", "service_account"} {
 		t.Run("绑定在"+binding, func(t *testing.T) {
-			check, _, _ := fixture(t, binding)
+			_, _, fga := fixture(t, binding)
 			instances := map[string][2]string{
 				"tenant":                     {"tenant:t", "tenant:t"},
 				"org_unit":                   {"org_unit:u", "org_unit:u"},
@@ -156,6 +156,13 @@ func TestPermissionMatrix(t *testing.T) {
 			if len(rows) < 20 {
 				t.Fatalf("矩阵只解析到 %d 行", len(rows))
 			}
+			type matrixCase struct {
+				action, title string
+				relation      string
+				want          [2]bool
+			}
+			var reqs []authz.Request
+			var cases []matrixCase
 			for _, r := range rows {
 				inst, ok := instances[r.resource]
 				if !ok {
@@ -179,10 +186,20 @@ func TestPermissionMatrix(t *testing.T) {
 						want = [2]bool{}
 					}
 					u := subject(binding, c)
-					got := [2]bool{check(u, r.relation, inst[0]), check(u, r.relation, inst[1])}
-					if got != want {
-						t.Errorf("「%s」%s：期望在参与/未参与的资源上为 %v/%v，模型为 %v/%v", r.action, c.title, want[0], want[1], got[0], got[1])
-					}
+					reqs = append(reqs,
+						authz.Request{Subject: u, Relation: r.relation, Object: inst[0]},
+						authz.Request{Subject: u, Relation: r.relation, Object: inst[1]})
+					cases = append(cases, matrixCase{action: r.action, title: c.title, relation: r.relation, want: want})
+				}
+			}
+			got, err := fga.CheckBatch(context.Background(), reqs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, c := range cases {
+				actual := [2]bool{got[2*i], got[2*i+1]}
+				if actual != c.want {
+					t.Errorf("「%s」%s：期望在参与/未参与的资源上为 %v/%v，模型为 %v/%v", c.action, c.title, c.want[0], c.want[1], actual[0], actual[1])
 				}
 			}
 		})
