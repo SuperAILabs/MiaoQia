@@ -199,3 +199,35 @@ func TestStrictestLevel(t *testing.T) {
 		t.Fatal(FormatAmountCNY("18000000"), FormatAmountCNY("865000"), FormatAmountCNY("1234.50"))
 	}
 }
+
+// C-08（PRD 第5段 F2 第2条、F7）：安静时段内到达的即时通知，结束时简报即将发送（MergeWindow 内）的并入简报；周末没有简报时照常推送；
+// 白天到达的、仍在安静时段内的都不并入；缺省接收即时通知。
+func TestMergeIntoBriefing(t *testing.T) {
+	sh := mustLoc(t, "Asia/Shanghai")
+	p := Defaults()
+	if !p.InstantNotify {
+		t.Fatal("缺省接收即时通知")
+	}
+	sched := Schedule{p}
+	night := time.Date(2026, 10, 20, 23, 0, 0, 0, sh) // 周二夜间
+	morning := time.Date(2026, 10, 21, 7, 0, 0, 0, sh)
+	if next := sched.NextBoundary(morning); !MergeIntoBriefing(p, night, morning, next) {
+		t.Fatalf("周三 07:00 结束、07:30 简报：应并入（%v）", next)
+	}
+	if MergeIntoBriefing(p, night, time.Date(2026, 10, 21, 6, 59, 0, 0, sh), sched.NextBoundary(morning)) {
+		t.Fatal("仍在安静时段内")
+	}
+	if MergeIntoBriefing(p, time.Date(2026, 10, 21, 10, 0, 0, 0, sh), time.Date(2026, 10, 21, 10, 5, 0, 0, sh), sched.NextBoundary(morning)) {
+		t.Fatal("白天到达的不并入")
+	}
+	// 周五夜间到达、周六 07:00 结束：下一期在周一，照常推送
+	sat := time.Date(2026, 10, 24, 7, 0, 0, 0, sh)
+	if MergeIntoBriefing(p, time.Date(2026, 10, 23, 23, 0, 0, 0, sh), sat, sched.NextBoundary(sat)) {
+		t.Fatal("周末没有即将发送的简报")
+	}
+	// 结束得晚（发送时间已过）：下一期在明天，照常推送
+	late := time.Date(2026, 10, 21, 9, 0, 0, 0, sh)
+	if MergeIntoBriefing(p, night, late, sched.NextBoundary(late)) || MergeIntoBriefing(p, night, morning, time.Time{}) {
+		t.Fatal("没有即将发送的简报")
+	}
+}

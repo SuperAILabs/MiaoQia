@@ -1,6 +1,6 @@
 # 接入网关子系统（gateway）
 
-> 状态：评审中 · 版本：1.6 · 更新：2026-10-26 · 平面：交互
+> 状态：评审中 · 版本：1.7 · 更新：2026-10-26 · 平面：交互
 
 ## 1. 使命
 
@@ -101,7 +101,8 @@ Skills 是组合这些工具的工作流说明（如“每日信号评审”“�
 - **“含我方品类”**：取调用者组织单元的本租户档案品类（customer-context `ContextReader`），只作为请求参数传给数据平面，不写入公共数据；
 - **证据**：展示级别取证据及其全部输入中最严格的一档，按最终级别以字段白名单填入内容，不从数据平面结果整体复制：全文含片段、上下文、定位、记录键与原值；摘要只有被引用的片段与定位元数据（定位、记录键、转换说明、快照保存时间、来源），不含上下文与记录原值；仅引用只有来源名称、标题、链接、可达状态与转换说明；不展示只留来源链接；未知级别按不展示；只允许保存元数据的来源在任何级别都不返回正文；证据所属对象同样检查覆盖；
 - **计量**：对象页与分区按 `object_view`、证据按 `evidence_view` 经 commerce 的 `ViewMetering` 绑定（远程时为内部接口 `POST /internal/v1/commerce/view-meters`）计量，客户端的 `Idempotency-Key` 作为尝试键（未给出时由网关生成）。额度用完 429 `quota.exhausted`；commerce 不可用时放行（回执 `deferred`）并在本子系统发件箱写入 `gateway.view_meter.deferred.v1`，写入失败则 503，不放行未登记的查看；
-- **端口与缺省**：数据平面读取（`api.PublicData`）、证据解析（`api.EvidenceResolver`）与覆盖判断（`api.Entitlements`）没有生产实现，`gateway.Module()` 使用 `api.NotWired`：对象页、分区与证据面板 503，不以空数据冒充没有记录。测试使用 `api/publictest` 的内存夹具，内容全部虚构；
+- **覆盖判断**：`api.Entitlements` 的生产适配器经 commerce 的 `Coverage` 绑定（远程时为内部接口 `GET /internal/v1/commerce/coverage`，以用户主体调用）按对象的信息领域与区划判断，`gateway.Module()` 启动时解析该绑定，缺失不启动；对象缺少信息领域或 commerce 不可用时 503 `entitlement_unavailable`，不当作覆盖内或覆盖外（验收线 R-05，证据 `services/kernel/integration/coverage_test.go`）；
+- **端口与缺省**：数据平面读取（`api.PublicData`）与证据解析（`api.EvidenceResolver`）没有生产实现，`gateway.Module()` 使用 `api.NotWired`：对象页、分区与证据面板 503，不以空数据冒充没有记录。测试使用 `api/publictest` 的内存夹具（含按租户与对象登记的覆盖），内容全部虚构；
 - **未实现**：版本检查（PRD 第4段第10节）、字段级状态与时间轴（由数据平面提供，本切片透传）、清单标记、跟进、报告漏报与报告数据问题、埋点。
 
 ## 11. Web 会话与页面聚合（设计）

@@ -196,6 +196,180 @@ func (s *Server) handleGetFeedbackSummaryRequest(args [1]string, argsEscaped boo
 	}
 }
 
+// handleGetOutcomeSummaryRequest handles getOutcomeSummary operation.
+//
+// 需要能查看目标（customer-context 的当前口径；不能查看与不存在同为 404
+// objective_not_found）且在目标所在单元上能查看全部跟进 （identity 的
+// org_unit#can_view_unit_pursuits；只凭参与关系查看个别跟进的成员 403
+// forbidden，不按聚合泄露其看不到的跟进）； 授权不可用为
+// 503。口径（learning.md 第8.1节）：只计记录时间不晚于
+// as_of（缺省为当前时间）的结果记录，每个跟进取此时记录链上的
+// 当前记录（被同样不晚于 as_of 的修订取代的不计，计入
+// superseded）；有获知时间且获知时间在 [from, as_of) 内的计入时点评估
+// （point_in_time），获知时间晚于 as_of 的不计（计入
+// known_after_as_of）；没有获知时间的只计入事后统计（post_hoc，按记录时间在
+// [from, as_of)
+// 内）。金额按（类型、币种、取值性质）分别合计，不同类型、币种与性质不相加、不换算；贡献关系分别计数，不计算
+// “妙洽带来的金额”。只用于本租户的评估。.
+//
+// GET /v1/learning/objectives/{objectiveID}/outcome-summary
+func (s *Server) handleGetOutcomeSummaryRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getOutcomeSummary"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/v1/learning/objectives/{objectiveID}/outcome-summary"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GetOutcomeSummaryOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: GetOutcomeSummaryOperation,
+			ID:   "getOutcomeSummary",
+		}
+	)
+	params, err := decodeGetOutcomeSummaryParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response *OutcomeSummary
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    GetOutcomeSummaryOperation,
+			OperationSummary: "跟进结果汇总（评估报告的结果部分，0.4.0）",
+			OperationID:      "getOutcomeSummary",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "objectiveID",
+					In:   "path",
+				}: params.ObjectiveID,
+				{
+					Name: "from",
+					In:   "query",
+				}: params.From,
+				{
+					Name: "as_of",
+					In:   "query",
+				}: params.AsOf,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = GetOutcomeSummaryParams
+			Response = *OutcomeSummary
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackGetOutcomeSummaryParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.GetOutcomeSummary(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.GetOutcomeSummary(ctx, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeGetOutcomeSummaryResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleGetSimulationRequest handles getSimulation operation.
 //
 // 需要目标的 can_view（同样按 customer-context 的当前口径）；授权或

@@ -387,3 +387,122 @@ fixtures:
     - op: replace
       path: /result
       value: voided
+- event: pursuit.pursuit.authorization_rejected.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    participation_version: 1
+    operator: usr_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    rejected:
+    - subject: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      relation: owner
+      reason: member_inactive
+    owner_invalid: true
+    recorded_at: '2026-10-26T08:00:00Z'
+  cases:
+  - name: 系统写入的版本不带操作者
+    valid: true
+    patch:
+    - op: remove
+      path: /operator
+  - name: 只拒绝协作者
+    valid: true
+    patch:
+    - op: replace
+      path: /rejected/0/relation
+      value: collaborator
+    - op: replace
+      path: /owner_invalid
+      value: false
+  - name: 至少一名被拒成员
+    valid: false
+    patch:
+    - op: replace
+      path: /rejected
+      value: []
+  - name: 不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 未登记的关系
+    valid: false
+    patch:
+    - op: replace
+      path: /rejected/0/relation
+      value: shared_with
+- event: pursuit.tracking.changed.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX3
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    state: tracking
+    members:
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    members_version: 1
+    version: 1
+    reason: created
+    changed_at: '2026-10-21T02:00:00Z'
+  cases:
+  - name: 暂停
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: paused
+    - op: replace
+      path: /reason
+      value: paused
+    - op: replace
+      path: /version
+      value: 2
+  - name: 未登记的状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: archived
+  - name: 不得夹带名称
+    valid: false
+    patch:
+    - op: add
+      path: /name
+      value: 竞争对手周报
+- event: pursuit.tracking.period_closed.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX3
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    seq: 2
+    period_start: '2026-10-26T00:00:00Z'
+    period_end: '2026-11-02T00:00:00Z'
+    timezone: Asia/Shanghai
+    members:
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    members_version: 2
+    baseline_seq: 1
+    owner: bd-2
+    owner_valid: true
+    recorded_at: '2026-11-02T00:00:05Z'
+  cases:
+  - name: 第一期没有对比基准
+    valid: true
+    patch:
+    - op: replace
+      path: /seq
+      value: 1
+    - op: remove
+      path: /baseline_seq
+  - name: 缺成员快照
+    valid: false
+    patch:
+    - op: remove
+      path: /members
+  - name: 期序号从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /seq
+      value: 0

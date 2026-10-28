@@ -14,6 +14,129 @@ import (
 )
 
 // Encode implements json.Marshaler.
+func (s *ActiveAssignment) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ActiveAssignment) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("version")
+		e.Int64(s.Version)
+	}
+	{
+		e.FieldStart("rules")
+		e.ArrStart()
+		for _, elem := range s.Rules {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfActiveAssignment = [2]string{
+	0: "version",
+	1: "rules",
+}
+
+// Decode decodes ActiveAssignment from json.
+func (s *ActiveAssignment) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ActiveAssignment to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "version":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int64()
+				s.Version = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "rules":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				s.Rules = make([]AssignmentRule, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem AssignmentRule
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Rules = append(s.Rules, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rules\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ActiveAssignment")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfActiveAssignment) {
+					name = jsonFieldsNameOfActiveAssignment[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ActiveAssignment) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ActiveAssignment) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *ActivePolicy) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -74,9 +197,31 @@ func (s *ActivePolicy) encodeFields(e *jx.Encoder) {
 		e.FieldStart("effective_at")
 		json.EncodeDateTime(e, s.EffectiveAt)
 	}
+	{
+		if s.Owner.Set {
+			e.FieldStart("owner")
+			s.Owner.Encode(e)
+		}
+	}
+	{
+		if s.Participants != nil {
+			e.FieldStart("participants")
+			e.ArrStart()
+			for _, elem := range s.Participants {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		if s.Assignment.Set {
+			e.FieldStart("assignment")
+			s.Assignment.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfActivePolicy = [12]string{
+var jsonFieldsNameOfActivePolicy = [15]string{
 	0:  "objective_id",
 	1:  "objective_code",
 	2:  "objective_state",
@@ -89,6 +234,9 @@ var jsonFieldsNameOfActivePolicy = [12]string{
 	9:  "enabled_domains",
 	10: "document",
 	11: "effective_at",
+	12: "owner",
+	13: "participants",
+	14: "assignment",
 }
 
 // Decode decodes ActivePolicy from json.
@@ -245,6 +393,43 @@ func (s *ActivePolicy) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"effective_at\"")
+			}
+		case "owner":
+			if err := func() error {
+				s.Owner.Reset()
+				if err := s.Owner.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"owner\"")
+			}
+		case "participants":
+			if err := func() error {
+				s.Participants = make([]Subject, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem Subject
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Participants = append(s.Participants, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"participants\"")
+			}
+		case "assignment":
+			if err := func() error {
+				s.Assignment.Reset()
+				if err := s.Assignment.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"assignment\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
@@ -464,6 +649,390 @@ func (s ActivePolicyObjectiveState) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *ActivePolicyObjectiveState) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *AssignmentRule) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *AssignmentRule) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("assignee")
+		s.Assignee.Encode(e)
+	}
+	{
+		if s.Regions != nil {
+			e.FieldStart("regions")
+			e.ArrStart()
+			for _, elem := range s.Regions {
+				e.Str(elem)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		if s.Categories != nil {
+			e.FieldStart("categories")
+			e.ArrStart()
+			for _, elem := range s.Categories {
+				e.Str(elem)
+			}
+			e.ArrEnd()
+		}
+	}
+}
+
+var jsonFieldsNameOfAssignmentRule = [3]string{
+	0: "assignee",
+	1: "regions",
+	2: "categories",
+}
+
+// Decode decodes AssignmentRule from json.
+func (s *AssignmentRule) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode AssignmentRule to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "assignee":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Assignee.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"assignee\"")
+			}
+		case "regions":
+			if err := func() error {
+				s.Regions = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Regions = append(s.Regions, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"regions\"")
+			}
+		case "categories":
+			if err := func() error {
+				s.Categories = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Categories = append(s.Categories, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"categories\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode AssignmentRule")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfAssignmentRule) {
+					name = jsonFieldsNameOfAssignmentRule[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *AssignmentRule) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *AssignmentRule) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *AssignmentRules) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *AssignmentRules) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("objective_id")
+		e.Str(s.ObjectiveID)
+	}
+	{
+		e.FieldStart("version")
+		e.Int64(s.Version)
+	}
+	{
+		e.FieldStart("rule_count")
+		e.Int(s.RuleCount)
+	}
+	{
+		e.FieldStart("view")
+		s.View.Encode(e)
+	}
+	{
+		if s.Rules != nil {
+			e.FieldStart("rules")
+			e.ArrStart()
+			for _, elem := range s.Rules {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		if s.UpdatedAt.Set {
+			e.FieldStart("updated_at")
+			s.UpdatedAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+}
+
+var jsonFieldsNameOfAssignmentRules = [6]string{
+	0: "objective_id",
+	1: "version",
+	2: "rule_count",
+	3: "view",
+	4: "rules",
+	5: "updated_at",
+}
+
+// Decode decodes AssignmentRules from json.
+func (s *AssignmentRules) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode AssignmentRules to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "objective_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.ObjectiveID = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"objective_id\"")
+			}
+		case "version":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int64()
+				s.Version = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "rule_count":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int()
+				s.RuleCount = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rule_count\"")
+			}
+		case "view":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.View.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"view\"")
+			}
+		case "rules":
+			if err := func() error {
+				s.Rules = make([]AssignmentRule, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem AssignmentRule
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Rules = append(s.Rules, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rules\"")
+			}
+		case "updated_at":
+			if err := func() error {
+				s.UpdatedAt.Reset()
+				if err := s.UpdatedAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"updated_at\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode AssignmentRules")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfAssignmentRules) {
+					name = jsonFieldsNameOfAssignmentRules[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *AssignmentRules) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *AssignmentRules) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes AssignmentRulesView as json.
+func (s AssignmentRulesView) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes AssignmentRulesView from json.
+func (s *AssignmentRulesView) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode AssignmentRulesView to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch AssignmentRulesView(v) {
+	case AssignmentRulesViewFull:
+		*s = AssignmentRulesViewFull
+	case AssignmentRulesViewSummary:
+		*s = AssignmentRulesViewSummary
+	default:
+		*s = AssignmentRulesView(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s AssignmentRulesView) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *AssignmentRulesView) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -3467,6 +4036,39 @@ func (s *ObjectiveTemplateUnavailableReason) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes ActiveAssignment as json.
+func (o OptActiveAssignment) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes ActiveAssignment from json.
+func (o *OptActiveAssignment) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptActiveAssignment to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptActiveAssignment) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptActiveAssignment) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes ContextPolicyViewEntities as json.
 func (o OptContextPolicyViewEntities) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -3534,6 +4136,41 @@ func (s OptDate) MarshalJSON() ([]byte, error) {
 func (s *OptDate) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d, json.DecodeDate)
+}
+
+// Encode encodes time.Time as json.
+func (o OptDateTime) Encode(e *jx.Encoder, format func(*jx.Encoder, time.Time)) {
+	if !o.Set {
+		return
+	}
+	format(e, o.Value)
+}
+
+// Decode decodes time.Time from json.
+func (o *OptDateTime) Decode(d *jx.Decoder, format func(*jx.Decoder) (time.Time, error)) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptDateTime to nil")
+	}
+	o.Set = true
+	v, err := format(d)
+	if err != nil {
+		return err
+	}
+	o.Value = v
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptDateTime) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e, json.EncodeDateTime)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptDateTime) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d, json.DecodeDateTime)
 }
 
 // Encode encodes int as json.
@@ -9994,6 +10631,129 @@ func (s Subject) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *Subject) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *UpdateAssignmentRulesRequest) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *UpdateAssignmentRulesRequest) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("expected_version")
+		e.Int64(s.ExpectedVersion)
+	}
+	{
+		e.FieldStart("rules")
+		e.ArrStart()
+		for _, elem := range s.Rules {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfUpdateAssignmentRulesRequest = [2]string{
+	0: "expected_version",
+	1: "rules",
+}
+
+// Decode decodes UpdateAssignmentRulesRequest from json.
+func (s *UpdateAssignmentRulesRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode UpdateAssignmentRulesRequest to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "expected_version":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int64()
+				s.ExpectedVersion = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"expected_version\"")
+			}
+		case "rules":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				s.Rules = make([]AssignmentRule, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem AssignmentRule
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Rules = append(s.Rules, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rules\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode UpdateAssignmentRulesRequest")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfUpdateAssignmentRulesRequest) {
+					name = jsonFieldsNameOfUpdateAssignmentRulesRequest[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *UpdateAssignmentRulesRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *UpdateAssignmentRulesRequest) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

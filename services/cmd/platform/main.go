@@ -17,6 +17,7 @@
 //	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
 //	MIAOQIA_CHANNELS_SIGNING_KEY  简报卡片动作令牌与简报历史游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_PURSUIT_SIGNING_KEY   跟进列表与待我处理翻页游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
+//	MIAOQIA_COMMERCE_COVERAGE     数据覆盖包（产品目录接入前，全部租户相同），例如 INF-PROC=330000;INF-ORG=*；未配置时对象页 503
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
 //	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
@@ -47,6 +48,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/relay"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	"github.com/superailabs/miaoqia/services/kernel/scheduler"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
 	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
 	"github.com/superailabs/miaoqia/services/subsystems/aiplatform"
@@ -152,7 +154,8 @@ var remotes = map[string]remote{
 		b.Provide(ccapi.ActivePoliciesBinding, active)
 		return nil
 	}},
-	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看、经 detection 读取信号固定的求值输入（均以用户主体转交）；
+	// 对象页（PRD 第4段）：gateway 经 commerce 计量查看与判断数据覆盖、经 detection 读取信号固定的求值输入（均以用户主体转交）；
+	// 仿真报告（PRD 第7段）：learning 经 commerce 按查看者判断代表样本的数据覆盖；
 	// 简报（PRD 第5段）：channels 经 detection 读取简报条目与信号卡片、在渠道内处理（以收件人或点击者的用户主体转交）
 	commerceapi.Name: {provide: func(u string, b *runtime.Bindings) error {
 		meter, err := commerceremote.NewMetering(u)
@@ -160,6 +163,11 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(commerceapi.MeteringBinding, meter)
+		coverage, err := commerceremote.NewCoverage(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(commerceapi.CoverageBinding, coverage)
 		return nil
 	}},
 	detectionapi.Name: {provide: func(u string, b *runtime.Bindings) error {
@@ -173,15 +181,27 @@ var remotes = map[string]remote{
 			return err
 		}
 		b.Provide(detectionapi.BriefingBinding, briefing)
+		// C-14：pursuit 的创建面板读取信号的候选负责人（以调用者的用户主体转交）
+		candidates, err := detectionremote.NewCandidates(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(detectionapi.CandidatesBinding, candidates)
 		return nil
 	}},
-	// 跟进（PRD 第6段）：channels 的卡片“跟进”与提醒卡片“完成”经 pursuit 的渠道内动作接口（以点击者的用户主体转交）
+	// 跟进（PRD 第6段）：channels 的卡片“跟进”与提醒卡片“完成”经 pursuit 的渠道内动作接口、授权被拒通知经持续跟踪读取（以点击者或收件人的用户主体转交）
 	pursuitapi.Name: {provide: func(u string, b *runtime.Bindings) error {
 		actions, err := pursuitremote.NewActions(u)
 		if err != nil {
 			return err
 		}
 		b.Provide(pursuitapi.ActionsBinding, actions)
+		// C-11/C-12：持续跟踪的授权被拒通知以操作者本人再检查
+		trackings, err := pursuitremote.NewTrackings(u)
+		if err != nil {
+			return err
+		}
+		b.Provide(pursuitapi.TrackingsBinding, trackings)
 		return nil
 	}},
 }
@@ -320,8 +340,10 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 		}
 		<-ctx.Done()
 		return nil
+	case "scheduler":
+		return runScheduler(ctx, log, loaded, envs)
 	default:
-		<-ctx.Done() // scheduler、workflow-worker 的任务随所属里程碑加入
+		<-ctx.Done() // workflow-worker 的任务随所属里程碑加入
 		return nil
 	}
 }
@@ -496,4 +518,42 @@ func runRelay(ctx context.Context, log *slog.Logger, brokers []string) error {
 	defer prod.Close()
 	log.Info("发件箱中继启动", "databases", len(sources))
 	return (&relay.Relay{Sources: sources, Producer: prod, Log: log}).Run(ctx)
+}
+
+// runScheduler 运行已加载子系统声明的周期任务（runtime.Module.Jobs，kernel/scheduler）。任务在所属子系统的数据库上取咨询锁，
+// 主备两个实例同时运行时同一任务同一时刻只在一个实例上执行。没有任务时只等待退出。
+func runScheduler(ctx context.Context, log *slog.Logger, loaded []runtime.Module, envs []*runtime.Env) error {
+	jobs, err := collectJobs(loaded, envs)
+	if err != nil {
+		return err
+	}
+	names := make([]string, 0, len(jobs))
+	for _, j := range jobs {
+		names = append(names, j.Name)
+	}
+	log.Info("定时任务", "count", len(jobs), "jobs", names)
+	if len(jobs) == 0 {
+		<-ctx.Done()
+		return nil
+	}
+	return (&scheduler.Runner{Jobs: jobs, Log: log}).Run(ctx)
+}
+
+// collectJobs 收集并校验已加载子系统的周期任务。按租户的任务依赖 identity.Tenants（只有本地绑定），
+// identity 配置为远程时这些子系统声明任务失败，scheduler 角色不启动。
+func collectJobs(loaded []runtime.Module, envs []*runtime.Env) ([]scheduler.Bound, error) {
+	var jobs []scheduler.Bound
+	for i, m := range loaded {
+		if m.Jobs == nil {
+			continue
+		}
+		declared, err := m.Jobs(envs[i])
+		if err != nil {
+			return nil, fmt.Errorf("%s 定时任务：%w", m.Name, err)
+		}
+		for _, j := range declared {
+			jobs = append(jobs, scheduler.Bound{Job: j, DB: envs[i].DB})
+		}
+	}
+	return jobs, scheduler.Validate(jobs)
 }

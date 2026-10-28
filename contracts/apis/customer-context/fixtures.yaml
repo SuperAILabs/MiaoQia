@@ -1293,3 +1293,179 @@ fixtures:
     - op: replace
       path: /version
       value: 0
+  - name: 负责人与参与人（0.6.0）
+    valid: true
+    patch:
+    - op: add
+      path: /owner
+      value: dm-fixture
+    - op: add
+      path: /participants
+      value:
+      - dm-fixture
+      - bd-fixture
+  - name: 参与人不得重复
+    valid: false
+    patch:
+    - op: add
+      path: /participants
+      value:
+      - bd-fixture
+      - bd-fixture
+  - name: 分派配置（0.7.0，C-14）
+    valid: true
+    patch:
+    - op: add
+      path: /assignment
+      value:
+        version: 2
+        rules:
+        - assignee: bd-fixture
+          regions:
+          - '330100'
+        - assignee: dm-fixture
+  - name: 分派配置缺规则
+    valid: false
+    patch:
+    - op: add
+      path: /assignment
+      value:
+        version: 2
+- schema: ActiveAssignment
+  base:
+    version: 1
+    rules: []
+  cases:
+  - name: 已配置为空规则（信号记为没有候选）
+    valid: true
+    instance:
+      version: 1
+      rules: []
+  - name: 按区域与品类的规则
+    valid: true
+    patch:
+    - op: add
+      path: /rules/-
+      value:
+        assignee: bd-fixture
+        regions:
+        - '330000'
+        categories:
+        - CAT-PIPE-PE
+  - name: 版本不能为负
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: -1
+  - name: 从未配置时不出现本字段，版本0无效
+    valid: false
+    patch:
+    - op: replace
+      path: /version
+      value: 0
+- schema: AssignmentRule
+  base:
+    assignee: bd-fixture
+    regions:
+    - '330100'
+    categories:
+    - CAT-PIPE-PE
+  cases:
+  - name: 没有条件的规则匹配全部信号
+    valid: true
+    instance:
+      assignee: bd-fixture
+  - name: 缺被分派人
+    valid: false
+    patch:
+    - op: remove
+      path: /assignee
+  - name: 区域代码为6位
+    valid: false
+    patch:
+    - op: replace
+      path: /regions/0
+      value: '3301'
+  - name: 品类代码格式
+    valid: false
+    patch:
+    - op: replace
+      path: /categories/0
+      value: pipe
+  - name: 条件不能为空列表
+    valid: false
+    patch:
+    - op: replace
+      path: /regions
+      value: []
+  - name: 未登记的条件（我方主体尚未提供）
+    valid: false
+    patch:
+    - op: add
+      path: /org_ids
+      value:
+      - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: AssignmentRules
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    version: 3
+    rule_count: 1
+    view: full
+    rules:
+    - assignee: bd-fixture
+      regions:
+      - '330100'
+    updated_at: '2026-10-27T08:00:00Z'
+  cases:
+  - name: 只能查看目标的成员只见版本与条数
+    valid: true
+    instance:
+      objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      version: 3
+      rule_count: 1
+      view: summary
+  - name: 从未配置
+    valid: true
+    instance:
+      objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      version: 0
+      rule_count: 0
+      view: full
+      rules: []
+  - name: 未登记的字段级别
+    valid: false
+    patch:
+    - op: replace
+      path: /view
+      value: partial
+  - name: 缺规则条数
+    valid: false
+    patch:
+    - op: remove
+      path: /rule_count
+- schema: UpdateAssignmentRulesRequest
+  base:
+    expected_version: 0
+    rules:
+    - assignee: bd-fixture
+      categories:
+      - CAT-PIPE-PE
+  cases:
+  - name: 清空规则
+    valid: true
+    patch:
+    - op: replace
+      path: /rules
+      value: []
+  - name: 缺预期版本
+    valid: false
+    patch:
+    - op: remove
+      path: /expected_version
+  - name: 业务参数不得传租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1

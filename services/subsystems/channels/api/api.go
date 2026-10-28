@@ -5,7 +5,8 @@
 //     对外路由随网关的未认证入口接入（尚未实现），在此之前只以本地绑定提供；
 //   - Messaging：卡片详情链接与投递目标（简报、通知等出站编排随 PRD 第5段实现）；
 //   - Maintenance：撤销重试、失效完成与免登会话对账（定时任务角色随所属里程碑接入）；
-//   - Briefings：简报组装、投递与卡片动作执行（PRD 第5段；定时任务与工作进程随所属里程碑接入）。
+//   - Briefings：简报组装、投递与卡片动作执行（PRD 第5段；定时任务与工作进程随所属里程碑接入）；
+//   - Notices：渠道通知（任务提醒卡片与授权被拒的通知，PRD 第6段；定时任务随所属里程碑接入）。
 package api
 
 import (
@@ -133,14 +134,47 @@ type ComposeResult struct {
 //   - Compose 为成员组装 at 时最近一个已到计划发送时间的周期（幂等键：租户 + 成员 + 简报来源 + 周期起止）；按成员本人的权限
 //     逐区取数（以成员的用户主体调用 detection 与 customer-context），保存快照，需要推送时创建投递并立即尝试一次；
 //   - DeliverDue 处理到期的投递（每次至多 limit 条）：每次发送前按收件人当前状态再检查，失败退避重试到当日 18:00；
-//   - ProcessActions 执行排队的卡片点击（每次至多 limit 条），按 F4 第6条的顺序检查后调用 detection。
+//   - ProcessActions 执行排队的卡片点击（每次至多 limit 条），按 F4 第6条的顺序检查后调用 detection；任务提醒卡片上的“完成”与
+//     “撤销”也由它执行（调用 pursuit）；
+//   - ComposeDue（调度器入口）为本租户已绑定的成员中、at 时按本人偏好与时区已到计划发送时间且本期尚未组装的成员组装简报（规则同
+//     Compose；同一成员同一期只组装一次；每次至多 limit 名，More 为还有未组装的）。
 type Briefings interface {
 	Compose(ctx context.Context, subject string, at time.Time) (*ComposeResult, error)
 	DeliverDue(ctx context.Context, limit int) (int, error)
 	ProcessActions(ctx context.Context, limit int) (int, error)
+	ComposeDue(ctx context.Context, at time.Time, limit int) (*ComposeDueResult, error)
+}
+
+// ComposeDueResult 是一次 ComposeDue 的计数：Composed 新组装、Existing 本期已组装（不再组装）、Late 晚于当日 12:00（只记录、
+// 不推送）、Skipped 成员不是有效成员或不是本期受众、Failed 组装失败（下一次调用重试）；More 为还有到期未组装的成员。
+type ComposeDueResult struct {
+	Composed, Existing, Late, Skipped, Failed int
+	More                                      bool
 }
 
 func LocalBriefings(impl Briefings) Briefings { return localBriefings{impl} }
+
+// NoticesBinding 是渠道通知投递在绑定表中的名称（定时任务随所属里程碑接入，在此之前由测试与运维调用）。
+const NoticesBinding = "channels.Notices"
+
+// Notices 以带租户的服务主体调用，可重复执行：
+//   - DeliverNotices 发送到时的渠道通知（每次至多 limit 条）：任务提醒卡片（消费 pursuit.task.due.v1 记下）与授权被拒时给操作者的
+//     通知（消费 pursuit.pursuit.authorization_rejected.v1 记下）。转给决策者的提醒先展开为各决策者的通知；每次发送前按收件人当前
+//     状态再检查（成员、绑定、以收件人本人读取的任务或跟进），安静时段内延后到结束，失败退避重试，超过时限留在 Web 与站内。
+//     返回本次处理的条数。卡片上的“完成”与“撤销”由 Briefings.ProcessActions 执行。C-11：转交按页展开（每次认领一页，未处理完的
+//     留到下一轮，不设总上限）；每条通知的送达、渠道失败与结束发布 channels.notice.sent.v1 / channels.notice.failed.v1。
+type Notices interface {
+	DeliverNotices(ctx context.Context, limit int) (int, error)
+}
+
+func LocalNotices(impl Notices) Notices { return localNotices{impl} }
+
+type localNotices struct{ impl Notices }
+
+func (l localNotices) DeliverNotices(ctx context.Context, limit int) (int, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "DeliverNotices", Timeout: 60 * time.Second},
+		func(ctx context.Context) (int, error) { return l.impl.DeliverNotices(ctx, limit) })
+}
 
 type localBriefings struct{ impl Briefings }
 
@@ -152,6 +186,11 @@ func (l localBriefings) Compose(ctx context.Context, subject string, at time.Tim
 func (l localBriefings) DeliverDue(ctx context.Context, limit int) (int, error) {
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "DeliverDue", Timeout: 60 * time.Second},
 		func(ctx context.Context) (int, error) { return l.impl.DeliverDue(ctx, limit) })
+}
+
+func (l localBriefings) ComposeDue(ctx context.Context, at time.Time, limit int) (*ComposeDueResult, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "ComposeDue", Timeout: 5 * time.Minute},
+		func(ctx context.Context) (*ComposeDueResult, error) { return l.impl.ComposeDue(ctx, at, limit) })
 }
 
 func (l localBriefings) ProcessActions(ctx context.Context, limit int) (int, error) {

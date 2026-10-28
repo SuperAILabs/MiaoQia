@@ -38,6 +38,15 @@ func refuseRedirect(*http.Request, []*http.Request) error {
 	return errors.New("pursuit remote refuses redirects")
 }
 
+// NewTrackings 返回远程持续跟踪读取接口（C-11/C-12）；baseURL 同 NewActions。
+func NewTrackings(baseURL string) (api.Trackings, error) {
+	a, err := NewActions(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return a.(client), nil
+}
+
 type client struct{ c *pur.Client }
 
 // translate 把远程 Problem 还原为与本地绑定相同的稳定错误（保留冲突时的当前值）；5xx 为暂时性错误。
@@ -96,6 +105,49 @@ func (c client) ReopenTask(ctx context.Context, task, key string, req *api.Reope
 	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "ReopenTask"},
 		func(ctx context.Context) (*api.CommandResult, error) {
 			out, err := c.c.ReopenTask(ctx, req, pur.ReopenTaskParams{TaskID: pur.TaskID(task), IdempotencyKey: key})
+			if err != nil {
+				return nil, translate(err)
+			}
+			return out, nil
+		})
+}
+
+func (c client) ListMyTasks(ctx context.Context, before *time.Time, limit int, cursor string) (*api.MyTaskList, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "ListMyTasks", Idempotent: true},
+		func(ctx context.Context) (*api.MyTaskList, error) {
+			p := pur.ListMyTasksParams{}
+			if before != nil {
+				p.Before = pur.NewOptDateTime(*before)
+			}
+			if limit > 0 {
+				p.Limit = pur.NewOptInt(limit)
+			}
+			if cursor != "" {
+				p.Cursor = pur.NewOptCursor(pur.Cursor(cursor))
+			}
+			out, err := c.c.ListMyTasks(ctx, p)
+			if err != nil {
+				return nil, translate(err)
+			}
+			return out, nil
+		})
+}
+
+func (c client) GetPursuit(ctx context.Context, pursuit string) (*api.Pursuit, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetPursuit", Idempotent: true},
+		func(ctx context.Context) (*api.Pursuit, error) {
+			out, err := c.c.GetPursuit(ctx, pur.GetPursuitParams{PursuitID: pur.PursuitID(pursuit)})
+			if err != nil {
+				return nil, translate(err)
+			}
+			return out, nil
+		})
+}
+
+func (c client) GetTracking(ctx context.Context, tracking string) (*api.Tracking, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetTracking", Idempotent: true},
+		func(ctx context.Context) (*api.Tracking, error) {
+			out, err := c.c.GetTracking(ctx, pur.GetTrackingParams{PursuitID: pur.PursuitID(tracking)})
 			if err != nil {
 				return nil, translate(err)
 			}

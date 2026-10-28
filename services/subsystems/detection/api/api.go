@@ -112,3 +112,26 @@ func (l localBriefing) Undo(ctx context.Context, key string, req *UndoRequest) (
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "UndoSignalTriage"},
 		func(ctx context.Context) (*UndoResult, error) { return l.impl.Undo(ctx, key, req) })
 }
+
+// CandidatesBinding 是信号候选负责人读取接口在绑定表中的名称（PRD 第6段 F1 第2条，C-14）。
+const CandidatesBinding = "detection.SignalCandidates"
+
+// SignalCandidate 是契约生成类型（contracts/apis/detection/openapi.yaml 的 SignalCandidate）。
+type SignalCandidate = detectionapi.SignalCandidate
+
+// SignalCandidates 供 pursuit 的创建面板以调用者的用户主体读取信号生成时按目标分派规则算出的候选负责人（契约 getSignalCandidateOwner）。
+// 授权：不可见、不存在与其他租户的信号为 404 signal_not_found，能查看而没有 can_assign 为 403 forbidden；不可用为 503。只读、幂等。
+// 返回的候选只是生成时的建议：调用方以候选本人再检查成员状态与目标访问。
+type SignalCandidates interface {
+	SignalCandidate(ctx context.Context, signalID string) (*SignalCandidate, error)
+}
+
+// LocalCandidates 把本地实现包装为经调用管线的接口（与远程绑定行为一致）。
+func LocalCandidates(impl SignalCandidates) SignalCandidates { return localCandidates{impl} }
+
+type localCandidates struct{ impl SignalCandidates }
+
+func (l localCandidates) SignalCandidate(ctx context.Context, signalID string) (*SignalCandidate, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "GetSignalCandidateOwner", Idempotent: true},
+		func(ctx context.Context) (*SignalCandidate, error) { return l.impl.SignalCandidate(ctx, signalID) })
+}

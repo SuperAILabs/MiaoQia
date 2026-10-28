@@ -33,6 +33,9 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
+	"github.com/superailabs/miaoqia/services/kernel/scheduler"
+	"github.com/superailabs/miaoqia/services/subsystems/commerce"
+	commerceapi "github.com/superailabs/miaoqia/services/subsystems/commerce/api"
 	"github.com/superailabs/miaoqia/services/subsystems/customercontext"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway"
 	"github.com/superailabs/miaoqia/services/subsystems/identity"
@@ -61,17 +64,38 @@ func (f *flakyApprovals) CloseApproval(ctx context.Context, id string, req *idap
 	return f.Approvals.CloseApproval(ctx, id, req)
 }
 
-// flakyAuthz 注入授权决策失败（OpenFGA 不可用）。
+// flakyAuthz 注入授权决策失败（OpenFGA 不可用）；noPublic 中的主体按没有 can_search_public 判断（如外部协作者）。
 type flakyAuthz struct {
 	idapi.Authorizer
-	fail atomic.Bool
+	fail     atomic.Bool
+	noPublic sync.Map
 }
 
 func (f *flakyAuthz) Check(ctx context.Context, req authz.Request) (bool, error) {
 	if f.fail.Load() {
 		return false, errors.New("注入：授权决策不可用")
 	}
+	if _, denied := f.noPublic.Load(req.Subject); denied && req.Relation == "can_search_public" {
+		return false, nil
+	}
 	return f.Authorizer.Check(ctx, req)
+}
+
+// narrowCoverage 包装 commerce 的覆盖判断：outside 为真时对应（信息领域、区划）按覆盖外判断（更窄的覆盖包），fail 注入故障。
+type narrowCoverage struct {
+	commerceapi.Coverage
+	fail    atomic.Bool
+	outside atomic.Pointer[func(domain, region string) bool]
+}
+
+func (n *narrowCoverage) CheckCoverage(ctx context.Context, domain, region string) (*commerceapi.CoverageDecision, error) {
+	if n.fail.Load() {
+		return nil, errors.New("注入：commerce 不可用")
+	}
+	if f := n.outside.Load(); f != nil && (*f)(domain, region) {
+		return &commerceapi.CoverageDecision{Missing: []string{commerceapi.MissingRegion}}, nil
+	}
+	return n.Coverage.CheckCoverage(ctx, domain, region)
 }
 
 // PRD 第7段服务端切片：真实 PostgreSQL（三个子系统各自的库、行级安全、应用账号）+ 真实 identity 目录与 OpenFGA +
@@ -145,8 +169,11 @@ func TestPolicySimulationApproval(t *testing.T) {
 
 	packs, _ := filepath.Abs(filepath.Join("..", "..", "..", "packs"))
 	config := func(k string) string {
-		if k == "PACKS_DIR" {
+		switch k {
+		case "PACKS_DIR":
 			return packs
+		case "COVERAGE": // commerce 的数据覆盖包（部署配置）
+			return "INF-PROC=*;INF-INVP=*;INF-ORG=*;INF-CRED=*"
 		}
 		return ""
 	}
@@ -180,6 +207,11 @@ func TestPolicySimulationApproval(t *testing.T) {
 	fixture.Add(datasettest.A02(today, org1)...)
 	lrnModule := learning.ModuleWith(learning.Adapters{Dataset: fixture, Domains: fixture, Now: now})
 	lrnEnv, lrnOwner := start(lrnModule)
+	// commerce 在 learning 之后启动：learning 每次读取时才解析覆盖判断绑定，不依赖启动顺序
+	start(commerce.Module())
+	localCoverage, _ := runtime.Lookup[commerceapi.Coverage](bindings, commerceapi.CoverageBinding)
+	coverage := &narrowCoverage{Coverage: localCoverage}
+	bindings.Provide(commerceapi.CoverageBinding, commerceapi.Coverage(coverage))
 
 	public, internal := http.NewServeMux(), http.NewServeMux()
 	idModule.Routes(idEnv, public, internal)
@@ -766,6 +798,75 @@ func TestPolicySimulationApproval(t *testing.T) {
 		request(t, dm, activation(second, "首次之后不能回填", 10), 422, "backfill_not_allowed")
 	})
 
+	t.Run("用例11（D-17）：代表样本按查看者本人权限过滤，无权的只显示数量；判断不可用时不返回样本", func(t *testing.T) {
+		d, _ := second.Draft.Get()
+		sim, _ := d.Simulation.Get()
+		withheld := func(o lrn.OptInt) int {
+			v, ok := o.Get()
+			if !ok {
+				t.Fatal("缺少未返回数量")
+			}
+			return v
+		}
+		// 申请人（dm）与可查看报告的研究分析者（ra）在全覆盖下都看到 FX-A02-05，未返回数为 0
+		for _, who := range []string{dm, ra} {
+			diff, _ := getRun(t, who, sim.SimulationID).Report.Or(lrn.SimulationReport{}).Diff.Get()
+			if len(diff.AddedSamples) != 1 || diff.AddedSamples[0].FactID != "FX-A02-05" || withheld(diff.AddedWithheld) != 0 {
+				t.Fatalf("%s：%+v", who, diff)
+			}
+		}
+		// 覆盖包不含 44 开头的区划：FX-A02-05（440305）对全部查看者只给数量
+		outside := func(domain, region string) bool { return strings.HasPrefix(region, "44") }
+		coverage.outside.Store(&outside)
+		defer coverage.outside.Store(nil)
+		run := getRun(t, dm, sim.SimulationID)
+		diff, _ := run.Report.Or(lrn.SimulationReport{}).Diff.Get()
+		if len(diff.AddedSamples) != 0 || withheld(diff.AddedWithheld) != 1 || diff.Added != 1 {
+			t.Fatalf("%+v", diff)
+		}
+		// 首版报告：浙江区划的样本照常返回
+		first := getRun(t, dm, string(firstRun.ID)).Report.Or(lrn.SimulationReport{})
+		if len(first.Samples) != 8 || withheld(first.SamplesWithheld) != 0 {
+			t.Fatalf("%+v", first)
+		}
+		// 越权：没有 can_search_public 的查看者（ra 按外部协作者处理）能打开报告，但看不到任何样本，只看到数量
+		decider.noPublic.Store("user:"+ra, true)
+		r := getRun(t, ra, string(firstRun.ID)).Report.Or(lrn.SimulationReport{})
+		decider.noPublic.Delete("user:" + ra)
+		if len(r.Samples) != 0 || withheld(r.SamplesWithheld) != 8 || r.Distribution.PursueCandidate != 1 {
+			t.Fatalf("%+v", r)
+		}
+		// 同一时刻的另一位查看者不受影响（过滤按本人，不改动保存的报告）
+		if r := getRun(t, dm, string(firstRun.ID)).Report.Or(lrn.SimulationReport{}); len(r.Samples) != 8 {
+			t.Fatalf("%+v", r)
+		}
+		var stored string
+		if err := lrnOwner.QueryRow(ctx, `SELECT report::text FROM lrn_simulation_runs WHERE id = $1`, string(firstRun.ID)).Scan(&stored); err != nil ||
+			strings.Count(stored, `"fact_id"`) != 8 || strings.Contains(stored, "withheld") {
+			t.Fatalf("%v %s", err, stored)
+		}
+		// 失败关闭：覆盖判断不可用时不返回样本，提示 samples_unavailable；响应中不出现对象范围
+		coverage.fail.Store(true)
+		_, raw := do(t, dm, t1, false, "GET", "/v1/learning/simulations/"+string(firstRun.ID), "", "")
+		coverage.fail.Store(false)
+		var failed lrn.SimulationRun
+		decode(t, raw, &failed)
+		fr, _ := failed.Report.Get()
+		hinted := false
+		for _, h := range fr.Hints {
+			hinted = hinted || h.Code == "samples_unavailable"
+		}
+		if len(fr.Samples) != 0 || withheld(fr.SamplesWithheld) != 8 || !hinted || strings.Contains(string(raw), `"scope"`) {
+			t.Fatalf("%s", raw)
+		}
+		// 恢复后同一查看者两次读取逐字节相同
+		a := expect(t, dm, false, "GET", "/v1/learning/simulations/"+string(firstRun.ID), "", 200)
+		b := expect(t, dm, false, "GET", "/v1/learning/simulations/"+string(firstRun.ID), "", 200)
+		if string(a) != string(b) {
+			t.Fatalf("%s\n%s", a, b)
+		}
+	})
+
 	t.Run("用例13：撤回、驳回后草案回到可编辑；驳回必须写原因", func(t *testing.T) {
 		r := request(t, dm, activation(second, "停用区域条件"), 200)
 		a := getApproval(t, dm, r.ApprovalID)
@@ -831,6 +932,45 @@ func TestPolicySimulationApproval(t *testing.T) {
 		offset.Store(0)
 		if len(list.Approvals) != 0 {
 			t.Fatalf("%+v", list)
+		}
+		pump(t)
+		a := getApproval(t, dm, r.ApprovalID)
+		if a.State != "expired" || !a.ClosedAt.Or(time.Time{}).Equal(a.ExpiresAt) {
+			t.Fatalf("%+v", a)
+		}
+		if p = getPolicy(t, dm); p.Request.Or(cc.PolicyRequest{}).State != "expired" || p.Draft.Or(cc.PolicyDraft{}).LockedBy.Set {
+			t.Fatalf("%+v", p)
+		}
+	})
+
+	t.Run("用例13（R-01）：到期失效由 scheduler 角色的 identity.expire-approvals 任务完成，无需有人读取审批", func(t *testing.T) {
+		declared, err := idModule.Jobs(idEnv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var job scheduler.Job
+		for _, j := range declared {
+			if j.Name == "identity.expire-approvals" {
+				job = j
+			}
+		}
+		if job.Run == nil {
+			t.Fatalf("identity 应声明 identity.expire-approvals：%+v", declared)
+		}
+		p := getPolicy(t, dm)
+		r := request(t, dm, activation(p, "由定时任务过期"), 200)
+		runner := &scheduler.Runner{}
+		if o := runner.Once(ctx, scheduler.Bound{Job: job, DB: iamApp}); o != scheduler.Ran {
+			t.Fatalf("%s", o)
+		}
+		if a := getApproval(t, dm, r.ApprovalID); a.State != "pending" {
+			t.Fatalf("未到期不得失效：%+v", a)
+		}
+		offset.Store(int64(8 * 24 * time.Hour))
+		o := runner.Once(ctx, scheduler.Bound{Job: job, DB: iamApp})
+		offset.Store(0)
+		if o != scheduler.Ran {
+			t.Fatalf("%s", o)
 		}
 		pump(t)
 		a := getApproval(t, dm, r.ApprovalID)

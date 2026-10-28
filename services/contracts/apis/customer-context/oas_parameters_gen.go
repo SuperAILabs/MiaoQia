@@ -920,6 +920,91 @@ func decodeGetActivePoliciesParams(args [0]string, argsEscaped bool, r *http.Req
 	return params, nil
 }
 
+// GetAssignmentRulesParams is parameters of getAssignmentRules operation.
+type GetAssignmentRulesParams struct {
+	ObjectiveID string
+}
+
+func unpackGetAssignmentRulesParams(packed middleware.Parameters) (params GetAssignmentRulesParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "objectiveID",
+			In:   "path",
+		}
+		params.ObjectiveID = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetAssignmentRulesParams(args [1]string, argsEscaped bool, r *http.Request) (params GetAssignmentRulesParams, _ error) {
+	// Decode path: objectiveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "objectiveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ObjectiveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^obj_[0-9A-HJKMNP-TV-Z]{26}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.ObjectiveID)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "objectiveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetContextSnapshotParams is parameters of getContextSnapshot operation.
 type GetContextSnapshotParams struct {
 	OrgUnitID      string
@@ -2281,6 +2366,154 @@ func unpackSetObjectiveStateParams(packed middleware.Parameters) (params SetObje
 }
 
 func decodeSetObjectiveStateParams(args [1]string, argsEscaped bool, r *http.Request) (params SetObjectiveStateParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: objectiveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "objectiveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ObjectiveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^obj_[0-9A-HJKMNP-TV-Z]{26}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.ObjectiveID)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "objectiveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: Idempotency-Key.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.IdempotencyKey = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^[A-Za-z0-9_-]{16,128}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.IdempotencyKey)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "Idempotency-Key",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// UpdateAssignmentRulesParams is parameters of updateAssignmentRules operation.
+type UpdateAssignmentRulesParams struct {
+	ObjectiveID    string
+	IdempotencyKey string
+}
+
+func unpackUpdateAssignmentRulesParams(packed middleware.Parameters) (params UpdateAssignmentRulesParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "objectiveID",
+			In:   "path",
+		}
+		params.ObjectiveID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "Idempotency-Key",
+			In:   "header",
+		}
+		params.IdempotencyKey = packed[key].(string)
+	}
+	return params
+}
+
+func decodeUpdateAssignmentRulesParams(args [1]string, argsEscaped bool, r *http.Request) (params UpdateAssignmentRulesParams, _ error) {
 	h := uri.NewHeaderDecoder(r.Header)
 	// Decode path: objectiveID.
 	if err := func() error {

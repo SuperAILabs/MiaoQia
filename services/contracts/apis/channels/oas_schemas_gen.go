@@ -681,7 +681,14 @@ type BriefingID string
 // 区内的一条（组装时的快照）。kind：signal 完整条目；reference
 // 同一采购项目已在靠前的区完整展示，本区为引用行（打开的仍是本目标
 // 自己的信号）；approval
-// “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）。.
+// “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）；task
+// “待我处理”中的跟进任务
+// （分派给本人、未完成、截止在下一期简报之前或已逾期；escalated
+// 为无有效负责人的跟进转给决策者的任务；0.3.0）。 0.5.0（C-08，PRD 第5段 F7
+// 第3条、F2 第2条）：notified
+// 为组装时该信号已即时通知本人（本期不再推送它的信号卡片，只在总览中列出）；
+// arrived_overnight
+// 为即时通知在安静时段内到达、结束时简报即将发送而并入本期（卡片标“夜间到达”）。.
 // Ref: #/components/schemas/BriefingItem
 type BriefingItem struct {
 	Kind           BriefingItemKind        `json:"kind"`
@@ -705,11 +712,20 @@ type BriefingItem struct {
 	Updates      []ItemUpdate `json:"updates"`
 	AlsoMatched  []string     `json:"also_matched"`
 	// 引用行指向的、完整展示该采购项目的区（目标编号）.
-	References   OptString     `json:"references"`
-	ApprovalID   OptString     `json:"approval_id"`
-	ApprovalType OptString     `json:"approval_type"`
-	SubmittedAt  OptDateTime   `json:"submitted_at"`
-	Current      OptItemStatus `json:"current"`
+	References       OptString         `json:"references"`
+	ApprovalID       OptString         `json:"approval_id"`
+	ApprovalType     OptString         `json:"approval_type"`
+	SubmittedAt      OptDateTime       `json:"submitted_at"`
+	TaskID           OptString         `json:"task_id"`
+	PursuitID        OptString         `json:"pursuit_id"`
+	ObjectiveID      OptString         `json:"objective_id"`
+	TaskTitle        OptString         `json:"task_title"`
+	Due              OptTaskDue        `json:"due"`
+	Escalated        OptBool           `json:"escalated"`
+	Current          OptItemStatus     `json:"current"`
+	TaskCurrent      OptTaskItemStatus `json:"task_current"`
+	Notified         OptBool           `json:"notified"`
+	ArrivedOvernight OptBool           `json:"arrived_overnight"`
 }
 
 // GetKind returns the value of Kind.
@@ -827,9 +843,54 @@ func (s *BriefingItem) GetSubmittedAt() OptDateTime {
 	return s.SubmittedAt
 }
 
+// GetTaskID returns the value of TaskID.
+func (s *BriefingItem) GetTaskID() OptString {
+	return s.TaskID
+}
+
+// GetPursuitID returns the value of PursuitID.
+func (s *BriefingItem) GetPursuitID() OptString {
+	return s.PursuitID
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *BriefingItem) GetObjectiveID() OptString {
+	return s.ObjectiveID
+}
+
+// GetTaskTitle returns the value of TaskTitle.
+func (s *BriefingItem) GetTaskTitle() OptString {
+	return s.TaskTitle
+}
+
+// GetDue returns the value of Due.
+func (s *BriefingItem) GetDue() OptTaskDue {
+	return s.Due
+}
+
+// GetEscalated returns the value of Escalated.
+func (s *BriefingItem) GetEscalated() OptBool {
+	return s.Escalated
+}
+
 // GetCurrent returns the value of Current.
 func (s *BriefingItem) GetCurrent() OptItemStatus {
 	return s.Current
+}
+
+// GetTaskCurrent returns the value of TaskCurrent.
+func (s *BriefingItem) GetTaskCurrent() OptTaskItemStatus {
+	return s.TaskCurrent
+}
+
+// GetNotified returns the value of Notified.
+func (s *BriefingItem) GetNotified() OptBool {
+	return s.Notified
+}
+
+// GetArrivedOvernight returns the value of ArrivedOvernight.
+func (s *BriefingItem) GetArrivedOvernight() OptBool {
+	return s.ArrivedOvernight
 }
 
 // SetKind sets the value of Kind.
@@ -947,9 +1008,54 @@ func (s *BriefingItem) SetSubmittedAt(val OptDateTime) {
 	s.SubmittedAt = val
 }
 
+// SetTaskID sets the value of TaskID.
+func (s *BriefingItem) SetTaskID(val OptString) {
+	s.TaskID = val
+}
+
+// SetPursuitID sets the value of PursuitID.
+func (s *BriefingItem) SetPursuitID(val OptString) {
+	s.PursuitID = val
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *BriefingItem) SetObjectiveID(val OptString) {
+	s.ObjectiveID = val
+}
+
+// SetTaskTitle sets the value of TaskTitle.
+func (s *BriefingItem) SetTaskTitle(val OptString) {
+	s.TaskTitle = val
+}
+
+// SetDue sets the value of Due.
+func (s *BriefingItem) SetDue(val OptTaskDue) {
+	s.Due = val
+}
+
+// SetEscalated sets the value of Escalated.
+func (s *BriefingItem) SetEscalated(val OptBool) {
+	s.Escalated = val
+}
+
 // SetCurrent sets the value of Current.
 func (s *BriefingItem) SetCurrent(val OptItemStatus) {
 	s.Current = val
+}
+
+// SetTaskCurrent sets the value of TaskCurrent.
+func (s *BriefingItem) SetTaskCurrent(val OptTaskItemStatus) {
+	s.TaskCurrent = val
+}
+
+// SetNotified sets the value of Notified.
+func (s *BriefingItem) SetNotified(val OptBool) {
+	s.Notified = val
+}
+
+// SetArrivedOvernight sets the value of ArrivedOvernight.
+func (s *BriefingItem) SetArrivedOvernight(val OptBool) {
+	s.ArrivedOvernight = val
 }
 
 type BriefingItemCategory string
@@ -999,6 +1105,7 @@ const (
 	BriefingItemKindSignal    BriefingItemKind = "signal"
 	BriefingItemKindReference BriefingItemKind = "reference"
 	BriefingItemKindApproval  BriefingItemKind = "approval"
+	BriefingItemKindTask      BriefingItemKind = "task"
 )
 
 // AllValues returns all BriefingItemKind values.
@@ -1007,6 +1114,7 @@ func (BriefingItemKind) AllValues() []BriefingItemKind {
 		BriefingItemKindSignal,
 		BriefingItemKindReference,
 		BriefingItemKindApproval,
+		BriefingItemKindTask,
 	}
 }
 
@@ -1018,6 +1126,8 @@ func (s BriefingItemKind) MarshalText() ([]byte, error) {
 	case BriefingItemKindReference:
 		return []byte(s), nil
 	case BriefingItemKindApproval:
+		return []byte(s), nil
+	case BriefingItemKindTask:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -1035,6 +1145,9 @@ func (s *BriefingItemKind) UnmarshalText(data []byte) error {
 		return nil
 	case BriefingItemKindApproval:
 		*s = BriefingItemKindApproval
+		return nil
+	case BriefingItemKindTask:
+		*s = BriefingItemKindTask
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -1164,6 +1277,10 @@ type BriefingPreferences struct {
 	QuietEnd      ClockTime      `json:"quiet_end"`
 	PushEmpty     bool           `json:"push_empty"`
 	SectionLimits []SectionLimit `json:"section_limits"`
+	// 是否接收即时通知卡片（0.5.0，C-08；缺省
+	// true）。与其他偏好不同，修改立即生效（不按周期）：关闭后尚未送达的即时通知在发送前
+	// 取消（preference_off），信号照常进入简报.
+	InstantNotify OptBool `json:"instant_notify"`
 	// 本版本开始生效的周期起点（缺省值不出现）.
 	EffectiveFrom OptDateTime `json:"effective_from"`
 	UpdatedAt     OptDateTime `json:"updated_at"`
@@ -1207,6 +1324,11 @@ func (s *BriefingPreferences) GetPushEmpty() bool {
 // GetSectionLimits returns the value of SectionLimits.
 func (s *BriefingPreferences) GetSectionLimits() []SectionLimit {
 	return s.SectionLimits
+}
+
+// GetInstantNotify returns the value of InstantNotify.
+func (s *BriefingPreferences) GetInstantNotify() OptBool {
+	return s.InstantNotify
 }
 
 // GetEffectiveFrom returns the value of EffectiveFrom.
@@ -1259,6 +1381,11 @@ func (s *BriefingPreferences) SetSectionLimits(val []SectionLimit) {
 	s.SectionLimits = val
 }
 
+// SetInstantNotify sets the value of InstantNotify.
+func (s *BriefingPreferences) SetInstantNotify(val OptBool) {
+	s.InstantNotify = val
+}
+
 // SetEffectiveFrom sets the value of EffectiveFrom.
 func (s *BriefingPreferences) SetEffectiveFrom(val OptDateTime) {
 	s.EffectiveFrom = val
@@ -1269,8 +1396,9 @@ func (s *BriefingPreferences) SetUpdatedAt(val OptDateTime) {
 	s.UpdatedAt = val
 }
 
-// 一区。kind objective 为一个目标；pending 为“待我处理”。state：normal
-// 正常；empty 无新信号；source_interrupted 来源中断（条目照常，
+// 一区。kind objective 为一个目标；pending
+// 为“待我处理”（审批与跟进任务）。state：normal 正常；empty
+// 无新信号；source_interrupted 来源中断（条目照常，
 // 恢复后补齐的信号进入下一期）；unavailable
 // 暂不可用（本期没能取数，窗口顺延到下一期）；objective_inactive
 // 目标未激活； no_permission 读取时已失去访问（不返回条目与标题）。window
@@ -1999,6 +2127,8 @@ type DeliveryStats struct {
 	Deliveries       []DeliveryStatsDeliveriesItem `json:"deliveries"`
 	EmptyBriefings   int                           `json:"empty_briefings"`
 	PartialBriefings int                           `json:"partial_briefings"`
+	// 渠道通知的计数（0.4.0）；服务端总是返回，没有通知时为空数组.
+	Notices []DeliveryStatsNoticesItem `json:"notices"`
 }
 
 // GetSince returns the value of Since.
@@ -2021,6 +2151,11 @@ func (s *DeliveryStats) GetPartialBriefings() int {
 	return s.PartialBriefings
 }
 
+// GetNotices returns the value of Notices.
+func (s *DeliveryStats) GetNotices() []DeliveryStatsNoticesItem {
+	return s.Notices
+}
+
 // SetSince sets the value of Since.
 func (s *DeliveryStats) SetSince(val time.Time) {
 	s.Since = val
@@ -2039,6 +2174,11 @@ func (s *DeliveryStats) SetEmptyBriefings(val int) {
 // SetPartialBriefings sets the value of PartialBriefings.
 func (s *DeliveryStats) SetPartialBriefings(val int) {
 	s.PartialBriefings = val
+}
+
+// SetNotices sets the value of Notices.
+func (s *DeliveryStats) SetNotices(val []DeliveryStatsNoticesItem) {
+	s.Notices = val
 }
 
 type DeliveryStatsDeliveriesItem struct {
@@ -2074,6 +2214,53 @@ func (s *DeliveryStatsDeliveriesItem) SetReason(val OptString) {
 
 // SetCount sets the value of Count.
 func (s *DeliveryStatsDeliveriesItem) SetCount(val int) {
+	s.Count = val
+}
+
+type DeliveryStatsNoticesItem struct {
+	Kind   NoticeKind      `json:"kind"`
+	State  NoticeState     `json:"state"`
+	Reason OptNoticeReason `json:"reason"`
+	Count  int             `json:"count"`
+}
+
+// GetKind returns the value of Kind.
+func (s *DeliveryStatsNoticesItem) GetKind() NoticeKind {
+	return s.Kind
+}
+
+// GetState returns the value of State.
+func (s *DeliveryStatsNoticesItem) GetState() NoticeState {
+	return s.State
+}
+
+// GetReason returns the value of Reason.
+func (s *DeliveryStatsNoticesItem) GetReason() OptNoticeReason {
+	return s.Reason
+}
+
+// GetCount returns the value of Count.
+func (s *DeliveryStatsNoticesItem) GetCount() int {
+	return s.Count
+}
+
+// SetKind sets the value of Kind.
+func (s *DeliveryStatsNoticesItem) SetKind(val NoticeKind) {
+	s.Kind = val
+}
+
+// SetState sets the value of State.
+func (s *DeliveryStatsNoticesItem) SetState(val NoticeState) {
+	s.State = val
+}
+
+// SetReason sets the value of Reason.
+func (s *DeliveryStatsNoticesItem) SetReason(val OptNoticeReason) {
+	s.Reason = val
+}
+
+// SetCount sets the value of Count.
+func (s *DeliveryStatsNoticesItem) SetCount(val int) {
 	s.Count = val
 }
 
@@ -2923,6 +3110,291 @@ func (s *ItemUpdate) SetContentVersion(val int64) {
 
 type LinkToken string
 
+// 渠道通知的种类：task_due 任务提醒卡片；authorization_rejected
+// 授权被拒时给操作者的通知（0.4.0）；signal_immediate 信号的
+// 即时通知卡片（0.5.0，C-08）.
+// Ref: #/components/schemas/NoticeKind
+type NoticeKind string
+
+const (
+	NoticeKindTaskDue               NoticeKind = "task_due"
+	NoticeKindAuthorizationRejected NoticeKind = "authorization_rejected"
+	NoticeKindSignalImmediate       NoticeKind = "signal_immediate"
+)
+
+// AllValues returns all NoticeKind values.
+func (NoticeKind) AllValues() []NoticeKind {
+	return []NoticeKind{
+		NoticeKindTaskDue,
+		NoticeKindAuthorizationRejected,
+		NoticeKindSignalImmediate,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s NoticeKind) MarshalText() ([]byte, error) {
+	switch s {
+	case NoticeKindTaskDue:
+		return []byte(s), nil
+	case NoticeKindAuthorizationRejected:
+		return []byte(s), nil
+	case NoticeKindSignalImmediate:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *NoticeKind) UnmarshalText(data []byte) error {
+	switch NoticeKind(data) {
+	case NoticeKindTaskDue:
+		*s = NoticeKindTaskDue
+		return nil
+	case NoticeKindAuthorizationRejected:
+		*s = NoticeKindAuthorizationRejected
+		return nil
+	case NoticeKindSignalImmediate:
+		*s = NoticeKindSignalImmediate
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 按状态白名单：retrying 为 channel_error；in_app 为 not_bound、cutoff；cancelled 为
+// member_inactive、task_not_visible、
+// task_closed、superseded、reassigned、pursuit_not_visible；不在白名单内的为
+// other；pending 与 delivered 不带原因（0.4.0）。 0.5.0（signal_immediate）的 cancelled
+// 另有：preference_off 收件人关闭了即时通知；not_immediate
+// 目标的生效策略对信号当前处置 不再是
+// immediate（或目标未激活、信号为回填）；not_in_audience
+// 收件人已不在受众中；objective_not_visible 收件人已不能查看目标的
+// 信号；signal_not_visible 信号对收件人不可见或不属于该目标；signal_handled
+// 信号已不是待处理；throttled 超过每名收件人的即时
+// 通知上限，留给简报；merged_into_briefing
+// 安静时段内到达、结束时简报即将发送，并入简报.
+// Ref: #/components/schemas/NoticeReason
+type NoticeReason string
+
+const (
+	NoticeReasonChannelError        NoticeReason = "channel_error"
+	NoticeReasonNotBound            NoticeReason = "not_bound"
+	NoticeReasonCutoff              NoticeReason = "cutoff"
+	NoticeReasonMemberInactive      NoticeReason = "member_inactive"
+	NoticeReasonTaskNotVisible      NoticeReason = "task_not_visible"
+	NoticeReasonTaskClosed          NoticeReason = "task_closed"
+	NoticeReasonSuperseded          NoticeReason = "superseded"
+	NoticeReasonReassigned          NoticeReason = "reassigned"
+	NoticeReasonPursuitNotVisible   NoticeReason = "pursuit_not_visible"
+	NoticeReasonPreferenceOff       NoticeReason = "preference_off"
+	NoticeReasonNotImmediate        NoticeReason = "not_immediate"
+	NoticeReasonNotInAudience       NoticeReason = "not_in_audience"
+	NoticeReasonObjectiveNotVisible NoticeReason = "objective_not_visible"
+	NoticeReasonSignalNotVisible    NoticeReason = "signal_not_visible"
+	NoticeReasonSignalHandled       NoticeReason = "signal_handled"
+	NoticeReasonThrottled           NoticeReason = "throttled"
+	NoticeReasonMergedIntoBriefing  NoticeReason = "merged_into_briefing"
+	NoticeReasonOther               NoticeReason = "other"
+)
+
+// AllValues returns all NoticeReason values.
+func (NoticeReason) AllValues() []NoticeReason {
+	return []NoticeReason{
+		NoticeReasonChannelError,
+		NoticeReasonNotBound,
+		NoticeReasonCutoff,
+		NoticeReasonMemberInactive,
+		NoticeReasonTaskNotVisible,
+		NoticeReasonTaskClosed,
+		NoticeReasonSuperseded,
+		NoticeReasonReassigned,
+		NoticeReasonPursuitNotVisible,
+		NoticeReasonPreferenceOff,
+		NoticeReasonNotImmediate,
+		NoticeReasonNotInAudience,
+		NoticeReasonObjectiveNotVisible,
+		NoticeReasonSignalNotVisible,
+		NoticeReasonSignalHandled,
+		NoticeReasonThrottled,
+		NoticeReasonMergedIntoBriefing,
+		NoticeReasonOther,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s NoticeReason) MarshalText() ([]byte, error) {
+	switch s {
+	case NoticeReasonChannelError:
+		return []byte(s), nil
+	case NoticeReasonNotBound:
+		return []byte(s), nil
+	case NoticeReasonCutoff:
+		return []byte(s), nil
+	case NoticeReasonMemberInactive:
+		return []byte(s), nil
+	case NoticeReasonTaskNotVisible:
+		return []byte(s), nil
+	case NoticeReasonTaskClosed:
+		return []byte(s), nil
+	case NoticeReasonSuperseded:
+		return []byte(s), nil
+	case NoticeReasonReassigned:
+		return []byte(s), nil
+	case NoticeReasonPursuitNotVisible:
+		return []byte(s), nil
+	case NoticeReasonPreferenceOff:
+		return []byte(s), nil
+	case NoticeReasonNotImmediate:
+		return []byte(s), nil
+	case NoticeReasonNotInAudience:
+		return []byte(s), nil
+	case NoticeReasonObjectiveNotVisible:
+		return []byte(s), nil
+	case NoticeReasonSignalNotVisible:
+		return []byte(s), nil
+	case NoticeReasonSignalHandled:
+		return []byte(s), nil
+	case NoticeReasonThrottled:
+		return []byte(s), nil
+	case NoticeReasonMergedIntoBriefing:
+		return []byte(s), nil
+	case NoticeReasonOther:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *NoticeReason) UnmarshalText(data []byte) error {
+	switch NoticeReason(data) {
+	case NoticeReasonChannelError:
+		*s = NoticeReasonChannelError
+		return nil
+	case NoticeReasonNotBound:
+		*s = NoticeReasonNotBound
+		return nil
+	case NoticeReasonCutoff:
+		*s = NoticeReasonCutoff
+		return nil
+	case NoticeReasonMemberInactive:
+		*s = NoticeReasonMemberInactive
+		return nil
+	case NoticeReasonTaskNotVisible:
+		*s = NoticeReasonTaskNotVisible
+		return nil
+	case NoticeReasonTaskClosed:
+		*s = NoticeReasonTaskClosed
+		return nil
+	case NoticeReasonSuperseded:
+		*s = NoticeReasonSuperseded
+		return nil
+	case NoticeReasonReassigned:
+		*s = NoticeReasonReassigned
+		return nil
+	case NoticeReasonPursuitNotVisible:
+		*s = NoticeReasonPursuitNotVisible
+		return nil
+	case NoticeReasonPreferenceOff:
+		*s = NoticeReasonPreferenceOff
+		return nil
+	case NoticeReasonNotImmediate:
+		*s = NoticeReasonNotImmediate
+		return nil
+	case NoticeReasonNotInAudience:
+		*s = NoticeReasonNotInAudience
+		return nil
+	case NoticeReasonObjectiveNotVisible:
+		*s = NoticeReasonObjectiveNotVisible
+		return nil
+	case NoticeReasonSignalNotVisible:
+		*s = NoticeReasonSignalNotVisible
+		return nil
+	case NoticeReasonSignalHandled:
+		*s = NoticeReasonSignalHandled
+		return nil
+	case NoticeReasonThrottled:
+		*s = NoticeReasonThrottled
+		return nil
+	case NoticeReasonMergedIntoBriefing:
+		*s = NoticeReasonMergedIntoBriefing
+		return nil
+	case NoticeReasonOther:
+		*s = NoticeReasonOther
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Pending 待发送（含安静时段延后）；retrying
+// 发送失败、等待退避重试；delivered 渠道已接受；in_app
+// 未绑定或重试时限内仍未送达， 留在 Web 与站内；cancelled
+// 发送前以收件人本人再检查时取消（0.4.0）.
+// Ref: #/components/schemas/NoticeState
+type NoticeState string
+
+const (
+	NoticeStatePending   NoticeState = "pending"
+	NoticeStateRetrying  NoticeState = "retrying"
+	NoticeStateDelivered NoticeState = "delivered"
+	NoticeStateInApp     NoticeState = "in_app"
+	NoticeStateCancelled NoticeState = "cancelled"
+)
+
+// AllValues returns all NoticeState values.
+func (NoticeState) AllValues() []NoticeState {
+	return []NoticeState{
+		NoticeStatePending,
+		NoticeStateRetrying,
+		NoticeStateDelivered,
+		NoticeStateInApp,
+		NoticeStateCancelled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s NoticeState) MarshalText() ([]byte, error) {
+	switch s {
+	case NoticeStatePending:
+		return []byte(s), nil
+	case NoticeStateRetrying:
+		return []byte(s), nil
+	case NoticeStateDelivered:
+		return []byte(s), nil
+	case NoticeStateInApp:
+		return []byte(s), nil
+	case NoticeStateCancelled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *NoticeState) UnmarshalText(data []byte) error {
+	switch NoticeState(data) {
+	case NoticeStatePending:
+		*s = NoticeStatePending
+		return nil
+	case NoticeStateRetrying:
+		*s = NoticeStateRetrying
+		return nil
+	case NoticeStateDelivered:
+		*s = NoticeStateDelivered
+		return nil
+	case NoticeStateInApp:
+		*s = NoticeStateInApp
+		return nil
+	case NoticeStateCancelled:
+		*s = NoticeStateCancelled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type OAuthCode string
 
 // Ref: #/components/schemas/OpenCardLinkRequest
@@ -3584,6 +4056,52 @@ func (o OptItemStatus) Or(d ItemStatus) ItemStatus {
 	return d
 }
 
+// NewOptNoticeReason returns new OptNoticeReason with value set to v.
+func NewOptNoticeReason(v NoticeReason) OptNoticeReason {
+	return OptNoticeReason{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptNoticeReason is optional NoticeReason.
+type OptNoticeReason struct {
+	Value NoticeReason
+	Set   bool
+}
+
+// IsSet returns true if OptNoticeReason was set.
+func (o OptNoticeReason) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptNoticeReason) Reset() {
+	var v NoticeReason
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptNoticeReason) SetTo(v NoticeReason) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptNoticeReason) Get() (v NoticeReason, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptNoticeReason) Or(d NoticeReason) NoticeReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptOAuthCode returns new OptOAuthCode with value set to v.
 func NewOptOAuthCode(v OAuthCode) OptOAuthCode {
 	return OptOAuthCode{
@@ -3670,6 +4188,98 @@ func (o OptString) Get() (v string, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptString) Or(d string) string {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptTaskDue returns new OptTaskDue with value set to v.
+func NewOptTaskDue(v TaskDue) OptTaskDue {
+	return OptTaskDue{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTaskDue is optional TaskDue.
+type OptTaskDue struct {
+	Value TaskDue
+	Set   bool
+}
+
+// IsSet returns true if OptTaskDue was set.
+func (o OptTaskDue) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTaskDue) Reset() {
+	var v TaskDue
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTaskDue) SetTo(v TaskDue) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTaskDue) Get() (v TaskDue, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTaskDue) Or(d TaskDue) TaskDue {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptTaskItemStatus returns new OptTaskItemStatus with value set to v.
+func NewOptTaskItemStatus(v TaskItemStatus) OptTaskItemStatus {
+	return OptTaskItemStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTaskItemStatus is optional TaskItemStatus.
+type OptTaskItemStatus struct {
+	Value TaskItemStatus
+	Set   bool
+}
+
+// IsSet returns true if OptTaskItemStatus was set.
+func (o OptTaskItemStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTaskItemStatus) Reset() {
+	var v TaskItemStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTaskItemStatus) SetTo(v TaskItemStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTaskItemStatus) Get() (v TaskItemStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTaskItemStatus) Or(d TaskItemStatus) TaskItemStatus {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -3943,6 +4553,178 @@ func (s *SectionLimit) SetLimit(val int) {
 	s.Limit = val
 }
 
+// 任务截止的所填值、精度（day 只到日，minute
+// 精确到分钟）与时区（IANA），只到日的不补成时刻.
+// Ref: #/components/schemas/TaskDue
+type TaskDue struct {
+	Value     string           `json:"value"`
+	Precision TaskDuePrecision `json:"precision"`
+	Timezone  string           `json:"timezone"`
+}
+
+// GetValue returns the value of Value.
+func (s *TaskDue) GetValue() string {
+	return s.Value
+}
+
+// GetPrecision returns the value of Precision.
+func (s *TaskDue) GetPrecision() TaskDuePrecision {
+	return s.Precision
+}
+
+// GetTimezone returns the value of Timezone.
+func (s *TaskDue) GetTimezone() string {
+	return s.Timezone
+}
+
+// SetValue sets the value of Value.
+func (s *TaskDue) SetValue(val string) {
+	s.Value = val
+}
+
+// SetPrecision sets the value of Precision.
+func (s *TaskDue) SetPrecision(val TaskDuePrecision) {
+	s.Precision = val
+}
+
+// SetTimezone sets the value of Timezone.
+func (s *TaskDue) SetTimezone(val string) {
+	s.Timezone = val
+}
+
+type TaskDuePrecision string
+
+const (
+	TaskDuePrecisionDay    TaskDuePrecision = "day"
+	TaskDuePrecisionMinute TaskDuePrecision = "minute"
+)
+
+// AllValues returns all TaskDuePrecision values.
+func (TaskDuePrecision) AllValues() []TaskDuePrecision {
+	return []TaskDuePrecision{
+		TaskDuePrecisionDay,
+		TaskDuePrecisionMinute,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TaskDuePrecision) MarshalText() ([]byte, error) {
+	switch s {
+	case TaskDuePrecisionDay:
+		return []byte(s), nil
+	case TaskDuePrecisionMinute:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TaskDuePrecision) UnmarshalText(data []byte) error {
+	switch TaskDuePrecision(data) {
+	case TaskDuePrecisionDay:
+		*s = TaskDuePrecisionDay
+		return nil
+	case TaskDuePrecisionMinute:
+		*s = TaskDuePrecisionMinute
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 任务的当前状态（叠加，时间轴为“当前”，status_as_of 为读取时间）：todo
+// 仍待本人处理；done 已完成；cancelled 已取消； reassigned
+// 已不由本人处理（改派或负责人恢复）；pursuit_closed
+// 跟进已关闭。查看者已不能查看该任务时整条不返回。.
+// Ref: #/components/schemas/TaskItemStatus
+type TaskItemStatus struct {
+	Status     TaskItemStatusStatus `json:"status"`
+	StatusAsOf time.Time            `json:"status_as_of"`
+}
+
+// GetStatus returns the value of Status.
+func (s *TaskItemStatus) GetStatus() TaskItemStatusStatus {
+	return s.Status
+}
+
+// GetStatusAsOf returns the value of StatusAsOf.
+func (s *TaskItemStatus) GetStatusAsOf() time.Time {
+	return s.StatusAsOf
+}
+
+// SetStatus sets the value of Status.
+func (s *TaskItemStatus) SetStatus(val TaskItemStatusStatus) {
+	s.Status = val
+}
+
+// SetStatusAsOf sets the value of StatusAsOf.
+func (s *TaskItemStatus) SetStatusAsOf(val time.Time) {
+	s.StatusAsOf = val
+}
+
+type TaskItemStatusStatus string
+
+const (
+	TaskItemStatusStatusTodo          TaskItemStatusStatus = "todo"
+	TaskItemStatusStatusDone          TaskItemStatusStatus = "done"
+	TaskItemStatusStatusCancelled     TaskItemStatusStatus = "cancelled"
+	TaskItemStatusStatusReassigned    TaskItemStatusStatus = "reassigned"
+	TaskItemStatusStatusPursuitClosed TaskItemStatusStatus = "pursuit_closed"
+)
+
+// AllValues returns all TaskItemStatusStatus values.
+func (TaskItemStatusStatus) AllValues() []TaskItemStatusStatus {
+	return []TaskItemStatusStatus{
+		TaskItemStatusStatusTodo,
+		TaskItemStatusStatusDone,
+		TaskItemStatusStatusCancelled,
+		TaskItemStatusStatusReassigned,
+		TaskItemStatusStatusPursuitClosed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TaskItemStatusStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case TaskItemStatusStatusTodo:
+		return []byte(s), nil
+	case TaskItemStatusStatusDone:
+		return []byte(s), nil
+	case TaskItemStatusStatusCancelled:
+		return []byte(s), nil
+	case TaskItemStatusStatusReassigned:
+		return []byte(s), nil
+	case TaskItemStatusStatusPursuitClosed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TaskItemStatusStatus) UnmarshalText(data []byte) error {
+	switch TaskItemStatusStatus(data) {
+	case TaskItemStatusStatusTodo:
+		*s = TaskItemStatusStatusTodo
+		return nil
+	case TaskItemStatusStatusDone:
+		*s = TaskItemStatusStatusDone
+		return nil
+	case TaskItemStatusStatusCancelled:
+		*s = TaskItemStatusStatusCancelled
+		return nil
+	case TaskItemStatusStatusReassigned:
+		*s = TaskItemStatusStatusReassigned
+		return nil
+	case TaskItemStatusStatusPursuitClosed:
+		*s = TaskItemStatusStatusPursuitClosed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/UnbindRequest
 type UnbindRequest struct {
 	ExpectedVersion int64 `json:"expected_version"`
@@ -3980,6 +4762,8 @@ type UpdateBriefingPreferencesRequest struct {
 	QuietEnd        ClockTime      `json:"quiet_end"`
 	PushEmpty       bool           `json:"push_empty"`
 	SectionLimits   []SectionLimit `json:"section_limits"`
+	// 是否接收即时通知（0.5.0，C-08）；不提供时保持当前值（从未设置为 true）.
+	InstantNotify OptBool `json:"instant_notify"`
 }
 
 // GetExpectedVersion returns the value of ExpectedVersion.
@@ -4022,6 +4806,11 @@ func (s *UpdateBriefingPreferencesRequest) GetSectionLimits() []SectionLimit {
 	return s.SectionLimits
 }
 
+// GetInstantNotify returns the value of InstantNotify.
+func (s *UpdateBriefingPreferencesRequest) GetInstantNotify() OptBool {
+	return s.InstantNotify
+}
+
 // SetExpectedVersion sets the value of ExpectedVersion.
 func (s *UpdateBriefingPreferencesRequest) SetExpectedVersion(val int64) {
 	s.ExpectedVersion = val
@@ -4060,6 +4849,11 @@ func (s *UpdateBriefingPreferencesRequest) SetPushEmpty(val bool) {
 // SetSectionLimits sets the value of SectionLimits.
 func (s *UpdateBriefingPreferencesRequest) SetSectionLimits(val []SectionLimit) {
 	s.SectionLimits = val
+}
+
+// SetInstantNotify sets the value of InstantNotify.
+func (s *UpdateBriefingPreferencesRequest) SetInstantNotify(val OptBool) {
+	s.InstantNotify = val
 }
 
 // Ref: #/components/schemas/VersionRequest

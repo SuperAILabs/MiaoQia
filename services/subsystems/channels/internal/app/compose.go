@@ -83,8 +83,20 @@ type composedSection struct {
 	domains  []string
 }
 
-// Compose 是 Briefings.Compose。
+// Compose 是 Briefings.Compose。组装期间本人有即时通知过了发送闸门时（errNoticeRaced）按新状态重做，至多 3 次。
 func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*api.ComposeResult, error) {
+	for i := 0; ; i++ {
+		res, err := s.compose(ctx, subject, at)
+		if !errors.Is(err, errNoticeRaced) {
+			return res, err
+		}
+		if i == 2 {
+			return nil, failure(503, "channels_unavailable")
+		}
+	}
+}
+
+func (s *Service) compose(ctx context.Context, subject string, at time.Time) (*api.ComposeResult, error) {
 	rc, err := requireService(ctx)
 	if err != nil {
 		return nil, err
@@ -137,20 +149,26 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 	// 当日 12:00 之后：不推送，各区窗口不前移（下一期覆盖本期，第13节第12项）
 	if domain.ComposeLate(end, at, loc) {
 		doc.Partial = true
-		id, err := s.saveBriefing(sctx, rc, subject, doc, nil, "not_pushed", "late", nil)
+		id, err := s.saveBriefing(sctx, rc, subject, doc, nil, "not_pushed", "late", nil, nil)
 		if err != nil {
 			return nil, err
 		}
 		return &api.ComposeResult{Outcome: "late", BriefingID: id}, nil
 	}
 	uctx := userContext(ctx, rc.Tenant, rc.Cell, subject)
-	sections, partial, audience, err := s.assemble(sctx, uctx, rc.Tenant, subject, start, end, prefs)
+	sections, partial, audience, err := s.assemble(sctx, uctx, rc.Tenant, subject, start, end, sched.NextBoundary(end), prefs)
 	if err != nil {
 		return nil, err
 	}
 	if !audience {
 		return &api.ComposeResult{Outcome: "skipped"}, nil
 	}
+	// 即时通知（C-08）：本人已送达的信号标“已通知”、不再推送信号卡片；尚未送达的随本期简报结束（并入简报），安静时段内到达的标“夜间到达”
+	marks, err := s.signalNoticeMarks(sctx, subject, listedSignals(sections), prefs)
+	if err != nil {
+		return nil, err
+	}
+	applyNoticeMarks(sections, marks)
 	doc.Partial = partial
 	items := 0
 	doc.Empty = !partial
@@ -193,7 +211,7 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 			return nil, err
 		}
 	}
-	id, err := s.saveBriefing(sctx, rc, subject, doc, sections, pushState, reason, plan)
+	id, err := s.saveBriefing(sctx, rc, subject, doc, sections, pushState, reason, plan, marks)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +227,7 @@ func (s *Service) Compose(ctx context.Context, subject string, at time.Time) (*a
 }
 
 // assemble 逐区取数。audience 为成员是否是本期的受众（至少一个已激活目标可看信号，或有待其处理的审批）。
-func (s *Service) assemble(sctx, uctx context.Context, tenant, subject string, start, end time.Time, prefs domain.Preferences) ([]composedSection, bool, bool, error) {
+func (s *Service) assemble(sctx, uctx context.Context, tenant, subject string, start, end, nextBoundary time.Time, prefs domain.Preferences) ([]composedSection, bool, bool, error) {
 	if s.Detection == nil {
 		return nil, false, false, failure(503, "detection_unavailable")
 	}
@@ -308,22 +326,44 @@ func (s *Service) assemble(sctx, uctx context.Context, tenant, subject string, s
 		return out[i].ObjectiveCode < out[j].ObjectiveCode
 	})
 	s.fillItems(sctx, out)
-	// “待我处理”：待本人批准的审批（按提交时间）；任务随第6段
-	if s.Approvals != nil {
+	// “待我处理”：待本人批准的审批（按提交时间），之后是分派给本人或转给本人决定的跟进任务（截止在下一期简报之前或已逾期，
+	// 按截止时间；PRD 第6段 F9 第1条）。以成员本人读取；任一来源不可用时本区暂不可用
+	if s.Approvals != nil || s.Pursuits != nil {
 		pending := composedSection{section: section{Kind: "pending", Order: 0, State: "normal", Items: []item{}}}
-		list, err := s.Approvals.ListApprovals(uctx, identityapi.ListApprovalsParams{Role: identityapi.NewOptListApprovalsRole(identityapi.ListApprovalsRoleApprover),
-			State: identityapi.NewOptApprovalState(identityapi.ApprovalStatePending), Limit: identityapi.NewOptInt(50)})
-		switch {
-		case err != nil:
-			pending.State, partial = "unavailable", true
-			out = append([]composedSection{pending}, out...)
-		case len(list.Approvals) > 0:
-			apps := list.Approvals
-			sort.SliceStable(apps, func(i, j int) bool { return apps[i].SubmittedAt.Before(apps[j].SubmittedAt) })
-			for i, a := range apps {
-				pending.Items = append(pending.Items, item{Kind: "approval", Position: i,
-					ApprovalItem: &ApprovalItem{ApprovalID: string(a.ID), ApprovalType: string(a.Type), SubmittedAt: a.SubmittedAt.UTC()}})
+		failed := false
+		if s.Approvals != nil {
+			list, err := s.Approvals.ListApprovals(uctx, identityapi.ListApprovalsParams{Role: identityapi.NewOptListApprovalsRole(identityapi.ListApprovalsRoleApprover),
+				State: identityapi.NewOptApprovalState(identityapi.ApprovalStatePending), Limit: identityapi.NewOptInt(50)})
+			if err != nil {
+				failed = true
+			} else {
+				apps := list.Approvals
+				sort.SliceStable(apps, func(i, j int) bool { return apps[i].SubmittedAt.Before(apps[j].SubmittedAt) })
+				for _, a := range apps {
+					pending.Items = append(pending.Items, item{Kind: "approval", Position: len(pending.Items),
+						ApprovalItem: &ApprovalItem{ApprovalID: string(a.ID), ApprovalType: string(a.Type), SubmittedAt: a.SubmittedAt.UTC()}})
+				}
 			}
+		}
+		if s.Pursuits != nil && !failed {
+			var before *time.Time
+			if next := nextBoundary; !next.IsZero() {
+				before = &next
+			}
+			list, err := s.Pursuits.ListMyTasks(uctx, before, 100, "")
+			if err != nil {
+				failed = true
+			} else {
+				for _, t := range list.Items {
+					pending.Items = append(pending.Items, item{Kind: "task", Position: len(pending.Items), TaskItem: taskItem(t)})
+				}
+			}
+		}
+		switch {
+		case failed:
+			pending.State, partial, pending.Items = "unavailable", true, []item{}
+			out = append([]composedSection{pending}, out...)
+		case len(pending.Items) > 0:
 			audience = true
 			out = append([]composedSection{pending}, out...)
 		}
@@ -423,10 +463,10 @@ func (s *Service) coverage(sctx context.Context, domains []string) []dataAsOf {
 	return out
 }
 
-// saveBriefing 在一个事务中保存简报、前移取数成功的区的窗口并创建投递（含令牌与链接）。同一期并发组装时只有一份生效：
-// 返回已有的标识，本次的窗口与投递随事务回滚。
+// saveBriefing 在一个事务中保存简报、前移取数成功的区的窗口并创建投递（含令牌与链接），并结束本期已列入、尚未送达的即时通知（pending，
+// merged_into_briefing）。同一期并发组装时只有一份生效：返回已有的标识，本次的窗口、投递与通知变化随事务回滚。
 func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject string, doc *briefingDoc, secs []composedSection, pushState, reason string,
-	plan *deliveryPlan) (string, error) {
+	plan *deliveryPlan, marks *noticeMarks) (string, error) {
 	raw, err := json.Marshal(doc.Sections)
 	if err != nil {
 		return "", err
@@ -440,6 +480,7 @@ func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject 
 		}
 	}
 	id := doc.ID
+	raced := false // s.tx 不外泄内部错误，组装重做靠这个标记
 	err = s.tx(sctx, func(ctx context.Context, tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "chn-briefing/"+rc.Tenant+"/"+subject); err != nil {
 			return err
@@ -480,7 +521,14 @@ func (s *Service) saveBriefing(sctx context.Context, rc reqctx.Context, subject 
 				return err
 			}
 		}
+		if err := mergePendingNotices(ctx, tx, doc.ID, subject, listedSignals(secs), marks); err != nil {
+			raced = errors.Is(err, errNoticeRaced)
+			return err
+		}
 		return recordAs(ctx, tx, "channels.briefing.composed", doc.ID, "succeeded", "briefing;"+pushState+";"+reason)
 	})
+	if raced {
+		return "", errNoticeRaced
+	}
 	return id, err
 }

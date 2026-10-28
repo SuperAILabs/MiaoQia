@@ -66,6 +66,70 @@ type Detail struct {
 	ViewerCanEdit   bool             `json:"viewer_can_edit"`
 	ViewerCanManage bool             `json:"viewer_can_manage_team"`
 	ViewerCanVoid   bool             `json:"viewer_can_void"`
+	SiblingHints    []SiblingHint    `json:"sibling_hints,omitempty"`
+}
+
+// SiblingHint 是契约 SiblingHint：同一目标、同一采购项目（同一事实类型与主体）上另一家中标方的进行中跟进（PRD 第6段 F2 第1条、用例12）。
+// 跟进目标中的部分是各中标结果自身的标识、不含标包，因此尚不能缩小到同一标包（G-C10-03）。
+// 按查看者对那个跟进的当前权限分级投影（白名单）：能查看为 full；不能查看为 owner_only，只给负责人。
+type SiblingHint struct {
+	Visibility  string     `json:"visibility"`
+	Owner       string     `json:"owner"`
+	PursuitID   string     `json:"pursuit_id,omitempty"`
+	WinnerOrgID string     `json:"winner_org_id,omitempty"`
+	OwnerValid  *bool      `json:"owner_valid,omitempty"`
+	CreatedAt   *time.Time `json:"created_at,omitempty"`
+}
+
+// maxSiblingHints 是一次读取给出的互相提示上限（契约 maxItems）。
+const maxSiblingHints = 20
+
+// siblingHint 按查看者当前的权限投影一条互相提示：字段按级别白名单逐个给出，不从跟进行整体复制。
+func siblingHint(p *Pursuit, canView bool) SiblingHint {
+	if !canView {
+		return SiblingHint{Visibility: "owner_only", Owner: p.Owner}
+	}
+	valid, created := p.OwnerValid, p.CreatedAt
+	return SiblingHint{Visibility: "full", Owner: p.Owner, PursuitID: p.ID, WinnerOrgID: p.Target.WinnerOrgID, OwnerValid: &valid, CreatedAt: &created}
+}
+
+// siblingHints 读取同一目标、同一事实类型与主体上目标对象键不同的进行中交易型跟进（即同一采购项目的其他中标方），每条按查看者
+// 此刻的权限判断（不以快照或创建时的权限为准）。判断失败返回错误（失败关闭）。
+func (s *Service) siblingHints(ctx context.Context, rc reqctx.Context, p *Pursuit) ([]SiblingHint, error) {
+	if p.State != "open" || p.Target.SubjectID == "" {
+		return nil, nil
+	}
+	var siblings []*Pursuit
+	err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT `+pursuitColumns+` FROM pur_pursuits WHERE objective_id = $1 AND kind = 'deal' AND state = 'open'
+ AND fact_type = $2 AND subject_id = $3 AND target_key <> $4 AND id <> $5 ORDER BY created_at, id LIMIT $6`,
+			p.ObjectiveID, p.Target.FactType, p.Target.SubjectID, p.Target.key(), p.ID, maxSiblingHints)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			sib, err := scanPursuit(rows)
+			if err != nil {
+				return err
+			}
+			siblings = append(siblings, sib)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	cache := unitRights{}
+	var out []SiblingHint
+	for _, sib := range siblings {
+		r, err := s.rights(ctx, rc, sib, cache)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, siblingHint(sib, r.View))
+	}
+	return out, nil
 }
 
 // GetPursuit 读取跟进详情（契约 getPursuit）。
@@ -153,6 +217,9 @@ func (s *Service) GetPursuit(ctx context.Context, id string) (*Detail, error) {
 	if err != nil {
 		return nil, err
 	}
+	if d.SiblingHints, err = s.siblingHints(ctx, rc, p); err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
@@ -217,11 +284,11 @@ func (s *Service) ListPursuits(ctx context.Context, view, objective string, limi
 				if c.Closed != nil {
 					after = *c.Closed
 				}
-				rows, err = tx.Query(ctx, `SELECT `+pursuitColumns+`, closed_at FROM pur_pursuits WHERE state = 'closed' AND ($1 = '' OR objective_id = $1) AND $2 <> ''
+				rows, err = tx.Query(ctx, `SELECT `+pursuitColumns+`, closed_at FROM pur_pursuits WHERE state = 'closed' AND kind = 'deal' AND ($1 = '' OR objective_id = $1) AND $2 <> ''
  AND (closed_at, id) < ($3, $4) ORDER BY closed_at DESC, id DESC LIMIT 100`, objective, rc.Principal.ID, after, cursorID(c.ID, c.Closed == nil))
 			} else {
 				rows, err = tx.Query(ctx, `WITH c AS (SELECT p.id AS pid, COALESCE((SELECT min(t.due_at) FROM pur_tasks t WHERE t.pursuit_id = p.id AND t.status = 'todo'), $5::timestamptz) AS nd
- FROM pur_pursuits p WHERE p.state = 'open' AND ($1 = '' OR p.objective_id = $1) AND `+qualify(filter)+`)
+ FROM pur_pursuits p WHERE p.state = 'open' AND p.kind = 'deal' AND ($1 = '' OR p.objective_id = $1) AND `+qualify(filter)+`)
  SELECT `+pursuitColumns+`, c.nd FROM pur_pursuits JOIN c ON c.pid = pur_pursuits.id WHERE (owner_valid, c.nd, id) > ($3, $4, $6) ORDER BY owner_valid, c.nd, id LIMIT 100`,
 					objective, rc.Principal.ID, c.Valid, c.Due, infinity, c.ID)
 			}
@@ -350,7 +417,7 @@ type tasksCursor struct {
 }
 
 // ListMyTasks 列出待我处理的任务（契约 listMyTasks；F9 第1条）：分派给调用者、调用者当前能更新的待办任务；调用者在单元上能更新跟进
-// （决策者）时另含该单元内无有效负责人的跟进上的任务（escalated）。
+// （决策者）时另含该单元内转给决策者的任务（escalated，口径见 escalatedFor）。
 func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int, cursor string) (*MyTaskList, error) {
 	rc, err := userContext(ctx)
 	if err != nil {
@@ -374,13 +441,16 @@ func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int,
 	scanned := 0
 	for {
 		type row struct {
-			t   *Task
-			key time.Time
+			t      *Task
+			key    time.Time
+			handed bool
 		}
 		var batch []row
 		err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-			rows, err := tx.Query(ctx, `SELECT `+prefixed("t.", taskColumns)+`, COALESCE(t.due_at, $3::timestamptz) FROM pur_tasks t JOIN pur_pursuits p ON p.id = t.pursuit_id
- WHERE t.status = 'todo' AND p.state = 'open' AND (t.assignee = $1 OR NOT p.owner_valid OR NOT (t.assignee = p.owner OR t.assignee = ANY(p.collaborators)))
+			rows, err := tx.Query(ctx, `SELECT `+prefixed("t.", taskColumns)+`, COALESCE(t.due_at, $3::timestamptz), EXISTS (SELECT 1 FROM pur_reminders r
+ WHERE r.task_id = t.id AND r.deadline_version = t.deadline_version AND r.state = 'sent' AND r.escalated) FROM pur_tasks t JOIN pur_pursuits p ON p.id = t.pursuit_id
+ WHERE t.status = 'todo' AND p.state = 'open' AND (t.assignee = $1 OR NOT p.owner_valid OR NOT (t.assignee = p.owner OR t.assignee = ANY(p.collaborators))
+ OR EXISTS (SELECT 1 FROM pur_reminders r WHERE r.task_id = t.id AND r.deadline_version = t.deadline_version AND r.state = 'sent' AND r.escalated))
  AND ($2::timestamptz IS NULL OR t.due_at < $2) AND (COALESCE(t.due_at, $3::timestamptz), t.id) > ($4, $5)
  ORDER BY COALESCE(t.due_at, $3::timestamptz), t.id LIMIT 100`, rc.Principal.ID, before, infinity, c.Due, c.ID)
 			if err != nil {
@@ -391,7 +461,7 @@ func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int,
 				var t Task
 				var note, value, precision, tz *string
 				if err := rows.Scan(&t.ID, &t.PursuitID, &t.Title, &t.Assignee, &note, &t.Status, &value, &precision, &tz, &t.DueAt, &t.Version, &t.DeadlineVersion,
-					&t.CreatedAt, &t.CompletedAt, &r.key); err != nil {
+					&t.CreatedAt, &t.CompletedAt, &r.key, &r.handed); err != nil {
 					rows.Close()
 					return err
 				}
@@ -430,8 +500,13 @@ func (s *Service) ListMyTasks(ctx context.Context, before *time.Time, limit int,
 			if err != nil {
 				return nil, err
 			}
-			escalated := !p.involves(r.t.Assignee) && rights.UnitEdit
 			mine := r.t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID) && rights.Edit
+			escalated := false
+			if !mine {
+				if escalated, err = s.escalatedFor(ctx, rc, p, r.t, rights, r.handed); err != nil {
+					return nil, err
+				}
+			}
 			if mine || escalated {
 				if len(out.Items) == limit {
 					return s.tasksPage(out, c)
@@ -463,6 +538,7 @@ type GetTaskView struct {
 	PursuitState string   `json:"pursuit_state"`
 	ViewerEdit   bool     `json:"viewer_can_edit"`
 	ViewerIs     bool     `json:"viewer_is_assignee"`
+	Escalated    bool     `json:"viewer_escalated"`
 }
 
 // GetTask 读取任务与调用者的当前权限（契约 getTask；提醒卡片发送前与点击后的再检查）。
@@ -475,8 +551,20 @@ func (s *Service) GetTask(ctx context.Context, id string) (*GetTaskView, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &GetTaskView{Task: t.view(p), ObjectiveID: p.ObjectiveID, PursuitState: p.State, ViewerEdit: r.Edit && p.State == "open",
-		ViewerIs: t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID)}, nil
+	// viewer_can_edit 与写命令同一准入（admitWrite：授权同步与本人当前角色的授予版本）；viewer_escalated 与 listMyTasks 同一口径
+	open := p.State == "open"
+	handed := false
+	if open && r.UnitEdit && p.involves(t.Assignee) && t.Assignee != rc.Principal.ID {
+		if handed, err = s.handedOver(ctx, t); err != nil {
+			return nil, err
+		}
+	}
+	escalated, err := s.escalatedFor(ctx, rc, p, t, r, handed)
+	if err != nil {
+		return nil, err
+	}
+	return &GetTaskView{Task: t.view(p), ObjectiveID: p.ObjectiveID, PursuitState: p.State, ViewerEdit: open && s.admitWrite(p, r, rc.Principal.ID) == nil,
+		ViewerIs: t.Assignee == rc.Principal.ID && p.involves(rc.Principal.ID), Escalated: escalated}, nil
 }
 
 func (s *Service) sealTasks(out *MyTaskList, c tasksCursor) error {

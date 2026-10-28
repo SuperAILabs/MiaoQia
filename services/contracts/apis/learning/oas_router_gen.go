@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	rn7AllowedHeaders = map[string]string{
+	rn9AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
 )
@@ -88,31 +88,72 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/feedback-summary"
+				case '/': // Prefix: "/"
 
-					if l := len("/feedback-summary"); len(elem) >= l && elem[0:l] == "/feedback-summary" {
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						// Leaf node.
-						switch r.Method {
-						case "GET":
-							s.handleGetFeedbackSummaryRequest([1]string{
-								args[0],
-							}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, notAllowedParams{
-								allowedMethods: "GET",
-								allowedHeaders: nil,
-								acceptPost:     "",
-								acceptPatch:    "",
-							})
+						break
+					}
+					switch elem[0] {
+					case 'f': // Prefix: "feedback-summary"
+
+						if l := len("feedback-summary"); len(elem) >= l && elem[0:l] == "feedback-summary" {
+							elem = elem[l:]
+						} else {
+							break
 						}
 
-						return
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetFeedbackSummaryRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET",
+									allowedHeaders: nil,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					case 'o': // Prefix: "outcome-summary"
+
+						if l := len("outcome-summary"); len(elem) >= l && elem[0:l] == "outcome-summary" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetOutcomeSummaryRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET",
+									allowedHeaders: nil,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
 					}
 
 				}
@@ -132,7 +173,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "POST",
-							allowedHeaders: rn7AllowedHeaders,
+							allowedHeaders: rn9AllowedHeaders,
 							acceptPost:     "application/json",
 							acceptPatch:    "",
 						})
@@ -300,29 +341,68 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/feedback-summary"
+				case '/': // Prefix: "/"
 
-					if l := len("/feedback-summary"); len(elem) >= l && elem[0:l] == "/feedback-summary" {
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						// Leaf node.
-						switch method {
-						case "GET":
-							r.name = GetFeedbackSummaryOperation
-							r.summary = "反馈汇总（GetFeedbackSummary）"
-							r.operationID = "getFeedbackSummary"
-							r.operationGroup = ""
-							r.pathPattern = "/v1/learning/objectives/{objectiveID}/feedback-summary"
-							r.args = args
-							r.count = 1
-							return r, true
-						default:
-							return
+						break
+					}
+					switch elem[0] {
+					case 'f': // Prefix: "feedback-summary"
+
+						if l := len("feedback-summary"); len(elem) >= l && elem[0:l] == "feedback-summary" {
+							elem = elem[l:]
+						} else {
+							break
 						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetFeedbackSummaryOperation
+								r.summary = "反馈汇总（GetFeedbackSummary）"
+								r.operationID = "getFeedbackSummary"
+								r.operationGroup = ""
+								r.pathPattern = "/v1/learning/objectives/{objectiveID}/feedback-summary"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
+					case 'o': // Prefix: "outcome-summary"
+
+						if l := len("outcome-summary"); len(elem) >= l && elem[0:l] == "outcome-summary" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetOutcomeSummaryOperation
+								r.summary = "跟进结果汇总（评估报告的结果部分，0.4.0）"
+								r.operationID = "getOutcomeSummary"
+								r.operationGroup = ""
+								r.pathPattern = "/v1/learning/objectives/{objectiveID}/outcome-summary"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
 					}
 
 				}

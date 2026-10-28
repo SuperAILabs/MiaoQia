@@ -35,8 +35,10 @@ type Service struct {
 	Policies  map[string]*policy.Policy
 	Features  map[string]policy.Feature
 	Approvals identity.Approvals
-	Now       func() time.Time // 缺省 time.Now；测试注入以验证有效期跨日
-	Log       *slog.Logger     // 运行告警（快照超出规模上界）；缺省 slog.Default()
+	// Sessions 是 identity 的会话核验（C-14：分派规则的被分派人以其本人核验仍是租户有效成员）。
+	Sessions identity.SessionResolver
+	Now      func() time.Time // 缺省 time.Now；测试注入以验证有效期跨日
+	Log      *slog.Logger     // 运行告警（快照超出规模上界）；缺省 slog.Default()
 }
 
 func failure(status int, code string) error { return &api.Error{Status: status, Code: code} }

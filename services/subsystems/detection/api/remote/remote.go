@@ -130,3 +130,23 @@ func (c client) Undo(ctx context.Context, key string, req *api.UndoRequest) (*ap
 			return out, nil
 		})
 }
+
+// NewCandidates 返回远程信号候选负责人读取接口（C-14）；baseURL 同 NewExplainer。
+func NewCandidates(baseURL string) (api.SignalCandidates, error) {
+	e, err := NewExplainer(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return e.(client), nil
+}
+
+func (c client) SignalCandidate(ctx context.Context, signalID string) (*api.SignalCandidate, error) {
+	return binding.Invoke(ctx, binding.Remote, binding.Op{Subsystem: api.Name, Name: "GetSignalCandidateOwner", Idempotent: true},
+		func(ctx context.Context) (*api.SignalCandidate, error) {
+			out, err := c.c.GetSignalCandidateOwner(ctx, det.GetSignalCandidateOwnerParams{SignalID: signalID})
+			if err != nil {
+				return nil, translate(err)
+			}
+			return out, nil
+		})
+}

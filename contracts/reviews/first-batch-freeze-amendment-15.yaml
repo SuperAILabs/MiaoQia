@@ -1,25 +1,26 @@
 status: amended
-amends: contracts/reviews/first-batch-freeze.yaml
-amended_at: '2026-10-26T16:49:46.670835+00:00'
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-26T22:00:00+00:00'
 approval:
-  authority: 随本 PR 评审合并后生效；A02 保持 L0，E1–E5 仍为建议
+  authority: 待项目负责人确认；本记录随所在提交进入评审，经项目负责人确认合并后生效，确认前不视为已登记的新基线
 reason: >-
-  ProcurementProject 1.3.0 兼容增加可选 notice_refs 固定成员版本引用；INF-PROC 升至 1.5.0。
-  notice_ids 保留，旧项目版本缺省合法，新投影与既有 dom_project_dependencies 同事务逐值一致。
-  此字段支持已确认 source-base 的受控增强成员刷新，不扩大来源后续修订的自动接受范围。
-  派生链与本地测试 identity recipe 仅验证基础通道，不构成实际品类/组织、真实来源或 L1 验收。
-version_owners:
-- path: contracts/schemas/domains/procurement/procurement-project.schema.json
-  version: 1.3.0
-  sha256: 7bdb5cd4539f366b8576e80c162325cf58feadfd8529f23d358699f3ccde1d4c
-- path: packs/information_domains/procurement/pack.yaml
-  version: 1.5.0
-  sha256: e3e0978b55158364012eecd11218b58968f90c3fa173420896f2000c59d60156
+  C-09（PRD 第6段渠道侧：任务提醒卡片的“完成”与“撤销”、简报“待我处理”中的任务、授权被拒时通知操作者、提醒的安静时段）
+  只改草案契约，不新增前缀，contracts/identifiers.yaml 1.8.0 不变（原样登记）。草案改动均为追加：
+  pursuit OpenAPI 0.1.0 → 0.2.0（TaskView 追加可选字段 viewer_escalated；内部端口另提供 listMyTasks 与 getPursuit 供渠道以收件人本人读取）；
+  pursuit 事件 0.1.0 → 0.2.0（新事件 pursuit.pursuit.authorization_rejected.v1，带被拒成员、原因与可选的操作者）；
+  channels OpenAPI 0.2.0 → 0.3.0（BriefingItem 的 kind 追加 task 与可选任务字段 task_id、pursuit_id、objective_id、task_title、due、
+  escalated、task_current，新增 TaskDue 与 TaskItemStatus；既有字段不变）；
+  channels 事件 0.3.0 → 0.4.0（新事件 channels.task_action.executed.v1）。这些是草案，不在 C4a 冻结范围，只记录。
+  修订编号按“谁先合并谁占用”：主线已合并修订 14，本记录顺延为 15；原冻结记录与修订 1–14 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.8.0
+  sha256: 40bfde27b723d3077cc9e9b4fce2bf8d3ee6064988d5d14bbbfea0e3f07b8cd9
 verification:
-  base: 00eb4453dfd90fddc04ebc9afa5df46db5643ce1
+  base: 10134ee
   commands:
   - mqc check
   - mqc freeze-check
-  - mqc compat --base 00eb445
-  - mqc generate --check
-  - SDK and PostgreSQL pytest subsystems
+  - mqc compat --base origin/main（breaking 0：只追加枚举值、可选字段、路径与事件类型）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；调度器未接入，以本地绑定 channels.Notices / Briefings 驱动；企业微信为内存实现）

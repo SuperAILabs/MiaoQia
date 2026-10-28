@@ -161,9 +161,22 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, approvals := runtime.Lookup[idapi.ApprovalReader](b, idapi.ApprovalReaderBinding)
 						_, own := runtime.Lookup[chnapi.Briefings](b, chnapi.BriefingsBinding)
 						_, pursuits := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
-						if !briefing || !access || !active || !approvals || !own || !pursuits {
-							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v pursuit=%v", briefing, access, active,
-								approvals, own, pursuits)
+						// C-09：渠道通知（任务提醒卡片与授权被拒的通知）的投递入口
+						_, notices := runtime.Lookup[chnapi.Notices](b, chnapi.NoticesBinding)
+						// C-11/C-12：授权被拒通知所指的持续跟踪经 pursuit 的持续跟踪读取再检查（本地或远程）
+						_, trackings := runtime.Lookup[pursuitapi.Trackings](b, pursuitapi.TrackingsBinding)
+						if !briefing || !access || !active || !approvals || !own || !pursuits || !notices || !trackings {
+							t.Fatalf("channels 的绑定不完整：detection=%v access=%v active=%v approvals=%v briefings=%v pursuit=%v notices=%v trackings=%v", briefing,
+								access, active, approvals, own, pursuits, notices, trackings)
+						}
+					}
+					// C-10：learning 的跟进结果汇总经 customer-context 读取目标所在单元、经 identity 判断单元关系
+					if m.Name == "learning" {
+						b := envs[i].Bindings
+						_, scope := runtime.Lookup[ccapi.ObjectiveScope](b, ccapi.ScopeBinding)
+						_, authz := runtime.Lookup[idapi.Authorizer](b, idapi.AuthorizerBinding)
+						if !scope || !authz {
+							t.Fatalf("learning 的绑定不完整：scope=%v authz=%v", scope, authz)
 						}
 					}
 					// 第6段新增的跨子系统绑定：pursuit 经 identity 授权、同步参与关系与核验成员，经 customer-context 判断成员的目标访问；
@@ -177,9 +190,50 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, briefing := runtime.Lookup[detectionapi.Briefing](b, detectionapi.BriefingBinding)
 						_, actions := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
 						_, reminders := runtime.Lookup[pursuitapi.Reminders](b, pursuitapi.RemindersBinding)
-						if !authz || !directory || !members || !scope || (role == "api" && !briefing) || !actions || !reminders {
-							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v actions=%v reminders=%v", authz, directory,
-								members, scope, briefing, actions, reminders)
+						_, trackings := runtime.Lookup[pursuitapi.Trackings](b, pursuitapi.TrackingsBinding)
+						// C-14：服务创建面板的 api 角色经 detection 读取信号的候选负责人（本地或远程）
+						_, candidates := runtime.Lookup[detectionapi.SignalCandidates](b, detectionapi.CandidatesBinding)
+						if !authz || !directory || !members || !scope || (role == "api" && (!briefing || !candidates)) || !actions || !reminders || !trackings {
+							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v candidates=%v actions=%v reminders=%v trackings=%v",
+								authz, directory, members, scope, briefing, candidates, actions, reminders, trackings)
+						}
+					}
+					// C-14：customer-context 以被分派人本人核验分派规则的被分派人（identity 会话核验，本地或远程）
+					if m.Name == "customer-context" {
+						b := envs[i].Bindings
+						_, sessions := runtime.Lookup[idapi.SessionResolver](b, idapi.SessionBinding)
+						_, authz := runtime.Lookup[idapi.Authorizer](b, idapi.AuthorizerBinding)
+						if !sessions || !authz {
+							t.Fatalf("customer-context 的绑定不完整：sessions=%v authz=%v", sessions, authz)
+						}
+					}
+				}
+				// R-01：scheduler 角色声明本地加载子系统的周期任务；按租户的任务依赖只有本地绑定的 identity.Tenants，
+				// identity 配置为远程时声明失败（角色不启动），不静默少跑任务
+				if role == "scheduler" {
+					jobs, err := collectJobs(loaded, envs)
+					if v["MIAOQIA_BINDING_IDENTITY"] == "remote" {
+						if err == nil {
+							t.Fatal("identity 远程时 scheduler 角色应拒绝启动")
+						}
+						return
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					got := map[string]bool{}
+					for _, j := range jobs {
+						got[j.Name] = true
+					}
+					want := []string{"identity.expire-invitations", "identity.retry-tenant-bindings", "identity.expire-approvals",
+						"channels.retry-revocations", "channels.reconcile-sessions", "channels.compose-briefings", "channels.deliver-briefings",
+						"channels.process-card-actions", "channels.deliver-notices"}
+					if v["MIAOQIA_BINDING_PURSUIT"] != "remote" {
+						want = append(want, "pursuit.run-due-reminders", "pursuit.retry-authorization-sync", "pursuit.run-tracking")
+					}
+					for _, name := range want {
+						if !got[name] {
+							t.Fatalf("scheduler 角色缺少任务 %s：%v", name, got)
 						}
 					}
 				}

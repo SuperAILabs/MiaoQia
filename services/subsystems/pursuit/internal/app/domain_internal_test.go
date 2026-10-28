@@ -1,6 +1,8 @@
 package app
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -133,5 +135,78 @@ func TestGrantTracksCurrentRoleVersion(t *testing.T) {
 	p.Collaborators = []string{"C"}
 	if kept := regrant(p.Grants, p.role, "A", []string{"C"}, 5, nil); kept["A"].PV != 3 || kept["A"].Member != 9 || kept["C"].PV != 5 || kept["C"].Member != 0 {
 		t.Fatalf("%+v", kept)
+	}
+}
+
+// C-10 用例46：周期时点严格晚于给定时刻；恰在周期时点时为下一周；按所填时区（含夏令时切换）计算；无效周期 422 invalid_cadence。
+func TestCadenceNext(t *testing.T) {
+	sh, _ := time.LoadLocation("Asia/Shanghai")
+	ny, _ := time.LoadLocation("America/New_York")
+	cases := []struct {
+		c     Cadence
+		after time.Time
+		want  time.Time
+	}{
+		{DefaultCadence, time.Date(2026, 11, 27, 10, 0, 0, 0, sh), time.Date(2026, 11, 30, 8, 0, 0, 0, sh)}, // 周五 → 下周一
+		{DefaultCadence, time.Date(2026, 11, 30, 7, 59, 0, 0, sh), time.Date(2026, 11, 30, 8, 0, 0, 0, sh)}, // 当日之前
+		{DefaultCadence, time.Date(2026, 11, 30, 8, 0, 0, 0, sh), time.Date(2026, 12, 7, 8, 0, 0, 0, sh)},   // 恰在时点：下一周
+		{Cadence{7, "23:30", "Asia/Shanghai"}, time.Date(2026, 11, 29, 23, 31, 0, 0, sh), time.Date(2026, 12, 6, 23, 30, 0, 0, sh)},
+		{Cadence{1, "08:00", "America/New_York"}, time.Date(2026, 10, 27, 9, 0, 0, 0, ny), time.Date(2026, 11, 2, 8, 0, 0, 0, ny)}, // 跨夏令时结束
+		{Cadence{1, "08:00", "America/New_York"}, time.Date(2026, 3, 3, 9, 0, 0, 0, ny), time.Date(2026, 3, 9, 8, 0, 0, 0, ny)},    // 跨夏令时开始
+	}
+	for _, c := range cases {
+		got, err := c.c.Next(c.after)
+		if err != nil || !got.Equal(c.want) {
+			t.Fatalf("%+v %s：%s %v，期望 %s", c.c, c.after, got, err, c.want)
+		}
+		if got.Location() != time.UTC {
+			t.Fatalf("应为 UTC：%s", got)
+		}
+	}
+	for _, bad := range []Cadence{{0, "08:00", "UTC"}, {8, "08:00", "UTC"}, {1, "8:00", "UTC"}, {1, "24:00", "UTC"}, {1, "08:00", "Local"}, {1, "08:00", ""}, {1, "08:00", "Mars/Base"}} {
+		if _, err := bad.Next(time.Now()); err == nil || !strings.Contains(err.Error(), "invalid_cadence") {
+			t.Fatalf("%+v：%v", bad, err)
+		}
+	}
+}
+
+// C-10 用例46：对象集合只接受组织标识，去重并保持顺序，1–200 个。
+func TestTrackingMembers(t *testing.T) {
+	a, b := "org_01JA8ZXXXXXXXXXXXXXXXXXXX1", "org_01JA8ZXXXXXXXXXXXXXXXXXXX2"
+	got, err := trackingMembers([]string{b, a, b})
+	if err != nil || strings.Join(got, ",") != b+","+a {
+		t.Fatalf("%v %v", got, err)
+	}
+	many := make([]string, MaxTrackingMembers+1)
+	for i := range many {
+		many[i] = fmt.Sprintf("org_01JA8ZXXXXXXXXXXXXXXXXX%03d", i)
+	}
+	if got, err := trackingMembers(many[:MaxTrackingMembers]); err != nil || len(got) != MaxTrackingMembers {
+		t.Fatalf("%d %v", len(got), err)
+	}
+	for _, bad := range [][]string{nil, {}, {"usr_x"}, {a, "org_bad"}, many} {
+		if _, err := trackingMembers(bad); err == nil {
+			t.Fatalf("%v", bad)
+		}
+	}
+}
+
+// C-10 越权与反例测试 用例12：互相提示按级别白名单投影——不能查看那个跟进时只有可见级别与负责人，其他字段不出现在响应中。
+func TestSiblingHintWhitelist(t *testing.T) {
+	p := &Pursuit{ID: "pur_X", Owner: "u-owner", OwnerValid: true, CreatedAt: time.Unix(0, 0).UTC(), Target: Target{WinnerOrgID: "org_X"}, Note: "机密", Collaborators: []string{"u-c"}}
+	raw, _ := json.Marshal(siblingHint(p, false))
+	var m map[string]any
+	_ = json.Unmarshal(raw, &m)
+	if len(m) != 2 || m["visibility"] != "owner_only" || m["owner"] != "u-owner" {
+		t.Fatalf("%s", raw)
+	}
+	raw, _ = json.Marshal(siblingHint(p, true))
+	m = nil
+	_ = json.Unmarshal(raw, &m)
+	if len(m) != 6 || m["visibility"] != "full" || m["pursuit_id"] != "pur_X" || m["winner_org_id"] != "org_X" || m["owner_valid"] != true {
+		t.Fatalf("%s", raw)
+	}
+	if strings.Contains(string(raw), "机密") || strings.Contains(string(raw), "u-c") {
+		t.Fatalf("投影带出了白名单以外的字段：%s", raw)
 	}
 }

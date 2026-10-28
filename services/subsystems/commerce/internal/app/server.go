@@ -60,3 +60,16 @@ func (s *Server) NewError(_ context.Context, err error) *com.ProblemStatusCode {
 func (s *Server) RecordView(ctx context.Context, req *com.ViewMeterRequest, p com.RecordViewParams) (*com.ViewMeterReceipt, error) {
 	return s.Service.RecordView(ctx, string(req.Kind), req.Target, p.IdempotencyKey)
 }
+
+func (s *Server) CheckCoverage(ctx context.Context, p com.CheckCoverageParams) (*com.CoverageDecision, error) {
+	d, err := s.Service.CheckCoverage(ctx, p.InfoDomain, p.Region.Or(""))
+	if err != nil {
+		return nil, err
+	}
+	out := &com.CoverageDecision{Covered: d.Covered, InfoDomain: p.InfoDomain, Region: p.Region, Missing: []com.CoverageDecisionMissingItem{},
+		Source: com.CoverageDecisionSourceDeploymentConfig}
+	for _, m := range d.Missing {
+		out.Missing = append(out.Missing, com.CoverageDecisionMissingItem(m))
+	}
+	return out, nil
+}

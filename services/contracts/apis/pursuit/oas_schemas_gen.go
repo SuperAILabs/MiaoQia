@@ -340,6 +340,45 @@ func (s *AuthorizationState) UnmarshalText(data []byte) error {
 	}
 }
 
+// 周期：每周 weekday（1 为周一 … 7 为周日）的 time（HH:MM），按
+// timezone（IANA）计算.
+// Ref: #/components/schemas/Cadence
+type Cadence struct {
+	Weekday  int    `json:"weekday"`
+	Time     string `json:"time"`
+	Timezone string `json:"timezone"`
+}
+
+// GetWeekday returns the value of Weekday.
+func (s *Cadence) GetWeekday() int {
+	return s.Weekday
+}
+
+// GetTime returns the value of Time.
+func (s *Cadence) GetTime() string {
+	return s.Time
+}
+
+// GetTimezone returns the value of Timezone.
+func (s *Cadence) GetTimezone() string {
+	return s.Timezone
+}
+
+// SetWeekday sets the value of Weekday.
+func (s *Cadence) SetWeekday(val int) {
+	s.Weekday = val
+}
+
+// SetTime sets the value of Time.
+func (s *Cadence) SetTime(val string) {
+	s.Time = val
+}
+
+// SetTimezone sets the value of Timezone.
+func (s *Cadence) SetTimezone(val string) {
+	s.Timezone = val
+}
+
 // 入口：web（含 H5）或 wecom（企业微信卡片，只经内部端口）.
 // Ref: #/components/schemas/Channel
 type Channel string
@@ -797,6 +836,177 @@ func (s *Contribution) UnmarshalText(data []byte) error {
 	}
 }
 
+// 创建面板的默认负责人（0.3.0）。owner_source 为
+// candidate（分派规则的候选，此刻有效）或 self（调用者本人）；candidate_state
+// 为
+// valid（候选有效）、none（信号上没有候选或请求不带信号）、no_access（候选已不是租户有效成员或不能查看该目标的信号）、
+// rules_unavailable（分派规则未接入）。candidate 只在 valid 时出现。.
+// Ref: #/components/schemas/CreateDefaults
+type CreateDefaults struct {
+	ObjectiveID    ObjectiveID                  `json:"objective_id"`
+	SignalID       OptSignalID                  `json:"signal_id"`
+	Owner          Subject                      `json:"owner"`
+	OwnerSource    CreateDefaultsOwnerSource    `json:"owner_source"`
+	CandidateState CreateDefaultsCandidateState `json:"candidate_state"`
+	Candidate      OptSubject                   `json:"candidate"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *CreateDefaults) GetObjectiveID() ObjectiveID {
+	return s.ObjectiveID
+}
+
+// GetSignalID returns the value of SignalID.
+func (s *CreateDefaults) GetSignalID() OptSignalID {
+	return s.SignalID
+}
+
+// GetOwner returns the value of Owner.
+func (s *CreateDefaults) GetOwner() Subject {
+	return s.Owner
+}
+
+// GetOwnerSource returns the value of OwnerSource.
+func (s *CreateDefaults) GetOwnerSource() CreateDefaultsOwnerSource {
+	return s.OwnerSource
+}
+
+// GetCandidateState returns the value of CandidateState.
+func (s *CreateDefaults) GetCandidateState() CreateDefaultsCandidateState {
+	return s.CandidateState
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *CreateDefaults) GetCandidate() OptSubject {
+	return s.Candidate
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *CreateDefaults) SetObjectiveID(val ObjectiveID) {
+	s.ObjectiveID = val
+}
+
+// SetSignalID sets the value of SignalID.
+func (s *CreateDefaults) SetSignalID(val OptSignalID) {
+	s.SignalID = val
+}
+
+// SetOwner sets the value of Owner.
+func (s *CreateDefaults) SetOwner(val Subject) {
+	s.Owner = val
+}
+
+// SetOwnerSource sets the value of OwnerSource.
+func (s *CreateDefaults) SetOwnerSource(val CreateDefaultsOwnerSource) {
+	s.OwnerSource = val
+}
+
+// SetCandidateState sets the value of CandidateState.
+func (s *CreateDefaults) SetCandidateState(val CreateDefaultsCandidateState) {
+	s.CandidateState = val
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *CreateDefaults) SetCandidate(val OptSubject) {
+	s.Candidate = val
+}
+
+type CreateDefaultsCandidateState string
+
+const (
+	CreateDefaultsCandidateStateValid            CreateDefaultsCandidateState = "valid"
+	CreateDefaultsCandidateStateNone             CreateDefaultsCandidateState = "none"
+	CreateDefaultsCandidateStateNoAccess         CreateDefaultsCandidateState = "no_access"
+	CreateDefaultsCandidateStateRulesUnavailable CreateDefaultsCandidateState = "rules_unavailable"
+)
+
+// AllValues returns all CreateDefaultsCandidateState values.
+func (CreateDefaultsCandidateState) AllValues() []CreateDefaultsCandidateState {
+	return []CreateDefaultsCandidateState{
+		CreateDefaultsCandidateStateValid,
+		CreateDefaultsCandidateStateNone,
+		CreateDefaultsCandidateStateNoAccess,
+		CreateDefaultsCandidateStateRulesUnavailable,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreateDefaultsCandidateState) MarshalText() ([]byte, error) {
+	switch s {
+	case CreateDefaultsCandidateStateValid:
+		return []byte(s), nil
+	case CreateDefaultsCandidateStateNone:
+		return []byte(s), nil
+	case CreateDefaultsCandidateStateNoAccess:
+		return []byte(s), nil
+	case CreateDefaultsCandidateStateRulesUnavailable:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreateDefaultsCandidateState) UnmarshalText(data []byte) error {
+	switch CreateDefaultsCandidateState(data) {
+	case CreateDefaultsCandidateStateValid:
+		*s = CreateDefaultsCandidateStateValid
+		return nil
+	case CreateDefaultsCandidateStateNone:
+		*s = CreateDefaultsCandidateStateNone
+		return nil
+	case CreateDefaultsCandidateStateNoAccess:
+		*s = CreateDefaultsCandidateStateNoAccess
+		return nil
+	case CreateDefaultsCandidateStateRulesUnavailable:
+		*s = CreateDefaultsCandidateStateRulesUnavailable
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type CreateDefaultsOwnerSource string
+
+const (
+	CreateDefaultsOwnerSourceCandidate CreateDefaultsOwnerSource = "candidate"
+	CreateDefaultsOwnerSourceSelf      CreateDefaultsOwnerSource = "self"
+)
+
+// AllValues returns all CreateDefaultsOwnerSource values.
+func (CreateDefaultsOwnerSource) AllValues() []CreateDefaultsOwnerSource {
+	return []CreateDefaultsOwnerSource{
+		CreateDefaultsOwnerSourceCandidate,
+		CreateDefaultsOwnerSourceSelf,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreateDefaultsOwnerSource) MarshalText() ([]byte, error) {
+	switch s {
+	case CreateDefaultsOwnerSourceCandidate:
+		return []byte(s), nil
+	case CreateDefaultsOwnerSourceSelf:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreateDefaultsOwnerSource) UnmarshalText(data []byte) error {
+	switch CreateDefaultsOwnerSource(data) {
+	case CreateDefaultsOwnerSourceCandidate:
+		*s = CreateDefaultsOwnerSourceCandidate
+		return nil
+	case CreateDefaultsOwnerSourceSelf:
+		*s = CreateDefaultsOwnerSourceSelf
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // 从信号创建时带 signal_id 与 seen_content_version、不带 target；手动创建时只带
 // target（否则 400 invalid_request）.
 // Ref: #/components/schemas/CreatePursuitRequest
@@ -950,6 +1160,76 @@ func (s *CreateTaskRequest) SetTask(val TaskInput) {
 	s.Task = val
 }
 
+// Ref: #/components/schemas/CreateTrackingRequest
+type CreateTrackingRequest struct {
+	OperationID OperationID `json:"operation_id"`
+	ObjectiveID ObjectiveID `json:"objective_id"`
+	Name        string      `json:"name"`
+	Members     []OrgID     `json:"members"`
+	Owner       OptSubject  `json:"owner"`
+	Cadence     OptCadence  `json:"cadence"`
+}
+
+// GetOperationID returns the value of OperationID.
+func (s *CreateTrackingRequest) GetOperationID() OperationID {
+	return s.OperationID
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *CreateTrackingRequest) GetObjectiveID() ObjectiveID {
+	return s.ObjectiveID
+}
+
+// GetName returns the value of Name.
+func (s *CreateTrackingRequest) GetName() string {
+	return s.Name
+}
+
+// GetMembers returns the value of Members.
+func (s *CreateTrackingRequest) GetMembers() []OrgID {
+	return s.Members
+}
+
+// GetOwner returns the value of Owner.
+func (s *CreateTrackingRequest) GetOwner() OptSubject {
+	return s.Owner
+}
+
+// GetCadence returns the value of Cadence.
+func (s *CreateTrackingRequest) GetCadence() OptCadence {
+	return s.Cadence
+}
+
+// SetOperationID sets the value of OperationID.
+func (s *CreateTrackingRequest) SetOperationID(val OperationID) {
+	s.OperationID = val
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *CreateTrackingRequest) SetObjectiveID(val ObjectiveID) {
+	s.ObjectiveID = val
+}
+
+// SetName sets the value of Name.
+func (s *CreateTrackingRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetMembers sets the value of Members.
+func (s *CreateTrackingRequest) SetMembers(val []OrgID) {
+	s.Members = val
+}
+
+// SetOwner sets the value of Owner.
+func (s *CreateTrackingRequest) SetOwner(val OptSubject) {
+	s.Owner = val
+}
+
+// SetCadence sets the value of Cadence.
+func (s *CreateTrackingRequest) SetCadence(val OptCadence) {
+	s.Cadence = val
+}
+
 type Cursor string
 
 // Ref: #/components/schemas/ListView
@@ -1094,7 +1374,7 @@ func (s *LocalTimePrecision) UnmarshalText(data []byte) error {
 type MyTask struct {
 	Task        Task        `json:"task"`
 	ObjectiveID ObjectiveID `json:"objective_id"`
-	// 跟进无有效负责人，任务转给决策者.
+	// 任务转给决策者（与 getTask 的 viewer_escalated 同一口径）.
 	Escalated bool `json:"escalated"`
 }
 
@@ -1198,6 +1478,52 @@ func (o OptBool) Get() (v bool, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptBool) Or(d bool) bool {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCadence returns new OptCadence with value set to v.
+func NewOptCadence(v Cadence) OptCadence {
+	return OptCadence{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCadence is optional Cadence.
+type OptCadence struct {
+	Value Cadence
+	Set   bool
+}
+
+// IsSet returns true if OptCadence was set.
+func (o OptCadence) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCadence) Reset() {
+	var v Cadence
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCadence) SetTo(v Cadence) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCadence) Get() (v Cadence, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCadence) Or(d Cadence) Cadence {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1612,6 +1938,52 @@ func (o OptObjectiveID) Get() (v ObjectiveID, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptObjectiveID) Or(d ObjectiveID) ObjectiveID {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptOrgID returns new OptOrgID with value set to v.
+func NewOptOrgID(v OrgID) OptOrgID {
+	return OptOrgID{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptOrgID is optional OrgID.
+type OptOrgID struct {
+	Value OrgID
+	Set   bool
+}
+
+// IsSet returns true if OptOrgID was set.
+func (o OptOrgID) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptOrgID) Reset() {
+	var v OrgID
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptOrgID) SetTo(v OrgID) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptOrgID) Get() (v OrgID, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptOrgID) Or(d OrgID) OrgID {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -2492,6 +2864,100 @@ func (o OptTaskInput) Or(d TaskInput) TaskInput {
 	return d
 }
 
+// NewOptTrackingCommandResultAuthorization returns new OptTrackingCommandResultAuthorization with value set to v.
+func NewOptTrackingCommandResultAuthorization(v TrackingCommandResultAuthorization) OptTrackingCommandResultAuthorization {
+	return OptTrackingCommandResultAuthorization{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTrackingCommandResultAuthorization is optional TrackingCommandResultAuthorization.
+type OptTrackingCommandResultAuthorization struct {
+	Value TrackingCommandResultAuthorization
+	Set   bool
+}
+
+// IsSet returns true if OptTrackingCommandResultAuthorization was set.
+func (o OptTrackingCommandResultAuthorization) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTrackingCommandResultAuthorization) Reset() {
+	var v TrackingCommandResultAuthorization
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTrackingCommandResultAuthorization) SetTo(v TrackingCommandResultAuthorization) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTrackingCommandResultAuthorization) Get() (v TrackingCommandResultAuthorization, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTrackingCommandResultAuthorization) Or(d TrackingCommandResultAuthorization) TrackingCommandResultAuthorization {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptTrackingSummary returns new OptTrackingSummary with value set to v.
+func NewOptTrackingSummary(v TrackingSummary) OptTrackingSummary {
+	return OptTrackingSummary{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTrackingSummary is optional TrackingSummary.
+type OptTrackingSummary struct {
+	Value TrackingSummary
+	Set   bool
+}
+
+// IsSet returns true if OptTrackingSummary was set.
+func (o OptTrackingSummary) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTrackingSummary) Reset() {
+	var v TrackingSummary
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTrackingSummary) SetTo(v TrackingSummary) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTrackingSummary) Get() (v TrackingSummary, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTrackingSummary) Or(d TrackingSummary) TrackingSummary {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+type OrgID string
+
 // Ref: #/components/schemas/Outcome
 type Outcome struct {
 	ID             OutcomeID              `json:"id"`
@@ -3267,6 +3733,8 @@ type Pursuit struct {
 	ViewerCanEdit       OptBool         `json:"viewer_can_edit"`
 	ViewerCanManageTeam OptBool         `json:"viewer_can_manage_team"`
 	ViewerCanVoid       OptBool         `json:"viewer_can_void"`
+	// 同一目标、同一采购项目（同一事实类型与主体，如同一中标结果公告）上其他中标方的进行中跟进；跟进目标不含标包，尚不能缩小到同一标包（0.3.0；按查看者对各跟进的当前权限分级投影）.
+	SiblingHints []SiblingHint `json:"sibling_hints"`
 }
 
 // GetID returns the value of ID.
@@ -3389,6 +3857,11 @@ func (s *Pursuit) GetViewerCanVoid() OptBool {
 	return s.ViewerCanVoid
 }
 
+// GetSiblingHints returns the value of SiblingHints.
+func (s *Pursuit) GetSiblingHints() []SiblingHint {
+	return s.SiblingHints
+}
+
 // SetID sets the value of ID.
 func (s *Pursuit) SetID(val PursuitID) {
 	s.ID = val
@@ -3507,6 +3980,11 @@ func (s *Pursuit) SetViewerCanManageTeam(val OptBool) {
 // SetViewerCanVoid sets the value of ViewerCanVoid.
 func (s *Pursuit) SetViewerCanVoid(val OptBool) {
 	s.ViewerCanVoid = val
+}
+
+// SetSiblingHints sets the value of SiblingHints.
+func (s *Pursuit) SetSiblingHints(val []SiblingHint) {
+	s.SiblingHints = val
 }
 
 type PursuitID string
@@ -4165,6 +4643,122 @@ func (s *ReviseOutcomeRequest) SetReason(val string) {
 	s.Reason = val
 }
 
+// 同一目标、同一采购项目（同一事实类型与主体）上另一家中标方的进行中跟进；跟进目标不含标包标识，尚不能缩小到同一标包（PRD
+// 第6段 F2 第1条、用例12，0.3.0）。按查看者对那个跟进的当前权限分级投影
+// （白名单）：visibility 为 full
+// 时给出跟进标识、中标方、负责人、负责人是否有效与创建时间；为
+// owner_only（不能查看那个跟进）时只给 负责人，其他字段不出现。.
+// Ref: #/components/schemas/SiblingHint
+type SiblingHint struct {
+	Visibility  SiblingHintVisibility `json:"visibility"`
+	Owner       Subject               `json:"owner"`
+	PursuitID   OptPursuitID          `json:"pursuit_id"`
+	WinnerOrgID OptOrgID              `json:"winner_org_id"`
+	OwnerValid  OptBool               `json:"owner_valid"`
+	CreatedAt   OptDateTime           `json:"created_at"`
+}
+
+// GetVisibility returns the value of Visibility.
+func (s *SiblingHint) GetVisibility() SiblingHintVisibility {
+	return s.Visibility
+}
+
+// GetOwner returns the value of Owner.
+func (s *SiblingHint) GetOwner() Subject {
+	return s.Owner
+}
+
+// GetPursuitID returns the value of PursuitID.
+func (s *SiblingHint) GetPursuitID() OptPursuitID {
+	return s.PursuitID
+}
+
+// GetWinnerOrgID returns the value of WinnerOrgID.
+func (s *SiblingHint) GetWinnerOrgID() OptOrgID {
+	return s.WinnerOrgID
+}
+
+// GetOwnerValid returns the value of OwnerValid.
+func (s *SiblingHint) GetOwnerValid() OptBool {
+	return s.OwnerValid
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *SiblingHint) GetCreatedAt() OptDateTime {
+	return s.CreatedAt
+}
+
+// SetVisibility sets the value of Visibility.
+func (s *SiblingHint) SetVisibility(val SiblingHintVisibility) {
+	s.Visibility = val
+}
+
+// SetOwner sets the value of Owner.
+func (s *SiblingHint) SetOwner(val Subject) {
+	s.Owner = val
+}
+
+// SetPursuitID sets the value of PursuitID.
+func (s *SiblingHint) SetPursuitID(val OptPursuitID) {
+	s.PursuitID = val
+}
+
+// SetWinnerOrgID sets the value of WinnerOrgID.
+func (s *SiblingHint) SetWinnerOrgID(val OptOrgID) {
+	s.WinnerOrgID = val
+}
+
+// SetOwnerValid sets the value of OwnerValid.
+func (s *SiblingHint) SetOwnerValid(val OptBool) {
+	s.OwnerValid = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *SiblingHint) SetCreatedAt(val OptDateTime) {
+	s.CreatedAt = val
+}
+
+type SiblingHintVisibility string
+
+const (
+	SiblingHintVisibilityFull      SiblingHintVisibility = "full"
+	SiblingHintVisibilityOwnerOnly SiblingHintVisibility = "owner_only"
+)
+
+// AllValues returns all SiblingHintVisibility values.
+func (SiblingHintVisibility) AllValues() []SiblingHintVisibility {
+	return []SiblingHintVisibility{
+		SiblingHintVisibilityFull,
+		SiblingHintVisibilityOwnerOnly,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SiblingHintVisibility) MarshalText() ([]byte, error) {
+	switch s {
+	case SiblingHintVisibilityFull:
+		return []byte(s), nil
+	case SiblingHintVisibilityOwnerOnly:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SiblingHintVisibility) UnmarshalText(data []byte) error {
+	switch SiblingHintVisibility(data) {
+	case SiblingHintVisibilityFull:
+		*s = SiblingHintVisibilityFull
+		return nil
+	case SiblingHintVisibilityOwnerOnly:
+		*s = SiblingHintVisibilityOwnerOnly
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type SignalID string
 
 // Ref: #/components/schemas/SignalLink
@@ -4714,6 +5308,8 @@ type TaskView struct {
 	PursuitState     PursuitStatus `json:"pursuit_state"`
 	ViewerCanEdit    bool          `json:"viewer_can_edit"`
 	ViewerIsAssignee bool          `json:"viewer_is_assignee"`
+	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0；负责人仍在团队中但写入准入不满足、且已发出转交提醒，0.4.0）.
+	ViewerEscalated OptBool `json:"viewer_escalated"`
 }
 
 // GetTask returns the value of Task.
@@ -4741,6 +5337,11 @@ func (s *TaskView) GetViewerIsAssignee() bool {
 	return s.ViewerIsAssignee
 }
 
+// GetViewerEscalated returns the value of ViewerEscalated.
+func (s *TaskView) GetViewerEscalated() OptBool {
+	return s.ViewerEscalated
+}
+
 // SetTask sets the value of Task.
 func (s *TaskView) SetTask(val Task) {
 	s.Task = val
@@ -4764,6 +5365,11 @@ func (s *TaskView) SetViewerCanEdit(val bool) {
 // SetViewerIsAssignee sets the value of ViewerIsAssignee.
 func (s *TaskView) SetViewerIsAssignee(val bool) {
 	s.ViewerIsAssignee = val
+}
+
+// SetViewerEscalated sets the value of ViewerEscalated.
+func (s *TaskView) SetViewerEscalated(val OptBool) {
+	s.ViewerEscalated = val
 }
 
 // 时间线条目（按平台记录时间 recorded_at 排列）.
@@ -4831,6 +5437,10 @@ const (
 	TimelineEntryKindOutcomeRevised        TimelineEntryKind = "outcome_revised"
 	TimelineEntryKindOwnerInvalid          TimelineEntryKind = "owner_invalid"
 	TimelineEntryKindAuthorizationRejected TimelineEntryKind = "authorization_rejected"
+	TimelineEntryKindTrackingPaused        TimelineEntryKind = "tracking_paused"
+	TimelineEntryKindTrackingResumed       TimelineEntryKind = "tracking_resumed"
+	TimelineEntryKindTrackingStopped       TimelineEntryKind = "tracking_stopped"
+	TimelineEntryKindMembersChanged        TimelineEntryKind = "members_changed"
 )
 
 // AllValues returns all TimelineEntryKind values.
@@ -4849,6 +5459,10 @@ func (TimelineEntryKind) AllValues() []TimelineEntryKind {
 		TimelineEntryKindOutcomeRevised,
 		TimelineEntryKindOwnerInvalid,
 		TimelineEntryKindAuthorizationRejected,
+		TimelineEntryKindTrackingPaused,
+		TimelineEntryKindTrackingResumed,
+		TimelineEntryKindTrackingStopped,
+		TimelineEntryKindMembersChanged,
 	}
 }
 
@@ -4880,6 +5494,14 @@ func (s TimelineEntryKind) MarshalText() ([]byte, error) {
 	case TimelineEntryKindOwnerInvalid:
 		return []byte(s), nil
 	case TimelineEntryKindAuthorizationRejected:
+		return []byte(s), nil
+	case TimelineEntryKindTrackingPaused:
+		return []byte(s), nil
+	case TimelineEntryKindTrackingResumed:
+		return []byte(s), nil
+	case TimelineEntryKindTrackingStopped:
+		return []byte(s), nil
+	case TimelineEntryKindMembersChanged:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -4928,9 +5550,861 @@ func (s *TimelineEntryKind) UnmarshalText(data []byte) error {
 	case TimelineEntryKindAuthorizationRejected:
 		*s = TimelineEntryKindAuthorizationRejected
 		return nil
+	case TimelineEntryKindTrackingPaused:
+		*s = TimelineEntryKindTrackingPaused
+		return nil
+	case TimelineEntryKindTrackingResumed:
+		*s = TimelineEntryKindTrackingResumed
+		return nil
+	case TimelineEntryKindTrackingStopped:
+		*s = TimelineEntryKindTrackingStopped
+		return nil
+	case TimelineEntryKindMembersChanged:
+		*s = TimelineEntryKindMembersChanged
+		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// 持续跟踪详情（持续型跟进，kind 为 continuous）.
+// Ref: #/components/schemas/Tracking
+type Tracking struct {
+	ID             PursuitID     `json:"id"`
+	ObjectiveID    ObjectiveID   `json:"objective_id"`
+	OrgUnitID      string        `json:"org_unit_id"`
+	Name           string        `json:"name"`
+	State          TrackingState `json:"state"`
+	Owner          Subject       `json:"owner"`
+	OwnerValid     bool          `json:"owner_valid"`
+	Members        []OrgID       `json:"members"`
+	MembersVersion int64         `json:"members_version"`
+	Cadence        Cadence       `json:"cadence"`
+	// 进行中的一期的开始时点（跟踪中才有）.
+	PeriodStart OptDateTime `json:"period_start"`
+	// 进行中的一期的结束时点（跟踪中才有）.
+	NextRunAt     OptDateTime     `json:"next_run_at"`
+	LastPeriodSeq OptInt64        `json:"last_period_seq"`
+	Version       int64           `json:"version"`
+	Authorization Authorization   `json:"authorization"`
+	CreatedBy     Subject         `json:"created_by"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	StoppedAt     OptDateTime     `json:"stopped_at"`
+	Timeline      []TimelineEntry `json:"timeline"`
+	ViewerCanEdit OptBool         `json:"viewer_can_edit"`
+}
+
+// GetID returns the value of ID.
+func (s *Tracking) GetID() PursuitID {
+	return s.ID
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *Tracking) GetObjectiveID() ObjectiveID {
+	return s.ObjectiveID
+}
+
+// GetOrgUnitID returns the value of OrgUnitID.
+func (s *Tracking) GetOrgUnitID() string {
+	return s.OrgUnitID
+}
+
+// GetName returns the value of Name.
+func (s *Tracking) GetName() string {
+	return s.Name
+}
+
+// GetState returns the value of State.
+func (s *Tracking) GetState() TrackingState {
+	return s.State
+}
+
+// GetOwner returns the value of Owner.
+func (s *Tracking) GetOwner() Subject {
+	return s.Owner
+}
+
+// GetOwnerValid returns the value of OwnerValid.
+func (s *Tracking) GetOwnerValid() bool {
+	return s.OwnerValid
+}
+
+// GetMembers returns the value of Members.
+func (s *Tracking) GetMembers() []OrgID {
+	return s.Members
+}
+
+// GetMembersVersion returns the value of MembersVersion.
+func (s *Tracking) GetMembersVersion() int64 {
+	return s.MembersVersion
+}
+
+// GetCadence returns the value of Cadence.
+func (s *Tracking) GetCadence() Cadence {
+	return s.Cadence
+}
+
+// GetPeriodStart returns the value of PeriodStart.
+func (s *Tracking) GetPeriodStart() OptDateTime {
+	return s.PeriodStart
+}
+
+// GetNextRunAt returns the value of NextRunAt.
+func (s *Tracking) GetNextRunAt() OptDateTime {
+	return s.NextRunAt
+}
+
+// GetLastPeriodSeq returns the value of LastPeriodSeq.
+func (s *Tracking) GetLastPeriodSeq() OptInt64 {
+	return s.LastPeriodSeq
+}
+
+// GetVersion returns the value of Version.
+func (s *Tracking) GetVersion() int64 {
+	return s.Version
+}
+
+// GetAuthorization returns the value of Authorization.
+func (s *Tracking) GetAuthorization() Authorization {
+	return s.Authorization
+}
+
+// GetCreatedBy returns the value of CreatedBy.
+func (s *Tracking) GetCreatedBy() Subject {
+	return s.CreatedBy
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Tracking) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *Tracking) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// GetStoppedAt returns the value of StoppedAt.
+func (s *Tracking) GetStoppedAt() OptDateTime {
+	return s.StoppedAt
+}
+
+// GetTimeline returns the value of Timeline.
+func (s *Tracking) GetTimeline() []TimelineEntry {
+	return s.Timeline
+}
+
+// GetViewerCanEdit returns the value of ViewerCanEdit.
+func (s *Tracking) GetViewerCanEdit() OptBool {
+	return s.ViewerCanEdit
+}
+
+// SetID sets the value of ID.
+func (s *Tracking) SetID(val PursuitID) {
+	s.ID = val
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *Tracking) SetObjectiveID(val ObjectiveID) {
+	s.ObjectiveID = val
+}
+
+// SetOrgUnitID sets the value of OrgUnitID.
+func (s *Tracking) SetOrgUnitID(val string) {
+	s.OrgUnitID = val
+}
+
+// SetName sets the value of Name.
+func (s *Tracking) SetName(val string) {
+	s.Name = val
+}
+
+// SetState sets the value of State.
+func (s *Tracking) SetState(val TrackingState) {
+	s.State = val
+}
+
+// SetOwner sets the value of Owner.
+func (s *Tracking) SetOwner(val Subject) {
+	s.Owner = val
+}
+
+// SetOwnerValid sets the value of OwnerValid.
+func (s *Tracking) SetOwnerValid(val bool) {
+	s.OwnerValid = val
+}
+
+// SetMembers sets the value of Members.
+func (s *Tracking) SetMembers(val []OrgID) {
+	s.Members = val
+}
+
+// SetMembersVersion sets the value of MembersVersion.
+func (s *Tracking) SetMembersVersion(val int64) {
+	s.MembersVersion = val
+}
+
+// SetCadence sets the value of Cadence.
+func (s *Tracking) SetCadence(val Cadence) {
+	s.Cadence = val
+}
+
+// SetPeriodStart sets the value of PeriodStart.
+func (s *Tracking) SetPeriodStart(val OptDateTime) {
+	s.PeriodStart = val
+}
+
+// SetNextRunAt sets the value of NextRunAt.
+func (s *Tracking) SetNextRunAt(val OptDateTime) {
+	s.NextRunAt = val
+}
+
+// SetLastPeriodSeq sets the value of LastPeriodSeq.
+func (s *Tracking) SetLastPeriodSeq(val OptInt64) {
+	s.LastPeriodSeq = val
+}
+
+// SetVersion sets the value of Version.
+func (s *Tracking) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetAuthorization sets the value of Authorization.
+func (s *Tracking) SetAuthorization(val Authorization) {
+	s.Authorization = val
+}
+
+// SetCreatedBy sets the value of CreatedBy.
+func (s *Tracking) SetCreatedBy(val Subject) {
+	s.CreatedBy = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Tracking) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *Tracking) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+// SetStoppedAt sets the value of StoppedAt.
+func (s *Tracking) SetStoppedAt(val OptDateTime) {
+	s.StoppedAt = val
+}
+
+// SetTimeline sets the value of Timeline.
+func (s *Tracking) SetTimeline(val []TimelineEntry) {
+	s.Timeline = val
+}
+
+// SetViewerCanEdit sets the value of ViewerCanEdit.
+func (s *Tracking) SetViewerCanEdit(val OptBool) {
+	s.ViewerCanEdit = val
+}
+
+// 持续跟踪命令的结果（固定在操作标识上）：created 已创建、succeeded
+// 成功、no_change 无变化。tracking 为调用者当前能查看时的摘要（每次
+// 返回前按当前权限投影）；authorization 为返回时的授权状态。.
+// Ref: #/components/schemas/TrackingCommandResult
+type TrackingCommandResult struct {
+	OperationID   OperationID                           `json:"operation_id"`
+	Result        TrackingCommandResultResult           `json:"result"`
+	Tracking      OptTrackingSummary                    `json:"tracking"`
+	Authorization OptTrackingCommandResultAuthorization `json:"authorization"`
+}
+
+// GetOperationID returns the value of OperationID.
+func (s *TrackingCommandResult) GetOperationID() OperationID {
+	return s.OperationID
+}
+
+// GetResult returns the value of Result.
+func (s *TrackingCommandResult) GetResult() TrackingCommandResultResult {
+	return s.Result
+}
+
+// GetTracking returns the value of Tracking.
+func (s *TrackingCommandResult) GetTracking() OptTrackingSummary {
+	return s.Tracking
+}
+
+// GetAuthorization returns the value of Authorization.
+func (s *TrackingCommandResult) GetAuthorization() OptTrackingCommandResultAuthorization {
+	return s.Authorization
+}
+
+// SetOperationID sets the value of OperationID.
+func (s *TrackingCommandResult) SetOperationID(val OperationID) {
+	s.OperationID = val
+}
+
+// SetResult sets the value of Result.
+func (s *TrackingCommandResult) SetResult(val TrackingCommandResultResult) {
+	s.Result = val
+}
+
+// SetTracking sets the value of Tracking.
+func (s *TrackingCommandResult) SetTracking(val OptTrackingSummary) {
+	s.Tracking = val
+}
+
+// SetAuthorization sets the value of Authorization.
+func (s *TrackingCommandResult) SetAuthorization(val OptTrackingCommandResultAuthorization) {
+	s.Authorization = val
+}
+
+type TrackingCommandResultAuthorization string
+
+const (
+	TrackingCommandResultAuthorizationEffective TrackingCommandResultAuthorization = "effective"
+	TrackingCommandResultAuthorizationSyncing   TrackingCommandResultAuthorization = "syncing"
+)
+
+// AllValues returns all TrackingCommandResultAuthorization values.
+func (TrackingCommandResultAuthorization) AllValues() []TrackingCommandResultAuthorization {
+	return []TrackingCommandResultAuthorization{
+		TrackingCommandResultAuthorizationEffective,
+		TrackingCommandResultAuthorizationSyncing,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingCommandResultAuthorization) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingCommandResultAuthorizationEffective:
+		return []byte(s), nil
+	case TrackingCommandResultAuthorizationSyncing:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingCommandResultAuthorization) UnmarshalText(data []byte) error {
+	switch TrackingCommandResultAuthorization(data) {
+	case TrackingCommandResultAuthorizationEffective:
+		*s = TrackingCommandResultAuthorizationEffective
+		return nil
+	case TrackingCommandResultAuthorizationSyncing:
+		*s = TrackingCommandResultAuthorizationSyncing
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type TrackingCommandResultResult string
+
+const (
+	TrackingCommandResultResultCreated   TrackingCommandResultResult = "created"
+	TrackingCommandResultResultSucceeded TrackingCommandResultResult = "succeeded"
+	TrackingCommandResultResultNoChange  TrackingCommandResultResult = "no_change"
+)
+
+// AllValues returns all TrackingCommandResultResult values.
+func (TrackingCommandResultResult) AllValues() []TrackingCommandResultResult {
+	return []TrackingCommandResultResult{
+		TrackingCommandResultResultCreated,
+		TrackingCommandResultResultSucceeded,
+		TrackingCommandResultResultNoChange,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingCommandResultResult) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingCommandResultResultCreated:
+		return []byte(s), nil
+	case TrackingCommandResultResultSucceeded:
+		return []byte(s), nil
+	case TrackingCommandResultResultNoChange:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingCommandResultResult) UnmarshalText(data []byte) error {
+	switch TrackingCommandResultResult(data) {
+	case TrackingCommandResultResultCreated:
+		*s = TrackingCommandResultResultCreated
+		return nil
+	case TrackingCommandResultResultSucceeded:
+		*s = TrackingCommandResultResultSucceeded
+		return nil
+	case TrackingCommandResultResultNoChange:
+		*s = TrackingCommandResultResultNoChange
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/TrackingList
+type TrackingList struct {
+	Items      []TrackingSummary `json:"items"`
+	NextCursor OptCursor         `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *TrackingList) GetItems() []TrackingSummary {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *TrackingList) GetNextCursor() OptCursor {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *TrackingList) SetItems(val []TrackingSummary) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *TrackingList) SetNextCursor(val OptCursor) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/TrackingMembersRequest
+type TrackingMembersRequest struct {
+	OperationID     OperationID `json:"operation_id"`
+	ExpectedVersion int64       `json:"expected_version"`
+	Members         []OrgID     `json:"members"`
+}
+
+// GetOperationID returns the value of OperationID.
+func (s *TrackingMembersRequest) GetOperationID() OperationID {
+	return s.OperationID
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *TrackingMembersRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// GetMembers returns the value of Members.
+func (s *TrackingMembersRequest) GetMembers() []OrgID {
+	return s.Members
+}
+
+// SetOperationID sets the value of OperationID.
+func (s *TrackingMembersRequest) SetOperationID(val OperationID) {
+	s.OperationID = val
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *TrackingMembersRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// SetMembers sets the value of Members.
+func (s *TrackingMembersRequest) SetMembers(val []OrgID) {
+	s.Members = val
+}
+
+// 一期变化简报的请求记录：实际期间 [period_start,
+// period_end)（平台时点，UTC；timezone
+// 为周期所用的时区）、期末的成员快照与成员版本、
+// 对比基准（上一期的序号，第一期没有）、期末的负责人。成员快照在该期结束时固定，之后修改对象集合不改变它。briefing_state
+// 为 requested（已请求 channels 生成；channels 侧的变化简报尚未接入）。.
+// Ref: #/components/schemas/TrackingPeriod
+type TrackingPeriod struct {
+	PursuitID      PursuitID                   `json:"pursuit_id"`
+	Seq            int64                       `json:"seq"`
+	PeriodStart    time.Time                   `json:"period_start"`
+	PeriodEnd      time.Time                   `json:"period_end"`
+	Timezone       string                      `json:"timezone"`
+	Members        []OrgID                     `json:"members"`
+	MembersVersion int64                       `json:"members_version"`
+	BaselineSeq    OptInt64                    `json:"baseline_seq"`
+	Owner          Subject                     `json:"owner"`
+	OwnerValid     bool                        `json:"owner_valid"`
+	BriefingState  TrackingPeriodBriefingState `json:"briefing_state"`
+	RecordedAt     time.Time                   `json:"recorded_at"`
+}
+
+// GetPursuitID returns the value of PursuitID.
+func (s *TrackingPeriod) GetPursuitID() PursuitID {
+	return s.PursuitID
+}
+
+// GetSeq returns the value of Seq.
+func (s *TrackingPeriod) GetSeq() int64 {
+	return s.Seq
+}
+
+// GetPeriodStart returns the value of PeriodStart.
+func (s *TrackingPeriod) GetPeriodStart() time.Time {
+	return s.PeriodStart
+}
+
+// GetPeriodEnd returns the value of PeriodEnd.
+func (s *TrackingPeriod) GetPeriodEnd() time.Time {
+	return s.PeriodEnd
+}
+
+// GetTimezone returns the value of Timezone.
+func (s *TrackingPeriod) GetTimezone() string {
+	return s.Timezone
+}
+
+// GetMembers returns the value of Members.
+func (s *TrackingPeriod) GetMembers() []OrgID {
+	return s.Members
+}
+
+// GetMembersVersion returns the value of MembersVersion.
+func (s *TrackingPeriod) GetMembersVersion() int64 {
+	return s.MembersVersion
+}
+
+// GetBaselineSeq returns the value of BaselineSeq.
+func (s *TrackingPeriod) GetBaselineSeq() OptInt64 {
+	return s.BaselineSeq
+}
+
+// GetOwner returns the value of Owner.
+func (s *TrackingPeriod) GetOwner() Subject {
+	return s.Owner
+}
+
+// GetOwnerValid returns the value of OwnerValid.
+func (s *TrackingPeriod) GetOwnerValid() bool {
+	return s.OwnerValid
+}
+
+// GetBriefingState returns the value of BriefingState.
+func (s *TrackingPeriod) GetBriefingState() TrackingPeriodBriefingState {
+	return s.BriefingState
+}
+
+// GetRecordedAt returns the value of RecordedAt.
+func (s *TrackingPeriod) GetRecordedAt() time.Time {
+	return s.RecordedAt
+}
+
+// SetPursuitID sets the value of PursuitID.
+func (s *TrackingPeriod) SetPursuitID(val PursuitID) {
+	s.PursuitID = val
+}
+
+// SetSeq sets the value of Seq.
+func (s *TrackingPeriod) SetSeq(val int64) {
+	s.Seq = val
+}
+
+// SetPeriodStart sets the value of PeriodStart.
+func (s *TrackingPeriod) SetPeriodStart(val time.Time) {
+	s.PeriodStart = val
+}
+
+// SetPeriodEnd sets the value of PeriodEnd.
+func (s *TrackingPeriod) SetPeriodEnd(val time.Time) {
+	s.PeriodEnd = val
+}
+
+// SetTimezone sets the value of Timezone.
+func (s *TrackingPeriod) SetTimezone(val string) {
+	s.Timezone = val
+}
+
+// SetMembers sets the value of Members.
+func (s *TrackingPeriod) SetMembers(val []OrgID) {
+	s.Members = val
+}
+
+// SetMembersVersion sets the value of MembersVersion.
+func (s *TrackingPeriod) SetMembersVersion(val int64) {
+	s.MembersVersion = val
+}
+
+// SetBaselineSeq sets the value of BaselineSeq.
+func (s *TrackingPeriod) SetBaselineSeq(val OptInt64) {
+	s.BaselineSeq = val
+}
+
+// SetOwner sets the value of Owner.
+func (s *TrackingPeriod) SetOwner(val Subject) {
+	s.Owner = val
+}
+
+// SetOwnerValid sets the value of OwnerValid.
+func (s *TrackingPeriod) SetOwnerValid(val bool) {
+	s.OwnerValid = val
+}
+
+// SetBriefingState sets the value of BriefingState.
+func (s *TrackingPeriod) SetBriefingState(val TrackingPeriodBriefingState) {
+	s.BriefingState = val
+}
+
+// SetRecordedAt sets the value of RecordedAt.
+func (s *TrackingPeriod) SetRecordedAt(val time.Time) {
+	s.RecordedAt = val
+}
+
+type TrackingPeriodBriefingState string
+
+const (
+	TrackingPeriodBriefingStateRequested TrackingPeriodBriefingState = "requested"
+)
+
+// AllValues returns all TrackingPeriodBriefingState values.
+func (TrackingPeriodBriefingState) AllValues() []TrackingPeriodBriefingState {
+	return []TrackingPeriodBriefingState{
+		TrackingPeriodBriefingStateRequested,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingPeriodBriefingState) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingPeriodBriefingStateRequested:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingPeriodBriefingState) UnmarshalText(data []byte) error {
+	switch TrackingPeriodBriefingState(data) {
+	case TrackingPeriodBriefingStateRequested:
+		*s = TrackingPeriodBriefingStateRequested
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/TrackingPeriodList
+type TrackingPeriodList struct {
+	Items      []TrackingPeriod `json:"items"`
+	NextCursor OptCursor        `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *TrackingPeriodList) GetItems() []TrackingPeriod {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *TrackingPeriodList) GetNextCursor() OptCursor {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *TrackingPeriodList) SetItems(val []TrackingPeriod) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *TrackingPeriodList) SetNextCursor(val OptCursor) {
+	s.NextCursor = val
+}
+
+// 持续跟踪的状态：tracking 跟踪中、paused 已暂停、stopped 已停止.
+// Ref: #/components/schemas/TrackingState
+type TrackingState string
+
+const (
+	TrackingStateTracking TrackingState = "tracking"
+	TrackingStatePaused   TrackingState = "paused"
+	TrackingStateStopped  TrackingState = "stopped"
+)
+
+// AllValues returns all TrackingState values.
+func (TrackingState) AllValues() []TrackingState {
+	return []TrackingState{
+		TrackingStateTracking,
+		TrackingStatePaused,
+		TrackingStateStopped,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingState) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingStateTracking:
+		return []byte(s), nil
+	case TrackingStatePaused:
+		return []byte(s), nil
+	case TrackingStateStopped:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingState) UnmarshalText(data []byte) error {
+	switch TrackingState(data) {
+	case TrackingStateTracking:
+		*s = TrackingStateTracking
+		return nil
+	case TrackingStatePaused:
+		*s = TrackingStatePaused
+		return nil
+	case TrackingStateStopped:
+		*s = TrackingStateStopped
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/TrackingSummary
+type TrackingSummary struct {
+	ID             PursuitID     `json:"id"`
+	ObjectiveID    ObjectiveID   `json:"objective_id"`
+	Name           string        `json:"name"`
+	State          TrackingState `json:"state"`
+	Owner          Subject       `json:"owner"`
+	OwnerValid     bool          `json:"owner_valid"`
+	MembersCount   int           `json:"members_count"`
+	MembersVersion int64         `json:"members_version"`
+	// 下一期结束的时点（跟踪中才有）.
+	NextRunAt     OptDateTime   `json:"next_run_at"`
+	Version       int64         `json:"version"`
+	Authorization Authorization `json:"authorization"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+}
+
+// GetID returns the value of ID.
+func (s *TrackingSummary) GetID() PursuitID {
+	return s.ID
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *TrackingSummary) GetObjectiveID() ObjectiveID {
+	return s.ObjectiveID
+}
+
+// GetName returns the value of Name.
+func (s *TrackingSummary) GetName() string {
+	return s.Name
+}
+
+// GetState returns the value of State.
+func (s *TrackingSummary) GetState() TrackingState {
+	return s.State
+}
+
+// GetOwner returns the value of Owner.
+func (s *TrackingSummary) GetOwner() Subject {
+	return s.Owner
+}
+
+// GetOwnerValid returns the value of OwnerValid.
+func (s *TrackingSummary) GetOwnerValid() bool {
+	return s.OwnerValid
+}
+
+// GetMembersCount returns the value of MembersCount.
+func (s *TrackingSummary) GetMembersCount() int {
+	return s.MembersCount
+}
+
+// GetMembersVersion returns the value of MembersVersion.
+func (s *TrackingSummary) GetMembersVersion() int64 {
+	return s.MembersVersion
+}
+
+// GetNextRunAt returns the value of NextRunAt.
+func (s *TrackingSummary) GetNextRunAt() OptDateTime {
+	return s.NextRunAt
+}
+
+// GetVersion returns the value of Version.
+func (s *TrackingSummary) GetVersion() int64 {
+	return s.Version
+}
+
+// GetAuthorization returns the value of Authorization.
+func (s *TrackingSummary) GetAuthorization() Authorization {
+	return s.Authorization
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *TrackingSummary) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *TrackingSummary) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *TrackingSummary) SetID(val PursuitID) {
+	s.ID = val
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *TrackingSummary) SetObjectiveID(val ObjectiveID) {
+	s.ObjectiveID = val
+}
+
+// SetName sets the value of Name.
+func (s *TrackingSummary) SetName(val string) {
+	s.Name = val
+}
+
+// SetState sets the value of State.
+func (s *TrackingSummary) SetState(val TrackingState) {
+	s.State = val
+}
+
+// SetOwner sets the value of Owner.
+func (s *TrackingSummary) SetOwner(val Subject) {
+	s.Owner = val
+}
+
+// SetOwnerValid sets the value of OwnerValid.
+func (s *TrackingSummary) SetOwnerValid(val bool) {
+	s.OwnerValid = val
+}
+
+// SetMembersCount sets the value of MembersCount.
+func (s *TrackingSummary) SetMembersCount(val int) {
+	s.MembersCount = val
+}
+
+// SetMembersVersion sets the value of MembersVersion.
+func (s *TrackingSummary) SetMembersVersion(val int64) {
+	s.MembersVersion = val
+}
+
+// SetNextRunAt sets the value of NextRunAt.
+func (s *TrackingSummary) SetNextRunAt(val OptDateTime) {
+	s.NextRunAt = val
+}
+
+// SetVersion sets the value of Version.
+func (s *TrackingSummary) SetVersion(val int64) {
+	s.Version = val
+}
+
+// SetAuthorization sets the value of Authorization.
+func (s *TrackingSummary) SetAuthorization(val Authorization) {
+	s.Authorization = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *TrackingSummary) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *TrackingSummary) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
 }
 
 // Ref: #/components/schemas/UpdateTaskRequest

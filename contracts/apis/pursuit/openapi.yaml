@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: pursuit 跟进接口
-  version: 0.1.0
+  version: 0.4.0
   description: >-
     pursuit 的对外接口（经 gateway，令牌派生租户与主体），PRD 第6段跟进的服务端切片（docs/01-product/prd/06-pursuit-follow-up.md；
     规格见 docs/03-architecture/subsystems/pursuit.md）。草案：随第6段首个实现切片提交，未冻结。M2 只有交易型跟进（deal）；
@@ -17,6 +17,16 @@ info:
     返回的 *_at 为平台记录时间（UTC）。翻页游标由 pursuit 签名（整个载荷），只在签发它的租户、调用者与视图内有效，篡改为 400 invalid_cursor。
     部分接口另经内部端口（/internal 前缀）供 channels 以点击者（经有效绑定核验的收件人本人）的用户主体调用：卡片上的“跟进”
     （createPursuit，channel 为 wecom）与提醒卡片的“完成”（completeTask、reopenTask、getTask）；channel 为 wecom 的请求只接受内部端口。
+    0.2.0（C-09 渠道侧）：内部端口另提供 listMyTasks（简报“待我处理”中的任务，以收件人本人读取）与 getPursuit（授权被拒的操作者
+    通知发送前、以及链接打开时以本人再检查）；TaskView 追加 viewer_escalated（跟进无有效负责人、任务转给调用者所在单元的决策者）。
+    0.3.0（C-10）：持续跟踪（PRD 第6段 F10：createTracking、listTracking、getTracking、pauseTracking、resumeTracking、stopTracking、
+    updateTrackingMembers、listTrackingPeriods、getTrackingPeriod；持续型跟进与交易型共用跟进标识与授权口径，交易型的接口对持续型的标识
+    为 404）；创建面板的默认负责人 getCreateDefaults（分派规则的候选，缺省为本人）；Pursuit 追加 sibling_hints（同一采购项目其他中标方的
+    进行中跟进，按查看者权限分级投影）；TimelineEntry 的 kind 追加持续跟踪的变化。均为追加。
+    0.4.0（C-11、C-12 部分）：只改说明，结构不变。转交（viewer_escalated 与 listMyTasks 的 escalated）在“任务负责人已不在团队中”之外，
+    追加“任务负责人仍在团队中、但此刻不满足写入准入（以负责人本人判断：能否更新、授权同步与本人角色的授予版本），且该任务当前截止版本
+    已有一条转给决策者的提醒发出”；负责人本人判断不可用时 503（失败关闭，不当作转交也不当作未转交）。内部端口另提供 getTracking
+    （授权被拒通知的操作者为持续跟踪时，以操作者本人再检查）。
 servers:
 - url: /
 paths:
@@ -263,8 +273,11 @@ paths:
       operationId: getTask
       summary: 读取任务（提醒卡片发送前的再检查）
       description: >-
-        需要任务所属推进的 can_view；viewer_can_edit 为调用者当前能否更新（含授权同步与本地负责人判断），viewer_is_assignee 为调用者是否
-        仍是任务负责人。他租户、不存在与无权查看同为 404 task_not_found。
+        需要任务所属推进的 can_view；viewer_can_edit 为调用者当前能否更新（与写命令同一准入：含授权同步与本地负责人判断），
+        viewer_is_assignee 为调用者是否仍是任务负责人（且仍是跟进的有效负责人或协作者），viewer_escalated 为任务已转给调用者处理
+        （跟进无有效负责人或任务负责人已不在团队中；或任务负责人仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出
+        （0.4.0）；且调用者在单元上有 can_edit_unit_pursuits）。负责人本人的判断不可用时 503。他租户、不存在与无权查看同为
+        404 task_not_found。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -366,7 +379,8 @@ paths:
       summary: 待我处理的任务（ListMyTasks）
       description: >-
         分派给调用者、未完成、截止在 before 之前（缺省为不限）或已逾期的任务（跟进进行中、调用者当前能更新），按截止时间升序；
-        调用者在单元上有 can_edit_unit_pursuits 时另含该单元内无有效负责人的跟进的任务（escalated）。每页至多 limit 条（默认且至多 100），
+        调用者在单元上有 can_edit_unit_pursuits 时另含该单元内转给决策者的任务（escalated，与 getTask 的 viewer_escalated 同一口径：
+        任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出，0.4.0）。每页至多 limit 条（默认且至多 100），
         next_cursor 为签名游标。
       x-timeout-ms: 5000
       x-idempotent: true
@@ -396,6 +410,276 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MyTaskList'
+        default: *problem
+  /v1/pursuit/create-defaults:
+    get:
+      operationId: getCreateDefaults
+      summary: 创建面板的默认负责人（0.3.0，C-10）
+      description: >-
+        需要目标上的 can_assign（无权 403 forbidden，目标不可见 404 objective_not_found）。给出 Web 创建面板的默认负责人（PRD 第6段 F1 第2条、
+        第13节第5项）：带 signal_id 时取该信号上由目标的分派规则给出的候选负责人，候选此刻仍是租户有效成员且能查看该目标的信号（以候选本人
+        判断）时默认候选；没有候选、候选无访问或分派规则不可用时默认调用者本人，candidate_state 说明原因。只是默认值：createPursuit 不带
+        owner 时仍以调用者本人为负责人，选用候选须在请求中写明 owner（写入前照常检查被分派人）。候选不因被建议而获得访问；只有候选有效时
+        才返回其标识。信号不可见、他租户或不属于该目标为 404 signal_not_found；判断不可用为 503（不当作无访问）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: objective_id
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/ObjectiveID'
+      - name: signal_id
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/SignalID'
+      responses:
+        '200':
+          description: 默认负责人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateDefaults'
+        default: *problem
+  /v1/pursuit/tracking:
+    get:
+      operationId: listTracking
+      summary: 持续跟踪列表（0.3.0，C-10）
+      description: >-
+        只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多 limit 条（默认且至多 50），
+        next_cursor 为签名游标（须带相同的 objective_id，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - name: objective_id
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ObjectiveID'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Cursor'
+      responses:
+        '200':
+          description: 一页持续跟踪
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingList'
+        default: *problem
+    post:
+      operationId: createTracking
+      summary: 创建持续跟踪（0.3.0，C-10；PRD 第6段 F10）
+      description: >-
+        需要目标上的 can_assign（决策者或参与该目标的业务开拓者）。为一组组织（企业清单之外手选的组织标识）创建持续型跟进：名称、对象集合、
+        周期（缺省每周一 08:00，Asia/Shanghai）与负责人（缺省调用者本人；须为租户有效成员且能查看该目标的信号，否则 422 assignee_no_access，
+        不自动授予权限）。创建即进入跟踪中，第一期从创建时起到下一个周期时点。负责人经授权同步获得参与关系（与交易型跟进相同）。
+        结果固定在操作标识上（created）。
+      x-timeout-ms: 10000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrackingRequest'
+      responses:
+        '200':
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}:
+    get:
+      operationId: getTracking
+      summary: 持续跟踪详情（0.3.0，C-10）
+      description: >-
+        需要推进的 can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为 404 pursuit_not_found。
+        另经内部端口供 channels 以授权被拒通知的操作者本人再检查（0.4.0）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *pursuitID
+      responses:
+        '200':
+          description: 持续跟踪
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tracking'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/pause:
+    post:
+      operationId: pauseTracking
+      summary: 暂停持续跟踪（PauseTracking，0.3.0）
+      description: >-
+        需要推进的 can_edit（与跟进的写命令同一准入）。跟踪中 → 已暂停：暂停期间不生成变化简报，进行中的一期不再结束（不补）。已暂停为
+        no_change；已停止 409 invalid_transition；否则版本不一致 409 conflict。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已暂停或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/resume:
+    post:
+      operationId: resumeTracking
+      summary: 恢复持续跟踪（ResumeTracking，0.3.0）
+      description: >-
+        需要推进的 can_edit。已暂停 → 跟踪中：下一期从恢复时起到恢复后的下一个周期时点，不补暂停期间的各期。跟踪中为 no_change；
+        已停止 409 invalid_transition；否则版本不一致 409 conflict。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已恢复或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/stop:
+    post:
+      operationId: stopTracking
+      summary: 停止持续跟踪（StopTracking，0.3.0）
+      description: >-
+        需要推进的 can_edit。跟踪中或已暂停 → 已停止：不再生成变化简报，已有各期保留。已停止为 no_change；否则版本不一致 409 conflict。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已停止或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/members:
+    post:
+      operationId: updateTrackingMembers
+      summary: 修改持续跟踪的对象集合（0.3.0）
+      description: >-
+        需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为 no_change；已停止 409 invalid_transition；否则版本不一致
+        409 conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackingMembersRequest'
+      responses:
+        '200':
+          description: 已修改或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/periods:
+    get:
+      operationId: listTrackingPeriods
+      summary: 持续跟踪的各期（0.3.0）
+      description: >-
+        需要推进的 can_view；按期序号倒序，每页至多 limit 条（默认且至多 50），next_cursor 为签名游标（绑定租户、调用者与该跟踪）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *pursuitID
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Cursor'
+      responses:
+        '200':
+          description: 一页各期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingPeriodList'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/periods/{seq}:
+    get:
+      operationId: getTrackingPeriod
+      summary: 持续跟踪的一期（0.3.0）
+      description: >-
+        需要推进的 can_view（读取时按当前权限判断，不以该期结束时的负责人为准）。返回该期的实际期间、当期成员快照与对比基准；对象集合之后的
+        修改不影响已结束的期。不存在的期 404 period_not_found。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *pursuitID
+      - name: seq
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      responses:
+        '200':
+          description: 一期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingPeriod'
         default: *problem
 components:
   schemas:
@@ -911,6 +1195,9 @@ components:
           type: boolean
         viewer_is_assignee:
           type: boolean
+        viewer_escalated:
+          type: boolean
+          description: 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0；负责人仍在团队中但写入准入不满足、且已发出转交提醒，0.4.0）
     PursuitStatus:
       type: string
       enum:
@@ -1048,6 +1335,10 @@ components:
           - outcome_revised
           - owner_invalid
           - authorization_rejected
+          - tracking_paused
+          - tracking_resumed
+          - tracking_stopped
+          - members_changed
         actor:
           type: string
           maxLength: 128
@@ -1225,6 +1516,12 @@ components:
           type: boolean
         viewer_can_void:
           type: boolean
+        sibling_hints:
+          type: array
+          maxItems: 20
+          description: 同一目标、同一采购项目（同一事实类型与主体，如同一中标结果公告）上其他中标方的进行中跟进；跟进目标不含标包，尚不能缩小到同一标包（0.3.0；按查看者对各跟进的当前权限分级投影）
+          items:
+            $ref: '#/components/schemas/SiblingHint'
     PursuitList:
       type: object
       additionalProperties: false
@@ -1252,7 +1549,7 @@ components:
           $ref: '#/components/schemas/ObjectiveID'
         escalated:
           type: boolean
-          description: 跟进无有效负责人，任务转给决策者
+          description: 任务转给决策者（与 getTask 的 viewer_escalated 同一口径）
     MyTaskList:
       type: object
       additionalProperties: false
@@ -1376,3 +1673,393 @@ components:
           type: string
           description: 撤销创建时信号的去向由 detection 按有效关联集合决定（异步）；此处只说明已排队解除的关联数
           maxLength: 200
+    OrgID:
+      type: string
+      description: 组织标识（持续跟踪的对象）
+      pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
+    SiblingHint:
+      type: object
+      additionalProperties: false
+      description: >-
+        同一目标、同一采购项目（同一事实类型与主体）上另一家中标方的进行中跟进；跟进目标不含标包标识，尚不能缩小到同一标包（PRD 第6段 F2 第1条、用例12，0.3.0）。按查看者对那个跟进的当前权限分级投影
+        （白名单）：visibility 为 full 时给出跟进标识、中标方、负责人、负责人是否有效与创建时间；为 owner_only（不能查看那个跟进）时只给
+        负责人，其他字段不出现。
+      required:
+      - visibility
+      - owner
+      properties:
+        visibility:
+          type: string
+          enum:
+          - full
+          - owner_only
+        owner:
+          $ref: '#/components/schemas/Subject'
+        pursuit_id:
+          $ref: '#/components/schemas/PursuitID'
+        winner_org_id:
+          $ref: '#/components/schemas/OrgID'
+        owner_valid:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    CreateDefaults:
+      type: object
+      additionalProperties: false
+      description: >-
+        创建面板的默认负责人（0.3.0）。owner_source 为 candidate（分派规则的候选，此刻有效）或 self（调用者本人）；candidate_state 为
+        valid（候选有效）、none（信号上没有候选或请求不带信号）、no_access（候选已不是租户有效成员或不能查看该目标的信号）、
+        rules_unavailable（分派规则未接入）。candidate 只在 valid 时出现。
+      required:
+      - objective_id
+      - owner
+      - owner_source
+      - candidate_state
+      properties:
+        objective_id:
+          $ref: '#/components/schemas/ObjectiveID'
+        signal_id:
+          $ref: '#/components/schemas/SignalID'
+        owner:
+          $ref: '#/components/schemas/Subject'
+        owner_source:
+          type: string
+          enum:
+          - candidate
+          - self
+        candidate_state:
+          type: string
+          enum:
+          - valid
+          - none
+          - no_access
+          - rules_unavailable
+        candidate:
+          $ref: '#/components/schemas/Subject'
+    TrackingState:
+      type: string
+      description: 持续跟踪的状态：tracking 跟踪中、paused 已暂停、stopped 已停止
+      enum:
+      - tracking
+      - paused
+      - stopped
+    Cadence:
+      type: object
+      additionalProperties: false
+      description: 周期：每周 weekday（1 为周一 … 7 为周日）的 time（HH:MM），按 timezone（IANA）计算
+      required:
+      - weekday
+      - time
+      - timezone
+      properties:
+        weekday:
+          type: integer
+          minimum: 1
+          maximum: 7
+        time:
+          type: string
+          pattern: ^([01][0-9]|2[0-3]):[0-5][0-9]$
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z]+(/[A-Za-z0-9_+-]+){0,2}$
+    CreateTrackingRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - objective_id
+      - name
+      - members
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationID'
+        objective_id:
+          $ref: '#/components/schemas/ObjectiveID'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        members:
+          type: array
+          minItems: 1
+          maxItems: 200
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OrgID'
+        owner:
+          $ref: '#/components/schemas/Subject'
+        cadence:
+          $ref: '#/components/schemas/Cadence'
+    TrackingMembersRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - expected_version
+      - members
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationID'
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+        members:
+          type: array
+          minItems: 1
+          maxItems: 200
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OrgID'
+    TrackingSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - objective_id
+      - name
+      - state
+      - owner
+      - owner_valid
+      - members_count
+      - members_version
+      - version
+      - authorization
+      - created_at
+      - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/PursuitID'
+        objective_id:
+          $ref: '#/components/schemas/ObjectiveID'
+        name:
+          type: string
+          maxLength: 120
+        state:
+          $ref: '#/components/schemas/TrackingState'
+        owner:
+          $ref: '#/components/schemas/Subject'
+        owner_valid:
+          type: boolean
+        members_count:
+          type: integer
+          minimum: 0
+          maximum: 200
+        members_version:
+          type: integer
+          format: int64
+          minimum: 1
+        next_run_at:
+          type: string
+          format: date-time
+          description: 下一期结束的时点（跟踪中才有）
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        authorization:
+          $ref: '#/components/schemas/Authorization'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Tracking:
+      type: object
+      additionalProperties: false
+      description: 持续跟踪详情（持续型跟进，kind 为 continuous）
+      required:
+      - id
+      - objective_id
+      - org_unit_id
+      - name
+      - state
+      - owner
+      - owner_valid
+      - members
+      - members_version
+      - cadence
+      - version
+      - authorization
+      - created_by
+      - created_at
+      - updated_at
+      - timeline
+      properties:
+        id:
+          $ref: '#/components/schemas/PursuitID'
+        objective_id:
+          $ref: '#/components/schemas/ObjectiveID'
+        org_unit_id:
+          type: string
+          pattern: ^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$
+        name:
+          type: string
+          maxLength: 120
+        state:
+          $ref: '#/components/schemas/TrackingState'
+        owner:
+          $ref: '#/components/schemas/Subject'
+        owner_valid:
+          type: boolean
+        members:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/OrgID'
+        members_version:
+          type: integer
+          format: int64
+          minimum: 1
+        cadence:
+          $ref: '#/components/schemas/Cadence'
+        period_start:
+          type: string
+          format: date-time
+          description: 进行中的一期的开始时点（跟踪中才有）
+        next_run_at:
+          type: string
+          format: date-time
+          description: 进行中的一期的结束时点（跟踪中才有）
+        last_period_seq:
+          type: integer
+          format: int64
+          minimum: 1
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        authorization:
+          $ref: '#/components/schemas/Authorization'
+        created_by:
+          $ref: '#/components/schemas/Subject'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        stopped_at:
+          type: string
+          format: date-time
+        timeline:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/TimelineEntry'
+        viewer_can_edit:
+          type: boolean
+    TrackingList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/TrackingSummary'
+        next_cursor:
+          $ref: '#/components/schemas/Cursor'
+    TrackingPeriod:
+      type: object
+      additionalProperties: false
+      description: >-
+        一期变化简报的请求记录：实际期间 [period_start, period_end)（平台时点，UTC；timezone 为周期所用的时区）、期末的成员快照与成员版本、
+        对比基准（上一期的序号，第一期没有）、期末的负责人。成员快照在该期结束时固定，之后修改对象集合不改变它。briefing_state 为
+        requested（已请求 channels 生成；channels 侧的变化简报尚未接入）。
+      required:
+      - pursuit_id
+      - seq
+      - period_start
+      - period_end
+      - timezone
+      - members
+      - members_version
+      - owner
+      - owner_valid
+      - briefing_state
+      - recorded_at
+      properties:
+        pursuit_id:
+          $ref: '#/components/schemas/PursuitID'
+        seq:
+          type: integer
+          format: int64
+          minimum: 1
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          maxLength: 64
+        members:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/OrgID'
+        members_version:
+          type: integer
+          format: int64
+          minimum: 1
+        baseline_seq:
+          type: integer
+          format: int64
+          minimum: 1
+        owner:
+          $ref: '#/components/schemas/Subject'
+        owner_valid:
+          type: boolean
+        briefing_state:
+          type: string
+          enum:
+          - requested
+        recorded_at:
+          type: string
+          format: date-time
+    TrackingPeriodList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/TrackingPeriod'
+        next_cursor:
+          $ref: '#/components/schemas/Cursor'
+    TrackingCommandResult:
+      type: object
+      additionalProperties: false
+      description: >-
+        持续跟踪命令的结果（固定在操作标识上）：created 已创建、succeeded 成功、no_change 无变化。tracking 为调用者当前能查看时的摘要（每次
+        返回前按当前权限投影）；authorization 为返回时的授权状态。
+      required:
+      - operation_id
+      - result
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationID'
+        result:
+          type: string
+          enum:
+          - created
+          - succeeded
+          - no_change
+        tracking:
+          $ref: '#/components/schemas/TrackingSummary'
+        authorization:
+          type: string
+          enum:
+          - effective
+          - syncing

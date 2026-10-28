@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.11 · 更新：2026-10-26 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.16 · 更新：2026-10-27 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -169,7 +169,7 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 平台资质体系登记（`qual:*` 体系与版本，行业包资质模板 `equivalents` 的加载与解析） | [可扩展性 2.4](04-extensibility.md#24-行业包) | INF-QUAL 首次启用，或首个跨资质体系比较资质的规则 | 新增 |
 | 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | data-api 已有 listener、TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络 smoke、entity-graph/Go 生产适配器尚未接入（第4段切片继续以 gateway `api.PublicData` 端口和内存夹具代替） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
 | evidence 的 `ResolveEvidence`（展示级别与原因、快照、来源可达状态、派生输入） | [evidence](subsystems/evidence.md)；PRD 第4段 F6 | 证据解析的生产实现（第4段切片以 `api.EvidenceResolver` 端口代替） | 新增 |
-| commerce 的覆盖判断与权益（`GetEntitlements`，对象所在区域与信息领域是否在数据覆盖包内）与按套餐的查看额度 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（第4段切片以 gateway 的 `api.Entitlements` 端口代替，额度来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt` 不变 |
+| commerce 的按租户权益（`GetEntitlements` 的订阅与按租户覆盖包）与按套餐的查看额度；覆盖判断 `checkCoverage` 已随 commerce OpenAPI 0.2.0 写入，覆盖包暂为部署配置 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（额度与覆盖包来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt`、`CoverageDecision` 不变 |
 | detection 的归属边读取（entity-graph 的 `part_of`，项目展开到采购项目） | [detection 第5节](subsystems/detection.md#5-接口) | entity-graph 关系读取的生产实现（第4段切片以 `api.ProjectLinks` 端口代替） | 随 entity-graph `GetRelationships` |
 | 简报各区的数据截至时间与来源中断（domain-intelligence 的 `GetCoverage`，按信息领域） | [PRD 第5段 F2 第4条](../01-product/prd/05-briefing-quick-actions.md#f2-推送到企业微信)；[channels 第6节](subsystems/channels.md#6-接口) | 覆盖的首个生产读取实现（第5段切片以 channels 的 `api.Coverage` 端口代替，未接入时各领域为“未知”） | 随 domain-intelligence OpenAPI；channels 的简报契约不变 |
 | 简报与卡片来源字段的展示级别（信号各展示字段的来源权利与原文链接） | [PRD 第5段 F3 第3条](../01-product/prd/05-briefing-quick-actions.md#f3-卡片内容与截断)；[数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 来源权利的生产读取（第5段切片以 channels 的 `api.Rights` 端口代替，未接入时来源字段失败关闭为 none） | 随权利条目 Schema；channels 的简报契约不变 |
@@ -178,3 +178,12 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | gateway 的 Web 页面聚合 `/v1/web/*` 与对象页版本检查 `GET /v1/objects/{objectID}/versions` | [Web 专项设计第7节](14-web-application.md#7-bff-契约) | 首个使用该端点的 Web 实现批次（W0～W5） | gateway OpenAPI 追加，升次版本 |
 | customer-context 的保存视图（`SavedView` 与接口） | [Web 专项设计第6.2节](14-web-application.md#62-保存视图的所有者) | Web 收件箱的个人视图（W2） | customer-context OpenAPI 追加 |
 | Web 页面需要的公开读取与命令：identity `ListMembers` / `PreviewInvitation` / 受邀账号准备，entity-graph `ResolveEntity`，evidence 证书文件上传，learning `ReportMiss` | [Web 专项设计第7.3节](14-web-application.md#73-端点清单) | 对应页面的 Web 实现批次（W1、W2） | 各所有者 OpenAPI 追加 |
+| 持续跟踪每期的变化简报：channels 消费 `pursuit.tracking.period_closed.v1` 的简报种类与投递事件，及数据平面按对象集合与期间读取变化（组织的事实与关系变化，按期末成员快照与上一期对比）的内部接口；detection 的关注消费 `pursuit.tracking.changed.v1` | [pursuit 第11节](subsystems/pursuit.md#11-实现状况)；PRD 第6段 F10；[A02 验收缺口 C-12](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 持续跟踪变化简报的实现（依赖数据平面的变化读取，L1 后续） | channels 事件与 domain-intelligence / entity-graph 内部读取追加；pursuit 事件 0.3.0 不变 |
+| 持续跟踪对象的来源版本与合并（成员快照中每个组织的 entity-graph 版本、`entity.merged` 后的对象替换）与企业名单导入 | PRD 第6段 F10 第3条；[A02 验收缺口 C-13](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | entity-graph 组织解析与合并事件（D-12） | pursuit 契约与事件追加字段 |
+| 分派规则按我方主体、组织单元与角色的条件，以及信号详情、卡片与通知中的候选负责人 | [customer-context 第11节](subsystems/customer-context.md#11-分派配置)；[A02 验收缺口 C-22、C-23](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 信号上“由我方哪个主体承接”的字段、identity 的单元覆盖与 `ListPermitted`（C-07）；信号详情展示候选的 Web 实现（W-02） | customer-context `AssignmentRule` 追加可选条件；detection `SignalDetail` 追加可选字段 |
+| 跟进目标中的标包标识（`lot_`，用于把互相提示缩小到同一标包） | PRD 第6段 F2 第1条；[A02 验收缺口 C-15](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 通用项目与标包聚合（D-04 的 `lot_`） | pursuit `Target` 与信号主体追加可选字段 |
+| 持久化的评估报告（含跟进结果部分）与报告事件 | [learning 实现状况](subsystems/learning.md)；PRD 第6段 F7 第5条；[A02 验收缺口 C-16](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 评估报告功能（目前 `getOutcomeSummary` 只读计算） | learning OpenAPI 与事件追加 |
+| 简报“关注变化”区的数据来源：关注（watch）对象与按成员、期间读取关注对象变化的内部接口，及 channels 简报区种类 | PRD 第5段第13节第9项；[A02 验收缺口 C-19](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 关注功能开放（第4段第2节，不在 M2） | detection 或数据平面新增内部接口；channels `BriefingSection.kind` 追加 |
+| 简报 AI 开头摘要：ai-platform 的生成接口与生成标识，channels `Briefing` 的摘要字段 | PRD 第5段第13节第8项；[A02 验收缺口 C-18](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | M3 研究入口（M2 不开启） | ai-platform 新增；channels OpenAPI 追加可选字段 |
+
+已随功能写入并从本表删除：渠道通知的投递事件与统计（C-11：channels 事件 0.5.0 新增 `channels.notice.sent.v1` / `channels.notice.failed.v1`，channels OpenAPI 0.4.0 的 `getDeliveryStats` 追加可选 `notices`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-17.yaml`）；信号的即时通知（C-08：channels 事件 0.6.0 新增 `channels.signal_notice.sent.v1` / `channels.signal_notice.failed.v1`，channels OpenAPI 0.5.0 追加通知种类 `signal_immediate` 与取消原因、偏好 `instant_notify`、简报条目 `notified` 与 `arrived_overnight`，customer-context OpenAPI 0.6.0 的 `ActivePolicy` 追加 `owner` 与 `participants`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-18.yaml`）；目标的分派规则与信号上的候选负责人（C-14：customer-context OpenAPI 0.7.0 新增 `getAssignmentRules` / `updateAssignmentRules`，`ActivePolicy` 追加可选 `assignment`；detection OpenAPI 0.4.0 新增只经内部端口的 `getSignalCandidateOwner`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-19.yaml`）。

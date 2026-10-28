@@ -101,6 +101,24 @@ func (UnimplementedHandler) GetActivePolicies(ctx context.Context, params GetAct
 	return r, ht.ErrNotImplemented
 }
 
+// GetAssignmentRules implements getAssignmentRules operation.
+//
+// 需要 can_view；无权限与不存在同样返回 404
+// objective_not_found。字段按调用者的级别白名单返回：能管理参与人（can_manage_participants）
+// 或能分派跟进（can_assign）的成员得到
+// view=full（规则全文、更新时间）；其他能查看目标的成员得到
+// view=summary（只有版本与规则条数， 不出现规则与候选人）。从未配置时
+// version 为 0、rule_count 为 0、没有 updated_at（view=full 时 rules
+// 为空数组）；已配置的版本 从 1 开始（配置为空规则也是 1
+// 及以上），因此“从未配置”（目标的信号记为分派规则不可用
+// rules_unavailable）与“已配置但规则为空” （信号记为没有候选
+// none）可以区分。.
+//
+// GET /v1/customer-context/objectives/{objectiveID}/assignment
+func (UnimplementedHandler) GetAssignmentRules(ctx context.Context, params GetAssignmentRulesParams) (r *AssignmentRules, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetContextSnapshot implements getContextSnapshot operation.
 //
 // 按（租户、组织单元、上下文版本）返回合成快照，同一键永远返回同一结果；缺省版本为当前版本。
@@ -276,6 +294,26 @@ func (UnimplementedHandler) RequestPolicyRollback(ctx context.Context, req *Requ
 //
 // PUT /v1/customer-context/objectives/{objectiveID}/state
 func (UnimplementedHandler) SetObjectiveState(ctx context.Context, req *SetObjectiveStateRequest, params SetObjectiveStateParams) (r *Objective, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// UpdateAssignmentRules implements updateAssignmentRules operation.
+//
+// 需要 can_manage_participants 与
+// can_edit（目标单元的决策者，与调整负责人和参与人相同）。整份替换并带
+// expected_version（分派配置 版本，从未配置时为 0），不一致返回 409
+// version_conflict。规则按顺序匹配，第一条命中的规则给出候选负责人；没有条件的规则匹配全部信号。
+// 每条规则的 assignee
+// 须是目标当前版本的负责人或参与人（与目标在同一锁下核对），并在写入前以其本人判断仍是本租户有效成员且能查看
+// 该目标的信号，否则 422
+// assignee_no_access，不写入、不授予任何权限；区域须是有效的行政区划代码（422
+// invalid_region），品类须属于 已安装行业包（422 unknown_category）。同一
+// Idempotency-Key
+// 重放返回首次结果，包括首次的确定失败（4xx）；键相同而请求不同返回 409
+// idempotency_conflict；暂时失败（503）不固定在键上。.
+//
+// PUT /v1/customer-context/objectives/{objectiveID}/assignment
+func (UnimplementedHandler) UpdateAssignmentRules(ctx context.Context, req *UpdateAssignmentRulesRequest, params UpdateAssignmentRulesParams) (r *AssignmentRules, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

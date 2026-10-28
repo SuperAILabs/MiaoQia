@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: pursuit 跟进事件
-  version: 0.1.0
+  version: 0.3.0
   description: >-
     由 pursuit 经发件箱发布（PRD 第6段第8节；docs/03-architecture/subsystems/pursuit.md 第6节）。信封为 CloudEvents 1.0，约定见
     docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。
@@ -9,6 +9,10 @@ info:
     有效关联集合与已转跟进；team.changed 是授权同步请求（pursuit 自身消费，按跟进当前的期望参与关系调用 identity，只接受更高版本）；
     pursuit.assigned 与 task.due 只在对应参与版本授权同步完成后发布；outcome.recorded 由 learning 消费（以结果记录标识幂等）。
     事件只含标识、状态、版本与时间，不含说明文字、原因说明与客户金额以外的内容；金额只进入本租户的评估。
+    0.2.0（C-09）：追加 pursuit.pursuit.authorization_rejected.v1（identity 拒绝部分参与关系时通知操作者，channels 消费）。
+    0.3.0（C-10）：追加持续跟踪的 pursuit.tracking.changed.v1（创建、暂停、恢复、停止与对象集合变化，供 detection 维护持续型推进的关注）
+    与 pursuit.tracking.period_closed.v1（一期结束：实际期间、期末成员快照与对比基准，请求 channels 生成该期变化简报）。两者的
+    消费者尚未实现（见 docs/05-delivery/09-a02-end-to-end-acceptance.md 第4节）。
 channels:
   tenantPursuit:
     address: cell-{cell}.pursuit
@@ -30,10 +34,16 @@ channels:
         $ref: '#/components/messages/pursuitAssigned'
       taskDue:
         $ref: '#/components/messages/taskDue'
+      authorizationRejected:
+        $ref: '#/components/messages/authorizationRejected'
       outcomeRecorded:
         $ref: '#/components/messages/outcomeRecorded'
       pursuitClosed:
         $ref: '#/components/messages/pursuitClosed'
+      trackingChanged:
+        $ref: '#/components/messages/trackingChanged'
+      trackingPeriodClosed:
+        $ref: '#/components/messages/trackingPeriodClosed'
 operations:
   publishPursuitEvents:
     action: send
@@ -93,6 +103,9 @@ components:
           minLength: 1
           maxLength: 64
           pattern: ^[A-Za-z]+(/[A-Za-z0-9_+-]+){0,2}$
+    OrgID:
+      type: string
+      pattern: ^org_[0-9A-HJKMNP-TV-Z]{26}$
     Target:
       type: object
       additionalProperties: false
@@ -427,6 +440,65 @@ components:
             not:
               required:
               - recipient
+    authorizationRejected:
+      name: pursuit.pursuit.authorization_rejected.v1
+      x-fixtures-required: true
+      summary: identity 拒绝了某参与版本中的部分成员（通知该版本的操作者）
+      description: >-
+        授权同步时 identity 拒绝部分参与关系（被分派人在同步前已退出、停用或失去目标访问），pursuit 把被拒的负责人标为无有效负责人、
+        被拒的协作者移出并在同一事务中发布本事件（PRD 第6段 F12 第6条）。participation_version 为被拒的那个参与版本；operator 为写入该
+        版本的成员（创建者或改派者），由系统写入的版本（成员变化后的重新判断）不带 operator，不通知。channels 发送前以 operator 本人
+        再检查能否查看该跟进，不能查看时不发送。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - pursuit_id
+        - objective_id
+        - org_unit_id
+        - participation_version
+        - rejected
+        - owner_invalid
+        - recorded_at
+        properties:
+          pursuit_id:
+            $ref: '#/components/schemas/PursuitID'
+          objective_id:
+            $ref: '#/components/schemas/ObjectiveID'
+          org_unit_id:
+            $ref: '#/components/schemas/OrgUnit'
+          participation_version:
+            type: integer
+            minimum: 1
+          operator:
+            $ref: '#/components/schemas/Member'
+          rejected:
+            type: array
+            minItems: 1
+            maxItems: 50
+            items:
+              type: object
+              additionalProperties: false
+              required:
+              - subject
+              - relation
+              - reason
+              properties:
+                subject:
+                  $ref: '#/components/schemas/Member'
+                relation:
+                  type: string
+                  enum:
+                  - owner
+                  - collaborator
+                reason:
+                  type: string
+                  pattern: ^[a-z][a-z0-9_]{1,63}$
+          owner_invalid:
+            type: boolean
+            description: 被拒的成员中有负责人，跟进已标为无有效负责人
+          recorded_at:
+            $ref: '#/components/schemas/Timestamp'
     outcomeRecorded:
       name: pursuit.outcome.recorded.v1
       x-fixtures-required: true
@@ -530,4 +602,118 @@ components:
           operation_id:
             $ref: '#/components/schemas/OperationID'
           closed_at:
+            $ref: '#/components/schemas/Timestamp'
+    trackingChanged:
+      name: pursuit.tracking.changed.v1
+      x-fixtures-required: true
+      summary: 持续跟踪的状态或对象集合变化（0.3.0）
+      description: >-
+        创建、暂停、恢复、停止与对象集合变化时在同一事务中发布；members 为变化后的完整对象集合，members_version 为其版本。供维护持续型
+        推进关注的消费者使用（detection 的关注随其实现消费，尚未实现）；只含标识、状态与版本。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - pursuit_id
+        - objective_id
+        - org_unit_id
+        - state
+        - members
+        - members_version
+        - version
+        - reason
+        - changed_at
+        properties:
+          pursuit_id:
+            $ref: '#/components/schemas/PursuitID'
+          objective_id:
+            $ref: '#/components/schemas/ObjectiveID'
+          org_unit_id:
+            $ref: '#/components/schemas/OrgUnit'
+          state:
+            type: string
+            enum:
+            - tracking
+            - paused
+            - stopped
+          members:
+            type: array
+            maxItems: 200
+            items:
+              $ref: '#/components/schemas/OrgID'
+          members_version:
+            type: integer
+            minimum: 1
+          version:
+            type: integer
+            minimum: 1
+          reason:
+            type: string
+            enum:
+            - created
+            - paused
+            - resumed
+            - stopped
+            - members_changed
+          changed_at:
+            $ref: '#/components/schemas/Timestamp'
+    trackingPeriodClosed:
+      name: pursuit.tracking.period_closed.v1
+      x-fixtures-required: true
+      summary: 持续跟踪的一期结束，请求生成该期变化简报（0.3.0）
+      description: >-
+        到达周期时点时（Reminders.RunTracking）发布一次：实际期间 [period_start, period_end)（UTC；timezone 为周期所用时区）、期末成员快照
+        与成员版本、对比基准（上一期，第一期没有）与期末负责人。简报来源为跟进标识（与日常简报分开去重：租户 + 收件人 + 跟进标识 + 期间）。
+        快照不固定权限：生成与发送前须以收件人本人再检查能否查看该跟进（getTrackingPeriod）；owner_valid 为 false 时负责人已无效。
+        暂停期间不发布，恢复后不补发。channels 的消费尚未实现。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - pursuit_id
+        - objective_id
+        - org_unit_id
+        - seq
+        - period_start
+        - period_end
+        - timezone
+        - members
+        - members_version
+        - owner
+        - owner_valid
+        - recorded_at
+        properties:
+          pursuit_id:
+            $ref: '#/components/schemas/PursuitID'
+          objective_id:
+            $ref: '#/components/schemas/ObjectiveID'
+          org_unit_id:
+            $ref: '#/components/schemas/OrgUnit'
+          seq:
+            type: integer
+            minimum: 1
+          period_start:
+            $ref: '#/components/schemas/Timestamp'
+          period_end:
+            $ref: '#/components/schemas/Timestamp'
+          timezone:
+            type: string
+            minLength: 1
+            maxLength: 64
+          members:
+            type: array
+            maxItems: 200
+            items:
+              $ref: '#/components/schemas/OrgID'
+          members_version:
+            type: integer
+            minimum: 1
+          baseline_seq:
+            type: integer
+            minimum: 1
+          owner:
+            $ref: '#/components/schemas/Member'
+          owner_valid:
+            type: boolean
+          recorded_at:
             $ref: '#/components/schemas/Timestamp'

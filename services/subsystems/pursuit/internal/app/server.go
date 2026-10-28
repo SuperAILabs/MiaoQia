@@ -211,3 +211,26 @@ func (a Actions) CompleteTask(ctx context.Context, task, key string, req *api.Co
 func (a Actions) ReopenTask(ctx context.Context, task, key string, req *api.ReopenTaskRequest) (*api.CommandResult, error) {
 	return (&Server{Service: a.Service}).ReopenTask(Internal(ctx), req, pur.ReopenTaskParams{TaskID: pur.TaskID(task), IdempotencyKey: key})
 }
+
+func (a Actions) ListMyTasks(ctx context.Context, before *time.Time, limit int, cursor string) (*api.MyTaskList, error) {
+	p := pur.ListMyTasksParams{}
+	if before != nil {
+		p.Before = pur.NewOptDateTime(*before)
+	}
+	if limit > 0 {
+		p.Limit = pur.NewOptInt(limit)
+	}
+	if cursor != "" {
+		p.Cursor = pur.NewOptCursor(pur.Cursor(cursor))
+	}
+	return (&Server{Service: a.Service}).ListMyTasks(Internal(ctx), p)
+}
+
+func (a Actions) GetPursuit(ctx context.Context, pursuit string) (*api.Pursuit, error) {
+	return (&Server{Service: a.Service}).GetPursuit(Internal(ctx), pur.GetPursuitParams{PursuitID: pur.PursuitID(pursuit)})
+}
+
+// GetTracking 是 api.Trackings 的本地实现（C-11/C-12：授权被拒通知的操作者为持续跟踪时以本人再检查）。本地绑定视同内部端口。
+func (a Actions) GetTracking(ctx context.Context, tracking string) (*api.Tracking, error) {
+	return (&Server{Service: a.Service}).GetTracking(Internal(ctx), pur.GetTrackingParams{PursuitID: pur.PursuitID(tracking)})
+}

@@ -43,6 +43,24 @@ type Invoker interface {
 	//
 	// GET /v1/learning/objectives/{objectiveID}/feedback-summary
 	GetFeedbackSummary(ctx context.Context, params GetFeedbackSummaryParams) (*FeedbackSummary, error)
+	// GetOutcomeSummary invokes getOutcomeSummary operation.
+	//
+	// 需要能查看目标（customer-context 的当前口径；不能查看与不存在同为 404
+	// objective_not_found）且在目标所在单元上能查看全部跟进 （identity 的
+	// org_unit#can_view_unit_pursuits；只凭参与关系查看个别跟进的成员 403
+	// forbidden，不按聚合泄露其看不到的跟进）； 授权不可用为
+	// 503。口径（learning.md 第8.1节）：只计记录时间不晚于
+	// as_of（缺省为当前时间）的结果记录，每个跟进取此时记录链上的
+	// 当前记录（被同样不晚于 as_of 的修订取代的不计，计入
+	// superseded）；有获知时间且获知时间在 [from, as_of) 内的计入时点评估
+	// （point_in_time），获知时间晚于 as_of 的不计（计入
+	// known_after_as_of）；没有获知时间的只计入事后统计（post_hoc，按记录时间在
+	// [from, as_of)
+	// 内）。金额按（类型、币种、取值性质）分别合计，不同类型、币种与性质不相加、不换算；贡献关系分别计数，不计算
+	// “妙洽带来的金额”。只用于本租户的评估。.
+	//
+	// GET /v1/learning/objectives/{objectiveID}/outcome-summary
+	GetOutcomeSummary(ctx context.Context, params GetOutcomeSummaryParams) (*OutcomeSummary, error)
 	// GetSimulation invokes getSimulation operation.
 	//
 	// 需要目标的 can_view（同样按 customer-context 的当前口径）；授权或
@@ -206,6 +224,155 @@ func (c *Client) sendGetFeedbackSummary(ctx context.Context, params GetFeedbackS
 
 	stage = "DecodeResponse"
 	result, err := decodeGetFeedbackSummaryResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetOutcomeSummary invokes getOutcomeSummary operation.
+//
+// 需要能查看目标（customer-context 的当前口径；不能查看与不存在同为 404
+// objective_not_found）且在目标所在单元上能查看全部跟进 （identity 的
+// org_unit#can_view_unit_pursuits；只凭参与关系查看个别跟进的成员 403
+// forbidden，不按聚合泄露其看不到的跟进）； 授权不可用为
+// 503。口径（learning.md 第8.1节）：只计记录时间不晚于
+// as_of（缺省为当前时间）的结果记录，每个跟进取此时记录链上的
+// 当前记录（被同样不晚于 as_of 的修订取代的不计，计入
+// superseded）；有获知时间且获知时间在 [from, as_of) 内的计入时点评估
+// （point_in_time），获知时间晚于 as_of 的不计（计入
+// known_after_as_of）；没有获知时间的只计入事后统计（post_hoc，按记录时间在
+// [from, as_of)
+// 内）。金额按（类型、币种、取值性质）分别合计，不同类型、币种与性质不相加、不换算；贡献关系分别计数，不计算
+// “妙洽带来的金额”。只用于本租户的评估。.
+//
+// GET /v1/learning/objectives/{objectiveID}/outcome-summary
+func (c *Client) GetOutcomeSummary(ctx context.Context, params GetOutcomeSummaryParams) (*OutcomeSummary, error) {
+	res, err := c.sendGetOutcomeSummary(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetOutcomeSummary(ctx context.Context, params GetOutcomeSummaryParams) (res *OutcomeSummary, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getOutcomeSummary"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/learning/objectives/{objectiveID}/outcome-summary"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetOutcomeSummaryOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/learning/objectives/"
+	{
+		// Encode "objectiveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "objectiveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ObjectiveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/outcome-summary"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "from" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "from",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.From.Get(); ok {
+				return e.EncodeValue(conv.DateTimeToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "as_of" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "as_of",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.AsOf.Get(); ok {
+				return e.EncodeValue(conv.DateTimeToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetOutcomeSummaryResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

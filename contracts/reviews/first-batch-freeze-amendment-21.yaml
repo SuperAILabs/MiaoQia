@@ -1,0 +1,27 @@
+status: amended
+amends: contracts/reviews/first-batch-freeze.yaml
+approval:
+  authority: Effective after this bounded change is independently reviewed and merged;
+    A02 remains L0.
+reason: Add frozen-corpus SourceRightsPolicy 1.0.0 and closed read/confirm/status
+  DTOs. Original/current restrictions intersect for every exact source/tag combination.
+  No old rights_tags, facts, events or freeze records rewritten; no real source activation,
+  d1/d2 or Go production adapters.
+version_owners:
+- path: contracts/schemas/acquisition/source-rights.schema.json
+  version: 1.0.0
+  sha256: 3fc4d1d33cccb3b635f6cefb8c99fe3c588a124577e3dbe27f70b03e09fdc115
+supporting_artifacts:
+- path: contracts/tests/acquisition.source-rights.json
+  sha256: 75a97530c8bfddabda0da7d7c53298d18a9e155fcd4484b2f5194c41dd6144a1
+- path: deploy/acquisition/source-rights-frozen.json
+  sha256: c56aa399aeb44b8d389122fe617fa2019fb8e46c57f0aef3ef034060e8b33370
+verification:
+  base: 00eb4453dfd90fddc04ebc9afa5df46db5643ce1
+  commands:
+  - mqc check
+  - mqc compat --base 00eb445
+  - mqc generate --check
+  - mqc freeze-check
+  - password-authenticated PostgreSQL and actual TLS negative suites
+amended_at: '2026-10-26T17:26:09.718494+00:00'

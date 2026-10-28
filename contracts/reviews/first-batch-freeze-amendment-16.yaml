@@ -1,27 +1,27 @@
 status: amended
-amends: contracts/reviews/first-batch-freeze.yaml
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-10-27T10:00:00+00:00'
 approval:
-  authority: Effective after this bounded change is independently reviewed and merged;
-    A02 remains L0.
-reason: Add frozen-corpus SourceRightsPolicy 1.0.0 and closed read/confirm/status
-  DTOs. Original/current restrictions intersect for every exact source/tag combination.
-  No old rights_tags, facts, events or freeze records rewritten; no real source activation,
-  d1/d2 or Go production adapters.
-version_owners:
-- path: contracts/schemas/acquisition/source-rights.schema.json
-  version: 1.0.0
-  sha256: 3fc4d1d33cccb3b635f6cefb8c99fe3c588a124577e3dbe27f70b03e09fdc115
-supporting_artifacts:
-- path: contracts/tests/acquisition.source-rights.json
-  sha256: 75a97530c8bfddabda0da7d7c53298d18a9e155fcd4484b2f5194c41dd6144a1
-- path: deploy/acquisition/source-rights-frozen.json
-  sha256: c56aa399aeb44b8d389122fe617fa2019fb8e46c57f0aef3ef034060e8b33370
+  authority: 待项目负责人确认；本记录随所在提交进入评审，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  C-10（PRD 第6段 pursuit 侧：持续跟踪 F10、分派规则的候选负责人、同一采购项目其他中标方的互相提示、评估报告的结果部分）
+  只改草案契约，不新增前缀（持续跟踪沿用 pur_，各期以（跟进标识, 序号）标识），contracts/identifiers.yaml 1.8.0 不变（原样登记）。
+  草案改动均为追加：
+  pursuit OpenAPI 0.2.0 → 0.3.0（新路径 getCreateDefaults、createTracking / listTracking / getTracking、pauseTracking / resumeTracking /
+  stopTracking、updateTrackingMembers、listTrackingPeriods / getTrackingPeriod；Pursuit 追加可选字段 sibling_hints；TimelineEntry 的 kind
+  追加 tracking_paused、tracking_resumed、tracking_stopped、members_changed；新增 OrgID、SiblingHint、CreateDefaults、Cadence、Tracking*
+  等结构）；pursuit 事件 0.2.0 → 0.3.0（新事件 pursuit.tracking.changed.v1 与 pursuit.tracking.period_closed.v1）；
+  learning OpenAPI 0.3.0 → 0.4.0（新路径 getOutcomeSummary 与 Outcome* 结构）。这些是草案，不在 C4a 冻结范围，只记录。
+  修订编号按“谁先合并谁占用”：主线最后为修订 15，本记录顺延为 16；原冻结记录与修订 1–15 不改。
+files:
+- path: contracts/identifiers.yaml
+  current_version: 1.8.0
+  sha256: 40bfde27b723d3077cc9e9b4fce2bf8d3ee6064988d5d14bbbfea0e3f07b8cd9
 verification:
-  base: 00eb4453dfd90fddc04ebc9afa5df46db5643ce1
+  base: 7ad43c3
   commands:
   - mqc check
-  - mqc compat --base 00eb445
-  - mqc generate --check
   - mqc freeze-check
-  - password-authenticated PostgreSQL and actual TLS negative suites
-amended_at: '2026-10-26T17:26:09.718494+00:00'
+  - mqc compat --base origin/main（breaking 0：只追加路径、可选字段、枚举值与事件类型）
+  - mqc generate --check --lang go --lang python
+  - go test -race -count=1 ./...（真实 PostgreSQL 与 OpenFGA；调度器未接入，持续跟踪的周期以本地绑定 pursuit.Reminders.RunTracking 驱动；分派规则以内存端口注入）

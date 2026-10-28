@@ -3872,6 +3872,114 @@ func (s *SignalBatchSummary) SetUnprocessed(val int) {
 	s.Unprocessed = val
 }
 
+// 信号的候选负责人（0.4.0，C-14），见 getSignalCandidateOwner.
+// Ref: #/components/schemas/SignalCandidate
+type SignalCandidate struct {
+	SignalID          string               `json:"signal_id"`
+	ObjectiveID       string               `json:"objective_id"`
+	State             SignalCandidateState `json:"state"`
+	CandidateOwner    OptString            `json:"candidate_owner"`
+	AssignmentVersion OptInt64             `json:"assignment_version"`
+}
+
+// GetSignalID returns the value of SignalID.
+func (s *SignalCandidate) GetSignalID() string {
+	return s.SignalID
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *SignalCandidate) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetState returns the value of State.
+func (s *SignalCandidate) GetState() SignalCandidateState {
+	return s.State
+}
+
+// GetCandidateOwner returns the value of CandidateOwner.
+func (s *SignalCandidate) GetCandidateOwner() OptString {
+	return s.CandidateOwner
+}
+
+// GetAssignmentVersion returns the value of AssignmentVersion.
+func (s *SignalCandidate) GetAssignmentVersion() OptInt64 {
+	return s.AssignmentVersion
+}
+
+// SetSignalID sets the value of SignalID.
+func (s *SignalCandidate) SetSignalID(val string) {
+	s.SignalID = val
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *SignalCandidate) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetState sets the value of State.
+func (s *SignalCandidate) SetState(val SignalCandidateState) {
+	s.State = val
+}
+
+// SetCandidateOwner sets the value of CandidateOwner.
+func (s *SignalCandidate) SetCandidateOwner(val OptString) {
+	s.CandidateOwner = val
+}
+
+// SetAssignmentVersion sets the value of AssignmentVersion.
+func (s *SignalCandidate) SetAssignmentVersion(val OptInt64) {
+	s.AssignmentVersion = val
+}
+
+type SignalCandidateState string
+
+const (
+	SignalCandidateStateAssigned         SignalCandidateState = "assigned"
+	SignalCandidateStateNone             SignalCandidateState = "none"
+	SignalCandidateStateRulesUnavailable SignalCandidateState = "rules_unavailable"
+)
+
+// AllValues returns all SignalCandidateState values.
+func (SignalCandidateState) AllValues() []SignalCandidateState {
+	return []SignalCandidateState{
+		SignalCandidateStateAssigned,
+		SignalCandidateStateNone,
+		SignalCandidateStateRulesUnavailable,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SignalCandidateState) MarshalText() ([]byte, error) {
+	switch s {
+	case SignalCandidateStateAssigned:
+		return []byte(s), nil
+	case SignalCandidateStateNone:
+		return []byte(s), nil
+	case SignalCandidateStateRulesUnavailable:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SignalCandidateState) UnmarshalText(data []byte) error {
+	switch SignalCandidateState(data) {
+	case SignalCandidateStateAssigned:
+		*s = SignalCandidateStateAssigned
+		return nil
+	case SignalCandidateStateNone:
+		*s = SignalCandidateStateNone
+		return nil
+	case SignalCandidateStateRulesUnavailable:
+		*s = SignalCandidateStateRulesUnavailable
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/SignalCard
 type SignalCard struct {
 	Signal            SignalRow       `json:"signal"`

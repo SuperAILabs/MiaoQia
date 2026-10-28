@@ -13,6 +13,7 @@ import (
 )
 
 // 简报偏好（PRD 第5段 F9）：每次修改追加一个版本，新版本从“修改时所在周期”的下一期生效（F1 第2条），简报记录所用的偏好版本。
+// 例外：即时通知开关 instant_notify（C-08）按最新版本立即生效，即时通知不按周期发送。
 
 // defaults 返回缺省偏好，各目标区条数取应用领域包的缺省值。
 func (s *Service) defaults() domain.Preferences {
@@ -28,7 +29,7 @@ func (s *Service) defaults() domain.Preferences {
 // schedule 读取成员的偏好版本序列（版本 0 为缺省值，自始生效）。
 func (s *Service) schedule(ctx context.Context, tx pgx.Tx, tenant, subject string) (domain.Schedule, error) {
 	out := domain.Schedule{s.defaults()}
-	rows, err := tx.Query(ctx, `SELECT version, send_time, timezone, send_days, quiet_start, quiet_end, push_empty, section_limits, effective_from
+	rows, err := tx.Query(ctx, `SELECT version, send_time, timezone, send_days, quiet_start, quiet_end, push_empty, section_limits, effective_from, instant_notify
  FROM chn_briefing_preferences WHERE tenant_id = $1 AND subject = $2 ORDER BY version`, tenant, subject)
 	if err != nil {
 		return nil, err
@@ -39,7 +40,7 @@ func (s *Service) schedule(ctx context.Context, tx pgx.Tx, tenant, subject strin
 		var limits []byte
 		var eff time.Time
 		var days []int32
-		if err := rows.Scan(&p.Version, &p.SendTime, &p.Timezone, &days, &p.QuietStart, &p.QuietEnd, &p.PushEmpty, &limits, &eff); err != nil {
+		if err := rows.Scan(&p.Version, &p.SendTime, &p.Timezone, &days, &p.QuietStart, &p.QuietEnd, &p.PushEmpty, &limits, &eff, &p.InstantNotify); err != nil {
 			return nil, err
 		}
 		p.SendDays = nil
@@ -62,7 +63,8 @@ func (s *Service) schedule(ctx context.Context, tx pgx.Tx, tenant, subject strin
 
 func prefsOut(p domain.Preferences, updated *time.Time) *chn.BriefingPreferences {
 	out := &chn.BriefingPreferences{Version: p.Version, SendTime: chn.ClockTime(p.SendTime), Timezone: p.Timezone, QuietStart: chn.ClockTime(p.QuietStart),
-		QuietEnd: chn.ClockTime(p.QuietEnd), PushEmpty: p.PushEmpty, SendDays: []int{}, SectionLimits: []chn.SectionLimit{}}
+		QuietEnd: chn.ClockTime(p.QuietEnd), PushEmpty: p.PushEmpty, SendDays: []int{}, SectionLimits: []chn.SectionLimit{},
+		InstantNotify: chn.NewOptBool(p.InstantNotify)}
 	out.SendDays = append(out.SendDays, p.SendDays...)
 	codes := make([]string, 0, len(p.SectionLimits))
 	for c := range p.SectionLimits {
@@ -159,6 +161,8 @@ func (s *Service) UpdatePreferences(ctx context.Context, req *chn.UpdateBriefing
 			if req.ExpectedVersion != current {
 				return failure(409, "version_conflict")
 			}
+			// 即时通知开关（C-08）：不提供时保持当前值
+			p.InstantNotify = req.InstantNotify.Or(sched[len(sched)-1].InstantNotify)
 			now := s.businessNow()
 			eff := sched.NextBoundary(now)
 			if eff.IsZero() {
@@ -171,8 +175,8 @@ func (s *Service) UpdatePreferences(ctx context.Context, req *chn.UpdateBriefing
 				days[i] = int32(d)
 			}
 			if _, err := tx.Exec(ctx, `INSERT INTO chn_briefing_preferences (tenant_id, subject, version, send_time, timezone, send_days, quiet_start, quiet_end,
- push_empty, section_limits, effective_from, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-				rc.Tenant, rc.Principal.ID, p.Version, p.SendTime, p.Timezone, days, p.QuietStart, p.QuietEnd, p.PushEmpty, limitsJSON, eff, now); err != nil {
+ push_empty, section_limits, effective_from, created_at, instant_notify) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+				rc.Tenant, rc.Principal.ID, p.Version, p.SendTime, p.Timezone, days, p.QuietStart, p.QuietEnd, p.PushEmpty, limitsJSON, eff, now, p.InstantNotify); err != nil {
 				return err
 			}
 			*out = *prefsOut(p, &now)

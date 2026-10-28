@@ -419,6 +419,91 @@ func decodeGetSignalBatchParams(args [1]string, argsEscaped bool, r *http.Reques
 	return params, nil
 }
 
+// GetSignalCandidateOwnerParams is parameters of getSignalCandidateOwner operation.
+type GetSignalCandidateOwnerParams struct {
+	SignalID string
+}
+
+func unpackGetSignalCandidateOwnerParams(packed middleware.Parameters) (params GetSignalCandidateOwnerParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "signalID",
+			In:   "path",
+		}
+		params.SignalID = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetSignalCandidateOwnerParams(args [1]string, argsEscaped bool, r *http.Request) (params GetSignalCandidateOwnerParams, _ error) {
+	// Decode path: signalID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "signalID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.SignalID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^sig_[0-9A-HJKMNP-TV-Z]{26}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.SignalID)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "signalID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // ListBriefingSignalsParams is parameters of listBriefingSignals operation.
 type ListBriefingSignalsParams struct {
 	ObjectiveID string

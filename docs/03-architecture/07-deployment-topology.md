@@ -1,6 +1,6 @@
 # 部署拓扑
 
-> 状态：评审中 · 版本：3.3 · 更新：2026-10-17 · 负责人：首席架构师、平台工程负责人
+> 状态：评审中 · 版本：3.4 · 更新：2026-10-26 · 负责人：首席架构师、平台工程负责人
 
 ## 1. 核心决策
 
@@ -61,7 +61,7 @@
 | `consumer` | search、detection、assessment、pursuit、customer-context、learning、channels、commerce、governance 等的事件消费者 | 事件处理、索引投影、读模型更新、匹配 | 消费延迟 |
 | `workflow-worker` | research、learning、customer-context、pursuit、governance、search 等的 Temporal worker | 研究运行、仿真、回填、索引构建、删除编排、推进时限 | 工作流任务队列深度 |
 | `outbox-relay` | 全部子系统（含 Python 子系统）的发件箱中继 | 发件箱 → Kafka | 发件箱积压 |
-| `scheduler` | 周期性任务（摘要、统计、健康检查） | 定时任务 | 固定副本（主备） |
+| `scheduler` | 声明了周期任务的子系统（platform 当前为 identity、channels、pursuit，及其依赖 commerce、customer-context、detection）与 operations | 定时任务：子系统在 `runtime.Module.Jobs` 中声明，只调用本子系统可重复执行的维护入口；按租户的任务经 identity 的本地租户枚举逐租户执行，identity 须本地加载 | 固定副本（主备）：每轮按任务取 PostgreSQL 会话级咨询锁，同一任务同一时刻只在一个实例执行 |
 
 各单元的角色清单为 `deploy/<单元>/roles.yaml`；角色中的子系统必须属于该单元（由子系统索引生成的 `deploy/subsystems.yaml` 校验）。入口：platform 为 `services/cmd/platform -role <角色>`，acquisition 与 data 为 `mq-acquisition` / `mq-data --role <角色>`；配置项见各入口的说明。
 

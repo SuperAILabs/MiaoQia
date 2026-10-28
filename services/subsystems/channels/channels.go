@@ -2,6 +2,7 @@
 // （docs/01-product/prd/01-tenant-onboarding-and-sso.md F4–F7）；企业微信适配器尚未接入（api.NotWired），渠道内对话与通知随所属
 // 段落实现。M2 第5段提供简报（偏好、组装、投递、历史与完整简报、重新推送、链接）与卡片快捷动作（docs/01-product/prd/05-briefing-quick-actions.md）：
 // 组装、投递与动作执行以本地绑定 api.Briefings 提供，定时任务与工作进程尚未接入；覆盖与来源权利端口未接入（api.NotWired）。
+// C-08：信号的即时通知（PRD 第5段 F7）消费 detection.signal.detected.v1，经渠道通知的投递入口 api.Notices.DeliverNotices 发送。
 package channels
 
 import (
@@ -44,11 +45,14 @@ var publicRoutes = []string{
 // Now 为系统时钟。生产企业微信适配器未获授权接入（C10 只批准了设计）。
 //
 // Coverage 与 Rights 是简报组装的覆盖与来源权利端口（缺省未接入：覆盖为“未知”，来源字段失败关闭为 none）。
+//
+// NoticeExpandPage 是转给决策者的提醒每次展开的已绑定成员数（零值为缺省 200；C-11，测试以小页覆盖分页）。
 type Adapters struct {
-	WeCom    api.Provider
-	Coverage api.Coverage
-	Rights   api.Rights
-	Now      func() time.Time
+	WeCom            api.Provider
+	Coverage         api.Coverage
+	Rights           api.Rights
+	Now              func() time.Time
+	NoticeExpandPage int
 }
 
 // Module 返回 channels 的模块定义（企业微信未接入）。
@@ -58,7 +62,7 @@ func Module() runtime.Module { return ModuleWith(Adapters{}) }
 // （动作令牌与翻页游标的签名密钥，base64，至少 32 字节，同一部署的全部实例相同；只有 development 可缺省）、MIAOQIA_CHANNELS_PACKS_DIR
 // （应用领域包目录，默认 packs）、MIAOQIA_CHANNELS_PURSUE_TENANTS（已开启卡片“跟进”入口的租户，逗号分隔，缺省为空）。
 func ModuleWith(adapters Adapters) runtime.Module {
-	svc := &app.Service{WeCom: adapters.WeCom, Coverage: adapters.Coverage, Rights: adapters.Rights, Now: adapters.Now}
+	svc := &app.Service{WeCom: adapters.WeCom, Coverage: adapters.Coverage, Rights: adapters.Rights, Now: adapters.Now, ExpandPage: adapters.NoticeExpandPage}
 	return runtime.Module{
 		Name:       api.Name,
 		Database:   "chn",
@@ -98,6 +102,11 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok {
 				return fmt.Errorf("channels：缺少 %s 绑定", pursuit.ActionsBinding)
 			}
+			// C-11/C-12：授权被拒通知所指的跟进为持续跟踪时经 pursuit 的持续跟踪读取以收件人本人再检查
+			trackings, ok := runtime.Lookup[pursuit.Trackings](env.Bindings, pursuit.TrackingsBinding)
+			if !ok {
+				return fmt.Errorf("channels：缺少 %s 绑定", pursuit.TrackingsBinding)
+			}
 			key, err := signingKey(env)
 			if err != nil {
 				return err
@@ -114,13 +123,15 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			guard, _ := runtime.Lookup[identity.Guard](env.Bindings, identity.GuardBinding)
 			svc.DB, svc.Authz, svc.Guard, svc.Sessions, svc.Members, svc.Log = env.DB, a, guard, sessions, members, env.Log
 			svc.Detection, svc.Access, svc.Policies, svc.Approvals, svc.Key, svc.Packs = briefing, access, policies, approvals, key, packs
-			svc.Pursuits, svc.PursueTenants = pursuits, pursueTenants(env.Config("PURSUE_TENANTS"))
+			svc.Pursuits, svc.PursueTenants, svc.Trackings = pursuits, pursueTenants(env.Config("PURSUE_TENANTS")), trackings
 			env.Bindings.Provide(api.CallbacksBinding, api.LocalCallbacks(svc))
 			env.Bindings.Provide(api.MessagingBinding, api.LocalMessaging(svc))
 			env.Bindings.Provide(api.MaintenanceBinding, api.LocalMaintenance(svc))
 			env.Bindings.Provide(api.BriefingsBinding, api.LocalBriefings(svc))
+			env.Bindings.Provide(api.NoticesBinding, api.LocalNotices(svc))
 			return nil
 		},
+		Jobs: jobs(clock(adapters.Now)),
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
 			pub, err := chn.NewServer(&app.Server{Service: svc}, chn.WithErrorHandler(app.WriteProtocolError))
 			if err != nil {
@@ -130,7 +141,8 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				public.Handle(pattern, pub)
 			}
 		},
-		// 绑定失效的撤销重试（本子系统的 channels.binding.changed.v1）与成员停用或退出（identity.member.changed.v1）。
+		// 绑定失效的撤销重试（本子系统的 channels.binding.changed.v1）、成员停用或退出（identity.member.changed.v1），以及
+		// 任务提醒与授权被拒的通知（pursuit.task.due.v1、pursuit.pursuit.authorization_rejected.v1，PRD 第6段）。
 		Consumers: func(env *runtime.Env) []*consumer.Consumer {
 			return []*consumer.Consumer{
 				{
@@ -142,6 +154,18 @@ func ModuleWith(adapters Adapters) runtime.Module {
 					Name: "channels.member-changes", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
 					Topics:   []string{outbox.Topic(reqctx.ZonePlatform, env.Cell, "identity")},
 					Handlers: map[string]consumer.Handler{"identity.member.changed.v1": svc.MemberChanged},
+				},
+				{
+					Name: "channels.pursuit-notices", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+					Topics: []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "pursuit")},
+					Handlers: map[string]consumer.Handler{app.PursuitTaskDue: svc.TaskDueEvent,
+						app.PursuitAuthorizationRejected: svc.AuthorizationRejectedEvent},
+				},
+				{
+					// C-08（PRD 第5段 F7）：信号的即时通知（事件只是触发，发送前以收件人本人再检查）
+					Name: "channels.signal-notices", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+					Topics:   []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "detection")},
+					Handlers: map[string]consumer.Handler{app.DetectionSignalDetected: svc.SignalDetectedEvent},
 				},
 			}
 		},

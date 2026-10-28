@@ -37,6 +37,8 @@ const (
 	TaskDue         = "pursuit.task.due.v1"
 	OutcomeRecorded = "pursuit.outcome.recorded.v1"
 	PursuitClosed   = "pursuit.pursuit.closed.v1"
+	// AuthorizationRejected 通知被拒参与版本的操作者（0.2.0，C-09）。
+	AuthorizationRejected = "pursuit.pursuit.authorization_rejected.v1"
 )
 
 // 授权关系。单元关系由 identity 在 org_unit 上判断（model.fga 的 can_view_unit_pursuits / can_edit_unit_pursuits）；跟进上的
@@ -76,6 +78,8 @@ type Service struct {
 	Outcomes  map[string]*OutcomeDef
 	Now       func() time.Time
 	Log       *slog.Logger
+	// Candidates 是分派规则候选负责人的出站端口（C-10；缺省未接入）。
+	Candidates api.CandidateOwners
 }
 
 var (
@@ -307,8 +311,10 @@ func fingerprint(parts ...any) string {
 
 // 签名用途（域分隔）。
 const (
-	purposeListCursor  = "pursuit/list-cursor/v1"
-	purposeTasksCursor = "pursuit/my-tasks-cursor/v1"
+	purposeListCursor     = "pursuit/list-cursor/v1"
+	purposeTasksCursor    = "pursuit/my-tasks-cursor/v1"
+	purposeTrackingCursor = "pursuit/tracking-cursor/v1"
+	purposePeriodsCursor  = "pursuit/tracking-periods-cursor/v1"
 )
 
 func (s *Service) mac(purpose string, payload []byte) []byte {

@@ -574,6 +574,21 @@ fixtures:
     viewer_can_edit: true
     viewer_is_assignee: true
   cases:
+  - name: 转给决策者的任务
+    valid: true
+    patch:
+    - op: replace
+      path: /viewer_is_assignee
+      value: false
+    - op: add
+      path: /viewer_escalated
+      value: true
+  - name: 转交标记须为布尔
+    valid: false
+    patch:
+    - op: add
+      path: /viewer_escalated
+      value: 'yes'
   - name: 缺少权限判断
     valid: false
     patch:
@@ -728,6 +743,20 @@ fixtures:
       path: /outcomes
       value:
       - *id010
+  - name: 同一标包其他中标方的提示（0.3.0）
+    valid: true
+    patch:
+    - op: add
+      path: /sibling_hints
+      value:
+      - visibility: full
+        owner: bd-2
+        pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX2
+        winner_org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+        owner_valid: true
+        created_at: '2026-10-20T00:15:00Z'
+      - visibility: owner_only
+        owner: bd-3
   - name: 未知形态
     valid: false
     patch:
@@ -847,3 +876,347 @@ fixtures:
       path: /not_written
       value:
       - deadline
+- schema: OrgID
+  base: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 前缀不符
+    valid: false
+    instance: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: SiblingHint
+  base:
+    visibility: full
+    owner: bd-2
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    winner_org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    owner_valid: true
+    created_at: '2026-10-21T02:00:00Z'
+  cases:
+  - name: 不能查看时只给负责人
+    valid: true
+    instance:
+      visibility: owner_only
+      owner: bd-2
+  - name: 未登记的可见级别
+    valid: false
+    patch:
+    - op: replace
+      path: /visibility
+      value: summary
+  - name: 缺负责人
+    valid: false
+    patch:
+    - op: remove
+      path: /owner
+  - name: 不得带白名单外字段
+    valid: false
+    patch:
+    - op: add
+      path: /objective_id
+      value: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: CreateDefaults
+  base:
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    owner: bd-2
+    owner_source: candidate
+    candidate_state: valid
+    candidate: bd-2
+  cases:
+  - name: 候选无访问时默认本人
+    valid: true
+    instance:
+      objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      signal_id: sig_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      owner: dm-1
+      owner_source: self
+      candidate_state: no_access
+  - name: 分派规则未接入
+    valid: true
+    instance:
+      objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      owner: dm-1
+      owner_source: self
+      candidate_state: rules_unavailable
+  - name: 未登记的候选状态
+    valid: false
+    patch:
+    - op: replace
+      path: /candidate_state
+      value: unknown
+  - name: 缺负责人来源
+    valid: false
+    patch:
+    - op: remove
+      path: /owner_source
+- schema: TrackingState
+  base: tracking
+  cases:
+  - name: 已暂停
+    valid: true
+    instance: paused
+  - name: 未登记的状态
+    valid: false
+    instance: archived
+- schema: Cadence
+  base:
+    weekday: 1
+    time: '08:00'
+    timezone: Asia/Shanghai
+  cases:
+  - name: 周日
+    valid: true
+    patch:
+    - op: replace
+      path: /weekday
+      value: 7
+  - name: 星期超出范围
+    valid: false
+    patch:
+    - op: replace
+      path: /weekday
+      value: 0
+  - name: 时刻格式错误
+    valid: false
+    patch:
+    - op: replace
+      path: /time
+      value: '24:00'
+- schema: CreateTrackingRequest
+  base:
+    operation_id: op-tracking-0001
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    name: 竞争对手周报
+    members:
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+  cases:
+  - name: 指定负责人与周期
+    valid: true
+    patch:
+    - op: add
+      path: /owner
+      value: bd-2
+    - op: add
+      path: /cadence
+      value:
+        weekday: 3
+        time: '09:30'
+        timezone: Asia/Shanghai
+  - name: 对象集合为空
+    valid: false
+    patch:
+    - op: replace
+      path: /members
+      value: []
+  - name: 对象不是组织
+    valid: false
+    patch:
+    - op: replace
+      path: /members
+      value:
+      - pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 重复对象
+    valid: false
+    patch:
+    - op: replace
+      path: /members
+      value:
+      - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+      - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: TrackingMembersRequest
+  base:
+    operation_id: op-tracking-0002
+    expected_version: 2
+    members:
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 缺版本
+    valid: false
+    patch:
+    - op: remove
+      path: /expected_version
+  - name: 版本从 1 开始
+    valid: false
+    patch:
+    - op: replace
+      path: /expected_version
+      value: 0
+- schema: TrackingSummary
+  base: &tracking_summary
+    id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX3
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    name: 竞争对手周报
+    state: tracking
+    owner: bd-2
+    owner_valid: true
+    members_count: 2
+    members_version: 1
+    next_run_at: '2026-10-26T00:00:00Z'
+    version: 1
+    authorization:
+      state: effective
+      desired_version: 1
+      applied_version: 1
+    created_at: '2026-10-21T02:00:00Z'
+    updated_at: '2026-10-21T02:00:00Z'
+  cases:
+  - name: 已暂停没有下一期
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: paused
+    - op: remove
+      path: /next_run_at
+  - name: 未登记的状态
+    valid: false
+    patch:
+    - op: replace
+      path: /state
+      value: archived
+- schema: Tracking
+  base:
+    id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX3
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    name: 竞争对手周报
+    state: tracking
+    owner: bd-2
+    owner_valid: true
+    members:
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX2
+    members_version: 1
+    cadence:
+      weekday: 1
+      time: '08:00'
+      timezone: Asia/Shanghai
+    period_start: '2026-10-21T02:00:00Z'
+    next_run_at: '2026-10-26T00:00:00Z'
+    version: 1
+    authorization:
+      state: syncing
+      desired_version: 1
+      applied_version: 0
+      pending_since: '2026-10-21T02:00:00Z'
+    created_by: dm-1
+    created_at: '2026-10-21T02:00:00Z'
+    updated_at: '2026-10-21T02:00:00Z'
+    timeline:
+    - kind: created
+      actor: dm-1
+      recorded_at: '2026-10-21T02:00:00Z'
+    viewer_can_edit: true
+  cases:
+  - name: 已停止
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: stopped
+    - op: remove
+      path: /period_start
+    - op: remove
+      path: /next_run_at
+    - op: add
+      path: /stopped_at
+      value: '2026-11-02T02:00:00Z'
+    - op: add
+      path: /last_period_seq
+      value: 1
+  - name: 缺周期
+    valid: false
+    patch:
+    - op: remove
+      path: /cadence
+  - name: 不得带交易型字段
+    valid: false
+    patch:
+    - op: add
+      path: /target
+      value:
+        fact_type: tendering.bid_result
+        subject_id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+- schema: TrackingList
+  base:
+    items:
+    - *tracking_summary
+    next_cursor: eyJ0IjoxfQ
+  cases:
+  - name: 空列表
+    valid: true
+    instance:
+      items: []
+  - name: 游标格式错误
+    valid: false
+    patch:
+    - op: replace
+      path: /next_cursor
+      value: a b
+- schema: TrackingPeriod
+  base: &tracking_period
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX3
+    seq: 2
+    period_start: '2026-10-26T00:00:00Z'
+    period_end: '2026-11-02T00:00:00Z'
+    timezone: Asia/Shanghai
+    members:
+    - org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    members_version: 2
+    baseline_seq: 1
+    owner: bd-2
+    owner_valid: true
+    briefing_state: requested
+    recorded_at: '2026-11-02T00:00:05Z'
+  cases:
+  - name: 第一期没有对比基准
+    valid: true
+    patch:
+    - op: replace
+      path: /seq
+      value: 1
+    - op: remove
+      path: /baseline_seq
+  - name: 未登记的简报状态
+    valid: false
+    patch:
+    - op: replace
+      path: /briefing_state
+      value: generated
+  - name: 缺成员快照
+    valid: false
+    patch:
+    - op: remove
+      path: /members
+- schema: TrackingPeriodList
+  base:
+    items:
+    - *tracking_period
+  cases:
+  - name: 缺 items
+    valid: false
+    instance: {}
+- schema: TrackingCommandResult
+  base:
+    operation_id: op-tracking-0001
+    result: created
+    tracking: *tracking_summary
+    authorization: syncing
+  cases:
+  - name: 暂停无变化
+    valid: true
+    instance:
+      operation_id: op-tracking-0003
+      result: no_change
+  - name: 未登记的结果
+    valid: false
+    patch:
+    - op: replace
+      path: /result
+      value: existing
+  - name: 不得带清理中
+    valid: false
+    patch:
+    - op: replace
+      path: /authorization
+      value: cleaning

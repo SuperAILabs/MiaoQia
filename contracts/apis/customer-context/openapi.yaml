@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: customer-context 接口
-  version: 0.5.0
+  version: 0.7.0
   description: >-
     客户档案、上下文版本与快照、目标配置（PRD 第2段，docs/01-product/prd/02-profile-and-objectives.md；
     规格见 docs/03-architecture/subsystems/customer-context.md）。草案：随第2段首个实现切片提交，未冻结。
@@ -16,6 +16,11 @@ info:
     can_view_signals 与 can_feedback（detection 的信号收件箱与反馈按本子系统的口径授权）；策略状态带策略标识 pol_。
     0.5.0 起（PRD 第6段）：目标访问判断追加 can_assign（单元关系 can_assign_unit_objectives，或本地当前版本的负责人/参与人且
     identity 判断通过），响应追加目标所在单元、模板与状态（可选字段，供 pursuit 确定推进所在单元与结果原因代码）。
+    0.6.0 起（PRD 第5段 F7，C-08）：生效策略读取的每个目标追加可选的负责人 owner 与参与人 participants（目标当前版本的值），
+    供 channels 按策略 route 的 notify 受众（objective_owner、objective_members）确定即时通知的收件人；收件人在发送前仍以本人再检查访问。
+    0.7.0 起（PRD 第6段 F1 第2条，C-14）：目标的分派规则 getAssignmentRules / updateAssignmentRules（按顺序的规则，按区域与品类匹配信号，
+    选出目标的负责人或参与人作为候选负责人；分派配置版本独立于目标版本），生效策略读取的每个目标追加可选的 assignment（分派配置版本与规则），
+    detection 生成信号时据此算出候选负责人写入信号。候选只是建议，不授予访问；使用方以候选本人再检查。
 servers:
 - url: /internal
 paths:
@@ -258,6 +263,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Objective'
+        default: *problem
+  /v1/customer-context/objectives/{objectiveID}/assignment:
+    get:
+      operationId: getAssignmentRules
+      summary: 读取目标的分派规则（C-14）
+      description: >-
+        需要 can_view；无权限与不存在同样返回 404 objective_not_found。字段按调用者的级别白名单返回：能管理参与人（can_manage_participants）
+        或能分派跟进（can_assign）的成员得到 view=full（规则全文、更新时间）；其他能查看目标的成员得到 view=summary（只有版本与规则条数，
+        不出现规则与候选人）。从未配置时 version 为 0、rule_count 为 0、没有 updated_at（view=full 时 rules 为空数组）；已配置的版本
+        从 1 开始（配置为空规则也是 1 及以上），因此“从未配置”（目标的信号记为分派规则不可用 rules_unavailable）与“已配置但规则为空”
+        （信号记为没有候选 none）可以区分。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *objectiveID
+      responses:
+        '200':
+          description: 分派规则
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentRules'
+        default: *problem
+    put:
+      operationId: updateAssignmentRules
+      summary: 替换目标的分派规则（C-14）
+      description: >-
+        需要 can_manage_participants 与 can_edit（目标单元的决策者，与调整负责人和参与人相同）。整份替换并带 expected_version（分派配置
+        版本，从未配置时为 0），不一致返回 409 version_conflict。规则按顺序匹配，第一条命中的规则给出候选负责人；没有条件的规则匹配全部信号。
+        每条规则的 assignee 须是目标当前版本的负责人或参与人（与目标在同一锁下核对），并在写入前以其本人判断仍是本租户有效成员且能查看
+        该目标的信号，否则 422 assignee_no_access，不写入、不授予任何权限；区域须是有效的行政区划代码（422 invalid_region），品类须属于
+        已安装行业包（422 unknown_category）。同一 Idempotency-Key 重放返回首次结果，包括首次的确定失败（4xx）；键相同而请求不同返回
+        409 idempotency_conflict；暂时失败（503）不固定在键上。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *objectiveID
+      - *idempotency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAssignmentRulesRequest'
+      responses:
+        '200':
+          description: 替换后的分派规则（view=full）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentRules'
         default: *problem
   /v1/customer-context/objectives/{objectiveID}/policy:
     get:
@@ -1846,7 +1902,9 @@ components:
     ActivePolicy:
       type: object
       additionalProperties: false
-      description: 一个目标的生效策略（读取时的当前代次）
+      description: >-
+        一个目标的生效策略（读取时的当前代次）。owner 与 participants（0.6.0，C-08）为目标当前版本的负责人与参与人：channels 据此确定
+        route 受众 objective_owner / objective_members 的即时通知候选收件人，发送前仍以收件人本人再检查目标与信号的访问
       required:
       - objective_id
       - objective_code
@@ -1902,6 +1960,116 @@ components:
           type: string
           format: date-time
           description: 本代次生效（激活或回滚执行）的业务时间
+        owner:
+          $ref: '#/components/schemas/Subject'
+        participants:
+          type: array
+          description: 目标当前版本的参与人（0.6.0，C-08；可以包含负责人），route 受众 objective_members 为负责人与参与人
+          uniqueItems: true
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/Subject'
+        assignment:
+          $ref: '#/components/schemas/ActiveAssignment'
+    ActiveAssignment:
+      type: object
+      additionalProperties: false
+      description: >-
+        目标当前的分派配置（0.7.0，C-14）：只在目标配置过分派规则时出现，版本从 1 开始，规则按顺序（可以为空：已配置为空规则，信号记为
+        没有候选 none）。detection 生成信号时用同一次读取中的负责人与参与人过滤规则（assignee 已不是负责人或参与人的规则跳过），第一条命中的
+        规则给出候选负责人，都不命中为 none；没有本字段（目标从未配置分派规则，或旧版本的提供方）时信号记为“分派规则不可用”rules_unavailable
+      required:
+      - version
+      - rules
+      properties:
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        rules:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AssignmentRule'
+    AssignmentRule:
+      type: object
+      additionalProperties: false
+      description: >-
+        一条分派规则（C-14）：regions 与 categories 都是可选条件，同时给出时须都满足；regions 按行政区划包含（与策略 region.within 一致，
+        000000 为全国），categories 按行业包品类代码及其上级（与 category.any_match 一致），信号任一品类命中即满足；两者都不给出时匹配全部信号。
+        按区域、品类之外的条件（我方主体、组织单元）尚未提供（缺口 C-22）
+      required:
+      - assignee
+      properties:
+        assignee:
+          $ref: '#/components/schemas/Subject'
+        regions:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            pattern: ^[0-9]{6}$
+        categories:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            pattern: ^CAT-[A-Z0-9-]{1,60}$
+    AssignmentRules:
+      type: object
+      additionalProperties: false
+      description: >-
+        目标的分派规则（C-14）。view 为字段级别：full 带规则与更新时间；summary 只带版本与规则条数（不出现规则与候选人）
+      required:
+      - objective_id
+      - version
+      - rule_count
+      - view
+      properties:
+        objective_id:
+          type: string
+          pattern: ^obj_[0-9A-HJKMNP-TV-Z]{26}$
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        rule_count:
+          type: integer
+          minimum: 0
+          maximum: 50
+        view:
+          type: string
+          enum:
+          - full
+          - summary
+        rules:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AssignmentRule'
+        updated_at:
+          type: string
+          format: date-time
+    UpdateAssignmentRulesRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - rules
+      properties:
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 0
+        rules:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AssignmentRule'
     PolicySimulationInput:
       type: object
       additionalProperties: false

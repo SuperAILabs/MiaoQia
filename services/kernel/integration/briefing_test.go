@@ -183,6 +183,7 @@ func TestBriefingQuickActions(t *testing.T) {
 	}
 	now := time.Now
 	shanghai, _ := time.LoadLocation("Asia/Shanghai")
+	tokyo, _ := time.LoadLocation("Asia/Tokyo")
 	clock := &testClock{}
 
 	iam := testenv.NewDatabase(t)
@@ -312,6 +313,7 @@ func TestBriefingQuickActions(t *testing.T) {
 	rights := &fakeRights{override: map[string]map[string]chapi.FieldRight{}}
 	// 第6段：channels 依赖 pursuit 的渠道内动作；本用例不开启卡片“跟进”入口，以未接入的实现占位
 	bindings.Provide(pursuitapi.ActionsBinding, pursuitapi.Actions(unwiredPursuits{}))
+	bindings.Provide(pursuitapi.TrackingsBinding, pursuitapi.Trackings(unwiredPursuits{}))
 	chnModule := channels.ModuleWith(channels.Adapters{WeCom: wc, Coverage: coverage, Rights: rights, Now: clock.Now})
 	chns := start(chnModule)
 	chnModule.Routes(chns.env, public, internal)
@@ -1752,6 +1754,91 @@ func TestBriefingQuickActions(t *testing.T) {
 			}
 		}
 		rights.fail.Store(false)
+	})
+
+	run("调度器入口 ComposeDue：按成员偏好与时区选出到期成员组装（每次至多 limit 名、More 表示还有）；重复调用不重复组装；已错过的上一期不补；未绑定、已退出成员跳过；只组装调用租户的成员", func(t *testing.T) {
+		composeDue := func(t *testing.T, tenant string, when time.Time, limit int) *chapi.ComposeDueResult {
+			t.Helper()
+			clock.set(when, 0)
+			res, err := briefings.ComposeDue(svc(tenant), when, limit)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pump(t)
+			return res
+		}
+		briefingsFor := func(t *testing.T, subject string, end time.Time) int {
+			t.Helper()
+			return count(t, chnOwner, `SELECT count(*) FROM chn_briefings WHERE subject = $1 AND period_end = $2`, subject, end)
+		}
+		// bd2 改用东京时区（发送时间仍为 07:30，从下一期生效）
+		clock.set(at(31, 10, 0), 0)
+		expect(t, bd2, false, "PUT", "/v1/channels/briefing-preferences", `{"expected_version":0,"send_time":"07:30","timezone":"Asia/Tokyo","send_days":[1,2,3,4,5],"quiet_start":"21:00","quiet_end":"07:00","push_empty":false,"section_limits":[]}`, 200)
+		// dm2：仍有有效绑定但已退出（identity 中直接置为退出，channels 未收到事件）
+		bind(t1, inst1, corp1, dm2, "u-dm2")
+		if _, err := iamOwner.Exec(ctx, `UPDATE identity_members SET state = 'removed', roles = '{}', version = version + 1 WHERE tenant_id = $1 AND subject = $2`, t1, dm2); err != nil {
+			t.Fatal(err)
+		}
+		mon := at(33, 7, 30) // 11-02（周一）07:30 上海
+		// 07:00：上一期（10-30 周五）已错过，不补组装；本期未到
+		if r := composeDue(t, t1, at(33, 7, 0), 100); r.Composed+r.Late+r.Skipped != 0 || r.More {
+			t.Fatalf("%+v", r)
+		}
+		// 07:31：bd、dm、expert、bd2（本期仍按上海）与 dm2 到期；每次至多 2 名
+		first := composeDue(t, t1, at(33, 7, 31), 2)
+		if first.Composed+first.Skipped+first.Late != 2 || !first.More || first.Failed != 0 {
+			t.Fatalf("%+v", first)
+		}
+		var total chapi.ComposeDueResult
+		for range 5 {
+			r := composeDue(t, t1, at(33, 7, 32), 2)
+			total.Composed += r.Composed
+			total.Skipped += r.Skipped
+			if !r.More {
+				break
+			}
+		}
+		// 每名到期的已绑定成员本期恰好处理一次：生成一份简报，或（不是有效成员、不是本期受众）记为已跳过
+		marked := func(t *testing.T, subject string, end time.Time) int {
+			t.Helper()
+			return count(t, chnOwner, `SELECT count(*) FROM chn_compose_marks WHERE subject = $1 AND period_end = $2`, subject, end)
+		}
+		for _, s := range []string{bd, dm, expert, bd2, dm2} {
+			if n, m := briefingsFor(t, s, mon), marked(t, s, mon); n+m != 1 {
+				t.Fatalf("%s 本期简报 %d、跳过 %d", s, n, m)
+			}
+		}
+		if briefingsFor(t, dm, mon) != 1 || briefingsFor(t, expert, mon) != 1 {
+			t.Fatal("目标参与人应有本期简报")
+		}
+		// 已退出的 dm2 与未绑定的 lv 没有简报；admin2（他租户）不由 t1 的调用组装
+		if briefingsFor(t, dm2, mon) != 0 || marked(t, dm2, mon) != 1 || briefingsFor(t, lv, mon)+marked(t, lv, mon) != 0 || briefingsFor(t, admin2, mon) != 0 {
+			t.Fatal("跳过的成员或他租户被组装了")
+		}
+		// 重复调用：不再组装（同一成员同一期一次），没有剩余
+		again := composeDue(t, t1, at(33, 7, 45), 100)
+		if again.Composed != 0 || again.Skipped != 0 || again.More || again.Existing < 5 {
+			t.Fatalf("%+v", again)
+		}
+		for _, s := range []string{bd, dm, expert, bd2, dm2} {
+			if n, m := briefingsFor(t, s, mon), marked(t, s, mon); n+m != 1 {
+				t.Fatalf("重复调用后 %s 本期简报 %d、跳过 %d", s, n, m)
+			}
+		}
+		// 他租户的调用只组装他租户的成员
+		if r := composeDue(t, t2, at(33, 7, 46), 100); r.Composed+r.Skipped != 1 || briefingsFor(t, admin2, mon)+marked(t, admin2, mon) != 1 || briefingsFor(t, dm, mon) != 1 {
+			t.Fatalf("%+v", r)
+		}
+		// 时区边界：11-04 06:45 上海 = 07:45 东京：只有 bd2（东京 07:30）到期，上海时区的成员尚未到
+		wed := at(35, 6, 45)
+		r := composeDue(t, t1, wed, 100)
+		if r.Composed+r.Skipped != 1 || r.More || briefingsFor(t, bd2, time.Date(2026, 11, 4, 7, 30, 0, 0, tokyo))+marked(t, bd2, time.Date(2026, 11, 4, 7, 30, 0, 0, tokyo)) != 1 ||
+			briefingsFor(t, dm, at(35, 7, 30)) != 0 {
+			t.Fatalf("%+v", r)
+		}
+		if _, err := iamOwner.Exec(ctx, `UPDATE identity_members SET state = 'active', roles = ARRAY['decision_maker'], version = version + 1 WHERE tenant_id = $1 AND subject = $2`, t1, dm2); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 }

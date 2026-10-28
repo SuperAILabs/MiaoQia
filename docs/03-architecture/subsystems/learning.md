@@ -1,6 +1,6 @@
 # 反馈学习与评估子系统（learning）
 
-> 状态：评审中 · 版本：1.6 · 更新：2026-10-19 · 平面：客户智能
+> 状态：评审中 · 版本：1.8 · 更新：2026-10-27 · 平面：客户智能
 
 ## 1. 使命
 
@@ -63,7 +63,8 @@
 - **确定性与复用**：输入键为（目标、修订、对比版本与代次、上下文版本、数据集版本、启用与排除领域、窗口）的 SHA-256；相同输入的完成运行直接复用（同一键加咨询锁，唯一索引兜底），不重复读取数据集。样本按金额降序、时间降序、事实标识排序后取前 20 条，比例四舍五入到四位；
 - **报告**：处置分布与每周折算、对比一侧的分布与新增/移除/处置变化及其样本（首次激活没有对比一侧，只给样本）、逐条规则的真/假/未知比例与未知原因（数据未接入、低于证据门槛、未关联本企业、字段缺失，按此优先级每次求值只计一个）、未知比例最高的至多 5 条规则、提示项（样例不一致、停用了硬条件、零结果、复核候选过半、历史不足、事实类型未接入）。`inputs.purpose` 恒为 `counterfactual_candidate`，`inputs.dataset_fixture` 标明数据是否为夹具；
 - **端口与夹具**：数据集（`api.Dataset`）与信息领域服务状态（`api.DomainStatus`）是端口。生产适配器未接入：`learning.Module()` 使用 `api.NotWired`，运行以 `dataset_unavailable` / `domain_status_unavailable` 失败并登记为失败的运行，不能用于申请。测试与演示使用 `api/datasettest` 的内存夹具，事实全部虚构、标为夹具；夹具的事实类型与视图项到信息领域的对应是测试数据，生产对应随 domain-intelligence 的覆盖接口；
-- **未实现**：样本按查看者权限过滤（当前样本只含夹具事实的标题与金额）、历史实况回放与漏报诊断、客户清单（`lists.*` 在仿真中为空）。
+- **样本按查看者过滤（契约 0.3.0，验收线 D-17）**：保存的报告含全部代表样本及其对象范围（信息领域取数据集的事实类型对应，区划取事实视图的 `location`）；`simulatePolicy` 与 `getSimulation` 的每次响应按当前调用者判断每条样本能否查看，与对象页的前置判断一致：租户上的 `can_search_public`（identity）与对象所在信息领域、区划在租户数据覆盖内（commerce 的 `Coverage` 绑定，每次读取时解析，不依赖启动顺序）。无权的样本不返回，只计入同一列表的 `*_withheld`；判断不可用（授权或覆盖服务故障、所在角色没有 commerce 绑定）时全部不返回并提示 `samples_unavailable`，不当作有权；没有对象范围的样本不返回。同一运行对不同查看者可返回不同样本，保存的报告不变（证据 `internal/app/samples_test.go`、`services/kernel/integration/policy_approval_test.go` 用例11）。D-17 关闭后仍只有夹具数据集，接入真实数据集随 D-09；
+- **未实现**：历史实况回放与漏报诊断、客户清单（`lists.*` 在仿真中为空）。
 
 **实现状况（PRD 第3段反馈汇总，契约 0.2.0 草案）**：
 
@@ -72,7 +73,7 @@
 - **口径**：按上表 `GetFeedbackSummary` 的口径，窗口为发现时间近 30 天；样本为相关、不相关与分歧之和，少于 20 时不给比例（`sample_sufficient` 为假）。原因分布按不相关信号计数，并按应用领域包反馈原因的 `relates` 给出相关的规则、参数与画像字段提示；
 - **缺省与缺口**：信号的内容版本只从 `triaged` 事件得知（`signal.updated` 尚未发布），信号更新后在有人基于新版本处理之前，旧版本反馈仍按当前版本计入；`learning.feedback.recorded.v1` 未发布。
 
-**实现状况（PRD 第6段结果进入评估）**：消费 `pursuit.outcome.recorded.v1`（`learning.pursuit-outcomes`），以结果记录标识幂等写入本租户的结果集 `lrn_outcomes`（结果、原因、金额条目、贡献关系、来源信号与被取代的记录）；有获知时间的记为时点评估（`point_in_time`），缺失的只进入事后统计（`post_hoc`）。结果不改变策略、信号或公共事实；评估报告中的结果汇总尚未实现。
+**实现状况（PRD 第6段结果进入评估）**：消费 `pursuit.outcome.recorded.v1`（`learning.pursuit-outcomes`），以结果记录标识幂等写入本租户的结果集 `lrn_outcomes`（结果、原因、金额条目、贡献关系、来源信号与被取代的记录）；有获知时间的记为时点评估（`point_in_time`），缺失的只进入事后统计（`post_hoc`）。结果不改变策略、信号或公共事实。评估报告的结果部分（C-10，契约 0.4.0 `getOutcomeSummary`）：按截至时间 `as_of`（缺省当前）只计记录时间不晚于它的记录，每个跟进取此时记录链上的当前记录（被取代的计入 `superseded`）；获知时间在 [`from`, `as_of`) 内的计入时点评估，晚于 `as_of` 的计入 `known_after_as_of`，获知时间缺失的按记录时间计入事后统计；两部分分别给出结果、原因、贡献关系计数与按（类型、币种、性质）精确合计的金额，不合并、不换算。授权为能查看目标（customer-context `ObjectiveScope`）且在目标所在单元上有 identity 的 `can_view_unit_pursuits`，只凭参与关系的成员 403（不按聚合泄露其看不到的跟进）。只读计算、不持久化；持久化的评估报告与 Web 展示见 [A02 验收缺口 C-16](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)。证据：`services/kernel/integration/pursuit_test.go`（“C-10 用例42 …”）与 `services/subsystems/learning/internal/app/outcome_summary_test.go`。
 
 ## 6. 事件
 

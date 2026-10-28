@@ -19,8 +19,10 @@ import (
 
 var regexMap = map[string]ogenregex.Regexp{
 	"^(pp|prj|org|ev)_[0-9A-HJKMNP-TV-Z]{26}$": ogenregex.MustCompile("^(pp|prj|org|ev)_[0-9A-HJKMNP-TV-Z]{26}$"),
-	"^[A-Za-z0-9_-]{16,128}$":                  ogenregex.MustCompile("^[A-Za-z0-9_-]{16,128}$"),
-	"^mtr:[0-9a-f]{64}$":                       ogenregex.MustCompile("^mtr:[0-9a-f]{64}$"),
+	"^INF-[A-Z]+$":            ogenregex.MustCompile("^INF-[A-Z]+$"),
+	"^[0-9]{6}$":              ogenregex.MustCompile("^[0-9]{6}$"),
+	"^[A-Za-z0-9_-]{16,128}$": ogenregex.MustCompile("^[A-Za-z0-9_-]{16,128}$"),
+	"^mtr:[0-9a-f]{64}$":      ogenregex.MustCompile("^mtr:[0-9a-f]{64}$"),
 }
 var (
 	// Allocate option closure once.

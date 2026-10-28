@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/ogen-go/ogen/ogenerrors"
 
@@ -85,6 +86,29 @@ func (s *Server) GetFeedbackSummary(ctx context.Context, params lrn.GetFeedbackS
 		return nil, err
 	}
 	var out lrn.FeedbackSummary
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (s *Server) GetOutcomeSummary(ctx context.Context, params lrn.GetOutcomeSummaryParams) (*lrn.OutcomeSummary, error) {
+	var from, asOf *time.Time
+	if v, ok := params.From.Get(); ok {
+		from = &v
+	}
+	if v, ok := params.AsOf.Get(); ok {
+		asOf = &v
+	}
+	sum, err := s.Service.GetOutcomeSummary(ctx, params.ObjectiveID, from, asOf)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(sum)
+	if err != nil {
+		return nil, err
+	}
+	var out lrn.OutcomeSummary
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, err
 	}

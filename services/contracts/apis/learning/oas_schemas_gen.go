@@ -751,6 +751,52 @@ func (o OptFloat64) Or(d float64) float64 {
 	return d
 }
 
+// NewOptInt returns new OptInt with value set to v.
+func NewOptInt(v int) OptInt {
+	return OptInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt is optional int.
+type OptInt struct {
+	Value int
+	Set   bool
+}
+
+// IsSet returns true if OptInt was set.
+func (o OptInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt) SetTo(v int) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt) Get() (v int, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptInt64 returns new OptInt64 with value set to v.
 func NewOptInt64(v int64) OptInt64 {
 	return OptInt64{
@@ -1025,6 +1071,469 @@ func (o OptString) Or(d string) string {
 		return v
 	}
 	return d
+}
+
+// 同一金额类型、币种与取值性质的合计（十进制文本）；不同组之间不相加、不换算.
+// Ref: #/components/schemas/OutcomeAmountTotal
+type OutcomeAmountTotal struct {
+	Type     string                   `json:"type"`
+	Currency string                   `json:"currency"`
+	Nature   OutcomeAmountTotalNature `json:"nature"`
+	Total    string                   `json:"total"`
+	Count    int                      `json:"count"`
+}
+
+// GetType returns the value of Type.
+func (s *OutcomeAmountTotal) GetType() string {
+	return s.Type
+}
+
+// GetCurrency returns the value of Currency.
+func (s *OutcomeAmountTotal) GetCurrency() string {
+	return s.Currency
+}
+
+// GetNature returns the value of Nature.
+func (s *OutcomeAmountTotal) GetNature() OutcomeAmountTotalNature {
+	return s.Nature
+}
+
+// GetTotal returns the value of Total.
+func (s *OutcomeAmountTotal) GetTotal() string {
+	return s.Total
+}
+
+// GetCount returns the value of Count.
+func (s *OutcomeAmountTotal) GetCount() int {
+	return s.Count
+}
+
+// SetType sets the value of Type.
+func (s *OutcomeAmountTotal) SetType(val string) {
+	s.Type = val
+}
+
+// SetCurrency sets the value of Currency.
+func (s *OutcomeAmountTotal) SetCurrency(val string) {
+	s.Currency = val
+}
+
+// SetNature sets the value of Nature.
+func (s *OutcomeAmountTotal) SetNature(val OutcomeAmountTotalNature) {
+	s.Nature = val
+}
+
+// SetTotal sets the value of Total.
+func (s *OutcomeAmountTotal) SetTotal(val string) {
+	s.Total = val
+}
+
+// SetCount sets the value of Count.
+func (s *OutcomeAmountTotal) SetCount(val int) {
+	s.Count = val
+}
+
+type OutcomeAmountTotalNature string
+
+const (
+	OutcomeAmountTotalNatureActual         OutcomeAmountTotalNature = "actual"
+	OutcomeAmountTotalNatureEstimate       OutcomeAmountTotalNature = "estimate"
+	OutcomeAmountTotalNatureCustomerStated OutcomeAmountTotalNature = "customer_stated"
+)
+
+// AllValues returns all OutcomeAmountTotalNature values.
+func (OutcomeAmountTotalNature) AllValues() []OutcomeAmountTotalNature {
+	return []OutcomeAmountTotalNature{
+		OutcomeAmountTotalNatureActual,
+		OutcomeAmountTotalNatureEstimate,
+		OutcomeAmountTotalNatureCustomerStated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OutcomeAmountTotalNature) MarshalText() ([]byte, error) {
+	switch s {
+	case OutcomeAmountTotalNatureActual:
+		return []byte(s), nil
+	case OutcomeAmountTotalNatureEstimate:
+		return []byte(s), nil
+	case OutcomeAmountTotalNatureCustomerStated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OutcomeAmountTotalNature) UnmarshalText(data []byte) error {
+	switch OutcomeAmountTotalNature(data) {
+	case OutcomeAmountTotalNatureActual:
+		*s = OutcomeAmountTotalNatureActual
+		return nil
+	case OutcomeAmountTotalNatureEstimate:
+		*s = OutcomeAmountTotalNatureEstimate
+		return nil
+	case OutcomeAmountTotalNatureCustomerStated:
+		*s = OutcomeAmountTotalNatureCustomerStated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/OutcomeContributionCount
+type OutcomeContributionCount struct {
+	Contribution OutcomeContributionCountContribution `json:"contribution"`
+	Count        int                                  `json:"count"`
+}
+
+// GetContribution returns the value of Contribution.
+func (s *OutcomeContributionCount) GetContribution() OutcomeContributionCountContribution {
+	return s.Contribution
+}
+
+// GetCount returns the value of Count.
+func (s *OutcomeContributionCount) GetCount() int {
+	return s.Count
+}
+
+// SetContribution sets the value of Contribution.
+func (s *OutcomeContributionCount) SetContribution(val OutcomeContributionCountContribution) {
+	s.Contribution = val
+}
+
+// SetCount sets the value of Count.
+func (s *OutcomeContributionCount) SetCount(val int) {
+	s.Count = val
+}
+
+type OutcomeContributionCountContribution string
+
+const (
+	OutcomeContributionCountContributionFirstAlert     OutcomeContributionCountContribution = "first_alert"
+	OutcomeContributionCountContributionDecisionBasis  OutcomeContributionCountContribution = "decision_basis"
+	OutcomeContributionCountContributionSelfFound      OutcomeContributionCountContribution = "self_found"
+	OutcomeContributionCountContributionExternalNotice OutcomeContributionCountContribution = "external_notice"
+	OutcomeContributionCountContributionUndetermined   OutcomeContributionCountContribution = "undetermined"
+)
+
+// AllValues returns all OutcomeContributionCountContribution values.
+func (OutcomeContributionCountContribution) AllValues() []OutcomeContributionCountContribution {
+	return []OutcomeContributionCountContribution{
+		OutcomeContributionCountContributionFirstAlert,
+		OutcomeContributionCountContributionDecisionBasis,
+		OutcomeContributionCountContributionSelfFound,
+		OutcomeContributionCountContributionExternalNotice,
+		OutcomeContributionCountContributionUndetermined,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OutcomeContributionCountContribution) MarshalText() ([]byte, error) {
+	switch s {
+	case OutcomeContributionCountContributionFirstAlert:
+		return []byte(s), nil
+	case OutcomeContributionCountContributionDecisionBasis:
+		return []byte(s), nil
+	case OutcomeContributionCountContributionSelfFound:
+		return []byte(s), nil
+	case OutcomeContributionCountContributionExternalNotice:
+		return []byte(s), nil
+	case OutcomeContributionCountContributionUndetermined:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OutcomeContributionCountContribution) UnmarshalText(data []byte) error {
+	switch OutcomeContributionCountContribution(data) {
+	case OutcomeContributionCountContributionFirstAlert:
+		*s = OutcomeContributionCountContributionFirstAlert
+		return nil
+	case OutcomeContributionCountContributionDecisionBasis:
+		*s = OutcomeContributionCountContributionDecisionBasis
+		return nil
+	case OutcomeContributionCountContributionSelfFound:
+		*s = OutcomeContributionCountContributionSelfFound
+		return nil
+	case OutcomeContributionCountContributionExternalNotice:
+		*s = OutcomeContributionCountContributionExternalNotice
+		return nil
+	case OutcomeContributionCountContributionUndetermined:
+		*s = OutcomeContributionCountContributionUndetermined
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/OutcomeReasonCount
+type OutcomeReasonCount struct {
+	Result     OutcomeReasonCountResult `json:"result"`
+	ReasonCode string                   `json:"reason_code"`
+	Count      int                      `json:"count"`
+}
+
+// GetResult returns the value of Result.
+func (s *OutcomeReasonCount) GetResult() OutcomeReasonCountResult {
+	return s.Result
+}
+
+// GetReasonCode returns the value of ReasonCode.
+func (s *OutcomeReasonCount) GetReasonCode() string {
+	return s.ReasonCode
+}
+
+// GetCount returns the value of Count.
+func (s *OutcomeReasonCount) GetCount() int {
+	return s.Count
+}
+
+// SetResult sets the value of Result.
+func (s *OutcomeReasonCount) SetResult(val OutcomeReasonCountResult) {
+	s.Result = val
+}
+
+// SetReasonCode sets the value of ReasonCode.
+func (s *OutcomeReasonCount) SetReasonCode(val string) {
+	s.ReasonCode = val
+}
+
+// SetCount sets the value of Count.
+func (s *OutcomeReasonCount) SetCount(val int) {
+	s.Count = val
+}
+
+type OutcomeReasonCountResult string
+
+const (
+	OutcomeReasonCountResultSuccess   OutcomeReasonCountResult = "success"
+	OutcomeReasonCountResultFailure   OutcomeReasonCountResult = "failure"
+	OutcomeReasonCountResultAbandoned OutcomeReasonCountResult = "abandoned"
+)
+
+// AllValues returns all OutcomeReasonCountResult values.
+func (OutcomeReasonCountResult) AllValues() []OutcomeReasonCountResult {
+	return []OutcomeReasonCountResult{
+		OutcomeReasonCountResultSuccess,
+		OutcomeReasonCountResultFailure,
+		OutcomeReasonCountResultAbandoned,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OutcomeReasonCountResult) MarshalText() ([]byte, error) {
+	switch s {
+	case OutcomeReasonCountResultSuccess:
+		return []byte(s), nil
+	case OutcomeReasonCountResultFailure:
+		return []byte(s), nil
+	case OutcomeReasonCountResultAbandoned:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OutcomeReasonCountResult) UnmarshalText(data []byte) error {
+	switch OutcomeReasonCountResult(data) {
+	case OutcomeReasonCountResultSuccess:
+		*s = OutcomeReasonCountResultSuccess
+		return nil
+	case OutcomeReasonCountResultFailure:
+		*s = OutcomeReasonCountResultFailure
+		return nil
+	case OutcomeReasonCountResultAbandoned:
+		*s = OutcomeReasonCountResultAbandoned
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/OutcomeResultCounts
+type OutcomeResultCounts struct {
+	Success   int `json:"success"`
+	Failure   int `json:"failure"`
+	Abandoned int `json:"abandoned"`
+}
+
+// GetSuccess returns the value of Success.
+func (s *OutcomeResultCounts) GetSuccess() int {
+	return s.Success
+}
+
+// GetFailure returns the value of Failure.
+func (s *OutcomeResultCounts) GetFailure() int {
+	return s.Failure
+}
+
+// GetAbandoned returns the value of Abandoned.
+func (s *OutcomeResultCounts) GetAbandoned() int {
+	return s.Abandoned
+}
+
+// SetSuccess sets the value of Success.
+func (s *OutcomeResultCounts) SetSuccess(val int) {
+	s.Success = val
+}
+
+// SetFailure sets the value of Failure.
+func (s *OutcomeResultCounts) SetFailure(val int) {
+	s.Failure = val
+}
+
+// SetAbandoned sets the value of Abandoned.
+func (s *OutcomeResultCounts) SetAbandoned(val int) {
+	s.Abandoned = val
+}
+
+// Ref: #/components/schemas/OutcomeSection
+type OutcomeSection struct {
+	// 计入本部分的跟进数（每个跟进一条当前记录）.
+	Total         int                        `json:"total"`
+	Results       OutcomeResultCounts        `json:"results"`
+	Reasons       []OutcomeReasonCount       `json:"reasons"`
+	Contributions []OutcomeContributionCount `json:"contributions"`
+	Amounts       []OutcomeAmountTotal       `json:"amounts"`
+}
+
+// GetTotal returns the value of Total.
+func (s *OutcomeSection) GetTotal() int {
+	return s.Total
+}
+
+// GetResults returns the value of Results.
+func (s *OutcomeSection) GetResults() OutcomeResultCounts {
+	return s.Results
+}
+
+// GetReasons returns the value of Reasons.
+func (s *OutcomeSection) GetReasons() []OutcomeReasonCount {
+	return s.Reasons
+}
+
+// GetContributions returns the value of Contributions.
+func (s *OutcomeSection) GetContributions() []OutcomeContributionCount {
+	return s.Contributions
+}
+
+// GetAmounts returns the value of Amounts.
+func (s *OutcomeSection) GetAmounts() []OutcomeAmountTotal {
+	return s.Amounts
+}
+
+// SetTotal sets the value of Total.
+func (s *OutcomeSection) SetTotal(val int) {
+	s.Total = val
+}
+
+// SetResults sets the value of Results.
+func (s *OutcomeSection) SetResults(val OutcomeResultCounts) {
+	s.Results = val
+}
+
+// SetReasons sets the value of Reasons.
+func (s *OutcomeSection) SetReasons(val []OutcomeReasonCount) {
+	s.Reasons = val
+}
+
+// SetContributions sets the value of Contributions.
+func (s *OutcomeSection) SetContributions(val []OutcomeContributionCount) {
+	s.Contributions = val
+}
+
+// SetAmounts sets the value of Amounts.
+func (s *OutcomeSection) SetAmounts(val []OutcomeAmountTotal) {
+	s.Amounts = val
+}
+
+// 跟进结果汇总（0.4.0）：时点评估与事后统计分开给出，不合并.
+// Ref: #/components/schemas/OutcomeSummary
+type OutcomeSummary struct {
+	ObjectiveID string      `json:"objective_id"`
+	From        OptDateTime `json:"from"`
+	// 统计截至时间（不含）.
+	AsOf        time.Time      `json:"as_of"`
+	PointInTime OutcomeSection `json:"point_in_time"`
+	PostHoc     OutcomeSection `json:"post_hoc"`
+	// 已被截至时间之前的修订取代、不计入的记录数.
+	Superseded int `json:"superseded"`
+	// 当前记录的获知时间晚于截至时间、不计入时点评估的跟进数.
+	KnownAfterAsOf int `json:"known_after_as_of"`
+}
+
+// GetObjectiveID returns the value of ObjectiveID.
+func (s *OutcomeSummary) GetObjectiveID() string {
+	return s.ObjectiveID
+}
+
+// GetFrom returns the value of From.
+func (s *OutcomeSummary) GetFrom() OptDateTime {
+	return s.From
+}
+
+// GetAsOf returns the value of AsOf.
+func (s *OutcomeSummary) GetAsOf() time.Time {
+	return s.AsOf
+}
+
+// GetPointInTime returns the value of PointInTime.
+func (s *OutcomeSummary) GetPointInTime() OutcomeSection {
+	return s.PointInTime
+}
+
+// GetPostHoc returns the value of PostHoc.
+func (s *OutcomeSummary) GetPostHoc() OutcomeSection {
+	return s.PostHoc
+}
+
+// GetSuperseded returns the value of Superseded.
+func (s *OutcomeSummary) GetSuperseded() int {
+	return s.Superseded
+}
+
+// GetKnownAfterAsOf returns the value of KnownAfterAsOf.
+func (s *OutcomeSummary) GetKnownAfterAsOf() int {
+	return s.KnownAfterAsOf
+}
+
+// SetObjectiveID sets the value of ObjectiveID.
+func (s *OutcomeSummary) SetObjectiveID(val string) {
+	s.ObjectiveID = val
+}
+
+// SetFrom sets the value of From.
+func (s *OutcomeSummary) SetFrom(val OptDateTime) {
+	s.From = val
+}
+
+// SetAsOf sets the value of AsOf.
+func (s *OutcomeSummary) SetAsOf(val time.Time) {
+	s.AsOf = val
+}
+
+// SetPointInTime sets the value of PointInTime.
+func (s *OutcomeSummary) SetPointInTime(val OutcomeSection) {
+	s.PointInTime = val
+}
+
+// SetPostHoc sets the value of PostHoc.
+func (s *OutcomeSummary) SetPostHoc(val OutcomeSection) {
+	s.PostHoc = val
+}
+
+// SetSuperseded sets the value of Superseded.
+func (s *OutcomeSummary) SetSuperseded(val int) {
+	s.Superseded = val
+}
+
+// SetKnownAfterAsOf sets the value of KnownAfterAsOf.
+func (s *OutcomeSummary) SetKnownAfterAsOf(val int) {
+	s.KnownAfterAsOf = val
 }
 
 // Ref: #/components/schemas/Problem
@@ -1309,6 +1818,12 @@ type SimulationDiff struct {
 	AddedSamples   []SimulationSample `json:"added_samples"`
 	RemovedSamples []SimulationSample `json:"removed_samples"`
 	ChangedSamples []SimulationSample `json:"changed_samples"`
+	// 该列表中当前查看者无权查看、未返回的代表样本数.
+	AddedWithheld OptInt `json:"added_withheld"`
+	// 该列表中当前查看者无权查看、未返回的代表样本数.
+	RemovedWithheld OptInt `json:"removed_withheld"`
+	// 该列表中当前查看者无权查看、未返回的代表样本数.
+	ChangedWithheld OptInt `json:"changed_withheld"`
 }
 
 // GetAdded returns the value of Added.
@@ -1341,6 +1856,21 @@ func (s *SimulationDiff) GetChangedSamples() []SimulationSample {
 	return s.ChangedSamples
 }
 
+// GetAddedWithheld returns the value of AddedWithheld.
+func (s *SimulationDiff) GetAddedWithheld() OptInt {
+	return s.AddedWithheld
+}
+
+// GetRemovedWithheld returns the value of RemovedWithheld.
+func (s *SimulationDiff) GetRemovedWithheld() OptInt {
+	return s.RemovedWithheld
+}
+
+// GetChangedWithheld returns the value of ChangedWithheld.
+func (s *SimulationDiff) GetChangedWithheld() OptInt {
+	return s.ChangedWithheld
+}
+
 // SetAdded sets the value of Added.
 func (s *SimulationDiff) SetAdded(val int) {
 	s.Added = val
@@ -1369,6 +1899,21 @@ func (s *SimulationDiff) SetRemovedSamples(val []SimulationSample) {
 // SetChangedSamples sets the value of ChangedSamples.
 func (s *SimulationDiff) SetChangedSamples(val []SimulationSample) {
 	s.ChangedSamples = val
+}
+
+// SetAddedWithheld sets the value of AddedWithheld.
+func (s *SimulationDiff) SetAddedWithheld(val OptInt) {
+	s.AddedWithheld = val
+}
+
+// SetRemovedWithheld sets the value of RemovedWithheld.
+func (s *SimulationDiff) SetRemovedWithheld(val OptInt) {
+	s.RemovedWithheld = val
+}
+
+// SetChangedWithheld sets the value of ChangedWithheld.
+func (s *SimulationDiff) SetChangedWithheld(val OptInt) {
+	s.ChangedWithheld = val
 }
 
 // Ref: #/components/schemas/SimulationHint
@@ -1406,6 +1951,7 @@ const (
 	SimulationHintCodeZeroResults           SimulationHintCode = "zero_results"
 	SimulationHintCodeCoverageInsufficient  SimulationHintCode = "coverage_insufficient"
 	SimulationHintCodeFactTypesNotConnected SimulationHintCode = "fact_types_not_connected"
+	SimulationHintCodeSamplesUnavailable    SimulationHintCode = "samples_unavailable"
 )
 
 // AllValues returns all SimulationHintCode values.
@@ -1417,6 +1963,7 @@ func (SimulationHintCode) AllValues() []SimulationHintCode {
 		SimulationHintCodeZeroResults,
 		SimulationHintCodeCoverageInsufficient,
 		SimulationHintCodeFactTypesNotConnected,
+		SimulationHintCodeSamplesUnavailable,
 	}
 }
 
@@ -1434,6 +1981,8 @@ func (s SimulationHintCode) MarshalText() ([]byte, error) {
 	case SimulationHintCodeCoverageInsufficient:
 		return []byte(s), nil
 	case SimulationHintCodeFactTypesNotConnected:
+		return []byte(s), nil
+	case SimulationHintCodeSamplesUnavailable:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -1460,6 +2009,9 @@ func (s *SimulationHintCode) UnmarshalText(data []byte) error {
 		return nil
 	case SimulationHintCodeFactTypesNotConnected:
 		*s = SimulationHintCodeFactTypesNotConnected
+		return nil
+	case SimulationHintCodeSamplesUnavailable:
+		*s = SimulationHintCodeSamplesUnavailable
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -1733,7 +2285,9 @@ type SimulationReport struct {
 	Diff                OptSimulationDiff    `json:"diff"`
 	// 首次激活（没有对比一侧）时草案产生信号的代表样本.
 	Samples []SimulationSample `json:"samples"`
-	Rules   []RuleStats        `json:"rules"`
+	// Samples 中当前查看者无权查看、未返回的代表样本数.
+	SamplesWithheld OptInt      `json:"samples_withheld"`
+	Rules           []RuleStats `json:"rules"`
 	// 未知比例最高的规则（未知比例为0的不列）.
 	TopUnknownRules []string         `json:"top_unknown_rules"`
 	Hints           []SimulationHint `json:"hints"`
@@ -1767,6 +2321,11 @@ func (s *SimulationReport) GetDiff() OptSimulationDiff {
 // GetSamples returns the value of Samples.
 func (s *SimulationReport) GetSamples() []SimulationSample {
 	return s.Samples
+}
+
+// GetSamplesWithheld returns the value of SamplesWithheld.
+func (s *SimulationReport) GetSamplesWithheld() OptInt {
+	return s.SamplesWithheld
 }
 
 // GetRules returns the value of Rules.
@@ -1812,6 +2371,11 @@ func (s *SimulationReport) SetDiff(val OptSimulationDiff) {
 // SetSamples sets the value of Samples.
 func (s *SimulationReport) SetSamples(val []SimulationSample) {
 	s.Samples = val
+}
+
+// SetSamplesWithheld sets the value of SamplesWithheld.
+func (s *SimulationReport) SetSamplesWithheld(val OptInt) {
+	s.SamplesWithheld = val
 }
 
 // SetRules sets the value of Rules.

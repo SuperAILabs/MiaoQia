@@ -553,18 +553,28 @@ func (s *Service) match(ctx context.Context, ref api.FactRef, a active, snap *cu
 		if categories == nil {
 			categories = []string{}
 		}
+		// 候选负责人（C-14）：按同一次读取的分派规则与负责人、参与人计算；分派规则不可用时两列为空
+		var candidate *string
+		var assignmentVersion *int64
+		if owner, version, ok := candidateOwner(p, d.Location, categories); ok {
+			assignmentVersion = &version
+			if owner != "" {
+				candidate = &owner
+			}
+		}
 		if _, err := tx.Exec(ctx, `INSERT INTO det_signals (id, tenant_id, objective_id, objective_code, org_unit_id, policy_id, policy_version, generation,
  template_id, template_version, enabled_domains, unit_key, fact_type, subject_id, subject_version, part_id, title, winner_org_id, winner_name,
  amount_value, amount_currency, amount_cny, location, categories, lot_key, disposition, score, needs_review, reason_code, conclusion, reasons,
  unknown_count, trace, features, view_snapshot_hash, context_version, trigger_event_id, evaluated_at, created_at,
- procurement_project_id, buyer_org_id, buyer_name)
+ procurement_project_id, buyer_org_id, buyer_name, candidate_owner, assignment_version)
  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
- $40,$41,$42)`,
+ $40,$41,$42,$43,$44)`,
 			id, rc.Tenant, p.ObjectiveID, p.ObjectiveCode, p.OrgUnitID, p.PolicyID, p.Version, p.Generation, p.TemplateID, p.TemplateVersion, enabled,
 			u.Key, u.FactType, u.Subject.ID, u.Subject.Version, part, title, null(d.WinnerOrgID), null(d.WinnerName), null(d.AmountValue),
 			null(d.AmountCurrency), d.AmountCNY, null(d.Location), categories, lot, string(res.Disposition), res.Score, res.NeedsReview, reason,
 			conclusion(a.compiled, res, trace), rowReasons(trace, res.Disposition), unknown, traceJSON, features, hash, snap.ContextVersion,
-			ref.EventID, ref.EventTime, created, idOrNil(d.ProcurementProjectID, "pp"), idOrNil(d.BuyerOrgID, "org"), null(d.BuyerName)); err != nil {
+			ref.EventID, ref.EventTime, created, idOrNil(d.ProcurementProjectID, "pp"), idOrNil(d.BuyerOrgID, "org"), null(d.BuyerName),
+			candidate, assignmentVersion); err != nil {
 			return err
 		}
 		subject := map[string]any{"type": "domain_fact", "id": u.Subject.ID, "version": u.Subject.Version}

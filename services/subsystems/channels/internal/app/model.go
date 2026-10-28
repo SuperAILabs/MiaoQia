@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	purapi "github.com/superailabs/miaoqia/services/contracts/apis/pursuit"
 	kbinding "github.com/superailabs/miaoqia/services/kernel/binding"
 	"github.com/superailabs/miaoqia/services/subsystems/channels/api"
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
@@ -61,6 +62,10 @@ type SignalItem struct {
 	Updates        []itemUpdate  `json:"updates,omitempty"`
 	AlsoMatched    []string      `json:"also_matched,omitempty"`
 	References     string        `json:"references,omitempty"`
+	// 即时通知（C-08，PRD 第5段 F7 第3条、F2 第2条）：Notified 为组装时已即时通知本人（本期不再推送信号卡片，只在总览中列出）；
+	// ArrivedOvernight 为即时通知在安静时段内到达、并入本期简报（卡片标“夜间到达”）
+	Notified         bool `json:"notified,omitempty"`
+	ArrivedOvernight bool `json:"arrived_overnight,omitempty"`
 }
 
 // ApprovalItem 是“待我处理”中的审批。
@@ -70,12 +75,38 @@ type ApprovalItem struct {
 	SubmittedAt  time.Time `json:"submitted_at"`
 }
 
+// TaskItem 是“待我处理”中的跟进任务（PRD 第6段 F9 第1条）：分派给本人、未完成、截止在下一期简报之前或已逾期；Escalated 为无有效
+// 负责人的跟进转给决策者的任务。
+type TaskItem struct {
+	TaskID      string   `json:"task_id"`
+	PursuitID   string   `json:"pursuit_id"`
+	ObjectiveID string   `json:"objective_id"`
+	TaskTitle   string   `json:"task_title"`
+	Due         *taskDue `json:"due,omitempty"`
+	Escalated   bool     `json:"escalated"`
+}
+
+// taskDue 是契约 TaskDue。
+type taskDue struct {
+	Value     string `json:"value"`
+	Precision string `json:"precision"`
+	Timezone  string `json:"timezone"`
+}
+
+// taskStatus 是契约 TaskItemStatus（读取时叠加的当前状态）。
+type taskStatus struct {
+	Status     string    `json:"status"`
+	StatusAsOf time.Time `json:"status_as_of"`
+}
+
 type item struct {
 	Kind     string `json:"kind"`
 	Position int    `json:"position"`
 	*SignalItem
 	*ApprovalItem
-	Current *itemStatus `json:"current,omitempty"`
+	*TaskItem
+	Current     *itemStatus `json:"current,omitempty"`
+	TaskCurrent *taskStatus `json:"task_current,omitempty"`
 }
 
 type dataAsOf struct {
@@ -221,4 +252,18 @@ func (s *Service) objectiveGrant(uctx context.Context, objective string) (visibl
 		return false, false, failure(503, "customer_context_unavailable")
 	}
 	return slices.Contains(granted, "can_view_signals"), slices.Contains(granted, "can_view_signals") && slices.Contains(granted, "can_feedback"), nil
+}
+
+// taskItem 把 pursuit listMyTasks 的一条转换为“待我处理”中的任务条目（标题按契约截断）。
+func taskItem(t purapi.MyTask) *TaskItem {
+	out := &TaskItem{TaskID: string(t.Task.ID), PursuitID: string(t.Task.PursuitID), ObjectiveID: string(t.ObjectiveID), Escalated: t.Escalated}
+	title := []rune(t.Task.Title)
+	if len(title) > 120 {
+		title = title[:120]
+	}
+	out.TaskTitle = string(title)
+	if d, ok := t.Task.Due.Get(); ok {
+		out.Due = &taskDue{Value: d.Value, Precision: string(d.Precision), Timezone: d.Timezone}
+	}
+	return out
 }

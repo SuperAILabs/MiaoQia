@@ -1,6 +1,8 @@
 // Package pursuit 组装 pursuit 推进与结果 子系统。M2 第6段提供交易型跟进（docs/01-product/prd/06-pursuit-follow-up.md）：
 // 从信号、卡片或手动创建与关联、撤销创建、改派与协作者、任务与截止、提醒、关闭与结果修订、列表与详情，以及经 identity 的授权同步。
-// 提醒的定时执行以本地绑定 api.Reminders 提供，定时任务角色尚未接入；持续跟踪、公开截止时间绑定随后续切片实现。
+// 提醒的定时执行以本地绑定 api.Reminders 提供，定时任务角色尚未接入；公开截止时间绑定随后续切片实现。C-10 追加持续跟踪（F10：
+// 跟踪计划、暂停 / 恢复 / 停止、按周期结束一期并请求变化简报，周期由 api.Reminders.RunTracking 驱动）、创建面板的默认负责人与
+// 同一标包其他中标方的提示。
 package pursuit
 
 import (
@@ -35,9 +37,18 @@ var (
 		"POST /v1/pursuit/pursuits/{pursuitID}/close", "POST /v1/pursuit/pursuits/{pursuitID}/outcomes",
 		"GET /v1/pursuit/tasks/{taskID}", "POST /v1/pursuit/tasks/{taskID}/update", "POST /v1/pursuit/tasks/{taskID}/complete",
 		"POST /v1/pursuit/tasks/{taskID}/reopen", "GET /v1/pursuit/my-tasks",
+		// C-10：创建面板的默认负责人与持续跟踪（F10）
+		"GET /v1/pursuit/create-defaults", "GET /v1/pursuit/tracking", "POST /v1/pursuit/tracking", "GET /v1/pursuit/tracking/{pursuitID}",
+		"POST /v1/pursuit/tracking/{pursuitID}/pause", "POST /v1/pursuit/tracking/{pursuitID}/resume", "POST /v1/pursuit/tracking/{pursuitID}/stop",
+		"POST /v1/pursuit/tracking/{pursuitID}/members", "GET /v1/pursuit/tracking/{pursuitID}/periods",
+		"GET /v1/pursuit/tracking/{pursuitID}/periods/{seq}",
 	}
 	internalRoutes = []string{"POST /internal/v1/pursuit/pursuits", "GET /internal/v1/pursuit/tasks/{taskID}",
-		"POST /internal/v1/pursuit/tasks/{taskID}/complete", "POST /internal/v1/pursuit/tasks/{taskID}/reopen"}
+		"POST /internal/v1/pursuit/tasks/{taskID}/complete", "POST /internal/v1/pursuit/tasks/{taskID}/reopen",
+		// C-09：简报“待我处理”中的任务与授权被拒通知的再检查（以收件人本人）
+		"GET /internal/v1/pursuit/my-tasks", "GET /internal/v1/pursuit/pursuits/{pursuitID}",
+		// C-11/C-12：持续跟踪的授权被拒通知以操作者本人再检查
+		"GET /internal/v1/pursuit/tracking/{pursuitID}"}
 )
 
 // Module 返回 pursuit 的模块定义。配置：MIAOQIA_PURSUIT_SIGNING_KEY（翻页游标签名密钥，base64，至少 32 字节，同一部署的全部实例相同；
@@ -47,14 +58,17 @@ var (
 // （从信号创建时核对）只在服务对外接口的 api 角色上必需，其他角色（consumer、workflow-worker）不服务创建，缺少时从信号创建失败关闭为 503。
 func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
-// Adapters 是 pursuit 的业务时钟（零值为系统时钟；测试使用可控时钟）。
+// Adapters 是 pursuit 的业务时钟（零值为系统时钟；测试使用可控时钟）与出站端口。Candidates 为零值时使用生产适配器（C-14）：
+// 经 detection 的 SignalCandidates 绑定读取信号生成时按目标分派规则算出的候选负责人（本地或远程）；服务对外接口的 api 角色缺少该绑定时
+// 不启动，其他角色（不服务创建面板）缺少时为 api.NotWired。
 type Adapters struct {
-	Now func() time.Time
+	Now        func() time.Time
+	Candidates api.CandidateOwners
 }
 
 // ModuleWith 返回使用给定适配器的 pursuit 模块定义。
 func ModuleWith(adapters Adapters) runtime.Module {
-	svc := &app.Service{Now: adapters.Now}
+	svc := &app.Service{Now: adapters.Now, Candidates: adapters.Candidates}
 	return runtime.Module{
 		Name:       api.Name,
 		Database:   "pur",
@@ -80,6 +94,17 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			if !ok && env.Role == "api" {
 				return fmt.Errorf("pursuit：缺少 %s 绑定", detection.BriefingBinding)
 			}
+			if adapters.Candidates == nil {
+				candidates, ok := runtime.Lookup[detection.SignalCandidates](env.Bindings, detection.CandidatesBinding)
+				switch {
+				case ok:
+					svc.Candidates = detectionCandidates{candidates}
+				case env.Role == "api":
+					return fmt.Errorf("pursuit：缺少 %s 绑定", detection.CandidatesBinding)
+				default:
+					svc.Candidates = api.NotWired{}
+				}
+			}
 			key, err := signingKey(env)
 			if err != nil {
 				return err
@@ -96,8 +121,10 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			svc.Key, svc.Outcomes, svc.Log = key, outcomes, env.Log
 			env.Bindings.Provide(api.ActionsBinding, api.LocalActions(app.Actions{Service: svc}))
 			env.Bindings.Provide(api.RemindersBinding, api.LocalReminders(svc))
+			env.Bindings.Provide(api.TrackingsBinding, api.LocalTrackings(app.Actions{Service: svc}))
 			return nil
 		},
+		Jobs: jobs(clock(adapters.Now)),
 		Routes: func(env *runtime.Env, public, internal *http.ServeMux) {
 			handler := &app.Server{Service: svc}
 			in, err := pur.NewServer(handler, pur.WithPathPrefix("/internal"), pur.WithErrorHandler(app.WriteProtocolError))
