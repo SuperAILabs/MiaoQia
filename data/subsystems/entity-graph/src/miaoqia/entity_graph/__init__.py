@@ -12,3 +12,16 @@ MIGRATIONS = str(resources.files(__name__) / "migrations")  # Alembic 迁移随�
 
 def module() -> Module:
     return Module(name=NAME, database="ent", migrations=MIGRATIONS)
+
+
+def fixture_resolver(registry):
+    """本地装配入口；registry 须由证据所有者端口验证并先授权全部输入。"""
+    from .domain.fixtures import FixtureResolver
+    return FixtureResolver(registry)
+
+
+def trusted_fixture_resolver(*, manifest_path, handles, facts, extractions, evidence, provenance, references):
+    """Local fixed registry binding; every call proves and authorizes all owner inputs."""
+    from .application.fixtures import TrustedFixtureResolver
+    return TrustedFixtureResolver(manifest_path=manifest_path, handles=handles, facts=facts, extractions=extractions,
+                                  evidence=evidence, provenance=provenance, references=references)

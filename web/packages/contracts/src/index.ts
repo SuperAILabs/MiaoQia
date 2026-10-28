@@ -219,6 +219,31 @@ export type Notice = PublicFactMeta & {
    * 结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人
    */
   result_details_pending?: boolean;
+  /**
+   * 公告采购主题；不表示中标人实际供货，不代替真实items或标包品类。固定字段证据及独立范围复核由recipe验证。
+   *
+   * @minItems 1
+   */
+  subject_categories?: [
+    {
+      category: Category;
+      prov: Provenance;
+      scope: "notice_subject";
+      /**
+       * 固定源字段JSON Pointer；首版recipe只允许/title/value
+       */
+      source_field: string;
+    },
+    ...{
+      category: Category;
+      prov: Provenance;
+      scope: "notice_subject";
+      /**
+       * 固定源字段JSON Pointer；首版recipe只允许/title/value
+       */
+      source_field: string;
+    }[]
+  ];
   [k: string]: unknown;
 };
 /**
@@ -337,7 +362,7 @@ export type OrgEnterpriseType =
   | "social_organization"
   | "other";
 /**
- * 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。
+ * 来源公示的企业登记信息或明确标记的合成测试登记夹具，随来源变化产生新版本；夹具不得用于生产组织核验。
  */
 export type OrgRegistration = PublicFactMeta & {
   info_domain: "INF-ORG";
@@ -369,6 +394,10 @@ export type OrgRegistration = PublicFactMeta & {
   uscc_prov?: Provenance;
   status_prov?: Provenance;
   legal_representative_prov?: Provenance;
+  /**
+   * 显式合成登记夹具；不构成真实工商登记或已解析的生产组织身份
+   */
+  record_scope?: "fixture";
   [k: string]: unknown;
 };
 /**
@@ -420,6 +449,21 @@ export type ProcurementProject = PublicFactMeta & {
    * @minItems 0
    */
   lots: ProjectLot[];
+  /**
+   * 成员固定版本的公开投影，与notice_ids及权威聚合依赖逐值一致；旧版本可缺省。
+   *
+   * @minItems 1
+   */
+  notice_refs?: [
+    {
+      id: string;
+      version: number;
+    },
+    ...{
+      id: string;
+      version: number;
+    }[]
+  ];
   [k: string]: unknown;
 };
 /**
@@ -1439,6 +1483,129 @@ export interface TenantMeta {
   created_at: string;
   updated_at: string;
   [k: string]: unknown;
+}
+export interface SourceRightsConfirmRequest {
+  operation: "fact_read" | "evidence_resolve";
+  /**
+   * @minItems 1
+   * @maxItems 64
+   */
+  inputs: [SourceRightsInput, ...SourceRightsInput[]];
+  receipt: SourceRightsReceipt;
+}
+export interface SourceRightsInput {
+  source_id: string;
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  tags:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+}
+export interface SourceRightsReceipt {
+  epoch: number;
+  expires: number;
+  nonce: string;
+  mac: string;
+}
+export interface SourceRightsDecision {
+  allowed: boolean;
+  display: "none" | "citation_only" | "excerpt" | "full_text";
+  redistribution: boolean;
+  epoch: number;
+  receipt?: SourceRightsReceipt;
+}
+/**
+ * Frozen-corpus read permission only. Immutable original restrictions intersect current restrictions; registration is not source activation. Effective time must precede expiry.
+ */
+export interface SourceRightsPolicy {
+  schema_version: 1;
+  entry_id: string;
+  version: number;
+  source_id: string;
+  /**
+   * @minItems 1
+   * @maxItems 64
+   */
+  scopes: [
+    {
+      tenant: string;
+      cell: string;
+    },
+    ...{
+      tenant: string;
+      cell: string;
+    }[]
+  ];
+  /**
+   * @minItems 1
+   * @maxItems 1
+   */
+  purposes: ["interactive"];
+  display: "none" | "citation_only" | "excerpt" | "full_text";
+  effective_at: string;
+  expires_at: string;
+  redistribution: boolean;
+}
+export interface SourceRightsResolveRequest {
+  operation: "fact_read" | "evidence_resolve";
+  /**
+   * @minItems 1
+   * @maxItems 64
+   */
+  inputs: [SourceRightsInput, ...SourceRightsInput[]];
+}
+export interface SourceRightsStatus {
+  domain_service: "not_live";
+  capability: "frozen_source_rights_only";
 }
 export interface StructuredRecord {
   /**

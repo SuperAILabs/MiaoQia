@@ -34,6 +34,7 @@ func TestRoundTrip(t *testing.T) {
 		"DerivationEvidenceRef": func() any { return &DerivationEvidenceRef{} },
 		"EventEnvelope":         func() any { return &EventEnvelope{} },
 		"RequestContext":        func() any { return &RequestContext{} },
+		"SourceRightsPolicy":    func() any { return &SourceRightsPolicy{} },
 	}
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil || len(files) == 0 {

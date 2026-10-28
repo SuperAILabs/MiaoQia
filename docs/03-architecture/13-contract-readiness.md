@@ -25,6 +25,8 @@
 
 候选信源唯一定义在[source-inventory.yaml](../../packs/information_domains/procurement/source-inventory.yaml)：40个入口、39个public参考访问方式、1个authenticated；参考项目的启用状态不构成妙洽授权。需要去重平台入口、逐来源权利确认和正文/附件能力验证，未覆盖省份/公告类型仍需补源。
 
+INF-ORG 当前登记 Schema 为1.2.0、领域包1.1.0：可选 `record_scope: fixture` 明示合成登记记录，夹具来源必须由领域语义校验要求该标记。四份显式合成 HTML 及闭合 manifest 验证名称/曾用名字段证据，不包含真实工商身份断言。其制品来源使用 `artifact_origin`，不改变既有正文 `source_kind` 分类；固定事实/完整权限投影与采购组织增强分别验收。
+
 ## 3. 生命周期验证语料
 
 [语料清单](../../packs/information_domains/procurement/corpus/lifecycle-manifest.json)登记15份原件：13个HTML响应及2份PDF（22页扫描合同、2页文本层中标公示）；其中一个验收页面包含6个独立对象，合计20条人工事实映射。来源包含中国政府采购网、国家林草局、上海松江政府、烟台市场监管局及宜昌公共资源交易平台。每个样本目录包含原响应/附件、来源URL、获取日期、SHA-256、正文定位方式和`reviewed.json`；PDF另有人工规范化制品与其哈希。
@@ -80,7 +82,7 @@ F指完整正文集的sample_index，S指结构化集的sample_index。示例是
 | 附件、OCR与表格 | 已有22页扫描合同原件及第2/3/6页人工转录、正文表格和附件不可得；缺全量OCR/跨页表格独立评估，不能以人工转录代证 | 数据/AI负责人；M1对应能力验收前 |
 | 更正的before/after | SDK通用替换校验与采购包不可变字段约束已校验现有字段替换的Pointer、目标Schema、before值与原版本；真实金额及时间更正通过。新增/删除字段、授权、原子写入、并发重放仍须在领域执行器验收 | domain-intelligence负责人；M1更正应用前 |
 | 语义与引用完整性 | SDK通用校验验证块连续、表格网格、证据快照/管线/定位/hash与引用存在；采购/企业包的语料校验器验证联系/信用代码原文、标包/结果标识唯一、候选/中标/框架入围阶段与冲突、联合体成员去重；持久化org/revision完整性、跨源冲突裁决与恢复重放仍待真实链路验收 | evidence/领域负责人；M1验收前 |
-| 结构化与派生证据 | 记录集、记录证据、派生证据为草案（ADR-0011已批准架构方向，运行能力按首次启用门禁验收），三语言生成与正反例通过；不改动已冻结的文档证据。SDK尚未校验记录键唯一、字段路径与value_hash、派生链无环及末端为文档/记录证据、事实版本可解析、转换与参考数据内容可取得，派生结果的权限也未按全部来源传播；结构化来源复用快照与解析修订事件，派生证据随事实版本发布，不另设事件 | evidence负责人；第一个结构化来源或派生字段启用前 |
+| 结构化与派生证据 | 记录集与记录证据仍为草案；派生格式已有本地测试identity及固定复核建材官方pair字面主题的运行基础；Notice1.2.0可选subject_categories与INF-PROC1.6.1/APP-TENDER0.8.0兼容增量见[冻结修订17](../../contracts/reviews/first-batch-freeze-amendment-17.yaml)。SDK校验固定事实/字段与证据、无环文档叶子图、登记转换、不可变参考内容及RFC8785重算；evidence按全部输入当前权利裁剪，并对未知/record叶子拒绝。生产转换、结构化记录键唯一/字段路径与value_hash校验仍待首次来源启用验收。结构化来源复用快照与解析修订事件，派生证据不另设事件；本地增强运行复用既有enrichment.completed事件 | evidence负责人；第一个结构化来源或生产派生字段启用前 |
 | 事件覆盖 | 采集4种、证据6种、通用领域3种、实体5种基础事件已补；采购另补验收及框架入围，共20种新事件，权利全部撤回的有效集合可为空。新载荷封闭字段、复用event-types并有正反例；现有v1载荷不就地收紧。客户智能/研究/渠道按阶段补齐 | 各能力负责人；首次实现前 |
 | 企业、审批与信用 | 已验证企业公示登记字段、未知状态和采购供应商名称/信用代码/地址。登记状态/代码/法人和股权比例分别溯源，比例限制0—1；已补核准注销、分支与隶属主体、实际变更日未知和住所失联异常的真实边界；来源接口/全量字段交付另验收，审批与信用M3另行验收 | 信息领域负责人；M1/M3对应实现前 |
 | Schema与事实版本 | 文件x-version、schema_version、事实version、解析器/管线与事件type分别校验；跨版本重放不得混同 | 首席架构师；每批冻结前 |
@@ -153,7 +155,7 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 
 | 契约 | 设计依据 | 触发功能 | 兼容方式 |
 |---|---|---|---|
-| 权利条目 Schema 与引用格式 | [数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 授权数据商接入，或客户授权数据进入研究 | 追加；已冻结的 `rights_tags`、`rights_set` 不变 |
+| 权利条目 Schema 与引用格式 | [数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益)、[d0 当前权利](subsystems/source-rights-runtime.md) | 冻结语料只读 SourceRightsPolicy 1.0.0；真实来源/租户授权/模型用途后续追加 | 精确原始引用与当前限制交集；已冻结的 `rights_tags`、`rights_set` 不变 |
 | 事实撤回领域事件 | [domain-intelligence 第 11 节](subsystems/domain-intelligence.md#11-事实撤回与恢复) | 首个撤回识别能力 | 领域事件契约追加，升次版本 |
 | 导出与迁移的事件和接口 | [governance 第 10 节](subsystems/governance.md#10-数据导出与迁移) | 首个租户导出功能 | 新增 |
 | 私有部署馈送包格式 | [部署拓扑第 10 节](07-deployment-topology.md#10-私有部署的公共数据馈送) | M5 私有部署包 | 新增 |
@@ -165,7 +167,7 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 领域历史覆盖起点 | [可扩展性第 4 节](04-extensibility.md#4-加载版本与发布) | 首个声明历史窗口的视图启用 | 覆盖度量追加字段 |
 | 投标提交确认（A01 跟进“已投标”阶段的提交时间、确认人与依据） | APP-TENDER 效果指标 `a01_bid_count`、`a01_win_rate` 的待定口径与结果原因的 `implies_bid`（`packs/application_domains/tendering/outcomes/a01.yaml`）（`packs/application_domains/tendering/metrics.yaml`）；[pursuit 第10节](subsystems/pursuit.md#10-分阶段交付) | M4 路径引擎的 A01 投标阶段 | pursuit 阶段数据与事件追加字段 |
 | 平台资质体系登记（`qual:*` 体系与版本，行业包资质模板 `equivalents` 的加载与解析） | [可扩展性 2.4](04-extensibility.md#24-行业包) | INF-QUAL 首次启用，或首个跨资质体系比较资质的规则 | 新增 |
-| 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | 数据平面的首个生产读取实现（第4段服务端切片以 gateway 的 `api.PublicData` 端口与内存夹具代替，生产组装为未接入） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
+| 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | data-api 已有 listener、TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络 smoke、entity-graph/Go 生产适配器尚未接入（第4段切片继续以 gateway `api.PublicData` 端口和内存夹具代替） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
 | evidence 的 `ResolveEvidence`（展示级别与原因、快照、来源可达状态、派生输入） | [evidence](subsystems/evidence.md)；PRD 第4段 F6 | 证据解析的生产实现（第4段切片以 `api.EvidenceResolver` 端口代替） | 新增 |
 | commerce 的按租户权益（`GetEntitlements` 的订阅与按租户覆盖包）与按套餐的查看额度；覆盖判断 `checkCoverage` 已随 commerce OpenAPI 0.2.0 写入，覆盖包暂为部署配置 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（额度与覆盖包来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt`、`CoverageDecision` 不变 |
 | detection 的归属边读取（entity-graph 的 `part_of`，项目展开到采购项目） | [detection 第5节](subsystems/detection.md#5-接口) | entity-graph 关系读取的生产实现（第4段切片以 `api.ProjectLinks` 端口代替） | 随 entity-graph `GetRelationships` |

@@ -1291,6 +1291,9 @@ type Notice struct {
 	// SnapshotRef corresponds to the JSON schema field "snapshot_ref".
 	SnapshotRef string `json:"snapshot_ref"`
 
+	// 公告采购主题；不表示中标人实际供货，不代替真实items或标包品类。固定字段证据及独立范围复核由recipe验证。
+	SubjectCategories []NoticeSubjectCategoriesElem `json:"subject_categories,omitempty,omitzero"`
+
 	// Title corresponds to the JSON schema field "title".
 	Title Text `json:"title"`
 
@@ -1299,6 +1302,20 @@ type Notice struct {
 
 	// 领域事实版本号
 	Version int `json:"version"`
+}
+
+type NoticeSubjectCategoriesElem struct {
+	// Category corresponds to the JSON schema field "category".
+	Category Category `json:"category"`
+
+	// Prov corresponds to the JSON schema field "prov".
+	Prov Provenance `json:"prov"`
+
+	// Scope corresponds to the JSON schema field "scope".
+	Scope interface{} `json:"scope"`
+
+	// 固定源字段JSON Pointer；首版recipe只允许/title/value
+	SourceField string `json:"source_field"`
 }
 
 type NoticeType string
@@ -1543,7 +1560,7 @@ type OrgRef struct {
 	UsccProv *Provenance `json:"uscc_prov,omitempty,omitzero"`
 }
 
-// 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。
+// 来源公示的企业登记信息或明确标记的合成测试登记夹具，随来源变化产生新版本；夹具不得用于生产组织核验。
 type OrgRegistration struct {
 	// Address corresponds to the JSON schema field "address".
 	Address *Text `json:"address,omitempty,omitzero"`
@@ -1610,6 +1627,9 @@ type OrgRegistration struct {
 	// Quality corresponds to the JSON schema field "quality".
 	Quality *Quality `json:"quality,omitempty,omitzero"`
 
+	// 显式合成登记夹具；不构成真实工商登记或已解析的生产组织身份
+	RecordScope *OrgRegistrationRecordScope `json:"record_scope,omitempty,omitzero"`
+
 	// RecordedAt corresponds to the JSON schema field "recorded_at".
 	RecordedAt time.Time `json:"recorded_at"`
 
@@ -1656,6 +1676,10 @@ type OrgRegistration struct {
 	// 领域事实版本号
 	Version int `json:"version"`
 }
+
+type OrgRegistrationRecordScope string
+
+const OrgRegistrationRecordScopeFixture OrgRegistrationRecordScope = "fixture"
 
 // 股东：组织股东以组织引用表达，自然人股东以 person 表达
 type OrgShareholder struct {
@@ -1850,6 +1874,9 @@ type ProcurementProject struct {
 	// 有发布时间时按发布时间排序，否则按稳定公告标识排序。
 	NoticeIds []string `json:"notice_ids"`
 
+	// 成员固定版本的公开投影，与notice_ids及权威聚合依赖逐值一致；旧版本可缺省。
+	NoticeRefs []ProcurementProjectNoticeRefsElem `json:"notice_refs,omitempty,omitzero"`
+
 	// ObservedAt corresponds to the JSON schema field "observed_at".
 	ObservedAt time.Time `json:"observed_at"`
 
@@ -1894,6 +1921,14 @@ type ProcurementProject struct {
 	TradingSystem *TradingSystem `json:"trading_system,omitempty,omitzero"`
 
 	// 领域事实版本号
+	Version int `json:"version"`
+}
+
+type ProcurementProjectNoticeRefsElem struct {
+	// Id corresponds to the JSON schema field "id".
+	Id string `json:"id"`
+
+	// Version corresponds to the JSON schema field "version".
 	Version int `json:"version"`
 }
 
@@ -2371,6 +2406,151 @@ const SignalStatusConverted SignalStatus = "converted"
 const SignalStatusDismissed SignalStatus = "dismissed"
 const SignalStatusOpen SignalStatus = "open"
 const SignalStatusTriaged SignalStatus = "triaged"
+
+type SourceRightsConfirmRequest struct {
+	// Inputs corresponds to the JSON schema field "inputs".
+	Inputs []SourceRightsInput `json:"inputs"`
+
+	// Operation corresponds to the JSON schema field "operation".
+	Operation SourceRightsConfirmRequestOperation `json:"operation"`
+
+	// Receipt corresponds to the JSON schema field "receipt".
+	Receipt SourceRightsReceipt `json:"receipt"`
+}
+
+type SourceRightsConfirmRequestOperation string
+
+const SourceRightsConfirmRequestOperationEvidenceResolve SourceRightsConfirmRequestOperation = "evidence_resolve"
+const SourceRightsConfirmRequestOperationFactRead SourceRightsConfirmRequestOperation = "fact_read"
+
+type SourceRightsDecision struct {
+	// Allowed corresponds to the JSON schema field "allowed".
+	Allowed bool `json:"allowed"`
+
+	// Display corresponds to the JSON schema field "display".
+	Display SourceRightsDecisionDisplay `json:"display"`
+
+	// Epoch corresponds to the JSON schema field "epoch".
+	Epoch int `json:"epoch"`
+
+	// Receipt corresponds to the JSON schema field "receipt".
+	Receipt *SourceRightsReceipt `json:"receipt,omitempty,omitzero"`
+
+	// Redistribution corresponds to the JSON schema field "redistribution".
+	Redistribution bool `json:"redistribution"`
+}
+
+type SourceRightsDecisionDisplay string
+
+const SourceRightsDecisionDisplayCitationOnly SourceRightsDecisionDisplay = "citation_only"
+const SourceRightsDecisionDisplayExcerpt SourceRightsDecisionDisplay = "excerpt"
+const SourceRightsDecisionDisplayFullText SourceRightsDecisionDisplay = "full_text"
+const SourceRightsDecisionDisplayNone SourceRightsDecisionDisplay = "none"
+
+type SourceRightsInput struct {
+	// SourceId corresponds to the JSON schema field "source_id".
+	SourceId string `json:"source_id"`
+
+	// Tags corresponds to the JSON schema field "tags".
+	Tags []string `json:"tags"`
+}
+
+// Frozen-corpus read permission only. Immutable original restrictions intersect
+// current restrictions; registration is not source activation. Effective time must
+// precede expiry.
+type SourceRightsPolicy struct {
+	// Display corresponds to the JSON schema field "display".
+	Display SourceRightsPolicyDisplay `json:"display"`
+
+	// EffectiveAt corresponds to the JSON schema field "effective_at".
+	EffectiveAt time.Time `json:"effective_at"`
+
+	// EntryId corresponds to the JSON schema field "entry_id".
+	EntryId string `json:"entry_id"`
+
+	// ExpiresAt corresponds to the JSON schema field "expires_at".
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// Purposes corresponds to the JSON schema field "purposes".
+	Purposes []SourceRightsPolicyPurposesElem `json:"purposes"`
+
+	// Redistribution corresponds to the JSON schema field "redistribution".
+	Redistribution bool `json:"redistribution"`
+
+	// SchemaVersion corresponds to the JSON schema field "schema_version".
+	SchemaVersion int `json:"schema_version"`
+
+	// Scopes corresponds to the JSON schema field "scopes".
+	Scopes []SourceRightsPolicyScopesElem `json:"scopes"`
+
+	// SourceId corresponds to the JSON schema field "source_id".
+	SourceId string `json:"source_id"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version"`
+}
+
+type SourceRightsPolicyDisplay string
+
+const SourceRightsPolicyDisplayCitationOnly SourceRightsPolicyDisplay = "citation_only"
+const SourceRightsPolicyDisplayExcerpt SourceRightsPolicyDisplay = "excerpt"
+const SourceRightsPolicyDisplayFullText SourceRightsPolicyDisplay = "full_text"
+const SourceRightsPolicyDisplayNone SourceRightsPolicyDisplay = "none"
+
+type SourceRightsPolicyPurposesElem string
+
+const SourceRightsPolicyPurposesElemInteractive SourceRightsPolicyPurposesElem = "interactive"
+
+type SourceRightsPolicyScopesElem struct {
+	// Cell corresponds to the JSON schema field "cell".
+	Cell string `json:"cell"`
+
+	// Tenant corresponds to the JSON schema field "tenant".
+	Tenant string `json:"tenant"`
+}
+
+type SourceRightsReceipt struct {
+	// Epoch corresponds to the JSON schema field "epoch".
+	Epoch int `json:"epoch"`
+
+	// Expires corresponds to the JSON schema field "expires".
+	Expires int `json:"expires"`
+
+	// Mac corresponds to the JSON schema field "mac".
+	Mac string `json:"mac"`
+
+	// Nonce corresponds to the JSON schema field "nonce".
+	Nonce string `json:"nonce"`
+}
+
+type SourceRightsResolveRequest struct {
+	// Inputs corresponds to the JSON schema field "inputs".
+	Inputs []SourceRightsInput `json:"inputs"`
+
+	// Operation corresponds to the JSON schema field "operation".
+	Operation SourceRightsResolveRequestOperation `json:"operation"`
+}
+
+type SourceRightsResolveRequestOperation string
+
+const SourceRightsResolveRequestOperationEvidenceResolve SourceRightsResolveRequestOperation = "evidence_resolve"
+const SourceRightsResolveRequestOperationFactRead SourceRightsResolveRequestOperation = "fact_read"
+
+type SourceRightsStatus struct {
+	// Capability corresponds to the JSON schema field "capability".
+	Capability SourceRightsStatusCapability `json:"capability"`
+
+	// DomainService corresponds to the JSON schema field "domain_service".
+	DomainService SourceRightsStatusDomainService `json:"domain_service"`
+}
+
+type SourceRightsStatusCapability string
+
+const SourceRightsStatusCapabilityFrozenSourceRightsOnly SourceRightsStatusCapability = "frozen_source_rights_only"
+
+type SourceRightsStatusDomainService string
+
+const SourceRightsStatusDomainServiceNotLive SourceRightsStatusDomainService = "not_live"
 
 type StructuredRecord struct {
 	// 记录内容，保留来源字段名，只做字符集与格式解码，不做语义归一（归一属于解析器）。取值无损表示见 record_value

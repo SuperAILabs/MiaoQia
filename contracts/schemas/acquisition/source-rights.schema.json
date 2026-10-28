@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.miaoqia.com/acquisition/source-rights.schema.json",
+  "x-version": "1.0.0",
+  "title": "SourceRightsPolicy",
+  "description": "Frozen-corpus read permission only. Immutable original restrictions intersect current restrictions; registration is not source activation. Effective time must precede expiry.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "entry_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+    },
+    "scopes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tenant": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"
+          },
+          "cell": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"
+          }
+        },
+        "required": [
+          "tenant",
+          "cell"
+        ]
+      }
+    },
+    "purposes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "interactive"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "display": {
+      "type": "string",
+      "enum": [
+        "none",
+        "citation_only",
+        "excerpt",
+        "full_text"
+      ]
+    },
+    "effective_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "redistribution": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "entry_id",
+    "version",
+    "source_id",
+    "scopes",
+    "purposes",
+    "display",
+    "effective_at",
+    "expires_at",
+    "redistribution"
+  ],
+  "$defs": {
+    "source-rights-input": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+        },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9:_-]{1,160}$"
+          }
+        }
+      },
+      "required": [
+        "source_id",
+        "tags"
+      ]
+    },
+    "source-rights-receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "nonce": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "mac": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "epoch",
+        "expires",
+        "nonce",
+        "mac"
+      ]
+    },
+    "source-rights-resolve-request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "fact_read",
+            "evidence_resolve"
+          ]
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/source-rights-input"
+          }
+        }
+      },
+      "required": [
+        "operation",
+        "inputs"
+      ]
+    },
+    "source-rights-confirm-request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "fact_read",
+            "evidence_resolve"
+          ]
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/source-rights-input"
+          }
+        },
+        "receipt": {
+          "$ref": "#/$defs/source-rights-receipt"
+        }
+      },
+      "required": [
+        "operation",
+        "inputs",
+        "receipt"
+      ]
+    },
+    "source-rights-decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "display": {
+          "type": "string",
+          "enum": [
+            "none",
+            "citation_only",
+            "excerpt",
+            "full_text"
+          ]
+        },
+        "redistribution": {
+          "type": "boolean"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "receipt": {
+          "$ref": "#/$defs/source-rights-receipt"
+        }
+      },
+      "required": [
+        "allowed",
+        "display",
+        "redistribution",
+        "epoch"
+      ]
+    },
+    "source-rights-status": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "domain_service": {
+          "type": "string",
+          "enum": [
+            "not_live"
+          ]
+        },
+        "capability": {
+          "type": "string",
+          "enum": [
+            "frozen_source_rights_only"
+          ]
+        }
+      },
+      "required": [
+        "domain_service",
+        "capability"
+      ]
+    }
+  }
+}

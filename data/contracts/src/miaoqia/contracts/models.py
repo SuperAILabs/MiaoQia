@@ -466,6 +466,10 @@ class OrgEnterpriseType(Enum):
     other = "other"
 
 
+class RecordScope(Enum):
+    fixture = "fixture"
+
+
 class Kind2(Enum):
     organization = "organization"
     natural_person = "natural_person"
@@ -560,6 +564,14 @@ class Stage1(Enum):
 
 class NoticeId(RootModel[constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")]):
     root: constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+class NoticeRef(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: constr(pattern=r"^ntc_[0-9A-HJKMNP-TV-Z]{26}$")
+    version: conint(ge=1)
 
 
 class Status(Enum):
@@ -777,6 +789,92 @@ class Status2(Enum):
     converted = "converted"
     dismissed = "dismissed"
     closed = "closed"
+
+
+class Operation(Enum):
+    fact_read = "fact_read"
+    evidence_resolve = "evidence_resolve"
+
+
+class Display(Enum):
+    none = "none"
+    citation_only = "citation_only"
+    excerpt = "excerpt"
+    full_text = "full_text"
+
+
+class Tag(RootModel[constr(pattern=r"^[a-zA-Z0-9:_-]{1,160}$")]):
+    root: constr(pattern=r"^[a-zA-Z0-9:_-]{1,160}$")
+
+
+class SourceRightsInput(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    source_id: constr(pattern=r"^[a-z][a-z0-9_-]{0,95}$")
+    tags: list[Tag] = Field(..., max_length=16, min_length=1)
+
+
+class Scope(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tenant: constr(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
+    cell: constr(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
+
+
+class Purpose(Enum):
+    interactive = "interactive"
+
+
+class SourceRightsPolicy(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    schema_version: Literal[1]
+    entry_id: constr(pattern=r"^[a-z][a-z0-9_-]{0,95}$")
+    version: conint(ge=1)
+    source_id: constr(pattern=r"^[a-z][a-z0-9_-]{0,95}$")
+    scopes: list[Scope] = Field(..., max_length=64, min_length=1)
+    purposes: list[Purpose] = Field(..., max_length=1, min_length=1)
+    display: Display
+    effective_at: AwareDatetime
+    expires_at: AwareDatetime
+    redistribution: bool
+
+
+class SourceRightsReceipt(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    epoch: conint(ge=0)
+    expires: conint(ge=1)
+    nonce: constr(pattern=r"^[0-9a-f]{32}$")
+    mac: constr(pattern=r"^[0-9a-f]{64}$")
+
+
+class SourceRightsResolveRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    operation: Operation
+    inputs: list[SourceRightsInput] = Field(..., max_length=64, min_length=1)
+
+
+class DomainService(Enum):
+    not_live = "not_live"
+
+
+class Capability(Enum):
+    frozen_source_rights_only = "frozen_source_rights_only"
+
+
+class SourceRightsStatus(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    domain_service: DomainService
+    capability: Capability
 
 
 class StructuredRecord(BaseModel):
@@ -1012,6 +1110,18 @@ class NormalizedDocument(BaseModel):
     )
 
 
+class SubjectCategory(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    category: Category
+    prov: Provenance
+    scope: Literal["notice_subject"]
+    source_field: constr(pattern=r"^(/([^~/]|~[01])*)+$") = Field(
+        ..., description="固定源字段JSON Pointer；首版recipe只允许/title/value"
+    )
+
+
 class OrgRef(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1106,6 +1216,26 @@ class Requirement(BaseModel):
         None, description="体系版本；只与 code_scheme 一起出现"
     )
     grade_required: Text | None = None
+
+
+class SourceRightsConfirmRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    operation: Operation
+    inputs: list[SourceRightsInput] = Field(..., max_length=64, min_length=1)
+    receipt: SourceRightsReceipt
+
+
+class SourceRightsDecision(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    allowed: bool
+    display: Display
+    redistribution: bool
+    epoch: conint(ge=0)
+    receipt: SourceRightsReceipt | None = None
 
 
 class SubjectRef(BaseModel):
@@ -1513,6 +1643,11 @@ class Notice(PublicFactMeta):
         None,
         description="结果主体/标包只在当前不可得附件中，已记录quality警告时为true；不伪造中标人",
     )
+    subject_categories: list[SubjectCategory] | None = Field(
+        None,
+        description="公告采购主题；不表示中标人实际供货，不代替真实items或标包品类。固定字段证据及独立范围复核由recipe验证。",
+        min_length=1,
+    )
 
 
 class OrgAbnormal(PublicFactMeta):
@@ -1575,6 +1710,9 @@ class OrgRegistration(PublicFactMeta):
     uscc_prov: Provenance | None = None
     status_prov: Provenance | None = None
     legal_representative_prov: Provenance | None = None
+    record_scope: RecordScope | None = Field(
+        None, description="显式合成登记夹具；不构成真实工商登记或已解析的生产组织身份"
+    )
 
 
 class ProjectLot(BaseModel):
@@ -1756,6 +1894,11 @@ class ProcurementProject(PublicFactMeta):
         ...,
         description="已确认标包；空数组表示尚无已确认标包，不能把公告默认容器1推断成跨公告标包。",
         min_length=0,
+    )
+    notice_refs: list[NoticeRef] | None = Field(
+        None,
+        description="成员固定版本的公开投影，与notice_ids及权威聚合依赖逐值一致；旧版本可缺省。",
+        min_length=1,
     )
 
 

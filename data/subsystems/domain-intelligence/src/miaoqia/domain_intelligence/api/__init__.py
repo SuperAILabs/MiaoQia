@@ -41,6 +41,10 @@ class Page:
 
 
 class Facts(Protocol):
+    def requirements(self, fact_id: str, version: int):
+        """Metadata-only immutable provenance for one fixed fact version."""
+        ...
+
     def get_fact(self, fact_id: str, basis: Basis, *, version: int | None = None) -> FactRead | None: ...
 
     def get_fact_history(self, fact_id: str, basis: Basis, *, after: int = 0, limit: int = 50) -> Page: ...

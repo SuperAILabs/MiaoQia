@@ -1,0 +1,66 @@
+[
+  {
+    "action": "register",
+    "policy": {
+      "schema_version": 1,
+      "entry_id": "building-tender",
+      "version": 1,
+      "source_id": "official-qzygjy",
+      "scopes": [
+        {
+          "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "cell": "cell-01"
+        }
+      ],
+      "purposes": [
+        "interactive"
+      ],
+      "display": "excerpt",
+      "effective_at": "2026-10-26T00:00:00Z",
+      "expires_at": "2027-01-01T00:00:00Z",
+      "redistribution": false
+    }
+  },
+  {
+    "action": "bind",
+    "source_id": "official-qzygjy",
+    "tags": [
+      "corpus:official-building-tender-20261026",
+      "public-official-review"
+    ],
+    "entry_id": "building-tender",
+    "version": 1
+  },
+  {
+    "action": "register",
+    "policy": {
+      "schema_version": 1,
+      "entry_id": "building-award",
+      "version": 1,
+      "source_id": "official-qzygjy",
+      "scopes": [
+        {
+          "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+          "cell": "cell-01"
+        }
+      ],
+      "purposes": [
+        "interactive"
+      ],
+      "display": "excerpt",
+      "effective_at": "2026-10-26T00:00:00Z",
+      "expires_at": "2027-01-01T00:00:00Z",
+      "redistribution": false
+    }
+  },
+  {
+    "action": "bind",
+    "source_id": "official-qzygjy",
+    "tags": [
+      "corpus:official-building-award-20261026",
+      "public-official-review"
+    ],
+    "entry_id": "building-award",
+    "version": 1
+  }
+]

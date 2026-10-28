@@ -1,0 +1,30 @@
+{
+  "version": "1",
+  "scope": "reviewed local frozen pair only; not source activation or actual supply proof",
+  "lifecycle_ref": "corpus/lifecycle-manifest.json",
+  "lifecycle_sha256": "e8ba41885a558483b1c7b249c8c64fca5fe0b5538e8f4a6b13117c4bda778284",
+  "reviews": [
+    {
+      "sample": "official-building-tender-20261026",
+      "source_id": "official-qzygjy",
+      "source_key": "https://qzygjy.com/jyxx/001004/001004001/001004001001/20251128/03dec294-8729-4cb4-9fcb-cf27a0877187.html",
+      "raw_sha256": "sha256:0dcce1714d74c88b17d110cd154a720182e45562f4771c38293afd731dde2c9e",
+      "title": "2026年度球墨铸铁管材及管件采购的非政府采购招标公告",
+      "notice_type": "tender",
+      "review_ref": "corpus/official-building-tender-20261026/reviewed.json",
+      "review_sha256": "901f0bb7545dd73ac9ca1e6023c86d0f4ae2e8cc6d8ba36dd855881cb7fc6e47",
+      "conclusion": "single_notice_subject_no_split_or_conflict"
+    },
+    {
+      "sample": "official-building-award-20261026",
+      "source_id": "official-qzygjy",
+      "source_key": "https://qzygjy.com/jyxx/001004/001004001/001004001003/20251222/3413d275-d1e8-4f45-a91c-6f0f9b739af2.html",
+      "raw_sha256": "sha256:33ec4c2e0d2ed1f5301140c85a13ad39c7b495d8bcd2b3be84afdc8e22c368e9",
+      "title": "2026年度球墨铸铁管材及管件采购的结果公告",
+      "notice_type": "award",
+      "review_ref": "corpus/official-building-award-20261026/reviewed.json",
+      "review_sha256": "f7896696f90f30779fce88ef6a8eeca7fe720104dad07e1fdf4cec64e307dc9c",
+      "conclusion": "single_notice_subject_no_split_or_conflict"
+    }
+  ]
+}

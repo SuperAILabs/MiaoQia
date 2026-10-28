@@ -1,6 +1,6 @@
 # 证据与内容理解子系统（evidence）
 
-> 状态：评审中 · 版本：3.6 · 更新：2026-10-26 · 平面：数据供应
+> 状态：评审中 · 版本：3.7 · 更新：2026-10-27 · 平面：数据供应
 
 ## 1. 使命
 
@@ -15,7 +15,7 @@
 - 规范化文档：统一的文档表示（段落、表格、页码、坐标、分块），作为证据定位的坐标系，存放于对象存储（数据分层 L1）；
 - 结构化记录集：接口响应、数据下载等结构化来源的统一记录表示（记录键 + 原样字段），作为结构化证据的坐标系，与规范化文档并列存放在 L1；
 - 解析编排：调用信息领域包的解析器，生成解析修订；
-- 字段溯源：每个解析字段的证据位置、方法、置信度；证据分文档、记录、派生三种形态（[ADR-0011](../../04-decisions/0011-immutable-evidence-dual-versioning.md#决策)），派生证据由领域事实的投影器在发布事实版本时登记；
+- 字段溯源：每个解析字段的证据位置、方法、置信度；证据分文档、记录、派生三种形态（[ADR-0011](../../04-decisions/0011-immutable-evidence-dual-versioning.md#决策)），派生证据由 evidence 登记，领域事实投影器在验证后引用；
 - 质量评估：完整性、一致性、可疑值检测；
 - 内容增强：运行增强器（文档分类、品类分类、标的抽取、实体提及、业务标签、摘要、分块向量），产出版本化的增强结果（数据分层 L3）；
 - 语料快照：按月生成 Parquet 语料快照，供批量重算增强、评估与模型调优；
@@ -52,7 +52,7 @@ M0探针消费者先验证acquisition载荷，再核对来源、subject和前序
 | `ExtractionRevision` | 一次解析：快照、解析器标识与版本、结果、质量、创建时间 |
 | `FieldEvidence` | 字段 → 证据定位、方法（规则/模型/人工）、置信度 |
 | `StructuredRecordSet` | 结构化记录集：同样存对象存储（`normalized/…`），数据库只存元数据与对象键；取值无损表示：数字保留来源十进制原文为字符串、不经浮点，来源 null 在对象中以省略字段表示、在数组中保留为 null 以保持元素位置，`value_hash` 按此表示计算；结构见 `contracts/schemas/evidence/structured-record.schema.json`（草案） |
-| `EvidenceRef` | 可被引用的证据（`ev_` 前缀），三种形态：文档证据（定位器与快照版本，`evidence-ref.schema.json`）、记录证据（记录键与字段路径，`record-evidence-ref.schema.json`）、派生证据（转换版本、参考数据版本与输入证据，`derivation-evidence-ref.schema.json`）；后两种为草案 |
+| `EvidenceRef` | 可被引用的证据（`ev_` 前缀），三种形态：文档证据（定位器与快照版本，`evidence-ref.schema.json`）、记录证据（记录键与字段路径，`record-evidence-ref.schema.json`）、派生证据（转换版本、参考数据版本与输入证据，`derivation-evidence-ref.schema.json`）；记录证据为草案，派生证据仅启用本地测试转换 |
 | `QualityAssessment` | 质量状态与警告 |
 | `Enricher` / `EnricherVersion` | 增强器定义、版本、标签体系版本、评估结果、状态（候选/生效/退役） |
 | `EnrichmentRun` | 增强运行登记：增强器版本、数据范围、进度、成本、结果对象前缀 |
@@ -117,7 +117,9 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 
 公共实例只处理公共来源；租户实例随 Cell 部署，只处理客户授权文档，不发布公共 evidence 事件，不共享公共缓存、语料、凭证或重放范围。租户知识资产的业务所有权属于 customer-context，evidence 租户实例拥有对应处理制品与修订；两者通过接口/事件协作。
 
-通用 SDK 校验规范化文档、定位、哈希及证据引用完整性；目前只覆盖文档证据。记录证据（记录键唯一、字段路径可解析、`value_hash` 与取值一致）与派生证据（输入证据存在、链无环且末端为文档或记录证据、事实版本与字段路径可解析、转换已登记、参考数据内容可取得）的 SDK 校验，以及派生结果按全部输入来源传播的权限，是第一个结构化来源或第一个派生字段启用前的门禁；字段语义和领域一致性由信息领域包 `semantic_validator` 提供，扩展注册属于本子系统的 extensions 层。公共文档管线与 corpus 语料校验均执行文档证据和领域语义校验；记录证据与派生证据尚未接入。evidence 负责增强器专业指标、评估执行与版本生效门禁；公共语料与公共评估快照由本子系统维护，不回查租户 learning 数据。
+通用 SDK 的文档校验覆盖规范化文档、定位、哈希及证据引用完整性；`sdk.derivation.evaluate` 校验固定事实版本、字段路径与字段证据匹配、无环输入图、文档叶子、已登记转换和不可变可取得的参考数据，并按 RFC 8785 重算输出哈希。每条派生最多64个输入，整图最多64层、1024节点；未知转换、未知形态、缺输入和篡改均拒绝。记录证据叶子尚不支持，明确拒绝；结构化记录键唯一与取值哈希仍是首个结构化来源启用前的门禁。字段语义和领域一致性由信息领域包 `semantic_validator` 提供，扩展注册属于本子系统的 extensions 层。公共文档管线与 corpus 语料校验执行文档证据和领域语义校验。evidence 负责增强器专业指标、评估执行与版本生效门禁；公共语料与公共评估快照由本子系统维护，不回查租户 learning 数据。
+
+冻结语料通过 SDK 的一个 `corpus_source` 校验器供 checker 与 replay 共用。`artifact_origin` 为闭合的 `public_http|synthetic_fixture`，缺省保留旧公开 HTTP 语料行为；`source_kind` 继续表示正文分类（例如司法判决），不承担制品来源判定。公开制品保留真实 URL 与 fetched_at；合成制品使用 manifest 绑定的独立本地 source_key、无 URL、带时区 observed_at，禁止 fetched_at 或伪造公开抓取声明。通用夹具信封校验闭合字段、manifest/原件哈希、样本身份和可见合成标记，领域专用名称、来源及标签规则由所属包适配器验证。已含通用可见合成标记的内容不能通过删除夹具元数据、补 URL/fetched_at 重标为公开 HTTP 制品；这是内容真实性控制，不证明来源或标签授权。此登记不产生来源许可，当前权利仍由读取装配判定。
 
 ## 12. 实现状况
 
@@ -131,6 +133,16 @@ A02 贯通验收 L1-1（[验收线第8节](../../05-delivery/09-a02-end-to-end-a
 - 回放：`mq-evidence-replay` 投放冻结语料（核对原件哈希，权利标签追加 `corpus:<样本>`），不构成来源启用；
 - 读取：`api.Extractions`（解析修订）在数据单元内以本地绑定注入 domain-intelligence。
 
-L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolver(database, store, display=...)`。回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
+L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolver(database, store, display=...)`，以及互斥的 keyword-only `authorize(groups,purpose)` 可信分组模式（[闭包与绑定](source-rights-runtime.md#固定版本可信来源闭包)）。原回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
 
-本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。它尚未装配到 data-api 或 gateway，生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待后续接入。未实现：`GetDocument` 等远程查询，结构化记录集与派生证据、质量规则、增强、语料快照与重放工作流，S3 对象存储实现（R-03）。
+本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。data-api 已有内部 listener、TLS/身份 admission、deadline 约束与五路由 source-group collector；真实网络 smoke、生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待具备依赖的环境和后续接入验证。未实现：`GetDocument` 等远程查询，结构化记录集/记录证据、生产增强器、质量规则、语料快照与重放工作流，S3 对象存储实现（R-03）。
+
+`evidence.enrichments(...)` 本地装配提供不可变参考数据登记、封闭recipe运行登记与 `api.Enrichments.get(run_key)`。结果、派生证据及参考内容保存在既有对象存储的 `enrichment/<sha256>.json`，PG存固定输入引用、对象键/哈希、完整分组来源闭包及运行元数据；`evd_reference_data`、`evd_derivations`、`evd_enrichments` 不可更新或删除。对象先写，登记与现有 `evidence.enrichment.completed.v1` 发件箱同事务；回滚可留下未引用对象，重跑按指纹复用证据ID和结果。当前事件唯一键为快照、真实解析修订及recipe，当前recipe明确拒绝多事实修订，不默选序号。
+
+默认没有启用的recipe。显式测试模式只有 `test.buyer-provenance@0.1.0`、`test.winner-provenance@0.1.0`、`test.buyer-provenance@0.1.1`，以 `test.identity@0.1.0` 和不可变 `test-identity-policy@1` 保持原名取值，替换对应名称容器的 `prov`，只证明派生通道。0.1.1与0.1.0使用相同依据，供验证recipe-only运行不追加领域版本。它们不识别生产组织或品类，也不把模型推断标为确定性计算。未登记或未显式启用的recipe拒绝。
+
+`api.Recipe` 描述固定字段、转换、参考版本/内容及输出重建函数，由部署单元通过 `evidence.load_recipe` 复用包内入口来源校验后显式注入；evidence核心不导入行业词表。`proc.building-topic@0.1.0` 只读 `/title/value`，由IND-BUILDING-MATERIALS分发版本0.3.1提供，直接使用字节不变的原building-materials taxonomy/vocabulary 0.2.0 YAML，参考指纹还固定控制配置、独立评测manifest及人工scope复核manifest。全部最大字面跨度跨分类支系消歧，not_when仅在两侧均完整的并列产品短语局部检查；否定/替代/省略歧义为unknown。所有hard gate通过且输入confidence≥0.8才有rule_score=1并发布，category/prov的confidence为min(1,input)，不是统计正确率。候选与未发布原因留在L3 diagnostics。
+
+发布仅限 `building-topic-scope.json` 中两份官方原件：核对原source_id/URL/raw hash、标题及类型、reviewed与lifecycle引用哈希；标题原证据ID和字段内码点跨度保留于封闭recipe输出。scope_check与类别一同重算，写入不可变result及domain receipt.outputs；未复核原件默认unknown。任意调用方eligible标志不能授权。官方pair只支持CAT-PIPE-DI（自动标题输入0.95，输出0.95），不由“管材及管件”补FIT-DI，不造items/lot，不证明中标人实际供货。真实来源、组织识别和生产认证尚未启用。
+
+派生/参考/结果读取先检查请求上下文、用途及注入的当前展示策略。旧 callback 先以空标签组执行全局认证/租户/用途校验，再检查每组 tags 并取最严格展示级别；structured 模式只提交完整可信来源组，远程 admission 由后续部署装配负责，不把空组当作内容许可。用于应用的完整结果必须全数 `full_text`，并重新核验源事实、recipe、参考/输入指纹及补丁与重算结果。派生解析 `none` 不展示；`citation_only` 仅返回证据ID和级别、不打开正文或派生对象；`excerpt`/`full_text` 才重验完整链并返回转换及固定输入引用，不伪造原文摘录。文档读取与派生叶子共用规范化对象完整性检查。旧文档Resolver与派生的展示回调保持兼容；结构化模式显式继承 `fact_requirements` 提供的父版本完整闭包，并通过 owner 元数据端口动态解析参考绑定，缺证明拒绝。派生分支需显式注入此本地服务，远程认证仍待装配。

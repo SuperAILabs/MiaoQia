@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, Callable
 
 NAME = "evidence"
 
@@ -46,7 +46,59 @@ class ResolvedEvidence:
     locator: dict | None = None
     snippet: str | None = None
     context: str | None = None
+    derivation: dict | None = None
+
+
+@dataclass(frozen=True)
+class SnapshotRead:
+    """Full-access owner read with verified raw and normalized object hashes."""
+    id: str
+    source_id: str
+    source_key: str
+    rights_tags: tuple[str, ...]
+    raw_sha256: str
+    raw: bytes
+    document: dict
 
 
 class EvidenceResolver(Protocol):
     def resolve(self, evidence_ref: str) -> ResolvedEvidence | None: ...
+
+    def snapshot(self, snapshot_ref: str) -> SnapshotRead | None: ...
+
+
+class Enrichments(Protocol):
+    """已验证不可变结果的读取；无权返回None，完整性错误拒绝，当前权限每次重验。"""
+    def require_full(self, rights_tags: list[str]) -> None: ...
+
+    def get(self, run_key: str) -> dict | None: ...
+
+    def requirements(self, run_key: str) -> Closure: ...
+
+    def require_full_requirements(self, closure: Closure) -> None: ...
+
+
+@dataclass(frozen=True)
+class Recipe:
+    """部署单元明确装配的单字段recipe；输出重建函数不接收调用方补丁。"""
+    id: str
+    path: str
+    transform_id: str
+    reference: dict
+    content: dict
+    transform: Callable
+    outputs: Callable
+    test_recipe: bool = False
+
+
+from .provenance import Closure, ReferenceInput, Unbound, ProvenanceIntegrityError
+
+
+class SourceRequirements(Protocol):
+    """Metadata-only owner proof; immutable references resolve current approved binding."""
+    def snapshot(self, snapshot_ref: str) -> Closure: ...
+    def revision(self, revision_ref: str, snapshot_ref: str) -> Closure: ...
+    def evidence(self, evidence_ref: str) -> Closure: ...
+    def reference(self, name: str, version: str) -> Closure: ...
+    def recorded(self, kind: str, key: str) -> Closure: ...
+    def resolve(self, closure: Closure) -> tuple: ...
