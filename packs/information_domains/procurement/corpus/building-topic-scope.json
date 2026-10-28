@@ -2,7 +2,7 @@
   "version": "1",
   "scope": "reviewed local frozen pair only; not source activation or actual supply proof",
   "lifecycle_ref": "corpus/lifecycle-manifest.json",
-  "lifecycle_sha256": "951529be045d0b2b8fca02ee3b4e9fef1c0917d9fea33147c1442ae3fae0e5c0",
+  "lifecycle_sha256": "e8ba41885a558483b1c7b249c8c64fca5fe0b5538e8f4a6b13117c4bda778284",
   "reviews": [
     {
       "sample": "official-building-tender-20261026",

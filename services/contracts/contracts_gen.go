@@ -1560,7 +1560,7 @@ type OrgRef struct {
 	UsccProv *Provenance `json:"uscc_prov,omitempty,omitzero"`
 }
 
-// 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。
+// 来源公示的企业登记信息或明确标记的合成测试登记夹具，随来源变化产生新版本；夹具不得用于生产组织核验。
 type OrgRegistration struct {
 	// Address corresponds to the JSON schema field "address".
 	Address *Text `json:"address,omitempty,omitzero"`
@@ -1627,6 +1627,9 @@ type OrgRegistration struct {
 	// Quality corresponds to the JSON schema field "quality".
 	Quality *Quality `json:"quality,omitempty,omitzero"`
 
+	// 显式合成登记夹具；不构成真实工商登记或已解析的生产组织身份
+	RecordScope *OrgRegistrationRecordScope `json:"record_scope,omitempty,omitzero"`
+
 	// RecordedAt corresponds to the JSON schema field "recorded_at".
 	RecordedAt time.Time `json:"recorded_at"`
 
@@ -1673,6 +1676,10 @@ type OrgRegistration struct {
 	// 领域事实版本号
 	Version int `json:"version"`
 }
+
+type OrgRegistrationRecordScope string
+
+const OrgRegistrationRecordScopeFixture OrgRegistrationRecordScope = "fixture"
 
 // 股东：组织股东以组织引用表达，自然人股东以 person 表达
 type OrgShareholder struct {

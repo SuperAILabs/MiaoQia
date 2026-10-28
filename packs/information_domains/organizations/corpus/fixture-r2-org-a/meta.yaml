@@ -1,0 +1,11 @@
+source_id: fixture-r2-org
+source_key: fixture:r2-org:fixture-r2-org-a
+rights_tag: fixture:r2-org-record-a
+raw_sha256: 83059332f90cd08b738724909c9f41ed80bfd724144816439e058b743426dac3
+fixture_only: true
+fixture_manifest: r2-fixture-registry-v1.json
+observed_at: '2026-10-26T00:00:00+08:00'
+schema: domains/organization/registration.schema.json
+notes: 本地合成制品建立时间，不是公开抓取时间；不得用于生产组织核验。
+fixture_manifest_sha256: 6eddb54f3bb996ff029b20820c71f5aa83c1e2758d9290c124e3bf207bb7caa0
+artifact_origin: synthetic_fixture

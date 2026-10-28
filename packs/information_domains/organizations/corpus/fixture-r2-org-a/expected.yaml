@@ -1,0 +1,7 @@
+facts:
+- fact_type: organization.registration
+  fields:
+    /record_scope: fixture
+    /subject/name_raw: 【夹具】青岚采购甲有限公司
+    /name/value: 【夹具】青岚采购甲有限公司
+    /former_names/0/value: 【夹具】青岚采购甲旧称有限公司

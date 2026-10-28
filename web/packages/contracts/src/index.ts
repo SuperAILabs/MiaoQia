@@ -362,7 +362,7 @@ export type OrgEnterpriseType =
   | "social_organization"
   | "other";
 /**
- * 一家企业在来源中公示的登记信息（照面信息、股东、分支机构），随来源变化产生新版本。
+ * 来源公示的企业登记信息或明确标记的合成测试登记夹具，随来源变化产生新版本；夹具不得用于生产组织核验。
  */
 export type OrgRegistration = PublicFactMeta & {
   info_domain: "INF-ORG";
@@ -394,6 +394,10 @@ export type OrgRegistration = PublicFactMeta & {
   uscc_prov?: Provenance;
   status_prov?: Provenance;
   legal_representative_prov?: Provenance;
+  /**
+   * 显式合成登记夹具；不构成真实工商登记或已解析的生产组织身份
+   */
+  record_scope?: "fixture";
   [k: string]: unknown;
 };
 /**

@@ -113,6 +113,11 @@
       "source_url": "https://qzygjy.com/jyxx/001004/001004001/001004001003/20251222/3413d275-d1e8-4f45-a91c-6f0f9b739af2.html",
       "response_sha256": "9cae7b42d6a0e5208b1b70259117294dc7967b500fc01745313be9dd743b4eb6",
       "raw_sha256": "33ec4c2e0d2ed1f5301140c85a13ad39c7b495d8bcd2b3be84afdc8e22c368e9"
+    },
+    {
+      "sample": "crcc18-g228-concrete-202610",
+      "source_url": "https://www.crccep.cn",
+      "raw_sha256": "d6491d40df44334e10019e62131f3b0e687a16c40e0ed464fd1c4054e030c76f"
     }
   ]
 }

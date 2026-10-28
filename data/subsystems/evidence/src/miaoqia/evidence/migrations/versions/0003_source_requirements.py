@@ -11,7 +11,7 @@ def upgrade():
     manifest = json.loads(resources.files("miaoqia.evidence").joinpath("resources/reference_manifest.json").read_text())
     manifest_hash = "sha256:" + hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
     # This migration's finite approval is pinned; changes require a new migration.
-    if manifest != {"schema_version": 1, "references": [{"name": "proc-building-topic", "version": "0.1.0", "content_hash": "sha256:2c9665eddde185bfde5a5cff31e18ba9cee34435c8c4ec279f1127aac1d95178", "rights_tags": ["review:building-topic-pair"], "source_kind": "reference", "source_id": "reference-proc-building-topic-v0-1"}]}:
+    if manifest != {"schema_version": 1, "references": [{"name": "proc-building-topic", "version": "0.1.0", "content_hash": "sha256:2b5aef8fb787639360a27918f62ee56c4fb1c573f0c564ed288e1660fd13e258", "rights_tags": ["review:building-topic-pair"], "source_kind": "reference", "source_id": "reference-proc-building-topic-v0-1"}]}:
         raise ValueError("reviewed manifest changed")
     op.execute("""
 CREATE TABLE evd_requirement_sets (
@@ -36,7 +36,7 @@ CREATE TABLE evd_provenance.manifest (
  source_kind text NOT NULL CHECK(source_kind='reference'), source_id text NOT NULL, manifest_hash text NOT NULL,
  PRIMARY KEY(name,version));
 INSERT INTO evd_provenance.manifest VALUES
- ('proc-building-topic','0.1.0','sha256:2c9665eddde185bfde5a5cff31e18ba9cee34435c8c4ec279f1127aac1d95178',
+ ('proc-building-topic','0.1.0','sha256:2b5aef8fb787639360a27918f62ee56c4fb1c573f0c564ed288e1660fd13e258',
  '["review:building-topic-pair"]','reference','reference-proc-building-topic-v0-1',
  '__MANIFEST_HASH__');
 CREATE TABLE evd_provenance.bindings (

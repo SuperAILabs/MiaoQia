@@ -138,7 +138,7 @@ def test_low_confidence_clears_stale_owned_field_and_unknown_raw_guard(plane):
     revision_id = ids.new("exr")
     with reqctx.use(CTX), plane[0].tx() as conn:
         conn.execute(text("""INSERT INTO evd_extraction_revisions(id,snapshot_id,extractor,pack_id,pack_version,facts,quality_status,warnings)
-            VALUES (:r,:s,'manual-lowconfidence-fixture@0.1.0','INF-PROC','1.6.0',CAST(:f AS jsonb),'ok','[]')"""),
+            VALUES (:r,:s,'manual-lowconfidence-fixture@0.1.0','INF-PROC','1.6.1',CAST(:f AS jsonb),'ok','[]')"""),
             {"r": revision_id, "s": revision.snapshot_ref, "f": json.dumps([fact])})
     _materialize(plane, plane[3].extractions.revision(revision_id))
     service, recipe = _topic(plane)

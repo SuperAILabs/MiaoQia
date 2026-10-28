@@ -163,7 +163,7 @@ L1 按依赖拆分，下表为实施建议；PR #35 的 E1–E5 仍为建议，�
 | L1-2a | 事实当前/当时已知/固定版本、历史、结构化查询、A02 求值单位与文档证据解析的本地绑定；补同项目建材招标/中标官方原件、人工映射及折扣率解析回归 | D-02、D-03、D-11（提供读取基础，尚未接入 Go 端口） | 只改 Python 与语料 |
 | L1-2b | 冻结 `official-qzygjy` 招标/中标按平台、采购方与项目号聚合 `pp_`；无明确标包证据为 `lots=[]`；四事件与独立聚合版本，后续修订关联待复核；既有 Notice 经显式 ID 本地 backfill 补建，保持旧版本/事件不变 | D-04（局部，不关闭完整生命周期） | 只改 Python、最小兼容契约与夹具 |
 | L1-2c0 | 固定字段派生链、不可变参考数据与测试recipe的本地两阶段CLI；可信source-base增强及同pp成员刷新，公开notice_refs与内部deps一致；不提供实际品类/组织解析 | D-02、D-04（基础局部，不关闭生产能力） | Python、最小兼容Project字段；显式测试模式 |
-| L1-2c1 | 复用固定标题证据和行业YAML，复核官方pair的Notice主题品类及固定pp/receipt守卫的A02回退；只输出DI、明确notice_subject，不表示实际供货 | D-02、D-04（有界局部，不关闭生产能力） | Python、Notice1.2.0/INF-PROC1.6.0/APP-TENDER0.8.0；显式本地启用 |
+| L1-2c1 | 复用固定标题证据和行业YAML，复核官方pair的Notice主题品类及固定pp/receipt守卫的A02回退；只输出DI、明确notice_subject，不表示实际供货 | D-02、D-04（有界局部，不关闭生产能力） | Python、Notice1.2.0/INF-PROC1.6.1/APP-TENDER0.8.0；显式本地启用 |
 | L1-2d0 | acquisition 持久化当前来源权利、受限本地 CLI 与内部 mTLS 只读 endpoint/client；冻结 building 组合，原始与当前权利全输入交集 | d1/d2 查询和状态装配、完整来源治理仍未完成 | 只改 Python 与契约 |
 | L1-2d1a | 本地固定版本可信分组闭包、不可变参考审批绑定、有限 owner 迁移和显式审计回填；兼容旧 callback 的 structured 授权端口 | 候选须独立实现安全审查；远程查询/最终响应确认、状态与完整 R2 未完成，A02仍L0 | Python数据平面内部基础 |
 | L1-2 后续 | data-api 真实网络 smoke 与生产权限/覆盖装配（listener、TLS/身份 admission、deadline 和五路由 source-group collectors 已实现）；事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；广泛来源品类增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
