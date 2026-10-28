@@ -141,7 +141,7 @@ L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolv
 
 默认没有启用的recipe。显式测试模式只有 `test.buyer-provenance@0.1.0`、`test.winner-provenance@0.1.0`、`test.buyer-provenance@0.1.1`，以 `test.identity@0.1.0` 和不可变 `test-identity-policy@1` 保持原名取值，替换对应名称容器的 `prov`，只证明派生通道。0.1.1与0.1.0使用相同依据，供验证recipe-only运行不追加领域版本。它们不识别生产组织或品类，也不把模型推断标为确定性计算。未登记或未显式启用的recipe拒绝。
 
-`api.Recipe` 描述固定字段、转换、参考版本/内容及输出重建函数，由部署单元通过 `evidence.load_recipe` 复用包内入口来源校验后显式注入；evidence核心不导入行业词表。`proc.building-topic@0.1.0` 只读 `/title/value`，由IND-BUILDING-MATERIALS分发版本0.3.0提供，直接使用字节不变的原building-materials taxonomy/vocabulary 0.2.0 YAML，参考指纹还固定控制配置、独立评测manifest及人工scope复核manifest。全部最大字面跨度跨分类支系消歧，not_when仅在两侧均完整的并列产品短语局部检查；否定/替代/省略歧义为unknown。所有hard gate通过且输入confidence≥0.8才有rule_score=1并发布，category/prov的confidence为min(1,input)，不是统计正确率。候选与未发布原因留在L3 diagnostics。
+`api.Recipe` 描述固定字段、转换、参考版本/内容及输出重建函数，由部署单元通过 `evidence.load_recipe` 复用包内入口来源校验后显式注入；evidence核心不导入行业词表。`proc.building-topic@0.1.0` 只读 `/title/value`，由IND-BUILDING-MATERIALS分发版本0.3.1提供，直接使用字节不变的原building-materials taxonomy/vocabulary 0.2.0 YAML，参考指纹还固定控制配置、独立评测manifest及人工scope复核manifest。全部最大字面跨度跨分类支系消歧，not_when仅在两侧均完整的并列产品短语局部检查；否定/替代/省略歧义为unknown。所有hard gate通过且输入confidence≥0.8才有rule_score=1并发布，category/prov的confidence为min(1,input)，不是统计正确率。候选与未发布原因留在L3 diagnostics。
 
 发布仅限 `building-topic-scope.json` 中两份官方原件：核对原source_id/URL/raw hash、标题及类型、reviewed与lifecycle引用哈希；标题原证据ID和字段内码点跨度保留于封闭recipe输出。scope_check与类别一同重算，写入不可变result及domain receipt.outputs；未复核原件默认unknown。任意调用方eligible标志不能授权。官方pair只支持CAT-PIPE-DI（自动标题输入0.95，输出0.95），不由“管材及管件”补FIT-DI，不造items/lot，不证明中标人实际供货。真实来源、组织识别和生产认证尚未启用。
 
