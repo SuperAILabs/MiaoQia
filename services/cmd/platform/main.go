@@ -17,6 +17,7 @@
 //	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
 //	MIAOQIA_CHANNELS_SIGNING_KEY  简报卡片动作令牌与简报历史游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_PURSUIT_SIGNING_KEY   跟进列表与待我处理翻页游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
+//	MIAOQIA_GATEWAY_DATA_API_URL  data-api 内部读取接口地址（HTTPS，mTLS）；对象页的采购项目读取，未配置时对象页 503
 //	MIAOQIA_COMMERCE_COVERAGE     数据覆盖包（产品目录接入前，全部租户相同），例如 INF-PROC=330000;INF-ORG=*；未配置时对象页 503
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
