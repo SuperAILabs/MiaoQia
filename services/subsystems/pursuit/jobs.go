@@ -35,6 +35,11 @@ func jobs(now func() time.Time) func(env *runtime.Env) ([]scheduler.Job, error) 
 				})
 			}
 		}
+		// C-17：授权同步告警与转交提醒的转回
+		monitor, ok := runtime.Lookup[api.Monitor](env.Bindings, api.MonitorBinding)
+		if !ok {
+			return nil, fmt.Errorf("缺少 %s 绑定", api.MonitorBinding)
+		}
 		return []scheduler.Job{
 			{Name: "pursuit.run-due-reminders", Every: time.Minute,
 				Run: perTenant(func(ctx context.Context) (int, error) { return reminders.RunDue(ctx, now(), jobBatch) })},
@@ -42,6 +47,10 @@ func jobs(now func() time.Time) func(env *runtime.Env) ([]scheduler.Job, error) 
 				Run: perTenant(func(ctx context.Context) (int, error) { return reminders.RetrySync(ctx, jobBatch) })},
 			{Name: "pursuit.run-tracking", Every: time.Minute,
 				Run: perTenant(func(ctx context.Context) (int, error) { return reminders.RunTracking(ctx, now(), jobBatch) })},
+			{Name: "pursuit.check-authorization-sync", Every: time.Minute,
+				Run: perTenant(func(ctx context.Context) (int, error) { return monitor.CheckSync(ctx, now(), jobBatch) })},
+			{Name: "pursuit.hand-back-reminders", Every: time.Minute,
+				Run: perTenant(func(ctx context.Context) (int, error) { return monitor.HandBack(ctx, now(), jobBatch) })},
 		}, nil
 	}
 }

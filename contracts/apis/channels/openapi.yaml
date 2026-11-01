@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: channels 渠道安装、绑定与卡片跳转接口
-  version: 0.5.0
+  version: 0.6.0
   description: >-
     channels 的对外接口（经 gateway，令牌派生租户与主体），PRD 第1段 F4–F7 的服务端切片。首批只有企业微信（wecom）；
     飞书、钉钉随各自适配器追加。租户只来自已验证的令牌，请求体与链接中的租户一律不信任。管理动作（安装、验证、停用、强制解绑）
@@ -21,6 +21,8 @@ info:
     0.5.0（PRD 第5段 F7，C-08）：即时通知。NoticeKind 追加 signal_immediate（信号即时通知卡片，按生效策略 route 的
     notify immediate 发给受众），NoticeReason 追加其取消原因；简报条目追加 notified（已即时通知、本期不再推送信号卡片）与
     arrived_overnight（安静时段内到达、并入本期简报）；简报偏好追加 instant_notify（是否接收即时通知，缺省是；修改立即生效）。均为追加。
+    0.6.0（PRD 第6段 F12 第6条，C-17）：NoticeKind 追加 authorization_sync_failed（授权同步超过 24 小时未成功时给目标所在单元决策者的
+    通知），NoticeReason 追加 sync_recovered、not_decision_maker、pursuit_closed。均为追加。
 servers:
 - url: /
 paths:
@@ -945,11 +947,12 @@ components:
       type: string
       description: >-
         渠道通知的种类：task_due 任务提醒卡片；authorization_rejected 授权被拒时给操作者的通知（0.4.0）；signal_immediate 信号的
-        即时通知卡片（0.5.0，C-08）
+        即时通知卡片（0.5.0，C-08）；authorization_sync_failed 授权同步超过 24 小时未成功时给目标所在单元决策者的通知（0.6.0，C-17）
       enum:
       - task_due
       - authorization_rejected
       - signal_immediate
+      - authorization_sync_failed
     NoticeState:
       type: string
       description: >-
@@ -969,7 +972,9 @@ components:
         0.5.0（signal_immediate）的 cancelled 另有：preference_off 收件人关闭了即时通知；not_immediate 目标的生效策略对信号当前处置
         不再是 immediate（或目标未激活、信号为回填）；not_in_audience 收件人已不在受众中；objective_not_visible 收件人已不能查看目标的
         信号；signal_not_visible 信号对收件人不可见或不属于该目标；signal_handled 信号已不是待处理；throttled 超过每名收件人的即时
-        通知上限，留给简报；merged_into_briefing 安静时段内到达、结束时简报即将发送，并入简报
+        通知上限，留给简报；merged_into_briefing 安静时段内到达、结束时简报即将发送，并入简报。
+        0.6.0（authorization_sync_failed）的 cancelled 另有：sync_recovered 发送前授权同步已恢复；not_decision_maker 收件人此刻已不能
+        处理该跟进（不在单元上能更新跟进）；pursuit_closed 跟进已关闭、撤销或持续跟踪已停止
       enum:
       - channel_error
       - not_bound
@@ -988,6 +993,9 @@ components:
       - signal_handled
       - throttled
       - merged_into_briefing
+      - sync_recovered
+      - not_decision_maker
+      - pursuit_closed
       - other
     DeliveryState:
       type: string

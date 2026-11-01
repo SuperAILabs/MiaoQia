@@ -32,6 +32,12 @@ import (
 // C-11：每条（收件人确定的）通知的结果发布投递事件 channels.notice.sent.v1 / channels.notice.failed.v1（与状态变化在同一事务中、
 // 只在状态确实改变时发布一次；字段按种类白名单，见 noticeEventData）；转给决策者的提醒分页展开、不设总上限（noticeExpandPage）；
 // 授权被拒通知的跟进为持续跟踪时经 pursuit getTracking 以收件人本人再检查。
+//
+// C-17：授权同步失败的通知（PRD 第6段 F12 第6条）：消费 pursuit.pursuit.authorization_sync_failed.v1，每次失败记一行收件人 '*' 的待展开
+// 通知，与转交提醒同一套分页展开：以每个已绑定成员本人经 getPursuit / getTracking 判断（跟进进行中、授权同步仍失败、
+// authorization.viewer_can_resolve 为真），展开为各自的一行；每次发送前仍以收件人本人再检查（同步已恢复 sync_recovered、已不是决策者
+// not_decision_maker、跟进已关闭 pursuit_closed、不可见 pursuit_not_visible）。事件只是触发，伪造或改写的事件不能让任何人收到其不能处理
+// 的跟进的通知。
 
 // NoticeCutoff 是通知的渠道重试时限（从事件对应的时刻起）。
 const NoticeCutoff = 24 * time.Hour
@@ -51,11 +57,11 @@ var noticeReasons = map[string]map[string]bool{
 	"retrying": {"channel_error": true},
 	"in_app":   {"not_bound": true, "cutoff": true},
 	"cancelled": {"member_inactive": true, "task_not_visible": true, "task_closed": true, "superseded": true, "reassigned": true,
-		"pursuit_not_visible": true},
+		"pursuit_not_visible": true, "sync_recovered": true, "not_decision_maker": true, "pursuit_closed": true},
 }
 
 // noticeEventData 按通知种类逐项白名单投影投递事件的字段：个人数据只有收件人（与简报投递事件相同）；task_due 另带任务、截止版本与
-// 是否转交，authorization_rejected 只带跟进。不含标题、正文、截止值、被拒成员、原因说明或操作者以外的任何成员。
+// 是否转交，authorization_rejected 与 authorization_sync_failed 只带跟进。不含标题、正文、截止值、被拒成员、原因说明或操作者以外的任何成员。
 func noticeEventData(id, kind, recipient, pursuit, task string, deadline int64, escalated bool, attempt int) map[string]any {
 	d := map[string]any{"notice_id": id, "kind": kind, "recipient": recipient, "channel": Channel, "pursuit_id": pursuit, "attempt": attempt}
 	if kind == "task_due" {
@@ -90,7 +96,12 @@ func appendRowFailed(ctx context.Context, tx pgx.Tx, n *noticeRow, state, reason
 const (
 	PursuitTaskDue               = "pursuit.task.due.v1"
 	PursuitAuthorizationRejected = "pursuit.pursuit.authorization_rejected.v1"
+	// PursuitAuthorizationSyncFailed 是授权同步超过 24 小时未成功（C-17）。
+	PursuitAuthorizationSyncFailed = "pursuit.pursuit.authorization_sync_failed.v1"
 )
+
+// NoticeSyncFailed 是授权同步失败时给决策者的通知种类（C-17）。
+const NoticeSyncFailed = "authorization_sync_failed"
 
 // taskDueEvent 是 pursuit.task.due.v1 的数据（只取用到的字段）。
 type taskDueEvent struct {
@@ -102,6 +113,7 @@ type taskDueEvent struct {
 	DeadlineVersion int64           `json:"deadline_version"`
 	Due             json.RawMessage `json:"due,omitempty"`
 	Escalated       bool            `json:"escalated"`
+	HandedBack      bool            `json:"handed_back,omitempty"`
 	Recipient       string          `json:"recipient,omitempty"`
 	FireAt          time.Time       `json:"fire_at"`
 }
@@ -212,6 +224,38 @@ func (s *Service) AuthorizationRejectedEvent(ctx context.Context, tx pgx.Tx, env
  VALUES ($1, $2, 'authorization_rejected', $3, $4, $5, $6, $7, 'pending', $8, $9, $8) ON CONFLICT (tenant_id, kind, source, recipient) DO NOTHING`,
 		ids.New("dlv"), env.Tenant, fmt.Sprintf("%s/%d", data.PursuitID, data.ParticipationVersion), data.Operator, data.PursuitID, data.RecordedAt, env.Data,
 		now, laterOf(now, data.RecordedAt).Add(NoticeCutoff))
+	return err
+}
+
+// syncFailedEvent 是 pursuit.pursuit.authorization_sync_failed.v1 的数据（只取用到的字段）。
+type syncFailedEvent struct {
+	PursuitID      string    `json:"pursuit_id"`
+	State          string    `json:"state"`
+	DesiredVersion int64     `json:"desired_version"`
+	DetectedAt     time.Time `json:"detected_at"`
+}
+
+// AuthorizationSyncFailedEvent 消费 pursuit.pursuit.authorization_sync_failed.v1（C-17）：跟进进行中时记一行待展开给决策者的通知（每次失败
+// 一行：source 为“跟进/期望参与版本”，重放不新增）。事件只是触发：收件人与能否处理都在展开与发送前以收件人本人经 pursuit 判断。
+func (s *Service) AuthorizationSyncFailedEvent(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) error {
+	var data syncFailedEvent
+	if err := json.Unmarshal(env.Data, &data); err != nil {
+		return err
+	}
+	if env.Tenant == "" || env.Cell == "" {
+		return fmt.Errorf("channels：授权同步失败事件 %s 缺少租户上下文", env.ID)
+	}
+	if data.State != "open" || data.DesiredVersion < 1 {
+		return nil // 已关闭或撤销的跟进只有运营告警，不通知决策者
+	}
+	if data.DetectedAt.IsZero() {
+		data.DetectedAt = env.Time
+	}
+	now := s.businessNow()
+	_, err := tx.Exec(ctx, `INSERT INTO chn_notices (id, tenant_id, kind, source, recipient, pursuit_id, fire_at, payload, state, next_attempt_at, cutoff_at, created_at)
+ VALUES ($1, $2, $3, $4, '*', $5, $6, $7, 'pending', $8, $9, $8) ON CONFLICT (tenant_id, kind, source, recipient) DO NOTHING`,
+		ids.New("dlv"), env.Tenant, NoticeSyncFailed, fmt.Sprintf("%s/%d", data.PursuitID, data.DesiredVersion), data.PursuitID, data.DetectedAt, env.Data,
+		now, laterOf(now, data.DetectedAt).Add(NoticeCutoff))
 	return err
 }
 
@@ -421,6 +465,25 @@ func (s *Service) deliverNotice(sctx context.Context, id string) {
 			return
 		}
 		pursuitView = target
+	case NoticeSyncFailed:
+		// 以收件人本人再检查（C-17）：跟进仍可见、进行中、授权同步仍失败，且收件人此刻仍能处理（单元上能更新跟进）
+		target, err := s.syncFailedTarget(uctx, n.pursuit)
+		if err != nil {
+			if dependencyTransient(err) {
+				retry()
+				return
+			}
+			s.finishNotice(sctx, &n, "cancelled", "pursuit_not_visible")
+			return
+		}
+		if reason := target.syncFailedReason(); reason != "" {
+			s.finishNotice(sctx, &n, "cancelled", reason)
+			return
+		}
+		pursuitView = target
+	default:
+		s.finishNotice(sctx, &n, "cancelled", "pursuit_not_visible") // 未登记的种类：不发送（失败关闭）
+		return
 	}
 	target, err := s.DeliveryTarget(sctx, n.recipient)
 	if err != nil {
@@ -444,9 +507,12 @@ func (s *Service) deliverNotice(sctx context.Context, id string) {
 	}
 	// 正文每次按当前值重新渲染（按钮与令牌不变）
 	caps := s.provider().Capabilities()
-	if view != nil {
-		n.message.Card.Lines, _ = fitLines(taskLines(view, n.escalated, now), caps)
-	} else if pursuitView != nil {
+	switch {
+	case view != nil:
+		n.message.Card.Lines, _ = fitLines(taskLines(view, n.escalated, handedBack(n.payload), now), caps)
+	case pursuitView != nil && n.kind == NoticeSyncFailed:
+		n.message.Card.Lines, _ = fitLines(syncFailedLines(pursuitView), caps)
+	case pursuitView != nil:
 		n.message.Card.Lines, _ = fitLines(rejectedLines(n.payload, pursuitView), caps)
 	}
 	n.attempts++
@@ -492,7 +558,26 @@ func (s *Service) expandNotice(sctx context.Context, rc reqctx.Context, n *notic
 	}
 	var picked []string
 	for _, sub := range subjects {
-		v, err := s.Pursuits.GetTask(userContext(sctx, rc.Tenant, rc.Cell, sub), n.task)
+		uctx := userContext(sctx, rc.Tenant, rc.Cell, sub)
+		if n.kind == NoticeSyncFailed {
+			// C-17：以成员本人判断跟进仍在授权同步失败中、进行中，且本人此刻能处理（单元上能更新跟进）
+			target, err := s.syncFailedTarget(uctx, n.pursuit)
+			if err != nil {
+				if dependencyTransient(err) {
+					s.rescheduleNotice(sctx, n.id, now.Add(time.Minute))
+					return
+				}
+				continue
+			}
+			if target.syncFailedReason() == "" {
+				picked = append(picked, sub)
+			}
+			continue
+		}
+		if n.kind != "task_due" {
+			continue // 未登记的种类不展开给任何人（失败关闭）
+		}
+		v, err := s.Pursuits.GetTask(uctx, n.task)
 		if err != nil {
 			if dependencyTransient(err) {
 				s.rescheduleNotice(sctx, n.id, now.Add(time.Minute))
@@ -509,7 +594,8 @@ func (s *Service) expandNotice(sctx context.Context, rc reqctx.Context, n *notic
 		added := 0
 		for _, sub := range picked {
 			tag, err := tx.Exec(ctx, `INSERT INTO chn_notices (id, tenant_id, kind, source, recipient, pursuit_id, task_id, deadline_version, escalated, fire_at, payload,
- state, next_attempt_at, cutoff_at, created_at) SELECT $2, tenant_id, kind, source, $3, pursuit_id, task_id, deadline_version, true, fire_at, payload, 'pending', $4, cutoff_at, $4
+ state, next_attempt_at, cutoff_at, created_at) SELECT $2, tenant_id, kind, source, $3, pursuit_id, task_id, deadline_version, kind = 'task_due', fire_at, payload, 'pending', $4,
+ cutoff_at, $4
  FROM chn_notices WHERE id = $1 AND state IN ('pending', 'retrying') ON CONFLICT (tenant_id, kind, source, recipient) DO NOTHING`, n.id, ids.New("dlv"), sub, now)
 			if err != nil {
 				return err
@@ -532,6 +618,9 @@ func (s *Service) expandNotice(sctx context.Context, rc reqctx.Context, n *notic
 		if err != nil {
 			return err
 		}
+		if n.kind == NoticeSyncFailed {
+			return recordAs(ctx, tx, "channels.notice.expanded", n.id, "succeeded", fmt.Sprintf("wecom;kind=%s;pursuit=%s;recipients=%d", n.kind, n.pursuit, total))
+		}
 		return recordAs(ctx, tx, "channels.notice.expanded", n.id, "succeeded", fmt.Sprintf("wecom;task=%s;recipients=%d", n.task, total))
 	})
 	if err != nil {
@@ -543,6 +632,46 @@ func (s *Service) expandNotice(sctx context.Context, rc reqctx.Context, n *notic
 type rejectedTarget struct {
 	ownerValid bool
 	url        string
+	// 授权同步失败通知（C-17）的再检查：跟进进行中（持续跟踪未停止）、授权同步仍失败、收件人此刻能处理（viewer_can_resolve；提供方没有给出时
+	// 为 false，失败关闭）
+	open, failed, resolver bool
+}
+
+// syncFailedReason 返回授权同步失败通知此刻不应发给该收件人的原因；空串为应当发送。
+func (t *rejectedTarget) syncFailedReason() string {
+	switch {
+	case !t.open:
+		return "pursuit_closed"
+	case !t.failed:
+		return "sync_recovered"
+	case !t.resolver:
+		return "not_decision_maker"
+	}
+	return ""
+}
+
+// syncFailedTarget 以调用上下文中的用户（收件人本人）读取授权同步失败通知所指的跟进（C-17）：先经 getPursuit（交易型），确定失败时再经
+// getTracking（持续跟踪）；暂时失败直接返回（调用方重试，不当作不可见）。
+func (s *Service) syncFailedTarget(uctx context.Context, pursuit string) (*rejectedTarget, error) {
+	p, err := s.Pursuits.GetPursuit(uctx, pursuit)
+	if err == nil {
+		resolver, _ := p.Authorization.ViewerCanResolve.Get()
+		return &rejectedTarget{ownerValid: p.OwnerValid, url: pursuitURL(pursuit), open: p.State == purapi.PursuitStatusOpen,
+			failed: p.Authorization.State == purapi.AuthorizationStateFailed, resolver: resolver}, nil
+	}
+	if dependencyTransient(err) {
+		return nil, err
+	}
+	if s.Trackings == nil {
+		return nil, errTrackingsUnwired
+	}
+	tr, err := s.Trackings.GetTracking(uctx, pursuit)
+	if err != nil {
+		return nil, err
+	}
+	resolver, _ := tr.Authorization.ViewerCanResolve.Get()
+	return &rejectedTarget{ownerValid: tr.OwnerValid, url: trackingURL(pursuit), open: tr.State != purapi.TrackingStateStopped,
+		failed: tr.Authorization.State == purapi.AuthorizationStateFailed, resolver: resolver}, nil
 }
 
 // errTrackingsUnwired 是持续跟踪读取未接入（只在直接构造 Service 的测试中出现）：按暂时失败处理，不当作不可见。
@@ -595,12 +724,19 @@ func (s *Service) renderNotice(sctx context.Context, tenant string, n *noticeRow
 			return err
 		}
 		title := "任务提醒：" + view.Task.Title
+		if handedBack(n.payload) {
+			title = "任务提醒（转回）：" + view.Task.Title
+		}
 		if n.escalated {
 			title = "待你决定的任务：" + view.Task.Title
 		}
-		lines, _ := fitLines(taskLines(view, n.escalated, now), caps)
+		lines, _ := fitLines(taskLines(view, n.escalated, handedBack(n.payload), now), caps)
 		msg = api.Message{Kind: "task_reminder", Card: &api.Card{CardID: card, Title: domain.Truncate(title, caps.TitleMax), Lines: lines, Buttons: []api.Button{
 			{Key: "complete", Label: "完成", Token: done}, {Key: "view", Label: "查看", URL: taskURL(n.task)}}}}
+	case p != nil && n.kind == NoticeSyncFailed:
+		lines, _ := fitLines(syncFailedLines(p), caps)
+		msg = api.Message{Kind: NoticeSyncFailed, Card: &api.Card{CardID: card, Title: domain.Truncate("跟进授权同步失败", caps.TitleMax), Lines: lines,
+			Buttons: []api.Button{{Key: "view", Label: "查看", URL: p.url}}}}
 	case p != nil:
 		lines, _ := fitLines(rejectedLines(n.payload, p), caps)
 		msg = api.Message{Kind: "authorization_rejected", Card: &api.Card{CardID: card, Title: domain.Truncate("跟进成员未获授权", caps.TitleMax), Lines: lines,
@@ -635,8 +771,23 @@ func fitLines(lines []string, caps api.Capabilities) ([]string, int) {
 	return domain.FitCard(out, caps.LineMax, caps.LinesMax)
 }
 
+// handedBack 判断任务提醒是否为转回给负责人的同一提醒（pursuit 事件 0.4.0 的 handed_back，C-17）。
+func handedBack(payload []byte) bool {
+	var data taskDueEvent
+	return json.Unmarshal(payload, &data) == nil && data.HandedBack && !data.Escalated
+}
+
+// syncFailedLines 渲染授权同步失败通知的正文（C-17）：不含成员与原因说明。
+func syncFailedLines(p *rejectedTarget) []string {
+	lines := []string{"授权同步已超过 24 小时未成功，负责人与协作者暂不能以参与身份操作", "请在 Web 中改派或关闭该跟进"}
+	if p != nil && !p.ownerValid {
+		lines = append(lines, "负责人已失效")
+	}
+	return lines
+}
+
 // taskLines 渲染任务提醒卡片的正文（当前值）。
-func taskLines(v *purapi.TaskView, escalated bool, now time.Time) []string {
+func taskLines(v *purapi.TaskView, escalated, handed bool, now time.Time) []string {
 	var lines []string
 	if due, ok := v.Task.Due.Get(); ok {
 		text := "截止 " + due.Value
@@ -650,6 +801,9 @@ func taskLines(v *purapi.TaskView, escalated bool, now time.Time) []string {
 	}
 	if escalated {
 		lines = append(lines, "负责人已不能处理，转给你决定（可完成、改派或在 Web 中处理）")
+	}
+	if handed {
+		lines = append(lines, "此前转给决策者的提醒，你已恢复处理，转回给你")
 	}
 	if note, ok := v.Task.Note.Get(); ok && note != "" {
 		lines = append(lines, note)

@@ -282,6 +282,28 @@ fixtures:
     - op: replace
       path: /kind
       value: authorization_rejected
+  - name: 授权同步失败通知只带跟进
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: authorization_sync_failed
+    - op: remove
+      path: /task_id
+    - op: remove
+      path: /deadline_version
+    - op: remove
+      path: /escalated
+  - name: 授权同步失败通知不带任务
+    valid: false
+    patch:
+    - op: replace
+      path: /kind
+      value: authorization_sync_failed
+    - op: remove
+      path: /deadline_version
+    - op: remove
+      path: /escalated
   - name: 任务提醒缺截止版本
     valid: false
     patch:
@@ -329,6 +351,48 @@ fixtures:
     - op: replace
       path: /reason
       value: reassigned
+    - op: replace
+      path: /final
+      value: true
+  - name: 授权同步失败通知在发送前同步已恢复
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: authorization_sync_failed
+    - op: remove
+      path: /task_id
+    - op: remove
+      path: /deadline_version
+    - op: remove
+      path: /escalated
+    - op: replace
+      path: /state
+      value: cancelled
+    - op: replace
+      path: /reason
+      value: sync_recovered
+    - op: replace
+      path: /final
+      value: true
+  - name: 授权同步失败通知的收件人已不是决策者
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: authorization_sync_failed
+    - op: remove
+      path: /task_id
+    - op: remove
+      path: /deadline_version
+    - op: remove
+      path: /escalated
+    - op: replace
+      path: /state
+      value: cancelled
+    - op: replace
+      path: /reason
+      value: not_decision_maker
     - op: replace
       path: /final
       value: true

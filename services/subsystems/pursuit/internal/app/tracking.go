@@ -559,9 +559,12 @@ func (s *Service) GetTracking(ctx context.Context, id string) (*TrackingDetail, 
 	if t == nil {
 		return nil, failure(404, "pursuit_not_found")
 	}
+	auth := s.authorization(p)
+	resolve := r.UnitEdit
+	auth.ViewerCanResolve = &resolve
 	return &TrackingDetail{ID: p.ID, ObjectiveID: p.ObjectiveID, OrgUnitID: p.OrgUnitID, Name: t.Name, State: t.State, Owner: p.Owner, OwnerValid: p.OwnerValid,
 		Members: t.Members, MembersVersion: t.MembersVersion, Cadence: t.Cadence, PeriodStart: t.PeriodStart, NextRunAt: t.NextRun, LastPeriodSeq: t.LastSeq,
-		Version: p.Version, Authorization: s.authorization(p), CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt, StoppedAt: t.StoppedAt,
+		Version: p.Version, Authorization: auth, CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt, StoppedAt: t.StoppedAt,
 		Timeline: entries, ViewerCanEdit: t.State != "stopped" && s.admitWrite(p, r, rc.Principal.ID) == nil}, nil
 }
 

@@ -264,6 +264,18 @@ fixtures:
     - op: replace
       path: /escalated
       value: true
+  - name: 转回负责人
+    valid: true
+    patch:
+    - op: add
+      path: /handed_back
+      value: true
+  - name: 不是转回时不出现
+    valid: false
+    patch:
+    - op: add
+      path: /handed_back
+      value: false
   - name: 未登记的提醒种类
     valid: false
     patch:
@@ -506,3 +518,127 @@ fixtures:
     - op: replace
       path: /seq
       value: 0
+- event: pursuit.pursuit.authorization_sync_delayed.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    kind: deal
+    state: open
+    desired_version: 2
+    applied_version: 1
+    pending_since: '2026-10-26T08:00:00Z'
+    detected_at: '2026-10-26T08:06:00Z'
+  cases:
+  - name: 持续跟踪
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: continuous
+  - name: 已撤销的跟进（清理授权）
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: voided
+  - name: 不得夹带成员
+    valid: false
+    patch:
+    - op: add
+      path: /owner
+      value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 未登记的跟进种类
+    valid: false
+    patch:
+    - op: replace
+      path: /kind
+      value: research
+- event: pursuit.pursuit.authorization_sync_failed.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    kind: deal
+    state: open
+    desired_version: 2
+    applied_version: 1
+    pending_since: '2026-10-26T08:00:00Z'
+    detected_at: '2026-10-26T08:06:00Z'
+  cases:
+  - name: 持续跟踪
+    valid: true
+    patch:
+    - op: replace
+      path: /kind
+      value: continuous
+  - name: 已撤销的跟进（清理授权）
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: voided
+  - name: 不得夹带成员
+    valid: false
+    patch:
+    - op: add
+      path: /owner
+      value: usr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 不得夹带租户
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_id
+      value: tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  - name: 未登记的跟进种类
+    valid: false
+    patch:
+    - op: replace
+      path: /kind
+      value: research
+- event: pursuit.pursuit.authorization_sync_recovered.v1
+  base:
+    pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    objective_id: obj_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    org_unit_id: root
+    kind: deal
+    applied_version: 2
+    pending_since: '2026-10-26T08:00:00Z'
+    alerted:
+    - delayed
+    - failed
+    recovered_at: '2026-10-27T09:00:00Z'
+  cases:
+  - name: 只告警过一次
+    valid: true
+    patch:
+    - op: replace
+      path: /alerted
+      value:
+      - delayed
+  - name: 未告警的不发布
+    valid: false
+    patch:
+    - op: replace
+      path: /alerted
+      value: []
+  - name: 未登记的告警级别
+    valid: false
+    patch:
+    - op: replace
+      path: /alerted
+      value:
+      - paged
+  - name: 不得夹带成员
+    valid: false
+    patch:
+    - op: add
+      path: /recipients
+      value:
+      - usr_01JA8ZXXXXXXXXXXXXXXXXXXX1

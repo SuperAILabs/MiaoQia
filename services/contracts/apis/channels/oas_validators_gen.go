@@ -3634,6 +3634,8 @@ func (s NoticeKind) Validate() error {
 		return nil
 	case "signal_immediate":
 		return nil
+	case "authorization_sync_failed":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
@@ -3674,6 +3676,12 @@ func (s NoticeReason) Validate() error {
 	case "throttled":
 		return nil
 	case "merged_into_briefing":
+		return nil
+	case "sync_recovered":
+		return nil
+	case "not_decision_maker":
+		return nil
+	case "pursuit_closed":
 		return nil
 	case "other":
 		return nil

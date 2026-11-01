@@ -279,6 +279,9 @@ type Authorization struct {
 	DesiredVersion int64      `json:"desired_version"`
 	AppliedVersion int64      `json:"applied_version"`
 	PendingSince   *time.Time `json:"pending_since,omitempty"`
+	// ViewerCanResolve 是调用者此刻在跟进所在单元上能更新跟进（决策者，能处理授权同步失败；C-17）。只在 getPursuit 与 getTracking 中按
+	// 调用者当前权限给出，其他响应为 nil（不带，不等于 false）。
+	ViewerCanResolve *bool `json:"viewer_can_resolve,omitempty"`
 }
 
 func (s *Service) authorization(p *Pursuit) Authorization {

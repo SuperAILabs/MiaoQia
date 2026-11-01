@@ -191,11 +191,13 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						_, actions := runtime.Lookup[pursuitapi.Actions](b, pursuitapi.ActionsBinding)
 						_, reminders := runtime.Lookup[pursuitapi.Reminders](b, pursuitapi.RemindersBinding)
 						_, trackings := runtime.Lookup[pursuitapi.Trackings](b, pursuitapi.TrackingsBinding)
+						// C-17：授权同步告警与转交提醒的转回（本地绑定，scheduler 角色的周期任务调用）
+						_, monitor := runtime.Lookup[pursuitapi.Monitor](b, pursuitapi.MonitorBinding)
 						// C-14：服务创建面板的 api 角色经 detection 读取信号的候选负责人（本地或远程）
 						_, candidates := runtime.Lookup[detectionapi.SignalCandidates](b, detectionapi.CandidatesBinding)
-						if !authz || !directory || !members || !scope || (role == "api" && (!briefing || !candidates)) || !actions || !reminders || !trackings {
-							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v candidates=%v actions=%v reminders=%v trackings=%v",
-								authz, directory, members, scope, briefing, candidates, actions, reminders, trackings)
+						if !authz || !directory || !members || !scope || (role == "api" && (!briefing || !candidates)) || !actions || !reminders || !trackings || !monitor {
+							t.Fatalf("pursuit 的绑定不完整：authz=%v directory=%v members=%v scope=%v detection=%v candidates=%v actions=%v reminders=%v trackings=%v monitor=%v",
+								authz, directory, members, scope, briefing, candidates, actions, reminders, trackings, monitor)
 						}
 					}
 					// C-14：customer-context 以被分派人本人核验分派规则的被分派人（identity 会话核验，本地或远程）
@@ -229,7 +231,8 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 						"channels.retry-revocations", "channels.reconcile-sessions", "channels.compose-briefings", "channels.deliver-briefings",
 						"channels.process-card-actions", "channels.deliver-notices"}
 					if v["MIAOQIA_BINDING_PURSUIT"] != "remote" {
-						want = append(want, "pursuit.run-due-reminders", "pursuit.retry-authorization-sync", "pursuit.run-tracking")
+						want = append(want, "pursuit.run-due-reminders", "pursuit.retry-authorization-sync", "pursuit.run-tracking",
+							"pursuit.check-authorization-sync", "pursuit.hand-back-reminders")
 					}
 					for _, name := range want {
 						if !got[name] {

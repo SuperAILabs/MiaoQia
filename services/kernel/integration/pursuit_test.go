@@ -3349,6 +3349,430 @@ func TestPursuitFollowUp(t *testing.T) {
 		}
 	})
 
+	// ---- C-17：授权同步告警（待处理超过 5 分钟、超过 24 小时标“授权同步失败”并通知目标单元的决策者）与转交提醒的转回（PRD 第6段 F12
+	// 第2、4、6条）。告警检查与转回由 scheduler 角色的 pursuit.check-authorization-sync / pursuit.hand-back-reminders 调用本地绑定
+	// pursuit.Monitor；这里直接以服务主体调用，业务时钟由测试控制 ----
+	monitor, _ := runtime.Lookup[pursuitapi.Monitor](bindings, pursuitapi.MonitorBinding)
+	if monitor == nil {
+		t.Fatal("pursuit 未提供 Monitor")
+	}
+	routesMu.Lock()
+	routes["pursuit.pursuit.authorization_sync_failed.v1"] = []route{noticeRoute}
+	routesMu.Unlock()
+	checkSync := func(t *testing.T, when time.Time) int {
+		t.Helper()
+		pclock.set(when, 0)
+		n, err := monitor.CheckSync(svc(t1), when, 100)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pump(t)
+		return n
+	}
+	syncFlags := func(t *testing.T, id string) (pending, delayed, failed bool) {
+		t.Helper()
+		var p, d, f *time.Time
+		if err := purOwner.QueryRow(ctx, `SELECT sync_pending_since, sync_delayed_at, sync_failed_at FROM pur_pursuits WHERE id = $1`, id).Scan(&p, &d, &f); err != nil {
+			t.Fatal(err)
+		}
+		return p != nil, d != nil, f != nil
+	}
+	const alertKeys = "applied_version,desired_version,detected_at,kind,objective_id,org_unit_id,pending_since,pursuit_id,state"
+	const recoveredKeys = "alerted,applied_version,kind,objective_id,org_unit_id,pending_since,pursuit_id,recovered_at"
+	newPending := func(t *testing.T, at time.Time) string {
+		t.Helper()
+		pclock.set(at, 0)
+		directory.fail.Store(true)
+		sig := newSignal(t, pursueBid())[0]
+		p := pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, lead)), 200))
+		pump(t)
+		if pending, _, _ := syncFlags(t, p); !pending {
+			t.Fatal("应为授权同步待处理")
+		}
+		return p
+	}
+
+	var c17Effective string
+	run("C-17 越权与反例测试 用例55：同步在 5 分钟阈值前恢复不告警；超过 5 分钟告警一次（重复与并发检查不重复），字段只含白名单；之后恢复发布一次 recovered、状态为已生效；重放同步事件不再发布", func(t *testing.T) {
+		base := at(120, 10, 0)
+		early := newPending(t, base)
+		if n := checkSync(t, base.Add(4*time.Minute)); n != 0 || len(eventsFor("pursuit.pursuit.authorization_sync_delayed.v1", "pursuit_id", early)) != 0 {
+			t.Fatalf("5 分钟之前不应告警：%d", n)
+		}
+		directory.fail.Store(false)
+		drained(t)
+		checkSync(t, base.Add(6*time.Minute))
+		checkSync(t, base.Add(25*time.Hour))
+		for _, typ := range []string{"delayed", "failed", "recovered"} {
+			if ev := eventsFor("pursuit.pursuit.authorization_sync_"+typ+".v1", "pursuit_id", early); len(ev) != 0 {
+				t.Fatalf("阈值前恢复的跟进不应有 %s：%+v", typ, ev)
+			}
+		}
+		c17Effective = early
+
+		late := newPending(t, base.Add(26*time.Hour))
+		if n := checkSync(t, base.Add(26*time.Hour+6*time.Minute)); n < 1 {
+			t.Fatalf("超过 5 分钟应告警：%d", n)
+		}
+		// 重复与并发的检查不重复告警
+		var wg sync.WaitGroup
+		for range 4 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if _, err := monitor.CheckSync(svc(t1), base.Add(26*time.Hour+7*time.Minute), 100); err != nil {
+					t.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		pump(t)
+		delayed := eventsFor("pursuit.pursuit.authorization_sync_delayed.v1", "pursuit_id", late)
+		if len(delayed) != 1 || keysOf(delayed[0]) != alertKeys || delayed[0]["state"] != "open" || delayed[0]["kind"] != "deal" || strings.Contains(fmt.Sprint(delayed[0]), lead) ||
+			strings.Contains(fmt.Sprint(delayed[0]), bd) {
+			t.Fatalf("%+v", delayed)
+		}
+		if len(eventsFor("pursuit.pursuit.authorization_sync_failed.v1", "pursuit_id", late)) != 0 {
+			t.Fatal("未到 24 小时不应标失败")
+		}
+		if a := detail(t, dm, late)["authorization"].(map[string]any); a["state"] != "syncing" || a["viewer_can_resolve"] != true {
+			t.Fatalf("%+v", a)
+		}
+		// 恢复：一次 recovered，期间结束，状态为已生效
+		directory.fail.Store(false)
+		drained(t)
+		rec := eventsFor("pursuit.pursuit.authorization_sync_recovered.v1", "pursuit_id", late)
+		if len(rec) != 1 || keysOf(rec[0]) != recoveredKeys || fmt.Sprint(rec[0]["alerted"]) != "[delayed]" {
+			t.Fatalf("%+v", rec)
+		}
+		if pending, d, f := syncFlags(t, late); pending || d || f {
+			t.Fatalf("恢复后期间应结束：%v %v %v", pending, d, f)
+		}
+		if a := detail(t, dm, late)["authorization"].(map[string]any); a["state"] != "effective" {
+			t.Fatalf("%+v", a)
+		}
+		if checkSync(t, base.Add(60*time.Hour)); len(eventsFor("pursuit.pursuit.authorization_sync_delayed.v1", "pursuit_id", late)) != 1 ||
+			len(eventsFor("pursuit.pursuit.authorization_sync_failed.v1", "pursuit_id", late)) != 0 {
+			t.Fatal("恢复之后不应再告警")
+		}
+		// 重放该跟进的授权同步事件：不再发布 recovered
+		for _, e := range delivered {
+			if e.Type == "pursuit.team.changed.v1" && strings.Contains(string(e.Data), late) {
+				if err := handle(t, route{purModule, purs.env, "pursuit.authorization-sync"}, e); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		drained(t)
+		if len(eventsFor("pursuit.pursuit.authorization_sync_recovered.v1", "pursuit_id", late)) != 1 {
+			t.Fatal("重放不应再发布 recovered")
+		}
+		if audits(t, purOwner, "pursuit.authorization.sync_delayed", late) != 1 || audits(t, purOwner, "pursuit.authorization.sync_recovered", late) != 1 {
+			t.Fatal("告警与恢复审计")
+		}
+	})
+
+	run("C-17 越权与反例测试 并发：告警检查与同步完成同时进行——无论先后，同步完成后都不残留待处理期间；告警过的恰有一次 recovered，没有告警的没有 recovered，任何跟进都不重复告警", func(t *testing.T) {
+		base := at(124, 10, 0)
+		var list []string
+		for range 4 {
+			list = append(list, newPending(t, base))
+		}
+		directory.fail.Store(false)
+		pclock.set(base.Add(10*time.Minute), 0)
+		var wg sync.WaitGroup
+		for i := range 8 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				var err error
+				if i%2 == 0 {
+					_, err = monitor.CheckSync(svc(t1), base.Add(10*time.Minute), 100)
+				} else {
+					_, err = reminders.RetrySync(svc(t1), 100)
+				}
+				if err != nil {
+					t.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		drained(t)
+		checkSync(t, base.Add(30*time.Minute))
+		for _, p := range list {
+			d := len(eventsFor("pursuit.pursuit.authorization_sync_delayed.v1", "pursuit_id", p))
+			r := len(eventsFor("pursuit.pursuit.authorization_sync_recovered.v1", "pursuit_id", p))
+			if d > 1 || d != r {
+				t.Fatalf("%s：delayed %d recovered %d", p, d, r)
+			}
+			if pending, df, ff := syncFlags(t, p); pending || df || ff {
+				t.Fatalf("%s 残留待处理期间", p)
+			}
+			if a := detail(t, dm, p)["authorization"].(map[string]any); a["state"] != "effective" {
+				t.Fatalf("%+v", a)
+			}
+		}
+	})
+
+	run("C-17 越权与反例测试 用例58：超过 24 小时标“授权同步失败”，只通知已绑定且在目标单元上能更新跟进的决策者（分页展开、每人以本人再检查）；发送前撤销决策者角色的取消；非决策者、他租户与伪造或改写的事件不发；重放不新增；发送前恢复的取消；恢复后一次 recovered", func(t *testing.T) {
+		bindN(t, dm)
+		bindN(t, dm2)
+		bindN(t, bd)
+		bindN(t, bd2)
+		bindN(t, expert)
+		base := at(130, 22, 0)
+		r1 := newPending(t, base)
+		r2 := newPending(t, base.Add(24*time.Hour))
+		// 第一次检查：r1 已超过 24 小时（同时补发 5 分钟告警），r2 只超过 5 分钟
+		checkSync(t, base.Add(24*time.Hour+31*time.Minute))
+		f1 := eventsFor("pursuit.pursuit.authorization_sync_failed.v1", "pursuit_id", r1)
+		if len(f1) != 1 || keysOf(f1[0]) != alertKeys || len(eventsFor("pursuit.pursuit.authorization_sync_delayed.v1", "pursuit_id", r1)) != 1 {
+			t.Fatalf("%+v", f1)
+		}
+		if len(eventsFor("pursuit.pursuit.authorization_sync_failed.v1", "pursuit_id", r2)) != 0 || len(eventsFor("pursuit.pursuit.authorization_sync_delayed.v1", "pursuit_id", r2)) != 1 {
+			t.Fatal("r2 只应有 5 分钟告警")
+		}
+		d := detail(t, dm, r1)
+		if a := d["authorization"].(map[string]any); a["state"] != "failed" || a["viewer_can_resolve"] != true {
+			t.Fatalf("%+v", a)
+		}
+		failedLine := false
+		for _, e := range d["timeline"].([]any) {
+			if e.(map[string]any)["kind"] == "authorization_sync_failed" {
+				failedLine = true
+			}
+		}
+		if !failedLine {
+			t.Fatal("时间线应记录授权同步失败")
+		}
+		// 只凭参与关系的负责人不能写入（已有口径），他租户与不存在相同
+		expectAs(t, admin2, t2, "GET", "/v1/pursuit/pursuits/"+r1, "", "", 404, "pursuit_not_found")
+		// 伪造与改写的事件：他租户、不是授权同步失败的跟进、已关闭；重放同一事件
+		var env outbox.Envelope
+		for _, e := range delivered {
+			if e.Type == "pursuit.pursuit.authorization_sync_failed.v1" && strings.Contains(string(e.Data), r1) {
+				env = e
+			}
+		}
+		forge := func(t *testing.T, tenant string, patch map[string]any) {
+			t.Helper()
+			var data map[string]any
+			_ = json.Unmarshal(env.Data, &data)
+			maps.Copy(data, patch)
+			e := env
+			e.Data, _ = json.Marshal(data)
+			e.ID, e.Tenant = ids.New("evt"), tenant
+			if err := handle(t, noticeRoute, e); err != nil {
+				t.Fatal(err)
+			}
+		}
+		forge(t, t2, map[string]any{"desired_version": 900})
+		forge(t, t1, map[string]any{"pursuit_id": c17Effective, "desired_version": 901})
+		forge(t, t1, map[string]any{"desired_version": 902, "state": "closed"})
+		if err := handle(t, noticeRoute, env); err != nil { // 重放
+			t.Fatal(err)
+		}
+		if n := count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE kind = 'authorization_sync_failed' AND pursuit_id = $1 AND recipient = '*'`, r1); n != 2 {
+			t.Fatalf("r1 的待展开行（真实一行与他租户伪造一行）：%d", n)
+		}
+		if n := count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE kind = 'authorization_sync_failed' AND source LIKE '%/902'`); n != 0 {
+			t.Fatal("已关闭的跟进不应记通知")
+		}
+		// 夜间展开（安静时段内，发送延后）；07:00 前撤销 dm2 的决策者角色
+		clock.set(at(131, 22, 32), 0)
+		deliverN(t)
+		var recips []string
+		rows, err := chnOwner.Query(ctx, `SELECT recipient FROM chn_notices WHERE tenant_id = $1 AND kind = 'authorization_sync_failed' AND pursuit_id = $2 AND recipient <> '*'`, t1, r1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		recips, _ = pgx.CollectRows(rows, pgx.RowTo[string])
+		slices.Sort(recips) // 在 Go 中排序（CI 的排序规则与字节序不同）
+		want := []string{dm, dm2}
+		slices.Sort(want)
+		if fmt.Sprint(recips) != fmt.Sprint(want) {
+			t.Fatalf("展开的收件人：%v", recips)
+		}
+		if n := count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE kind = 'authorization_sync_failed' AND recipient <> '*' AND (tenant_id = $1 OR pursuit_id = $2)`, t2, c17Effective); n != 0 {
+			t.Fatalf("伪造的事件展开出了收件人：%d", n)
+		}
+		if n := count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE kind = 'authorization_sync_failed' AND recipient = '*' AND state <> 'expanded'`); n != 0 {
+			t.Fatalf("仍有未展开的行：%d", n)
+		}
+		putMember(t, dm2, "active", `["business_developer"]`)
+		clock.set(at(132, 7, 1), 0)
+		deliverN(t)
+		syncCards := func(subject, p string) int {
+			n := 0
+			for _, m := range wc.Messages(corpN, accountOf[subject]) {
+				if m.Kind == "authorization_sync_failed" && m.Card != nil && btn(*m.Card, "view").URL == "/pursuits/"+p {
+					n++
+				}
+			}
+			return n
+		}
+		if syncCards(dm, r1) != 1 {
+			t.Fatal("决策者应收到一次授权同步失败通知")
+		}
+		for _, who := range []string{dm2, bd, bd2, expert, lead, user("nobody")} {
+			if syncCards(who, r1) != 0 {
+				t.Fatalf("%s 不应收到", who)
+			}
+		}
+		stateOf := func(t *testing.T, p, who string) (id, st, reason string) {
+			t.Helper()
+			if err := chnOwner.QueryRow(ctx, `SELECT id, state, COALESCE(reason, '') FROM chn_notices WHERE kind = 'authorization_sync_failed' AND pursuit_id = $1 AND recipient = $2`,
+				p, who).Scan(&id, &st, &reason); err != nil {
+				t.Fatalf("%s → %s：%v", p, who, err)
+			}
+			return
+		}
+		id, st, reason := stateOf(t, r1, dm2)
+		if st != "cancelled" || reason != "not_decision_maker" {
+			t.Fatalf("撤销角色后：%s %s", st, reason)
+		}
+		if _, f := noticeEvents(id); len(f) != 1 || keysOf(f[0]) != "attempt,channel,final,kind,notice_id,pursuit_id,reason,recipient,state" || f[0]["reason"] != "not_decision_maker" {
+			t.Fatalf("%+v", f)
+		}
+		id, _, _ = stateOf(t, r1, dm)
+		if s, _ := noticeEvents(id); len(s) != 1 || keysOf(s[0]) != "accepted_at,attempt,channel,kind,notice_id,pursuit_id,recipient" || s[0]["kind"] != "authorization_sync_failed" {
+			t.Fatalf("%+v", s)
+		}
+		putMember(t, dm2, "active", `["decision_maker"]`)
+		// r2 到 24 小时：展开后在发送前恢复，未送达的取消（sync_recovered）
+		checkSync(t, base.Add(48*time.Hour+31*time.Minute))
+		if len(eventsFor("pursuit.pursuit.authorization_sync_failed.v1", "pursuit_id", r2)) != 1 || len(eventsFor("pursuit.pursuit.authorization_sync_failed.v1", "pursuit_id", r1)) != 1 {
+			t.Fatal("每个待处理期间只标一次失败")
+		}
+		clock.set(at(132, 22, 32), 0)
+		deliverN(t)
+		if _, st, _ := stateOf(t, r2, dm); st != "pending" {
+			t.Fatalf("安静时段内应延后：%s", st)
+		}
+		directory.fail.Store(false)
+		drained(t)
+		for p, want := range map[string]string{r1: "[delayed failed]", r2: "[delayed failed]"} {
+			rec := eventsFor("pursuit.pursuit.authorization_sync_recovered.v1", "pursuit_id", p)
+			if len(rec) != 1 || fmt.Sprint(rec[0]["alerted"]) != want {
+				t.Fatalf("%s：%+v", p, rec)
+			}
+			if a := detail(t, dm, p)["authorization"].(map[string]any); a["state"] != "effective" {
+				t.Fatalf("%+v", a)
+			}
+		}
+		clock.set(at(133, 7, 1), 0)
+		deliverN(t)
+		for _, who := range []string{dm, dm2} {
+			if _, st, reason := stateOf(t, r2, who); st != "cancelled" || reason != "sync_recovered" {
+				t.Fatalf("%s：%s %s", who, st, reason)
+			}
+			if syncCards(who, r2) != 0 {
+				t.Fatalf("%s 不应收到已恢复的通知", who)
+			}
+		}
+	})
+
+	run("C-17 越权与反例测试 F12 第4条：转交提醒发出后负责人恢复写入准入时，同一提醒转回负责人一次（重复、并发与重放不重复）；负责人仍不满足时不转回；任务已完成的不再转回；决策者尚未送达的转交取消", func(t *testing.T) {
+		pclock.set(at(140, 10, 0), 0)
+		clock.set(at(140, 10, 0), 0)
+		sig := newSignal(t, pursueBid())[0]
+		p := pursuitOf(create(t, bd, fromSignal(t, bd, sig, fmt.Sprintf(`,"owner":%q`, bd2)), 200))
+		drained(t)
+		due := fmt.Sprintf(`"due":{"value":%q,"precision":"minute","timezone":"Asia/Shanghai"}`, localDue(at(142, 12, 0)))
+		ht := taskOf(addTask(t, bd2, p, `{"title":"转回",`+due+`}`, 200))
+		dt := taskOf(addTask(t, bd2, p, `{"title":"已完成的不转回",`+due+`}`, 200))
+		drained(t)
+		putMember(t, bd2, "active", `["domain_expert"]`)
+		drained(t)
+		pclock.set(at(141, 12, 1), 0)
+		runDue(t, at(141, 12, 1))
+		for _, task := range []string{ht, dt} {
+			if ev := eventsFor("pursuit.task.due.v1", "task_id", task); len(ev) != 1 || ev[0]["escalated"] != true {
+				t.Fatalf("%+v", ev)
+			}
+		}
+		handBack := func(t *testing.T) {
+			t.Helper()
+			if _, err := monitor.HandBack(svc(t1), pclock.Now(), 100); err != nil {
+				t.Fatal(err)
+			}
+			pump(t)
+		}
+		handbackOf := func(t *testing.T, task string) string {
+			t.Helper()
+			var h *string
+			if err := purOwner.QueryRow(ctx, `SELECT handback FROM pur_reminders WHERE task_id = $1 AND state = 'sent' AND escalated`, task).Scan(&h); err != nil {
+				t.Fatal(err)
+			}
+			if h == nil {
+				return ""
+			}
+			return *h
+		}
+		// 负责人仍不满足写入准入：不转回、留待下一轮
+		handBack(t)
+		if handbackOf(t, ht) != "" || len(eventsFor("pursuit.task.due.v1", "task_id", ht)) != 1 {
+			t.Fatal("负责人不满足准入时不应转回")
+		}
+		// 决策者完成 dt；恢复 bd2 的角色
+		expect(t, dm, "POST", "/v1/pursuit/tasks/"+dt+"/complete", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d}`, opID("done"), taskVersion(t, dt)), 200)
+		putMember(t, bd2, "active", `["business_developer"]`)
+		drained(t)
+		if v := obj(t, expect(t, bd2, "GET", "/v1/pursuit/tasks/"+ht, "", 200)); v["viewer_can_edit"] != true {
+			t.Fatalf("恢复角色后应满足写入准入：%+v", v)
+		}
+		var wg sync.WaitGroup
+		for range 4 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if _, err := monitor.HandBack(svc(t1), at(141, 12, 3), 100); err != nil {
+					t.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		pump(t)
+		handBack(t)
+		ev := eventsFor("pursuit.task.due.v1", "task_id", ht)
+		if len(ev) != 2 || ev[1]["handed_back"] != true || ev[1]["escalated"] != false || ev[1]["recipient"] != bd2 || ev[1]["reminder_id"] != ev[0]["reminder_id"] {
+			t.Fatalf("%+v", ev)
+		}
+		if handbackOf(t, ht) != "sent" || handbackOf(t, dt) != "skipped" || len(eventsFor("pursuit.task.due.v1", "task_id", dt)) != 1 {
+			t.Fatalf("转回结果：%s %s", handbackOf(t, ht), handbackOf(t, dt))
+		}
+		// 重放转回的提醒事件：不新增通知
+		var env outbox.Envelope
+		for _, e := range delivered {
+			if e.Type == "pursuit.task.due.v1" && strings.Contains(string(e.Data), ht) && strings.Contains(string(e.Data), "handed_back") {
+				env = e
+			}
+		}
+		if err := handle(t, noticeRoute, env); err != nil {
+			t.Fatal(err)
+		}
+		if n := count(t, chnOwner, `SELECT count(*) FROM chn_notices WHERE task_id = $1 AND recipient = $2`, ht, bd2); n != 1 {
+			t.Fatalf("重放新增了通知：%d", n)
+		}
+		clock.set(at(141, 12, 5), 0)
+		deliverN(t)
+		cards := taskCards(bd2, ht)
+		if len(cards) != 1 || !strings.Contains(cards[0].Title, "转回") {
+			t.Fatalf("负责人应收到一次转回的提醒：%+v", cards)
+		}
+		for _, who := range []string{dm, dm2} {
+			if len(taskCards(who, ht)) != 0 {
+				t.Fatalf("负责人恢复后 %s 不应再收到转交", who)
+			}
+		}
+		if s, _ := noticeEvents(noticeIDOf(t, ht, bd2)); len(s) != 1 || keysOf(s[0]) != taskDueKeys || s[0]["escalated"] != false {
+			t.Fatalf("%+v", s)
+		}
+		if audits(t, purOwner, "pursuit.reminder.handed_back", ht) != 1 {
+			t.Fatal("转回审计")
+		}
+	})
+
 	if len(pending) != 0 {
 		t.Fatalf("结束时仍有 %d 个事件待重试", len(pending))
 	}
