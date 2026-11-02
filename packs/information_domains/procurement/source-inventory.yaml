@@ -2,15 +2,6 @@ version: 0.1.0
 reviewed_at: '2026-10-14'
 reference: Tender Intel source_catalog/*/source.yaml
 purpose: 妙洽候选信源盘点，仅登记公开定位信息，不迁移处理器、驱动、凭证或启用状态。来源权利与正文/附件能力验收完成前不得启用。
-# 字段说明（只说明含义，不改变条目）：
-#   source_id / name / base_url  公开定位信息；base_url 只记站点根地址，不含路径、查询参数、账号或令牌。
-#   reference_access_mode       参考原型记录的访问方式（public / authenticated），仅供参考；authenticated 入口须授权并通过接入验收后才可启用。
-#   reference_enabled           参考原型当时的启用状态，仅供参考，不代表妙洽已启用或获得使用权；任何代码不得据此启用来源。
-#   readiness                   妙洽自身的就绪状态；candidate 表示仅为候选，启用按 D1b 逐来源验收后更新。
-#   rights_status / priority    妙洽自身的权利与 P0/P1/P2 分级；pending_review 表示尚未审核，权利编号由法务来源权利登记维护。
-#   owner                       负责角色。
-# 同一 base_url 的多个条目（同站多入口）在 D1b 中登记共同平台标识，覆盖统计不按入口数重复计数。
-# D1a 核验口径见 docs/05-delivery/04-data-quality-organization.md 第1.1节。
 sources:
 - source_id: anhui-ggzy-construction
   name: 安徽省公共资源交易平台-工程建设公告
