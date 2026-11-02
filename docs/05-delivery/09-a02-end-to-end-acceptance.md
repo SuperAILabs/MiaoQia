@@ -1,6 +1,6 @@
 # A02 真实贯通验收线
 
-> 状态：已批准 · 版本：1.11 · 更新：2026-10-27 · 负责人：项目负责人、首席架构师、产品负责人
+> 状态：已批准 · 版本：1.12 · 更新：2026-11-01 · 负责人：项目负责人、首席架构师、产品负责人
 
 本文定义建材供应商 A02 首条旅程从“服务端切片”走到“真实客户可用”的验收线：汇总第1–5、7段服务端切片及 L1 数据供应实现登记的未实现与未接入项，按“激活策略 → 收到信号 → 查看原文 → 简报触达”梳理真实贯通所需的依赖，给出分级验收与建议顺序。各段的功能规则以[功能 PRD](../01-product/prd/README.md) 为准，首次使用门禁以[阶段基线](06-stage-baseline.md)为准；本文不改变任何门禁，只把分散在各 PRD 验收表与子系统“实现状况”中的缺口收拢成一张可跟踪的清单，并规定进度口径。
 
@@ -65,7 +65,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D-08 | INF-ORG 企业主数据未接入；X-SELF 需要“关联本企业” | PRD 第2段用例1、7–9；第3段用例7 | ①② | L1 用夹具，L4 用供应商 | B2b |
 | D-09 | learning 仿真数据集 `api.Dataset` 未接入，样本只含夹具事实；接入非虚构样本受 D-17 阻断 | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
 | D-10 | learning 与 gateway 读取的信息领域服务状态 `api.DomainStatus` 未接入 | 同上 | ①③ | L1 | 随 D-05 |
-| D-11 | gateway 的数据平面读取（`api.PublicData`：事实、历史、项目链、统计）与证据读取未接入；对象页、分区与证据面板 503 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
+| D-11 | gateway 的数据平面读取（`api.PublicData`：事实、历史、项目链、统计）与证据读取未接入；对象页、分区与证据面板 503。**采购项目部分关闭（L1-3b）**：`internal/dataplane` 经 data-api `get-fact`（`kernel/dataread`，以调用者本人的上下文）接入 `pp_` 的对象解析、概要（字段白名单）、标包（按品类筛选）与公告时间线（固定版本的 `notice_refs`，`signal_time` 计 `later_count`），回带口径、标识、固定版本与记录时间逐项校验，来源权利拒绝 503 不当作不存在；证据 `services/subsystems/gateway/internal/dataplane/dataplane_test.go`（他租户与无租户、服务主体、权利拒绝只影响被拒租户、8种篡改响应、时间线任一公告被拒整体失败、引用重复/格式错误/超限）。剩余：`prj_` / `org_` 与上级项目（entity-graph 读取未进 data-api，随 D-12）、证据面板（data-api 证据载荷缺所属对象与来源名称、标题、链接）、历史与统计分区、字段状态（随 D-10、D-13） | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
 | D-12 | entity-graph 组织解析、`part_of` 归属边、合并与撤销未实现；detection 归属边端口 `NotWired` | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第4段用例19–22、37–38 | ③ | L1（组织解析与 `part_of`）；品牌随 M2-P13 | — |
 | D-13 | 字段状态、更正/撤回时间轴、来源中断、空态原因由数据平面提供 | PRD 第4段用例8–10、15–18、24–27 | ③ | L2 | 随 D-02～D-05 |
 | D-14 | 重新求值与撤回关闭的生产者、`signal.updated`、A02 更正公告重新求值 | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第3段已确认事项11 | ② | L2 | — |
@@ -182,7 +182,8 @@ L1 按依赖拆分，下表为实施建议；PR #35 的 E1–E5 仍为建议，�
 | L1-2 后续 | data-api 真实网络 smoke 与生产权限/覆盖装配（listener、TLS/身份 admission、deadline 和五路由 source-group collectors 已实现）；事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；广泛来源品类增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
 | L1-3a | commerce 覆盖判断 `checkCoverage` 与 gateway 覆盖适配器；learning 代表样本按查看者权限过滤 | R-05、D-17（关闭） | 改 commerce、gateway、learning，已与主线确认文件不重叠 |
 | R-01 | `scheduler` 角色周期任务运行器与主备锁；identity、channels（含简报组装与渠道通知）、pursuit 维护任务；`identity.Tenants` 租户枚举 | R-01（关闭） | 新增 kernel/scheduler 与各子系统 `jobs.go`，channels、pursuit 只加 `Jobs` 字段；`ComposeDue` 与 `DeliverNotices` 由主线 C-09（PR #46）提供 |
-| L1-3 后续 | Go 端口生产适配器：detection `Facts`/`Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、learning `Dataset`/`DomainStatus` | D-06、D-07、D-09、D-10、D-11 | 改主线子系统，开工前与主线协调修订号与文件 |
+| L1-3b | gateway `PublicData` 的 data-api 适配器：采购项目 `pp_` 的对象解析、概要、标包与公告时间线（`MIAOQIA_GATEWAY_DATA_API_URL`，未配置时仍 `NotWired`） | D-11（采购项目部分关闭） | 只改 gateway 与 cmd/platform 注释，无契约变更 |
+| L1-3 后续 | Go 端口生产适配器：detection `Facts`/`Candidates`（按目标区域与品类过滤的最小反查）、gateway 证据读取与 `prj_`/`org_`、learning `Dataset`/`DomainStatus`。**等待 data-api 补充**：data-api 只接纳交互用途的用户主体，没有服务主体读取（detection 批量求值、learning 仿真以服务身份运行）、按区域与品类反查事实、信息领域服务状态与时间窗数据集读取，证据载荷没有所属对象与来源名称、标题、链接；补齐前这些端口保持 `NotWired` | D-06、D-07、D-09、D-10、D-11（剩余） | 改主线子系统，开工前与主线协调修订号与文件；data-api 接口由数据平面线补充 |
 | L1-4 | 全端口生产装配的部署配置与启动检查、调度器任务、贯通 E2E（投放结果公告 → 收件箱信号 → 对象页回到原文 → 站内简报）及跨租户与无权限负向用例 | R-01、R-02、C-04（站内） | 第5段服务端已合并，仍待适配器与运行装配 |
 
 L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力，不宣称 INF-PROC 就绪；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）。
