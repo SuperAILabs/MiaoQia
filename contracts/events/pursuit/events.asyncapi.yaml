@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: pursuit 跟进事件
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     由 pursuit 经发件箱发布（PRD 第6段第8节；docs/03-architecture/subsystems/pursuit.md 第6节）。信封为 CloudEvents 1.0，约定见
     docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。
@@ -13,6 +13,11 @@ info:
     0.3.0（C-10）：追加持续跟踪的 pursuit.tracking.changed.v1（创建、暂停、恢复、停止与对象集合变化，供 detection 维护持续型推进的关注）
     与 pursuit.tracking.period_closed.v1（一期结束：实际期间、期末成员快照与对比基准，请求 channels 生成该期变化简报）。两者的
     消费者尚未实现（见 docs/05-delivery/09-a02-end-to-end-acceptance.md 第4节）。
+    0.4.0（C-17，PRD 第6段 F12 第2、6条）：追加授权同步的运营告警事件 pursuit.pursuit.authorization_sync_delayed.v1（待处理超过 5 分钟）、
+    pursuit.pursuit.authorization_sync_failed.v1（超过 24 小时，跟进标“授权同步失败”；channels 据此通知目标所在单元的决策者）与
+    pursuit.pursuit.authorization_sync_recovered.v1（告警之后同步完成）。每个待处理期间各至多一次，与状态变化在同一事务中发布；只含
+    跟进、目标、单元、版本与时间，不含任何成员。task.due 追加可选的 handed_back（负责人恢复写入准入后，此前转给决策者的同一提醒转回给
+    负责人一次）。均为追加。
 channels:
   tenantPursuit:
     address: cell-{cell}.pursuit
@@ -44,6 +49,12 @@ channels:
         $ref: '#/components/messages/trackingChanged'
       trackingPeriodClosed:
         $ref: '#/components/messages/trackingPeriodClosed'
+      authorizationSyncDelayed:
+        $ref: '#/components/messages/authorizationSyncDelayed'
+      authorizationSyncFailed:
+        $ref: '#/components/messages/authorizationSyncFailed'
+      authorizationSyncRecovered:
+        $ref: '#/components/messages/authorizationSyncRecovered'
 operations:
   publishPursuitEvents:
     action: send
@@ -426,6 +437,12 @@ components:
             $ref: '#/components/schemas/Member'
           escalated:
             type: boolean
+          handed_back:
+            type: boolean
+            const: true
+            description: >-
+              负责人恢复写入准入后，此前转给决策者的同一提醒转回给负责人（每条提醒至多一次；0.4.0，C-17）。只在转回时出现（不出现即不是转回），
+              此时 escalated 为 false、带 recipient；reminder_id、kind 与 fire_at 与原提醒相同。
           fire_at:
             $ref: '#/components/schemas/Timestamp'
         allOf:
@@ -716,4 +733,151 @@ components:
           owner_valid:
             type: boolean
           recorded_at:
+            $ref: '#/components/schemas/Timestamp'
+    authorizationSyncDelayed:
+      name: pursuit.pursuit.authorization_sync_delayed.v1
+      x-fixtures-required: true
+      summary: 授权同步待处理超过 5 分钟（运营告警；0.4.0）
+      description: >-
+        期望参与版本高于 identity 已应用的版本、且自 pending_since 起超过 5 分钟时，由 pursuit 的定时检查（scheduler 角色的
+        pursuit.check-authorization-sync）在锁定跟进行并按当前值再检查后发布；每个待处理期间（pending_since 相同）至多一次，同步在阈值前
+        完成的不发布。desired_version 为检查时的期望版本。只供运营告警（告警路由尚未接入，A02 验收缺口 C-24），不通知成员。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - pursuit_id
+        - objective_id
+        - org_unit_id
+        - kind
+        - state
+        - desired_version
+        - applied_version
+        - pending_since
+        - detected_at
+        properties:
+          pursuit_id:
+            $ref: '#/components/schemas/PursuitID'
+          objective_id:
+            $ref: '#/components/schemas/ObjectiveID'
+          org_unit_id:
+            $ref: '#/components/schemas/OrgUnit'
+          kind:
+            type: string
+            enum:
+            - deal
+            - continuous
+          state:
+            type: string
+            enum:
+            - open
+            - closed
+            - voided
+          desired_version:
+            type: integer
+            minimum: 1
+          applied_version:
+            type: integer
+            minimum: 0
+          pending_since:
+            $ref: '#/components/schemas/Timestamp'
+          detected_at:
+            $ref: '#/components/schemas/Timestamp'
+    authorizationSyncFailed:
+      name: pursuit.pursuit.authorization_sync_failed.v1
+      x-fixtures-required: true
+      summary: 授权同步超过 24 小时未成功，跟进标“授权同步失败”（0.4.0）
+      description: >-
+        与 authorization_sync_delayed 同一检查，阈值为 24 小时（PRD 第6段 F12 第6条）：之后只允许决策者改派或关闭。每个待处理期间至多
+        一次。运营告警之外，channels 消费本事件（state 为 open 时）给目标所在单元的决策者发通知：以每个已绑定成员本人经 getPursuit /
+        getTracking 再检查（authorization.state 仍为 failed 且 viewer_can_resolve 为 true），事件本身不授予任何人查看。“跟进标识 + desired_version”
+        标识这一次失败。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - pursuit_id
+        - objective_id
+        - org_unit_id
+        - kind
+        - state
+        - desired_version
+        - applied_version
+        - pending_since
+        - detected_at
+        properties:
+          pursuit_id:
+            $ref: '#/components/schemas/PursuitID'
+          objective_id:
+            $ref: '#/components/schemas/ObjectiveID'
+          org_unit_id:
+            $ref: '#/components/schemas/OrgUnit'
+          kind:
+            type: string
+            enum:
+            - deal
+            - continuous
+          state:
+            type: string
+            enum:
+            - open
+            - closed
+            - voided
+          desired_version:
+            type: integer
+            minimum: 1
+          applied_version:
+            type: integer
+            minimum: 0
+          pending_since:
+            $ref: '#/components/schemas/Timestamp'
+          detected_at:
+            $ref: '#/components/schemas/Timestamp'
+    authorizationSyncRecovered:
+      name: pursuit.pursuit.authorization_sync_recovered.v1
+      x-fixtures-required: true
+      summary: 已告警的授权同步完成（0.4.0）
+      description: >-
+        发布过 authorization_sync_delayed 或 authorization_sync_failed 的待处理期间结束（identity 已应用期望版本）时，与同步结果在同一事务中
+        发布一次；alerted 为该期间已发布的告警级别。未告警即完成的不发布。channels 尚未送达的“授权同步失败”通知在发送前再检查时取消。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - pursuit_id
+        - objective_id
+        - org_unit_id
+        - kind
+        - applied_version
+        - pending_since
+        - alerted
+        - recovered_at
+        properties:
+          pursuit_id:
+            $ref: '#/components/schemas/PursuitID'
+          objective_id:
+            $ref: '#/components/schemas/ObjectiveID'
+          org_unit_id:
+            $ref: '#/components/schemas/OrgUnit'
+          kind:
+            type: string
+            enum:
+            - deal
+            - continuous
+          applied_version:
+            type: integer
+            minimum: 1
+          pending_since:
+            $ref: '#/components/schemas/Timestamp'
+          alerted:
+            type: array
+            minItems: 1
+            maxItems: 2
+            uniqueItems: true
+            items:
+              type: string
+              enum:
+              - delayed
+              - failed
+          recovered_at:
             $ref: '#/components/schemas/Timestamp'

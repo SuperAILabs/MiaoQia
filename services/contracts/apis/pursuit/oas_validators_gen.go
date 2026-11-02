@@ -4394,6 +4394,10 @@ func (s TimelineEntryKind) Validate() error {
 		return nil
 	case "members_changed":
 		return nil
+	case "authorization_sync_failed":
+		return nil
+	case "authorization_sync_recovered":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

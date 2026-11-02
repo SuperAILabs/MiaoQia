@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: pursuit 跟进接口
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     pursuit 的对外接口（经 gateway，令牌派生租户与主体），PRD 第6段跟进的服务端切片（docs/01-product/prd/06-pursuit-follow-up.md；
     规格见 docs/03-architecture/subsystems/pursuit.md）。草案：随第6段首个实现切片提交，未冻结。M2 只有交易型跟进（deal）；
@@ -27,6 +27,9 @@ info:
     追加“任务负责人仍在团队中、但此刻不满足写入准入（以负责人本人判断：能否更新、授权同步与本人角色的授予版本），且该任务当前截止版本
     已有一条转给决策者的提醒发出”；负责人本人判断不可用时 503（失败关闭，不当作转交也不当作未转交）。内部端口另提供 getTracking
     （授权被拒通知的操作者为持续跟踪时，以操作者本人再检查）。
+    0.5.0（C-17）：Authorization 追加可选的 viewer_can_resolve（调用者此刻在跟进所在单元上能更新跟进，即能处理授权同步失败的决策者；
+    只在 getPursuit 与 getTracking 中按调用者当前权限给出，其他响应不带），供 channels 以收件人本人再检查“授权同步失败”通知；
+    TimelineEntry 的 kind 追加 authorization_sync_failed（超过 24 小时未同步）与 authorization_sync_recovered（之后同步完成）。均为追加。
 servers:
 - url: /
 paths:
@@ -1121,6 +1124,11 @@ components:
         pending_since:
           type: string
           format: date-time
+        viewer_can_resolve:
+          type: boolean
+          description: >-
+            调用者此刻在跟进所在单元上能更新跟进（can_edit_unit_pursuits，决策者），授权同步失败时可改派或关闭（PRD 第6段 F12 第6条）。
+            只在 getPursuit 与 getTracking 中给出（每次按调用者当前权限实时判断；0.5.0），其他响应不带；不带不等于 false。
     Task:
       type: object
       additionalProperties: false
@@ -1339,6 +1347,8 @@ components:
           - tracking_resumed
           - tracking_stopped
           - members_changed
+          - authorization_sync_failed
+          - authorization_sync_recovered
         actor:
           type: string
           maxLength: 128

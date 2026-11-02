@@ -250,6 +250,15 @@
 | 统计 | 只对管理员开放；白名单外的原因记为 `other`；转交未展开的行不计 |
 | 持续跟踪的“查看” | `/pursuits/tracking/{id}` |
 
+**实现状况（C-17：授权同步失败时通知决策者与转交提醒的转回，PRD 第6段 F12 第4、6条；[channels 契约](../../../contracts/apis/channels/openapi.yaml) 0.6.0、[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.7.0、[pursuit 契约](../../../contracts/apis/pursuit/openapi.yaml) 0.5.0、[pursuit 事件](../../../contracts/events/pursuit/events.asyncapi.yaml) 0.4.0）**：
+
+- **记录**：`channels.pursuit-notices` 追加消费 `pursuit.pursuit.authorization_sync_failed.v1`：事件的跟进进行中时记一行种类 `authorization_sync_failed`、收件人 `*` 的待展开通知（来源为“跟进/期望参与版本”，重放不新增；迁移 `00007_sync_failed_notices.sql`）。事件只是触发，收件人与能否处理都在展开与发送前以收件人本人判断，伪造或改写的事件（他租户、不是授权同步失败的跟进）展开为零行；
+- **展开**：与转交提醒同一套分页展开（每页已绑定成员、位置保存在服务端、不设总上限、任一判断暂时失败整页重排）：以每个已绑定成员本人经 pursuit `getPursuit`（交易型）或 `getTracking`（持续跟踪）读取，跟进进行中（持续跟踪未停止）、`authorization.state` 仍为 `failed` 且 `authorization.viewer_can_resolve` 为真（单元上能更新跟进的决策者）的才记一行；提供方没有给出 `viewer_can_resolve` 时按不能处理（失败关闭）；
+- **发送前再检查**：每次发送与重试前以收件人本人再读：已关闭、撤销或停止 `pursuit_closed`，同步已恢复 `sync_recovered`，已不能处理（如撤销决策者角色）`not_decision_maker`，不可见 `pursuit_not_visible`；成员有效、安静时段与投递目标与其他渠道通知相同。卡片“跟进授权同步失败”只说明超过 24 小时未成功、请在 Web 中改派或关闭，带“查看”，不含成员与原因；
+- **投递事件与统计**：沿用 `channels.notice.sent.v1` / `failed.v1`，种类追加 `authorization_sync_failed`（字段与 `authorization_rejected` 相同，只带跟进标识），原因白名单追加上述三项；`getDeliveryStats` 的 `notices` 同样计入；
+- **转回的提醒**：pursuit 以 `handed_back` 转回负责人的同一提醒按收件人（负责人）记一行（与转交行的唯一键不同），标题为“任务提醒（转回）”；决策者尚未送达的转交行在发送前再检查时取消（`reassigned`）；
+- **证据**：`services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 “C-17 越权与反例测试 …” 子测试）与 `services/subsystems/channels/internal/app/notices_internal_test.go`（TestSyncFailedNoticeRecheck）。未绑定渠道的决策者只在 Web 中看到（W-02）；运营告警的路由见 [A02 验收缺口 C-24](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)。
+
 **实现状况（C-08：信号的即时通知，PRD 第5段 F7、用例5与41；[channels 契约](../../../contracts/apis/channels/openapi.yaml) 0.5.0、[channels 事件](../../../contracts/events/channels/events.asyncapi.yaml) 0.6.0、[customer-context 契约](../../../contracts/apis/customer-context/openapi.yaml) 0.6.0）**：
 
 - **记录**：消费者 `channels.signal-notices` 订阅 detection 主题的 `detection.signal.detected.v1`，每条信号记一行待展开的通知（种类 `signal_immediate`、收件人 `*`，`chn_notices` 追加 `signal_id`、`objective_id` 与渲染来源 `item`，迁移 `00006`）；排除与回填的信号、标识不合法的事件不记。事件只是触发：信号、目标、处置与可见性在发送前都以收件人本人重新读取，伪造或改写的事件不能让任何人看到其无权查看的内容；重放同一事件不新增通知（唯一键：租户 + 种类 + 信号 + 收件人）；
@@ -277,7 +286,7 @@
 
 ## 7. 事件
 
-**消费**：`identity.member.changed.v1`（成员停用或退出时使其绑定失效）、`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（简报中的当前状态叠加）、`assessment.assessment.created.v1`、`assessment.decision.drafted.v1`、`identity.approval.requested.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`、`research.case.awaiting_input.v1`。
+**消费**：`identity.member.changed.v1`（成员停用或退出时使其绑定失效）、`pursuit.pursuit.authorization_rejected.v1`、`pursuit.pursuit.authorization_sync_failed.v1`（C-17）、`detection.signal.detected.v1`、`detection.signal.updated.v1`、`detection.signal.triaged.v1`（简报中的当前状态叠加）、`assessment.assessment.created.v1`、`assessment.decision.drafted.v1`、`identity.approval.requested.v1`、`pursuit.task.assigned.v1`、`pursuit.task.due.v1`、`detection.pursuit_related_event.v1`、`research.case.completed.v1`、`research.case.awaiting_input.v1`。
 
 **发布**：`channels.binding.changed.v1`、`channels.delivery.sent.v1`、`channels.delivery.failed.v1`、`channels.notice.sent.v1`、`channels.notice.failed.v1`、`channels.signal_notice.sent.v1`、`channels.signal_notice.failed.v1`、`channels.action.executed.v1`、`channels.conversation.message_received.v1`。
 

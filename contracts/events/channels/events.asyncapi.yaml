@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: channels 渠道绑定事件
-  version: 0.6.0
+  version: 0.7.0
   description: >-
     由 channels 经发件箱发布（PRD 第1段第8节）。信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；
     本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。绑定的每次状态变化发布一条，按绑定版本单调递增；
@@ -14,6 +14,9 @@ info:
     逐项白名单，个人数据只有收件人（与简报投递事件相同），不含任务标题、正文、被拒成员或操作说明。0.6.0（PRD 第5段 F7，C-08）：追加
     信号即时通知的投递事件 channels.signal_notice.sent.v1 与 channels.signal_notice.failed.v1（与 channels.notice.* 同一语义：每条
     送达一次、每次渠道失败与每次结束各一次；字段白名单为通知、种类、收件人、渠道、信号、目标与尝试数，不含项目、中标方、金额或卡片正文）。
+    0.7.0（PRD 第6段 F12 第6条，C-17）：channels.notice.* 的 kind 追加 authorization_sync_failed（授权同步超过 24 小时未成功时给目标所在单元
+    决策者的通知，字段与 authorization_rejected 相同、只带跟进标识）；reason 追加 sync_recovered（发送前同步已恢复）、not_decision_maker
+    （收件人此刻已不能处理该跟进）与 pursuit_closed（跟进已关闭、撤销或停止）。均为追加。
 channels:
   tenantChannels:
     address: cell-{cell}.channels
@@ -379,6 +382,7 @@ components:
             enum:
             - task_due
             - authorization_rejected
+            - authorization_sync_failed
           recipient: *member
           channel: *channel
           pursuit_id: &pursuitID
@@ -425,7 +429,8 @@ components:
       description: >-
         final 为假时（state 为 retrying，reason 为 channel_error）将退避重试同一张卡片；为真时通知结束、不再发布：state 为 in_app
         （not_bound 未绑定渠道、cutoff 重试时限内仍未送达，留在 Web 与站内）或 cancelled（发送前以收件人本人再检查时取消：
-        member_inactive、task_not_visible、task_closed、superseded、reassigned、pursuit_not_visible）。乱序到达的旧提醒在记下时即被
+        member_inactive、task_not_visible、task_closed、superseded、reassigned、pursuit_not_visible；authorization_sync_failed 另有
+        sync_recovered、not_decision_maker、pursuit_closed，0.7.0）。乱序到达的旧提醒在记下时即被
         取消的（superseded，attempt 为 0）也发布一次。字段白名单与 channels.notice.sent.v1 相同。
       payload:
         type: object
@@ -470,6 +475,9 @@ components:
             - superseded
             - reassigned
             - pursuit_not_visible
+            - sync_recovered
+            - not_decision_maker
+            - pursuit_closed
           final:
             type: boolean
         allOf:

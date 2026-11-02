@@ -879,6 +879,35 @@
     },
     {
       "event": "channels.notice.sent.v1",
+      "name": "授权同步失败通知只带跟进",
+      "valid": true,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "kind": "authorization_sync_failed",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
+      "name": "授权同步失败通知不带任务",
+      "valid": false,
+      "value": {
+        "accepted_at": "2026-10-20T08:15:00+08:00",
+        "attempt": 1,
+        "channel": "wecom",
+        "kind": "authorization_sync_failed",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.sent.v1",
       "name": "任务提醒缺截止版本",
       "valid": false,
       "value": {
@@ -984,6 +1013,38 @@
         "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
         "state": "cancelled",
         "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "授权同步失败通知在发送前同步已恢复",
+      "valid": true,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": true,
+        "kind": "authorization_sync_failed",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "sync_recovered",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "cancelled"
+      }
+    },
+    {
+      "event": "channels.notice.failed.v1",
+      "name": "授权同步失败通知的收件人已不是决策者",
+      "valid": true,
+      "value": {
+        "attempt": 1,
+        "channel": "wecom",
+        "final": true,
+        "kind": "authorization_sync_failed",
+        "notice_id": "dlv_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reason": "not_decision_maker",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "cancelled"
       }
     },
     {
@@ -4693,6 +4754,52 @@
     },
     {
       "event": "pursuit.task.due.v1",
+      "name": "转回负责人",
+      "valid": true,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "handed_back": true,
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
+      "name": "不是转回时不出现",
+      "valid": false,
+      "value": {
+        "deadline_version": 1,
+        "due": {
+          "precision": "minute",
+          "timezone": "Asia/Shanghai",
+          "value": "2026-10-28T15:00"
+        },
+        "escalated": false,
+        "fire_at": "2026-10-26T08:00:00Z",
+        "handed_back": false,
+        "kind": "before_24h",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipient": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "reminder_id": "rmd_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "task_id": "tsk_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.task.due.v1",
       "name": "未登记的提醒种类",
       "valid": false,
       "value": {
@@ -5321,6 +5428,290 @@
         "recorded_at": "2026-11-02T00:00:05Z",
         "seq": 0,
         "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_delayed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_delayed.v1",
+      "name": "持续跟踪",
+      "valid": true,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "continuous",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_delayed.v1",
+      "name": "已撤销的跟进（清理授权）",
+      "valid": true,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "voided"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_delayed.v1",
+      "name": "不得夹带成员",
+      "valid": false,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_delayed.v1",
+      "name": "不得夹带租户",
+      "valid": false,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_delayed.v1",
+      "name": "未登记的跟进种类",
+      "valid": false,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "research",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_failed.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_failed.v1",
+      "name": "持续跟踪",
+      "valid": true,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "continuous",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_failed.v1",
+      "name": "已撤销的跟进（清理授权）",
+      "valid": true,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "voided"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_failed.v1",
+      "name": "不得夹带成员",
+      "valid": false,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "owner": "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_failed.v1",
+      "name": "不得夹带租户",
+      "valid": false,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open",
+        "tenant_id": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_failed.v1",
+      "name": "未登记的跟进种类",
+      "valid": false,
+      "value": {
+        "applied_version": 1,
+        "desired_version": 2,
+        "detected_at": "2026-10-26T08:06:00Z",
+        "kind": "research",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "state": "open"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_recovered.v1",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "alerted": [
+          "delayed",
+          "failed"
+        ],
+        "applied_version": 2,
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recovered_at": "2026-10-27T09:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_recovered.v1",
+      "name": "只告警过一次",
+      "valid": true,
+      "value": {
+        "alerted": [
+          "delayed"
+        ],
+        "applied_version": 2,
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recovered_at": "2026-10-27T09:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_recovered.v1",
+      "name": "未告警的不发布",
+      "valid": false,
+      "value": {
+        "alerted": [],
+        "applied_version": 2,
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recovered_at": "2026-10-27T09:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_recovered.v1",
+      "name": "未登记的告警级别",
+      "valid": false,
+      "value": {
+        "alerted": [
+          "paged"
+        ],
+        "applied_version": 2,
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recovered_at": "2026-10-27T09:00:00Z"
+      }
+    },
+    {
+      "event": "pursuit.pursuit.authorization_sync_recovered.v1",
+      "name": "不得夹带成员",
+      "valid": false,
+      "value": {
+        "alerted": [
+          "delayed",
+          "failed"
+        ],
+        "applied_version": 2,
+        "kind": "deal",
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pending_since": "2026-10-26T08:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "recipients": [
+          "usr_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "recovered_at": "2026-10-27T09:00:00Z"
       }
     },
     {
@@ -6133,7 +6524,8 @@
         "kind": {
           "enum": [
             "task_due",
-            "authorization_rejected"
+            "authorization_rejected",
+            "authorization_sync_failed"
           ],
           "type": "string"
         },
@@ -6155,7 +6547,10 @@
             "task_closed",
             "superseded",
             "reassigned",
-            "pursuit_not_visible"
+            "pursuit_not_visible",
+            "sync_recovered",
+            "not_decision_maker",
+            "pursuit_closed"
           ],
           "type": "string"
         },
@@ -6256,7 +6651,8 @@
         "kind": {
           "enum": [
             "task_due",
-            "authorization_rejected"
+            "authorization_rejected",
+            "authorization_sync_failed"
           ],
           "type": "string"
         },
@@ -9985,6 +10381,186 @@
       ],
       "type": "object"
     },
+    "pursuit.pursuit.authorization_sync_delayed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "applied_version": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "desired_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "detected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "deal",
+            "continuous"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "pending_since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "closed",
+            "voided"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "org_unit_id",
+        "kind",
+        "state",
+        "desired_version",
+        "applied_version",
+        "pending_since",
+        "detected_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.authorization_sync_failed.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "applied_version": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "desired_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "detected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "deal",
+            "continuous"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "pending_since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "closed",
+            "voided"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "org_unit_id",
+        "kind",
+        "state",
+        "desired_version",
+        "applied_version",
+        "pending_since",
+        "detected_at"
+      ],
+      "type": "object"
+    },
+    "pursuit.pursuit.authorization_sync_recovered.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "alerted": {
+          "items": {
+            "enum": [
+              "delayed",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "applied_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "deal",
+            "continuous"
+          ],
+          "type": "string"
+        },
+        "objective_id": {
+          "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "org_unit_id": {
+          "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",
+          "type": "string"
+        },
+        "pending_since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "pursuit_id": {
+          "pattern": "^pur_[0-9A-HJKMNP-TV-Z]{26}$",
+          "type": "string"
+        },
+        "recovered_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pursuit_id",
+        "objective_id",
+        "org_unit_id",
+        "kind",
+        "applied_version",
+        "pending_since",
+        "alerted",
+        "recovered_at"
+      ],
+      "type": "object"
+    },
     "pursuit.pursuit.closed.v1": {
       "additionalProperties": false,
       "properties": {
@@ -10343,6 +10919,11 @@
         "fire_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "handed_back": {
+          "const": true,
+          "description": "负责人恢复写入准入后，此前转给决策者的同一提醒转回给负责人（每条提醒至多一次；0.4.0，C-17）。只在转回时出现（不出现即不是转回）， 此时 escalated 为 false、带 recipient；reminder_id、kind 与 fire_at 与原提醒相同。",
+          "type": "boolean"
         },
         "kind": {
           "enum": [
