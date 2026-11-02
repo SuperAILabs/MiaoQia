@@ -1,8 +1,8 @@
 # A02 真实贯通验收线
 
-> 状态：已批准 · 版本：1.12 · 更新：2026-11-01 · 负责人：项目负责人、首席架构师、产品负责人
+> 状态：已批准 · 版本：1.13 · 更新：2026-11-02 · 负责人：项目负责人、首席架构师、产品负责人
 
-本文定义建材供应商 A02 首条旅程从“服务端切片”走到“真实客户可用”的验收线：汇总第1–5、7段服务端切片及 L1 数据供应实现登记的未实现与未接入项，按“激活策略 → 收到信号 → 查看原文 → 简报触达”梳理真实贯通所需的依赖，给出分级验收与建议顺序。各段的功能规则以[功能 PRD](../01-product/prd/README.md) 为准，首次使用门禁以[阶段基线](06-stage-baseline.md)为准；本文不改变任何门禁，只把分散在各 PRD 验收表与子系统“实现状况”中的缺口收拢成一张可跟踪的清单，并规定进度口径。
+本文定义建材供应商 A02 首条旅程从“服务端切片”走到“真实客户可用”的验收线：汇总第1–7段服务端切片及 L1 数据供应实现登记的未实现与未接入项，按“激活策略 → 收到信号 → 查看原文 → 简报触达”梳理真实贯通所需的依赖，给出分级验收与建议顺序。各段的功能规则以[功能 PRD](../01-product/prd/README.md) 为准，首次使用门禁以[阶段基线](06-stage-baseline.md)为准；本文不改变任何门禁，只把分散在各 PRD 验收表与子系统“实现状况”中的缺口收拢成一张可跟踪的清单，并规定进度口径。
 
 ## 1. 为什么需要这条验收线
 
@@ -65,7 +65,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D-08 | INF-ORG 企业主数据未接入；X-SELF 需要“关联本企业” | PRD 第2段用例1、7–9；第3段用例7 | ①② | L1 用夹具，L4 用供应商 | B2b |
 | D-09 | learning 仿真数据集 `api.Dataset` 未接入，样本只含夹具事实；接入非虚构样本受 D-17 阻断 | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
 | D-10 | learning 与 gateway 读取的信息领域服务状态 `api.DomainStatus` 未接入 | 同上 | ①③ | L1 | 随 D-05 |
-| D-11 | gateway 的数据平面读取（`api.PublicData`：事实、历史、项目链、统计）与证据读取未接入；对象页、分区与证据面板 503。**采购项目部分关闭（L1-3b）**：`internal/dataplane` 经 data-api `get-fact`（`kernel/dataread`，以调用者本人的上下文）接入 `pp_` 的对象解析、概要（字段白名单）、标包（按品类筛选）与公告时间线（固定版本的 `notice_refs`，`signal_time` 计 `later_count`），回带口径、标识、固定版本与记录时间逐项校验，来源权利拒绝 503 不当作不存在；证据 `services/subsystems/gateway/internal/dataplane/dataplane_test.go`（他租户与无租户、服务主体、权利拒绝只影响被拒租户、8种篡改响应、时间线任一公告被拒整体失败、引用重复/格式错误/超限）。剩余：`prj_` / `org_` 与上级项目（entity-graph 读取未进 data-api，随 D-12）、证据面板（data-api 证据载荷缺所属对象与来源名称、标题、链接）、历史与统计分区、字段状态（随 D-10、D-13） | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
+| D-11 | gateway 的数据平面读取（`api.PublicData`：事实、历史、项目链、统计）与证据读取未接入；对象页、分区与证据面板 503。**采购项目部分关闭（L1-3b）**：`internal/dataplane` 经 data-api `get-fact`（`kernel/dataread`，以调用者本人的上下文）接入 `pp_` 的对象解析、概要（字段白名单）、标包（按品类筛选）与公告时间线（固定版本的 `notice_refs`，`signal_time` 计 `later_count`），回带口径、标识、固定版本与记录时间逐项校验，来源权利拒绝 503 不当作不存在；证据 `services/subsystems/gateway/internal/dataplane/dataplane_test.go`（他租户与无租户、服务主体、权利拒绝只影响被拒租户、8种篡改响应、时间线任一公告被拒整体失败、引用重复/格式错误/超限）。剩余：`prj_` / `org_` 与上级项目（entity-graph 读取未进 data-api，随 D-12）、证据面板（data-api 证据载荷缺所属对象与来源名称、标题、链接）、历史与统计分区、字段状态（随 D-10、D-13）；data-api 读取暂用手写 `kernel/dataread` 客户端，所有者 OpenAPI 与生成客户端在 M1 生产首次使用前补齐（ADR-0006 决策4，立项清单 C8） | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
 | D-12 | entity-graph 组织解析、`part_of` 归属边、合并与撤销未实现；detection 归属边端口 `NotWired` | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第4段用例19–22、37–38 | ③ | L1（组织解析与 `part_of`）；品牌随 M2-P13 | — |
 | D-13 | 字段状态、更正/撤回时间轴、来源中断、空态原因由数据平面提供 | PRD 第4段用例8–10、15–18、24–27 | ③ | L2 | 随 D-02～D-05 |
 | D-14 | 重新求值与撤回关闭的生产者、`signal.updated`、A02 更正公告重新求值 | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第3段已确认事项11 | ② | L2 | — |

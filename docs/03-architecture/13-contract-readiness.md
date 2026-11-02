@@ -1,6 +1,6 @@
 # 首批契约覆盖与冻结
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.16 · 更新：2026-10-27 · 负责人：首席架构师、数据负责人
+> 状态：C4a/C4b首批已冻结 · 版本：3.17 · 更新：2026-11-02 · 负责人：首席架构师、数据负责人
 
 本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
 
@@ -145,7 +145,19 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 
 首批冻结记录保留其审计基线；当前集成安全配置已按强制租户目录核验升至3.0.0。M0 HTTP认证、完整探针、现有四个消费者运行时载荷校验的实现与真实组件门禁已关闭，详见[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)与[验收清单](../../contracts/reviews/m0-runtime-acceptance.yaml)。Go/Python框架在事务前执行离线原Schema校验；业务来源、主体、探针路径及审计租户一致性由应用所有者校验，失败回滚并进入死信。
 
-最小身份生命周期、cell-01目录核验及identity.SessionResolver本地/远程绑定见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。identity OpenAPI增量至1.1.0，新增4个生命周期事件；首批冻结记录作为历史审计保留。审计AsyncAPI增量至1.1.0：新增可选`delegation`（内部支持访问或服务委托的授予记录），事件类型仍为v1，Go/Python审计SDK同步；第三批结束时以[冻结修订记录三](../../contracts/reviews/first-batch-freeze-amendment-3.yaml)登记为新基线，原冻结记录保留为历史审计。
+最小身份生命周期、cell-01目录核验及identity.SessionResolver本地/远程绑定见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。M0身份验收时identity OpenAPI增量至1.1.0，新增4个生命周期事件；首批冻结记录作为历史审计保留。审计AsyncAPI增量至1.1.0：新增可选`delegation`（内部支持访问或服务委托的授予记录），事件类型仍为v1，Go/Python审计SDK同步；第三批结束时以[冻结修订记录三](../../contracts/reviews/first-batch-freeze-amendment-3.yaml)登记为新基线，原冻结记录保留为历史审计。
+
+**C4a 现行基线（2026-11-02 核对 main 87dd376）。** `mqc freeze-check` 通过（259个路径，70个仅报告的证据快照偏离，不阻断）。冻结记录中的9份受约束契约当前版本与登记如下：
+
+| 契约 | 冻结版本 | 当前版本 | 当前字节登记于 |
+|---|---|---|---|
+| `contracts/identifiers.yaml` | 1.0.0 | 1.8.0 | [修订13](../../contracts/reviews/first-batch-freeze-amendment-13.yaml)（修订15–19原样复登） |
+| `contracts/apis/identity/openapi.yaml` | 1.0.0 | 1.5.0 | [修订7](../../contracts/reviews/first-batch-freeze-amendment-7.yaml) |
+| `contracts/events/audit/events.asyncapi.yaml` | 1.0.0 | 1.1.0 | [修订3](../../contracts/reviews/first-batch-freeze-amendment-3.yaml) |
+| `contracts/integration.yaml` | 1.0.0 | 3.0.0 | 仅作为证据快照登记于[M0身份验收记录](../../contracts/reviews/m0-identity-acceptance.yaml)（`artifacts`）；[修订24](../../contracts/reviews/first-batch-freeze-amendment-24.yaml)登记为受约束基线（随立项验收 PR 合并生效） |
+| 请求上下文、事件信封 Schema；内核 SQL 与 kernel.yaml；探针 AsyncAPI | 1.0.0 | 1.0.0 | 原冻结记录，字节未变 |
+
+`mqc freeze-check` 对受约束文件只比较“最晚记录的哈希”或“版本高于最晚记录的版本”。集成配置的最晚受约束记录仍是1.0.0，此前3.0.0在不升版本的情况下被再次修改也不会被拦截；[修订24](../../contracts/reviews/first-batch-freeze-amendment-24.yaml)把3.0.0（SHA-256 `b5463934…48bf`）登记为新基线后，同版本改动由 F3 阻断（已用临时改动验证）。C4b侧同类情况（企业登记 Schema 1.2.0、INF-ORG 1.1.0、INF-PROC 1.6.1、IND-BUILDING-MATERIALS 0.3.1）由[修订25](../../contracts/reviews/first-batch-freeze-amendment-25.yaml)登记。
 
 生产部署、证书运维、Kafka/数据库身份与ACL、审批、未来子系统接口和全国来源仍有各自门禁。当前四个消费者通过不代证未来处理函数，但新增登记处理函数必须具备可编译载荷Schema，不能静默跳过。
 
@@ -167,7 +179,7 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 领域历史覆盖起点 | [可扩展性第 4 节](04-extensibility.md#4-加载版本与发布) | 首个声明历史窗口的视图启用 | 覆盖度量追加字段 |
 | 投标提交确认（A01 跟进“已投标”阶段的提交时间、确认人与依据） | APP-TENDER 效果指标 `a01_bid_count`、`a01_win_rate` 的待定口径与结果原因的 `implies_bid`（`packs/application_domains/tendering/outcomes/a01.yaml`）（`packs/application_domains/tendering/metrics.yaml`）；[pursuit 第10节](subsystems/pursuit.md#10-分阶段交付) | M4 路径引擎的 A01 投标阶段 | pursuit 阶段数据与事件追加字段 |
 | 平台资质体系登记（`qual:*` 体系与版本，行业包资质模板 `equivalents` 的加载与解析） | [可扩展性 2.4](04-extensibility.md#24-行业包) | INF-QUAL 首次启用，或首个跨资质体系比较资质的规则 | 新增 |
-| 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | data-api 已有 listener、TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络 smoke、entity-graph/Go 生产适配器尚未接入（第4段切片继续以 gateway `api.PublicData` 端口和内存夹具代替） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
+| 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | data-api 已有 listener、TLS/身份 admission、deadline 约束与五路 source-group collectors；Go 客户端 `kernel/dataread` 已有，gateway 已经 data-api `get-fact` 接入 `pp_` 采购项目的对象解析、概要、标包与公告时间线（PR #55，[A02 验收缺口 D-11](../05-delivery/09-a02-end-to-end-acceptance.md#41-数据供应d) 部分关闭）；`prj_` / `org_`、entity-graph 读取、历史与统计、证据面板与真实网络 smoke 尚未接入（其余仍以 gateway `api.PublicData` 端口和内存夹具代替）。data-api 尚无所有者 OpenAPI，`kernel/dataread` 是手写客户端，与 [ADR-0006](../04-decisions/0006-backend-languages.md) 决策4（跨语言调用使用 OpenAPI 生成的客户端）不一致：M1 生产首次使用前补齐 OpenAPI 与生成客户端并替换手写客户端（立项清单 C8） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
 | evidence 的 `ResolveEvidence`（展示级别与原因、快照、来源可达状态、派生输入） | [evidence](subsystems/evidence.md)；PRD 第4段 F6 | 证据解析的生产实现（第4段切片以 `api.EvidenceResolver` 端口代替） | 新增 |
 | commerce 的按租户权益（`GetEntitlements` 的订阅与按租户覆盖包）与按套餐的查看额度；覆盖判断 `checkCoverage` 已随 commerce OpenAPI 0.2.0 写入，覆盖包暂为部署配置 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（额度与覆盖包来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt`、`CoverageDecision` 不变 |
 | detection 的归属边读取（entity-graph 的 `part_of`，项目展开到采购项目） | [detection 第5节](subsystems/detection.md#5-接口) | entity-graph 关系读取的生产实现（第4段切片以 `api.ProjectLinks` 端口代替） | 随 entity-graph `GetRelationships` |

@@ -1,0 +1,30 @@
+status: amended
+amends: contracts/reviews/first-batch-freeze.yaml
+amended_at: '2026-11-02T09:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随立项验收 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  立项验收审查（C4b）发现以下版本属主在升版本后没有修订记录：企业登记 Schema 1.2.0 与 INF-ORG pack 1.1.0（4ab99f3，显式合成登记夹具与
+  精确组织解析，不启用真实来源）、INF-PROC pack 1.6.1 与 IND-BUILDING-MATERIALS 分发版本 0.3.1（ec94f9d、85c83e2，同步固定语料来源与
+  建材主题 recipe 摘要；Project 固定成员语义与 taxonomy/vocabulary 0.2.0 不变）。版本均高于既有记录，freeze-check 已通过；这里登记当前字节
+  作为新基线，内容不变，原冻结记录与修订 1–23 不改。
+files:
+- path: contracts/schemas/domains/organization/registration.schema.json
+  current_version: 1.2.0
+  sha256: 53603249321fe347cd0e41676d881755489c287424a67519eab8bc597bb9bf7f
+  commit: 4ab99f3
+version_owners:
+- path: packs/information_domains/organizations/pack.yaml
+  version: 1.1.0
+  sha256: a7660fc4df49621066245c356a308f40b20c729d7b6762812b115da86dda2264
+- path: packs/information_domains/procurement/pack.yaml
+  version: 1.6.1
+  sha256: f182e22f51924c9b97fe5c6c73ec546f20ddb155b12d589cfe762d56c6c54786
+- path: packs/industries/building-materials/pack.yaml
+  version: 0.3.1
+  sha256: 5999b91b4a0d0bd69f2bb8289fa4e5eab67ada77e432a0dea078b3f123e0b812
+verification:
+  base: 87dd376
+  commands:
+  - mqc freeze-check
+  - mqc check

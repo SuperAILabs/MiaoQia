@@ -1,6 +1,6 @@
 # M0 最小身份生命周期与 cell-01 路由
 
-> 状态：已批准 · 版本：1.0 · 更新：2026-10-15 · 负责人：identity、安全与平台工程负责人
+> 状态：已批准 · 版本：1.1 · 更新：2026-11-02 · 负责人：identity、安全与平台工程负责人
 
 本文界定 M0-06 的工程验收范围。身份认证由 Keycloak 负责，identity 保存租户、成员、角色与单元目录；网关从已验证令牌取得待核对的租户上下文，再由目录确认当前有效状态和 cell 归属。产品交互与原型由独立设计工作交付，不在本文范围内。
 
@@ -21,7 +21,7 @@
 
 ## 2. 接口、存储和绑定
 
-[identity OpenAPI](../../contracts/apis/identity/openapi.yaml)当前为1.1.0，生命周期接口复用生成服务端与Problem错误；原授权Check结构保持兼容。
+[identity OpenAPI](../../contracts/apis/identity/openapi.yaml)在本验收时为1.1.0，生命周期接口复用生成服务端与Problem错误；原授权Check结构保持兼容。此后组织单元、邀请与强认证时效、渠道免登会话与审批服务按[冻结修订4–7](../../contracts/reviews/first-batch-freeze-amendment-7.yaml)追加至1.5.0，其范围与证据见[identity 第5节实现状况](../03-architecture/subsystems/identity.md#5-接口)，不由本验收代证。
 
 | 接口 | 边界 |
 |---|---|

@@ -1,0 +1,20 @@
+status: amended
+amends: contracts/reviews/engineering-first-batch-freeze.yaml
+amended_at: '2026-11-02T09:00:00+00:00'
+approval:
+  authority: 待项目负责人确认；本记录随立项验收 PR 提交，经项目负责人确认合并后生效，确认前不视为已登记的新基线
+reason: >-
+  立项验收审查（C4a）发现 contracts/integration.yaml 已升至 3.0.0（55b4ba4，M0 身份生命周期验收：强制租户目录核验；
+  2.0.0 为 M0 运行时验收的传输认证收紧），但最晚的受约束冻结记录仍登记 1.0.0，3.0.0 的哈希只在 m0-runtime-acceptance.yaml 与
+  m0-identity-acceptance.yaml 的证据快照段（不受约束）出现，因此 3.0.0 不升版本被改时 freeze-check 无法阻断。这里把当前字节登记为
+  受约束基线，内容不变；原冻结记录、修订 1–23 与两份 M0 验收记录不改。
+files:
+- path: contracts/integration.yaml
+  current_version: 3.0.0
+  sha256: b5463934fc596ffbec7153746b48227262450f04190cc13a827943b5754548bf
+  commit: 55b4ba4
+verification:
+  base: 87dd376
+  commands:
+  - mqc freeze-check
+  - mqc check

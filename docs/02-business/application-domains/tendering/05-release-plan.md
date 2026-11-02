@@ -4,6 +4,8 @@
 
 本文定义招投标应用领域（`APP-TENDER`）的首发范围与分批发布。
 
+批准记录（立项清单 A1，G0）：首发范围、四个信息领域与 R1/R2/R3 分批于 2026-10-13 定稿（提交 `cb8ed12`），随 [PR #1](https://github.com/SuperAILabs/MiaoQia/pull/1) 于 2026-10-14 由仓库所有者账号合并；立项清单 A1 行“方案批准”由项目负责人 Sean 的提交 `47daba7` 登记（[PR #3](https://github.com/SuperAILabs/MiaoQia/pull/3)，2026-10-15 合并）；历史深度规则于 2026-10-17 随 [PR #16](https://github.com/SuperAILabs/MiaoQia/pull/16) 合并。[阶段基线](../../../05-delivery/06-stage-baseline.md)以本文为“项目负责人已确认的首发范围”。范围变更由项目负责人在 PR 中决定，并同步本记录。
+
 ## 1. 首发范围
 
 | 维度 | 范围 |
