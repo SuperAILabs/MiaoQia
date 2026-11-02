@@ -5311,6 +5311,42 @@
     },
     {
       "event": "pursuit.tracking.changed.v1",
+      "name": "归档（0.5.0）",
+      "valid": true,
+      "value": {
+        "changed_at": "2026-10-21T02:00:00Z",
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 1,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "reason": "archived",
+        "state": "archived",
+        "version": 1
+      }
+    },
+    {
+      "event": "pursuit.tracking.changed.v1",
+      "name": "按名单导入（0.5.0）",
+      "valid": true,
+      "value": {
+        "changed_at": "2026-10-21T02:00:00Z",
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 1,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "org_unit_id": "root",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "reason": "members_imported",
+        "state": "tracking",
+        "version": 1
+      }
+    },
+    {
+      "event": "pursuit.tracking.changed.v1",
       "name": "未登记的状态",
       "valid": false,
       "value": {
@@ -5323,7 +5359,7 @@
         "org_unit_id": "root",
         "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
         "reason": "created",
-        "state": "archived",
+        "state": "deleted",
         "version": 1
       }
     },
@@ -5427,6 +5463,64 @@
         "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
         "recorded_at": "2026-11-02T00:00:05Z",
         "seq": 0,
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "event": "pursuit.tracking.period_closed.v1",
+      "name": "带每个对象的实体来源版本（0.5.0）",
+      "valid": true,
+      "value": {
+        "baseline_seq": 1,
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 2,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objects": [
+          {
+            "entity_state": "recorded",
+            "entity_version": 4,
+            "org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+          }
+        ],
+        "org_unit_id": "root",
+        "owner": "bd-2",
+        "owner_valid": true,
+        "period_end": "2026-11-02T00:00:00Z",
+        "period_start": "2026-10-26T00:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "recorded_at": "2026-11-02T00:00:05Z",
+        "seq": 2,
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "event": "pursuit.tracking.period_closed.v1",
+      "name": "对象不得夹带名称",
+      "valid": false,
+      "value": {
+        "baseline_seq": 1,
+        "members": [
+          "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+        ],
+        "members_version": 2,
+        "objective_id": "obj_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "objects": [
+          {
+            "entity_state": "not_wired",
+            "name": "浙江某建工",
+            "org_id": "org_01JA8ZXXXXXXXXXXXXXXXXXXX1"
+          }
+        ],
+        "org_unit_id": "root",
+        "owner": "bd-2",
+        "owner_valid": true,
+        "period_end": "2026-11-02T00:00:00Z",
+        "period_start": "2026-10-26T00:00:00Z",
+        "pursuit_id": "pur_01JA8ZXXXXXXXXXXXXXXXXXXX3",
+        "recorded_at": "2026-11-02T00:00:05Z",
+        "seq": 2,
         "timezone": "Asia/Shanghai"
       }
     },
@@ -11040,7 +11134,10 @@
             "paused",
             "resumed",
             "stopped",
-            "members_changed"
+            "members_changed",
+            "archived",
+            "unarchived",
+            "members_imported"
           ],
           "type": "string"
         },
@@ -11048,7 +11145,8 @@
           "enum": [
             "tracking",
             "paused",
-            "stopped"
+            "stopped",
+            "archived"
           ],
           "type": "string"
         },
@@ -11092,6 +11190,38 @@
         "objective_id": {
           "pattern": "^obj_[0-9A-HJKMNP-TV-Z]{26}$",
           "type": "string"
+        },
+        "objects": {
+          "description": "期末每个对象的实体来源版本（0.5.0），顺序同 members",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "entity_state": {
+                "enum": [
+                  "recorded",
+                  "not_found",
+                  "unavailable",
+                  "not_wired"
+                ],
+                "type": "string"
+              },
+              "entity_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "org_id": {
+                "pattern": "^org_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "entity_state"
+            ],
+            "type": "object"
+          },
+          "maxItems": 200,
+          "type": "array"
         },
         "org_unit_id": {
           "pattern": "^(root|unt_[0-9A-HJKMNP-TV-Z]{26})$",

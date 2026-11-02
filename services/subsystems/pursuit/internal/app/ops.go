@@ -25,6 +25,9 @@ type Fixed struct {
 	OutcomeID         string   `json:"outcome_id,omitempty"`
 	NotWritten        []string `json:"not_written,omitempty"`
 	SignalRestoration string   `json:"signal_restoration,omitempty"`
+	// ImportRows 与 ImportCheck 是持续跟踪名单导入的逐行结果与核对方式（C-13），与操作一起固定。
+	ImportRows  []ImportRow `json:"import_rows,omitempty"`
+	ImportCheck string      `json:"import_check,omitempty"`
 }
 
 // op 是一次要执行的操作。

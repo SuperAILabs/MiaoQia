@@ -6,7 +6,7 @@ import (
 	pur "github.com/superailabs/miaoqia/services/contracts/apis/pursuit"
 )
 
-// 持续跟踪与创建缺省值（C-10）的服务端实现。
+// 持续跟踪与创建缺省值（C-10）、持续跟踪的改派、归档与名单导入（C-13）的服务端实现。
 
 func trackingResult(res *TrackingResult, err error) (*pur.TrackingCommandResult, error) {
 	if err != nil {
@@ -40,7 +40,7 @@ func (s *Server) GetTracking(ctx context.Context, p pur.GetTrackingParams) (*pur
 }
 
 func (s *Server) ListTracking(ctx context.Context, p pur.ListTrackingParams) (*pur.TrackingList, error) {
-	list, err := s.Service.ListTracking(ctx, string(p.ObjectiveID.Or("")), p.Limit.Or(50), string(p.Cursor.Or("")))
+	list, err := s.Service.ListTracking(ctx, string(p.ObjectiveID.Or("")), p.Archived.Or(false), p.Limit.Or(50), string(p.Cursor.Or("")))
 	if err != nil {
 		return nil, err
 	}
@@ -93,4 +93,36 @@ func (s *Server) UpdateTrackingMembers(ctx context.Context, req *pur.TrackingMem
 		return nil, err
 	}
 	return trackingResult(s.Service.UpdateTrackingMembers(ctx, string(p.PursuitID), p.IdempotencyKey, *in))
+}
+
+func (s *Server) AssignTracking(ctx context.Context, req *pur.AssignRequest, p pur.AssignTrackingParams) (*pur.TrackingCommandResult, error) {
+	in, err := convert[AssignRequest](req)
+	if err != nil {
+		return nil, err
+	}
+	return trackingResult(s.Service.AssignTracking(ctx, string(p.PursuitID), p.IdempotencyKey, *in))
+}
+
+func (s *Server) ArchiveTracking(ctx context.Context, req *pur.VersionRequest, p pur.ArchiveTrackingParams) (*pur.TrackingCommandResult, error) {
+	in, err := convert[VersionRequest](req)
+	if err != nil {
+		return nil, err
+	}
+	return trackingResult(s.Service.ArchiveTracking(ctx, string(p.PursuitID), p.IdempotencyKey, *in))
+}
+
+func (s *Server) UnarchiveTracking(ctx context.Context, req *pur.VersionRequest, p pur.UnarchiveTrackingParams) (*pur.TrackingCommandResult, error) {
+	in, err := convert[VersionRequest](req)
+	if err != nil {
+		return nil, err
+	}
+	return trackingResult(s.Service.UnarchiveTracking(ctx, string(p.PursuitID), p.IdempotencyKey, *in))
+}
+
+func (s *Server) ImportTrackingMembers(ctx context.Context, req *pur.TrackingImportRequest, p pur.ImportTrackingMembersParams) (*pur.TrackingCommandResult, error) {
+	in, err := convert[ImportRequest](req)
+	if err != nil {
+		return nil, err
+	}
+	return trackingResult(s.Service.ImportTrackingMembers(ctx, string(p.PursuitID), p.IdempotencyKey, *in))
 }

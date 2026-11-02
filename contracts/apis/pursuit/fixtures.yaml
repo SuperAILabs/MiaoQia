@@ -975,9 +975,12 @@ fixtures:
   - name: 已暂停
     valid: true
     instance: paused
+  - name: 已归档（0.6.0）
+    valid: true
+    instance: archived
   - name: 未登记的状态
     valid: false
-    instance: archived
+    instance: deleted
 - schema: Cadence
   base:
     weekday: 1
@@ -1094,7 +1097,7 @@ fixtures:
     patch:
     - op: replace
       path: /state
-      value: archived
+      value: deleted
 - schema: Tracking
   base:
     id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX3
@@ -1209,6 +1212,35 @@ fixtures:
     patch:
     - op: remove
       path: /members
+  - name: 带每个对象的来源版本（0.6.0）
+    valid: true
+    patch:
+    - op: add
+      path: /objects
+      value:
+      - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        added_members_version: 1
+        source: import
+        entity_state: recorded
+        entity_version: 7
+  - name: 实体图未接入的对象没有实体版本
+    valid: true
+    patch:
+    - op: add
+      path: /objects
+      value:
+      - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        source: manual
+        entity_state: not_wired
+  - name: 未登记的来源状态
+    valid: false
+    patch:
+    - op: add
+      path: /objects
+      value:
+      - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        source: manual
+        entity_state: unknown
 - schema: TrackingPeriodList
   base:
     items:
@@ -1241,3 +1273,98 @@ fixtures:
     - op: replace
       path: /authorization
       value: cleaning
+  - name: 名单导入的逐行结果（0.6.0）
+    valid: true
+    instance:
+      operation_id: op-tracking-0004
+      result: succeeded
+      import_check: not_wired
+      import_rows:
+      - index: 0
+        org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        outcome: added
+      - index: 1
+        outcome: unresolved
+      - index: 2
+        outcome: invalid
+  - name: 未登记的逐行结果
+    valid: false
+    instance:
+      operation_id: op-tracking-0004
+      result: succeeded
+      import_rows:
+      - index: 0
+        outcome: skipped
+- schema: TrackingImportRow
+  base:
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+  cases:
+  - name: 只有名称
+    valid: true
+    instance:
+      name: 浙江某建工集团有限公司
+  - name: 未登记的字段
+    valid: false
+    patch:
+    - op: add
+      path: /credit_code
+      value: 91330000XXXXXXXXXX
+- schema: TrackingImportRequest
+  base:
+    operation_id: op-tracking-0004
+    expected_version: 3
+    rows:
+    - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    - name: 浙江某建工集团有限公司
+  cases:
+  - name: 空名单
+    valid: false
+    patch:
+    - op: replace
+      path: /rows
+      value: []
+  - name: 缺版本
+    valid: false
+    patch:
+    - op: remove
+      path: /expected_version
+- schema: TrackingImportResult
+  base:
+    index: 0
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    outcome: already_member
+  cases:
+  - name: 超过上限
+    valid: true
+    patch:
+    - op: replace
+      path: /outcome
+      value: over_limit
+  - name: 非组织标识不回显
+    valid: false
+    patch:
+    - op: replace
+      path: /org_id
+      value: usr_x
+- schema: TrackingObject
+  base:
+    org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    added_members_version: 2
+    source: manual
+    entity_state: recorded
+    entity_version: 3
+  cases:
+  - name: 实体图暂时不可用
+    valid: true
+    patch:
+    - op: replace
+      path: /entity_state
+      value: unavailable
+    - op: remove
+      path: /entity_version
+  - name: 未登记的来源
+    valid: false
+    patch:
+    - op: replace
+      path: /source
+      value: list

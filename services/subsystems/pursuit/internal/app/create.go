@@ -510,108 +510,133 @@ func (s *Service) AssignPursuit(ctx context.Context, id, key string, req AssignR
 	req.Collaborators = dedupe(req.Collaborators, req.Owner)
 	fp := fingerprint("assign", id, req)
 	return s.run(ctx, rc, "assign", key, fp, func() (*Fixed, error) {
-		o := op{id: req.OperationID, fp: fp, action: "assign", channel: "web", pursuit: id}
-		if f, found, err := s.lookup(ctx, rc, o); found || err != nil {
-			return f, err
+		return s.assignTeam(ctx, rc, id, "deal", req, op{id: req.OperationID, fp: fp, action: "assign", channel: "web", pursuit: id})
+	})
+}
+
+// assignTeam 是改派负责人与设置协作者的公共流程（交易型 assignPursuit 与持续型 assignTracking，C-13）：操作标识、实时的读取权限（形态
+// 不符为 404）、统一写入准入（加锁重读后再判断一次）、被分派人以其本人判断、无变化与版本并发控制、授权同步。持续型另在同一把行锁下
+// 读取持续跟踪的状态：已归档 409 invalid_transition。
+func (s *Service) assignTeam(ctx context.Context, rc reqctx.Context, id, kind string, req AssignRequest, o op) (*Fixed, error) {
+	if f, found, err := s.lookup(ctx, rc, o); found || err != nil {
+		return f, err
+	}
+	p, r, err := s.accessKind(ctx, rc, id, kind)
+	if err != nil {
+		return s.fix(ctx, rc, o, err)
+	}
+	if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
+		return s.fix(ctx, rc, o, err)
+	}
+	// 角色不变且已有授予记录的成员沿用原授予（不再判断）；新加入、角色改变（负责人↔协作者）或失效后重新分派的成员以其本人
+	// 重新判断成员状态与目标访问，并记下此刻的成员版本（不沿用授予前的成员版本，否则迟到的旧退出事件会撤销这次分派）
+	pre := p
+	roleIn := func(m string) string {
+		if m == req.Owner {
+			return "owner"
 		}
-		p, r, err := s.access(ctx, rc, id)
+		return "collaborator"
+	}
+	unchanged := func(q *Pursuit, m string) bool {
+		g, ok := q.Grants[m]
+		return ok && g.Role == roleIn(m) && q.role(m) == roleIn(m)
+	}
+	versions, err := s.assignees(ctx, rc, p.ObjectiveID, append([]string{req.Owner}, req.Collaborators...), func(m string) bool { return unchanged(pre, m) })
+	if err != nil {
+		return s.fix(ctx, rc, o, err)
+	}
+	var changed bool
+	f, err := s.commit(ctx, rc, o, func(ctx context.Context, tx pgx.Tx) (*Fixed, any, error) {
+		now := s.businessNow()
+		p, err := loadPursuit(ctx, tx, id, true)
 		if err != nil {
-			return s.fix(ctx, rc, o, err)
+			return nil, nil, err
+		}
+		if p == nil || p.Kind != kind {
+			return nil, nil, failure(404, "pursuit_not_found")
+		}
+		if p.State != "open" {
+			return nil, nil, conflict("conflict", p, nil)
 		}
 		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
-			return s.fix(ctx, rc, o, err)
+			return nil, nil, err
 		}
-		// 角色不变且已有授予记录的成员沿用原授予（不再判断）；新加入、角色改变（负责人↔协作者）或失效后重新分派的成员以其本人
-		// 重新判断成员状态与目标访问，并记下此刻的成员版本（不沿用授予前的成员版本，否则迟到的旧退出事件会撤销这次分派）
-		pre := p
-		roleIn := func(m string) string {
-			if m == req.Owner {
-				return "owner"
+		if kind == "continuous" {
+			t, err := loadTracking(ctx, tx, id, true)
+			if err != nil {
+				return nil, nil, err
 			}
-			return "collaborator"
+			if t == nil {
+				return nil, nil, conflict("conflict", p, nil)
+			}
+			if t.State == "archived" {
+				return nil, nil, conflict("invalid_transition", p, nil)
+			}
 		}
-		unchanged := func(q *Pursuit, m string) bool {
-			g, ok := q.Grants[m]
-			return ok && g.Role == roleIn(m) && q.role(m) == roleIn(m)
+		if p.Owner == req.Owner && p.OwnerValid && slices.Equal(dedupe(p.Collaborators, ""), req.Collaborators) {
+			return &Fixed{Result: "no_change", PursuitID: id}, nil, nil
 		}
-		versions, err := s.assignees(ctx, rc, p.ObjectiveID, append([]string{req.Owner}, req.Collaborators...), func(m string) bool { return unchanged(pre, m) })
+		if p.Version != req.Expected {
+			return nil, nil, conflict("conflict", p, nil)
+		}
+		// 沿用原授予的成员须在加锁后仍是同一授予：并发改动使原判断失效时按冲突处理
+		for _, m := range append([]string{req.Owner}, req.Collaborators...) {
+			if unchanged(pre, m) && (!unchanged(p, m) || p.Grants[m] != pre.Grants[m]) {
+				return nil, nil, conflict("conflict", p, nil)
+			}
+		}
+		pv := p.Participation + 1
+		ownerChanged := p.Owner != req.Owner || !p.OwnerValid
+		var nv *int64
+		var na, nb, nk *string
+		if ownerChanged && req.Owner != rc.Principal.ID {
+			kind := "reassigned"
+			nv, na, nb, nk = &pv, &req.Owner, &rc.Principal.ID, &kind
+		} else if !ownerChanged {
+			nv, na, nb, nk = p.NotifyVersion, optional(p.NotifyAssignee), optional(p.NotifyBy), optional(p.NotifyKind)
+		}
+		grants, err := json.Marshal(regrant(p.Grants, p.role, req.Owner, req.Collaborators, pv, versions))
 		if err != nil {
-			return s.fix(ctx, rc, o, err)
+			return nil, nil, err
 		}
-		var changed bool
-		f, err := s.commit(ctx, rc, o, func(ctx context.Context, tx pgx.Tx) (*Fixed, any, error) {
-			now := s.businessNow()
-			p, err := loadPursuit(ctx, tx, id, true)
-			if err != nil {
-				return nil, nil, err
-			}
-			if p.State != "open" {
-				return nil, nil, conflict("conflict", p, nil)
-			}
-			if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
-				return nil, nil, err
-			}
-			if p.Owner == req.Owner && p.OwnerValid && slices.Equal(dedupe(p.Collaborators, ""), req.Collaborators) {
-				return &Fixed{Result: "no_change", PursuitID: id}, nil, nil
-			}
-			if p.Version != req.Expected {
-				return nil, nil, conflict("conflict", p, nil)
-			}
-			// 沿用原授予的成员须在加锁后仍是同一授予：并发改动使原判断失效时按冲突处理
-			for _, m := range append([]string{req.Owner}, req.Collaborators...) {
-				if unchanged(pre, m) && (!unchanged(p, m) || p.Grants[m] != pre.Grants[m]) {
-					return nil, nil, conflict("conflict", p, nil)
-				}
-			}
-			pv := p.Participation + 1
-			ownerChanged := p.Owner != req.Owner || !p.OwnerValid
-			var nv *int64
-			var na, nb, nk *string
-			if ownerChanged && req.Owner != rc.Principal.ID {
-				kind := "reassigned"
-				nv, na, nb, nk = &pv, &req.Owner, &rc.Principal.ID, &kind
-			} else if !ownerChanged {
-				nv, na, nb, nk = p.NotifyVersion, optional(p.NotifyAssignee), optional(p.NotifyBy), optional(p.NotifyKind)
-			}
-			grants, err := json.Marshal(regrant(p.Grants, p.role, req.Owner, req.Collaborators, pv, versions))
-			if err != nil {
-				return nil, nil, err
-			}
-			if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET owner = $2, owner_valid = true, collaborators = $3, version = version + 1, participation_version = $4,
+		if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET owner = $2, owner_valid = true, collaborators = $3, version = version + 1, participation_version = $4,
  sync_pending_since = COALESCE(sync_pending_since, $5), notify_version = $6, notify_assignee = $7, notify_by = $8, notify_kind = $9, changed_by = $10, updated_at = $5,
  grants = $11, team_changed_by = $10 WHERE id = $1`, id, req.Owner, req.Collaborators, pv, now, nv, na, nb, nk, rc.Principal.ID, grants); err != nil {
-				return nil, nil, err
-			}
-			// 不再在团队中的成员的待办任务转给新负责人（任务负责人须为负责人或协作者）
-			team := append([]string{req.Owner}, req.Collaborators...)
-			if _, err := tx.Exec(ctx, `UPDATE pur_tasks SET assignee = $2, version = version + 1 WHERE pursuit_id = $1 AND status = 'todo' AND NOT (assignee = ANY($3))`,
-				id, req.Owner, team); err != nil {
-				return nil, nil, err
-			}
-			reason := "team_changed"
-			if ownerChanged {
-				reason = "reassigned"
-			}
-			if err := teamChanged(ctx, tx, id, pv, reason); err != nil {
-				return nil, nil, err
-			}
-			detail := fmt.Sprintf("负责人 %s → %s；协作者 %s", p.Owner, req.Owner, strings.Join(req.Collaborators, "、"))
-			if req.Reason != "" {
-				detail += "；原因：" + req.Reason
-			}
-			if err := timeline(ctx, tx, rc.Tenant, id, reason, rc.Principal.ID, detail, now); err != nil {
-				return nil, nil, err
-			}
-			if err := recorder.Record(ctx, tx, audit.Entry{Action: "pursuit.pursuit.assign", Resource: fmt.Sprintf("%s/op:%s/version:%d/owner:%s->%s/participation:%d",
-				id, o.id, p.Version+1, p.Owner, req.Owner, pv), Result: "succeeded", Basis: "can_manage_team"}); err != nil {
-				return nil, nil, err
-			}
-			changed = true
-			return &Fixed{Result: "succeeded", PursuitID: id}, nil, nil
-		})
-		if err == nil && changed {
-			s.syncAfterCommit(ctx, rc.Tenant, rc.Cell, id)
+			return nil, nil, err
 		}
-		return f, err
+		// 不再在团队中的成员的待办任务转给新负责人（任务负责人须为负责人或协作者）
+		team := append([]string{req.Owner}, req.Collaborators...)
+		if _, err := tx.Exec(ctx, `UPDATE pur_tasks SET assignee = $2, version = version + 1 WHERE pursuit_id = $1 AND status = 'todo' AND NOT (assignee = ANY($3))`,
+			id, req.Owner, team); err != nil {
+			return nil, nil, err
+		}
+		reason := "team_changed"
+		if ownerChanged {
+			reason = "reassigned"
+		}
+		if err := teamChanged(ctx, tx, id, pv, reason); err != nil {
+			return nil, nil, err
+		}
+		detail := fmt.Sprintf("负责人 %s → %s；协作者 %s", p.Owner, req.Owner, strings.Join(req.Collaborators, "、"))
+		if req.Reason != "" {
+			detail += "；原因：" + req.Reason
+		}
+		if err := timeline(ctx, tx, rc.Tenant, id, reason, rc.Principal.ID, detail, now); err != nil {
+			return nil, nil, err
+		}
+		action := "pursuit.pursuit.assign"
+		if kind == "continuous" {
+			action = "pursuit.tracking.assign"
+		}
+		if err := recorder.Record(ctx, tx, audit.Entry{Action: action, Resource: fmt.Sprintf("%s/op:%s/version:%d/owner:%s->%s/participation:%d",
+			id, o.id, p.Version+1, p.Owner, req.Owner, pv), Result: "succeeded", Basis: "can_manage_team"}); err != nil {
+			return nil, nil, err
+		}
+		changed = true
+		return &Fixed{Result: "succeeded", PursuitID: id}, nil, nil
 	})
+	if err == nil && changed {
+		s.syncAfterCommit(ctx, rc.Tenant, rc.Cell, id)
+	}
+	return f, err
 }

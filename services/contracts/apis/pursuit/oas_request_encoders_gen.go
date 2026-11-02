@@ -10,7 +10,35 @@ import (
 	ht "github.com/ogen-go/ogen/http"
 )
 
+func encodeArchiveTrackingRequest(
+	req *VersionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeAssignPursuitRequest(
+	req *AssignRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeAssignTrackingRequest(
 	req *AssignRequest,
 	r *http.Request,
 ) error {
@@ -94,6 +122,20 @@ func encodeCreateTrackingRequest(
 	return nil
 }
 
+func encodeImportTrackingMembersRequest(
+	req *TrackingImportRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodePauseTrackingRequest(
 	req *VersionRequest,
 	r *http.Request,
@@ -151,6 +193,20 @@ func encodeReviseOutcomeRequest(
 }
 
 func encodeStopTrackingRequest(
+	req *VersionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeUnarchiveTrackingRequest(
 	req *VersionRequest,
 	r *http.Request,
 ) error {

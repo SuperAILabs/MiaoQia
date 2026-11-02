@@ -2925,6 +2925,52 @@ func (o OptTrackingCommandResultAuthorization) Or(d TrackingCommandResultAuthori
 	return d
 }
 
+// NewOptTrackingCommandResultImportCheck returns new OptTrackingCommandResultImportCheck with value set to v.
+func NewOptTrackingCommandResultImportCheck(v TrackingCommandResultImportCheck) OptTrackingCommandResultImportCheck {
+	return OptTrackingCommandResultImportCheck{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTrackingCommandResultImportCheck is optional TrackingCommandResultImportCheck.
+type OptTrackingCommandResultImportCheck struct {
+	Value TrackingCommandResultImportCheck
+	Set   bool
+}
+
+// IsSet returns true if OptTrackingCommandResultImportCheck was set.
+func (o OptTrackingCommandResultImportCheck) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTrackingCommandResultImportCheck) Reset() {
+	var v TrackingCommandResultImportCheck
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTrackingCommandResultImportCheck) SetTo(v TrackingCommandResultImportCheck) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTrackingCommandResultImportCheck) Get() (v TrackingCommandResultImportCheck, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTrackingCommandResultImportCheck) Or(d TrackingCommandResultImportCheck) TrackingCommandResultImportCheck {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptTrackingSummary returns new OptTrackingSummary with value set to v.
 func NewOptTrackingSummary(v TrackingSummary) OptTrackingSummary {
 	return OptTrackingSummary{
@@ -5458,6 +5504,9 @@ const (
 	TimelineEntryKindMembersChanged             TimelineEntryKind = "members_changed"
 	TimelineEntryKindAuthorizationSyncFailed    TimelineEntryKind = "authorization_sync_failed"
 	TimelineEntryKindAuthorizationSyncRecovered TimelineEntryKind = "authorization_sync_recovered"
+	TimelineEntryKindTrackingArchived           TimelineEntryKind = "tracking_archived"
+	TimelineEntryKindTrackingUnarchived         TimelineEntryKind = "tracking_unarchived"
+	TimelineEntryKindMembersImported            TimelineEntryKind = "members_imported"
 )
 
 // AllValues returns all TimelineEntryKind values.
@@ -5482,6 +5531,9 @@ func (TimelineEntryKind) AllValues() []TimelineEntryKind {
 		TimelineEntryKindMembersChanged,
 		TimelineEntryKindAuthorizationSyncFailed,
 		TimelineEntryKindAuthorizationSyncRecovered,
+		TimelineEntryKindTrackingArchived,
+		TimelineEntryKindTrackingUnarchived,
+		TimelineEntryKindMembersImported,
 	}
 }
 
@@ -5525,6 +5577,12 @@ func (s TimelineEntryKind) MarshalText() ([]byte, error) {
 	case TimelineEntryKindAuthorizationSyncFailed:
 		return []byte(s), nil
 	case TimelineEntryKindAuthorizationSyncRecovered:
+		return []byte(s), nil
+	case TimelineEntryKindTrackingArchived:
+		return []byte(s), nil
+	case TimelineEntryKindTrackingUnarchived:
+		return []byte(s), nil
+	case TimelineEntryKindMembersImported:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -5591,6 +5649,15 @@ func (s *TimelineEntryKind) UnmarshalText(data []byte) error {
 	case TimelineEntryKindAuthorizationSyncRecovered:
 		*s = TimelineEntryKindAuthorizationSyncRecovered
 		return nil
+	case TimelineEntryKindTrackingArchived:
+		*s = TimelineEntryKindTrackingArchived
+		return nil
+	case TimelineEntryKindTrackingUnarchived:
+		*s = TimelineEntryKindTrackingUnarchived
+		return nil
+	case TimelineEntryKindMembersImported:
+		*s = TimelineEntryKindMembersImported
+		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
@@ -5606,6 +5673,7 @@ type Tracking struct {
 	State          TrackingState `json:"state"`
 	Owner          Subject       `json:"owner"`
 	OwnerValid     bool          `json:"owner_valid"`
+	Collaborators  []Subject     `json:"collaborators"`
 	Members        []OrgID       `json:"members"`
 	MembersVersion int64         `json:"members_version"`
 	Cadence        Cadence       `json:"cadence"`
@@ -5620,6 +5688,7 @@ type Tracking struct {
 	CreatedAt     time.Time       `json:"created_at"`
 	UpdatedAt     time.Time       `json:"updated_at"`
 	StoppedAt     OptDateTime     `json:"stopped_at"`
+	ArchivedAt    OptDateTime     `json:"archived_at"`
 	Timeline      []TimelineEntry `json:"timeline"`
 	ViewerCanEdit OptBool         `json:"viewer_can_edit"`
 }
@@ -5657,6 +5726,11 @@ func (s *Tracking) GetOwner() Subject {
 // GetOwnerValid returns the value of OwnerValid.
 func (s *Tracking) GetOwnerValid() bool {
 	return s.OwnerValid
+}
+
+// GetCollaborators returns the value of Collaborators.
+func (s *Tracking) GetCollaborators() []Subject {
+	return s.Collaborators
 }
 
 // GetMembers returns the value of Members.
@@ -5719,6 +5793,11 @@ func (s *Tracking) GetStoppedAt() OptDateTime {
 	return s.StoppedAt
 }
 
+// GetArchivedAt returns the value of ArchivedAt.
+func (s *Tracking) GetArchivedAt() OptDateTime {
+	return s.ArchivedAt
+}
+
 // GetTimeline returns the value of Timeline.
 func (s *Tracking) GetTimeline() []TimelineEntry {
 	return s.Timeline
@@ -5762,6 +5841,11 @@ func (s *Tracking) SetOwner(val Subject) {
 // SetOwnerValid sets the value of OwnerValid.
 func (s *Tracking) SetOwnerValid(val bool) {
 	s.OwnerValid = val
+}
+
+// SetCollaborators sets the value of Collaborators.
+func (s *Tracking) SetCollaborators(val []Subject) {
+	s.Collaborators = val
 }
 
 // SetMembers sets the value of Members.
@@ -5824,6 +5908,11 @@ func (s *Tracking) SetStoppedAt(val OptDateTime) {
 	s.StoppedAt = val
 }
 
+// SetArchivedAt sets the value of ArchivedAt.
+func (s *Tracking) SetArchivedAt(val OptDateTime) {
+	s.ArchivedAt = val
+}
+
 // SetTimeline sets the value of Timeline.
 func (s *Tracking) SetTimeline(val []TimelineEntry) {
 	s.Timeline = val
@@ -5843,6 +5932,11 @@ type TrackingCommandResult struct {
 	Result        TrackingCommandResultResult           `json:"result"`
 	Tracking      OptTrackingSummary                    `json:"tracking"`
 	Authorization OptTrackingCommandResultAuthorization `json:"authorization"`
+	// ImportTrackingMembers 的逐行结果（0.6.0，按请求顺序，与操作一起固定）.
+	ImportRows []TrackingImportResult `json:"import_rows"`
+	// ImportTrackingMembers
+	// 是否经实体图核对了组织存在（verified）或实体图未接入、只校验了标识格式（not_wired）.
+	ImportCheck OptTrackingCommandResultImportCheck `json:"import_check"`
 }
 
 // GetOperationID returns the value of OperationID.
@@ -5865,6 +5959,16 @@ func (s *TrackingCommandResult) GetAuthorization() OptTrackingCommandResultAutho
 	return s.Authorization
 }
 
+// GetImportRows returns the value of ImportRows.
+func (s *TrackingCommandResult) GetImportRows() []TrackingImportResult {
+	return s.ImportRows
+}
+
+// GetImportCheck returns the value of ImportCheck.
+func (s *TrackingCommandResult) GetImportCheck() OptTrackingCommandResultImportCheck {
+	return s.ImportCheck
+}
+
 // SetOperationID sets the value of OperationID.
 func (s *TrackingCommandResult) SetOperationID(val OperationID) {
 	s.OperationID = val
@@ -5883,6 +5987,16 @@ func (s *TrackingCommandResult) SetTracking(val OptTrackingSummary) {
 // SetAuthorization sets the value of Authorization.
 func (s *TrackingCommandResult) SetAuthorization(val OptTrackingCommandResultAuthorization) {
 	s.Authorization = val
+}
+
+// SetImportRows sets the value of ImportRows.
+func (s *TrackingCommandResult) SetImportRows(val []TrackingImportResult) {
+	s.ImportRows = val
+}
+
+// SetImportCheck sets the value of ImportCheck.
+func (s *TrackingCommandResult) SetImportCheck(val OptTrackingCommandResultImportCheck) {
+	s.ImportCheck = val
 }
 
 type TrackingCommandResultAuthorization string
@@ -5920,6 +6034,49 @@ func (s *TrackingCommandResultAuthorization) UnmarshalText(data []byte) error {
 		return nil
 	case TrackingCommandResultAuthorizationSyncing:
 		*s = TrackingCommandResultAuthorizationSyncing
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// ImportTrackingMembers
+// 是否经实体图核对了组织存在（verified）或实体图未接入、只校验了标识格式（not_wired）.
+type TrackingCommandResultImportCheck string
+
+const (
+	TrackingCommandResultImportCheckVerified TrackingCommandResultImportCheck = "verified"
+	TrackingCommandResultImportCheckNotWired TrackingCommandResultImportCheck = "not_wired"
+)
+
+// AllValues returns all TrackingCommandResultImportCheck values.
+func (TrackingCommandResultImportCheck) AllValues() []TrackingCommandResultImportCheck {
+	return []TrackingCommandResultImportCheck{
+		TrackingCommandResultImportCheckVerified,
+		TrackingCommandResultImportCheckNotWired,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingCommandResultImportCheck) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingCommandResultImportCheckVerified:
+		return []byte(s), nil
+	case TrackingCommandResultImportCheckNotWired:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingCommandResultImportCheck) UnmarshalText(data []byte) error {
+	switch TrackingCommandResultImportCheck(data) {
+	case TrackingCommandResultImportCheckVerified:
+		*s = TrackingCommandResultImportCheckVerified
+		return nil
+	case TrackingCommandResultImportCheckNotWired:
+		*s = TrackingCommandResultImportCheckNotWired
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -5972,6 +6129,185 @@ func (s *TrackingCommandResultResult) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Ref: #/components/schemas/TrackingImportRequest
+type TrackingImportRequest struct {
+	OperationID     OperationID         `json:"operation_id"`
+	ExpectedVersion int64               `json:"expected_version"`
+	Rows            []TrackingImportRow `json:"rows"`
+}
+
+// GetOperationID returns the value of OperationID.
+func (s *TrackingImportRequest) GetOperationID() OperationID {
+	return s.OperationID
+}
+
+// GetExpectedVersion returns the value of ExpectedVersion.
+func (s *TrackingImportRequest) GetExpectedVersion() int64 {
+	return s.ExpectedVersion
+}
+
+// GetRows returns the value of Rows.
+func (s *TrackingImportRequest) GetRows() []TrackingImportRow {
+	return s.Rows
+}
+
+// SetOperationID sets the value of OperationID.
+func (s *TrackingImportRequest) SetOperationID(val OperationID) {
+	s.OperationID = val
+}
+
+// SetExpectedVersion sets the value of ExpectedVersion.
+func (s *TrackingImportRequest) SetExpectedVersion(val int64) {
+	s.ExpectedVersion = val
+}
+
+// SetRows sets the value of Rows.
+func (s *TrackingImportRequest) SetRows(val []TrackingImportRow) {
+	s.Rows = val
+}
+
+// 一行的导入结果（index 为请求中的行号，从 0 起）.
+// Ref: #/components/schemas/TrackingImportResult
+type TrackingImportResult struct {
+	Index   int                         `json:"index"`
+	OrgID   OptOrgID                    `json:"org_id"`
+	Outcome TrackingImportResultOutcome `json:"outcome"`
+}
+
+// GetIndex returns the value of Index.
+func (s *TrackingImportResult) GetIndex() int {
+	return s.Index
+}
+
+// GetOrgID returns the value of OrgID.
+func (s *TrackingImportResult) GetOrgID() OptOrgID {
+	return s.OrgID
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *TrackingImportResult) GetOutcome() TrackingImportResultOutcome {
+	return s.Outcome
+}
+
+// SetIndex sets the value of Index.
+func (s *TrackingImportResult) SetIndex(val int) {
+	s.Index = val
+}
+
+// SetOrgID sets the value of OrgID.
+func (s *TrackingImportResult) SetOrgID(val OptOrgID) {
+	s.OrgID = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *TrackingImportResult) SetOutcome(val TrackingImportResultOutcome) {
+	s.Outcome = val
+}
+
+type TrackingImportResultOutcome string
+
+const (
+	TrackingImportResultOutcomeAdded         TrackingImportResultOutcome = "added"
+	TrackingImportResultOutcomeAlreadyMember TrackingImportResultOutcome = "already_member"
+	TrackingImportResultOutcomeDuplicate     TrackingImportResultOutcome = "duplicate"
+	TrackingImportResultOutcomeInvalid       TrackingImportResultOutcome = "invalid"
+	TrackingImportResultOutcomeNotFound      TrackingImportResultOutcome = "not_found"
+	TrackingImportResultOutcomeUnresolved    TrackingImportResultOutcome = "unresolved"
+	TrackingImportResultOutcomeOverLimit     TrackingImportResultOutcome = "over_limit"
+)
+
+// AllValues returns all TrackingImportResultOutcome values.
+func (TrackingImportResultOutcome) AllValues() []TrackingImportResultOutcome {
+	return []TrackingImportResultOutcome{
+		TrackingImportResultOutcomeAdded,
+		TrackingImportResultOutcomeAlreadyMember,
+		TrackingImportResultOutcomeDuplicate,
+		TrackingImportResultOutcomeInvalid,
+		TrackingImportResultOutcomeNotFound,
+		TrackingImportResultOutcomeUnresolved,
+		TrackingImportResultOutcomeOverLimit,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingImportResultOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingImportResultOutcomeAdded:
+		return []byte(s), nil
+	case TrackingImportResultOutcomeAlreadyMember:
+		return []byte(s), nil
+	case TrackingImportResultOutcomeDuplicate:
+		return []byte(s), nil
+	case TrackingImportResultOutcomeInvalid:
+		return []byte(s), nil
+	case TrackingImportResultOutcomeNotFound:
+		return []byte(s), nil
+	case TrackingImportResultOutcomeUnresolved:
+		return []byte(s), nil
+	case TrackingImportResultOutcomeOverLimit:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingImportResultOutcome) UnmarshalText(data []byte) error {
+	switch TrackingImportResultOutcome(data) {
+	case TrackingImportResultOutcomeAdded:
+		*s = TrackingImportResultOutcomeAdded
+		return nil
+	case TrackingImportResultOutcomeAlreadyMember:
+		*s = TrackingImportResultOutcomeAlreadyMember
+		return nil
+	case TrackingImportResultOutcomeDuplicate:
+		*s = TrackingImportResultOutcomeDuplicate
+		return nil
+	case TrackingImportResultOutcomeInvalid:
+		*s = TrackingImportResultOutcomeInvalid
+		return nil
+	case TrackingImportResultOutcomeNotFound:
+		*s = TrackingImportResultOutcomeNotFound
+		return nil
+	case TrackingImportResultOutcomeUnresolved:
+		*s = TrackingImportResultOutcomeUnresolved
+		return nil
+	case TrackingImportResultOutcomeOverLimit:
+		*s = TrackingImportResultOutcomeOverLimit
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// 名单中的一行：组织标识（org_id）或名称（name）；两者都有时按
+// org_id，都没有的行为 invalid.
+// Ref: #/components/schemas/TrackingImportRow
+type TrackingImportRow struct {
+	OrgID OptString `json:"org_id"`
+	Name  OptString `json:"name"`
+}
+
+// GetOrgID returns the value of OrgID.
+func (s *TrackingImportRow) GetOrgID() OptString {
+	return s.OrgID
+}
+
+// GetName returns the value of Name.
+func (s *TrackingImportRow) GetName() OptString {
+	return s.Name
+}
+
+// SetOrgID sets the value of OrgID.
+func (s *TrackingImportRow) SetOrgID(val OptString) {
+	s.OrgID = val
+}
+
+// SetName sets the value of Name.
+func (s *TrackingImportRow) SetName(val OptString) {
+	s.Name = val
 }
 
 // Ref: #/components/schemas/TrackingList
@@ -6037,25 +6373,190 @@ func (s *TrackingMembersRequest) SetMembers(val []OrgID) {
 	s.Members = val
 }
 
+// 期末成员快照中的一个对象（0.6.0）：added_members_version
+// 为它加入对象集合时的成员版本（0.6.0 之前加入的没有）、source 为加入方式
+// （manual 手选、import 名单导入）；entity_state
+// 为期末时点实体图中的来源版本：recorded（entity_version
+// 为当时的实体版本）、
+// not_found（实体图中不存在）、unavailable（实体图暂时不可用）、not_wired（实体图未接入）。.
+// Ref: #/components/schemas/TrackingObject
+type TrackingObject struct {
+	OrgID               OrgID                     `json:"org_id"`
+	AddedMembersVersion OptInt64                  `json:"added_members_version"`
+	Source              TrackingObjectSource      `json:"source"`
+	EntityState         TrackingObjectEntityState `json:"entity_state"`
+	EntityVersion       OptInt64                  `json:"entity_version"`
+}
+
+// GetOrgID returns the value of OrgID.
+func (s *TrackingObject) GetOrgID() OrgID {
+	return s.OrgID
+}
+
+// GetAddedMembersVersion returns the value of AddedMembersVersion.
+func (s *TrackingObject) GetAddedMembersVersion() OptInt64 {
+	return s.AddedMembersVersion
+}
+
+// GetSource returns the value of Source.
+func (s *TrackingObject) GetSource() TrackingObjectSource {
+	return s.Source
+}
+
+// GetEntityState returns the value of EntityState.
+func (s *TrackingObject) GetEntityState() TrackingObjectEntityState {
+	return s.EntityState
+}
+
+// GetEntityVersion returns the value of EntityVersion.
+func (s *TrackingObject) GetEntityVersion() OptInt64 {
+	return s.EntityVersion
+}
+
+// SetOrgID sets the value of OrgID.
+func (s *TrackingObject) SetOrgID(val OrgID) {
+	s.OrgID = val
+}
+
+// SetAddedMembersVersion sets the value of AddedMembersVersion.
+func (s *TrackingObject) SetAddedMembersVersion(val OptInt64) {
+	s.AddedMembersVersion = val
+}
+
+// SetSource sets the value of Source.
+func (s *TrackingObject) SetSource(val TrackingObjectSource) {
+	s.Source = val
+}
+
+// SetEntityState sets the value of EntityState.
+func (s *TrackingObject) SetEntityState(val TrackingObjectEntityState) {
+	s.EntityState = val
+}
+
+// SetEntityVersion sets the value of EntityVersion.
+func (s *TrackingObject) SetEntityVersion(val OptInt64) {
+	s.EntityVersion = val
+}
+
+type TrackingObjectEntityState string
+
+const (
+	TrackingObjectEntityStateRecorded    TrackingObjectEntityState = "recorded"
+	TrackingObjectEntityStateNotFound    TrackingObjectEntityState = "not_found"
+	TrackingObjectEntityStateUnavailable TrackingObjectEntityState = "unavailable"
+	TrackingObjectEntityStateNotWired    TrackingObjectEntityState = "not_wired"
+)
+
+// AllValues returns all TrackingObjectEntityState values.
+func (TrackingObjectEntityState) AllValues() []TrackingObjectEntityState {
+	return []TrackingObjectEntityState{
+		TrackingObjectEntityStateRecorded,
+		TrackingObjectEntityStateNotFound,
+		TrackingObjectEntityStateUnavailable,
+		TrackingObjectEntityStateNotWired,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingObjectEntityState) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingObjectEntityStateRecorded:
+		return []byte(s), nil
+	case TrackingObjectEntityStateNotFound:
+		return []byte(s), nil
+	case TrackingObjectEntityStateUnavailable:
+		return []byte(s), nil
+	case TrackingObjectEntityStateNotWired:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingObjectEntityState) UnmarshalText(data []byte) error {
+	switch TrackingObjectEntityState(data) {
+	case TrackingObjectEntityStateRecorded:
+		*s = TrackingObjectEntityStateRecorded
+		return nil
+	case TrackingObjectEntityStateNotFound:
+		*s = TrackingObjectEntityStateNotFound
+		return nil
+	case TrackingObjectEntityStateUnavailable:
+		*s = TrackingObjectEntityStateUnavailable
+		return nil
+	case TrackingObjectEntityStateNotWired:
+		*s = TrackingObjectEntityStateNotWired
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type TrackingObjectSource string
+
+const (
+	TrackingObjectSourceManual TrackingObjectSource = "manual"
+	TrackingObjectSourceImport TrackingObjectSource = "import"
+)
+
+// AllValues returns all TrackingObjectSource values.
+func (TrackingObjectSource) AllValues() []TrackingObjectSource {
+	return []TrackingObjectSource{
+		TrackingObjectSourceManual,
+		TrackingObjectSourceImport,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrackingObjectSource) MarshalText() ([]byte, error) {
+	switch s {
+	case TrackingObjectSourceManual:
+		return []byte(s), nil
+	case TrackingObjectSourceImport:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrackingObjectSource) UnmarshalText(data []byte) error {
+	switch TrackingObjectSource(data) {
+	case TrackingObjectSourceManual:
+		*s = TrackingObjectSourceManual
+		return nil
+	case TrackingObjectSourceImport:
+		*s = TrackingObjectSourceImport
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // 一期变化简报的请求记录：实际期间 [period_start,
 // period_end)（平台时点，UTC；timezone
 // 为周期所用的时区）、期末的成员快照与成员版本、
 // 对比基准（上一期的序号，第一期没有）、期末的负责人。成员快照在该期结束时固定，之后修改对象集合不改变它。briefing_state
-// 为 requested（已请求 channels 生成；channels 侧的变化简报尚未接入）。.
+// 为 requested（已请求 channels 生成；channels
+// 侧的变化简报尚未接入）。objects（0.6.0）为期末每个对象的加入版本、来源与实体来源版本。.
 // Ref: #/components/schemas/TrackingPeriod
 type TrackingPeriod struct {
-	PursuitID      PursuitID                   `json:"pursuit_id"`
-	Seq            int64                       `json:"seq"`
-	PeriodStart    time.Time                   `json:"period_start"`
-	PeriodEnd      time.Time                   `json:"period_end"`
-	Timezone       string                      `json:"timezone"`
-	Members        []OrgID                     `json:"members"`
-	MembersVersion int64                       `json:"members_version"`
-	BaselineSeq    OptInt64                    `json:"baseline_seq"`
-	Owner          Subject                     `json:"owner"`
-	OwnerValid     bool                        `json:"owner_valid"`
-	BriefingState  TrackingPeriodBriefingState `json:"briefing_state"`
-	RecordedAt     time.Time                   `json:"recorded_at"`
+	PursuitID      PursuitID `json:"pursuit_id"`
+	Seq            int64     `json:"seq"`
+	PeriodStart    time.Time `json:"period_start"`
+	PeriodEnd      time.Time `json:"period_end"`
+	Timezone       string    `json:"timezone"`
+	Members        []OrgID   `json:"members"`
+	MembersVersion int64     `json:"members_version"`
+	BaselineSeq    OptInt64  `json:"baseline_seq"`
+	Owner          Subject   `json:"owner"`
+	OwnerValid     bool      `json:"owner_valid"`
+	// 期末成员快照中每个对象的加入版本、来源与实体来源版本（0.6.0；之前结束的期没有），顺序同
+	// members.
+	Objects       []TrackingObject            `json:"objects"`
+	BriefingState TrackingPeriodBriefingState `json:"briefing_state"`
+	RecordedAt    time.Time                   `json:"recorded_at"`
 }
 
 // GetPursuitID returns the value of PursuitID.
@@ -6106,6 +6607,11 @@ func (s *TrackingPeriod) GetOwner() Subject {
 // GetOwnerValid returns the value of OwnerValid.
 func (s *TrackingPeriod) GetOwnerValid() bool {
 	return s.OwnerValid
+}
+
+// GetObjects returns the value of Objects.
+func (s *TrackingPeriod) GetObjects() []TrackingObject {
+	return s.Objects
 }
 
 // GetBriefingState returns the value of BriefingState.
@@ -6166,6 +6672,11 @@ func (s *TrackingPeriod) SetOwner(val Subject) {
 // SetOwnerValid sets the value of OwnerValid.
 func (s *TrackingPeriod) SetOwnerValid(val bool) {
 	s.OwnerValid = val
+}
+
+// SetObjects sets the value of Objects.
+func (s *TrackingPeriod) SetObjects(val []TrackingObject) {
+	s.Objects = val
 }
 
 // SetBriefingState sets the value of BriefingState.
@@ -6238,7 +6749,8 @@ func (s *TrackingPeriodList) SetNextCursor(val OptCursor) {
 	s.NextCursor = val
 }
 
-// 持续跟踪的状态：tracking 跟踪中、paused 已暂停、stopped 已停止.
+// 持续跟踪的状态：tracking 跟踪中、paused 已暂停、stopped 已停止、archived
+// 已归档（0.6.0）.
 // Ref: #/components/schemas/TrackingState
 type TrackingState string
 
@@ -6246,6 +6758,7 @@ const (
 	TrackingStateTracking TrackingState = "tracking"
 	TrackingStatePaused   TrackingState = "paused"
 	TrackingStateStopped  TrackingState = "stopped"
+	TrackingStateArchived TrackingState = "archived"
 )
 
 // AllValues returns all TrackingState values.
@@ -6254,6 +6767,7 @@ func (TrackingState) AllValues() []TrackingState {
 		TrackingStateTracking,
 		TrackingStatePaused,
 		TrackingStateStopped,
+		TrackingStateArchived,
 	}
 }
 
@@ -6265,6 +6779,8 @@ func (s TrackingState) MarshalText() ([]byte, error) {
 	case TrackingStatePaused:
 		return []byte(s), nil
 	case TrackingStateStopped:
+		return []byte(s), nil
+	case TrackingStateArchived:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -6283,6 +6799,9 @@ func (s *TrackingState) UnmarshalText(data []byte) error {
 	case TrackingStateStopped:
 		*s = TrackingStateStopped
 		return nil
+	case TrackingStateArchived:
+		*s = TrackingStateArchived
+		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
@@ -6296,6 +6815,7 @@ type TrackingSummary struct {
 	State          TrackingState `json:"state"`
 	Owner          Subject       `json:"owner"`
 	OwnerValid     bool          `json:"owner_valid"`
+	Collaborators  []Subject     `json:"collaborators"`
 	MembersCount   int           `json:"members_count"`
 	MembersVersion int64         `json:"members_version"`
 	// 下一期结束的时点（跟踪中才有）.
@@ -6334,6 +6854,11 @@ func (s *TrackingSummary) GetOwner() Subject {
 // GetOwnerValid returns the value of OwnerValid.
 func (s *TrackingSummary) GetOwnerValid() bool {
 	return s.OwnerValid
+}
+
+// GetCollaborators returns the value of Collaborators.
+func (s *TrackingSummary) GetCollaborators() []Subject {
+	return s.Collaborators
 }
 
 // GetMembersCount returns the value of MembersCount.
@@ -6399,6 +6924,11 @@ func (s *TrackingSummary) SetOwner(val Subject) {
 // SetOwnerValid sets the value of OwnerValid.
 func (s *TrackingSummary) SetOwnerValid(val bool) {
 	s.OwnerValid = val
+}
+
+// SetCollaborators sets the value of Collaborators.
+func (s *TrackingSummary) SetCollaborators(val []Subject) {
+	s.Collaborators = val
 }
 
 // SetMembersCount sets the value of MembersCount.

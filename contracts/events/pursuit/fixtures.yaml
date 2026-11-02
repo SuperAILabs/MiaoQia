@@ -470,12 +470,27 @@ fixtures:
     - op: replace
       path: /version
       value: 2
+  - name: 归档（0.5.0）
+    valid: true
+    patch:
+    - op: replace
+      path: /state
+      value: archived
+    - op: replace
+      path: /reason
+      value: archived
+  - name: 按名单导入（0.5.0）
+    valid: true
+    patch:
+    - op: replace
+      path: /reason
+      value: members_imported
   - name: 未登记的状态
     valid: false
     patch:
     - op: replace
       path: /state
-      value: archived
+      value: deleted
   - name: 不得夹带名称
     valid: false
     patch:
@@ -518,6 +533,24 @@ fixtures:
     - op: replace
       path: /seq
       value: 0
+  - name: 带每个对象的实体来源版本（0.5.0）
+    valid: true
+    patch:
+    - op: add
+      path: /objects
+      value:
+      - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        entity_state: recorded
+        entity_version: 4
+  - name: 对象不得夹带名称
+    valid: false
+    patch:
+    - op: add
+      path: /objects
+      value:
+      - org_id: org_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        entity_state: not_wired
+        name: 浙江某建工
 - event: pursuit.pursuit.authorization_sync_delayed.v1
   base:
     pursuit_id: pur_01JA8ZXXXXXXXXXXXXXXXXXXX1

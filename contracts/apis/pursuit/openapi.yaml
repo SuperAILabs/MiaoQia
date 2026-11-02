@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: pursuit 跟进接口
-  version: 0.5.0
+  version: 0.6.0
   description: >-
     pursuit 的对外接口（经 gateway，令牌派生租户与主体），PRD 第6段跟进的服务端切片（docs/01-product/prd/06-pursuit-follow-up.md；
     规格见 docs/03-architecture/subsystems/pursuit.md）。草案：随第6段首个实现切片提交，未冻结。M2 只有交易型跟进（deal）；
@@ -30,6 +30,11 @@ info:
     0.5.0（C-17）：Authorization 追加可选的 viewer_can_resolve（调用者此刻在跟进所在单元上能更新跟进，即能处理授权同步失败的决策者；
     只在 getPursuit 与 getTracking 中按调用者当前权限给出，其他响应不带），供 channels 以收件人本人再检查“授权同步失败”通知；
     TimelineEntry 的 kind 追加 authorization_sync_failed（超过 24 小时未同步）与 authorization_sync_recovered（之后同步完成）。均为追加。
+    0.6.0（C-13，PRD 第6段 F10 第1–3条）：持续跟踪的改派与协作者 assignTracking（与 assignPursuit 同一授权与写入准入）、归档
+    archiveTracking / unarchiveTracking（已停止 ⇄ 已归档；TrackingState 追加 archived，listTracking 追加 archived 筛选）、按名单导入对象
+    importTrackingMembers（逐行结果固定在操作标识上）；Tracking 与 TrackingSummary 追加 collaborators，Tracking 追加 archived_at；
+    TrackingPeriod 追加 objects（期末每个对象的加入版本、来源与实体来源版本；0.6.0 之前结束的期没有）；TrackingCommandResult 追加
+    import_rows 与 import_check；TimelineEntry 的 kind 追加 tracking_archived、tracking_unarchived 与 members_imported。均为追加。
 servers:
 - url: /
 paths:
@@ -451,7 +456,8 @@ paths:
       summary: 持续跟踪列表（0.3.0，C-10）
       description: >-
         只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多 limit 条（默认且至多 50），
-        next_cursor 为签名游标（须带相同的 objective_id，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。
+        next_cursor 为签名游标（须带相同的 objective_id 与 archived，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。
+        archived（0.6.0）缺省为 false，只列未归档的；为 true 时只列已归档的。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -460,6 +466,11 @@ paths:
         required: false
         schema:
           $ref: '#/components/schemas/ObjectiveID'
+      - name: archived
+        in: query
+        required: false
+        schema:
+          type: boolean
       - name: limit
         in: query
         required: false
@@ -582,7 +593,8 @@ paths:
       operationId: stopTracking
       summary: 停止持续跟踪（StopTracking，0.3.0）
       description: >-
-        需要推进的 can_edit。跟踪中或已暂停 → 已停止：不再生成变化简报，已有各期保留。已停止为 no_change；否则版本不一致 409 conflict。
+        需要推进的 can_edit。跟踪中或已暂停 → 已停止：不再生成变化简报，已有各期保留。已停止为 no_change；已归档 409 invalid_transition；
+        否则版本不一致 409 conflict。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -607,8 +619,9 @@ paths:
       operationId: updateTrackingMembers
       summary: 修改持续跟踪的对象集合（0.3.0）
       description: >-
-        需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为 no_change；已停止 409 invalid_transition；否则版本不一致
-        409 conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。
+        需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为 no_change；已停止与已归档 409 invalid_transition；否则版本
+        不一致 409 conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。保留下来的对象沿用其加入版本与来源，新加入的记为
+        manual（0.6.0）。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -623,6 +636,117 @@ paths:
       responses:
         '200':
           description: 已修改或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/assign:
+    post:
+      operationId: assignTracking
+      summary: 持续跟踪的改派与协作者（0.6.0，C-13）
+      description: >-
+        与 assignPursuit 同一授权、写入准入与授权同步（推进的 can_manage_team；负责人与协作者须为租户有效成员且能查看该目标的信号，否则
+        422 assignee_no_access；协作者至多 20 名）。负责人与协作者都不变为 no_change；已归档 409 invalid_transition（跟踪中、已暂停与
+        已停止都可以改派）；否则版本不一致 409 conflict。改派本地提交即生效，原负责人立即不能以负责人身份操作，新负责人在授权同步完成后
+        才能操作。之后结束的各期记录当时的负责人。
+      x-timeout-ms: 10000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRequest'
+      responses:
+        '200':
+          description: 已改派或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/archive:
+    post:
+      operationId: archiveTracking
+      summary: 归档持续跟踪（0.6.0，C-13）
+      description: >-
+        需要推进的 can_edit。已停止 → 已归档：只读，不再出现在缺省列表中（listTracking 的 archived=true 列出），已结束的各期保留。已归档为
+        no_change；跟踪中与已暂停 409 invalid_transition（须先停止）；否则版本不一致 409 conflict。已归档的跟踪不能暂停、恢复、停止、修改或
+        导入对象、改派（409 invalid_transition）。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已归档或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/unarchive:
+    post:
+      operationId: unarchiveTracking
+      summary: 取消归档（0.6.0，C-13）
+      description: >-
+        需要推进的 can_edit。已归档 → 已停止（不恢复跟踪）。已停止为 no_change；跟踪中与已暂停 409 invalid_transition；否则版本不一致
+        409 conflict。
+      x-timeout-ms: 5000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已取消归档或无变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingCommandResult'
+        default: *problem
+  /v1/pursuit/tracking/{pursuitID}/members/import:
+    post:
+      operationId: importTrackingMembers
+      summary: 按名单导入对象（0.6.0，C-13；PRD 第6段 F10 第1条“取自企业清单”）
+      description: >-
+        需要推进的 can_edit。把一份名单（至多 500 行，每行为组织标识或名称）追加到对象集合，逐行给出结果（import_rows，按请求顺序）：
+        added 已加入、already_member 已在集合中、duplicate 与前面的行重复、invalid 不是组织标识、not_found 实体图中不存在、
+        unresolved 只有名称（按名称解析组织尚未接入，不猜测）、over_limit 超过 200 个对象的上限。有加入的行时成员版本加一（succeeded），
+        没有时为 no_change；逐行结果与操作一起固定在操作标识上（重放返回同一结果）。组织是否存在经实体图核对：未接入时只校验标识格式，
+        import_check 为 not_wired（不当作“都存在”也不当作“都不存在”）；实体图暂时不可用时 503（不固定，用新键、同一操作标识重试）。
+        已停止与已归档 409 invalid_transition；否则版本不一致 409 conflict。
+      x-timeout-ms: 10000
+      x-idempotent: true
+      parameters:
+      - *idempotency
+      - *pursuitID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackingImportRequest'
+      responses:
+        '200':
+          description: 已导入或无变化（逐行结果）
           content:
             application/json:
               schema:
@@ -1349,6 +1473,9 @@ components:
           - members_changed
           - authorization_sync_failed
           - authorization_sync_recovered
+          - tracking_archived
+          - tracking_unarchived
+          - members_imported
         actor:
           type: string
           maxLength: 128
@@ -1749,11 +1876,12 @@ components:
           $ref: '#/components/schemas/Subject'
     TrackingState:
       type: string
-      description: 持续跟踪的状态：tracking 跟踪中、paused 已暂停、stopped 已停止
+      description: 持续跟踪的状态：tracking 跟踪中、paused 已暂停、stopped 已停止、archived 已归档（0.6.0）
       enum:
       - tracking
       - paused
       - stopped
+      - archived
     Cadence:
       type: object
       additionalProperties: false
@@ -1824,6 +1952,95 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/OrgID'
+    TrackingImportRow:
+      type: object
+      additionalProperties: false
+      description: 名单中的一行：组织标识（org_id）或名称（name）；两者都有时按 org_id，都没有的行为 invalid
+      properties:
+        org_id:
+          type: string
+          maxLength: 64
+        name:
+          type: string
+          maxLength: 200
+    TrackingImportRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - expected_version
+      - rows
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationID'
+        expected_version:
+          type: integer
+          format: int64
+          minimum: 1
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/TrackingImportRow'
+    TrackingImportResult:
+      type: object
+      additionalProperties: false
+      description: 一行的导入结果（index 为请求中的行号，从 0 起）
+      required:
+      - index
+      - outcome
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          maximum: 499
+        org_id:
+          $ref: '#/components/schemas/OrgID'
+        outcome:
+          type: string
+          enum:
+          - added
+          - already_member
+          - duplicate
+          - invalid
+          - not_found
+          - unresolved
+          - over_limit
+    TrackingObject:
+      type: object
+      additionalProperties: false
+      description: >-
+        期末成员快照中的一个对象（0.6.0）：added_members_version 为它加入对象集合时的成员版本（0.6.0 之前加入的没有）、source 为加入方式
+        （manual 手选、import 名单导入）；entity_state 为期末时点实体图中的来源版本：recorded（entity_version 为当时的实体版本）、
+        not_found（实体图中不存在）、unavailable（实体图暂时不可用）、not_wired（实体图未接入）。
+      required:
+      - org_id
+      - source
+      - entity_state
+      properties:
+        org_id:
+          $ref: '#/components/schemas/OrgID'
+        added_members_version:
+          type: integer
+          format: int64
+          minimum: 1
+        source:
+          type: string
+          enum:
+          - manual
+          - import
+        entity_state:
+          type: string
+          enum:
+          - recorded
+          - not_found
+          - unavailable
+          - not_wired
+        entity_version:
+          type: integer
+          format: int64
+          minimum: 1
     TrackingSummary:
       type: object
       additionalProperties: false
@@ -1854,6 +2071,11 @@ components:
           $ref: '#/components/schemas/Subject'
         owner_valid:
           type: boolean
+        collaborators:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/Subject'
         members_count:
           type: integer
           minimum: 0
@@ -1916,6 +2138,11 @@ components:
           $ref: '#/components/schemas/Subject'
         owner_valid:
           type: boolean
+        collaborators:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/Subject'
         members:
           type: array
           maxItems: 200
@@ -1956,6 +2183,9 @@ components:
         stopped_at:
           type: string
           format: date-time
+        archived_at:
+          type: string
+          format: date-time
         timeline:
           type: array
           maxItems: 200
@@ -1982,7 +2212,7 @@ components:
       description: >-
         一期变化简报的请求记录：实际期间 [period_start, period_end)（平台时点，UTC；timezone 为周期所用的时区）、期末的成员快照与成员版本、
         对比基准（上一期的序号，第一期没有）、期末的负责人。成员快照在该期结束时固定，之后修改对象集合不改变它。briefing_state 为
-        requested（已请求 channels 生成；channels 侧的变化简报尚未接入）。
+        requested（已请求 channels 生成；channels 侧的变化简报尚未接入）。objects（0.6.0）为期末每个对象的加入版本、来源与实体来源版本。
       required:
       - pursuit_id
       - seq
@@ -2028,6 +2258,12 @@ components:
           $ref: '#/components/schemas/Subject'
         owner_valid:
           type: boolean
+        objects:
+          type: array
+          maxItems: 200
+          description: 期末成员快照中每个对象的加入版本、来源与实体来源版本（0.6.0；之前结束的期没有），顺序同 members
+          items:
+            $ref: '#/components/schemas/TrackingObject'
         briefing_state:
           type: string
           enum:
@@ -2073,3 +2309,15 @@ components:
           enum:
           - effective
           - syncing
+        import_rows:
+          type: array
+          maxItems: 500
+          description: importTrackingMembers 的逐行结果（0.6.0，按请求顺序，与操作一起固定）
+          items:
+            $ref: '#/components/schemas/TrackingImportResult'
+        import_check:
+          type: string
+          description: importTrackingMembers 是否经实体图核对了组织存在（verified）或实体图未接入、只校验了标识格式（not_wired）
+          enum:
+          - verified
+          - not_wired
