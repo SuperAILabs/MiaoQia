@@ -14,6 +14,11 @@ from miaoqia.kernel import reqctx
 from ..api import Basis
 
 _ID = re.compile(r"^(?:ntc|pp|ev)_[A-Za-z0-9_-]{1,128}$")
+# Each data-read route maps to one closed acquisition source-rights operation.
+RIGHTS_OPERATIONS = {
+    "data.get_fact": "fact_read", "data.fact_history": "fact_read", "data.query_facts": "fact_read",
+    "data.bid_result_units": "fact_read", "data.resolve_evidence": "evidence_resolve",
+}
 
 
 class ReadAuthorization:
@@ -50,7 +55,9 @@ class ReadAuthorization:
                 self.identity.resolve(deadline=remaining_deadline)
             self.rights.status(deadline=remaining_deadline)
         current(deadline)
-        request = {"operation": operation, "inputs": list(inputs)}
+        if operation not in RIGHTS_OPERATIONS:
+            raise ValueError("unsupported data-read operation")
+        request = {"operation": RIGHTS_OPERATIONS[operation], "inputs": list(inputs)}
         # Empty result sets still perform status admission, but there is no
         # source-rights decision to resolve or receipt to confirm.
         if not inputs:

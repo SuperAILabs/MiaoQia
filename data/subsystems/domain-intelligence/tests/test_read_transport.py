@@ -115,7 +115,7 @@ def test_read_authorization_requires_active_user_and_confirms_same_request():
     with reqctx.use(reqctx.Context(reqctx.Principal("u", "user"), "tenant", "cell", "interactive")):
         confirm = auth.prepare("data.get_fact", [{"group": "g"}], 10.0)
         confirm(9.0)
-    assert calls[-1] == ("confirm", {"operation": "data.get_fact", "inputs": [{"group": "g"}], "receipt": "r"}, 9.0)
+    assert calls[-1] == ("confirm", {"operation": "fact_read", "inputs": [{"group": "g"}], "receipt": "r"}, 9.0)
     with reqctx.use(reqctx.Context(reqctx.Principal("svc", "service"), "tenant", "cell", "interactive")):
         with pytest.raises(PermissionError):
             auth.prepare("data.get_fact", [], 10.0)
@@ -148,7 +148,7 @@ def test_read_authorization_service_purpose_skips_identity_but_confirms_rights(p
         confirm(9.0)
         auth.prepare("data.bid_result_units", [], 10.0)(9.0)
     assert not any(c[0] == "identity" for c in calls)
-    assert ("confirm", {"operation": "data.bid_result_units", "inputs": [{"group": "g"}], "receipt": "r"}, 9.0) in calls
+    assert ("confirm", {"operation": "fact_read", "inputs": [{"group": "g"}], "receipt": "r"}, 9.0) in calls
 
 
 @pytest.mark.parametrize("context", [
@@ -166,3 +166,13 @@ def test_read_authorization_rejects_principal_purpose_mismatch_before_any_call(c
         with pytest.raises(PermissionError):
             auth.prepare("data.bid_result_units", [{"group": "g"}], 10.0)
     assert calls == []
+
+
+def test_read_authorization_maps_routes_to_closed_rights_operations():
+    calls = []
+    auth = _recording_auth(calls)
+    with reqctx.use(reqctx.Context(reqctx.Principal("u", "user"), "tenant", "cell", "interactive")):
+        auth.prepare("data.resolve_evidence", [{"group": "g"}], 10.0)
+        with pytest.raises(ValueError):
+            auth.prepare("data.unknown", [{"group": "g"}], 10.0)
+    assert [c[1]["operation"] for c in calls if c[0] == "resolve"] == ["evidence_resolve"]
