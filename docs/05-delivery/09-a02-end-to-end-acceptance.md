@@ -50,7 +50,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 ## 4. 缺口清单
 
-**当前贯通级别：L1 已通过；L2 进行中（W 缺口）；L3、L4、L5 未开始。** 本节是 A02 缺口状态的唯一登记处，每行只写尚未关闭的部分，已实现的设计以子系统规格为准；关闭的缺口移入第4.6节。“环节”指第2节的①～④；“最早级别”是该项必须关闭的贯通级别；“—”表示不在最短链路上，不阻断贯通。来源一列给出需求或规格的位置。
+**当前贯通级别：L1 待重新验证（D-06：data-api 改为 mTLS 内部 listener 后，进程回放依赖的服务主体读取被拒）；L2 进行中（W 缺口）；L3、L4、L5 未开始。** 本节是 A02 缺口状态的唯一登记处，每行只写尚未关闭的部分，已实现的设计以子系统规格为准；关闭的缺口移入第4.6节。“环节”指第2节的①～④；“最早级别”是该项必须关闭的贯通级别；“—”表示不在最短链路上，不阻断贯通。来源一列给出需求或规格的位置。
 
 ### 4.1 数据供应（D）
 
@@ -61,10 +61,10 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D-03 | INF-PROC 更正公告解析器未实现；招标与结果公告解析器 `proc.tender-notice`、`proc.result-notice` 以人工映射为黄金标注评测 | `packs/information_domains/procurement/src/` | ② | L1 | — |
 | D-04 | 标包 `lot_`、其他来源与完整生命周期的项目聚合未实现；冻结来源的 `pp_` 聚合与复核官方 pair 的公告主题品类只是局部实现（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)） | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-05 | 信息领域服务状态与覆盖接口（`GetCoverage`）未实现，规则到信息领域的生产对应缺失（B-PERMIT 不能显示“数据未接入”） | PRD 第3段用例7、第4段用例24–27；[customer-context](../03-architecture/subsystems/customer-context.md) | ①②③ | L1 | — |
-| D-06 | data-api 读取的生产 mTLS 与其他来源/生命周期的事实视图未接入（A02 结果视图的读取与 detection 适配器已接入） | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
+| D-06 | data-api 内部 listener 只接纳交互用户（purpose 为 interactive）：detection 匹配（服务主体，按租户以 monitoring 读取求值单位）与 learning 仿真（simulation）的读取被拒，A02 进程回放与 M0 E2E 的 data-api 环节因此不能运行。需要服务主体委托读取：SourceRightsPolicy 用途扩展、acquisition 权利裁决与共享 mTLS 准入接纳服务主体、detection 先经 percolator 反查候选租户再按租户读取、回放拓扑（证书、acq-admin、权利登记，以及白名单覆盖的回放语料）；其他来源与生命周期的事实视图未接入 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-07 | 生产 OpenSearch percolation 未实现；当前为 search 的最小 PostgreSQL percolator（按 cell、事实类型、区域和品类过滤），未登记查询时失败关闭 | 同上；`services/subsystems/search/` | ② | L1（可先用最小实现） | — |
 | D-08 | INF-ORG 企业主数据未接入；X-SELF 需要“关联本企业” | PRD 第2段用例1、7–9；第3段用例7 | ①② | L1 用夹具，L4 用供应商 | B2b |
-| D-09 | learning 仿真数据集的完整多领域历史、覆盖与来源权利未接入（A02 结果视图已可读取） | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
+| D-09 | learning 仿真数据集的完整多领域历史、覆盖与来源权利未接入（A02 结果视图的适配器已有，读取随 D-06） | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
 | D-10 | 完整 `GetCoverage` 与按租户覆盖状态未接入（learning 适配器对配置的 `INF-PROC` 返回 live） | 同上 | ①③ | L1 | 随 D-05 |
 | D-11 | gateway 只接入采购项目 `pp_` 的概要、标包与公告时间线（`internal/dataplane`）；`prj_` / `org_` 与上级项目（entity-graph 读取未进 data-api，随 D-12）、证据面板（data-api 的证据载荷不含所属对象与来源名称、标题、链接）、历史与统计分区、字段状态（随 D-10、D-13）及真实网络进程验收未关闭；未配置 data-api 时失败关闭 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
 | D-12 | entity-graph 组织解析、`part_of` 归属边、合并与撤销未实现；detection 归属边端口 `NotWired` | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第4段用例19–22、37–38 | ③ | L1（组织解析与 `part_of`）；品牌随 M2-P13 | — |
@@ -145,7 +145,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 当前主线以[阶段基线第1.1节](06-stage-baseline.md#11-当前主线)为准：真实数据链路对应本线的 L4，最薄研究切片不在本线的四个环节内，由阶段基线单独验收。本线各级按依赖排列，不给日期，每一级的开始以前一级的通过证据为准：
 
-1. **L1 回放贯通**：已通过（第3节的可重复入口）；
+1. **L1 回放贯通**：待重新验证；先关闭 D-06，再以第3节的可重复入口在 VPS 公共组件上重跑；
 2. **L2 界面贯通**：只完成已开工的页面与已登记的 W 缺口，不扩展新页面；R-03 与 C-03 的生产 Web 登录部分是独立门禁；
 3. **L3 真实渠道**：与 L2 并行，前提是 U-01 测试企业与 C10 真实调用授权到位；交付 C-01、C-02，以及 W-04 中浏览器免登会话与卡片落地在真实渠道下的验收（按 Web 专项设计 WD2）；
 4. **L4 真实数据**：当前主线。在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7，以真实数据替代 L1 的回放语料与企业夹具，关闭 D 缺口；不以全国覆盖为前提；

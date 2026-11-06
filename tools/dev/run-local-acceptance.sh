@@ -72,12 +72,6 @@ export MIAOQIA_GATEWAY_ISSUER="${MIAOQIA_GATEWAY_ISSUER:-http://localhost:8080/r
 export MIAOQIA_E2E_TRACE_REQUIRED="${MIAOQIA_E2E_TRACE_REQUIRED:-true}"
 export MIAOQIA_E2E_TRACES="${MIAOQIA_E2E_TRACES:-$root_dir/deploy/local/.data/otel/traces.jsonl}"
 
-if ((start_local)); then
-  export MIAOQIA_DETECTION_DATA_API_URL="${MIAOQIA_DETECTION_DATA_API_URL:-http://localhost:8094}"
-  export MIAOQIA_START_LOCAL_DATA_API="${MIAOQIA_START_LOCAL_DATA_API:-true}"
-fi
-export MIAOQIA_GATEWAY_DATA_API_URL="${MIAOQIA_GATEWAY_DATA_API_URL:-${MIAOQIA_DETECTION_DATA_API_URL:-}}"
-export MIAOQIA_LEARNING_DATA_API_URL="${MIAOQIA_LEARNING_DATA_API_URL:-${MIAOQIA_DETECTION_DATA_API_URL:-}}"
 export MIAOQIA_COMMERCE_COVERAGE="${MIAOQIA_COMMERCE_COVERAGE:-INF-PROC=*}"
 
 if ((local_openfga)); then
@@ -122,7 +116,7 @@ if ((local_openfga)); then
   fi
 fi
 
-echo "共享组件验收边界：PostgreSQL=$MIAOQIA_TEST_PG Kafka=$MIAOQIA_TEST_KAFKA OpenFGA=$MIAOQIA_TEST_OPENFGA data-api=${MIAOQIA_DETECTION_DATA_API_URL:-not-configured}"
+echo "共享组件验收边界：PostgreSQL=$MIAOQIA_TEST_PG Kafka=$MIAOQIA_TEST_KAFKA OpenFGA=$MIAOQIA_TEST_OPENFGA"
 if ! python3 "$root_dir/tools/dev/check_tcp.py" --label Kafka --endpoints "$MIAOQIA_TEST_KAFKA"; then
   echo "请先连接共享 Kafka，或通过 MIAOQIA_ENV_FILE/MIAOQIA_TEST_KAFKA 显式指定地址；验收入口不会自动启动 Docker。" >&2
   exit 1
@@ -140,12 +134,6 @@ if [[ "$local_only" == "true" ]]; then
     localhost:*|127.0.0.1:*|localhost:*,*|127.0.0.1:*,*) ;;
     *) echo "本机验收拒绝非本机 Kafka：$MIAOQIA_TEST_KAFKA" >&2; exit 1 ;;
   esac
-  if [[ -n "${MIAOQIA_DETECTION_DATA_API_URL:-}" ]]; then
-    case "$MIAOQIA_DETECTION_DATA_API_URL" in
-      http://localhost:*|http://127.0.0.1:*) ;;
-      *) echo "本机验收拒绝非本机 data-api：$MIAOQIA_DETECTION_DATA_API_URL" >&2; exit 1 ;;
-    esac
-  fi
 fi
 
 if ((start_local)); then

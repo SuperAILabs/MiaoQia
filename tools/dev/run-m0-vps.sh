@@ -42,6 +42,4 @@ fi
 cd "$root_dir"
 MIAOQIA_KAFKA_BROKERS="127.0.0.1:${local_port}" \
   MIAOQIA_ENV_FILE="${MIAOQIA_ENV_FILE:-$root_dir/config/local/m0-vps.env}" \
-  MIAOQIA_DETECTION_DATA_API_URL="${MIAOQIA_DETECTION_DATA_API_URL:-http://localhost:8094}" \
-  MIAOQIA_START_LOCAL_DATA_API="${MIAOQIA_START_LOCAL_DATA_API:-true}" \
   uv run --project data --locked --all-packages python tests/e2e/m0.py "$@"

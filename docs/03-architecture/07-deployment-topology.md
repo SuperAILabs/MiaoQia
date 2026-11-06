@@ -53,7 +53,7 @@
 
 客户授权文档（租户知识资产）的解析由 `tenant-document-worker` 的**单元级实例**完成：随租户单元部署，使用单元级凭证与存储，不与公共域实例混用。相同 database 代码按实例绑定不同数据库，迁移与备份也按实例执行。角色声明 `data_scopes: {evidence: tenant}` 与 `cell`；当前仅提供隔离组装骨架，租户文档业务处理随对应能力实现，不能启动公共探针消费者。
 
-`data-api` 的内部读取 listener 使用 `MIAOQIA_DATA_API_ADDR`（默认 `:8094`）。开发环境允许 HTTP 供本机绑定使用；生产环境必须配置 `MIAOQIA_INTERNAL_TLS_CERT`、`MIAOQIA_INTERNAL_TLS_KEY`、`MIAOQIA_INTERNAL_TLS_CA` 与精确的 `MIAOQIA_INTERNAL_ALLOWED_PEERS`，并经 mTLS 校验 SPIFFE 调用方。
+`data-api` 的内部读取 listener 以 `MIAOQIA_DATA_API_LISTENER=1` 与 `--role data-api` 启用，监听 `MIAOQIA_DATA_LISTEN`；须配置 `MIAOQIA_INTERNAL_TLS_CERT`、`MIAOQIA_INTERNAL_TLS_KEY`、`MIAOQIA_INTERNAL_TLS_CA`、精确的委托矩阵 `MIAOQIA_DATA_DELEGATIONS`（peer、operation、purpose），以及 identity 与 acquisition 权利服务的地址和 peer。没有明文或开发绕过；缺任一配置不启动。
 
 ### 2.3 `platform` 单元
 

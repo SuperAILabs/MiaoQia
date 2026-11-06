@@ -252,6 +252,12 @@ def reset_replay_topic(env: dict[str, str]) -> None:
 
 
 def main() -> int:
+    # The replay reads data-api as service principals (detection matching,
+    # learning simulation). The mTLS listener admits interactive users only,
+    # so the replay stays blocked until A02 gap D-06 adds delegated reads.
+    if os.environ.get("MIAOQIA_A02_REPLAY_FORCE") != "1":
+        print("A02 进程回放待 D-06（data-api 服务主体委托读取）关闭后再运行；见 docs/05-delivery/09-a02-end-to-end-acceptance.md 第4.1节", file=sys.stderr)
+        return 2
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
     from m0 import base_env  # type: ignore

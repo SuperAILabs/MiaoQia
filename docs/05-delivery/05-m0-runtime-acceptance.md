@@ -53,7 +53,7 @@ tools/dev/run-local-acceptance.sh
 
 只运行代码、数据和契约检查时使用 `tools/dev/run-local-acceptance.sh --skip-e2e`；复用共享服务时不启动 Docker。需要本地授权服务时使用 `tools/dev/run-local-acceptance.sh --local-openfga --skip-e2e`（或组合 `--local-openfga` 与完整 E2E）；`--no-up` 保留为显式兼容写法，`--up` 才会启动可选的本地 Compose 组件。需要隔离本机边界时设置 `MIAOQIA_ACCEPTANCE_LOCAL_ONLY=true`，VPS 公共服务则通过 `tools/dev/run-m0-vps.sh` 单独验收。
 
-M0 E2E 会复用 `MIAOQIA_DETECTION_DATA_API_URL` 指向的共享 data-api；A02 gateway 读取使用 `MIAOQIA_GATEWAY_DATA_API_URL`（开发验收入口在未单独设置时复用 detection 地址）。只有设置 `MIAOQIA_START_LOCAL_DATA_API=true` 时才在本机启动 data-api（默认 `:8094`），并在官方事实回放后用内部上下文读取一次 `get-fact`。这只验证 listener 与 Go 进程的边界可达，不宣称 A02 全链路已完成。
+M0 E2E 不覆盖 data-api：data-api 是 mTLS 内部 listener，只接纳交互用户，E2E 的服务主体读取须等 [A02 缺口 D-06](09-a02-end-to-end-acceptance.md#41-数据供应d) 关闭后再接入。
 
 该入口的本地 E2E 使用开发环境的 HTTP Keycloak；HTTPS Keycloak、真实 mTLS 和生产认证策略仍须按本节的隔离组件命令单独复验。
 

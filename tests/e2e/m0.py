@@ -8,7 +8,7 @@
 校验：探针完成且经过全部子系统；授权允许与拒绝都留下审计；三个单元的处理位于同一条追踪；
 另起一个 api 进程把 identity 切换为远程绑定，同样完成探针并拒绝无权用户。
 
-前置：共享开发环境的 PostgreSQL、Kafka、OpenFGA、Keycloak、OTLP 与 data-api 已启动，并通过环境变量提供连接信息。Docker Compose 仅是可选的本地引导方式，不由本脚本自动启动。用法（仓库根目录）：
+前置：共享开发环境的 PostgreSQL、Kafka、OpenFGA、Keycloak 与 OTLP 已启动，并通过环境变量提供连接信息。Docker Compose 仅是可选的本地引导方式，不由本脚本自动启动。用法（仓库根目录）：
 
   uv run --project data python tests/e2e/m0.py
 """
@@ -152,25 +152,6 @@ def http(method: str, url: str, token: str | None = None) -> tuple[int, dict]:
             return r.status, json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read() or b"{}")
-
-
-def data_api_post(path: str, body: dict) -> tuple[int, dict]:
-    """Call the development data-api with the same internal context header as Go bindings."""
-    context = {
-        "principal": {"id": "svc:m0-e2e", "kind": "service"},
-        "purpose": "object_page",
-    }
-    encoded = __import__("base64").urlsafe_b64encode(json.dumps(context, separators=(",", ":")).encode()).rstrip(b"=").decode()
-    request = urllib.request.Request(
-        os.environ["MIAOQIA_DETECTION_DATA_API_URL"].rstrip("/") + path,
-        method="POST", data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json", "Miaoqia-Context": encoded, "User-Agent": "miaoqia-e2e/1"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            return response.status, json.loads(response.read() or b"{}")
-    except urllib.error.HTTPError as exc:
-        return exc.code, json.loads(exc.read() or b"{}")
 
 
 def token(user: str) -> tuple[str, str]:
@@ -333,23 +314,14 @@ def main() -> None:
         procs.start("platform-relay", [platform, "-role", "outbox-relay"], env)
         procs.start("acq-scheduler", ["uv", "run", "-q", "mq-acquisition", "--role", "acq-scheduler"], env, ROOT / "data")
         procs.start("data-consumer", ["uv", "run", "-q", "mq-data", "--role", "data-consumer"], env, ROOT / "data")
-        data_api_url = env.get("MIAOQIA_DETECTION_DATA_API_URL", "").rstrip("/")
-        if not data_api_url:
-            fail("未配置 MIAOQIA_DETECTION_DATA_API_URL；共享环境必须提供 data-api，使用 --up 时可由入口补本机地址")
-        start_data_api = env.get("MIAOQIA_START_LOCAL_DATA_API", "").lower() in {"1", "true", "yes"}
-        if start_data_api:
-            env.setdefault("MIAOQIA_EVIDENCE_OBJECT_STORE_DIR", str(WORK / "objects"))
-            procs.start("data-api", ["uv", "run", "-q", "mq-data", "--role", "data-api"], env, ROOT / "data")
         remote_env = dict(env, MIAOQIA_BINDING_IDENTITY="remote", MIAOQIA_IDENTITY_URL="http://localhost:8091/internal",
                           MIAOQIA_HTTP_ADDR=":8092", MIAOQIA_INTERNAL_ADDR=":8093")
         procs.start("platform-api-remote", [platform, "-role", "api"], remote_env)
         wait_http("http://localhost:8090/")
         wait_http("http://localhost:8092/")
-        wait_http(data_api_url + "/healthz")
         time.sleep(3)
         procs.check_alive()
-        data_api_mode = "本机 data-api" if start_data_api else "共享 data-api"
-        ok(f"platform：api、consumer、outbox-relay、api（identity 远程绑定）；acquisition：acq-scheduler；data：{data_api_mode}、data-consumer")
+        ok("platform：api、consumer、outbox-relay、api（identity 远程绑定）；acquisition：acq-scheduler；data：data-consumer")
 
         step("探针经过三个单元")
         pr = run_probe("http://localhost:8090", op_token, procs)
@@ -437,10 +409,8 @@ def main() -> None:
             fail(f"领域事实 {fact[0]} 没有 domain.fact.upserted.v1")
         ok(f"{revision} → {fact[0]} v{fact[1]}，domain.fact.upserted.v1 已进入发件箱")
 
-        status, data = data_api_post("/internal/v1/data/get-fact", {"fact_id": fact[0], "basis": {"view": "current"}})
-        if status != 200 or data.get("fact", {}).get("id") != fact[0]:
-            fail(f"data-api get-fact 读取失败：{status} {data}")
-        ok(f"data-api get-fact：{fact[0]} v{data.get('fact', {}).get('version')}")
+        # data-api is the mTLS internal listener that admits interactive users
+        # only; the service-principal read is gated on A02 gap D-06.
 
         print("\nM0 端到端验证通过。")
     finally:
