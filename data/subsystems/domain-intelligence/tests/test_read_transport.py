@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 
 from miaoqia.domain_intelligence.api import FactRead, Page
-from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, routes
+from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, admitted_display, routes
 from miaoqia.kernel import reqctx
 
 
@@ -176,3 +176,23 @@ def test_read_authorization_maps_routes_to_closed_rights_operations():
         with pytest.raises(ValueError):
             auth.prepare("data.unknown", [{"group": "g"}], 10.0)
     assert [c[1]["operation"] for c in calls if c[0] == "resolve"] == ["evidence_resolve"]
+
+
+def test_admitted_display_is_request_local_and_fails_closed():
+    import contextvars
+    calls = []
+    auth = _recording_auth(calls)  # resolve returns allowed without a display
+    user = reqctx.Context(reqctx.Principal("u", "user"), "tenant", "cell", "interactive")
+    def admitted(groups, decision_display=None):
+        if decision_display:
+            auth.rights.resolve = lambda request, *, deadline: {"allowed": True, "receipt": "r", "display": decision_display}
+        with reqctx.use(user):
+            auth.prepare("data.resolve_evidence", groups, 10.0)
+        return admitted_display((), "interactive")
+    assert contextvars.Context().run(admitted_display, (), "interactive") == "none"
+    assert contextvars.Context().run(admitted, [{"group": "g"}], "excerpt") == "excerpt"
+    # No source groups admitted (e.g. evidence without provenance): nothing to display.
+    assert contextvars.Context().run(admitted, []) == "none"
+    # A decision without a display level never widens to content.
+    auth.rights.resolve = lambda request, *, deadline: {"allowed": True, "receipt": "r"}
+    assert contextvars.Context().run(admitted, [{"group": "g"}]) == "none"

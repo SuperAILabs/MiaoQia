@@ -5,6 +5,7 @@ and the existing query port.  It accepts no SQL, source policy, or JSON paths.
 """
 from __future__ import annotations
 
+from contextvars import ContextVar
 from datetime import datetime
 import re
 
@@ -21,6 +22,16 @@ RIGHTS_OPERATIONS = {
 }
 
 
+# Display level admitted for the current request by its source-rights decision.
+# Request-local and fail-closed: anything not admitted in this request is "none".
+_admitted = ContextVar("miaoqia_admitted_display", default="none")
+
+
+def admitted_display(groups, purpose):
+    """Evidence display callback: the level the route admission granted, never more."""
+    return _admitted.get()
+
+
 class ReadAuthorization:
     """Request-local d0 admission/receipt collector.
 
@@ -35,6 +46,7 @@ class ReadAuthorization:
             raise ValueError("bounded authorization inputs required")
         if len(inputs) > self.max_groups:
             raise ValueError("authorization group limit exceeded")
+        _admitted.set("none")
         ctx = reqctx.current()
         ctx.validate()
         if not ctx.tenant or not ctx.cell:
@@ -66,6 +78,7 @@ class ReadAuthorization:
         if not decision.get("allowed") or "receipt" not in decision:
             raise PermissionError("source groups denied")
         receipt = decision["receipt"]
+        _admitted.set(decision.get("display", "none"))
         def confirm(remaining_deadline):
             current(remaining_deadline)
             result = self.rights.confirm({**request, "receipt": receipt}, deadline=remaining_deadline)

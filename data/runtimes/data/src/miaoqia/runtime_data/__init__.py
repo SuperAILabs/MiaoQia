@@ -60,7 +60,7 @@ def serve():
     from miaoqia import evidence
     from miaoqia.acquisition.api.remote import RightsClient
     from miaoqia.domain_intelligence import queries
-    from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, routes
+    from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, admitted_display, routes
     from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
 
     dom_dsn = os.environ.get(runtime.env_key("domain-intelligence", "DB_DSN"))
@@ -82,7 +82,8 @@ def serve():
         # require a callback and therefore only accept already-admitted groups.
         allowed = lambda groups, purpose: True
         facts = queries(dom, authorize=allowed, provenance=provenance)
-        resolver = evidence.resolver(evd, FilesystemObjectStore(root), authorize=allowed)
+        # Evidence needs a display level: the one this request's rights decision admitted.
+        resolver = evidence.resolver(evd, FilesystemObjectStore(root), authorize=admitted_display)
         auth = ReadAuthorization(rights, identity)
         def fact_groups(operation):
             return lambda body, deadline: facts.collect_source_groups(operation, body, deadline)
