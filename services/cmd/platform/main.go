@@ -16,6 +16,8 @@
 //	MIAOQIA_GATEWAY_ISSUER / MIAOQIA_GATEWAY_AUDIENCE   HTTPS Keycloak realm与资源受众
 //	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
 //	MIAOQIA_GATEWAY_DATA_API_URL data-api 内部读取地址；设置后装配 A02 对象与证据读取
+//	MIAOQIA_WEB_DEV_TOKEN_URL    开发环境登录签发端点；仅development的 /auth/dev-login 使用
+//	MIAOQIA_WEB_DEV_SUBJECT/TENANT/CELL 开发环境登录缺省身份；生产环境不启用 dev-login
 //	MIAOQIA_CHANNELS_SIGNING_KEY  简报卡片动作令牌与简报历史游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_PURSUIT_SIGNING_KEY   跟进列表与待我处理翻页游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_COMMERCE_COVERAGE     数据覆盖包（产品目录接入前，全部租户相同），例如 INF-PROC=330000;INF-ORG=*；未配置时对象页 503
@@ -439,10 +441,19 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 			break
 		}
 	}
-	pub, err := gateway.Public(ctx, os.Getenv("MIAOQIA_GATEWAY_ISSUER"), os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public, resolver)
+	issuer := os.Getenv("MIAOQIA_GATEWAY_ISSUER")
+	pub, err := gateway.Public(ctx, issuer, os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public, resolver)
 	if err != nil {
 		return err
 	}
+	pub = gateway.WebSession(pub, gateway.WebSessionConfig{
+		Issuer:      issuer,
+		Development: transportsecurity.Development(),
+		DevTokenURL: os.Getenv("MIAOQIA_WEB_DEV_TOKEN_URL"),
+		DevSubject:  os.Getenv("MIAOQIA_WEB_DEV_SUBJECT"),
+		DevTenant:   os.Getenv("MIAOQIA_WEB_DEV_TENANT"),
+		DevCell:     os.Getenv("MIAOQIA_WEB_DEV_CELL"),
+	})
 	addr := func(k, def string) string {
 		if v := os.Getenv(k); v != "" {
 			return v

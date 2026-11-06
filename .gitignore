@@ -10,3 +10,4 @@ node_modules/
 *.out
 # Local environment overrides may contain service tokens and passwords.
 config/local/*.env
+/web/apps/*/dist/
