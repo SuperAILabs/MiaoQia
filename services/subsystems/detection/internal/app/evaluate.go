@@ -57,33 +57,13 @@ func (s *Service) FactUpserted(ctx context.Context, _ pgx.Tx, env *outbox.Envelo
 	if s.Candidates == nil || s.Facts == nil {
 		return api.ErrNotWired
 	}
-	var tenants []string
-	var units []api.Unit
-	var err error
-	if resolver, ok := s.Candidates.(api.CandidateResolver); ok {
-		units, err = s.Facts.Units(ctx, ref)
-		if err != nil {
-			return fmt.Errorf("视图组装：%w", err)
-		}
-		tenants, err = resolver.TenantsFor(ctx, s.Cell, ref, units)
-	} else {
-		tenants, err = s.Candidates.Tenants(ctx, s.Cell, ref)
-	}
+	// 先定租户，再读取（source-rights-runtime.md“服务主体按租户读取”）：粗筛只用事件元数据，不读事实内容；
+	// 每个候选租户以 purpose=monitoring 读取求值单位，再用该租户的区域/品类过滤核对后求值。
+	tenants, err := s.Candidates.Tenants(ctx, s.Cell, ref)
 	if err != nil {
 		return fmt.Errorf("订阅反查：%w", err)
 	}
-	if len(tenants) == 0 {
-		return nil
-	}
-	if units == nil {
-		units, err = s.Facts.Units(ctx, ref)
-		if err != nil {
-			return fmt.Errorf("视图组装：%w", err)
-		}
-	}
-	if len(units) == 0 {
-		return nil
-	}
+	resolver, filtered := s.Candidates.(api.CandidateResolver)
 	slices.Sort(tenants)
 	for _, tenant := range slices.Compact(tenants) {
 		if !tenantPattern.MatchString(tenant) {
@@ -91,6 +71,27 @@ func (s *Service) FactUpserted(ctx context.Context, _ pgx.Tx, env *outbox.Envelo
 			continue
 		}
 		tctx := reqctx.Service(reqctx.With(ctx, reqctx.Context{Tenant: tenant, Cell: s.Cell, Purpose: "monitoring"}), api.Name)
+		units, err := s.Facts.Units(tctx, ref)
+		if errors.Is(err, api.ErrReadDenied) {
+			// 该租户没有此来源的 monitoring 读取权利：只跳过该租户，不重试也不影响其他租户。
+			s.logger().InfoContext(ctx, "事实读取被来源权利拒绝，跳过租户", "tenant", tenant, "fact_id", ref.ID)
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("租户 %s 视图组装：%w", tenant, err)
+		}
+		if len(units) == 0 {
+			continue
+		}
+		if filtered {
+			matched, err := resolver.TenantsFor(tctx, s.Cell, ref, units)
+			if err != nil {
+				return fmt.Errorf("租户 %s 订阅过滤：%w", tenant, err)
+			}
+			if !slices.Contains(matched, tenant) {
+				continue
+			}
+		}
 		if err := s.evaluateTenant(tctx, ref, units); err != nil {
 			return fmt.Errorf("租户 %s：%w", tenant, err)
 		}

@@ -2500,6 +2500,8 @@ const SourceRightsPolicyDisplayNone SourceRightsPolicyDisplay = "none"
 type SourceRightsPolicyPurposesElem string
 
 const SourceRightsPolicyPurposesElemInteractive SourceRightsPolicyPurposesElem = "interactive"
+const SourceRightsPolicyPurposesElemMonitoring SourceRightsPolicyPurposesElem = "monitoring"
+const SourceRightsPolicyPurposesElemSimulation SourceRightsPolicyPurposesElem = "simulation"
 
 type SourceRightsPolicyScopesElem struct {
 	// Cell corresponds to the JSON schema field "cell".

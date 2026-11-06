@@ -7,7 +7,7 @@ import hmac
 import json
 import secrets
 
-from miaoqia.acquisition.api import DISPLAYS, OPERATIONS, inputs, instant
+from miaoqia.acquisition.api import DISPLAYS, OPERATIONS, PURPOSES, SERVICE_PURPOSES, inputs, instant
 from miaoqia.kernel import reqctx
 from miaoqia.kernel.jsoncodec import closed
 
@@ -36,14 +36,15 @@ class Decisions:
             raise ValueError("unsupported operation")
         sources = inputs(request["inputs"])
         c = reqctx.current()
-        # Current membership is independently checked at EVERY HTTP route before reaching here.
-        if (
-            c.principal.kind != "user"
-            or not c.tenant
-            or not c.cell
-            or c.purpose != "interactive"
-        ):
+        # Current user membership and the exact service delegation are checked
+        # at EVERY HTTP route before reaching here; this is an independent layer.
+        if not c.tenant or not c.cell or c.purpose not in PURPOSES:
             raise PermissionError("invalid scope")
+        if c.purpose in SERVICE_PURPOSES:
+            if c.principal.kind != "service" or not c.principal.id.startswith("svc:"):
+                raise PermissionError("service purpose requires a service principal")
+        elif c.principal.kind != "user":
+            raise PermissionError("interactive purpose requires a user principal")
         original = {"operation": operation, "inputs": [s.dto() for s in sources]}
         with self.registry.snapshot() as snap:
             display, redistribute, allowed = "full_text", True, True

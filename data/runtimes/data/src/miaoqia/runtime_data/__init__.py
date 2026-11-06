@@ -6,6 +6,7 @@ import threading
 
 from miaoqia.kernel import runtime
 from miaoqia.kernel.internal_http import Client, Identity, Server, TLS
+from miaoqia.kernel.internal_http import delegations as parse_delegations
 
 
 def modules() -> list[runtime.Module]:
@@ -113,15 +114,10 @@ def serve():
 
 def _delegations(raw):
     import json
-    value = json.loads(raw)
-    if not isinstance(value, list) or not value:
-        raise ValueError("explicit delegation list required")
-    result = []
-    for item in value:
-        if not isinstance(item, dict) or set(item) != {"peer", "operation", "purpose"}:
-            raise ValueError("invalid delegation")
-        result.append((item["peer"], item["operation"], item["purpose"]))
-    return result
+    return parse_delegations(json.loads(raw), {
+        "data.get_fact", "data.fact_history", "data.query_facts",
+        "data.bid_result_units", "data.resolve_evidence",
+    })
 
 
 def main() -> None:

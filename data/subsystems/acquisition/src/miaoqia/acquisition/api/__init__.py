@@ -10,6 +10,9 @@ from typing import Protocol
 NAME = "acquisition"
 DISPLAYS = ("none", "citation_only", "excerpt", "full_text")
 OPERATIONS = ("fact_read", "evidence_resolve")
+# interactive is a user read; monitoring/simulation are delegated service reads, always tenant-scoped.
+PURPOSES = ("interactive", "monitoring", "simulation")
+SERVICE_PURPOSES = ("monitoring", "simulation")
 ID = re.compile(r"[a-z][a-z0-9_-]{0,95}")
 
 
@@ -102,10 +105,18 @@ def policy(value):
             for k in ("tenant", "cell")
         ):
             raise ValueError("invalid scope identifier")
-    if value["purposes"] != ["interactive"] or instant(
+    purposes = value["purposes"]
+    if (
+        not isinstance(purposes, list)
+        or not 1 <= len(purposes) <= len(PURPOSES)
+        or any(not isinstance(p, str) or p not in PURPOSES for p in purposes)
+        or len(set(purposes)) != len(purposes)
+    ):
+        raise ValueError("invalid policy purpose")
+    if instant(
         value["effective_at"]
     ) >= instant(value["expires_at"]):
-        raise ValueError("invalid policy purpose/time")
+        raise ValueError("invalid policy time")
     return value
 
 

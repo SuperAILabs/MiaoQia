@@ -16,6 +16,7 @@ from miaoqia.acquisition.infrastructure.privileges import provision
 from miaoqia.acquisition.infrastructure.rights import Registry, validate_command
 from miaoqia.kernel import reqctx
 from miaoqia.kernel.internal_http import Client, Identity, Server, TLS, loads
+from miaoqia.kernel.internal_http import delegations as parse_delegations
 
 
 def tls():
@@ -40,19 +41,10 @@ def serve():
                 os.environ["MIAOQIA_IDENTITY_PEER"],
             )
         )
-        value = loads(os.environ["MIAOQIA_ACQUISITION_RIGHTS_DELEGATIONS"])
-        if not isinstance(value, list) or not value:
-            raise ValueError("explicit delegation list required")
-        delegations = []
-        for item in value:
-            if (
-                not isinstance(item, dict)
-                or set(item) != {"peer", "operation", "purpose"}
-                or item["operation"]
-                not in {"rights.resolve", "rights.confirm", "rights.status"}
-            ):
-                raise ValueError("invalid delegation")
-            delegations.append((item["peer"], item["operation"], item["purpose"]))
+        delegations = parse_delegations(
+            loads(os.environ["MIAOQIA_ACQUISITION_RIGHTS_DELEGATIONS"]),
+            {"rights.resolve", "rights.confirm", "rights.status"},
+        )
         host, port = os.environ["MIAOQIA_ACQUISITION_RIGHTS_LISTEN"].rsplit(":", 1)
         if not host or not 1 <= int(port) <= 65535:
             raise ValueError("explicit address required")

@@ -29,6 +29,16 @@ func TestPercolatorFiltersByCellFactTypeRegionAndCategory(t *testing.T) {
 	if err != nil || len(matched) != 0 {
 		t.Fatalf("mismatched region returned=%v err=%v", matched, err)
 	}
+	// Coarse candidates use only the cell; no unit content is supplied.
+	matched, err = p.Percolate(ctx, api.Fact{Cell: "cell-01", FactID: "ntc_2", Version: 1})
+	if err != nil || len(matched) != 1 || matched[0] != "tnt_a" {
+		t.Fatalf("coarse matched=%v err=%v", matched, err)
+	}
+	// An empty but non-nil unit list is a filtered read that matched nothing.
+	matched, err = p.Percolate(ctx, api.Fact{Cell: "cell-01", FactID: "ntc_2", Version: 1, Units: []api.FactUnit{}})
+	if err != nil || len(matched) != 0 {
+		t.Fatalf("empty units matched=%v err=%v", matched, err)
+	}
 }
 
 func TestPercolatorFailsClosedBeforeAnyQueryIsRegistered(t *testing.T) {

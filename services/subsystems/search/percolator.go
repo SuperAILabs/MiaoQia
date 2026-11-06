@@ -124,10 +124,12 @@ func (p *percolator) Percolate(ctx context.Context, fact api.Fact) ([]string, er
 	return matchQueries(queries, fact), nil
 }
 
+// matchQueries 在没有求值单位时（Units 为 nil）只按 cell 粗筛：返回 cell 内登记了订阅的全部租户，不读取事实内容；
+// 带求值单位时再按事实类型、区域与品类过滤。
 func matchQueries(queries []api.WatchQuery, fact api.Fact) []string {
 	matched := map[string]struct{}{}
 	for _, query := range queries {
-		if query.Cell == fact.Cell && anyUnitMatches(query, fact) {
+		if query.Cell == fact.Cell && (fact.Units == nil || anyUnitMatches(query, fact)) {
 			matched[query.Tenant] = struct{}{}
 		}
 	}

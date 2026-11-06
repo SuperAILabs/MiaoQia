@@ -11,6 +11,15 @@ import (
 )
 
 func Development() bool { return os.Getenv("MIAOQIA_ENV") == "development" }
+
+// Configured reports whether internal mTLS material is set. Development may omit
+// it (plaintext internal traffic); once it is set, internal traffic uses mTLS in
+// every environment.
+func Configured() bool { return os.Getenv("MIAOQIA_INTERNAL_TLS_CERT") != "" }
+
+// Plaintext reports whether internal listeners and clients may run without TLS.
+func Plaintext() bool { return Development() && !Configured() }
+
 func Roots(path string) (*x509.CertPool, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -39,7 +48,9 @@ func Config(prefix string, server bool) (*tls.Config, error) {
 	return cfg, nil
 }
 func Peer(r *http.Request) bool {
-	if Development() {
+	// The development bypass covers plaintext requests only; a TLS request always
+	// needs a verified chain and an allowlisted SPIFFE identity.
+	if r.TLS == nil && Development() {
 		return true
 	}
 	if r.TLS == nil || len(r.TLS.VerifiedChains) == 0 || len(r.TLS.PeerCertificates) == 0 {
@@ -61,7 +72,7 @@ func Peer(r *http.Request) bool {
 	return false
 }
 func Client() (http.RoundTripper, error) {
-	if Development() {
+	if Plaintext() {
 		return http.DefaultTransport, nil
 	}
 	cfg, err := Config("MIAOQIA_INTERNAL_TLS", false)

@@ -127,3 +127,42 @@ def test_known_at_basis_requires_timezone_and_preserves_cutoff():
     with reqctx.use(reqctx.Context(reqctx.Principal("u", "user"), "tenant", "cell", "interactive")):
         handlers["/internal/v1/data/get-fact"][1]({"fact_id": "ntc_1", "basis": {"view": "known_at", "recorded_cutoff": cutoff}, "version": None}, 10.0)
     assert facts.calls[-1][2].recorded_cutoff == datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+
+def _recording_auth(calls):
+    class Identity:
+        def resolve(self, *, deadline): calls.append(("identity", deadline))
+    class Rights:
+        def resolve(self, request, *, deadline): calls.append(("resolve", request, deadline)); return {"allowed": True, "receipt": "r"}
+        def status(self, *, deadline): calls.append(("status", deadline))
+        def confirm(self, request, *, deadline): calls.append(("confirm", request, deadline)); return {"allowed": True}
+    return ReadAuthorization(Rights(), Identity())
+
+
+@pytest.mark.parametrize("purpose, principal", [("monitoring", "svc:detection"), ("simulation", "svc:learning")])
+def test_read_authorization_service_purpose_skips_identity_but_confirms_rights(purpose, principal):
+    calls = []
+    auth = _recording_auth(calls)
+    with reqctx.use(reqctx.Context(reqctx.Principal(principal, "service"), "tenant", "cell", purpose)):
+        confirm = auth.prepare("data.bid_result_units", [{"group": "g"}], 10.0)
+        confirm(9.0)
+        auth.prepare("data.bid_result_units", [], 10.0)(9.0)
+    assert not any(c[0] == "identity" for c in calls)
+    assert ("confirm", {"operation": "data.bid_result_units", "inputs": [{"group": "g"}], "receipt": "r"}, 9.0) in calls
+
+
+@pytest.mark.parametrize("context", [
+    reqctx.Context(reqctx.Principal("u", "user"), "tenant", "cell", "monitoring"),
+    reqctx.Context(reqctx.Principal("svc:learning", "service"), "tenant", "cell", "interactive"),
+    reqctx.Context(reqctx.Principal("svc:detection", "service_account"), "tenant", "cell", "monitoring"),
+    reqctx.Context(reqctx.Principal("detection", "service"), "tenant", "cell", "monitoring"),
+    reqctx.Context(reqctx.Principal("svc:detection", "service"), "", "", "monitoring"),
+    reqctx.Context(reqctx.Principal("svc:detection", "service"), "tenant", "cell", "research"),
+])
+def test_read_authorization_rejects_principal_purpose_mismatch_before_any_call(context):
+    calls = []
+    auth = _recording_auth(calls)
+    with reqctx.use(context):
+        with pytest.raises(PermissionError):
+            auth.prepare("data.bid_result_units", [{"group": "g"}], 10.0)
+    assert calls == []

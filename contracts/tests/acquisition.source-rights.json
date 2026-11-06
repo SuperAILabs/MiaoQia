@@ -131,6 +131,99 @@
       }
     },
     {
+      "name": "service purposes",
+      "valid": true,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "interactive",
+          "monitoring",
+          "simulation"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "monitoring only",
+      "valid": true,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "monitoring"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject duplicate purposes",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "monitoring",
+          "monitoring"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject empty purposes",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
       "name": "reject effective_at",
       "valid": false,
       "instance": {

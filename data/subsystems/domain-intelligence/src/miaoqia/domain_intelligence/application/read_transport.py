@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 import re
 
-from miaoqia.kernel.internal_http import PreparedResponse, closed
+from miaoqia.kernel.internal_http import INTERACTIVE, SERVICE_PURPOSES, PreparedResponse, closed
 from miaoqia.kernel import reqctx
 
 from ..api import Basis
@@ -32,25 +32,35 @@ class ReadAuthorization:
             raise ValueError("authorization group limit exceeded")
         ctx = reqctx.current()
         ctx.validate()
-        if ctx.principal.kind != "user" or not ctx.tenant or not ctx.cell or ctx.purpose != "interactive":
-            raise PermissionError("active user context required")
-        self.identity.resolve(deadline=deadline)
-        self.rights.status(deadline=deadline)
+        if not ctx.tenant or not ctx.cell:
+            raise PermissionError("tenant context required")
+        if ctx.purpose == INTERACTIVE:
+            if ctx.principal.kind != "user":
+                raise PermissionError("active user context required")
+            interactive = True
+        elif ctx.purpose in SERVICE_PURPOSES:
+            # The listener already matched the exact delegated service principal.
+            if ctx.principal.kind != "service" or not ctx.principal.id.startswith("svc:"):
+                raise PermissionError("delegated service context required")
+            interactive = False
+        else:
+            raise PermissionError("unsupported purpose")
+        def current(remaining_deadline):
+            if interactive:
+                self.identity.resolve(deadline=remaining_deadline)
+            self.rights.status(deadline=remaining_deadline)
+        current(deadline)
         request = {"operation": operation, "inputs": list(inputs)}
         # Empty result sets still perform status admission, but there is no
         # source-rights decision to resolve or receipt to confirm.
         if not inputs:
-            def confirm_empty(remaining_deadline):
-                self.identity.resolve(deadline=remaining_deadline)
-                self.rights.status(deadline=remaining_deadline)
-            return confirm_empty
+            return current
         decision = self.rights.resolve(request, deadline=deadline)
         if not decision.get("allowed") or "receipt" not in decision:
             raise PermissionError("source groups denied")
         receipt = decision["receipt"]
         def confirm(remaining_deadline):
-            self.identity.resolve(deadline=remaining_deadline)
-            self.rights.status(deadline=remaining_deadline)
+            current(remaining_deadline)
             result = self.rights.confirm({**request, "receipt": receipt}, deadline=remaining_deadline)
             if not result.get("allowed"):
                 raise PermissionError("authorization expired or revoked")
