@@ -156,8 +156,13 @@ def clear_tenant_state(env: dict[str, str]) -> None:
     with psycopg.connect(chn) as c:
         # Briefings are one per subject and period: clear the replay tenant's
         # briefing state so each run composes its own briefing.
-        for table in ("chn_deliveries", "chn_briefing_links", "chn_card_links", "chn_notices", "chn_briefing_windows", "chn_compose_marks", "chn_briefings"):
+        for table in ("chn_deliveries", "chn_briefing_links", "chn_card_links", "chn_notices", "chn_briefing_windows", "chn_compose_marks", "chn_briefings", "chn_briefing_preferences"):
             c.execute(f"DELETE FROM {table} WHERE tenant_id = %s", (TENANT,))
+        # The default schedule (07:30 on weekdays) composes nothing before the
+        # send time or at weekends. A 00:00 daily schedule makes today's period
+        # due whenever the replay runs; the API would only apply it from the
+        # next send boundary.
+        c.execute("INSERT INTO chn_briefing_preferences(tenant_id,subject,version,send_time,timezone,send_days,quiet_start,quiet_end,push_empty,effective_from,created_at) VALUES (%s,%s,1,'00:00','Asia/Shanghai',ARRAY[1,2,3,4,5,6,7],'21:00','07:00',true,'2026-01-01T00:00:00Z',now())", (TENANT, DM))
         c.execute("DELETE FROM chn_bindings WHERE tenant_id = %s", (TENANT,))
         c.execute("DELETE FROM chn_installations WHERE tenant_id = %s", (TENANT,))
         c.execute("INSERT INTO chn_installations(id,tenant_id,channel,state,version,corp_id,corp_name,verified_at) VALUES ('chi_01M6DQA02XTRA0000000000001',%s,'wecom','enabled',2,'corp-a02','A02本地渠道',now())", (TENANT,))
