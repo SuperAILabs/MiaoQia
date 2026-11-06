@@ -1,6 +1,6 @@
 # 证据与内容理解子系统（evidence）
 
-> 状态：评审中 · 版本：3.6 · 更新：2026-10-26 · 平面：数据供应
+> 状态：评审中 · 平面：数据供应
 
 ## 1. 使命
 
@@ -121,16 +121,16 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 
 ## 12. 实现状况
 
-A02 贯通验收 L1-1（[验收线第8节](../../05-delivery/09-a02-end-to-end-acceptance.md#8-l1-实施进度)）交付公共实例的最小文档管线，代码位于 `data/subsystems/evidence/`：
+公共实例的最小文档管线，代码位于 `data/subsystems/evidence/`：
 
 - `snapshotter`：同一来源对象（来源 + 来源对象键）的规范化内容与最新快照不同即为新快照，序号递增，内容回到历史取值同样是新快照；原件按内容寻址存 `raw/<sha256>`，规范化文档存 `normalized/<snp>.json`，对象不可覆盖；
-- `document_pipeline`：HTML 使用 SDK 的规范化（`doc.html-dev@0.1.0`，与语料评测同一坐标系）；PDF 只接受经复核的规范化表示，PDF 文本层、OCR 与版面随 M1；
+- `document_pipeline`：HTML 使用 SDK 的规范化（`doc.html-dev`，与语料评测同一坐标系）；PDF 只接受经复核的规范化表示，PDF 文本层、OCR 与版面随 M1；
 - `extraction_orchestrator`：按包清单加载解析器与领域校验（入口须位于包内），同一快照同一解析器版本只解析一次；证据或领域语义校验不通过、或任一事实被解析器标为 `suspect` 的修订记为 `suspect`（按最严格状态汇总），下游不物化；
 - `provenance`：文档证据引用入库，快照、修订与证据引用由触发器保持不可变；
 - 事件：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`，与数据同事务经发件箱发布；公共管线拒绝租户上下文；
 - 回放：`mq-evidence-replay` 投放冻结语料（核对原件哈希，权利标签追加 `corpus:<样本>`），不构成来源启用；
 - 读取：`api.Extractions`（解析修订）在数据单元内以本地绑定注入 domain-intelligence。
 
-L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolver(database, store, display=...)`。回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
+文档证据 `api.EvidenceResolver` 的本地绑定为 `evidence.resolver(database, store, display=...)`。回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
 
-本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。它尚未装配到 data-api 或 gateway，生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待后续接入。未实现：`GetDocument` 等远程查询，结构化记录集与派生证据、质量规则、增强、语料快照与重放工作流，S3 对象存储实现（R-03）。
+本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。`ResolveEvidence` 已由 data-api 最小内部 listener 装配；生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待后续接入。未实现：`GetDocument` 等其他远程查询，结构化记录集与派生证据、质量规则、增强、语料快照与重放工作流，S3 对象存储实现（R-03）。

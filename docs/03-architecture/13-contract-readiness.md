@@ -1,19 +1,19 @@
-# 首批契约覆盖与冻结
+# 首批契约覆盖与验收
 
-> 状态：C4a/C4b首批已冻结 · 版本：3.16 · 更新：2026-10-27 · 负责人：首席架构师、数据负责人
+> 状态：已批准 · 负责人：首席架构师、数据负责人
 
-本文定义首批契约的范围、真实样本发现、当前表达能力和冻结证据。字段唯一定义仍在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a均已冻结为1.0.0，具体范围见各批冻结清单；其他领域及生产实现分别验收。
+本文定义首批契约的范围、真实样本发现、当前表达能力和验收证据。字段唯一定义在 `contracts/`，不在文档重建平行Schema。公共采购/企业首批C4b及工程横切首批C4a已验收；其他领域及生产实现分别验收。契约的变更规则以 [`mqc compat`](../../tools/contracts/src/mqc/compat.py) 为准：只有写入持久化数据、影响重放的版本（Schema `x-version`、事件类型 `.v<n>`、扩展包与策略模板版本）受版本约束，接口与工程配置在开发期不设版本号。
 
 ## 1. 批次与范围
 
-| 批次 | 范围 | 冻结条件 / 时点 |
+| 批次 | 范围 | 验收结论 |
 |---|---|---|
-| C4a 工程横切 | 标识登记、内核SQL及版本清单、身份Check、上下文/信封及集成配置、审计/探针事件 | 已冻结明确的9份契约及复用的采集/证据探针契约；正反例、真实组件、本地/远程、生成与兼容复验通过；M0 HTTP认证/完整探针/现有消费者运行时门禁已验收；生产部署另验收 |
-| C4b 公共采购/企业 | `schemas/common`、`schemas/evidence`、`schemas/domains/procurement`、`schemas/domains/organization`及对应领域事件/生命周期 | 已按明确文件范围冻结1.0.0；真实样本验证表达能力，自动来源解析及生产链路另行验收 |
+| C4a 工程横切 | 标识登记、内核SQL及版本清单、身份Check、上下文/信封及集成配置、审计/探针事件 | 已验收：正反例、真实组件、本地/远程、生成与兼容复验通过；M0 HTTP认证/完整探针/现有消费者运行时门禁已验收；生产部署另验收 |
+| C4b 公共采购/企业 | `schemas/common`、`schemas/evidence`、`schemas/domains/procurement`、`schemas/domains/organization`及对应领域事件/生命周期 | 已验收：真实样本验证表达能力；自动来源解析及生产链路另行验收 |
 | 项目审批/信用 | `schemas/domains/investment`、`schemas/domains/credit`及事件 | M3实现前对授权供应商真实数据验收；不能由采购公告样本代证 |
-| 客户智能/研究/渠道 | 策略文档及后续信号、判断、研究、通知接口/事件；首批草案0.1.0已有`schemas/intelligence`的目标对象引用、`Signal`与供策略求值的`ContextSnapshot`（我方主体与按主体的资质状态表） | M2/M3对应能力实现前补接口、事件和负向用例；当前身份接口不能证明其他接口已就绪 |
+| 客户智能/研究/渠道 | 策略文档及后续信号、判断、研究、通知接口/事件；已有`schemas/intelligence`的目标对象引用、`Signal`与供策略求值的`ContextSnapshot`（我方主体与按主体的资质状态表） | M2/M3对应能力实现前补接口、事件和负向用例；当前身份接口不能证明其他接口已就绪 |
 
-冻结清单要列具体文件、批准人、版本、样本集版本、命令与结论；不能把“所有核心契约”当作无边界事项。用户已授权满足条件后冻结；执行时须记录具体范围和验证证据，不以等待额外授权代替技术验收。Schema文件版本从0.x升级1.0，事件`.v1`类型名不自动意味着对应领域实现或AsyncAPI文档已经冻结。
+每批验收要列具体文件范围、样本集、命令与结论，并记录验收所依据的提交；不能把“所有核心契约”当作无边界事项。事件`.v1`类型名不意味着对应领域实现已经就绪。
 
 ## 2. 真实证据与限制
 
@@ -70,7 +70,7 @@ F指完整正文集的sample_index，S指结构化集的sample_index。示例是
 | 字段provenance | 通用ULID允许用组织标识冒充证据 | `evidence_ref`只能为`ev_`，真实定位与quote_hash由证据系统进一步核验 |
 | 未关联更正 | 先强制前序标识可能诱导伪造关联 | 关联数组可暂为空，但必须有带证据原文引用，复核后补关联；保留摘要，不能直接更改不确定字段 |
 
-首批公共类型、事件类型、证据、采购及企业Schema和六份AsyncAPI文档均为1.0.0，采购/企业包为1.0.0；审批/信用仍为0.2.0草案；生成Go/Python/TypeScript类型。联系人解析器逐字段生成证据；生命周期真实样本采用单独的人工映射验证，未宣称该解析器已经处理这些新公告。既有布尔值仍保持其结构，规则来源的覆盖验证在语义验收中完成，不能误把单个bool的Schema通过当成证据充分。
+首批公共类型、事件类型、证据、采购及企业Schema、六份AsyncAPI文档与采购/企业包已验收；审批/信用仍为草案；生成Go/Python/TypeScript类型。联系人解析器逐字段生成证据；生命周期真实样本采用单独的人工映射验证，未宣称该解析器已经处理这些新公告。既有布尔值仍保持其结构，规则来源的覆盖验证在语义验收中完成，不能误把单个bool的Schema通过当成证据充分。
 
 ## 5. 实现与上线仍须关闭的缺口
 
@@ -80,10 +80,10 @@ F指完整正文集的sample_index，S指结构化集的sample_index。示例是
 | 附件、OCR与表格 | 已有22页扫描合同原件及第2/3/6页人工转录、正文表格和附件不可得；缺全量OCR/跨页表格独立评估，不能以人工转录代证 | 数据/AI负责人；M1对应能力验收前 |
 | 更正的before/after | SDK通用替换校验与采购包不可变字段约束已校验现有字段替换的Pointer、目标Schema、before值与原版本；真实金额及时间更正通过。新增/删除字段、授权、原子写入、并发重放仍须在领域执行器验收 | domain-intelligence负责人；M1更正应用前 |
 | 语义与引用完整性 | SDK通用校验验证块连续、表格网格、证据快照/管线/定位/hash与引用存在；采购/企业包的语料校验器验证联系/信用代码原文、标包/结果标识唯一、候选/中标/框架入围阶段与冲突、联合体成员去重；持久化org/revision完整性、跨源冲突裁决与恢复重放仍待真实链路验收 | evidence/领域负责人；M1验收前 |
-| 结构化与派生证据 | 记录集、记录证据、派生证据为草案（ADR-0011已批准架构方向，运行能力按首次启用门禁验收），三语言生成与正反例通过；不改动已冻结的文档证据。SDK尚未校验记录键唯一、字段路径与value_hash、派生链无环及末端为文档/记录证据、事实版本可解析、转换与参考数据内容可取得，派生结果的权限也未按全部来源传播；结构化来源复用快照与解析修订事件，派生证据随事实版本发布，不另设事件 | evidence负责人；第一个结构化来源或派生字段启用前 |
+| 结构化与派生证据 | 记录集、记录证据、派生证据为草案（ADR-0011已批准架构方向，运行能力按首次启用门禁验收），三语言生成与正反例通过；文档证据的已有字段不收紧。SDK尚未校验记录键唯一、字段路径与value_hash、派生链无环及末端为文档/记录证据、事实版本可解析、转换与参考数据内容可取得，派生结果的权限也未按全部来源传播；结构化来源复用快照与解析修订事件，派生证据随事实版本发布，不另设事件 | evidence负责人；第一个结构化来源或派生字段启用前 |
 | 事件覆盖 | 采集4种、证据6种、通用领域3种、实体5种基础事件已补；采购另补验收及框架入围，共20种新事件，权利全部撤回的有效集合可为空。新载荷封闭字段、复用event-types并有正反例；现有v1载荷不就地收紧。客户智能/研究/渠道按阶段补齐 | 各能力负责人；首次实现前 |
 | 企业、审批与信用 | 已验证企业公示登记字段、未知状态和采购供应商名称/信用代码/地址。登记状态/代码/法人和股权比例分别溯源，比例限制0—1；已补核准注销、分支与隶属主体、实际变更日未知和住所失联异常的真实边界；来源接口/全量字段交付另验收，审批与信用M3另行验收 | 信息领域负责人；M1/M3对应实现前 |
-| Schema与事实版本 | 文件x-version、schema_version、事实version、解析器/管线与事件type分别校验；跨版本重放不得混同 | 首席架构师；每批冻结前 |
+| Schema与事实版本 | 文件x-version、schema_version、事实version、解析器/管线与事件type分别校验；跨版本重放不得混同 | 首席架构师；每批验收前 |
 | 新类型的策略投影 | `price_limit`用于关联项目的限价修订和重算，不能自动生成另一投标机会；`supplier_enrollment`不冒充框架协议，R2入围路径使用前补专门投影与策略 | 客户智能/领域负责人；对应能力实现前 |
 | 来源能力与覆盖 | 清单分级/权利/历史范围/采集频率、来源窗口限制、转载去重及盲区；不能以入口数量验收全国覆盖 | 数据负责人；逐来源启用前 |
 
@@ -91,20 +91,20 @@ F指完整正文集的sample_index，S指结构化集的sample_index。示例是
 
 使用既有`mqc check`、`mqc compat --base <基线>`、`mqc generate --check`及导出样例的三语言往返测试；SDK与INF-PROC语料评测覆盖联系人证据变更。结构用例验证费率、缺证据、未知主体、未关联更正和共享条件。完整真实样本的人工字段映射属于表达能力审查，不能宣称50篇已被当前解析器自动正确解析。
 
-C4b冻结时复验证据：13个Schema、76个结构用例、44种事件及82个载荷正反例通过；冻结时契约工具27项测试、SDK与领域包测试通过；30条人工事实导出后的Go/Python往返、TypeScript类型检查与6条Python依赖规则通过。HEAD兼容检查识别18项breaking、96项additive及9项说明变化，首批1.0.0及其他草案版本提升合规，不表示没有不兼容变更；旧数据迁移/重放仍须生产验收。
+C4b验收时复验证据：13个Schema、76个结构用例、44种事件及82个载荷正反例通过；契约工具、SDK与领域包测试通过；30条人工事实导出后的Go/Python往返、TypeScript类型检查与6条Python依赖规则通过。兼容检查识别的不兼容变更已逐项审查；旧数据迁移/重放仍须生产验收。
 
 当前采购解析器只针对已声明的章节/标签/包件表结构，自动解析黄金语料仍为一个真实招标公告样本；另有15份采购原件的20条人工映射及5份企业原件的10条人工映射，用于契约表达、语义及三语言类型验证。扩大自动解析范围时复用/扩展解析器并新增来源难例，不复制一套近似解析逻辑。运行时额外属性限制与业务语义验收继续以原Schema为准，生成类型不替代校验。
 
 
-## 7. C4b冻结结论
+## 7. C4b验收结论
 
-**C4b公共采购/企业首批契约已冻结为1.0.0。** [冻结记录](../../contracts/reviews/first-batch-freeze.yaml)列明11份JSON Schema、6份AsyncAPI文档、1份采购生命周期规则及其版本归属、批准依据、SHA-256、样本集版本和复验结果。已验证15份采购原件/20条人工事实及5份企业原件/10条人工事实；普通同项多中标人、联合体和企业状态、分支、变更、异常真实边界已覆盖，20种缺失事件已补齐载荷正反例。冻结是具体契约基线，不代表其他批次或领域实现全部就绪。冻结后的增量（任务书第二批，均为新增可选字段、按兼容规则升次版本）：公共类型 1.1.0（区划代码表版本）；采购 defs/公告/项目 1.1.0（中标与合同标的明细 `awarded_item`、单价计价单位、资质代码体系与版本及等级要求、交付地区划，`location` 明确为项目实施地）；企业登记 1.1.0、投资记录 0.3.0 随引用升级；INF-PROC 包 1.1.0（补关系类型定义）、样本集 0.5.0 为结果公告补中标标的明细的人工映射；实体事件 1.2.0 新增归属边事件 `entity.project_link.changed.v1`。项目负责人决定在第二批结束时登记新基线，见[冻结修订记录 2](../../contracts/reviews/first-batch-freeze-amendment-2.yaml)，随 PR #11 合并生效；标识登记 1.1.0 与招投标事件 1.0.1 不在该次登记范围。
+**C4b公共采购/企业首批契约已验收。** 范围是 `schemas/common`、`schemas/evidence`、`schemas/domains/procurement`、`schemas/domains/organization` 下的JSON Schema、对应的6份AsyncAPI文档与采购生命周期规则。已验证15份采购原件/20条人工事实及5份企业原件/10条人工事实；普通同项多中标人、联合体和企业状态、分支、变更、异常真实边界已覆盖，20种缺失事件已补齐载荷正反例。验收是具体契约范围的结论，不代表其他批次或领域实现全部就绪。验收后的追加均为新增可选字段：公共类型的区划代码表版本；采购defs/公告/项目的中标与合同标的明细 `awarded_item`、单价计价单位、资质代码体系与版本及等级要求、交付地区划（`location` 明确为项目实施地）；INF-PROC包的关系类型定义，样本集为结果公告补中标标的明细的人工映射；实体事件新增归属边事件 `entity.project_link.changed.v1`。
 
 用户明确接受[广东法院网原始二审判决](https://www.gdcourts.gov.cn/caipanwenshuxuandeng/caipanwenshuxuandeng/content/post_1045953.html)作为一手验收失败难例，要求保留验收争议与裁判结论。样本登记为`gate_scope=accepted_first_party_judicial_edge_case`。`acceptance.dispute`保留供应商对检验报告的异议；`judicial_outcome`逐段保留二审未解除合同、认定质量问题、判令3611400元验收款及利息、驳回10%质保金请求的结论，每段独立溯源。该来源仍是历史司法文书，未取得采购人发布的验收失败公告，交易制度未确认时不推断为政府采购。
 
 生命周期以when（标准JSON Schema，对完整Notice求值）区分框架入围、验收通过/失败/部分/未知；技术验收失败不是采购流标，不自动推出合同解除。本地规则求值排除明确标记的历史司法验收，避免将2013年的验收事实当当前项目阶段。普通中标每条结果独立投影；只有price_kind=total才把报价投影为项目成交金额，单价、年单价合计、估算与未知含义均不能代替总额。
 
-来源标准及全部契约复验已满足，依据用户既有授权完成冻结；后续变更按兼容规则提升版本，保留本次审计基线。自动来源解析、授权供应商交付、OCR、生产聚合/并发/重放与全国覆盖仍是对应实现或上线门禁，不由人工契约映射代证，也不混作Schema冻结条件。
+来源标准及全部契约复验已满足；后续变更执行 `mqc compat` 的兼容规则。自动来源解析、授权供应商交付、OCR、生产聚合/并发/重放与全国覆盖仍是对应实现或上线门禁，不由人工契约映射代证，也不混作契约验收条件。
 
 复验命令：
 
@@ -121,40 +121,38 @@ uv run --project tools/contracts --python 3.12 --locked mqc generate --check
 
 ## 8. C4a工程横切审查
 
-范围包括版本化标识登记、请求上下文Schema、事件信封Schema、集成配置、身份Check OpenAPI、审计/探针AsyncAPI和内核SQL及版本清单。事件类型名与Schema/API/文档版本分别记录；C4b冻结制品作为历史审计基线保存，不改写其哈希。C4a验证采用当前工作区，兼容比较使用HEAD的明确提交标识；两者不同，不能把未提交工作误称为已发布版本。
+范围包括标识登记、请求上下文Schema、事件信封Schema、集成配置、身份Check OpenAPI、审计/探针AsyncAPI和内核SQL及迁移登记。C4a验证采用当前工作区，兼容比较使用HEAD的明确提交标识；两者不同，不能把未提交工作误称为已合并的契约。
 
 | 审查边界 | 修复及验证 |
 |---|---|
-| 标识登记 | 补usr/tnt与identity归属；新增前缀须升版本，禁止删除、改义或重分配对象/所有者/领域，检查代码字面量分配未登记前缀 |
+| 标识登记 | 补usr/tnt与identity归属；禁止删除、改义或重分配对象/所有者/领域，检查代码字面量分配未登记前缀 |
 | 内部上下文 | 单一机器定义，Go/Python采用无填充Base64URL JSON；主体必填、租户/单元成对、8192字节上限、未知键/null/空值拒绝，Go内部HTTP头只用于可信内部监听端口 |
 | 事件信封 | 明确time、JSON对象data、evt标识、来源、类型、域/单元、可选追踪格式；未知信封键/null拒绝，公共租户字段省略。事件载荷须另外按AsyncAPI验证 |
 | 路由 | 发布和消费复用各语言同一校验；拒绝未知前缀和错误单元，不要求事件类型命名空间等于主题命名空间（public.domain承载领域包事件） |
 | 身份接口 | 本地和远程均校验业务参数；上下文决定默认主体。未知业务tenant字段拒绝；400/401协议错误与业务错误均使用Problem Details。真实OpenFGA验证允许、拒绝、权限矩阵与跨租户边界 |
-| 审计/探针 | 既有v1载荷保持兼容，补未知字段、必填、错误主体/结果、标识及时间反例；AsyncAPI文档1.0与事件类型v1分别冻结 |
-| 存储 | SQL定义与Go/Python副本一致；真实PostgreSQL验证唯一键、按消费者去重、事务回滚、RLS与中继只能更新published_at。SQL改变须审查迁移；CREATE IF NOT EXISTS不升级已有表 |
-| 校验工具 | 启用format-nongpl并验证非法时间拒绝；OpenAPI展开组件参与兼容检查，稳定API破坏性变更须新增路径主版本并保留旧路径；Schema/API/AsyncAPI/配置版本不能回退 |
+| 审计/探针 | 既有v1载荷保持兼容，补未知字段、必填、错误主体/结果、标识及时间反例 |
+| 存储 | SQL定义与Go/Python副本一致；真实PostgreSQL验证唯一键、按消费者去重、事务回滚、RLS与中继只能更新published_at。SQL改变须登记迁移文件并审查；CREATE IF NOT EXISTS不升级已有表 |
+| 校验工具 | 启用format-nongpl并验证非法时间拒绝；OpenAPI展开组件参与兼容检查并报告变更级别，调用方在同一提交中改齐；Schema版本不能回退 |
 | 正反例一致性 | JSON完整实例集同时供mqc与Go/Python读取，允许根值null等无法只用字段补丁覆盖的边界；既有Schema/事件/API继续复用同一正反例执行器；不存在字段的replace报制品错误，不冒充反例通过 |
 
-**C4a工程横切首批已冻结为1.0.0。** [冻结记录](../../contracts/reviews/engineering-first-batch-freeze.yaml)登记9份明确契约、复用的C4b探针依赖、样例/实现/生成物哈希、用户授权及复验命令。内核SQL的版本归属kernel.yaml；现有事件类型v1保留，文档版本1.0独立记录。
+**C4a工程横切首批已验收。**
 
-C4a冻结时的全仓复验记录：15份Schema、112个结构用例、44种事件/93个载荷用例及13个API用例通过，其中C4a新增/补齐60个结构/API/载荷正反例。契约工具38项、SDK58项、Python内核60项测试通过；Go全工作区race复验92项（含子用例），真实OpenFGA 1.10.0、PostgreSQL 18.6及Kafka 4.1.0执行本地/远程授权、RLS、唯一键/回滚/中继权限、发件箱/消费去重及死信测试；仅可选的策略成本报告跳过，不属于工程横切门禁。67种类型生成一致、66条正例Go/Python真实编码往返、TypeScript类型检查及6条Python依赖规则通过。
+C4a验收时的全仓复验记录：15份Schema、112个结构用例、44种事件/93个载荷用例及13个API用例通过，其中C4a新增/补齐60个结构/API/载荷正反例。契约工具、SDK与Python内核测试通过；Go全工作区race复验通过，真实OpenFGA、PostgreSQL及Kafka执行本地/远程授权、RLS、唯一键/回滚/中继权限、发件箱/消费去重及死信测试；仅可选的策略成本报告跳过，不属于工程横切门禁。67种类型生成一致、66条正例Go/Python真实编码往返、TypeScript类型检查及6条Python依赖规则通过。
 
-HEAD比较是整个未提交工作区的累计差异：21项breaking、98项additive及9项说明变化，其中3项为本次身份错误响应约束，其他breaking来自已验收的C4b；草案升级1.0版本合规，不表示没有破坏性变更。C4b的18份契约文件保持原冻结哈希；两份pack.yaml的version值仍为1.0.0冻结基线，但清单经历后续入口登记、注释与排版调整，当前文件字节哈希不等于冻结记录。注释与排版调整不改变解析字段；这不表示当前清单与原冻结制品字节相同。原始审计记录及其哈希保持不变，后续清单不能冒充原冻结制品；后续工程配置按保守兼容规则升版本并人工审查语义。
+集成安全配置已按强制租户目录核验扩展。M0 HTTP认证、完整探针、现有四个消费者运行时载荷校验的实现与真实组件门禁已关闭，详见[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)。Go/Python框架在事务前执行离线原Schema校验；业务来源、主体、探针路径及审计租户一致性由应用所有者校验，失败回滚并进入死信。
 
-首批冻结记录保留其审计基线；当前集成安全配置已按强制租户目录核验升至3.0.0。M0 HTTP认证、完整探针、现有四个消费者运行时载荷校验的实现与真实组件门禁已关闭，详见[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)与[验收清单](../../contracts/reviews/m0-runtime-acceptance.yaml)。Go/Python框架在事务前执行离线原Schema校验；业务来源、主体、探针路径及审计租户一致性由应用所有者校验，失败回滚并进入死信。
-
-最小身份生命周期、cell-01目录核验及identity.SessionResolver本地/远程绑定见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)。identity OpenAPI增量至1.1.0，新增4个生命周期事件；首批冻结记录作为历史审计保留。审计AsyncAPI增量至1.1.0：新增可选`delegation`（内部支持访问或服务委托的授予记录），事件类型仍为v1，Go/Python审计SDK同步；第三批结束时以[冻结修订记录三](../../contracts/reviews/first-batch-freeze-amendment-3.yaml)登记为新基线，原冻结记录保留为历史审计。
+最小身份生命周期、cell-01目录核验及identity.SessionResolver本地/远程绑定见[M0身份验收](../05-delivery/07-m0-identity-acceptance.md)，新增4个生命周期事件。审计事件新增可选`delegation`（内部支持访问或服务委托的授予记录），事件类型仍为v1，Go/Python审计SDK同步。
 
 生产部署、证书运维、Kafka/数据库身份与ACL、审批、未来子系统接口和全国来源仍有各自门禁。当前四个消费者通过不代证未来处理函数，但新增登记处理函数必须具备可编译载荷Schema，不能静默跳过。
 
 ## 9. 随功能追加的契约
 
-设计已经确定、但机器契约要等首个使用它的功能实现时才写入 `contracts/` 的项目，统一登记在本节，避免“随功能追加”被遗忘。功能启动时先核对本表：相关契约随该功能的首个 PR 一起提交，并按兼容规则判断版本（追加式升次版本，破坏性升主版本）；完成后从本表删除该行，改记到对应批次的冻结或修订记录。A02 旅程各段 PRD 中的接口与事件按 [PRD 交接规则](../01-product/prd/README.md#3-交接规则) 在该段实现时写入，不在本表重复登记。
+设计已经确定、但机器契约要等首个使用它的功能实现时才写入 `contracts/` 的项目，统一登记在本节，避免“随功能追加”被遗忘。功能启动时先核对本表：相关契约随该功能的首个 PR 一起提交，并通过 `mqc compat` 的兼容检查；完成后从本表删除该行。A02 旅程各段 PRD 中的接口与事件按 [PRD 交接规则](../01-product/prd/README.md#3-交接规则) 在该段实现时写入，不在本表重复登记。
 
 | 契约 | 设计依据 | 触发功能 | 兼容方式 |
 |---|---|---|---|
-| 权利条目 Schema 与引用格式 | [数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 授权数据商接入，或客户授权数据进入研究 | 追加；已冻结的 `rights_tags`、`rights_set` 不变 |
-| 事实撤回领域事件 | [domain-intelligence 第 11 节](subsystems/domain-intelligence.md#11-事实撤回与恢复) | 首个撤回识别能力 | 领域事件契约追加，升次版本 |
+| 权利条目 Schema 与引用格式 | [数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 授权数据商接入，或客户授权数据进入研究 | 追加；已有的 `rights_tags`、`rights_set` 不变 |
+| 事实撤回领域事件 | [domain-intelligence 第 11 节](subsystems/domain-intelligence.md#11-事实撤回与恢复) | 首个撤回识别能力 | 领域事件契约追加 |
 | 导出与迁移的事件和接口 | [governance 第 10 节](subsystems/governance.md#10-数据导出与迁移) | 首个租户导出功能 | 新增 |
 | 私有部署馈送包格式 | [部署拓扑第 10 节](07-deployment-topology.md#10-私有部署的公共数据馈送) | M5 私有部署包 | 新增 |
 | 服务委托会话接口、令牌形态与 `identity.service_delegation.changed.v1` | [identity 第 7.8 节](subsystems/identity.md#78-服务委托) | 托管服务委托 | identity OpenAPI 与事件追加 |
@@ -165,23 +163,21 @@ HEAD比较是整个未提交工作区的累计差异：21项breaking、98项addi
 | 领域历史覆盖起点 | [可扩展性第 4 节](04-extensibility.md#4-加载版本与发布) | 首个声明历史窗口的视图启用 | 覆盖度量追加字段 |
 | 投标提交确认（A01 跟进“已投标”阶段的提交时间、确认人与依据） | APP-TENDER 效果指标 `a01_bid_count`、`a01_win_rate` 的待定口径与结果原因的 `implies_bid`（`packs/application_domains/tendering/outcomes/a01.yaml`）（`packs/application_domains/tendering/metrics.yaml`）；[pursuit 第10节](subsystems/pursuit.md#10-分阶段交付) | M4 路径引擎的 A01 投标阶段 | pursuit 阶段数据与事件追加字段 |
 | 平台资质体系登记（`qual:*` 体系与版本，行业包资质模板 `equivalents` 的加载与解析） | [可扩展性 2.4](04-extensibility.md#24-行业包) | INF-QUAL 首次启用，或首个跨资质体系比较资质的规则 | 新增 |
-| 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | 数据平面的首个生产读取实现（第4段服务端切片以 gateway 的 `api.PublicData` 端口与内存夹具代替，生产组装为未接入） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
+| 对象页的数据平面读取：domain-intelligence 的 `GetFact` / `GetFactHistory` / `QueryFacts` / `GetProjectChain` / `GetDomainStatistics` / `GetCoverage`，entity-graph 的 `GetEntity` / `GetEntityProfile` / `GetRelationships`（均带口径与记录截止时点） | [PRD 第4段第8节](../01-product/prd/04-object-page-evidence.md#8-数据接口与事件)；[gateway 第10节](subsystems/gateway.md#10-对象页与证据面板-bff) | A02 的首个生产读取实现（gateway 通过 `MIAOQIA_GATEWAY_DATA_API_URL` 装配 data-api 的事实与 evidence 读取；entity-graph、完整历史/统计与 mTLS 进程验收仍待接入） | 各所有者 OpenAPI 新增；gateway 的对象页契约不变 |
 | evidence 的 `ResolveEvidence`（展示级别与原因、快照、来源可达状态、派生输入） | [evidence](subsystems/evidence.md)；PRD 第4段 F6 | 证据解析的生产实现（第4段切片以 `api.EvidenceResolver` 端口代替） | 新增 |
-| commerce 的按租户权益（`GetEntitlements` 的订阅与按租户覆盖包）与按套餐的查看额度；覆盖判断 `checkCoverage` 已随 commerce OpenAPI 0.2.0 写入，覆盖包暂为部署配置 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（额度与覆盖包来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt`、`CoverageDecision` 不变 |
+| commerce 的按租户权益（`GetEntitlements` 的订阅与按租户覆盖包）与按套餐的查看额度；覆盖判断 `checkCoverage` 已写入 commerce OpenAPI，覆盖包暂为部署配置 | [commerce 第4节](subsystems/commerce.md#4-接口)、[第8节](subsystems/commerce.md#8-不可用原因) | M5 产品目录与权益（额度与覆盖包来自配置） | commerce OpenAPI 追加；`ViewMeterReceipt`、`CoverageDecision` 不变 |
 | detection 的归属边读取（entity-graph 的 `part_of`，项目展开到采购项目） | [detection 第5节](subsystems/detection.md#5-接口) | entity-graph 关系读取的生产实现（第4段切片以 `api.ProjectLinks` 端口代替） | 随 entity-graph `GetRelationships` |
 | 简报各区的数据截至时间与来源中断（domain-intelligence 的 `GetCoverage`，按信息领域） | [PRD 第5段 F2 第4条](../01-product/prd/05-briefing-quick-actions.md#f2-推送到企业微信)；[channels 第6节](subsystems/channels.md#6-接口) | 覆盖的首个生产读取实现（第5段切片以 channels 的 `api.Coverage` 端口代替，未接入时各领域为“未知”） | 随 domain-intelligence OpenAPI；channels 的简报契约不变 |
 | 简报与卡片来源字段的展示级别（信号各展示字段的来源权利与原文链接） | [PRD 第5段 F3 第3条](../01-product/prd/05-briefing-quick-actions.md#f3-卡片内容与截断)；[数据架构第 12 节](02-data-architecture.md#12-来源权利与数据权益) | 来源权利的生产读取（第5段切片以 channels 的 `api.Rights` 端口代替，未接入时来源字段失败关闭为 none） | 随权利条目 Schema；channels 的简报契约不变 |
 | 公开截止时间的变化事件（domain-intelligence 的投标截止、开标时间的更正与撤回，带业务有效值、来源发布时间与事实版本） | [PRD 第6段 F6](../01-product/prd/06-pursuit-follow-up.md#f6-公开截止时间变化)；[pursuit 第11节](subsystems/pursuit.md#11-实现状况) | pursuit 任务的公开截止绑定（第6段切片未实现 F6：任务只有手工截止，见 [A02 验收缺口 D-18](../05-delivery/09-a02-end-to-end-acceptance.md#41-数据供应d)） | domain-intelligence 领域事件追加；pursuit 的任务契约追加可选的绑定字段 |
 | 成员与租户时区（identity 成员或租户属性） | [PRD 第6段附“已知设计缺口”第4项](../01-product/prd/06-pursuit-follow-up.md#附已知设计缺口) | 第一个按负责人时区计算提醒或周期的功能（第6段切片按截止所填时区计算提醒，简报按缺省 Asia/Shanghai） | identity OpenAPI 追加可选字段 |
-| gateway 的 Web 页面聚合 `/v1/web/*` 与对象页版本检查 `GET /v1/objects/{objectID}/versions` | [Web 专项设计第7节](14-web-application.md#7-bff-契约) | 首个使用该端点的 Web 实现批次（W0～W5） | gateway OpenAPI 追加，升次版本 |
+| gateway 的 Web 页面聚合 `/v1/web/*` 与对象页版本检查 `GET /v1/objects/{objectID}/versions` | [Web 专项设计第7节](14-web-application.md#7-bff-契约) | 首个使用该端点的 Web 实现批次（W0～W5） | gateway OpenAPI 追加 |
 | customer-context 的保存视图（`SavedView` 与接口） | [Web 专项设计第6.2节](14-web-application.md#62-保存视图的所有者) | Web 收件箱的个人视图（W2） | customer-context OpenAPI 追加 |
 | Web 页面需要的公开读取与命令：identity `ListMembers` / `PreviewInvitation` / 受邀账号准备，entity-graph `ResolveEntity`，evidence 证书文件上传，learning `ReportMiss` | [Web 专项设计第7.3节](14-web-application.md#73-端点清单) | 对应页面的 Web 实现批次（W1、W2） | 各所有者 OpenAPI 追加 |
-| 持续跟踪每期的变化简报：channels 消费 `pursuit.tracking.period_closed.v1` 的简报种类与投递事件，及数据平面按对象集合与期间读取变化（组织的事实与关系变化，按期末成员快照与上一期对比）的内部接口；detection 的关注消费 `pursuit.tracking.changed.v1` | [pursuit 第11节](subsystems/pursuit.md#11-实现状况)；PRD 第6段 F10；[A02 验收缺口 C-12](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 持续跟踪变化简报的实现（依赖数据平面的变化读取，L1 后续） | channels 事件与 domain-intelligence / entity-graph 内部读取追加；pursuit 事件 0.3.0 不变 |
+| 持续跟踪每期的变化简报：channels 消费 `pursuit.tracking.period_closed.v1` 的简报种类与投递事件，及数据平面按对象集合与期间读取变化（组织的事实与关系变化，按期末成员快照与上一期对比）的内部接口；detection 的关注消费 `pursuit.tracking.changed.v1` | [pursuit 第11节](subsystems/pursuit.md#11-实现状况)；PRD 第6段 F10；[A02 验收缺口 C-12](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 持续跟踪变化简报的实现（依赖数据平面的变化读取，L1 后续） | channels 事件与 domain-intelligence / entity-graph 内部读取追加；pursuit 事件不变 |
 | 持续跟踪对象的来源版本与合并（成员快照中每个组织的 entity-graph 版本、`entity.merged` 后的对象替换）与企业名单导入 | PRD 第6段 F10 第3条；[A02 验收缺口 C-13](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | entity-graph 组织解析与合并事件（D-12） | pursuit 契约与事件追加字段 |
 | 分派规则按我方主体、组织单元与角色的条件，以及信号详情、卡片与通知中的候选负责人 | [customer-context 第11节](subsystems/customer-context.md#11-分派配置)；[A02 验收缺口 C-22、C-23](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 信号上“由我方哪个主体承接”的字段、identity 的单元覆盖与 `ListPermitted`（C-07）；信号详情展示候选的 Web 实现（W-02） | customer-context `AssignmentRule` 追加可选条件；detection `SignalDetail` 追加可选字段 |
 | 跟进目标中的标包标识（`lot_`，用于把互相提示缩小到同一标包） | PRD 第6段 F2 第1条；[A02 验收缺口 C-15](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 通用项目与标包聚合（D-04 的 `lot_`） | pursuit `Target` 与信号主体追加可选字段 |
 | 持久化的评估报告（含跟进结果部分）与报告事件 | [learning 实现状况](subsystems/learning.md)；PRD 第6段 F7 第5条；[A02 验收缺口 C-16](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 评估报告功能（目前 `getOutcomeSummary` 只读计算） | learning OpenAPI 与事件追加 |
 | 简报“关注变化”区的数据来源：关注（watch）对象与按成员、期间读取关注对象变化的内部接口，及 channels 简报区种类 | PRD 第5段第13节第9项；[A02 验收缺口 C-19](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | 关注功能开放（第4段第2节，不在 M2） | detection 或数据平面新增内部接口；channels `BriefingSection.kind` 追加 |
 | 简报 AI 开头摘要：ai-platform 的生成接口与生成标识，channels `Briefing` 的摘要字段 | PRD 第5段第13节第8项；[A02 验收缺口 C-18](../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c) | M3 研究入口（M2 不开启） | ai-platform 新增；channels OpenAPI 追加可选字段 |
-
-已随功能写入并从本表删除：渠道通知的投递事件与统计（C-11：channels 事件 0.5.0 新增 `channels.notice.sent.v1` / `channels.notice.failed.v1`，channels OpenAPI 0.4.0 的 `getDeliveryStats` 追加可选 `notices`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-17.yaml`）；信号的即时通知（C-08：channels 事件 0.6.0 新增 `channels.signal_notice.sent.v1` / `channels.signal_notice.failed.v1`，channels OpenAPI 0.5.0 追加通知种类 `signal_immediate` 与取消原因、偏好 `instant_notify`、简报条目 `notified` 与 `arrived_overnight`，customer-context OpenAPI 0.6.0 的 `ActivePolicy` 追加 `owner` 与 `participants`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-18.yaml`）；目标的分派规则与信号上的候选负责人（C-14：customer-context OpenAPI 0.7.0 新增 `getAssignmentRules` / `updateAssignmentRules`，`ActivePolicy` 追加可选 `assignment`；detection OpenAPI 0.4.0 新增只经内部端口的 `getSignalCandidateOwner`；草案，登记见 `contracts/reviews/first-batch-freeze-amendment-19.yaml`）。

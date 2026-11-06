@@ -26,7 +26,7 @@
 
 ## 项目状态
 
-[范围与阶段基线](docs/05-delivery/06-stage-baseline.md)已收口，M0尚未整体退出。HTTP认证、完整跨语言探针及现有消费者载荷校验已通过[真实组件验收](docs/05-delivery/05-m0-runtime-acceptance.md)，其余交付与生产部署分别验收。产品需求、原型及客户任务验证待交付；事项状态见[立项准入清单](docs/05-delivery/00-initiation-readiness.md)。
+阶段状态与当前主线见[范围与阶段基线](docs/05-delivery/06-stage-baseline.md)，A02 缺口状态见[A02 真实贯通验收线](docs/05-delivery/09-a02-end-to-end-acceptance.md#4-缺口清单)，立项事项状态见[立项准入清单](docs/05-delivery/00-initiation-readiness.md)。
 
 ## Tender Intel
 

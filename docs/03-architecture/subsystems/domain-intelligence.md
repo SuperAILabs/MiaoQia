@@ -1,6 +1,6 @@
 # 领域情报子系统（domain-intelligence）
 
-> 状态：评审中 · 版本：2.9 · 更新：2026-10-26 · 平面：数据供应
+> 状态：评审中 · 平面：数据供应
 
 ## 1. 使命
 
@@ -92,7 +92,7 @@
 
 - **判定**：`acquisition` 的再次抓取发现原页面被发布方明确作废或替换为撤回声明时，生成新快照；解析修订识别出撤回后，本子系统产生新的事实版本，状态为已撤回。仅抓取失败或页面消失不判定为撤回，只记为待复核。
 - **版本**：撤回不删除旧版本。新版本保留原有字段，追加撤回原因（发布方作废、发布方以撤回声明替换原内容）、撤回生效时间、发现时间与证据引用；“当前版本”指针移到撤回版本。
-- **事件**：撤回发布独立的领域事件，载荷含事实标识、撤回后的版本号、原因、生效时间、发现时间与证据引用；下游（`entity-graph` 以 `source_withdrawn` 撤销关系边、`detection` 重新评估相关信号、`search` 更新投影）据此处理。该事件随首个撤回识别能力一起加入领域事件契约，按追加式升级小版本。
+- **事件**：撤回发布独立的领域事件，载荷含事实标识、撤回后的版本号、原因、生效时间、发现时间与证据引用；下游（`entity-graph` 以 `source_withdrawn` 撤销关系边、`detection` 重新评估相关信号、`search` 更新投影）据此处理。该事件随首个撤回识别能力一起以追加方式加入领域事件契约。
 - **恢复**：发布方重新发布相同内容或撤回被证明有误时，产生新的事实版本并发布普通的 `domain.fact.upserted.v1`，新版本记录它恢复的是哪个版本；被撤回期间产生的下游变化不回滚，按恢复后的版本重新评估。
 - **时间口径**：撤回版本的 `recorded_at` 是平台记录它的时间（不早于发现时间），撤回生效时间记为该版本业务有效区间的起点（[数据架构第 5 节](../02-data-architecture.md#5-时间模型)）。生效时间可以早于发现与记录时间，两者不能互相替代。恢复版本同样分别记录恢复的业务生效时间和平台记录时间；未声明生效时间的，以发现时间作为生效时间并标注为推定。
 - **历史查询**：分两种口径，调用方必须指明：
@@ -103,7 +103,7 @@
 
 ## 12. 实现状况
 
-A02 贯通验收 L1-1 交付 `fact_store` 与 A02 结果视图投影，代码位于 `data/subsystems/domain-intelligence/`：
+`fact_store` 与 A02 结果视图投影的代码位于 `data/subsystems/domain-intelligence/`：
 
 - 消费 `evidence.extraction.revised.v1`（只在 `data-consumer` 角色），经 evidence 的 `api.Extractions` 读取修订并核对事件与修订一致；`suspect` 修订不物化；
 - 领域事实按（信息领域、对象类型、来源、来源对象键、序号）确定身份，取值（去掉溯源与部分标识）变化才产生新版本；版本不可变，当前版本只能前进；补齐公共字段后按契约模型校验，不合契约时事务失败；
@@ -111,24 +111,24 @@ A02 贯通验收 L1-1 交付 `fact_store` 与 A02 结果视图投影，代码位
 - 每个新版本与 `domain.fact.upserted.v1` 同事务经发件箱发布；
 - `tendering.bid_result` 投影（`domain/views.py`）按视图目录规则产生求值单位，形状与 detection 的 `api.Unit` 一致；采购项目、品类、行政区划与 `org_id` 未接入时不出现（读取为未知）。
 
-L1-2a 交付 `api.Facts` 的本地绑定 `domain_intelligence.queries(database, allowed=...)`：
+`api.Facts` 的本地绑定为 `domain_intelligence.queries(database, allowed=...)`：
 
 - `get_fact`、`get_fact_history`、`query_facts` 与 `bid_result_units` 必须显式指定 `Basis`，响应回带同一口径；`current` 读取当前记录版本，`known_at` 只选 `recorded_at` 不晚于带时区截止时点的版本；固定版本同样不能越过截止时点；
 - 读取使用数据库只读事务，参数化 SQL；查询只支持登记字段（信息领域、对象类型），每页 1–100 条。单条 SELECT 流式扫描同一数据库快照，先按来源权利过滤，再分页，不返回权限外的计数或对象标识游标；
 - 部署单元必须注入 `allowed(rights_tags, purpose)`，回调通过当前请求上下文核验调用者、租户、单元、用途与当前来源权利。查询执行前统一核验请求上下文、策略装配与用途，未注入或缺少用途时拒绝读取，不依赖是否命中事实；无权与不存在同形；选中版本无权时不回退到旧版本；
 - `known_at` 当前只实现记录时间选择，尚无业务有效区间和撤回识别，不能据此宣称第11节双时间语义已完成。当前口径同样只代表已物化的记录值。
 
-L1-2b 在 `application/projects.py` 实现冻结来源的局部采购项目聚合：
+`application/projects.py` 实现冻结来源的局部采购项目聚合：
 
 - 仅登记 `official-qzygjy` 的平台编号命名空间；身份键为平台命名空间、带证据采购方（有 USCC 时用 USCC，否则同平台精确原名）及仅去两端空白的项目号。不跨平台、跨采购方、按标题或别名合并；这不是全局组织识别，同名异体无可区分证据时仍受该冻结夹具边界限制。
 - 首版招标/中标公告形成独立 `tendering.procurement_project`（`pp_`）事实版本；成员依据写在不可变 `dom_project_dependencies`，每个成员固定到 Notice 版本。项目字段保留所选公告的 `prov`，阶段取已知成员集合，中标先到时后到招标不使阶段倒退。Notice 固定版本不回填当前 `project_id`。
-- 公告默认 `lot_key=1` 仅为公告内兼容容器；本批无跨公告标包证据，项目 `lots=[]`，不分配 `lot_`、不搬运结果到假标包。采购项目不是投资项目 `prj_`，不推导 `part_of`。
+- 公告默认 `lot_key=1` 仅为公告内兼容容器；没有跨公告标包证据，项目 `lots=[]`，不分配 `lot_`、不搬运结果到假标包。采购项目不是投资项目 `prj_`，不推导 `part_of`。
 - `dom_notice_links` 按公告固定版本保存关联依据及状态；缺编号、采购方、来源命名空间、编号冲突与不支持类型分别记录 `pending_project_code`、`pending_buyer`、`pending_namespace`、`pending_conflicting_code`、`pending_notice_type`。当前读取返回的是最新**已接受**聚合，不能据此声称已包含所有来源修订。Revision API 无权威来源序号，因此 Notice 后续修订照常物化，但关联为 `pending_revision`，不自动替换旧成员或重连；待复核记录目前仅供内部数据库运维读取，尚无用户复核接口。
 - 复用事实版本链、查询与 kernel 发件箱；Notice 保留 `base` 推导键，聚合使用规则版本与成员固定版本的指纹，不伪造解析修订。身份唯一约束、稳定顺序事务锁、关联/依赖与发件箱保证同事务及重复/并发幂等。项目权利标签取所有依赖的并集，读取策略必须全数许可；固定版本与 `known_at` 继续检查当前权利。
 - 首版发布 `tendering.notice.published.v1`；成功首次关联发布 `tendering.project.linked.v1`；项目阶段变化发布 `tendering.project.stage_changed.v1`；明确中标发布 `tendering.result.published.v1`（未知标包为 `lot_ids=[]`）。这些事件的 `fact_version` 都指 `notice_id` 的 Notice 版本，项目版本保存在内部关联依据中。新公告与修订、晚到关联不同，修订不会重复发首发事件。所有业务载荷先按既有契约校验，再写发件箱；relay 仍为至少一次投递。迁移 `0002` 支持已有 Notice 数据升级为 `base` 推导键；已有聚合/关联数据或同修订多推导版本时拒绝有损回退，须保留数据并前向迁移。
 
 存量升级后的有界补物化入口为 `mq-project-backfill ntc_<ID> [ntc_<ID> ...]`（在 `data/` 下运行 `uv run --locked --all-packages mq-project-backfill ...`）。命令由 data 部署单元装配两个子系统的本地依赖，领域应用仅接收注入的解析读取端口。部署先执行 `0002` 迁移，并配置现有 `MIAOQIA_DOMAIN_INTELLIGENCE_DB_DSN` 与 `MIAOQIA_EVIDENCE_DB_DSN` 本地绑定；使用子系统 app 账号，命令通过既有公共服务上下文执行，不经过用户读取接口或消费 inbox。操作员必须显式指定 1–100 个公告 ID，不能全库扫描或指定历史版本。命令固定来源锁下的当前 Notice 版本，校验契约、真实解析修订、来源/快照/权利、字段及证据一致性，复用同一聚合原语。整个批次原子提交，输出每个目标的 `processed`/`unchanged`、关联状态与项目 ID；未知来源保留 `pending_namespace`，当前版本大于 1 保留 `pending_revision`。已有当前版本关联只读返回 `unchanged`。合法 ID 不存在、错误对象、无效修订或载荷校验失败会拒绝整个批次。
 
-普通解析事件回放对已物化 revision 保持原幂等，不会替代这条补物化命令；consumer inbox 去重也不影响本地命令。补物化不改 Notice 内容/版本或原 `domain.fact.upserted.v1` 条目，不假造 revision；它首次补建关联/项目并发布本批尚不存在的 tendering 事件，项目新版本仍使用现有 `domain.fact.upserted.v1`。重复执行不产生新版本或事件。关联后的修订仍须复核，不因此扩大自动乱序处理。旧库回归夹具冻结自 `c0694cf` 的旧物化写入，带 SHA-256 校验，只证明旧持久化形态/事务写入升级路径，复用当前纯版本规则，不代证完整旧运行环境。
+普通解析事件回放对已物化 revision 保持原幂等，不会替代这条补物化命令；consumer inbox 去重也不影响本地命令。补物化不改 Notice 内容/版本或原 `domain.fact.upserted.v1` 条目，不假造 revision；它首次补建关联/项目并发布此前不存在的 tendering 事件，项目新版本仍使用现有 `domain.fact.upserted.v1`。重复执行不产生新版本或事件。关联后的修订仍须复核，不因此扩大自动乱序处理。旧库回归夹具冻结自 `c0694cf` 的旧物化写入，带 SHA-256 校验，只证明旧持久化形态/事务写入升级路径，复用当前纯版本规则，不代证完整旧运行环境。
 
-未实现：本地绑定的 data-api 远程传输与认证装配、生产来源权利策略、`GetCoverage` 与服务状态，其他来源的自动项目聚合、标包关联、更正与完整生命周期事件、统计、业务有效区间、撤回与恢复。项目链、品类增强、INF-ORG 夹具及组织归属仍属 L1-2 后续工作。A02 保持 L0；冻结语料不构成真实来源启用。
+未实现：`GetCoverage` 与服务状态、生产来源权利策略，其他来源的自动项目聚合、标包关联、更正与完整生命周期事件、统计、业务有效区间、撤回与恢复。当前 data-api 已提供事实当前/历史/查询与 A02 结果视图的最小读取 listener；生产 mTLS 装配和调用方绑定、项目链、品类增强、INF-ORG 夹具及组织归属未实现。冻结语料不构成真实来源启用。

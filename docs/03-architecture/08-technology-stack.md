@@ -1,6 +1,6 @@
 # 技术选型
 
-> 状态：评审中 · 版本：3.0 · 更新：2026-10-14 · 负责人：首席架构师
+> 状态：评审中 · 负责人：首席架构师
 
 选型原则：成熟、开源、可离线自建、许可证允许向私有部署客户分发、团队可招聘、不依赖任何云厂商的专有服务（ADR-0014）。本文是组件选型的唯一清单；决策理由见各 ADR，不在此重复。
 
@@ -107,7 +107,7 @@
 | 镜像仓库 | Harbor |
 | 可观测性 | OpenTelemetry Collector；VictoriaMetrics + Grafana；Loki；Tempo（AGPL 组件随私有部署分发前经法务确认） |
 | CI | GitHub Actions + 境内自建 runner；契约检查工具 `mqc`（`tools/contracts/`） |
-| 本地开发 | Docker Compose（全部基础组件，`deploy/local/`）+ 三个部署单元的进程角色入口 |
+| 开发环境 | 默认复用共享基础组件（PostgreSQL、Kafka、OpenFGA、Keycloak、OTLP 等）+ 三个部署单元的进程角色入口；OpenFGA 网络长尾时可由验收入口显式启动本机内存服务；`deploy/local/` 的 Docker Compose 仅作可选引导 |
 
 ## 7. 评估后不引入的组件
 

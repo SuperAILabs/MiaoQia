@@ -1,6 +1,6 @@
 # 策略 DSL
 
-> 状态：评审中 · 版本：1.6 · 更新：2026-10-17 · 负责人：首席架构师、招投标领域负责人
+> 状态：评审中 · 负责人：首席架构师、招投标领域负责人
 
 策略决定“一条领域事实对某个租户的某个商业目标意味着什么”。本文是策略 DSL 的唯一规范：结构、求值语义、CEL 环境、编译与下推、生命周期和限制。机器可读定义放在 `contracts/policy/`（`policy.schema.json` 文档结构、`cel-environment.yaml` 变量、函数、规模上界与限制），与本文一致；编译与求值实现在 `services/kernel/policy`，`customer-context`、`detection`、`learning` 共用。
 

@@ -55,7 +55,8 @@ docs/
 │   ├── 06-stage-baseline.md       范围与阶段交接基线
 │   ├── 07-m0-identity-acceptance.md 身份生命周期与cell路由验收
 │   ├── 08-model-vendor-evaluation.md 模型供应商评测方案（C3/C7a）
-│   └── 09-a02-end-to-end-acceptance.md A02 真实贯通验收线与缺口清单
+│   ├── 09-a02-end-to-end-acceptance.md A02 真实贯通验收线与缺口清单
+│   └── 10-vps-public-services.md VPS 公共测试服务接入
 ```
 
 ## 2. 阅读路径
@@ -88,7 +89,7 @@ docs/
 每份正式文档开头使用统一的元信息行：
 
 ```text
-> 状态：草案 | 评审中 | 已批准 · 版本：x.y · 更新：YYYY-MM-DD · 负责人：角色或姓名
+> 状态：草案 | 评审中 | 已批准 · 负责人：角色或姓名
 ```
 
 | 状态 | 含义 | 是否可作为研发依据 |
@@ -97,7 +98,7 @@ docs/
 | 评审中 | 已提交评审，等待结论 | 可作为前期设计输入 |
 | 已批准 | 评审通过，作为执行依据 | 是 |
 
-版本号规则：结构性改动或结论变化升主版本，补充与修正升次版本。
+文档不写版本号与更新日期，变更历史由版本库追溯。
 
 ## 5. 编写约定
 
@@ -106,6 +107,7 @@ docs/
 - **可执行**：每份文档都要回答“谁据此做什么”。纯背景性内容放在附录中。
 - **只写现行**：内容调整时直接改写原处，不新增“替代”文档，不保留“原方案 / 已废弃 / 改为”之类的表述；不再适用的文档直接删除。只有此前没有覆盖的内容才新建文档。
 - **单一事实来源**：同一事实只在一处完整定义，其他文档引用链接，不复制粘贴。主要事实的定义处见第 8 节。
+- **引用不带版本与状态值**：引用契约、扩展包或其他文档时只给链接，不复述其版本号、进度或状态值；这些值以被引用处为准。`tools/dev/check_doc_versions.py` 检查文档中的版本号字面量。
 - **图表**：使用 Mermaid 或纯文本图，便于评审和版本对比。
 - **标识符**：代码、服务、事件、Schema 名称使用英文；说明文字使用中文。
 
@@ -118,7 +120,7 @@ docs/
 1. 在分支上修改文档，并在提交信息中说明影响范围；
 2. 涉及多个层级或子系统边界时，需同步更新相关 ADR；
 3. 由文档负责人和受影响子系统负责人评审；
-4. 合并后更新文档状态与版本号。
+4. 合并后更新文档状态。
 
 ## 8. 单一事实来源登记
 
@@ -136,7 +138,7 @@ docs/
 | 信息领域生命周期状态机 | `packs/information_domains/<领域>/lifecycle.yaml` | 链接 |
 | 商业目标目录 | `02-business/02-commercial-objectives.md` | 引用目标编号 |
 | 候选采购来源与状态 | `packs/information_domains/procurement/source-inventory.yaml` | 仅引用，启用前逐来源验收 |
-| 首批契约范围与冻结证据 | `03-architecture/13-contract-readiness.md` | 引用对应阶段门禁 |
+| 首批契约范围与验收证据 | `03-architecture/13-contract-readiness.md` | 引用对应阶段门禁 |
 | 首发范围与分批 | `02-business/application-domains/tendering/05-release-plan.md` | 引用 |
 | 子系统清单、职责、语言、部署单元、数据库 | `03-architecture/subsystems/README.md` 第 1 节 | 链接，不复制表格 |
 | 数据所有权 | `03-architecture/subsystems/README.md` 第 3 节 | 链接 |
@@ -153,8 +155,10 @@ docs/
 | 责任、评审与资源安排 | `05-delivery/04-data-quality-organization.md` | 链接 |
 | M0运行时验收证据 | `05-delivery/05-m0-runtime-acceptance.md` | 引用具体门禁，不扩展为整个M0完成 |
 | M0身份生命周期与cell核验 | `05-delivery/07-m0-identity-acceptance.md` | 引用具体身份/路由范围，生产身份流程另验收 |
-| 当前阶段基线与能力交接 | `05-delivery/06-stage-baseline.md` | 引用剩余项与首次使用节点 |
-| A02 贯通级别与未实现/未接入缺口 | `05-delivery/09-a02-end-to-end-acceptance.md` | 引用缺口编号与贯通级别 |
+| 当前阶段基线、能力交接与当前主线 | `05-delivery/06-stage-baseline.md` | 引用剩余项、首次使用节点与主线；其他文档不复述阶段进度 |
+| A02 贯通级别与缺口状态 | `05-delivery/09-a02-end-to-end-acceptance.md` 第 4 节 | 引用缺口编号；PRD 验收表只登记用例状态与测试证据，子系统规格只描述已实现的设计与实现边界，均不写进度叙述 |
+| 开发环境 M0 验收入口 | `../tools/dev/run-local-acceptance.sh` | 默认复用共享 PostgreSQL/Kafka/OpenFGA/Keycloak/data-api；入口会在 Go 测试前检查 Kafka 是否可达；PostgreSQL 未显式设置时先探测本机已运行的共享实例；网络延迟时可用 `--local-openfga` 启动本机内存 OpenFGA；`--up` 才启动可选本地 Compose，引导环境变量可经 `MIAOQIA_ENV_FILE` 显式加载 |
+| A02 服务端验收门禁 | `../tools/dev/run-a02-l1-gate.sh` | 运行策略、signal inbox、对象页/证据、简报、覆盖与即时通知集成门禁；`--local-openfga` 使用本机 OpenFGA，结果写入 `deploy/local/.data/a02-l1/`，完整进程回放另行验收 |
 | 立项事项状态 | `05-delivery/00-initiation-readiness.md` | 引用事项编号 |
 
 ADR 与架构文档都只表达现行决策；两者不一致即为缺陷，须在同一次变更中修正。

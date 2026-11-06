@@ -1,19 +1,17 @@
 # A02 真实贯通验收线
 
-> 状态：已批准 · 版本：1.11 · 更新：2026-10-27 · 负责人：项目负责人、首席架构师、产品负责人
+> 状态：已批准 · 负责人：项目负责人、首席架构师、产品负责人
 
-本文定义建材供应商 A02 首条旅程从“服务端切片”走到“真实客户可用”的验收线：汇总第1–5、7段服务端切片及 L1 数据供应实现登记的未实现与未接入项，按“激活策略 → 收到信号 → 查看原文 → 简报触达”梳理真实贯通所需的依赖，给出分级验收与建议顺序。各段的功能规则以[功能 PRD](../01-product/prd/README.md) 为准，首次使用门禁以[阶段基线](06-stage-baseline.md)为准；本文不改变任何门禁，只把分散在各 PRD 验收表与子系统“实现状况”中的缺口收拢成一张可跟踪的清单，并规定进度口径。
+本文定义建材供应商 A02 首条旅程从“服务端切片”走到“真实客户可用”的验收线：按“激活策略 → 收到信号 → 查看原文 → 简报触达”梳理真实贯通所需的依赖与分级验收，第4节是 A02 各能力缺口状态的唯一登记处。各段的功能规则以[功能 PRD](../01-product/prd/README.md) 为准，首次使用门禁与当前主线以[阶段基线](06-stage-baseline.md)为准；本文不改变任何门禁。
 
 ## 1. 为什么需要这条验收线
 
 第7、3、4、5段的服务端切片都按同一模式交付：接口、事件契约、迁移、实现与测试同时提交，身份、数据库、授权与内部调用用真实组件验证，外部依赖经端口隔离，未接入时失败关闭（`NotWired`，503），测试用夹具。这一模式让每段都可自动验证，但也意味着：
 
-- **每个子系统的缺省装配都是“未接入”**：learning 的数据集、detection 的事实视图与订阅反查、gateway 的数据平面读取、channels 的企业微信适配器、identity 的 IdP 管理接口，在 `Module()` 缺省下都返回不可用；
-- **数据供应平面部分实现**：evidence 的公共文档管线、INF-PROC 招标与结果解析器、domain-intelligence 的事实版本与 `domain.fact.upserted.v1` 生产者已有实现及本地读取绑定；冻结来源招标/中标的保守项目聚合与四种领域事件已有局部实现；acquisition 的持续采集、通用项目/标包聚合、品类增强、组织解析与数据端口装配仍待接入；
-- **Web 与 H5 尚未实现**：`web/` 只有契约生成包；[Web 专项设计](../03-architecture/14-web-application.md)已给出浏览器端流程、BFF 契约、保存视图所有者与 PRD 中“随 Web”行为的页面落点（W-01），实现按 D4 在 L1 之后开始；
-- **调度器已完成服务端装配**：`scheduler` 进程角色已运行 identity、channels 与 pursuit 的周期任务；长期运行、生产部署和全端口贯通仍待 L1-4 验收。
+- **每个子系统的缺省装配都是“未接入”**：learning 的数据集、detection 的事实视图、gateway 的数据平面读取、channels 的企业微信适配器、identity 的 IdP 管理接口，在 `Module()` 缺省下都返回不可用，只有 platform 组合装配时才接入生产实现；
+- **服务端切片完成不等于旅程可用**：真实数据、真实渠道、界面与客户走查各自独立验收。
 
-因此 M2 的进度应同时按两个口径衡量：段的**服务端切片**（PRD 验收表中“部分（服务端）”的覆盖）与段的**贯通级别**（第3节）。第1–7段服务端切片均已实现；整条旅程的贯通级别仍为 L0。
+因此 M2 的进度同时按两个口径衡量：段的**服务端切片**（PRD 验收表中“部分（服务端）”的覆盖）与链路的**贯通级别**（第3节）。当前贯通级别见第4节开头。
 
 ## 2. 贯通链路与依赖
 
@@ -21,12 +19,12 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 | 环节 | 用户看到的结果 | 已有（服务端切片） | 真实贯通还缺 |
 |---|---|---|---|
-| ① 激活策略 | 管理员配置档案与 A02 目标，看仿真报告，提交并批准激活 | 档案与目标、策略草案/版本/差异、仿真与报告、审批服务、激活执行（#26、#30） | 仿真数据集与信息领域服务状态（D-09、D-10）、真实 IdP 与 TOTP（C-03）、审批通知（C-05）、Web 页面（W-02） |
-| ② 收到信号 | 新的中标结果公告进入平台后，命中的目标收件箱出现信号，可反馈与批量处理 | 生效边界匹配、收件箱、详情与解释、反馈与批量撤销（#31）；回放管线的快照、结果解析、领域事实及事件（#35） | 来源持续采集（D-01，L4）、通用项目/标包聚合、品类增强、领域状态与更正解析（D-02～D-05）、订阅反查与事实视图适配器（D-06、D-07）、企业主数据（D-08）、Web 收件箱（W-02） |
-| ③ 查看原文 | 从信号进入项目、中标方页面，字段回到原文片段 | 对象页与证据面板 BFF、对象信号分区、查看计量（#32）；事实与文档证据的本地读取绑定（#37） | 数据平面读取与证据读取适配器（D-11）、归属边与组织解析（D-12）、信息领域服务状态与字段状态（D-10、D-13）、Web 对象页与证据面板（W-02） |
-| ④ 简报触达 | 早间在企业微信收到按目标分区的简报，卡片上反馈或跳转 Web | 企业微信绑定、免登会话与撤销（#29，内存适配器）；简报组装与投递、偏好、历史、重新推送和卡片动作（#36，C-04） | 第5段剩余功能（C-18～C-21）、覆盖与来源权利适配器、生产企业微信适配器与外网回调入口（C-01、C-02）、浏览器免登会话与卡片落地（W-04，按 Web 专项设计 WD2）、H5 落地页（W-03） |
+| ① 激活策略 | 管理员配置档案与 A02 目标，看仿真报告，提交并批准激活 | 档案与目标、策略草案/版本/差异、仿真与报告、审批服务、激活执行 | 完整仿真数据集与覆盖状态（D-09、D-10）、真实 IdP 与 TOTP（C-03）、审批通知（C-05）、Web 页面（W-02） |
+| ② 收到信号 | 新的中标结果公告进入平台后，命中的目标收件箱出现信号，可反馈与批量处理 | 生效边界匹配、收件箱、详情与解释、反馈与批量撤销；回放管线的快照、结果解析、领域事实及事件 | 来源持续采集（D-01，L4）、通用项目/标包聚合、品类增强、领域状态与更正解析（D-02～D-05）、订阅反查与事实视图适配器（D-06、D-07）、企业主数据（D-08）、Web 收件箱（W-02） |
+| ③ 查看原文 | 从信号进入项目、中标方页面，字段回到原文片段 | 对象页与证据面板 BFF、对象信号分区、查看计量；事实与文档证据的本地读取绑定 | 数据平面读取与证据读取适配器（D-11）、归属边与组织解析（D-12）、信息领域服务状态与字段状态（D-10、D-13）、Web 对象页与证据面板（W-02） |
+| ④ 简报触达 | 早间在企业微信收到按目标分区的简报，卡片上反馈或跳转 Web | 企业微信绑定、免登会话与撤销（内存适配器）；简报组装与投递、偏好、历史、重新推送和卡片动作（C-04） | 第5段剩余功能（C-18～C-21）、覆盖与来源权利适配器、生产企业微信适配器与外网回调入口（C-01、C-02）、浏览器免登会话与卡片落地（W-04，按 Web 专项设计 WD2）、H5 落地页（W-03） |
 
-第6段跟进（指派、截止提醒、结果）在环节④之后接入，它的真实贯通依赖与④相同（渠道、调度、Web），不另列环节；第5段服务端已合并。第6段服务端切片已实现（创建与关联、改派、任务与提醒、关闭与结果、授权同步与卡片“跟进”，证据 `services/kernel/integration/pursuit_test.go`）；渠道侧（C-09）服务端已实现；pursuit 侧剩余（C-10）服务端已实现（持续跟踪、创建缺省值、互相提示与结果汇总）；渠道侧剩余（C-11）服务端已实现（通知投递事件与统计、负责人写入准入不满足时的转交、转交提醒分页展开，以及持续跟踪的授权被拒通知）；未实现部分登记为 C-12～C-17、D-18，任务提醒、授权同步补做、持续跟踪各期、渠道通知投递与简报组装已由 `scheduler` 角色的周期任务调用（R-01）。
+第6段跟进（指派、截止提醒、结果）在环节④之后接入，它的真实贯通依赖与④相同（渠道、调度、Web），不另列环节；未关闭部分登记为 C-12～C-17、D-18。
 
 ## 3. 分级验收
 
@@ -34,7 +32,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 | 级别 | 名称 | 数据 | 渠道 | 界面 | 通过证据 |
 |---|---|---|---|---|---|
-| L0 | 服务端切片 | 夹具 | 内存适配器 | 无 | 各段 PRD 验收表的自动化用例（现状） |
+| L0 | 服务端切片 | 夹具 | 内存适配器 | 无 | 各段 PRD 验收表的自动化用例 |
 | L1 | 回放贯通 | 仓库内冻结语料中的官方公告（中标结果、更正），经真实数据平面管线处理；企业主数据用标明为夹具的样本 | 内存适配器 + 站内 | 无（API 脚本走查） | 一套端到端测试：在同一环境中启动 data 与 platform 部署单元的真实进程角色，所有端口装配生产实现（不含任何 `NotWired`），从“投放一份结果公告文档”到“目标收件箱出现信号 → 对象页字段回到原文片段 → 站内简报”全程通过；含跨租户与无权限的负向用例 |
 | L2 | 界面贯通 | 同 L1 | 同 L1 | Web 最小页面集 + 企业微信内置浏览器的 H5 落地页 | 开发 VPS 上的部署（M0-01）；内部人员按 PRD 各段“可运行”的步骤走查并截图，记录走查时的版本 |
 | L3 | 真实渠道 | 同 L1 | 生产企业微信适配器，在**测试企业微信企业**中安装、绑定、免登、收简报、卡片动作 | 同 L2 | C10 对测试企业的验收记录（安装授权、凭证、验签、重放、限流、负向用例）；简报经企业微信实际送达的走查记录 |
@@ -44,34 +42,36 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 说明：
 
 - L1 使用的是仓库内已冻结的官方公告语料（[`packs/information_domains/procurement/corpus/`](../../packs/information_domains/procurement/corpus/)），作为测试材料处理，不构成来源启用，不宣称 INF-PROC 就绪，不改变 M1-P1/P2 的门禁；
-- L2 与 L3 互不依赖，可以并行；L4 依赖第5节的外部事实，L5 依赖 L4；
-- 每一级的负向用例都在该级环境中重新执行，不沿用 L0 的结论（第6节）。
+- L2 与 L3 互不依赖，可以并行；L4 依赖[阶段基线第4节](06-stage-baseline.md#4-m2-前置条件与能力交接)的外部事实，L5 依赖 L4；
+- 每一级的负向用例都在该级环境中重新执行，不沿用 L0 的结论（第6节）；
+- L1 的可重复入口：`tools/dev/run-a02-l1-gate.sh --local-openfga`（服务端门禁）与 `tools/dev/run-a02-process-replay.sh --local-openfga`（进程级门禁：同一组 `platform` 与 `mq-data` 进程完成候选公告 → signal → object → evidence → briefing 回放，并验证跨租户、visitor、来源权利收紧与 data-api 不可用时失败关闭），结果写入 `deploy/local/.data/` 下对应目录；验收脚本探测本机共享 PostgreSQL，CI/隔离环境用 `MIAOQIA_TEST_PG` 覆盖；
+- L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）；
+- L1 建材配对语料为衢州市阳光交易服务平台的 `official-building-tender-20261026` 与 `official-building-award-20261026`：同一项目 `XCXCG-2025-008`，采购人为江山市水务有限公司；原始响应、正文、人工事实及证据已保存，哈希登记于 `lifecycle-manifest.json`。中标定价 `76.5000%` 保留为 `conditions.contract_pricing`，不记金额，不据此推算成交总价。此配对形成同一 `pp_`，保留成员固定版本与字段证据；没有跨公告标包依据，故 `lots=[]`，不推断 `prj_` 或 `part_of`（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)）。
 
 ## 4. 缺口清单
 
-汇总各段 PRD 验收表与子系统规格“实现状况”中登记的未实现、未接入项；数据供应进度见第8节。“环节”指第2节的①～④；“最早级别”是该项必须关闭的贯通级别；“—”表示不在最短链路上，不阻断贯通。来源一列给出登记位置，详情以登记处为准。
+**当前贯通级别：L1 已通过；L2 进行中（W 缺口）；L3、L4、L5 未开始。** 本节是 A02 缺口状态的唯一登记处，每行只写尚未关闭的部分，已实现的设计以子系统规格为准；关闭的缺口移入第4.6节。“环节”指第2节的①～④；“最早级别”是该项必须关闭的贯通级别；“—”表示不在最短链路上，不阻断贯通。来源一列给出需求或规格的位置。
 
 ### 4.1 数据供应（D）
 
 | 编号 | 缺口 | 来源 | 环节 | 最早级别 | 外部前置 |
 |---|---|---|---|---|---|
 | D-01 | acquisition 来源注册、调度、抓取与归档未实现（Python 骨架） | [阶段基线 M1](06-stage-baseline.md#3-m1-前置条件与能力交接) | ② | L4 | M1-P1、M1-P2、M1-P7 |
-| D-02 | **部分关闭**：公共实例的快照判定、原件与规范化文档入对象存储、解析修订、文档证据引用与两条事件已实现（`data/subsystems/evidence/`）；L1-2a 已补文档证据解析本地绑定与展示裁剪；远程查询及生产权利策略仍随 L1-2，PDF/OCR 管线、增强与重放随 M1 | 同上 M1-P6 | ②③ | L1 | — |
-| D-03 | **部分关闭**：INF-PROC 招标解析器 `proc.tender-notice@0.3.0` 与结果公告解析器 `proc.result-notice@0.2.0`（中标、框架入围、候选人、嵌套折扣率结果表），CI 以人工映射为黄金标注评测；更正公告解析器仍缺 | `packs/information_domains/procurement/src/` | ② | L1 | — |
-| D-04 | **部分关闭**：公告事实版本链、`domain.fact.upserted.v1`（发件箱）与 `tendering.bid_result` 投影已实现；冻结来源的 `pp_` 聚合与四事件已局部实现，`lot_`、其他来源/生命周期与品类增强仍随 L1-2 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
+| D-02 | evidence 的远程查询与生产来源权利策略、PDF/OCR 管线、内容增强与重放未实现（公共文档管线与文档证据本地读取见 [evidence 实现状况](../03-architecture/subsystems/evidence.md#12-实现状况)） | [阶段基线 M1-P6](06-stage-baseline.md#3-m1-前置条件与能力交接) | ②③ | L1 | — |
+| D-03 | INF-PROC 更正公告解析器未实现；招标与结果公告解析器 `proc.tender-notice`、`proc.result-notice` 以人工映射为黄金标注评测 | `packs/information_domains/procurement/src/` | ② | L1 | — |
+| D-04 | 标包 `lot_`、其他来源与完整生命周期的项目聚合、品类增强未实现；冻结来源的 `pp_` 聚合只是局部实现（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)） | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-05 | 信息领域服务状态与覆盖接口（`GetCoverage`）未实现，规则到信息领域的生产对应缺失（B-PERMIT 不能显示“数据未接入”） | PRD 第3段用例7、第4段用例24–27；[customer-context](../03-architecture/subsystems/customer-context.md) | ①②③ | L1 | — |
-| D-06 | **适配器基础已实现，生产装配未关闭**：`detection/api/remote.NewFacts` 已把 data-api `bid-result-units` 映射为严格校验的 `api.Facts`；订阅反查、真实 data-api listener 装配与 L1 进程验收仍待完成 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
-| D-07 | detection 订阅反查端口 `api.Candidates` 未接入；search 子系统为骨架 | 同上；`services/subsystems/search/` | ② | L1（可先用按目标区域与品类过滤的最小实现） | — |
+| D-06 | data-api 读取的生产 mTLS 与其他来源/生命周期的事实视图未接入（A02 结果视图的读取与 detection 适配器已接入） | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
+| D-07 | 生产 OpenSearch percolation 未实现；当前为 search 的最小 PostgreSQL percolator（按 cell、事实类型、区域和品类过滤），未登记查询时失败关闭 | 同上；`services/subsystems/search/` | ② | L1（可先用最小实现） | — |
 | D-08 | INF-ORG 企业主数据未接入；X-SELF 需要“关联本企业” | PRD 第2段用例1、7–9；第3段用例7 | ①② | L1 用夹具，L4 用供应商 | B2b |
-| D-09 | learning 仿真数据集 `api.Dataset` 未接入，样本只含夹具事实；接入非虚构样本受 D-17 阻断 | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
-| D-10 | learning 与 gateway 读取的信息领域服务状态 `api.DomainStatus` 未接入 | 同上 | ①③ | L1 | 随 D-05 |
-| D-11 | gateway 的数据平面读取（`api.PublicData`：事实、历史、项目链、统计）与证据读取未接入；对象页、分区与证据面板 503 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
+| D-09 | learning 仿真数据集的完整多领域历史、覆盖与来源权利未接入（A02 结果视图已可读取） | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
+| D-10 | 完整 `GetCoverage` 与按租户覆盖状态未接入（learning 适配器对配置的 `INF-PROC` 返回 live） | 同上 | ①③ | L1 | 随 D-05 |
+| D-11 | gateway 的 entity-graph 对象、完整历史/项目链/统计与生产 mTLS 进程验收未关闭；未配置 data-api 时失败关闭 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
 | D-12 | entity-graph 组织解析、`part_of` 归属边、合并与撤销未实现；detection 归属边端口 `NotWired` | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第4段用例19–22、37–38 | ③ | L1（组织解析与 `part_of`）；品牌随 M2-P13 | — |
 | D-13 | 字段状态、更正/撤回时间轴、来源中断、空态原因由数据平面提供 | PRD 第4段用例8–10、15–18、24–27 | ③ | L2 | 随 D-02～D-05 |
 | D-14 | 重新求值与撤回关闭的生产者、`signal.updated`、A02 更正公告重新求值 | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第3段已确认事项11 | ② | L2 | — |
 | D-15 | 首次激活回填的执行、标记与去重 | PRD 第7段用例18；detection | ② | L2 | — |
 | D-16 | 漏报、来源权利与展示级别、清单导入、升级草案（F7） | PRD 第3段用例26–27、38–42；第7段用例19 | — | — | — |
-| D-17 | **已关闭（L1-3a）**：代表样本在每次读取时按查看者本人的 `can_search_public` 与数据覆盖（commerce `checkCoverage`）过滤，无权的只给 `*_withheld` 数量，判断不可用时不返回样本并提示 `samples_unavailable`；证据 `services/kernel/integration/policy_approval_test.go`（用例11）与 `services/subsystems/learning/internal/app/samples_test.go`。原缺口：仿真报告的代表样本未按查看者权限过滤：申请人与审批人都只能看到本人有权查看的公共事实样本，无权的只显示数量。服务端切片保留此缺口的前提是样本全部为虚构夹具；仿真改用非虚构样本（D-09 接入真实数据集）之前必须关闭，未关闭时 L1 的仿真继续使用隔离夹具。验收：可看同一份报告但无权看其中部分样本的申请人与审批人，各自只看到有权样本与无权样本数量 | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段 F3、用例11 | ① | L1（先于 D-09 的真实数据集） | — |
 | D-18 | 公开截止时间绑定（PRD 第6段 F6，用例33–37）：domain-intelligence 的投标截止变化事件（更正、撤回、业务有效值与版本）与 pursuit 任务的绑定未实现，任务只有手工截止 | [pursuit 第11节](../03-architecture/subsystems/pursuit.md#11-实现状况)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ④ | L2 | 随 D-04 |
 
 ### 4.2 身份与渠道（C）
@@ -80,24 +80,19 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 |---|---|---|---|---|---|
 | C-01 | 生产企业微信适配器、渠道凭证入库、“发送测试消息”与安装健康状态 | [channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L3 | C10 真实调用与凭证授权 |
 | C-02 | gateway 未认证入口：安装回调、消息回调与免登的外网入口（目前只以本地绑定提供） | 同上 | ④ | L3 | 开发 VPS 公网域名与证书 |
-| C-03 | IdP：Keycloak 管理接口与邀请邮件适配器、受邀新用户的账号准备、真实 TOTP 仪式与会话时长配置、Web 登录的保密客户端与后端通道登出。浏览器免登不再依赖 IdP 按免登会话铸造令牌（[Web 专项设计 WD2](../03-architecture/14-web-application.md#11-已确认事项)，2026-10-26 确认）：免登的浏览器会话由 W-04 承接，渠道网页授权与 `ChannelSSO` 的生产接入由 C-01、C-02 承接；Bearer 免登令牌只保留给测试签发方与非浏览器客户端，不阻断浏览器 L3 | [identity 第5节](../03-architecture/subsystems/identity.md#5-接口)；PRD 第1段用例6、18 | ①④ | L2 | — |
-| C-04 | 简报组装与投递、动作令牌与 `ExecuteAction`、偏好、历史与重新推送：**服务端已实现（PR #36）**。站内 L1 部分的服务端证据：`services/kernel/integration/briefing_test.go`（`TestBriefingQuickActions`，含跨租户、非收件人、令牌篡改与重放、失去访问的负向用例）与 [PRD 第5段第12节](../01-product/prd/05-briefing-quick-actions.md)；组装、投递与卡片动作已由 `scheduler` 角色调用（R-01），L1 贯通仍待 L1-4 的贯通 E2E，L3 待 C-01 | PRD 第5段；[channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L1（站内）、L3（企业微信） | — |
-| C-08 | 第5段未实现部分：即时通知 F7（PRD 第5段用例5、41）、AI 摘要、“关注变化”区。**部分关闭（第6段服务端切片）**：卡片“跟进”按钮（PRD 第5段用例26）已实现，按租户发布开关 `MIAOQIA_CHANNELS_PURSUE_TENANTS` 显示，证据 `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的卡片用例：有 `can_assign` 才显示、非收件人点击不执行不消耗令牌、重复点击返回固定结果）与 `services/subsystems/channels/internal/app/pursue_internal_test.go`；“待我处理”中的任务改记 C-09。**服务端已关闭（C-08）**：即时通知 F7——channels 消费 `detection.signal.detected.v1`，按目标生效策略 `route` 的 `immediate` 展开为负责人（或全部参与人）每人一条（customer-context 契约 0.6.0 的 `ActivePolicy` 追加 `owner` 与 `participants`），每次发送前以收件人本人依次再检查即时通知开关、安静时段、成员有效、目标可见性、信号可见性与处理状态、策略与受众、节流（每人每小时 6 张）与并入简报，经 `Notices.DeliverNotices`（`scheduler` 角色的 `channels.deliver-notices`）投递；channels 契约 0.5.0（`instant_notify`、`BriefingItem.notified`/`arrived_overnight`、通知种类与原因）、事件 0.6.0（`channels.signal_notice.sent.v1` / `failed.v1`，统计并入 `notices`）。证据 `services/kernel/integration/notify_test.go`（`TestInstantNotifications` 的 “C-08 …” 子测试：另一租户、非成员、失去目标可见性、来源权利撤销、伪造与重放的事件、安静时段、节流、偏好关闭）；剩余项改记 C-18～C-21 | PRD 第5段第12节；[channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L1 | — |
-| C-09 | 第6段渠道侧：提醒卡片的投递与卡片“完成”/“撤销”（PRD 第6段用例44）、简报“待我处理”中的任务（用例43）、identity 拒绝成员时通知操作者（用例58）、提醒的安静时段（用例30）。**服务端已关闭（C-09）**：channels 消费 `pursuit.task.due.v1` 与 `pursuit.pursuit.authorization_rejected.v1`，投递入口 `channels.Notices.DeliverNotices`，点击由 `Briefings.ProcessActions` 经 `pursuit.Actions` 以点击者执行；证据 `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 “C-09 …” 子测试，含篡改、伪造、他租户、非收件人、截止改变、授权同步中、改派与成员退出的负向用例）与 [channels 实现状况](../03-architecture/subsystems/channels.md)。`DeliverNotices` 已由 `scheduler` 角色每分钟调用（R-01），L1 贯通仍待 L1-4 的贯通 E2E，L3 待 C-01；剩余项改记 C-11 | [pursuit 第11节](../03-architecture/subsystems/pursuit.md#11-实现状况)；PRD 第6段第12节 | ④ | L1 | — |
-| C-10 | 第6段 pursuit 侧：持续跟踪 F10（用例46、47）、分派规则的候选负责人（用例4，缺省为本人）、同一标包其他中标方的互相提示（用例12 的提示部分）、learning 评估报告中的结果汇总（用例42）。**服务端已关闭（C-10）**：pursuit 契约与事件 0.3.0（`createTracking` 等九个持续跟踪接口、`getCreateDefaults`、`Pursuit.sibling_hints`，事件 `pursuit.tracking.changed.v1` 与 `pursuit.tracking.period_closed.v1`），learning 契约 0.4.0（`getOutcomeSummary`）；持续跟踪的周期由 `pursuit.Reminders.RunTracking` 结束（`scheduler` 角色的 `pursuit.run-tracking` 每分钟调用）；候选负责人经端口 `api.CandidateOwners`（生产缺省未接入，默认本人并说明 `rules_unavailable`；C-14 起接入生产适配器）。证据 `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 “C-10 …” 子测试，含他租户、无关系成员、只能查看的成员、负责人被移出目标、篡改与他人游标、交易型与持续型标识混用、确定失败固定、候选失效与他租户候选、提示白名单投影、只凭参与关系读取汇总的负向用例）；剩余项改记 C-12～C-16 | [pursuit 第11节](../03-architecture/subsystems/pursuit.md#11-实现状况)；PRD 第6段第12节 | — | L2 | — |
-| C-11 | C-09 剩余：渠道通知（任务提醒、授权被拒通知）没有投递事件与投递统计；负责人仍在团队但其写入准入不满足时 pursuit 发出的转交提醒在 channels 展开时没有接收者（`viewer_escalated` 只覆盖“无有效负责人”）；转交提醒每次至多展开 500 名已绑定成员。**服务端已关闭（C-11）**：channels 事件 0.5.0 新增 `channels.notice.sent.v1` / `channels.notice.failed.v1`（每条通知送达一次、每次渠道失败与每次结束各一次，与状态变化同一事务；字段按通知种类白名单，个人数据只有收件人；乱序到达即被取代的旧提醒也发布一次失败，重放不再发布），channels OpenAPI 0.4.0 的 `getDeliveryStats` 追加 `notices`（按种类、状态与原因计数，原因按状态白名单，其余为 `other`，仍只对本租户管理员开放）；转交的口径统一为“任务负责人已不在团队中，或仍在团队中但此刻以本人判断不满足写入准入、且当前截止版本已有转交提醒发出”，pursuit 的提醒、`getTask` 的 `viewer_escalated` 与 `listMyTasks` 的 `escalated` 共用（pursuit OpenAPI 0.4.0 只改说明；负责人本人判断不可用时 503，失败关闭），接收者为在单元上能更新跟进（`can_edit_unit_pursuits`）的已绑定决策者，展开出的每一条发送前仍以收件人本人再检查；展开改为分页（每次认领一页 200 名已绑定成员，位置保存在服务端，不设总上限）。证据 `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 “C-11 …” 子测试：失败、送达、转站内与取消的事件及白名单、重放与乱序、伪造与改写的事件（他租户、不能查看、无角色、能查看但非负责人）、角色降为业务专家后的转交与每页 2 名的分页展开、撤销决策者角色、授予待同步的新负责人、同步后转交结束、持续跟踪的授权被拒通知与 `getTracking` 暂时不可用、投递统计只对本租户管理员开放与白名单），`services/subsystems/channels/internal/app/notices_internal_test.go`；剩余项改记 C-17 | [channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L2 | — |
-| C-12 | C-10 剩余：持续跟踪每期的变化简报（channels 消费 `pursuit.tracking.period_closed.v1`，按期末成员快照与上一期对比组装并投递）与 detection 关注消费 `pursuit.tracking.changed.v1`；依赖数据平面按对象集合与期间读取变化的内部接口（尚不存在，属 L1 数据平面，本批未建）。**已收窄（C-11）**：持续跟踪的授权被拒通知已改为经 `getPursuit` 确定失败后再经 `getTracking`（新内部端口与绑定 `pursuit.Trackings`）以操作者本人再检查，能查看的操作者收到、“查看”指向持续跟踪详情 | [契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约)；PRD 第6段 F10 | ④ | L2 | 随 D-12、L1-2 后续 |
-| C-13 | C-10 剩余：持续跟踪的改派与协作者、归档状态、成员快照中每个对象的来源版本、对象合并（`entity.merged`）后的替换、企业名单导入；周期时区为缺省 Asia/Shanghai（租户与成员时区无所有者，见契约覆盖第9节） | PRD 第6段 F10 第3条 | — | L2 | 随 D-12 |
-| C-14 | C-10 剩余：目标分派规则的配置（customer-context）与按规则在生成信号时计算候选负责人（detection），以及 pursuit `api.CandidateOwners` 的生产适配器；未接入时创建面板默认本人并说明“分派规则不可用”。**服务端已关闭（C-14）**：customer-context OpenAPI 0.7.0 新增 `getAssignmentRules` / `updateAssignmentRules`（每个目标一份按顺序的规则，条件为区域与品类，第一条命中的规则给出候选；分派配置版本独立于目标版本；写入需目标单元决策者的 `can_manage_participants` 与 `can_edit`，被分派人以其本人核验为租户有效成员且能查看该目标的信号，并在与调整参与人同一把目标行锁下核对仍是负责人或参与人；移出参与人时同一锁下移除指向他的规则；读取按级别白名单 `full` / `summary`；确定失败固定在幂等键上），`ActivePolicy` 追加 `assignment`；detection 生成信号时按同一次读取的规则与负责人、参与人算出候选，与分派配置版本一同写入信号（目标从未配置分派规则或提供方没有给出分派配置时记为“规则不可用”，已配置为空规则或都不命中时为“没有候选”，两者不混同），OpenAPI 0.4.0 新增只经内部端口的 `getSignalCandidateOwner`（候选人标识只对有 `can_assign` 的成员可见）与绑定 `detection.SignalCandidates`（本地与远程）；pursuit 的生产适配器经该绑定读取（不服务创建面板的角色为未接入），创建面板仍以候选本人再检查，端口故障 503。证据 `services/kernel/integration/assignment_test.go`（`TestAssignmentRules` 的 “C-14 …” 子测试：未配置分派规则为规则不可用而配置为空规则后为没有候选、另一租户、非管理员写配置、规则指向他租户成员或非参与人、篡改存储的规则与信号上的候选、过期配置版本与确定失败的重放、候选已退出或被移出目标、端口故障 503、写规则与移除参与人的并发），`services/subsystems/detection/internal/app/assignment_test.go`、`services/subsystems/customercontext/internal/domain/assignment_test.go`、`services/cmd/platform/roles_test.go`；剩余项改记 C-22、C-23 | [customer-context 第11节](../03-architecture/subsystems/customer-context.md#11-分派配置)；PRD 第6段 F1 第2条 | — | L2 | — |
-| C-15 | C-10 剩余：互相提示的范围为同一采购项目（同一事实类型与主体），跟进目标不含标包标识，尚不能缩小到同一标包 | PRD 第6段 F2 第1条 | — | L2 | 随 D-04 的 `lot_` |
-| C-16 | C-10 剩余：评估报告的持久化与 Web 展示（`getOutcomeSummary` 只读计算，不留存报告版本） | [learning 实现状况](../03-architecture/subsystems/learning.md) | — | L2 | — |
-| C-17 | C-11 剩余（PRD 第6段 F12 第2、6条）：授权同步待处理超过 5 分钟的告警，以及超过 24 小时标“授权同步失败”时通知目标范围的决策者与运营告警尚未实现（pursuit 只标 `failed` 并只允许决策者改派或关闭；没有对应事件，channels 也没有这类通知）；转交提醒发出后负责人恢复写入准入时，尚未送达的转交通知取消（`reassigned`），这一次提醒不再改发给负责人（后续提醒照常发给负责人） | [pursuit 第11节](../03-architecture/subsystems/pursuit.md#11-实现状况)；PRD 第6段 F12 | ④ | L2 | 随 R-04 告警 |
-| C-18 | C-08 剩余：简报的 AI 开头摘要（PRD 第5段第13节第8项，M2 不开启）。没有实现，也不建端口：需要 ai-platform 与生成标识的验收，真实模型调用未获授权；开启时摘要失败不得影响简报 | PRD 第5段第13节第8项 | — | — | 随 M3 研究入口 |
-| C-19 | C-08 剩余：简报“关注变化”区（PRD 第5段第13节第9项：关注开放前不显示该区）。主线没有关注（watch）的数据来源与变化读取接口（detection、domain-intelligence 与数据平面均未建），本批不建数据平面 | PRD 第5段第13节第9项；[channels 4.4](../03-architecture/subsystems/channels.md#44-简报) | ④ | L2 | 随关注功能与数据平面 |
-| C-20 | C-08 剩余（channels 4.5）：即时通知的合并卡片（按收件人、合并组与窗口合并为一条，窗口由偏好与包声明），当前以每人每小时 6 张节流、超出的留给下一期简报代替；`route` 受众 `role:<角色>` 尚不支持（需要按目标单元枚举持有角色的成员，依赖 C-07 的 `ListPermitted`），只支持 `objective_owner` 与 `objective_members` | [channels 4.5](../03-architecture/subsystems/channels.md#45-通知合并)；PRD 第5段 F7 第2条 | ④ | L2 | 随 C-07 |
-| C-21 | C-08 剩余（channels 4.5“紧急更正”）：`detection.signal.updated.v1` 的实质更新（处置上调、中标方/金额/品类更正）与 24 小时内截止的事项不即时通知，只在下一期简报中标“已更新”；依赖重新求值的生产者（D-14） | [channels 4.5](../03-architecture/subsystems/channels.md#45-通知合并) | ④ | L2 | 随 D-14 |
-| C-22 | C-14 剩余：分派规则只支持按区域与品类匹配；按我方主体（信号没有“由我方哪个主体承接”的字段）与组织单元（目标与信号同在目标所在单元，identity 登记单元覆盖前只有根单元）匹配的条件未提供；按角色选人（如“该单元的项目推进者”）需要按单元枚举持有角色的成员，依赖 C-07 的 `ListPermitted` | [customer-context 第11节](../03-architecture/subsystems/customer-context.md#11-分派配置) | — | L2 | 随 C-07 |
-| C-23 | C-14 剩余：候选负责人只经 pursuit 的创建面板（`getCreateDefaults`）展示，信号详情（`getSignal`）、卡片与即时通知中不显示候选；规则变更后已有信号的候选不重算（保留生成时的建议与分派配置版本，随重新求值 D-14）；分派规则的 Web 配置页随 W-02 | PRD 第3段 F3 第1条；PRD 第6段 F1 第2条 | — | L2 | 随 D-14、W-02 |
+| C-03 | IdP：Keycloak 管理接口与邀请邮件适配器、受邀新用户的账号准备、真实 TOTP 仪式与会话时长配置、Web 登录的保密客户端与后端通道登出。浏览器免登不再依赖 IdP 按免登会话铸造令牌（[Web 专项设计 WD2](../03-architecture/14-web-application.md#11-已确认事项)）：免登的浏览器会话由 W-04 承接，渠道网页授权与 `ChannelSSO` 的生产接入由 C-01、C-02 承接；Bearer 免登令牌只保留给测试签发方与非浏览器客户端，不阻断浏览器 L3 | [identity 第5节](../03-architecture/subsystems/identity.md#5-接口)；PRD 第1段用例6、18 | ①④ | L2 | — |
+| C-04 | 简报与卡片动作经生产企业微信的投递（站内部分已在 L1 关闭） | PRD 第5段；[channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L3 | 随 C-01 |
+| C-12 | 持续跟踪每期的变化简报（channels 消费 `pursuit.tracking.period_closed.v1`，按期末成员快照与上一期对比组装并投递）与 detection 关注消费 `pursuit.tracking.changed.v1`；依赖数据平面按对象集合与期间读取变化的内部接口（未建） | [契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约)；PRD 第6段 F10 | ④ | L2 | 随 D-12、D-04 |
+| C-13 | 持续跟踪的改派与协作者、归档状态、成员快照中每个对象的来源版本、对象合并（`entity.merged`）后的替换、企业名单导入；周期时区为缺省 Asia/Shanghai（租户与成员时区无所有者，见契约覆盖第9节） | PRD 第6段 F10 第3条 | — | L2 | 随 D-12 |
+| C-15 | 互相提示的范围为同一采购项目（同一事实类型与主体），跟进目标不含标包标识，尚不能缩小到同一标包 | PRD 第6段 F2 第1条 | — | L2 | 随 D-04 的 `lot_` |
+| C-16 | 评估报告的持久化与 Web 展示（`getOutcomeSummary` 只读计算，不留存报告版本） | [learning 实现状况](../03-architecture/subsystems/learning.md) | — | L2 | — |
+| C-17 | 授权同步待处理超过 5 分钟的告警，以及超过 24 小时标“授权同步失败”时通知目标范围的决策者与运营告警尚未实现（pursuit 只标 `failed` 并只允许决策者改派或关闭；没有对应事件，channels 也没有这类通知）；转交提醒发出后负责人恢复写入准入时，尚未送达的转交通知取消（`reassigned`），这一次提醒不再改发给负责人（后续提醒照常发给负责人） | [pursuit 第11节](../03-architecture/subsystems/pursuit.md#11-实现状况)；PRD 第6段 F12 | ④ | L2 | 随 R-04 告警 |
+| C-18 | 简报的 AI 开头摘要（PRD 第5段第13节第8项，M2 不开启）。没有实现，也不建端口：需要 ai-platform 与生成标识的验收，真实模型调用未获授权；开启时摘要失败不得影响简报 | PRD 第5段第13节第8项 | — | — | 随 M3 研究入口 |
+| C-19 | 简报“关注变化”区（PRD 第5段第13节第9项：关注开放前不显示该区）。关注（watch）的数据来源与变化读取接口未建（detection、domain-intelligence 与数据平面均没有） | PRD 第5段第13节第9项；[channels 4.4](../03-architecture/subsystems/channels.md#44-简报) | ④ | L2 | 随关注功能与数据平面 |
+| C-20 | 即时通知的合并卡片（按收件人、合并组与窗口合并为一条，窗口由偏好与包声明），当前以每人每小时 6 张节流、超出的留给下一期简报代替；`route` 受众 `role:<角色>` 尚不支持（需要按目标单元枚举持有角色的成员，依赖 C-07 的 `ListPermitted`），只支持 `objective_owner` 与 `objective_members` | [channels 4.5](../03-architecture/subsystems/channels.md#45-通知合并)；PRD 第5段 F7 第2条 | ④ | L2 | 随 C-07 |
+| C-21 | `detection.signal.updated.v1` 的实质更新（处置上调、中标方/金额/品类更正）与 24 小时内截止的事项不即时通知，只在下一期简报中标“已更新”；依赖重新求值的生产者（D-14） | [channels 4.5](../03-architecture/subsystems/channels.md#45-通知合并) | ④ | L2 | 随 D-14 |
+| C-22 | 分派规则只支持按区域与品类匹配；按我方主体（信号没有“由我方哪个主体承接”的字段）与组织单元（目标与信号同在目标所在单元，identity 登记单元覆盖前只有根单元）匹配的条件未提供；按角色选人（如“该单元的项目推进者”）需要按单元枚举持有角色的成员，依赖 C-07 的 `ListPermitted` | [customer-context 第11节](../03-architecture/subsystems/customer-context.md#11-分派配置) | — | L2 | 随 C-07 |
+| C-23 | 候选负责人只经 pursuit 的创建面板（`getCreateDefaults`）展示，信号详情（`getSignal`）、卡片与即时通知中不显示候选；规则变更后已有信号的候选不重算（保留生成时的建议与分派配置版本，随重新求值 D-14）；分派规则的 Web 配置页随 W-02 | PRD 第3段 F3 第1条；PRD 第6段 F1 第2条 | — | L2 | 随 D-14、W-02 |
 | C-05 | 审批通知、策略执行失败通知、邀请通知的实际发送 | PRD 第7段用例13、14、20；identity | ① | L2 | 随 C-04 |
 | C-06 | 管理员账号恢复（IdP 管理接口与平台运营双人控制） | PRD 第1段用例17 | — | L5 前 | — |
 | C-07 | identity：`ListPermitted`、单元删除与变更事件、服务账号与外部协作者、个人租户免审批例外、额度条件 | [identity 第5节](../03-architecture/subsystems/identity.md#5-接口) | — | — | — |
@@ -106,24 +101,21 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 | 编号 | 缺口 | 来源 | 环节 | 最早级别 | 外部前置 |
 |---|---|---|---|---|---|
-| R-01 | **已关闭**：`scheduler` 角色运行子系统在 `runtime.Module.Jobs` 中声明的周期任务（`services/kernel/scheduler`：启动即执行一次、按周期串行、单轮超时，按任务取 PostgreSQL 会话级咨询锁，主备同一时刻只一个实例执行）；已接入 identity（邀请到期、租户绑定重试、审批到期）、channels（撤销重试、免登会话对账、简报按到时组装 `ComposeDue`、简报投递、卡片动作、渠道通知投递 `Notices.DeliverNotices`）与 pursuit（任务提醒、授权同步补做、持续跟踪各期 `RunTracking`），按租户的任务经新增的本地绑定 `identity.Tenants` 枚举本 cell 的 active 租户（只接受 `svc:scheduler`）；证据 `services/kernel/scheduler/scheduler_test.go`、`services/kernel/integration/tenants_test.go`、`services/subsystems/channels/jobs_test.go`、`TestPolicySimulationApproval` 与 `TestPursuitFollowUp` 中经定时任务执行的用例（审批到期、任务提醒、渠道通知）、`services/cmd/platform/roles_test.go`。长期运行与生产部署的验收随 L1-4 | identity、channels、pursuit；`deploy/platform/roles.yaml` | ①④ | L1 | — |
 | R-02 | 贯通装配：各子系统 `Module()` 缺省为 `NotWired`，缺少一份“全部端口装配生产实现”的部署配置与启动检查 | 各子系统实现状况 | ①～④ | L1 | — |
 | R-03 | 开发 VPS 部署与重建（M0-01）、候选版本的实际 CI 与开发 E2E（M0-08） | [阶段基线 M0](06-stage-baseline.md#2-m0-逐项核对) | ①～④ | L2 | — |
 | R-04 | 持续运行的告警、值班、备份恢复（C11） | 阶段基线 M1-P7 | ② | L4 | C11 |
-| R-05 | **已关闭（L1-3a）**：commerce `checkCoverage`（契约 0.2.0，覆盖包在产品目录接入前来自部署配置 `MIAOQIA_COMMERCE_COVERAGE`，全部租户相同）与 gateway 的生产适配器；证据 `services/kernel/integration/coverage_test.go`（覆盖内、区划与信息领域覆盖外、commerce 故障与对象缺少信息领域 503）。按租户的覆盖包随 M2-P8。原缺口：覆盖判断：gateway 的 `api.Entitlements` 没有生产实现，缺省 `NotWired` 时对象解析之后即 503 `entitlement_unavailable`，对象页与证据面板无法打开；需要 commerce 覆盖判断（`GetEntitlements` 的最小实现）及其适配器。验收：覆盖内成功；覆盖外 403 `entitlement.coverage_insufficient` 只带对象名称；覆盖服务故障 503 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[commerce 第10节](../03-architecture/subsystems/commerce.md#10-查看计量的实现状况) | ③ | L1 | — |
 | R-06 | 埋点、产品目录、完整商业权益与配额事件（`commerce.quota.exceeded.v1`）、用量报表 | [commerce 第10节](../03-architecture/subsystems/commerce.md#10-查看计量的实现状况)；gateway | ③ | L5 前（M2-P8） | — |
 
 ### 4.4 界面（W）
 
 | 编号 | 缺口 | 来源 | 环节 | 最早级别 | 外部前置 |
 |---|---|---|---|---|---|
-| W-01 | Web 专项设计：浏览器端登录流程、具体 BFF 契约、保存视图所有者。**已关闭（2026-10-26）**，WD1–WD7 由项目负责人确认：[Web 专项设计](../03-architecture/14-web-application.md)与[整合原型](../01-product/prd/prototypes/00-web-shell.html) | [阶段基线 M2-P12](06-stage-baseline.md#4-m2-前置条件与能力交接) | ①～④ | L2 | — |
-| W-02 | Web 最小页面集：登录、成员与邀请、档案与目标、策略与仿真报告、审批、信号收件箱与批量反馈、对象页与证据面板、通用无权限页 | 各段 PRD 中标为“随 Web”的行为（强认证弹窗与已填内容保留、确认页、版本检查、“按 vN 判断”、逐层展开与高亮等） | ①②③ | L2 | — |
-| W-03 | 企业微信内置浏览器的 H5：绑定确认页、卡片跳转落地页、账号不一致与来源中断提示 | PRD 第1段 F5、F7；第5段 | ④ | L2（内存适配器下的页面）、L3（真实渠道） | — |
-| W-04 | gateway Web 会话（`web_session`、`/auth/*`、CSRF、后端通道登出）与 `/v1/web/*` 页面聚合端点及其 OpenAPI | [Web 专项设计第4、7节](../03-architecture/14-web-application.md#4-浏览器会话与认证) | ①～④ | L2 | — |
+| W-02 | 成员管理、档案/目标完整写入、强认证续接和版本检查未实现（已交付页面见 [`web/README.md`](../../web/README.md)） | 各段 PRD 中标为“随 Web”的行为（强认证弹窗与已填内容保留、确认页、版本检查、“按 vN 判断”、逐层展开与高亮等） | ①②③ | L2 | gateway Web 会话与子系统公开读取接口 |
+| W-03 | 真实企业微信网页授权、免登会话和渠道负向验收未关闭（H5 绑定确认页、卡片链接落地及提示已实现） | PRD 第1段 F5、F7；第5段 | ④ | L2（内存适配器下的页面）、L3（真实渠道） | — |
+| W-04 | 生产 OIDC 授权码/PKCE、数据库会话、刷新令牌、后端通道登出、渠道免登与 `/v1/web/*` 聚合端点未实现（开发会话边界已实现） | [Web 专项设计第4、7节](../03-architecture/14-web-application.md#4-浏览器会话与认证) | ①～④ | L2 | C-03 Web 登录配置 |
 | W-05 | Web 页面需要、尚未公开的子系统接口：identity `ListMembers`、`PreviewInvitation` 与受邀新用户的 IdP 账号准备；entity-graph `ResolveEntity` 的公开读取；evidence 证书文件上传；learning `ReportMiss` 的公开接口；domain-intelligence `GetCoverage` 的公开读取（随 D-05） | [Web 专项设计第7.3节](../03-architecture/14-web-application.md#73-端点清单) | ①～③ | L2 | 账号准备随 C-03 |
-| W-06 | Web 工程：`web/apps/workspace`、OpenAPI 生成的客户端、设计令牌与九种状态组件、统一列表组件、错误码文案目录与覆盖检查、CI 构建与浏览器端到端测试 | [Web 专项设计第2、5、6节](../03-architecture/14-web-application.md#2-应用形态与工程结构) | ①～④ | L2 | — |
-| W-07 | 保存视图：customer-context `SavedView` 与接口；个人视图随收件箱，团队视图随统一列表组件第二批 | [Web 专项设计第6.2节](../03-architecture/14-web-application.md#62-保存视图的所有者) | ② | L2（个人）、L5 前（团队） | — |
+| W-06 | OpenAPI 生成客户端、九种状态全集、统一列表、错误码覆盖检查、CI 与浏览器端到端测试未补齐 | [Web 专项设计第2、5、6节](../03-architecture/14-web-application.md#2-应用形态与工程结构) | ①～④ | L2 | gateway Web 会话与浏览器验收环境 |
+| W-07 | 保存视图：customer-context `SavedView` 与接口；个人视图随收件箱，团队视图随统一列表组件 | [Web 专项设计第6.2节](../03-architecture/14-web-application.md#62-保存视图的所有者) | ② | L2（个人）、L5 前（团队） | — |
 
 ### 4.5 客户与运营（U）
 
@@ -134,53 +126,47 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | U-03 | 客户试用前置：单元级授权与列表过滤的运行时核对、查看限额、删除更正流程、支持与缺陷反馈、对外协议 | 阶段基线 M2-P8 | ①～④ | L5 | — |
 | U-04 | 各段 PRD“可运行”所要求的走查记录、截图与任务观察 | 各段 PRD 第12节 | ①～④ | L2 起逐级 | — |
 
-## 5. 建议顺序
+### 4.6 已关闭
 
-建议的顺序按依赖排列，不给日期；每一级的开始以前一级的通过证据为准，周数按[路线图](01-roadmap.md)的规划窗口在每个交接点校准。
+| 编号 | 关闭内容 | 证据 |
+|---|---|---|
+| D-17 | 仿真报告的代表样本按查看者本人的 `can_search_public` 与数据覆盖过滤，无权的只给数量，判断不可用时不返回样本 | `services/kernel/integration/policy_approval_test.go`（用例11）、`services/subsystems/learning/internal/app/samples_test.go` |
+| C-08 | 即时通知 F7 与卡片“跟进”按钮（服务端） | `services/kernel/integration/notify_test.go`（`TestInstantNotifications`）、`services/kernel/integration/pursuit_test.go`、`services/subsystems/channels/internal/app/pursue_internal_test.go` |
+| C-09 | 第6段渠道侧：提醒卡片投递与“完成/撤销”、简报“待我处理”任务、授权被拒通知、提醒安静时段（服务端） | `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`） |
+| C-10 | 持续跟踪 F10、创建面板候选负责人、同一采购项目的互相提示、评估报告结果汇总（服务端） | `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`） |
+| C-11 | 渠道通知投递事件与统计、写入准入不满足时的转交、转交提醒分页展开、持续跟踪的授权被拒通知（服务端） | `services/kernel/integration/pursuit_test.go`、`services/subsystems/channels/internal/app/notices_internal_test.go` |
+| C-14 | 目标分派规则配置与信号上的候选负责人，pursuit 候选适配器（服务端） | `services/kernel/integration/assignment_test.go`、`services/subsystems/detection/internal/app/assignment_test.go`、`services/subsystems/customercontext/internal/domain/assignment_test.go` |
+| R-01 | `scheduler` 角色运行各子系统声明的周期任务，主备同一时刻只一个实例执行 | `services/kernel/scheduler/scheduler_test.go`、`services/kernel/integration/tenants_test.go`、`services/subsystems/channels/jobs_test.go`、`services/cmd/platform/roles_test.go` |
+| R-05 | commerce `checkCoverage` 与 gateway 覆盖适配器，覆盖服务故障时失败关闭 | `services/kernel/integration/coverage_test.go` |
+| W-01 | Web 专项设计（WD1–WD7 由项目负责人确认） | [Web 专项设计](../03-architecture/14-web-application.md)、[整合原型](../01-product/prd/prototypes/00-web-shell.html) |
 
-1. **L1 回放贯通**：L1-1、L1-2a、L1-2b 与 L1-3a 已交付；剩余工作集中在数据供应平面（D-02～D-12 的未关闭部分）、Go 端口适配器、全端口生产装配（R-02）与贯通 E2E。R-01、R-05、D-17 已关闭；简报、通知和跟进的 scheduler 周期任务已有服务端实现，仍需在同一环境中完成 L1 真实进程走查与负向用例。
-   - 与主线的分工：数据平面的 Python 子系统、INF-PROC 结果公告解析器与贯通 E2E 测试由独立线程实现，和主线改动的 Go 服务端基本不重叠；detection、learning、gateway 端口的生产适配器会改到主线也在改的子系统，开工前与主线协调，按“谁先合并谁占用修订号，后合并的顺延”处理；
-2. **L2 界面贯通**：Web 专项设计已完成（W-01 已关闭），实现等 L1 的端到端测试通过后开始，按[Web 专项设计第10节](../03-architecture/14-web-application.md#101-批次)的批次覆盖第2节四个环节需要的页面（W-02～W-07）；同时完成 R-03 与 C-03 的 Web 登录部分；
-3. **L3 真实渠道**：与 L2 并行，前提是 U-01 测试企业与 C10 真实调用授权到位；交付 C-01、C-02（生产企业微信适配器、渠道网页授权与 `ChannelSSO` 的生产接入、外网回调入口），以及 W-04 中浏览器免登会话与卡片落地在真实渠道下的验收（按 Web 专项设计 WD2）；
-4. **L4 真实数据**：前提是第6节的外部事实到位；先在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7，不以全国覆盖为前提；
+## 5. 顺序
+
+当前主线以[阶段基线第1.1节](06-stage-baseline.md#11-当前主线)为准：真实数据链路对应本线的 L4，最薄研究切片不在本线的四个环节内，由阶段基线单独验收。本线各级按依赖排列，不给日期，每一级的开始以前一级的通过证据为准：
+
+1. **L1 回放贯通**：已通过（第3节的可重复入口）；
+2. **L2 界面贯通**：只完成已开工的页面与已登记的 W 缺口，不扩展新页面；R-03 与 C-03 的生产 Web 登录部分是独立门禁；
+3. **L3 真实渠道**：与 L2 并行，前提是 U-01 测试企业与 C10 真实调用授权到位；交付 C-01、C-02，以及 W-04 中浏览器免登会话与卡片落地在真实渠道下的验收（按 Web 专项设计 WD2）；
+4. **L4 真实数据**：当前主线。在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7，以真实数据替代 L1 的回放语料与企业夹具，关闭 D 缺口；不以全国覆盖为前提；
 5. **L5 客户走查**：L4 通过且 M2-P8、M2-P9 关闭后，由试点客户按各段 PRD 走查，关闭各段的“功能验收”。
 
 ## 6. 维护规则
 
-- **缺口登记**：今后每个实现 PR 在本文第4节新增或关闭对应编号（关闭时写明证据位置），各段 PRD 验收表与子系统“实现状况”照常登记，本文只做汇总与交叉引用，不另写规则；
+- **缺口登记**：第4节是 A02 缺口状态的唯一登记处。实现 PR 在此新增编号或改写未关闭部分，关闭时移入第4.6节并写明证据；PRD 验收表只登记用例状态与测试证据，子系统规格只描述已实现的设计，二者不写进度叙述；
 - **进度口径**：汇报 M2 进度时同时给出服务端切片覆盖与贯通级别，不把服务端切片完成表述为旅程可用；
 - **负向验证随级别重做**：每升一级，在该级环境中重新执行跨租户、无权限、令牌重放与失败关闭的负向用例；涉及授权或租户隔离的实现 PR 附独立的越权与反例测试，不以 CI 全绿或验收表标记代替；
 - **外部事实**：B2b、D1c/D2、建材试点客户候选、C3/C7a、C10 的状态以[阶段基线第4节](06-stage-baseline.md#4-m2-前置条件与能力交接)和[立项清单](00-initiation-readiness.md)为准，本文只标注它们阻断哪一级。
 
 ## 7. 已确认事项
 
-以下七项在 PR #33 评审通过后按推荐做法采纳（项目负责人 2026-10-17 与 2026-10-19 确认的工作流程：PR 评审通过即按推荐项推进，无需再次确认），2026-10-26 生效。真实调用、凭证与来源启用仍按各自门禁另行验收，本节不代替这些授权。
+以下事项由项目负责人确认：D1、D3、D5–D7 随 [PR #33](https://github.com/SuperAILabs/MiaoQia/pull/33) 评审按推荐做法采纳；D2、D4 为 2026-11-06 的主线决议。真实调用、凭证与来源启用仍按各自门禁另行验收，本节不代替这些授权。
 
 | # | 已确认事项 |
 |---|---|
 | D1 | M2 进度同时按服务端切片覆盖与贯通级别（L0–L5）汇报 |
-| D2 | L1 回放贯通与主线服务端并行推进；第1–7段服务端切片均已实现；数据平面 Python 子系统、INF-PROC 中标结果公告解析器与贯通 E2E 由独立线程实现，改 detection、learning、gateway、commerce 的端口适配器前与主线协调 |
+| D2 | 当前主线是真实数据链路（本线 L4）与最薄研究切片（[阶段基线第1.1节](06-stage-baseline.md#11-当前主线)）；改 detection、learning、gateway、commerce 的端口适配器前核对并行工作的文件范围 |
 | D3 | L1 使用仓库内冻结的官方公告语料与标明为夹具的企业主数据；订阅反查先用按目标区域与品类过滤的最小实现；仿真接入真实数据集前先关闭 D-17 |
-| D4 | W-01 Web 专项设计现在开始（文档 PR）；Web 实现在 L1 端到端测试通过后开始，先做四个环节的最小页面集与 H5 落地页 |
+| D4 | L2 Web 只完成四个环节已开工的最小页面集、H5 落地页与已登记的 W 缺口，不扩展新页面 |
 | D5 | L3 只在测试企业微信企业中验收，L3 与 L2 并行；测试企业与 C10 真实调用、凭证授权由项目负责人提供（U-01） |
 | D6 | L4 先在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7；B2b、D1c/D2、试点客户候选、C3/C7a 作为 L4/L5 阻断项跟踪 |
 | D7 | 按第6节维护缺口编号与负向验证 |
-
-## 8. L1 实施进度
-
-L1 按依赖拆分，下表为实施建议；PR #35 的 E1–E5 仍为建议，未登记为已采纳。每个实现批次在第4节更新编号：
-
-| PR | 内容 | 关闭或推进 | 与主线 |
-|---|---|---|---|
-| L1-1 | 结果公告解析器与对照人工映射的评测；evidence 公共管线（快照、规范化文档、解析修订、证据引用、事件）；domain-intelligence 事实版本、`domain.fact.upserted.v1` 与 A02 结果视图投影；语料回放命令 `mq-evidence-replay` | D-02、D-03、D-04（部分） | 只改 Python 数据平面、INF-PROC 包与 CI，不碰 Go 服务端 |
-| L1-2a | 事实当前/当时已知/固定版本、历史、结构化查询、A02 求值单位与文档证据解析的本地绑定；补同项目建材招标/中标官方原件、人工映射及折扣率解析回归 | D-02、D-03、D-11（提供读取基础，尚未接入 Go 端口） | 只改 Python 与语料 |
-| L1-2b | 冻结 `official-qzygjy` 招标/中标按平台、采购方与项目号聚合 `pp_`；无明确标包证据为 `lots=[]`；四事件与独立聚合版本，后续修订关联待复核；既有 Notice 经显式 ID 本地 backfill 补建，保持旧版本/事件不变 | D-04（局部，不关闭完整生命周期） | 只改 Python、最小兼容契约与夹具 |
-| L1-2 后续 | data-api 内部读取接口（事实视图求值单位、`GetFact`、`ResolveEvidence`、信息领域服务状态）；其他来源项目/标包聚合与完整 `tendering.*` 生命周期；建材品类规则增强；INF-ORG 企业主数据夹具与组织解析（`org_id`、`part_of`） | D-04、D-05、D-08、D-10、D-12（L1 部分） | 只改 Python |
-| L1-3a | commerce 覆盖判断 `checkCoverage` 与 gateway 覆盖适配器；learning 代表样本按查看者权限过滤 | R-05、D-17（关闭） | 改 commerce、gateway、learning，已与主线确认文件不重叠 |
-| R-01 | `scheduler` 角色周期任务运行器与主备锁；identity、channels（含简报组装与渠道通知）、pursuit 维护任务；`identity.Tenants` 租户枚举 | R-01（关闭） | 新增 kernel/scheduler 与各子系统 `jobs.go`，channels、pursuit 只加 `Jobs` 字段；`ComposeDue` 与 `DeliverNotices` 由主线 C-09（PR #46）提供 |
-| L1-3 后续 | Go 端口生产适配器：detection `Facts` 的 data-api 映射基础已实现；仍需 `Candidates`（按目标区域与品类过滤的最小反查）、gateway `PublicData` 与证据读取、learning `Dataset`/`DomainStatus`，以及生产绑定 | D-06（部分）、D-07、D-09、D-10、D-11 | 改主线子系统，开工前与主线协调修订号与文件 |
-| L1-4 | 全端口生产装配的部署配置与启动检查、调度器任务、贯通 E2E（投放结果公告 → 收件箱信号 → 对象页回到原文 → 站内简报）及跨租户与无权限负向用例 | R-01、R-02、C-04（站内） | 第5段服务端已合并，仍待适配器与运行装配 |
-
-L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力，不宣称 INF-PROC 就绪；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）。
-
-建材配对语料为衢州市阳光交易服务平台的 `official-building-tender-20261026` 与 `official-building-award-20261026`：同一项目 `XCXCG-2025-008`，采购人为江山市水务有限公司；原始响应、正文、人工事实及证据已保存，哈希登记于 `lifecycle-manifest.json`。中标定价 `76.5000%` 保留为 `conditions.contract_pricing`，不记金额，不据此推算成交总价。此配对在冻结来源边界内形成同一 `pp_`，保留成员固定版本与字段证据；未提供跨公告标包依据，故 `lots=[]`，不推断 `prj_` 或 `part_of`。四种首批事件与保守身份/修订规则见 [domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)。其他来源/生命周期、品类增强、企业主数据夹具及 data-api 装配仍在 L1-2 后续范围，整条旅程仍为 L0。

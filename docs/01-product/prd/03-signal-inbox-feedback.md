@@ -1,6 +1,6 @@
 # PRD 第3段：信号收件箱与批量反馈
 
-> 状态：设计交接通过 · 版本：1.3 · 更新：2026-10-18 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/03-signal-inbox-feedback.html](prototypes/03-signal-inbox-feedback.html)
+> 状态：设计交接通过 · 负责人：产品负责人、客户智能负责人、招投标领域负责人 · 原型：[prototypes/03-signal-inbox-feedback.html](prototypes/03-signal-inbox-feedback.html)
 
 本段让销售团队每天按目标查看 A02 进入供货的信号，看懂“为什么是这个处置”，并对信号单条或批量反馈“相关 / 不相关”、忽略无关信号。它承接第7段（目标首次激活后才产生信号，首次激活可选回填近 30 天），产出两样东西：团队共享的信号处理状态（第6段从“待处理”的信号创建跟进），以及本租户的反馈集（`learning` 用于 Top-K 精确率、排除正确率等质量评估与改进建议）。反馈不会改变生效策略：策略变化只经第7段的仿真与审批。
 
@@ -302,7 +302,7 @@
 
 证据位置在实现时逐条填入：自动化用例写测试文件与用例名，走查写记录链接。
 
-服务端切片：detection 契约 0.1.0 草案（事件 0.1.0）实现生效边界上的匹配、收件箱、详情与解释、单条与批量处理、撤销与处理记录，见 [detection 第5节实现状况](../../03-architecture/subsystems/detection.md#5-接口) 与 [第8节实现状况](../../03-architecture/subsystems/detection.md#8-伸缩与可靠性)；customer-context 契约 0.4.0 草案实现 `GetActivePolicies` 与目标访问判断的 `can_view_signals` / `can_feedback`，见 [customer-context 第6节实现状况](../../03-architecture/subsystems/customer-context.md#6-接口)；learning 契约 0.2.0 草案实现反馈集与反馈汇总，见 [learning 第5节实现状况](../../03-architecture/subsystems/learning.md#5-接口)；identity 的 OpenFGA 模型追加信号的查看与反馈关系（[identity 第7.2节](../../03-architecture/subsystems/identity.md#72-权限矩阵)）。公共事实（视图组装与订阅反查）以端口的内存夹具（`facttest`，事实均为虚构）测试，生产适配器未接入；重新求值、撤回关闭、回填、来源中断与漏报未实现，内容更新与关闭由测试以拥有者账号写入。Web 页面、渠道卡片与走查未实现。下表“全部”只指服务端可自动化的部分。当前自动化证据（均在 `services/kernel/integration/signal_inbox_test.go` 的 `TestSignalInboxFeedback` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，detection 经 mTLS 内部端口的远程绑定读取生效策略，并发用例以屏障同时放行）：
+服务端实现以子系统规格为准，未关闭的缺口见 [A02 真实贯通验收线第4节](../../05-delivery/09-a02-end-to-end-acceptance.md#4-缺口清单)；下表“全部”只指服务端可自动化的部分。当前自动化证据（均在 `services/kernel/integration/signal_inbox_test.go` 的 `TestSignalInboxFeedback` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，detection 经 mTLS 内部端口的远程绑定读取生效策略，并发用例以屏障同时放行）：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|

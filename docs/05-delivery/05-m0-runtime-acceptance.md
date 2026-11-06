@@ -1,8 +1,8 @@
 # M0 认证、探针与消费运行时验收
 
-> 状态：三项实现与真实组件门禁已关闭 · 版本：1.1 · 更新：2026-10-15 · 负责人：平台工程、安全、数据负责人
+> 状态：三项实现与真实组件门禁已关闭 · 负责人：平台工程、安全、数据负责人
 
-本文对应 C4a 契约冻结后需要关闭的 HTTP 认证、完整 M0 探针与现有消费者载荷校验门禁。记录见[运行时验收清单](../../contracts/reviews/m0-runtime-acceptance.yaml)。关闭依据是实际生产代码和隔离的真实组件测试，不代表已经部署到生产环境，也不把这些结果扩展为整个 M0 或身份子系统全部完成。
+本文对应 C4a 契约验收后需要关闭的 HTTP 认证、完整 M0 探针与现有消费者载荷校验门禁。关闭依据是实际生产代码和隔离的真实组件测试，不代表已经部署到生产环境，也不把这些结果扩展为整个 M0 或身份子系统全部完成。
 
 ## 1. 门禁与证据
 
@@ -29,7 +29,7 @@
 
 上下文仍表达原调用主体；mTLS验证的是发送该上下文的服务。白名单服务可代理已验证的用户请求，授权关系仍由identity/OpenFGA判断。服务身份认证不会自动授予业务资源权限。
 
-当前集成安全配置为[3.0.0](../../contracts/integration.yaml)；既有Check与事件v1结构保持兼容；identity增量接口为1.1.0。租户生命周期和目录核验由[身份验收](07-m0-identity-acceptance.md)单独覆盖，此前验收记录的版本/哈希按审计用途保留。首批C4a/C4b冻结记录按审计用途保留，不改写历史哈希。
+集成安全配置见[`contracts/integration.yaml`](../../contracts/integration.yaml)；既有Check与事件v1结构保持兼容。租户生命周期和目录核验由[身份验收](07-m0-identity-acceptance.md)单独覆盖。
 
 ## 3. 载荷、语义与故障处理
 
@@ -43,7 +43,19 @@
 
 ## 4. 复验
 
-准备隔离PostgreSQL、Kafka、OpenFGA、HTTPS Keycloak，并导入[本地测试realm](../../deploy/local/keycloak/realm-miaoqia.json)。`tools/dev/m0_test_certificates.sh <临时目录>`仅生成测试证书，不能用于实际部署。设置 `MIAOQIA_TEST_PG`、`MIAOQIA_TEST_KAFKA`、`MIAOQIA_TEST_OPENFGA`、`MIAOQIA_TEST_KEYCLOAK` 和 `MIAOQIA_GATEWAY_CA_FILE` 后运行：
+生产策略复验准备隔离 PostgreSQL、Kafka、OpenFGA、HTTPS Keycloak，并导入[本地测试realm](../../deploy/local/keycloak/realm-miaoqia.json)。`tools/dev/m0_test_certificates.sh <临时目录>`仅生成测试证书，不能用于实际部署。开发验收直接使用共享组件；CI 或隔离环境设置 `MIAOQIA_TEST_PG`、`MIAOQIA_TEST_KAFKA`、`MIAOQIA_TEST_OPENFGA`、`MIAOQIA_TEST_KEYCLOAK` 和 `MIAOQIA_GATEWAY_CA_FILE` 后复验：
+
+开发验收使用仓库入口，入口默认复用已运行的共享 PostgreSQL、Kafka、OpenFGA、Keycloak、OTLP 与 data-api；连接信息来自已导出的环境变量或显式 `MIAOQIA_ENV_FILE`。入口在运行 Go 测试前先检查配置的 Kafka 地址，未就绪会立即失败并提示通过环境变量切换共享地址，不把环境缺失误报为代码测试失败。OpenFGA 网络延迟影响权限矩阵或长回归时，可显式加 `--local-openfga`，由本机已安装的 `openfga` 二进制在回环地址启动内存存储服务；该模式不依赖 Docker，进程在本次验收结束时自动退出。没有共享环境时才显式加 `--up` 使用 `deploy/local/up.sh` 的 Docker Compose 引导：
+
+```sh
+tools/dev/run-local-acceptance.sh
+```
+
+只运行代码、数据和契约检查时使用 `tools/dev/run-local-acceptance.sh --skip-e2e`；复用共享服务时不启动 Docker。需要本地授权服务时使用 `tools/dev/run-local-acceptance.sh --local-openfga --skip-e2e`（或组合 `--local-openfga` 与完整 E2E）；`--no-up` 保留为显式兼容写法，`--up` 才会启动可选的本地 Compose 组件。需要隔离本机边界时设置 `MIAOQIA_ACCEPTANCE_LOCAL_ONLY=true`，VPS 公共服务则通过 `tools/dev/run-m0-vps.sh` 单独验收。
+
+M0 E2E 会复用 `MIAOQIA_DETECTION_DATA_API_URL` 指向的共享 data-api；A02 gateway 读取使用 `MIAOQIA_GATEWAY_DATA_API_URL`（开发验收入口在未单独设置时复用 detection 地址）。只有设置 `MIAOQIA_START_LOCAL_DATA_API=true` 时才在本机启动 data-api（默认 `:8094`），并在官方事实回放后用内部上下文读取一次 `get-fact`。这只验证 listener 与 Go 进程的边界可达，不宣称 A02 全链路已完成。
+
+该入口的本地 E2E 使用开发环境的 HTTP Keycloak；HTTPS Keycloak、真实 mTLS 和生产认证策略仍须按本节的隔离组件命令单独复验。
 
 ```sh
 uv sync --project data --locked --all-packages

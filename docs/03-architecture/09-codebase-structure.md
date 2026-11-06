@@ -1,6 +1,6 @@
 # 代码库结构
 
-> 状态：评审中 · 版本：3.0 · 更新：2026-10-15 · 负责人：首席架构师
+> 状态：评审中 · 负责人：首席架构师
 
 ## 1. 单一代码仓库
 
@@ -15,7 +15,6 @@ miaoqia/
 │   ├── policy/                    策略 DSL Schema 与 CEL 环境声明
 │   ├── storage/                   内核表（发件箱、消费去重），Go 与 Python 内核共用
 │   ├── tests/                     契约样例（正例与反例）
-│   ├── reviews/                   契约冻结与验收记录（文件版本与哈希，按审计用途保留）
 │   ├── identifiers.yaml           标识前缀登记
 │   └── integration.yaml           工程集成契约：请求上下文、事件信封与路由、身份、认证、载荷校验
 │
@@ -127,9 +126,8 @@ contracts/apis/<子系统>/openapi.yaml
 | `uv run --project tools/contracts mqc generate --check` | 生成物一致性检查 |
 | `uv run --project tools/contracts mqc fixtures --export DIR` | 导出正例，供往返测试 |
 | `uv run --project tools/contracts mqc compat --base origin/main -v` | 与目标分支比较的兼容性检查（合并请求必过） |
-| `uv run --project tools/contracts mqc freeze-check` | 冻结记录哈希核对：受约束段落变化须升版本，佐证材料只报告 |
 
-**版本与兼容性**：每个 Schema 文件带 `x-version`。变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。OpenAPI组件引用展开后参与兼容比较；稳定API破坏性变更须新路径主版本并保留旧路径。SQL变化须升版本并提供可审查迁移文件，CREATE IF NOT EXISTS不能代替已有表升级；标识登记还检查对象/所有者/领域归属及代码字面量前缀。冻结按具体清单记录Schema x-version、API/AsyncAPI info.version、标识/存储/集成配置version与文件哈希；事件类型版本独立于文档版本。`mqc freeze-check` 核对 `contracts/reviews/` 下全部记录：同一路径以最晚记录为准；`files`、`version_owners`、`reused_frozen_dependencies` 中的文件内容变化须高于冻结版本，或另立修订记录（原记录不改）；其余段落是冻结时的证据快照，偏离只报告。
+**版本与兼容性**：只有写入持久化数据、因而影响重放的版本受约束。每个 Schema 文件带 `x-version`（领域事实以 `schema_version` 记录校验所用的版本）；变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本（已激活策略与事件载荷固定二者）；内核 SQL 变化须登记可审查的迁移文件，CREATE IF NOT EXISTS 不能代替已有表升级。接口（OpenAPI）、事件文档（AsyncAPI）、标识登记与工程配置在开发期不设版本号（规范要求的 `info.version` 固定为 `0.0.0`）：生产方与调用方在同一仓库，破坏性变更在同一提交中改齐调用方，兼容检查只报告变更级别。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。
 
 ## 6. 命名约定
 
