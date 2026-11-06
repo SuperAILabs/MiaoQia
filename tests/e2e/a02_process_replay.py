@@ -154,6 +154,10 @@ def clear_tenant_state(env: dict[str, str]) -> None:
     # a local channel bootstrap; the production WeCom adapter remains an L2 gate.
     chn = f"postgres://chn_owner:chn_owner@{pg}/chn"
     with psycopg.connect(chn) as c:
+        # Briefings are one per subject and period: clear the replay tenant's
+        # briefing state so each run composes its own briefing.
+        for table in ("chn_deliveries", "chn_briefing_links", "chn_card_links", "chn_notices", "chn_briefing_windows", "chn_compose_marks", "chn_briefings"):
+            c.execute(f"DELETE FROM {table} WHERE tenant_id = %s", (TENANT,))
         c.execute("DELETE FROM chn_bindings WHERE tenant_id = %s", (TENANT,))
         c.execute("DELETE FROM chn_installations WHERE tenant_id = %s", (TENANT,))
         c.execute("INSERT INTO chn_installations(id,tenant_id,channel,state,version,corp_id,corp_name,verified_at) VALUES ('chi_01M6DQA02XTRA0000000000001',%s,'wecom','enabled',2,'corp-a02','A02本地渠道',now())", (TENANT,))
