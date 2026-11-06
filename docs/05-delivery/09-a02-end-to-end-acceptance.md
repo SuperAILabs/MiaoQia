@@ -20,7 +20,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | 环节 | 用户看到的结果 | 已有（服务端切片） | 真实贯通还缺 |
 |---|---|---|---|
 | ① 激活策略 | 管理员配置档案与 A02 目标，看仿真报告，提交并批准激活 | 档案与目标、策略草案/版本/差异、仿真与报告、审批服务、激活执行 | 完整仿真数据集与覆盖状态（D-09、D-10）、真实 IdP 与 TOTP（C-03）、审批通知（C-05）、Web 页面（W-02） |
-| ② 收到信号 | 新的中标结果公告进入平台后，命中的目标收件箱出现信号，可反馈与批量处理 | 生效边界匹配、收件箱、详情与解释、反馈与批量撤销；回放管线的快照、结果解析、领域事实及事件 | 来源持续采集（D-01，L4）、通用项目/标包聚合、品类增强、领域状态与更正解析（D-02～D-05）、订阅反查与事实视图适配器（D-06、D-07）、企业主数据（D-08）、Web 收件箱（W-02） |
+| ② 收到信号 | 新的中标结果公告进入平台后，命中的目标收件箱出现信号，可反馈与批量处理 | 生效边界匹配、收件箱、详情与解释、反馈与批量撤销；回放管线的快照、结果解析、领域事实及事件 | 来源持续采集（D-01，L4）、通用项目/标包聚合、品类增强、领域状态与更正解析（D-02～D-05）、生产订阅反查（D-07）、企业主数据（D-08）、Web 收件箱（W-02） |
 | ③ 查看原文 | 从信号进入项目、中标方页面，字段回到原文片段 | 对象页与证据面板 BFF、对象信号分区、查看计量；事实与文档证据的本地读取绑定 | 数据平面读取与证据读取适配器（D-11）、归属边与组织解析（D-12）、信息领域服务状态与字段状态（D-10、D-13）、Web 对象页与证据面板（W-02） |
 | ④ 简报触达 | 早间在企业微信收到按目标分区的简报，卡片上反馈或跳转 Web | 企业微信绑定、免登会话与撤销（内存适配器）；简报组装与投递、偏好、历史、重新推送和卡片动作（C-04） | 第5段剩余功能（C-18～C-21）、覆盖与来源权利适配器、生产企业微信适配器与外网回调入口（C-01、C-02）、浏览器免登会话与卡片落地（W-04，按 Web 专项设计 WD2）、H5 落地页（W-03） |
 
@@ -44,13 +44,13 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 - L1 使用的是仓库内已冻结的官方公告语料（[`packs/information_domains/procurement/corpus/`](../../packs/information_domains/procurement/corpus/)），作为测试材料处理，不构成来源启用，不宣称 INF-PROC 就绪，不改变 M1-P1/P2 的门禁；
 - L2 与 L3 互不依赖，可以并行；L4 依赖[阶段基线第4节](06-stage-baseline.md#4-m2-前置条件与能力交接)的外部事实，L5 依赖 L4；
 - 每一级的负向用例都在该级环境中重新执行，不沿用 L0 的结论（第6节）；
-- L1 的可重复入口：`tools/dev/run-a02-l1-gate.sh --local-openfga`（服务端门禁）与 `tools/dev/run-a02-process-replay.sh --local-openfga`（进程级门禁：同一组 `platform` 与 `mq-data` 进程完成候选公告 → signal → object → evidence → briefing 回放，并验证跨租户、visitor、来源权利收紧与 data-api 不可用时失败关闭），结果写入 `deploy/local/.data/` 下对应目录；验收脚本探测本机共享 PostgreSQL，CI/隔离环境用 `MIAOQIA_TEST_PG` 覆盖；
+- L1 的可重复入口：`tools/dev/run-a02-l1-gate.sh --local-openfga`（服务端门禁）与 `tools/dev/run-a02-process-replay.sh --local-openfga`（进程级门禁：同一组 `platform`、`mq-data` 与 `mq-acquisition`（acq-admin）进程完成建材中标公告 → signal → object → evidence → briefing 回放；data-api 为 mTLS 内部 listener，经 acq-admin 做来源权利准入，detection 以 monitoring、learning 以 simulation 按租户读取，回放租户的来源权利由脚本登记；并验证跨租户、visitor、无来源权利的租户、撤销来源权利与 data-api 不可用时失败关闭，gateway 证据面板未接入前失败关闭（D-11）），结果写入 `deploy/local/.data/` 下对应目录；验收脚本探测本机共享 PostgreSQL，CI/隔离环境用 `MIAOQIA_TEST_PG` 覆盖；
 - L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）；
 - L1 建材配对语料为衢州市阳光交易服务平台的 `official-building-tender-20261026` 与 `official-building-award-20261026`：同一项目 `XCXCG-2025-008`，采购人为江山市水务有限公司；原始响应、正文、人工事实及证据已保存，哈希登记于 `lifecycle-manifest.json`。中标定价 `76.5000%` 保留为 `conditions.contract_pricing`，不记金额，不据此推算成交总价。此配对形成同一 `pp_`，保留成员固定版本与字段证据；没有跨公告标包依据，故 `lots=[]`，不推断 `prj_` 或 `part_of`（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)）。
 
 ## 4. 缺口清单
 
-**当前贯通级别：L1 待重新验证（D-06：data-api 改为 mTLS 内部 listener 后，进程回放依赖的服务主体读取被拒）；L2 进行中（W 缺口）；L3、L4、L5 未开始。** 本节是 A02 缺口状态的唯一登记处，每行只写尚未关闭的部分，已实现的设计以子系统规格为准；关闭的缺口移入第4.6节。“环节”指第2节的①～④；“最早级别”是该项必须关闭的贯通级别；“—”表示不在最短链路上，不阻断贯通。来源一列给出需求或规格的位置。
+**当前贯通级别：L1 已通过；L2 进行中（W 缺口）；L3、L4、L5 未开始。** 本节是 A02 缺口状态的唯一登记处，每行只写尚未关闭的部分，已实现的设计以子系统规格为准；关闭的缺口移入第4.6节。“环节”指第2节的①～④；“最早级别”是该项必须关闭的贯通级别；“—”表示不在最短链路上，不阻断贯通。来源一列给出需求或规格的位置。
 
 ### 4.1 数据供应（D）
 
@@ -61,12 +61,11 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D-03 | INF-PROC 更正公告解析器未实现；招标与结果公告解析器 `proc.tender-notice`、`proc.result-notice` 以人工映射为黄金标注评测 | `packs/information_domains/procurement/src/` | ② | L1 | — |
 | D-04 | 标包 `lot_`、其他来源与完整生命周期的项目聚合未实现；冻结来源的 `pp_` 聚合与复核官方 pair 的公告主题品类只是局部实现（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)） | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-05 | 信息领域服务状态与覆盖接口（`GetCoverage`）未实现，规则到信息领域的生产对应缺失（B-PERMIT 不能显示“数据未接入”） | PRD 第3段用例7、第4段用例24–27；[customer-context](../03-architecture/subsystems/customer-context.md) | ①②③ | L1 | — |
-| D-06 | data-api 内部 listener 只接纳交互用户（purpose 为 interactive）：detection 匹配（服务主体，按租户以 monitoring 读取求值单位）与 learning 仿真（simulation）的读取被拒，A02 进程回放与 M0 E2E 的 data-api 环节因此不能运行。需要服务主体委托读取：SourceRightsPolicy 用途扩展、acquisition 权利裁决与共享 mTLS 准入接纳服务主体、detection 先经 percolator 反查候选租户再按租户读取、回放拓扑（证书、acq-admin、权利登记，以及白名单覆盖的回放语料）；其他来源与生命周期的事实视图未接入 | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-07 | 生产 OpenSearch percolation 未实现；当前为 search 的最小 PostgreSQL percolator（按 cell、事实类型、区域和品类过滤），未登记查询时失败关闭 | 同上；`services/subsystems/search/` | ② | L1（可先用最小实现） | — |
 | D-08 | INF-ORG 企业主数据未接入；X-SELF 需要“关联本企业” | PRD 第2段用例1、7–9；第3段用例7 | ①② | L1 用夹具，L4 用供应商 | B2b |
-| D-09 | learning 仿真数据集的完整多领域历史、覆盖与来源权利未接入（A02 结果视图的适配器已有，读取随 D-06） | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
+| D-09 | learning 仿真数据集的完整多领域历史、覆盖与来源权利未接入（A02 结果视图已按草案所属租户以 simulation 用途读取） | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
 | D-10 | 完整 `GetCoverage` 与按租户覆盖状态未接入（learning 适配器对配置的 `INF-PROC` 返回 live） | 同上 | ①③ | L1 | 随 D-05 |
-| D-11 | gateway 只接入采购项目 `pp_` 的概要、标包与公告时间线（`internal/dataplane`）；`prj_` / `org_` 与上级项目（entity-graph 读取未进 data-api，随 D-12）、证据面板（data-api 的证据载荷不含所属对象与来源名称、标题、链接）、历史与统计分区、字段状态（随 D-10、D-13）及真实网络进程验收未关闭；未配置 data-api 时失败关闭 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
+| D-11 | gateway 只接入采购项目 `pp_` 的概要、标包与公告时间线（`internal/dataplane`）；`prj_` / `org_` 与上级项目（entity-graph 读取未进 data-api，随 D-12）、证据面板（data-api 的证据载荷不含所属对象与来源名称、标题、链接）、历史与统计分区、字段状态（随 D-10、D-13）未关闭；未配置 data-api 时失败关闭 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
 | D-12 | entity-graph 组织解析、`part_of` 归属边、合并与撤销未实现；detection 归属边端口 `NotWired` | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第4段用例19–22、37–38 | ③ | L1（组织解析与 `part_of`）；品牌随 M2-P13 | — |
 | D-13 | 字段状态、更正/撤回时间轴、来源中断、空态原因由数据平面提供 | PRD 第4段用例8–10、15–18、24–27 | ③ | L2 | 随 D-02～D-05 |
 | D-14 | 重新求值与撤回关闭的生产者、`signal.updated`、A02 更正公告重新求值 | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第3段已确认事项11 | ② | L2 | — |
@@ -130,6 +129,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 | 编号 | 关闭内容 | 证据 |
 |---|---|---|
+| D-06 | data-api 服务主体按租户读取：SourceRightsPolicy 用途为 interactive、monitoring、simulation 的子集；mTLS 准入按委托点名服务主体；acquisition 权利裁决接纳服务主体；detection 先由 percolator 取候选租户（不读内容），再以 monitoring 按租户读取求值单位并按该租户的区域/品类过滤；learning 以 simulation 按草案租户读取。进程回放在 mTLS data-api 与 acq-admin 上通过 | `tests/e2e/a02_process_replay.py`（2026-11-07 02:50（+08:00），VPS Kafka、本机 OpenFGA；结果见 `deploy/local/.data/a02-process-replay/result.json`，信号 `sig_01M6S35QSD2AJNF3W56FX2TE58`、对象 `pp_01M6RY2DT9ZPFDW3PV54G2PCJE`、简报 `brf_01M6S35RKDSPKTT0FVS4CTAYJN`）、`data/kernel/tests/test_internal_http.py`、`data/subsystems/acquisition/tests/test_rights.py`、`data/subsystems/acquisition/tests/test_remote.py`、`data/subsystems/domain-intelligence/tests/test_read_transport.py`、`services/subsystems/detection/internal/app/evaluate_test.go`、`services/subsystems/learning/api/remote/data_test.go` |
 | D-17 | 仿真报告的代表样本按查看者本人的 `can_search_public` 与数据覆盖过滤，无权的只给数量，判断不可用时不返回样本 | `services/kernel/integration/policy_approval_test.go`（用例11）、`services/subsystems/learning/internal/app/samples_test.go` |
 | C-08 | 即时通知 F7 与卡片“跟进”按钮（服务端） | `services/kernel/integration/notify_test.go`（`TestInstantNotifications`）、`services/kernel/integration/pursuit_test.go`、`services/subsystems/channels/internal/app/pursue_internal_test.go` |
 | C-09 | 第6段渠道侧：提醒卡片投递与“完成/撤销”、简报“待我处理”任务、授权被拒通知、提醒安静时段（服务端） | `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`） |
@@ -145,7 +145,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 当前主线以[阶段基线第1.1节](06-stage-baseline.md#11-当前主线)为准：真实数据链路对应本线的 L4，最薄研究切片不在本线的四个环节内，由阶段基线单独验收。本线各级按依赖排列，不给日期，每一级的开始以前一级的通过证据为准：
 
-1. **L1 回放贯通**：待重新验证；先关闭 D-06，再以第3节的可重复入口在 VPS 公共组件上重跑；
+1. **L1 回放贯通**：已通过（第3节的可重复入口，Kafka 使用 VPS 公共组件，OpenFGA 使用本机内存服务）；
 2. **L2 界面贯通**：只完成已开工的页面与已登记的 W 缺口，不扩展新页面；R-03 与 C-03 的生产 Web 登录部分是独立门禁；
 3. **L3 真实渠道**：与 L2 并行，前提是 U-01 测试企业与 C10 真实调用授权到位；交付 C-01、C-02，以及 W-04 中浏览器免登会话与卡片落地在真实渠道下的验收（按 Web 专项设计 WD2）；
 4. **L4 真实数据**：当前主线。在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7，以真实数据替代 L1 的回放语料与企业夹具，关闭 D 缺口；不以全国覆盖为前提；

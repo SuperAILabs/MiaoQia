@@ -47,4 +47,4 @@ VPS 首次部署或重建时，先创建 `miaoqia_public` 外部网络，再使�
 
 2026-11-04 完成公共网络迁移并通过 [`tools/dev/check-vps-public-network.sh`](../../tools/dev/check-vps-public-network.sh)：Keycloak issuer 可达，OpenFGA `/healthz` 返回 `SERVING`，OpenFGA 数据库迁移退出码为 0，MiaoQia 的 PostgreSQL、Keycloak、OpenFGA 均只接入 `miaoqia_public`。迁移前备份位于 VPS `/opt/miaoqia-public/backups/network-migration-20261104T161618Z/`。Cloudflare 域名、Kafka topic 初始化、Collector HTTP 接收端点、Keycloak realm 和公共服务连接边界继续按下方 M0/A02 脚本验收。
 
-`tools/dev/run-m0-vps.sh` 运行的 M0 E2E 覆盖迁移、探针、审计、授权拒绝、远程 identity 绑定，以及“官方中标公告 → evidence → domain fact → 发件箱”的数据平面回放；data-api 读取随 [A02 缺口 D-06](09-a02-end-to-end-acceptance.md#41-数据供应d) 接入。它不覆盖 detection 收件箱、gateway 对象页或 channels 简报，不关闭 A02 的 L1 贯通。公共服务不依赖开发者本机 PostgreSQL；MiaoQia 业务进程在本机运行时继续使用本机 PostgreSQL。
+`tools/dev/run-m0-vps.sh` 运行的 M0 E2E 覆盖迁移、探针、审计、授权拒绝、远程 identity 绑定，以及“官方中标公告 → evidence → domain fact → 发件箱”的数据平面回放；data-api 的 mTLS 读取由 A02 进程回放（`tools/dev/run-a02-process-replay.sh`）覆盖，M0 E2E 尚未包含。它不覆盖 detection 收件箱、gateway 对象页或 channels 简报，不关闭 A02 的 L1 贯通。公共服务不依赖开发者本机 PostgreSQL；MiaoQia 业务进程在本机运行时继续使用本机 PostgreSQL。
