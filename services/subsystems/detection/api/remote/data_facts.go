@@ -102,7 +102,11 @@ func (c factsClient) Units(ctx context.Context, ref api.FactRef) ([]api.Unit, er
 		if unit.Subject.ID != ref.ID || unit.Subject.Version != ref.Version {
 			return nil, fmt.Errorf("data-api bid-result unit %d has mismatched subject", i)
 		}
-		if ref.ObjectType != "" && unit.FactType != ref.ObjectType {
+		// domain.fact.upserted carries the source notice object type while the
+		// data-api projection exposes the evaluation unit type (bid_result).
+		// Keep rejecting unrelated projections, but allow this intentional
+		// notice → bid_result view boundary.
+		if ref.ObjectType != "" && unit.FactType != ref.ObjectType && !(ref.ObjectType == "tendering.notice" && unit.FactType == "tendering.bid_result") {
 			return nil, fmt.Errorf("data-api bid-result unit %d has mismatched fact type", i)
 		}
 		if ref.InfoDomain != "" && unit.Domain != ref.InfoDomain {

@@ -107,3 +107,21 @@ class Queries:
     def bid_result_units(self, fact_id: str, basis: Basis, *, version: int | None = None) -> Page:
         fact = self.get_fact(fact_id, basis, version=version)
         return Page(basis, tuple(bid_result_units(fact.fact)) if fact is not None else ())
+
+    def object_id_for_evidence(self, evidence_ref: str) -> str | None:
+        """Resolve an evidence reference to its confirmed procurement project."""
+        if not isinstance(evidence_ref, str) or not evidence_ref:
+            raise ValueError("evidence_ref 必须为非空字符串")
+        self._require_access()
+        with self.database.tx() as conn:
+            conn.execute(text("SET TRANSACTION READ ONLY"))
+            return conn.execute(text("""
+                SELECT l.project_id
+                  FROM dom_facts f
+                  JOIN dom_fact_versions v ON v.fact_id = f.id AND v.version = f.current_version
+                  JOIN dom_notice_links l ON l.notice_id = f.id AND l.notice_version = v.version
+                 WHERE v.content::text LIKE :needle
+                   AND l.project_id IS NOT NULL
+                 ORDER BY l.project_id
+                 LIMIT 1
+            """), {"needle": f"%{evidence_ref}%"}).scalar_one_or_none()

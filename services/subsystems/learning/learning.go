@@ -1,5 +1,5 @@
 // Package learning 组装 learning 反馈学习与评估 子系统。M2 第7段提供策略草案的候选变更仿真
-// （docs/01-product/prd/07-policy-simulation-approval.md F3）：数据集与信息领域状态适配器尚未接入（api.NotWired，仿真运行失败），
+// （docs/01-product/prd/07-policy-simulation-approval.md F3）：配置 data-api 地址时装配 A02 结果视图数据集，未配置时失败关闭；
 // 测试与演示使用标明为夹具的内存实现（api/datasettest）。第3段提供反馈集与只读的反馈汇总（F7）；漏报、评估与提案随所属段落实现。
 package learning
 
@@ -23,6 +23,7 @@ import (
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	identityapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/api"
+	lrnremote "github.com/superailabs/miaoqia/services/subsystems/learning/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/internal/app"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/migrations"
 )
@@ -39,7 +40,7 @@ type Adapters struct {
 	Now     func() time.Time
 }
 
-// Module 返回 learning 的模块定义（仿真适配器未接入）。
+// Module 返回 learning 的模块定义（DATA_API_URL 配置后自动装配 A02 仿真适配器）。
 func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
 // ModuleWith 返回使用给定适配器的 learning 模块定义。配置：MIAOQIA_LEARNING_PACKS_DIR（扩展包目录，默认 packs）。
@@ -56,6 +57,21 @@ func ModuleWith(adapters Adapters) runtime.Module {
 		Database:   "lrn",
 		Migrations: migrations.FS,
 		Start: func(ctx context.Context, env *runtime.Env) error {
+			if adapters.Dataset == nil || adapters.Domains == nil {
+				if baseURL := env.Config("DATA_API_URL"); baseURL != "" {
+					data, err := lrnremote.New(baseURL)
+					if err != nil {
+						return fmt.Errorf("learning：data-api 绑定失败: %w", err)
+					}
+					if adapters.Dataset == nil {
+						adapters.Dataset = data
+					}
+					if adapters.Domains == nil {
+						adapters.Domains = data
+					}
+					svc.Dataset, svc.Domains = adapters.Dataset, adapters.Domains
+				}
+			}
 			dir := env.Config("PACKS_DIR")
 			if dir == "" {
 				dir = "packs"

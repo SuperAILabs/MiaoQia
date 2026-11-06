@@ -18,9 +18,9 @@ const Name = "gateway"
 //   - EvidenceResolver 是 evidence 的 ResolveEvidence：按调用方（请求上下文中的租户与用途）当前的来源权利返回展示级别与该级别允许的内容；
 //   - Entitlements 是 commerce 权益中的数据覆盖判断（区域、信息领域）。
 //
-// 生产适配器尚未接入（数据平面的读取接口与权益随 INF-ORG、M2-P8、M2-P11 交付，见 docs/03-architecture/13-contract-readiness.md 第9节）：
-// 生产组装使用“未接入”实现（NotWired），调用返回 ErrNotWired，对象页与证据面板 503，分区为 unavailable，不以空数据冒充“没有记录”。
-// 测试与演示使用标明为夹具的内存实现（api/publictest）。
+// A02 的 procurement_project 事实、分区与 evidence 已可经 data-api 生产读取；未配置 data-api 时仍使用
+// “未接入”实现（NotWired），调用返回 ErrNotWired，对象页与证据面板 503，分区为 unavailable，不以空数据冒充“没有记录”。
+// entity-graph 对象、完整历史/统计分区与测试夹具仍由对应适配器提供。
 
 // ErrNotWired 表示数据平面或权益适配器没有接入。
 var ErrNotWired = errors.New("gateway：对象页适配器未接入")

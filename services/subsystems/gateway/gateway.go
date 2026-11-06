@@ -1,6 +1,6 @@
 // Package gateway 组装接入网关（REST/OpenAPI、BFF、MCP、Webhook、限流）。M0 提供令牌校验与对外路由；M2 第4段提供对象页与
-// 证据面板的 BFF（docs/01-product/prd/04-object-page-evidence.md）：数据平面读取与权益覆盖尚未接入（api.NotWired，对象页 503），
-// 测试与演示使用标明为夹具的内存实现（api/publictest）。
+// 证据面板的 BFF（docs/01-product/prd/04-object-page-evidence.md）。A02 的 procurement_project 与 evidence 读取经 data-api 装配，
+// 未配置地址时仍失败关闭；测试与演示可使用标明为夹具的内存实现（api/publictest）。
 package gateway
 
 import (
@@ -25,6 +25,7 @@ import (
 	ccapi "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	detectionapi "github.com/superailabs/miaoqia/services/subsystems/detection/api"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway/api"
+	gwremote "github.com/superailabs/miaoqia/services/subsystems/gateway/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway/internal/auth"
 	"github.com/superailabs/miaoqia/services/subsystems/gateway/internal/bff"
 	identityapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
@@ -104,7 +105,7 @@ var publicRoutes = []string{
 	"GET /v1/evidence/{evidenceID}",
 }
 
-// Adapters 是对象页的出站端口与业务时钟。零值字段使用缺省：数据平面与证据为未接入（api.NotWired），覆盖判断为 commerce 的
+// Adapters 是对象页的出站端口与业务时钟。零值字段使用缺省：配置 data-api 地址时自动装配 A02 读取，否则为未接入（api.NotWired），覆盖判断为 commerce 的
 // 覆盖判断绑定（本地或远程，启动时解析，缺失不启动），Now 为系统时钟。
 type Adapters struct {
 	Public       api.PublicData
@@ -113,7 +114,7 @@ type Adapters struct {
 	Now          func() time.Time
 }
 
-// Module 返回 gateway 的模块定义（对外路由的包装见 Public；对象页适配器未接入）。
+// Module 返回 gateway 的模块定义（对外路由的包装见 Public；data-api 地址由 DATA_API_URL 配置）。
 func Module() runtime.Module { return ModuleWith(Adapters{}) }
 
 // ModuleWith 返回使用给定适配器的 gateway 模块定义。对象页依赖的跨子系统绑定在启动时全部解析：identity 的授权决策点、commerce 的
@@ -132,6 +133,21 @@ func ModuleWith(adapters Adapters) runtime.Module {
 		Name:     api.Name,
 		Database: "gwy",
 		Start: func(ctx context.Context, env *runtime.Env) error {
+			if adapters.Public == nil || adapters.Evidence == nil {
+				if baseURL := env.Config("DATA_API_URL"); baseURL != "" {
+					data, err := gwremote.New(baseURL)
+					if err != nil {
+						return fmt.Errorf("gateway：data-api 绑定失败: %w", err)
+					}
+					if adapters.Public == nil {
+						adapters.Public = data
+					}
+					if adapters.Evidence == nil {
+						adapters.Evidence = data.Evidence()
+					}
+					svc.Public, svc.Evidence = adapters.Public, adapters.Evidence
+				}
+			}
 			a, ok := runtime.Lookup[identityapi.Authorizer](env.Bindings, identityapi.AuthorizerBinding)
 			if !ok {
 				return fmt.Errorf("gateway：缺少 %s 绑定", identityapi.AuthorizerBinding)

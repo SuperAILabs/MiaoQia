@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
+import time
 from importlib import resources
 from typing import Iterator
 
@@ -28,7 +30,7 @@ class Database:
         self.engine.dispose()
 
     @contextlib.contextmanager
-    def tx(self) -> Iterator[Connection]:
+    def tx(self, deadline=None) -> Iterator[Connection]:
         """事务：开始时把请求上下文写入事务级会话变量；没有请求上下文时拒绝执行。"""
         c = reqctx.current()
         c.validate()
@@ -38,6 +40,13 @@ class Database:
                      "set_config('app.principal', :p, true)"),
                 {"t": c.tenant, "c": c.cell, "p": c.principal.id},
             )
+            if deadline is not None:
+                if isinstance(deadline, dt.datetime):
+                    seconds = deadline.timestamp() - time.time()
+                else:
+                    seconds = float(deadline)
+                timeout_ms = max(1, int(seconds * 1000))
+                conn.execute(text("SET LOCAL statement_timeout = :timeout_ms"), {"timeout_ms": timeout_ms})
             yield conn
 
 

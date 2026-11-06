@@ -30,7 +30,7 @@ func TestFactsReadsAndValidatesBidResultUnits(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := reqctx.With(context.Background(), reqctx.Context{Tenant: "tnt_a", Cell: "cell-01", Principal: reqctx.Principal{ID: "usr_a", Kind: "user"}, Purpose: "interactive"})
-	units, err := facts.Units(ctx, api.FactRef{ID: "pp_abc", Version: 2})
+	units, err := facts.Units(ctx, api.FactRef{ID: "pp_abc", Version: 2, ObjectType: "tendering.notice"})
 	if err != nil {
 		t.Fatal(err)
 	}

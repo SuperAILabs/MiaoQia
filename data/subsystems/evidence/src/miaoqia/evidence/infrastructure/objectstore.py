@@ -8,6 +8,8 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+import datetime as dt
+import time
 from pathlib import Path
 from typing import Protocol
 
@@ -21,7 +23,7 @@ class ObjectConflict(RuntimeError):
 class ObjectStore(Protocol):
     def put(self, key: str, data: bytes) -> None: ...
 
-    def get(self, key: str) -> bytes: ...
+    def get(self, key: str, *, max_bytes: int | None = None, deadline=None) -> bytes: ...
 
 
 class FilesystemObjectStore:
@@ -54,5 +56,12 @@ class FilesystemObjectStore:
         finally:
             os.unlink(tmp)
 
-    def get(self, key: str) -> bytes:
-        return self._path(key).read_bytes()
+    def get(self, key: str, *, max_bytes: int | None = None, deadline=None) -> bytes:
+        path = self._path(key)
+        if max_bytes is not None and path.stat().st_size > max_bytes:
+            raise ValueError("对象超过读取大小上限")
+        if deadline is not None:
+            seconds = deadline.timestamp() - time.time() if isinstance(deadline, dt.datetime) else float(deadline)
+            if seconds <= 0:
+                raise TimeoutError("对象读取已超过截止时间")
+        return path.read_bytes()

@@ -142,6 +142,16 @@ def test_object_store_never_overwrites_and_rejects_escaping_keys(tmp_path):
             store.put(key, b"x")
 
 
+def test_object_store_read_limits_and_deadlines(tmp_path):
+    store = FilesystemObjectStore(tmp_path)
+    store.put("normalized/document", b"012345")
+    assert store.get("normalized/document", max_bytes=6) == b"012345"
+    with pytest.raises(ValueError, match="读取大小上限"):
+        store.get("normalized/document", max_bytes=5)
+    with pytest.raises(TimeoutError, match="超过截止时间"):
+        store.get("normalized/document", deadline=0)
+
+
 def test_failed_semantic_validation_is_recorded_as_suspect(evd):
     """领域语义校验不通过的解析结果记为 suspect（进入复核），下游不物化。"""
     database, pipeline, _ = evd
