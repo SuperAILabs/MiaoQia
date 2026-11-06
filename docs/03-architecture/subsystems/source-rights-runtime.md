@@ -84,4 +84,3 @@ receipt 是最长30秒的随机 nonce/epoch/到期/HMAC 完整性封套，绑定
 detection 处理公共事实事件时分两步：先以事件元数据（cell、事实标识、对象类型）向 search percolator 取该 cell 内有监控查询的候选租户，这一步不读事实内容；再对每个候选租户以 purpose=monitoring 读取 `bid-result-units`，并用该租户的 percolator 区域/品类过滤核对读到的求值单位，通过后才求值。某租户的读取被拒绝时只跳过该租户并记录，不影响其他租户。learning 以草案所属租户、purpose=simulation 读取结果视图。
 
 服务读取不调用 identity，因此不证明租户仍有活跃成员；租户停用由 detection/learning 各自的生效策略读取把关。服务主体的委托与证书需要独立安全评审。
-
