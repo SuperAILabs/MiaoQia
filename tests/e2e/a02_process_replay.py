@@ -405,7 +405,6 @@ def main() -> int:
         procs.start("platform-api", [platform, "-role", "api"], platform_env["api"])
         procs.start("platform-consumer", [platform, "-role", "consumer"], platform_env["consumer"])
         procs.start("platform-outbox-relay", [platform, "-role", "outbox-relay"], platform_env["outbox-relay"])
-        procs.start("platform-scheduler", [platform, "-role", "scheduler"], platform_env["scheduler"])
         procs.start("acq-admin", ["uv", "run", "-q", "--locked", "--all-packages", "mq-acquisition", "--role", "acq-admin"],
                     dict(env, **topology.acq_admin(hostport(env["MIAOQIA_TEST_PG"]))), ROOT / "data")
         procs.start("data-consumer", ["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "--role", "data-consumer"], env, ROOT / "data")
@@ -504,7 +503,11 @@ def main() -> int:
         if evidence_status == 200 and evidence.get("object_id") != object_id:
             raise RuntimeError(f"证据未关联项目：{evidence}")
 
-        # scheduler runs ComposeDue immediately. A synthetic bound channel makes
+        # The scheduler starts only now: its first ComposeDue runs immediately,
+        # and a run before the objective and signal exist would mark today's
+        # period as skipped (no audience) and never compose it.
+        procs.start("platform-scheduler", [platform, "-role", "scheduler"], platform_env["scheduler"])
+        # A synthetic bound channel makes
         # the in-app briefing observable without claiming the production WeCom adapter.
         briefing_id = wait_row(env, "chn", "SELECT id FROM chn_briefings WHERE tenant_id = %s AND subject = %s ORDER BY assembled_at DESC LIMIT 1", (TENANT, DM))[0]
         _, briefing = request("GET", f"http://127.0.0.1:8090/v1/channels/briefings/{briefing_id}", dm_token, expected={200})
