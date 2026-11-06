@@ -219,6 +219,26 @@ def republish_fact(env: dict[str, str], fact_id: str) -> None:
     producer.flush(30)
 
 
+def republish_revision(env: dict[str, str], revision: str) -> None:
+    """Re-emit evidence.extraction.revised.v1 for a replayed revision.
+
+    mq-evidence-replay is idempotent: a revision recorded by an earlier run
+    returns as existing without a new event, and skip_existing_evidence moved
+    the consumer group past earlier events. A fresh envelope through the outbox
+    relay lets domain-intelligence derive the facts (idempotently) in this run.
+    """
+    pg = hostport(env["MIAOQIA_TEST_PG"])
+    with psycopg.connect(f"postgres://evd_owner:evd_owner@{pg}/evd") as c:
+        row = c.execute("SELECT topic, partition_key, envelope FROM kernel_outbox WHERE envelope->>'type' = 'evidence.extraction.revised.v1' AND envelope->'data'->>'revision_ref' = %s ORDER BY seq DESC LIMIT 1", (revision,)).fetchone()
+        if row is None:
+            raise RuntimeError(f"没有修订 {revision} 的 evidence.extraction.revised.v1 发件箱记录")
+        topic, key, envelope = row
+        envelope["id"] = "evt_" + f"{time.time_ns():026X}"[-26:]
+        envelope["time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        c.execute("INSERT INTO kernel_outbox(event_id, topic, partition_key, envelope) VALUES (%s, %s, %s, %s)", (envelope["id"], topic, key, json.dumps(envelope)))
+        c.commit()
+
+
 def reset_replay_groups(env: dict[str, str]) -> None:
     """Start this isolated replay from the current Kafka high-water mark."""
     from confluent_kafka.admin import AdminClient
@@ -444,6 +464,8 @@ def main() -> int:
             if not revisions:
                 raise RuntimeError(f"冻结公告 {sample} 回放没有修订：{replay_result}")
             revision = revisions[-1]
+            if not replay_result.get("revisions"):
+                republish_revision(env, revision)
         fact_id, fact_version = wait_row(env, "dom", "SELECT v.fact_id, v.version FROM dom_fact_versions v JOIN dom_facts f ON f.id = v.fact_id WHERE v.revision_ref = %s AND f.object_type = 'tendering.notice' ORDER BY v.version DESC LIMIT 1", (revision,))
         object_id, = wait_row(env, "dom", "SELECT project_id FROM dom_notice_links WHERE notice_id = %s AND project_id IS NOT NULL ORDER BY notice_version DESC LIMIT 1", (fact_id,))
 
