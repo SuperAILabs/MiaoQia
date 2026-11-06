@@ -1,17 +1,17 @@
 openapi: 3.1.0
 info:
   title: commerce 接口
-  version: 0.2.0
+  version: 0.0.0
   description: >-
     对象查看与原文查看的计量与配额（PRD 第4段 F9、F10，docs/01-product/prd/04-object-page-evidence.md；规格见
-    docs/03-architecture/subsystems/commerce.md 第6、8节）。草案：随第4段首个实现切片提交，未冻结。只有内部接口（mTLS 内部端口，
+    docs/03-architecture/subsystems/commerce.md 第6、8节）。只有内部接口（mTLS 内部端口，
     gateway 以请求上下文中的用户主体调用）；租户、cell 与查看者来自请求上下文，不接受请求体中的租户或成员。
     计量操作标识是（租户、查看者、种类、被查看的对象或证据、计量日）：同一计量操作只计一次，之后同一标识为 unchanged（无变化，
     不消耗额度，额度用完后也照常放行）。计量日按租户时区（缺省 Asia/Shanghai）。Idempotency-Key 是一次页面请求（尝试）的键：
     同键重发返回该尝试的结果，包括 quota.exhausted；暂时失败（503，未提交）不登记。额度检查在计入之前、同一事务内完成：
     额度已用完时不写入计量操作，返回 429 quota.exhausted 与已用量、上限和重置时间。commerce 不可用时 gateway 放行查看并以
     gateway.view_meter.deferred.v1 事后补记（只补计数，不检查额度，按计量操作标识去重）。
-    0.2.0 追加覆盖判断 checkCoverage（GetEntitlements 的数据覆盖部分，commerce 第4、8节）：对象所在信息领域与行政区划是否在租户的
+    覆盖判断 checkCoverage（GetEntitlements 的数据覆盖部分，commerce 第4、8节）：对象所在信息领域与行政区划是否在租户的
     数据覆盖包内。产品目录与订阅接入（M2-P8）之前，覆盖包来自部署配置 MIAOQIA_COMMERCE_COVERAGE，对全部租户相同，响应以
     source = deployment_config 标明；未配置时 503 coverage_unavailable，不当作“全部覆盖”或“全部不覆盖”。
 servers:

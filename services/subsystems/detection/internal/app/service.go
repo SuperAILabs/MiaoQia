@@ -17,6 +17,7 @@ import (
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	customercontext "github.com/superailabs/miaoqia/services/subsystems/customercontext/api"
 	"github.com/superailabs/miaoqia/services/subsystems/detection/api"
+	searchapi "github.com/superailabs/miaoqia/services/subsystems/search/api"
 )
 
 // 事件类型。
@@ -43,6 +44,7 @@ type Service struct {
 	Policies   customercontext.ActivePolicies
 	Facts      api.Facts
 	Candidates api.Candidates
+	Watches    searchapi.Percolator
 	Links      api.ProjectLinks // 项目到采购项目的归属边（对象页按项目列出信号）
 	Packs      *Packs
 	Cell       string

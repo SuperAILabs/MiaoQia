@@ -79,6 +79,18 @@ def test_all_five_routes_collect_before_read_and_finalize():
     assert [v[1] for v in finals if v[0] == "admit"] == [op for _, (op, _) in handlers.items()]
 
 
+def test_query_facts_accepts_empty_cursor_for_first_page():
+    handlers, facts, _ = _routes()
+    basis = {"view": "current", "recorded_cutoff": None}
+    body = {"info_domain": "INF-PROC", "object_type": "tendering.notice", "basis": basis, "after": "", "limit": 100}
+    with reqctx.use(reqctx.Context(reqctx.Principal("u", "user"), "tenant", "cell", "interactive")):
+        handlers["/internal/v1/data/query-facts"][1](body, 10.0)
+        for missing in ("info_domain", "object_type"):
+            with pytest.raises(ValueError):
+                handlers["/internal/v1/data/query-facts"][1](dict(body, **{missing: ""}), 10.0)
+    assert facts.calls[-1][4] == ""
+
+
 @pytest.mark.parametrize("body", [
     {"fact_id": "ntc_1", "basis": {"view": "current", "recorded_cutoff": None}, "version": 1, "extra": 1},
     {"fact_id": "bad_1", "basis": {"view": "current", "recorded_cutoff": None}, "version": 1},

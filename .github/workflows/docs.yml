@@ -6,6 +6,7 @@ on:
     paths:
       - "**/*.md"
       - "tools/dev/check_doc_links.py"
+      - "tools/dev/check_doc_versions.py"
       - ".github/workflows/docs.yml"
   push:
     branches: [main]
@@ -33,6 +34,12 @@ jobs:
 
       - name: 相对链接与锚点
         run: python3 tools/dev/check_doc_links.py
+
+      - name: 版本号检查器自测
+        run: python3 tools/dev/check_doc_versions.py --self-test
+
+      - name: 文档不复述版本号
+        run: python3 tools/dev/check_doc_versions.py
 
       - name: 空白与行尾
         if: github.event_name == 'pull_request'

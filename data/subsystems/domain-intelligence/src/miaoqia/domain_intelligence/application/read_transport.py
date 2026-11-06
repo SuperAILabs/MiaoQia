@@ -154,7 +154,8 @@ def routes(facts, evidence, *, admit=None, before_send=None, collectors=None, co
         body = closed(body, {"info_domain", "object_type", "basis", "after", "limit"})
         basis = _basis(body["basis"])
         final = admission("data.query_facts", body, deadline)
-        if not all(isinstance(body[k], str) and body[k] for k in ("info_domain", "object_type", "after")):
+        # An empty after cursor is the first page; domain and type must be named.
+        if not all(isinstance(body[k], str) and body[k] for k in ("info_domain", "object_type")) or not isinstance(body["after"], str):
             raise ValueError("invalid query")
         if type(body["limit"]) is not int or not 1 <= body["limit"] <= 100:
             raise ValueError("invalid page")

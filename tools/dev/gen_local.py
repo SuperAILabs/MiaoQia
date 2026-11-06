@@ -48,7 +48,7 @@ def subsystems() -> list[tuple[str, str, str, str | None]]:
 
 
 def render() -> str:
-    out = ["-- 由 tools/dev/gen_local.py 根据子系统索引生成，请勿手改。", "-- 仅用于本地开发环境：密码与账号名相同。", "",
+    out = ["-- 由 tools/dev/gen_local.py 根据子系统索引生成，请勿手改。", "-- 可选 Docker 引导环境：密码与账号名相同；共享开发环境不依赖本文件。", "",
            "CREATE ROLE outbox_relay LOGIN PASSWORD 'outbox_relay';", ""]
     for name, lang, unit, db in subsystems():
         if db is None:

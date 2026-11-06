@@ -1,6 +1,6 @@
 // Package testenv 为内核与子系统的集成测试准备真实的 PostgreSQL 与 Kafka（研发规范：集成测试使用真实组件）。
 // 需要环境变量 MIAOQIA_TEST_PG（超级用户连接串）与 MIAOQIA_TEST_KAFKA（broker 地址）；未设置时跳过测试。
-// 本地由 deploy/local/up.sh 启动组件。
+// 开发环境复用共享组件；CI 由 workflow services 启动临时组件。
 package testenv
 
 import (

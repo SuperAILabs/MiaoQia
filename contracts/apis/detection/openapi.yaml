@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: detection 接口
-  version: 0.4.0
+  version: 0.0.0
   description: >-
     信号收件箱、命中理由与反馈（PRD 第3段，docs/01-product/prd/03-signal-inbox-feedback.md；规格见
-    docs/03-architecture/subsystems/detection.md 第5、12节）。草案：随第3段首个实现切片提交，未冻结。租户、cell 与调用主体来自
+    docs/03-architecture/subsystems/detection.md 第5、12节）。租户、cell 与调用主体来自
     请求上下文。授权按目标所有者 customer-context 的当前口径（ObjectiveAccess）：查看信号与命中理由需要目标的 can_view_signals，
     反馈、忽略、恢复与调整处置需要 can_feedback（每次提交实时判断，批量逐项判断）；移除参与人在 customer-context 提交后立即撤权，
     决策者与研究分析者经单元关系，不需要是参与人。不属于本租户、不存在与无权查看的信号返回同一 404 signal_not_found；授权或
@@ -12,12 +12,12 @@ info:
     写操作区分操作与尝试（F9）：operation_id 是一次用户意图的固定标识（批量中每项为“批次标识:信号标识”），同一操作最多提交一次，
     提交后的结果（成功、无变化或确定失败）固定在操作标识上；Idempotency-Key 是一次尝试的键，同键重发返回该尝试的结果（含失败），
     暂时失败（503，未提交）只是该尝试的结果，用新键、同一操作标识重试。
-    0.2.0（PRD 第4段对象页）：追加 listObjectSignals（对象页的本租户信号分区）与 SignalRow 的 procurement_project_id、buyer；
+    追加 listObjectSignals（对象页的本租户信号分区）与 SignalRow 的 procurement_project_id、buyer；
     explainSignal 另经内部端口（/internal 前缀）供 gateway 的对象页读取信号固定的求值输入，以请求上下文中的用户主体判断。
-    0.3.0（PRD 第5段简报与快捷动作）：追加只经内部端口提供的 listBriefingSignals（简报取数）与 listSignalCards（卡片的当前版本与
+    追加只经内部端口提供的 listBriefingSignals（简报取数）与 listSignalCards（卡片的当前版本与
     状态叠加），triageSignal 与 undoSignalTriage 另经内部端口供 channels 以点击者（经有效绑定核验的收件人本人）的用户主体调用；
     UndoRequest 追加可选的 channel。授权与公开接口相同，channels 不另作判断。
-    0.4.0（PRD 第6段 F1 第2条，C-14）：信号生成时按目标的分派规则（customer-context 0.7.0 的 ActivePolicy.assignment）算出候选负责人，
+    信号生成时按目标的分派规则（customer-context 的 ActivePolicy.assignment）算出候选负责人，
     与所用的分派配置版本一同写入信号；只经内部端口提供的 getSignalCandidateOwner 供 pursuit 的创建面板读取（以调用者的用户主体判断，
     需要目标的 can_view_signals 与 can_assign）。候选只是生成时的建议，不授予访问，使用方以候选本人再检查。
 servers:
@@ -595,7 +595,7 @@ components:
     SignalCandidate:
       type: object
       additionalProperties: false
-      description: 信号的候选负责人（0.4.0，C-14），见 getSignalCandidateOwner
+      description: 信号的候选负责人（C-14），见 getSignalCandidateOwner
       required:
       - signal_id
       - objective_id
@@ -851,11 +851,11 @@ components:
         procurement_project_id:
           type: string
           pattern: ^pp_[0-9A-HJKMNP-TV-Z]{26}$
-          description: 求值单位所在的采购项目（0.2.0 起记录；之前生成的信号不出现）
+          description: 求值单位所在的采购项目（较早生成的信号可能缺省）
         buyer:
           type: object
           additionalProperties: false
-          description: 采购人（来自信号视图；0.2.0 起记录）
+          description: 采购人（来自信号视图；较早生成的信号可能缺省）
           properties:
             org_id:
               type: string
@@ -1647,7 +1647,7 @@ components:
           pattern: ^sgb_[0-9A-HJKMNP-TV-Z]{26}$
         channel:
           type: string
-          description: 发起撤销的渠道（0.3.0）；写入撤销操作的处理记录与 signal.triaged 的 channel
+          description: 发起撤销的渠道；写入撤销操作的处理记录与 signal.triaged 的 channel
           enum:
           - web
           - wecom

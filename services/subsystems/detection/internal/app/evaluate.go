@@ -57,16 +57,29 @@ func (s *Service) FactUpserted(ctx context.Context, _ pgx.Tx, env *outbox.Envelo
 	if s.Candidates == nil || s.Facts == nil {
 		return api.ErrNotWired
 	}
-	tenants, err := s.Candidates.Tenants(ctx, s.Cell, ref)
+	var tenants []string
+	var units []api.Unit
+	var err error
+	if resolver, ok := s.Candidates.(api.CandidateResolver); ok {
+		units, err = s.Facts.Units(ctx, ref)
+		if err != nil {
+			return fmt.Errorf("视图组装：%w", err)
+		}
+		tenants, err = resolver.TenantsFor(ctx, s.Cell, ref, units)
+	} else {
+		tenants, err = s.Candidates.Tenants(ctx, s.Cell, ref)
+	}
 	if err != nil {
 		return fmt.Errorf("订阅反查：%w", err)
 	}
 	if len(tenants) == 0 {
 		return nil
 	}
-	units, err := s.Facts.Units(ctx, ref)
-	if err != nil {
-		return fmt.Errorf("视图组装：%w", err)
+	if units == nil {
+		units, err = s.Facts.Units(ctx, ref)
+		if err != nil {
+			return fmt.Errorf("视图组装：%w", err)
+		}
 	}
 	if len(units) == 0 {
 		return nil

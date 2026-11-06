@@ -1,6 +1,6 @@
 # 子系统规格
 
-> 状态：评审中 · 版本：1.3 · 更新：2026-10-16 · 负责人：首席架构师
+> 状态：评审中 · 负责人：首席架构师
 
 每个子系统是一个拥有独立职责、数据所有权和接口契约的业务能力单元，也是将来独立部署的最小粒度。
 
@@ -14,7 +14,7 @@
 | 数据供应 | [`evidence`](evidence.md) 证据与内容理解 | 文档处理、快照、解析修订、字段溯源、质量、AI 内容增强 | Python | `data`（租户文档解析为单元级实例） | `evd` |
 | 数据供应 | [`domain-intelligence`](domain-intelligence.md) 领域情报 | 领域事实与事件、生命周期、跨记录聚合、领域统计 | Python | `data` | `dom` |
 | 数据供应 | [`entity-graph`](entity-graph.md) 实体与关系图谱 | 实体主数据、实体解析、关系图谱 | Python | `data` | `ent` |
-| 数据供应 | [`search`](search.md) 检索与索引 | 索引投影、全文/语义/混合检索、订阅反查、租户知识检索 | Go | `platform` | （OpenSearch） |
+| 数据供应 | [`search`](search.md) 检索与索引 | 索引投影、全文/语义/混合检索、订阅反查、租户知识检索 | Go | `platform` | `sea` |
 | 客户智能 | [`customer-context`](customer-context.md) 客户上下文与策略 | 客户档案、目标、策略、知识资产 | Go | `platform` | `ctx` |
 | 客户智能 | [`detection`](detection.md) 监测与匹配 | 监测订阅、信号匹配、处置分层 | Go | `platform` | `det` |
 | 客户智能 | [`research`](research.md) Agent 研究 | 研究模板执行、Agent 运行、研究报告 | Go | `platform` | `res` |

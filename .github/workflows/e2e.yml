@@ -37,7 +37,7 @@ jobs:
         with:
           version: "0.11.32"
 
-      - name: 启动本地基础组件
+      - name: 启动 CI 临时基础组件
         run: deploy/local/up.sh
 
       - name: 端到端验证

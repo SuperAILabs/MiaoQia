@@ -1,6 +1,6 @@
 # 客户上下文与策略子系统（customer-context）
 
-> 状态：评审中 · 版本：1.14 · 更新：2026-10-27 · 平面：客户智能
+> 状态：评审中 · 平面：客户智能
 
 ## 1. 使命
 
@@ -70,14 +70,14 @@
 | `RequestPolicyActivation` / `RequestPolicyRollback` | 命令 | 按类型绑定后调用 `identity.RequestApproval` 创建审批，带幂等键；同一目标同时只有一个进行中的申请。激活：绑定草案当前修订、该修订未过期的仿真报告（对比版本须为当前生效版本）与申请时的生效版本和策略代次，提交后锁定草案。回滚：绑定目标版本（曾经生效过）、其激活时的报告与申请时的生效版本和策略代次，不绑定、不锁定草案 |
 | `ActivatePolicy` / `RollbackPolicy` | 命令 | 审批通过后由系统执行，执行前核验绑定：激活要求草案仍是申请的修订、生效版本与策略代次仍等于基准；回滚要求目标版本存在且曾经生效、生效版本与策略代次仍等于基准。不满足则不执行并通知。回滚恢复目标版本原来的合成文档与启用领域集合；执行后若有草案，其报告的对比基准失效，标为过期 |
 | `CreateUpgradeDraft` | 命令 | 模板新版本或信息领域上线后，按规则 `id` 对齐保留租户覆盖创建草案；被删除或改为锁定的覆盖逐条列出待确认 |
-| `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界）；契约 0.7.0 起每个目标另带分派配置（版本与规则），detection 据此在生成信号时计算候选负责人（第 11 节） |
+| `GetActivePolicies` | 查询 | `detection` 加载，返回策略代次；detection 每批求值前读取代次，缓存较旧时先重新加载（[PRD 第7段](../../01-product/prd/07-policy-simulation-approval.md) 第5节生效边界）；每个目标另带分派配置（版本与规则），detection 据此在生成信号时计算候选负责人（第 11 节） |
 | `GetAssignmentRules` / `UpdateAssignmentRules` | 查询/命令 | 目标的分派规则（第 11 节）：整份替换，带分派配置版本 `expected_version`；读取按级别白名单 |
 | `UploadKnowledgeAsset` | 命令 | 上传与分级 |
 | `ListSavedViews` / `CreateSavedView` / `UpdateSavedView` / `DeleteSavedView` / `SetDefaultView` | 查询/命令 | 保存视图（第4节）；更新带 `expected_version`；团队视图的变更写审计。契约随第一个使用保存视图的 Web 实现写入（[契约覆盖第9节](../13-contract-readiness.md#9-随功能追加的契约)） |
 
-实现状况：首个切片实现了 `GetContextSnapshot`、`GetContextVersion`（内部端口，经 mTLS）、`Get/Update Profile`（本企业关联与资质在档案内维护）与目标的 `ListObjectiveTemplates`、`EnableObjective`、`ConfigureObjective`、`DisableObjective`（含重新启用），契约为 [`contracts/apis/customer-context/openapi.yaml`](../../../contracts/apis/customer-context/openapi.yaml) 0.2.0 草案。组织单元为 identity 的 `OrgUnit`（根单元 `root` 或 `unt_<ULID>`），经 identity 核对属于本租户并取得单元链；单元覆盖实现前，非根单元的快照与根单元合成结果相同，首次读取时按当时的单元链物化，之后同一（租户、单元、上下文版本）不变。授权全部经 identity 的 `Check`：启用目标在目标单元上判断 `can_create_objective`，查看、调整与参与人管理在目标资源上判断；目标的单元、负责人与参与人在每个目标版本上以服务主体经 `SyncResourceParticipants` 同步（参与版本即目标版本；负责人同时是参与人时只同步负责人关系），命令提交后同步一次，失败时由本子系统消费 `objective.changed` 重试。负责人与参与人合计的不同主体数至多 50（等于 identity 单次同步的关系上限），在命令提交前校验，超出返回 422 `too_many_participants`、不入库、不产生事件。identity 中的参与关系可能落后于本地目标版本，因此可经参与关系获得的权限（目前为查看）按“目标所在单元的 `can_list_objectives`，或调用者是本地当前版本的负责人/参与人且 identity 对目标判断通过”放行：移除参与人、改派负责人在命令提交后立即撤权，不等待同步；新加入的主体在同步应用前不可见；首个版本同步前 identity 尚未登记目标，目标上的判断一律拒绝（失败关闭）。决策者、研究分析者与管理员的单元权限不受同步影响。目标列表与读取同一口径。我方主体可挂接本租户的任一单元（领域校验只核对标识格式，归属经 identity 核对）。快照与版本的服务读取方由 identity 判断 `can_read_context`，本子系统不保存名单。启用目标时在同一事务中创建首版策略草案（第7段，见下）。
+实现状况：首个切片实现了 `GetContextSnapshot`、`GetContextVersion`（内部端口，经 mTLS）、`Get/Update Profile`（本企业关联与资质在档案内维护）与目标的 `ListObjectiveTemplates`、`EnableObjective`、`ConfigureObjective`、`DisableObjective`（含重新启用），契约为 [`contracts/apis/customer-context/openapi.yaml`](../../../contracts/apis/customer-context/openapi.yaml)。组织单元为 identity 的 `OrgUnit`（根单元 `root` 或 `unt_<ULID>`），经 identity 核对属于本租户并取得单元链；单元覆盖实现前，非根单元的快照与根单元合成结果相同，首次读取时按当时的单元链物化，之后同一（租户、单元、上下文版本）不变。授权全部经 identity 的 `Check`：启用目标在目标单元上判断 `can_create_objective`，查看、调整与参与人管理在目标资源上判断；目标的单元、负责人与参与人在每个目标版本上以服务主体经 `SyncResourceParticipants` 同步（参与版本即目标版本；负责人同时是参与人时只同步负责人关系），命令提交后同步一次，失败时由本子系统消费 `objective.changed` 重试。负责人与参与人合计的不同主体数至多 50（等于 identity 单次同步的关系上限），在命令提交前校验，超出返回 422 `too_many_participants`、不入库、不产生事件。identity 中的参与关系可能落后于本地目标版本，因此可经参与关系获得的权限（目前为查看）按“目标所在单元的 `can_list_objectives`，或调用者是本地当前版本的负责人/参与人且 identity 对目标判断通过”放行：移除参与人、改派负责人在命令提交后立即撤权，不等待同步；新加入的主体在同步应用前不可见；首个版本同步前 identity 尚未登记目标，目标上的判断一律拒绝（失败关闭）。决策者、研究分析者与管理员的单元权限不受同步影响。目标列表与读取同一口径。我方主体可挂接本租户的任一单元（领域校验只核对标识格式，归属经 identity 核对）。快照与版本的服务读取方由 identity 判断 `can_read_context`，本子系统不保存名单。启用目标时在同一事务中创建首版策略草案（第7段，见下）。
 
-**实现状况（PRD 第7段策略草案、版本、激活与回滚，契约 0.3.0 草案）**：
+**实现状况（PRD 第7段策略草案、版本、激活与回滚）**：
 
 - **接口**：`GetPolicy`、`DraftPolicyChange`（`PUT …/policy/draft`，带 `expected_version` 与幂等键）、`DiscardPolicyDraft`、`ListPolicyVersions`（每页至多 100，游标）、`GetPolicyVersion`、`DiffPolicyVersions`（`from`/`to` 为版本号或 `draft`）、`RequestPolicyActivation`、`RequestPolicyRollback`；learning 经本地绑定 `customer-context.PolicyReader`（`MIAOQIA_BINDING_CUSTOMER_CONTEXT=remote` 时为远程客户端，同时提供 `ContextReader`）或内部端口 `GET /internal/v1/customer-context/objectives/{objectiveID}/policy/simulation-input` 读取某个修订的仿真输入（合成文档、需要的信息领域、样例结果与当前生效版本）。内部接口 `GET /internal/v1/customer-context/objectives/{objectiveID}/access`（本地绑定 `customer-context.ObjectiveAccess`）以转交的用户请求上下文按本节口径判断目标关系，供 learning 的仿真接口使用，使其与本子系统同样在移除参与人后立即撤权；`CreateUpgradeDraft` 与自然语言调优未实现（`GetActivePolicies` 见下）；
 - **授权**：读取为目标的 `can_view`，起草与申请为 `can_draft_policy` / `can_request_activation`。identity 模型新增单元关系 `org_unit#can_draft_unit_policies`（决策者，identity 第 7.2 节矩阵），本子系统按“单元关系，或本地当前版本的负责人/参与人且 identity 对目标判断通过”放行，与第6节的查看口径一致。无权查看与不存在同为 404 `objective_not_found`；能查看而不能起草为 403；授权服务不可用为 503，不当作无权限；
@@ -86,16 +86,16 @@
 - **执行**：消费 `identity.approval.decided.v1`，按目标行锁 → 策略行 → 请求行的顺序加锁，按事件中的绑定（不是本地登记）核验：激活要求草案修订仍等于绑定的对象版本、锁定者为空或本审批、修订通过校验、仿真对应该修订与基准；回滚要求目标版本存在、不是生效版本、证据等于该版本激活时的仿真；两者都要求目标未停用、生效版本与代次等于基准。不满足时记为执行失败（`baseline_changed`、`object_changed`、`objective_disabled`），生效版本不变，发布 `customer_context.policy.execution_failed.v1`。决定先于登记送达时直接按事件登记为最终状态，迟到的 `requested` 不再改变状态；重复投递以审批标识幂等。激活写入新版本（最新版本号加一，复制修订的合成文档与该修订仿真时固定的启用领域集合）、原生效版本记为已替代、代次加一、清除草案，目标从未激活或重新启用后的未激活变为生效，发布 `policy.activated` 与 `objective.changed`（`activated`）；回滚恢复目标版本原来的文档与领域集合，发布 `policy.rolled_back`，不锁定也不清除草案，草案报告因对比基准变化而过期；
 - **进程角色**：customer-context 加入 `consumer` 角色（`deploy/platform/roles.yaml`），审批与仿真结果的消费者在该角色运行；`services/cmd/platform` 的 `TestEveryRoleResolvesBindings` 对每个角色在本地与远程绑定组合下组装并启动子系统，断言依赖的绑定都可解析；
 - **失效**：消费 `identity.approval.closed.v1`，请求记为撤回、过期或失效并解锁草案。目标停用时本子系统在提交后以 `CloseApproval`（`objective_disabled`）使进行中的审批失效；失效未送达而批准先到时，执行前的目标状态核验拒绝执行。重新启用的目标回到未激活并保留原生效版本，下一次激活后变为生效；
-- **生效策略读取（PRD 第3段切片，契约 0.4.0 草案）**：`GetActivePolicies`（内部接口 `GET /internal/v1/customer-context/active-policies`，本地绑定 `customer-context.ActivePolicies`，`MIAOQIA_BINDING_CUSTOMER_CONTEXT=remote` 时为远程客户端）以服务主体（`tenant#can_read_context`）读主库，按目标标识升序分页（每页至多 200，游标），返回每个有生效版本的目标的状态、组织单元、策略标识、生效版本与代次、模板版本、启用领域集合与合成文档（契约 0.6.0 起另带目标当前的负责人 `owner` 与参与人 `participants`，供 channels 确定即时通知 `route` 受众的候选收件人，见 [channels C-08 实现状况](channels.md#6-接口)；候选收件人在发送前仍以本人再检查）；激活与回滚在同一事务中切换生效版本与代次，因此返回后开始的读取一律看到新代次。策略标识（`pol_`，迁移 `00003_policy_ids.sql`）每个目标一个、建立后不变，已有的行由目标标识确定性派生。`ObjectiveAccess` 的关系追加 `can_view_signals` 与 `can_feedback`，按本节口径（单元关系 `can_view_unit_signals` / `can_feedback_unit_signals`，或本地当前版本的负责人/参与人且 identity 对目标判断通过）放行，供 detection 与 learning 使用；
+- **生效策略读取（PRD 第3段切片）**：`GetActivePolicies`（内部接口 `GET /internal/v1/customer-context/active-policies`，本地绑定 `customer-context.ActivePolicies`，`MIAOQIA_BINDING_CUSTOMER_CONTEXT=remote` 时为远程客户端）以服务主体（`tenant#can_read_context`）读主库，按目标标识升序分页（每页至多 200，游标），返回每个有生效版本的目标的状态、组织单元、策略标识、生效版本与代次、模板版本、启用领域集合与合成文档（另带目标当前的负责人 `owner` 与参与人 `participants`，供 channels 确定即时通知 `route` 受众的候选收件人，见 [channels C-08 实现状况](channels.md#6-接口)；候选收件人在发送前仍以本人再检查）；激活与回滚在同一事务中切换生效版本与代次，因此返回后开始的读取一律看到新代次。策略标识（`pol_`，迁移 `00003_policy_ids.sql`）每个目标一个、建立后不变，已有的行由目标标识确定性派生。`ObjectiveAccess` 的关系追加 `can_view_signals` 与 `can_feedback`，按本节口径（单元关系 `can_view_unit_signals` / `can_feedback_unit_signals`，或本地当前版本的负责人/参与人且 identity 对目标判断通过）放行，供 detection 与 learning 使用；
 - **未实现**：回填的实际执行（随 detection）、通知（随 channels）、升级草案（F7）、按规则显示“数据未接入”（规则到信息领域的生产对应随 domain-intelligence 的覆盖接口）、组织单元迁移时使进行中的审批失效。
 
-**实现状况（PRD 第6段，契约 0.5.0 草案）**：`ObjectiveAccess` 的关系追加 `can_assign`（决策者经单元关系 `org_unit#can_assign_unit_objectives`，业务开拓者经参与关系），并返回目标所在单元、模板与状态（可选字段）；本地绑定与远程客户端另提供 `customer-context.ObjectiveScope`（同一判断，带目标所在单元与模板），供 pursuit 判断创建权限与被分派人的目标访问。分派规则与候选负责人见第 11 节的实现状况（C-14）。
+**实现状况（PRD 第6段）**：`ObjectiveAccess` 的关系追加 `can_assign`（决策者经单元关系 `org_unit#can_assign_unit_objectives`，业务开拓者经参与关系），并返回目标所在单元、模板与状态（可选字段）；本地绑定与远程客户端另提供 `customer-context.ObjectiveScope`（同一判断，带目标所在单元与模板），供 pursuit 判断创建权限与被分派人的目标访问。分派规则与候选负责人见第 11 节的实现状况（C-14）。
 
 ## 7. 事件
 
 **发布**：`customer_context.profile.updated.v1`、`customer_context.objective.changed.v1`、`customer_context.entity_list.changed.v1`、`customer_context.qualification.expiring.v1`、`customer_context.policy.drafted.v1`、`customer_context.policy.activated.v1`、`customer_context.policy.rolled_back.v1`、`customer_context.knowledge.changed.v1`。
 
-已实现发布 `profile.updated`、`objective.changed`、`policy.drafted`、`policy.activated`、`policy.rolled_back` 与 `policy.execution_failed`（批准后核验绑定不成立、不执行），契约见 [`contracts/events/customer_context/events.asyncapi.yaml`](../../../contracts/events/customer_context/events.asyncapi.yaml) 0.2.0 草案；已实现消费 `identity.approval.requested.v1`（对账补登）、`identity.approval.decided.v1`、`identity.approval.closed.v1` 与 `learning.simulation.completed.v1`（第6节实现状况）；资质有效期跨日改变快照时，`GetContextVersion` 递增上下文版本并以 `cause: qualification_validity` 发布 `profile.updated`。
+已实现发布 `profile.updated`、`objective.changed`、`policy.drafted`、`policy.activated`、`policy.rolled_back` 与 `policy.execution_failed`（批准后核验绑定不成立、不执行），契约见 [`contracts/events/customer_context/events.asyncapi.yaml`](../../../contracts/events/customer_context/events.asyncapi.yaml)；已实现消费 `identity.approval.requested.v1`（对账补登）、`identity.approval.decided.v1`、`identity.approval.closed.v1` 与 `learning.simulation.completed.v1`（第6节实现状况）；资质有效期跨日改变快照时，`GetContextVersion` 递增上下文版本并以 `cause: qualification_validity` 发布 `profile.updated`。
 
 **消费**：`identity.approval.decided.v1`（策略激活与回滚的审批结果）、`identity.approval.closed.v1`（撤回或失效；激活申请的草案解锁）、`learning.policy.proposal_created.v1`（学习子系统提出的策略调整建议，转为草案）、`learning.simulation.completed.v1`（附在草案上）。
 
@@ -135,7 +135,7 @@
 - 通知受众不能超出访问权限：`channels` 发送前逐人检查，收到通知不等于获得访问，候选负责人也不因被建议而获得访问；
 - 改派、成员停用与截止变更按 [pursuit 第 10 节](pursuit.md#10-分阶段交付)处理，本子系统不保存分派历史。
 
-**实现状况（C-14，契约 0.7.0 草案；PRD 第6段 F1 第2条、用例4）**：
+**实现状况（C-14；PRD 第6段 F1 第2条、用例4）**：
 
 - **规则**：每个目标一份按顺序的规则（至多 50 条，`ctx_assignment_rules`，迁移 `00004_assignment_rules.sql`），每条为被分派人 `assignee` 与可选条件 `regions`（行政区划代码，按 `region.within` 包含下级，`000000` 为全国）、`categories`（已安装行业包的品类代码，按 `category.any_match` 包含下级，信号任一品类命中即满足）；两个条件同时给出须都满足，都不给出时匹配全部信号；第一条命中的规则给出候选。按我方主体与组织单元的条件、按角色选人尚未提供（[A02 验收缺口 C-22](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)）；
 - **版本**：分派配置版本独立于目标版本（从未配置为 0，即没有配置记录；首次写入为 1——包括配置为空规则——之后每次有变化的写入加一，相同内容为无变化；已配置的版本因此总是不小于 1）；不递增租户上下文版本，也不发布领域事件，变更记审计 `customer_context.objective.assignment_configured`；

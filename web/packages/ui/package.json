@@ -1,0 +1,11 @@
+{
+  "name": "@miaoqia/ui",
+  "private": true,
+  "type": "module",
+  "types": "./src/index.tsx",
+  "exports": { ".": { "types": "./src/index.tsx", "import": "./src/index.tsx", "default": "./src/index.tsx" } },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": { "@miaoqia/copy": "workspace:*" },
+  "devDependencies": { "@types/react": "18.3.12", "typescript": "5.6.3" },
+  "peerDependencies": { "react": "^18.3.1" }
+}

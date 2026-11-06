@@ -1,5 +1,6 @@
 # 本地开发环境的基础组件（拓扑与生产一致：业务库与 Temporal 库分离，每子系统独立数据库与账号）。
 # 启动：deploy/local/up.sh；组件选型见 docs/03-architecture/08-technology-stack.md。
+# 这是 Docker Compose 引导环境，不是共享开发环境的必需依赖；开发验收默认复用已运行的共享组件。
 # 尚未包含：对象存储（Ceph RGW）。
 name: miaoqia
 

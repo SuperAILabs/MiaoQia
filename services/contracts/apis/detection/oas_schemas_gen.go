@@ -3872,7 +3872,7 @@ func (s *SignalBatchSummary) SetUnprocessed(val int) {
 	s.Unprocessed = val
 }
 
-// 信号的候选负责人（0.4.0，C-14），见 getSignalCandidateOwner.
+// 信号的候选负责人（C-14），见 getSignalCandidateOwner.
 // Ref: #/components/schemas/SignalCandidate
 type SignalCandidate struct {
 	SignalID          string               `json:"signal_id"`
@@ -4208,9 +4208,9 @@ type SignalRow struct {
 	Title       string             `json:"title"`
 	Winner      OptSignalRowWinner `json:"winner"`
 	Amount      OptSignalRowAmount `json:"amount"`
-	// 求值单位所在的采购项目（0.2.0 起记录；之前生成的信号不出现）.
+	// 求值单位所在的采购项目（较早生成的信号可能缺省）.
 	ProcurementProjectID OptString `json:"procurement_project_id"`
-	// 采购人（来自信号视图；0.2.0 起记录）.
+	// 采购人（来自信号视图；较早生成的信号可能缺省）.
 	Buyer             OptSignalRowBuyer    `json:"buyer"`
 	Location          OptString            `json:"location"`
 	Categories        []string             `json:"categories"`
@@ -4552,7 +4552,7 @@ func (s *SignalRowAmount) SetCurrency(val string) {
 	s.Currency = val
 }
 
-// 采购人（来自信号视图；0.2.0 起记录）.
+// 采购人（来自信号视图；较早生成的信号可能缺省）.
 type SignalRowBuyer struct {
 	OrgID OptString `json:"org_id"`
 	Name  OptString `json:"name"`
@@ -6441,7 +6441,7 @@ type UndoRequest struct {
 	OperationID       string    `json:"operation_id"`
 	TargetOperationID OptString `json:"target_operation_id"`
 	TargetBatchID     OptString `json:"target_batch_id"`
-	// 发起撤销的渠道（0.3.0）；写入撤销操作的处理记录与 signal.triaged 的 channel.
+	// 发起撤销的渠道；写入撤销操作的处理记录与 signal.triaged 的 channel.
 	Channel OptUndoRequestChannel `json:"channel"`
 }
 
@@ -6485,7 +6485,7 @@ func (s *UndoRequest) SetChannel(val OptUndoRequestChannel) {
 	s.Channel = val
 }
 
-// 发起撤销的渠道（0.3.0）；写入撤销操作的处理记录与 signal.triaged 的 channel.
+// 发起撤销的渠道；写入撤销操作的处理记录与 signal.triaged 的 channel.
 type UndoRequestChannel string
 
 const (

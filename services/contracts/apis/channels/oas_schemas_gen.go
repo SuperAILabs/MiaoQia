@@ -684,8 +684,7 @@ type BriefingID string
 // “待我处理”中的审批（只有标题、提交时间与链接，不在渠道内操作）；task
 // “待我处理”中的跟进任务
 // （分派给本人、未完成、截止在下一期简报之前或已逾期；escalated
-// 为无有效负责人的跟进转给决策者的任务；0.3.0）。 0.5.0（C-08，PRD 第5段 F7
-// 第3条、F2 第2条）：notified
+// 为无有效负责人的跟进转给决策者的任务）。 notified
 // 为组装时该信号已即时通知本人（本期不再推送它的信号卡片，只在总览中列出）；
 // arrived_overnight
 // 为即时通知在安静时段内到达、结束时简报即将发送而并入本期（卡片标“夜间到达”）。.
@@ -1277,7 +1276,7 @@ type BriefingPreferences struct {
 	QuietEnd      ClockTime      `json:"quiet_end"`
 	PushEmpty     bool           `json:"push_empty"`
 	SectionLimits []SectionLimit `json:"section_limits"`
-	// 是否接收即时通知卡片（0.5.0，C-08；缺省
+	// 是否接收即时通知卡片（C-08；缺省
 	// true）。与其他偏好不同，修改立即生效（不按周期）：关闭后尚未送达的即时通知在发送前
 	// 取消（preference_off），信号照常进入简报.
 	InstantNotify OptBool `json:"instant_notify"`
@@ -2127,7 +2126,7 @@ type DeliveryStats struct {
 	Deliveries       []DeliveryStatsDeliveriesItem `json:"deliveries"`
 	EmptyBriefings   int                           `json:"empty_briefings"`
 	PartialBriefings int                           `json:"partial_briefings"`
-	// 渠道通知的计数（0.4.0）；服务端总是返回，没有通知时为空数组.
+	// 渠道通知的计数；服务端总是返回，没有通知时为空数组.
 	Notices []DeliveryStatsNoticesItem `json:"notices"`
 }
 
@@ -3111,9 +3110,9 @@ func (s *ItemUpdate) SetContentVersion(val int64) {
 type LinkToken string
 
 // 渠道通知的种类：task_due 任务提醒卡片；authorization_rejected
-// 授权被拒时给操作者的通知（0.4.0）；signal_immediate 信号的
-// 即时通知卡片（0.5.0，C-08）；authorization_sync_failed 授权同步超过 24
-// 小时未成功时给目标所在单元决策者的通知（0.6.0，C-17）.
+// 授权被拒时给操作者的通知；signal_immediate 信号的
+// 即时通知卡片（C-08）；authorization_sync_failed 授权同步超过 24
+// 小时未成功时给目标所在单元决策者的通知（C-17）.
 // Ref: #/components/schemas/NoticeKind
 type NoticeKind string
 
@@ -3173,18 +3172,16 @@ func (s *NoticeKind) UnmarshalText(data []byte) error {
 // 按状态白名单：retrying 为 channel_error；in_app 为 not_bound、cutoff；cancelled 为
 // member_inactive、task_not_visible、
 // task_closed、superseded、reassigned、pursuit_not_visible；不在白名单内的为
-// other；pending 与 delivered 不带原因（0.4.0）。 0.5.0（signal_immediate）的 cancelled
-// 另有：preference_off 收件人关闭了即时通知；not_immediate
-// 目标的生效策略对信号当前处置 不再是
+// other；pending 与 delivered 不带原因。 signal_immediate 的 cancelled 另有：preference_off
+// 收件人关闭了即时通知；not_immediate 目标的生效策略对信号当前处置 不再是
 // immediate（或目标未激活、信号为回填）；not_in_audience
 // 收件人已不在受众中；objective_not_visible 收件人已不能查看目标的
 // 信号；signal_not_visible 信号对收件人不可见或不属于该目标；signal_handled
 // 信号已不是待处理；throttled 超过每名收件人的即时
 // 通知上限，留给简报；merged_into_briefing
-// 安静时段内到达、结束时简报即将发送，并入简报。
-// 0.6.0（authorization_sync_failed）的 cancelled 另有：sync_recovered
-// 发送前授权同步已恢复；not_decision_maker 收件人此刻已不能
-// 处理该跟进（不在单元上能更新跟进）；pursuit_closed
+// 安静时段内到达、结束时简报即将发送，并入简报。 authorization_sync_failed 的
+// cancelled 另有：sync_recovered 发送前授权同步已恢复；not_decision_maker
+// 收件人此刻已不能 处理该跟进（不在单元上能更新跟进）；pursuit_closed
 // 跟进已关闭、撤销或持续跟踪已停止.
 // Ref: #/components/schemas/NoticeReason
 type NoticeReason string
@@ -3364,7 +3361,7 @@ func (s *NoticeReason) UnmarshalText(data []byte) error {
 // Pending 待发送（含安静时段延后）；retrying
 // 发送失败、等待退避重试；delivered 渠道已接受；in_app
 // 未绑定或重试时限内仍未送达， 留在 Web 与站内；cancelled
-// 发送前以收件人本人再检查时取消（0.4.0）.
+// 发送前以收件人本人再检查时取消.
 // Ref: #/components/schemas/NoticeState
 type NoticeState string
 
@@ -4795,7 +4792,7 @@ type UpdateBriefingPreferencesRequest struct {
 	QuietEnd        ClockTime      `json:"quiet_end"`
 	PushEmpty       bool           `json:"push_empty"`
 	SectionLimits   []SectionLimit `json:"section_limits"`
-	// 是否接收即时通知（0.5.0，C-08）；不提供时保持当前值（从未设置为 true）.
+	// 是否接收即时通知（C-08）；不提供时保持当前值（从未设置为 true）.
 	InstantNotify OptBool `json:"instant_notify"`
 }
 

@@ -1,6 +1,6 @@
 # PRD 第5段：简报与快捷动作
 
-> 状态：设计交接通过 · 版本：1.4 · 更新：2026-10-27 · 负责人：产品负责人、身份与渠道负责人、客户智能负责人 · 原型：[prototypes/05-briefing-quick-actions.html](prototypes/05-briefing-quick-actions.html)
+> 状态：设计交接通过 · 负责人：产品负责人、身份与渠道负责人、客户智能负责人 · 原型：[prototypes/05-briefing-quick-actions.html](prototypes/05-briefing-quick-actions.html)
 
 本段让销售每天早上在企业微信里收到一份按目标分区的简报，在卡片上直接对信号反馈“相关 / 不相关”、发起跟进，或打开 Web 查看命中理由与对象页。它承接第3段（信号与反馈）、第4段（对象页与证据）和第1段（渠道绑定与免登），卡片上的“跟进”接到第6段。简报只是信号的另一个入口：卡片上的每个动作都调用第3段与第6段的同一接口、经同一授权，渠道不另有一套业务规则（[channels 第3节](../../03-architecture/subsystems/channels.md#3-职责与非职责)）。
 
@@ -324,7 +324,7 @@
 
 证据位置在实现时逐条填入。
 
-服务端切片：channels 契约 0.2.0 草案（事件 0.2.0）实现简报偏好、组装、投递、卡片快捷动作的执行、简报历史与完整简报、本人重新推送、简报链接与投递统计；detection 契约 0.3.0 草案追加简报取数（`listBriefingSignals`）与信号卡片（`listSignalCards`）两个只供 channels 经内部端口调用的接口，撤销请求追加渠道；identity 以内部端口提供本人身份的审批读取。见 [channels 第4.4、4.6、6节实现状况](../../03-architecture/subsystems/channels.md#6-接口)、[detection 第5节实现状况](../../03-architecture/subsystems/detection.md#5-接口) 与 [契约就绪第9节](../../03-architecture/13-contract-readiness.md#9-随功能追加的契约)。定时任务（组装触发、到期投递、动作执行）与企业微信生产适配器没有接入：三者以本地绑定 `channels.Briefings` 提供，由测试直接驱动；覆盖（domain-intelligence `GetCoverage`）与来源权利端口未接入（覆盖缺省为“未知”，来源字段失败关闭为 none）。跟进按钮随第6段切片实现；即时通知（F7）随 C-08 实现（channels 契约 0.5.0、事件 0.6.0，customer-context 契约 0.6.0 的生效策略追加负责人与参与人；证据为 `services/kernel/integration/notify_test.go` 的 `TestInstantNotifications`，由 `scheduler` 角色的 `channels.deliver-notices` 任务驱动，见 [channels 第6节 C-08 实现状况](../../03-architecture/subsystems/channels.md#6-接口)）；成员可在偏好中关闭即时通知（`instant_notify`，缺省开启、立即生效，F9 未列出，作为待确认的缺省值登记在 channels 实现状况）。AI 开头摘要（第13节第8项，M2 不开启）与“关注变化”区（第13节第9项，关注开放前不显示）未实现，登记为 [A02 验收缺口 C-18、C-19](../../05-delivery/09-a02-end-to-end-acceptance.md#42-身份与渠道c)。Web 页面、H5 与走查未实现。下表“全部”只指服务端可自动化的部分。当前自动化证据（均在 `services/kernel/integration/briefing_test.go` 的 `TestBriefingQuickActions` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，channels 经 mTLS 内部端口的远程绑定调用 detection 与 identity，企业微信为内存实现 `wecomtest`）：
+服务端实现以子系统规格为准，未关闭的缺口见 [A02 真实贯通验收线第4节](../../05-delivery/09-a02-end-to-end-acceptance.md#4-缺口清单)；下表“全部”只指服务端可自动化的部分。当前自动化证据（均在 `services/kernel/integration/briefing_test.go` 的 `TestBriefingQuickActions` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，channels 经 mTLS 内部端口的远程绑定调用 detection 与 identity，企业微信为内存实现 `wecomtest`）：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|

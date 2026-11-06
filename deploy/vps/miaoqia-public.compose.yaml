@@ -1,0 +1,102 @@
+name: miaoqia-public
+
+# This manifest describes the shared public components used by the development
+# VPS. Secrets remain in the VPS-only .env file and are never committed here.
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${MIAOQIA_PG_ADMIN_PASS}
+    volumes:
+      - miaoqia_public_postgres_data:/var/lib/postgresql
+      - ./postgres/01-init-public-databases.sh:/docker-entrypoint-initdb.d/01-init-public-databases.sh:ro,Z
+    networks: [public]
+
+  kafka:
+    image: apache/kafka:4.1.0
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://127.0.0.1:29094,EXTERNAL://0.0.0.0:29092,CONTROLLER://127.0.0.1:29093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://127.0.0.1:29094,EXTERNAL://${MIAOQIA_VPS_PUBLIC_IP}:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@127.0.0.1:29093
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 12
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - ./data/kafka:/var/lib/kafka/data:Z
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.4
+    restart: unless-stopped
+    env_file: .env
+    command: start --http-enabled=true --http-port=8080 --hostname=auth.lai.co --proxy-headers=xforwarded --health-enabled=true --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/miaoqia_keycloak
+      KC_DB_USERNAME: miaoqia_keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASS}
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASS}
+    networks:
+      public:
+        ipv4_address: 10.89.14.250
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
+  openfga-migrate:
+    image: openfga/openfga:v1.10.0
+    env_file: .env
+    command: migrate
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://miaoqia_fga:${FGA_DB_PASS}@postgres:5432/miaoqia_fga?sslmode=disable
+    networks: [public]
+
+  openfga:
+    image: openfga/openfga:v1.10.0
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://miaoqia_fga:${FGA_DB_PASS}@postgres:5432/miaoqia_fga?sslmode=disable
+      OPENFGA_AUTHN_METHOD: preshared
+      OPENFGA_AUTHN_PRESHARED_KEYS: ${FGA_TOKEN}
+      OPENFGA_HTTP_ADDR: 0.0.0.0:8080
+      OPENFGA_PLAYGROUND_ENABLED: "false"
+    networks:
+      public:
+        ipv4_address: 10.89.14.251
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.135.0
+    network_mode: host
+    restart: unless-stopped
+    command: ["--config=/etc/otel/collector.yaml"]
+    user: "0:0"
+    volumes:
+      - ./otel/collector.yaml:/etc/otel/collector.yaml:ro
+      - ./data/otel:/data:Z
+
+networks:
+  public:
+    external: true
+    name: miaoqia_public
+
+volumes:
+  miaoqia_public_postgres_data:

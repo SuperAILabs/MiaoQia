@@ -1,6 +1,6 @@
 # 模型供应商评测方案（C3 / C7a）
 
-> 状态：方案已确认 · 版本：1.2 · 更新：2026-10-17 · 负责人：AI 负责人、数据负责人、质量负责人
+> 状态：方案已确认 · 负责人：AI 负责人、数据负责人、质量负责人
 
 本文定义选定模型供应商主选与备选的评测方法，对应立项清单 [C3 模型供应商与最小网关](00-initiation-readiness.md) 与 C7a OCR 与版面。依据是 [ADR-0015](../04-decisions/0015-model-inference-via-api.md)（前期只接境内已备案供应商的 API）和 [ai-platform 第9节](../03-architecture/subsystems/ai-platform.md#9-首次使用门禁)。本方案只确定怎么评；真实调用与采购须先确认候选供应商与数据使用条件（[PR #17 决策记录](https://github.com/SuperAILabs/MiaoQia/pull/17#issuecomment-6232158680) D6），不由本文启动。
 

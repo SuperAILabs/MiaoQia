@@ -1,6 +1,6 @@
 # 部署拓扑
 
-> 状态：评审中 · 版本：3.4 · 更新：2026-10-26 · 负责人：首席架构师、平台工程负责人
+> 状态：评审中 · 负责人：首席架构师、平台工程负责人
 
 ## 1. 核心决策
 
@@ -52,6 +52,8 @@
 | `data-workflow-worker` | evidence、domain-intelligence、entity-graph | 重放、批量增强、语料快照、回填 | 工作流任务队列深度 |
 
 客户授权文档（租户知识资产）的解析由 `tenant-document-worker` 的**单元级实例**完成：随租户单元部署，使用单元级凭证与存储，不与公共域实例混用。相同 database 代码按实例绑定不同数据库，迁移与备份也按实例执行。角色声明 `data_scopes: {evidence: tenant}` 与 `cell`；当前仅提供隔离组装骨架，租户文档业务处理随对应能力实现，不能启动公共探针消费者。
+
+`data-api` 的内部读取 listener 以 `MIAOQIA_DATA_API_LISTENER=1` 与 `--role data-api` 启用，监听 `MIAOQIA_DATA_LISTEN`；须配置 `MIAOQIA_INTERNAL_TLS_CERT`、`MIAOQIA_INTERNAL_TLS_KEY`、`MIAOQIA_INTERNAL_TLS_CA`、精确的委托矩阵 `MIAOQIA_DATA_DELEGATIONS`（peer、operation、purpose），以及 identity 与 acquisition 权利服务的地址和 peer。没有明文或开发绕过；缺任一配置不启动。
 
 ### 2.3 `platform` 单元
 
@@ -180,7 +182,7 @@ flowchart LR
 
 前期使用不限定厂商的 VPS 作为共享开发环境，开发优先选择中国大陆节点；不满足境内处理条件的节点仅运行合成数据。开发环境不承诺生产 SLA，真实客户持续服务必须先满足相应安全与运行门禁。单机故障可重建，外部备份与数据导出须验证。
 
-本地开发以 `deploy/local/up.sh` 启动全部基础组件（Docker Compose，每子系统独立数据库与账号，主题按契约创建），三个部署单元以进程角色启动；`tests/e2e/m0.py` 在此环境上验证完整探针和当前identity接口的本地/远程切换。它使用显式开发策略；生产HTTP认证策略另由[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)覆盖。整个M0退出还须满足[阶段基线](../05-delivery/06-stage-baseline.md)的其他交付。
+开发环境默认复用已运行的共享 PostgreSQL、Kafka、OpenFGA、Keycloak、OTLP 与 data-api，三个部署单元以进程角色启动；`tests/e2e/m0.py` 在该共享环境上验证完整探针和当前 identity 接口的本地/远程切换。开发 VPS 的公共组件使用 MiaoQia 自有 `miaoqia_public` 网络，配置与重建清单见 [VPS 公共测试服务接入](../05-delivery/10-vps-public-services.md)，不依赖其他项目的网络名称。OpenFGA 出现网络长尾时，`tools/dev/run-local-acceptance.sh --local-openfga` 可用本机 `openfga` 二进制的内存存储替代共享 OpenFGA，仅用于本次开发验收，服务结束后进程退出。`deploy/local/up.sh` 与其 Docker Compose 文件只作为没有共享环境时的可选引导方式，不是开发验收前置条件。它使用显式开发策略；生产 HTTP 认证策略另由[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)覆盖。整个 M0 退出还须满足[阶段基线](../05-delivery/06-stage-baseline.md)的其他交付。
 
 ## 7. 地域与合规
 

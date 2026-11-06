@@ -1,10 +1,10 @@
 # 冻结语料的当前来源权利与可信来源闭包
 
-acquisition 提供冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 已接通最小事实/证据查询 listener、TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络 smoke、Go 生产适配器与完整 R2 仍未完成。A02 保持 L0，E1–E5 仍为建议。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
+acquisition 提供冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 的事实/证据查询 listener 带 TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络进程验收尚未完成。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
 
 ## 权威与引用
 
-[SourceRightsPolicy](../../../contracts/schemas/acquisition/source-rights.schema.json) 1.0.0 定义不可变原始版本：entry_id/version、source_id、精确 tenant/cell scopes、interactive purpose、展示上限、有效期及再分发限制。空 scope 不表示公共通配；业务读取仅支持 fact_read / evidence_resolve。原始版本及当前版本的每项限制同时生效；多个输入取交集、最低展示等级、最早到期和再分发 AND。扩权不能追溯放宽已有原始引用。
+[SourceRightsPolicy](../../../contracts/schemas/acquisition/source-rights.schema.json) 定义不可变原始版本：entry_id/version、source_id、精确 tenant/cell scopes、interactive purpose、展示上限、有效期及再分发限制。空 scope 不表示公共通配；业务读取仅支持 fact_read / evidence_resolve。原始版本及当前版本的每项限制同时生效；多个输入取交集、最低展示等级、最早到期和再分发 AND。扩权不能追溯放宽已有原始引用。
 
 数据库 `acq_rights` 保存不可变版本、精确 source+完整 tags 组合到原版本的不可变别名、当前版本/撤销指针、持久 epoch 与追加审计。操作通过受限 SECURITY DEFINER 函数串行执行，指针、epoch、审计同事务；别名不可改绑。运行 reader 仅 SELECT，operator 仅 SELECT 和执行受限 command，owner 只迁移/角色配置；禁止把 owner/operator 凭据放进运行进程。
 
@@ -28,7 +28,7 @@ acquisition 提供冻结语料的持久化当前权利端口，供 data-api runt
 
 本地 provenance 保留原来合法的 source 字符串、全部 tags 与分组，不强加 d0 的 source 格式、16 tags/64 groups wire 限制。仅 resolve 进入 structured 授权时检查可表示性，超限则拒绝，不裁剪、不合并不同组、不改 SDK 原有64层/1024节点 DAG 边界。
 
-参考绑定是一次不可变、带 actor/reason/session_user/时间的审批与绑定，不是来源读取许可。[固定清单](../../../data/subsystems/evidence/src/miaoqia/evidence/resources/reference_manifest.json) 只有 proc-building-topic@0.1.0，内容 hash `sha256:2b5aef8fb787639360a27918f62ee56c4fb1c573f0c564ed288e1660fd13e258`、source `reference-proc-building-topic-v0-1`、完整 tags `[review:building-topic-pair]`；manifest_hash 是清单自身的规范化 SHA-256。新内容必须经新版本、新清单迁移复核。绑定前写入的完整闭包可在后来合法绑定后参与当前 d0 判断，绑定不表示历史已有许可，也不能修复错误 hash、tags 或缺失依赖。测试 identity 参考始终没有批准绑定，旧本地测试可用，structured 拒绝。
+参考绑定是一次不可变、带 actor/reason/session_user/时间的审批与绑定，不是来源读取许可。[固定清单](../../../data/subsystems/evidence/src/miaoqia/evidence/resources/reference_manifest.json) 只有 `proc-building-topic@0.1.0`，内容 hash `sha256:2b5aef8fb787639360a27918f62ee56c4fb1c573f0c564ed288e1660fd13e258`、source `reference-proc-building-topic-v0-1`、完整 tags `[review:building-topic-pair]`；manifest_hash 是清单自身的规范化 SHA-256。新内容必须经新版本、新清单迁移复核。绑定前写入的完整闭包可在后来合法绑定后参与当前 d0 判断，绑定不表示历史已有许可，也不能修复错误 hash、tags 或缺失依赖。测试 identity 参考始终没有批准绑定，旧本地测试可用，structured 拒绝。
 
 owner 迁移 evidence0003/domain0004/acquisition0002，不激活任何政策。acquisition0002 在同事务内锁定 reviewed、仅追加一个参考组合并恢复同一不可变触发器，保留0001及原两行。evidence 固定 search_path、全限定 SECURITY DEFINER 函数只接收 name/version/审计信息，不能由调用方指定来源、路径或 hash；普通参考登记不具备绑定能力。专用 reader 仅 SELECT，binder 仅 EXECUTE；owner 配置会清除直接/默认 DML、EXECUTE、schema CREATE 授权，拒绝超权或继承角色。清单、绑定和闭包均保护 UPDATE/DELETE/TRUNCATE，清单也禁止运行时 INSERT。
 

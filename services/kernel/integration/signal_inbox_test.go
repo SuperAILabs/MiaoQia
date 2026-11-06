@@ -42,6 +42,7 @@ import (
 	idapi "github.com/superailabs/miaoqia/services/subsystems/identity/api"
 	"github.com/superailabs/miaoqia/services/subsystems/learning"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/api/datasettest"
+	"github.com/superailabs/miaoqia/services/subsystems/search"
 )
 
 // flakyActive 注入生效策略读取的失败（customer-context 主库不可读）。
@@ -74,7 +75,7 @@ func (f *flakyAccess) Access(ctx context.Context, objective string, relations []
 
 // PRD 第3段服务端切片（信号收件箱、处理与反馈、批量与撤销、反馈汇总）与第7段用例 1、15、16（生效边界上的匹配）：真实 PostgreSQL
 // （各子系统自己的库、行级安全、应用账号）+ 真实 identity 目录与 OpenFGA + 外部网关令牌校验 + 生成的 HTTP 服务端；detection 读取
-// 生效策略经 mTLS 内部端口的远程绑定。事实视图与订阅反查使用标明为夹具的内存实现（facttest，事实均为虚构），learning 的仿真数据集
+// 生效策略经 mTLS 内部端口的远程绑定。事实视图使用标明为夹具的内存实现（facttest，事实均为虚构），订阅反查使用 search 的真实 PostgreSQL percolator 与策略事件注册，learning 的仿真数据集
 // 使用 datasettest。发件箱事件按契约校验后直接交给消费处理。用例编号对应 PRD 第3段第12节（另注“第7段”的对应第7段第12节）。
 func TestSignalInboxFeedback(t *testing.T) {
 	fga := os.Getenv("MIAOQIA_TEST_OPENFGA")
@@ -196,6 +197,8 @@ func TestSignalInboxFeedback(t *testing.T) {
 	lrnModule := learning.ModuleWith(learning.Adapters{Dataset: fixture, Domains: fixture, Now: now})
 	lrnEnv, lrnOwner := start(lrnModule)
 	lrnModule.Routes(lrnEnv, public, internal)
+	searchModule := search.Module()
+	start(searchModule)
 
 	facts := facttest.New(t1, t2)
 	// 批量作业的执行钩子：逐项执行前调用（用于在固定位置注入故障、并发与中断）
@@ -206,7 +209,7 @@ func TestSignalInboxFeedback(t *testing.T) {
 		defer hookMu.Unlock()
 		hook = h
 	}
-	detModule := detection.ModuleWith(detection.Adapters{Facts: facts, Candidates: facts, Now: now, LeaseTTL: time.Second,
+	detModule := detection.ModuleWith(detection.Adapters{Facts: facts, Now: now, LeaseTTL: time.Second,
 		BatchHook: func(_ context.Context, batchID string, position int) error {
 			hookMu.Lock()
 			h := hook
@@ -295,14 +298,16 @@ func TestSignalInboxFeedback(t *testing.T) {
 		consumer string
 	}
 	routes := map[string][]route{
-		"identity.approval.requested.v1":        {{ccModule, ccEnv, "customer-context.policy-approvals"}},
-		"identity.approval.decided.v1":          {{ccModule, ccEnv, "customer-context.policy-approvals"}},
-		"identity.approval.closed.v1":           {{ccModule, ccEnv, "customer-context.policy-approvals"}},
-		"customer_context.policy.drafted.v1":    {{lrnModule, lrnEnv, "learning.policy-simulations"}},
-		"learning.simulation.completed.v1":      {{ccModule, ccEnv, "customer-context.policy-simulations"}},
-		"customer_context.objective.changed.v1": {{ccModule, ccEnv, "customer-context.objective-participants"}},
-		"detection.signal.detected.v1":          {{lrnModule, lrnEnv, "learning.signal-feedback"}},
-		"detection.signal.triaged.v1":           {{lrnModule, lrnEnv, "learning.signal-feedback"}},
+		"identity.approval.requested.v1":         {{ccModule, ccEnv, "customer-context.policy-approvals"}},
+		"identity.approval.decided.v1":           {{ccModule, ccEnv, "customer-context.policy-approvals"}},
+		"identity.approval.closed.v1":            {{ccModule, ccEnv, "customer-context.policy-approvals"}},
+		"customer_context.policy.drafted.v1":     {{lrnModule, lrnEnv, "learning.policy-simulations"}},
+		"learning.simulation.completed.v1":       {{ccModule, ccEnv, "customer-context.policy-simulations"}},
+		"customer_context.objective.changed.v1":  {{ccModule, ccEnv, "customer-context.objective-participants"}, {detModule, detEnv, "detection.policy-watches"}},
+		"customer_context.policy.activated.v1":   {{detModule, detEnv, "detection.policy-watches"}},
+		"customer_context.policy.rolled_back.v1": {{detModule, detEnv, "detection.policy-watches"}},
+		"detection.signal.detected.v1":           {{lrnModule, lrnEnv, "learning.signal-feedback"}},
+		"detection.signal.triaged.v1":            {{lrnModule, lrnEnv, "learning.signal-feedback"}},
 	}
 	deliver := func(t *testing.T, envelope outbox.Envelope) {
 		t.Helper()
@@ -415,7 +420,15 @@ func TestSignalInboxFeedback(t *testing.T) {
 				return errors.New("detection 不订阅公共域的 domain 主题")
 			}
 			ectx := reqctx.Service(reqctx.With(ctx, reqctx.Context{Purpose: "event"}), c.Subsystem)
-			return detEnv.DB.Tx(ectx, func(tx pgx.Tx) error { return c.Handlers[envelope.Type](ectx, tx, &envelope) })
+			err := detEnv.DB.Tx(ectx, func(tx pgx.Tx) error { return c.Handlers[envelope.Type](ectx, tx, &envelope) })
+			// Before the first policy activation the durable percolator is
+			// intentionally empty. The event has no candidate tenants yet;
+			// preserve the fixture test's no-signal setup while keeping the
+			// production handler fail-closed for an unavailable index.
+			if errors.Is(err, search.ErrPercolatorNotReady) {
+				return nil
+			}
+			return err
 		}
 		return errors.New("没有消费者 detection.fact-matching")
 	}
@@ -647,8 +660,11 @@ func TestSignalInboxFeedback(t *testing.T) {
 			t.Fatalf("%v %v", lots, sig(t, n6))
 		}
 		lotA, lotB = lots[0], lots[1]
-		if count(t, detOwner, `SELECT count(*) FROM det_matches WHERE unit_key LIKE '%'||$1||'%' AND outcome = 'no_signal'`, n6) != 1 {
-			t.Fatal("服务区域外的结果没有 no_signal 匹配记录")
+		// search percolator applies the target's service-region filter before
+		// detection evaluation; an out-of-region fact has no candidate match
+		// and therefore no det_matches row.
+		if count(t, detOwner, `SELECT count(*) FROM det_matches WHERE unit_key LIKE '%'||$1||'%'`, n6) != 0 {
+			t.Fatal("服务区域外的结果不应进入 detection 求值")
 		}
 		var policyID string
 		if err := ccOwner.QueryRow(ctx, `SELECT policy_id FROM ctx_policies WHERE objective_id = $1`, objective.ID).Scan(&policyID); err != nil {

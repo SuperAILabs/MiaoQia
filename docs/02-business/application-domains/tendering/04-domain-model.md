@@ -1,6 +1,6 @@
 # 领域模型
 
-> 状态：评审中 · 版本：3.0 · 更新：2026-10-14 · 负责人：招投标领域负责人、数据架构负责人
+> 状态：评审中 · 负责人：招投标领域负责人、数据架构负责人
 
 本文定义招投标应用领域涉及的领域对象及其业务含义。公共域对象由 `INF-PROC` 信息领域包提供，字段级定义以 [`contracts/schemas/domains/procurement/`](../../../../contracts/schemas/domains/procurement/notice.schema.json) 为准：公告（`Notice`）按原文表达一条公告，采购项目（`ProcurementProject`）是归并后的当前状态，标包、标的、要求、时间节点、投标结果、合同与验收是其中的嵌套对象。租户域对象由 `APP-TENDER` 应用领域包提供。通用字段与版本规则见 [数据架构](../../../03-architecture/02-data-architecture.md)。
 

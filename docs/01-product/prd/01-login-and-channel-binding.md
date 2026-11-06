@@ -1,6 +1,6 @@
 # PRD 第1段：登录与渠道绑定
 
-> 状态：设计交接通过 · 版本：1.6 · 更新：2026-10-19 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
+> 状态：设计交接通过 · 负责人：产品负责人、身份与渠道负责人、安全负责人 · 原型：[prototypes/01-login-and-channel-binding.html](prototypes/01-login-and-channel-binding.html)（[在线预览](https://claude.ai/artifact/5Fo8kJ5Y3FzdrMMTr1apiY)）
 
 本段让一家建材供应商从开通到“销售在企业微信收到妙洽消息、点开卡片在手机上看到同一账号下的内容”。它是首条旅程（A02 进入供货）后续各段的前提：第2段的客户档案由本段激活的管理员录入，第5段的简报与卡片只发给本段绑定的成员。
 
@@ -249,7 +249,7 @@
 
 证据位置在实现时逐条填入：自动化用例写测试文件与用例名，走查写记录链接。
 
-服务端切片：identity 契约 1.2.0 提供组织单元、单元角色、资源级 `Check`、服务主体授权与 `SyncResourceParticipants`；契约 1.3.0（事件契约 1.2.0）实现邀请（F2）与强认证时效（F3 第2、4步的服务端部分），见 [identity 第5节实现状况](../../03-architecture/subsystems/identity.md#5-接口)。IdP 账号与邮件渠道在本环境以端口的内存实现测试（生产 Keycloak 管理接口与邮件适配器未接入），强认证时间来自测试签发方签名的 `auth_time`，不代证真实 TOTP 仪式与 IdP 配置（第3节前置条件仍待部署验收）。channels 契约 0.1.0 与 identity 契约 1.4.0 实现企业微信渠道的安装与停用（F4）、绑定（F5）、解绑与免登撤销（F6）与卡片跳转（F7）的服务端部分，见 [channels 第6节实现状况](../../03-architecture/subsystems/channels.md#6-接口)：企业微信以端口的内存实现测试（C10 只批准了设计，生产适配器与真实凭证未接入），安装回调、消息回调与免登只以本地绑定提供（网关的未认证入口未实现），免登会话令牌由测试签发方按 identity 返回的会话标识签发（IdP 侧铸造未接入）；Web 页面与渠道内对话、动作按钮未实现。渠道用例的证据在 `services/kernel/integration/channels_test.go` 的 `TestChannelBindingAndSSO` 中。邀请列表按游标分页（每页至多 500 条），待接受上限 1000 条时可翻到全部并操作最早的邀请（子测试“邀请列表分页：同一状态超过500条时翻页不重复、不遗漏，最早的邀请可取到并操作”）。当前自动化证据（均在 `services/kernel/integration/invitations_test.go` 的 `TestInvitationsAndStrongAuth` 中，另注明的除外）：
+服务端实现以子系统规格为准，未关闭的缺口见 [A02 真实贯通验收线第4节](../../05-delivery/09-a02-end-to-end-acceptance.md#4-缺口清单)；下表“全部”只指服务端可自动化的部分。渠道用例的证据在 `services/kernel/integration/channels_test.go` 的 `TestChannelBindingAndSSO` 中。邀请列表按游标分页（每页至多 500 条），待接受上限 1000 条时可翻到全部并操作最早的邀请（子测试“邀请列表分页：同一状态超过500条时翻页不重复、不遗漏，最早的邀请可取到并操作”）。当前自动化证据（均在 `services/kernel/integration/invitations_test.go` 的 `TestInvitationsAndStrongAuth` 中，另注明的除外）：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|
