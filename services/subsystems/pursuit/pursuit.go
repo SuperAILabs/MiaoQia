@@ -122,6 +122,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 			env.Bindings.Provide(api.ActionsBinding, api.LocalActions(app.Actions{Service: svc}))
 			env.Bindings.Provide(api.RemindersBinding, api.LocalReminders(svc))
 			env.Bindings.Provide(api.TrackingsBinding, api.LocalTrackings(app.Actions{Service: svc}))
+			env.Bindings.Provide(api.MonitorBinding, api.LocalMonitor(svc))
 			return nil
 		},
 		Jobs: jobs(clock(adapters.Now)),

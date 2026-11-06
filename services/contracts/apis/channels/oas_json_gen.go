@@ -6363,6 +6363,8 @@ func (s *NoticeKind) Decode(d *jx.Decoder) error {
 		*s = NoticeKindAuthorizationRejected
 	case NoticeKindSignalImmediate:
 		*s = NoticeKindSignalImmediate
+	case NoticeKindAuthorizationSyncFailed:
+		*s = NoticeKindAuthorizationSyncFailed
 	default:
 		*s = NoticeKind(v)
 	}
@@ -6433,6 +6435,12 @@ func (s *NoticeReason) Decode(d *jx.Decoder) error {
 		*s = NoticeReasonThrottled
 	case NoticeReasonMergedIntoBriefing:
 		*s = NoticeReasonMergedIntoBriefing
+	case NoticeReasonSyncRecovered:
+		*s = NoticeReasonSyncRecovered
+	case NoticeReasonNotDecisionMaker:
+		*s = NoticeReasonNotDecisionMaker
+	case NoticeReasonPursuitClosed:
+		*s = NoticeReasonPursuitClosed
 	case NoticeReasonOther:
 		*s = NoticeReasonOther
 	default:

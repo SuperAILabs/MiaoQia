@@ -471,13 +471,20 @@ func (s *Authorization) encodeFields(e *jx.Encoder) {
 			s.PendingSince.Encode(e, json.EncodeDateTime)
 		}
 	}
+	{
+		if s.ViewerCanResolve.Set {
+			e.FieldStart("viewer_can_resolve")
+			s.ViewerCanResolve.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfAuthorization = [4]string{
+var jsonFieldsNameOfAuthorization = [5]string{
 	0: "state",
 	1: "desired_version",
 	2: "applied_version",
 	3: "pending_since",
+	4: "viewer_can_resolve",
 }
 
 // Decode decodes Authorization from json.
@@ -532,6 +539,16 @@ func (s *Authorization) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"pending_since\"")
+			}
+		case "viewer_can_resolve":
+			if err := func() error {
+				s.ViewerCanResolve.Reset()
+				if err := s.ViewerCanResolve.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"viewer_can_resolve\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
@@ -8873,6 +8890,10 @@ func (s *TimelineEntryKind) Decode(d *jx.Decoder) error {
 		*s = TimelineEntryKindTrackingStopped
 	case TimelineEntryKindMembersChanged:
 		*s = TimelineEntryKindMembersChanged
+	case TimelineEntryKindAuthorizationSyncFailed:
+		*s = TimelineEntryKindAuthorizationSyncFailed
+	case TimelineEntryKindAuthorizationSyncRecovered:
+		*s = TimelineEntryKindAuthorizationSyncRecovered
 	default:
 		*s = TimelineEntryKind(v)
 	}

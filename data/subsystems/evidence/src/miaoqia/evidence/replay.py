@@ -1,9 +1,9 @@
-"""回放投放：把仓库内冻结语料中的官方公告原件送入公共文档管线（A02 贯通验收 L1，docs/05-delivery/09-a02-end-to-end-acceptance.md）。
+"""回放投放：把仓库内冻结语料中的公开原件或显式合成夹具送入公共文档管线（A02 贯通验收 L1，docs/05-delivery/09-a02-end-to-end-acceptance.md）。
 
   mq-evidence-replay SAMPLE_DIR [SAMPLE_DIR ...] [--packs packs]
 
 配置：MIAOQIA_EVIDENCE_DB_DSN、MIAOQIA_EVIDENCE_OBJECT_STORE_DIR。
-语料作为测试材料处理：权利标签追加 corpus:<样本>，来源对象键取样本登记的来源地址；不构成来源启用，不改变来源门禁。
+语料作为测试材料处理：权利标签追加 corpus:<样本>，公开来源对象键取登记地址；合成夹具取 manifest 绑定的本地键，不声明抓取地址；不构成来源启用，不改变来源门禁。
 投放前核对原件（与经复核的规范化表示）哈希，与登记不符的样本拒绝投放。
 """
 from __future__ import annotations
@@ -14,7 +14,6 @@ import json
 import os
 import secrets
 import sys
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
@@ -22,13 +21,12 @@ import yaml
 from opentelemetry import context as otel_context
 
 from miaoqia.kernel import db, reqctx, tracing
+from miaoqia.sdk.corpus_source import corpus_source
 
 from .api import NAME
 from .application.pipeline import Artifact, Ingested, Pipeline
 from .extensions import packs
 from .infrastructure.objectstore import FilesystemObjectStore
-
-CST = timezone(timedelta(hours=8))
 
 
 def corpus_artifact(sample: Path) -> Artifact:
@@ -43,14 +41,12 @@ def corpus_artifact(sample: Path) -> Artifact:
         if hashlib.sha256(body).hexdigest() != meta.get("normalized_sha256"):
             raise ValueError(f"{sample.name}: 规范化表示哈希不符")
         normalized = json.loads(body)
-    if not meta.get("source_id") or not meta.get("rights_tag") or not str(meta.get("source_url", "")).startswith("http"):
-        raise ValueError(f"{sample.name}: 样本缺少来源、来源地址或权利标签")
-    fetched = datetime.fromisoformat(str(meta["fetched_at"]))
-    observed = fetched if fetched.tzinfo else fetched.replace(tzinfo=CST)
-    return Artifact(source_id=str(meta["source_id"]), source_key=str(meta["source_url"]),
+    source = corpus_source(sample, meta, raw, for_replay=True)
+    return Artifact(source_id=source.source_id, source_key=source.source_key,
                     media_type="application/pdf" if pdf else "text/html", raw=raw,
-                    rights_tags=(str(meta["rights_tag"]), f"corpus:{sample.name}"), observed_at=observed,
-                    source_url=str(meta["source_url"]), normalized=normalized)
+                    rights_tags=(source.rights_tag, f"corpus:{sample.name}"), observed_at=source.observed_at,
+                    source_url=source.source_url, normalized=normalized)
+
 
 
 def root_traceparent() -> str:

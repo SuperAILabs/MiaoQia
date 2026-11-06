@@ -1,0 +1,204 @@
+{
+  "schema": "acquisition/source-rights.schema.json",
+  "base": {
+    "schema_version": 1,
+    "entry_id": "building-tender",
+    "version": 1,
+    "source_id": "official-qzygjy",
+    "scopes": [
+      {
+        "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+        "cell": "cell-01"
+      }
+    ],
+    "purposes": [
+      "interactive"
+    ],
+    "display": "excerpt",
+    "effective_at": "2026-10-26T00:00:00Z",
+    "expires_at": "2027-01-01T00:00:00Z",
+    "redistribution": false
+  },
+  "cases": [
+    {
+      "name": "frozen explicit scope",
+      "valid": true,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "interactive"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject schema_version",
+      "valid": false,
+      "instance": {
+        "schema_version": 2,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "interactive"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject scopes",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [],
+        "purposes": [
+          "interactive"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject display",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "interactive"
+        ],
+        "display": "public",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject purposes",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "research"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject effective_at",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "interactive"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false
+      }
+    },
+    {
+      "name": "reject redistribution",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "interactive"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": "yes"
+      }
+    },
+    {
+      "name": "reject unexpected",
+      "valid": false,
+      "instance": {
+        "schema_version": 1,
+        "entry_id": "building-tender",
+        "version": 1,
+        "source_id": "official-qzygjy",
+        "scopes": [
+          {
+            "tenant": "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1",
+            "cell": "cell-01"
+          }
+        ],
+        "purposes": [
+          "interactive"
+        ],
+        "display": "excerpt",
+        "effective_at": "2026-10-26T00:00:00Z",
+        "expires_at": "2027-01-01T00:00:00Z",
+        "redistribution": false,
+        "unexpected": "metadata"
+      }
+    }
+  ]
+}

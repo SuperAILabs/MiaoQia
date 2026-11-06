@@ -250,6 +250,11 @@ type Authorization struct {
 	DesiredVersion int64              `json:"desired_version"`
 	AppliedVersion int64              `json:"applied_version"`
 	PendingSince   OptDateTime        `json:"pending_since"`
+	// 调用者此刻在跟进所在单元上能更新跟进（can_edit_unit_pursuits，决策者），授权同步失败时可改派或关闭（PRD
+	// 第6段 F12 第6条）。 只在 getPursuit 与 getTracking
+	// 中给出（每次按调用者当前权限实时判断），其他响应不带；不带不等于
+	// false。.
+	ViewerCanResolve OptBool `json:"viewer_can_resolve"`
 }
 
 // GetState returns the value of State.
@@ -272,6 +277,11 @@ func (s *Authorization) GetPendingSince() OptDateTime {
 	return s.PendingSince
 }
 
+// GetViewerCanResolve returns the value of ViewerCanResolve.
+func (s *Authorization) GetViewerCanResolve() OptBool {
+	return s.ViewerCanResolve
+}
+
 // SetState sets the value of State.
 func (s *Authorization) SetState(val AuthorizationState) {
 	s.State = val
@@ -290,6 +300,11 @@ func (s *Authorization) SetAppliedVersion(val int64) {
 // SetPendingSince sets the value of PendingSince.
 func (s *Authorization) SetPendingSince(val OptDateTime) {
 	s.PendingSince = val
+}
+
+// SetViewerCanResolve sets the value of ViewerCanResolve.
+func (s *Authorization) SetViewerCanResolve(val OptBool) {
+	s.ViewerCanResolve = val
 }
 
 type AuthorizationState string
@@ -5424,23 +5439,25 @@ func (s *TimelineEntry) SetRecordedAt(val time.Time) {
 type TimelineEntryKind string
 
 const (
-	TimelineEntryKindCreated               TimelineEntryKind = "created"
-	TimelineEntryKindSignalLinked          TimelineEntryKind = "signal_linked"
-	TimelineEntryKindVoided                TimelineEntryKind = "voided"
-	TimelineEntryKindReassigned            TimelineEntryKind = "reassigned"
-	TimelineEntryKindTeamChanged           TimelineEntryKind = "team_changed"
-	TimelineEntryKindTaskCreated           TimelineEntryKind = "task_created"
-	TimelineEntryKindTaskUpdated           TimelineEntryKind = "task_updated"
-	TimelineEntryKindTaskCompleted         TimelineEntryKind = "task_completed"
-	TimelineEntryKindTaskReopened          TimelineEntryKind = "task_reopened"
-	TimelineEntryKindClosed                TimelineEntryKind = "closed"
-	TimelineEntryKindOutcomeRevised        TimelineEntryKind = "outcome_revised"
-	TimelineEntryKindOwnerInvalid          TimelineEntryKind = "owner_invalid"
-	TimelineEntryKindAuthorizationRejected TimelineEntryKind = "authorization_rejected"
-	TimelineEntryKindTrackingPaused        TimelineEntryKind = "tracking_paused"
-	TimelineEntryKindTrackingResumed       TimelineEntryKind = "tracking_resumed"
-	TimelineEntryKindTrackingStopped       TimelineEntryKind = "tracking_stopped"
-	TimelineEntryKindMembersChanged        TimelineEntryKind = "members_changed"
+	TimelineEntryKindCreated                    TimelineEntryKind = "created"
+	TimelineEntryKindSignalLinked               TimelineEntryKind = "signal_linked"
+	TimelineEntryKindVoided                     TimelineEntryKind = "voided"
+	TimelineEntryKindReassigned                 TimelineEntryKind = "reassigned"
+	TimelineEntryKindTeamChanged                TimelineEntryKind = "team_changed"
+	TimelineEntryKindTaskCreated                TimelineEntryKind = "task_created"
+	TimelineEntryKindTaskUpdated                TimelineEntryKind = "task_updated"
+	TimelineEntryKindTaskCompleted              TimelineEntryKind = "task_completed"
+	TimelineEntryKindTaskReopened               TimelineEntryKind = "task_reopened"
+	TimelineEntryKindClosed                     TimelineEntryKind = "closed"
+	TimelineEntryKindOutcomeRevised             TimelineEntryKind = "outcome_revised"
+	TimelineEntryKindOwnerInvalid               TimelineEntryKind = "owner_invalid"
+	TimelineEntryKindAuthorizationRejected      TimelineEntryKind = "authorization_rejected"
+	TimelineEntryKindTrackingPaused             TimelineEntryKind = "tracking_paused"
+	TimelineEntryKindTrackingResumed            TimelineEntryKind = "tracking_resumed"
+	TimelineEntryKindTrackingStopped            TimelineEntryKind = "tracking_stopped"
+	TimelineEntryKindMembersChanged             TimelineEntryKind = "members_changed"
+	TimelineEntryKindAuthorizationSyncFailed    TimelineEntryKind = "authorization_sync_failed"
+	TimelineEntryKindAuthorizationSyncRecovered TimelineEntryKind = "authorization_sync_recovered"
 )
 
 // AllValues returns all TimelineEntryKind values.
@@ -5463,6 +5480,8 @@ func (TimelineEntryKind) AllValues() []TimelineEntryKind {
 		TimelineEntryKindTrackingResumed,
 		TimelineEntryKindTrackingStopped,
 		TimelineEntryKindMembersChanged,
+		TimelineEntryKindAuthorizationSyncFailed,
+		TimelineEntryKindAuthorizationSyncRecovered,
 	}
 }
 
@@ -5502,6 +5521,10 @@ func (s TimelineEntryKind) MarshalText() ([]byte, error) {
 	case TimelineEntryKindTrackingStopped:
 		return []byte(s), nil
 	case TimelineEntryKindMembersChanged:
+		return []byte(s), nil
+	case TimelineEntryKindAuthorizationSyncFailed:
+		return []byte(s), nil
+	case TimelineEntryKindAuthorizationSyncRecovered:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -5561,6 +5584,12 @@ func (s *TimelineEntryKind) UnmarshalText(data []byte) error {
 		return nil
 	case TimelineEntryKindMembersChanged:
 		*s = TimelineEntryKindMembersChanged
+		return nil
+	case TimelineEntryKindAuthorizationSyncFailed:
+		*s = TimelineEntryKindAuthorizationSyncFailed
+		return nil
+	case TimelineEntryKindAuthorizationSyncRecovered:
+		*s = TimelineEntryKindAuthorizationSyncRecovered
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

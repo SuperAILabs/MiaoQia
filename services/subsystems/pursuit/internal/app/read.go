@@ -146,6 +146,8 @@ func (s *Service) GetPursuit(ctx context.Context, id string) (*Detail, error) {
 		Owner: p.Owner, OwnerValid: p.OwnerValid, Collaborators: p.Collaborators, Note: p.Note, CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt,
 		ClosedAt: p.ClosedAt, Version: p.Version, Authorization: s.authorization(p), Tasks: []TaskView{}, Links: []SignalLinkView{}, Outcomes: []OutcomeView{},
 		Timeline: []TimelineEntry{}, ViewerCanEdit: r.Edit && p.State == "open", ViewerCanManage: r.Edit && p.State == "open"}
+	resolve := r.UnitEdit
+	d.Authorization.ViewerCanResolve = &resolve
 	d.Source = Source{Kind: p.SourceKind, SignalID: p.SourceSignal, Channel: p.Channel}
 	if p.SourceKind == "signal" {
 		v := p.SourceContent

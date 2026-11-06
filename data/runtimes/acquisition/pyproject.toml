@@ -7,6 +7,7 @@ dependencies = ["miaoqia-kernel", "miaoqia-acquisition"]
 
 [project.scripts]
 mq-acquisition = "miaoqia.runtime_acquisition:main"
+mq-source-rights = "miaoqia.runtime_acquisition.rights:main"
 
 [tool.uv.sources]
 miaoqia-kernel = { workspace = true }

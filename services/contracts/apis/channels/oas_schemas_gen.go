@@ -3110,14 +3110,17 @@ func (s *ItemUpdate) SetContentVersion(val int64) {
 type LinkToken string
 
 // 渠道通知的种类：task_due 任务提醒卡片；authorization_rejected
-// 授权被拒时给操作者的通知；signal_immediate 信号的 即时通知卡片（C-08）.
+// 授权被拒时给操作者的通知；signal_immediate 信号的
+// 即时通知卡片（C-08）；authorization_sync_failed 授权同步超过 24
+// 小时未成功时给目标所在单元决策者的通知（C-17）.
 // Ref: #/components/schemas/NoticeKind
 type NoticeKind string
 
 const (
-	NoticeKindTaskDue               NoticeKind = "task_due"
-	NoticeKindAuthorizationRejected NoticeKind = "authorization_rejected"
-	NoticeKindSignalImmediate       NoticeKind = "signal_immediate"
+	NoticeKindTaskDue                 NoticeKind = "task_due"
+	NoticeKindAuthorizationRejected   NoticeKind = "authorization_rejected"
+	NoticeKindSignalImmediate         NoticeKind = "signal_immediate"
+	NoticeKindAuthorizationSyncFailed NoticeKind = "authorization_sync_failed"
 )
 
 // AllValues returns all NoticeKind values.
@@ -3126,6 +3129,7 @@ func (NoticeKind) AllValues() []NoticeKind {
 		NoticeKindTaskDue,
 		NoticeKindAuthorizationRejected,
 		NoticeKindSignalImmediate,
+		NoticeKindAuthorizationSyncFailed,
 	}
 }
 
@@ -3137,6 +3141,8 @@ func (s NoticeKind) MarshalText() ([]byte, error) {
 	case NoticeKindAuthorizationRejected:
 		return []byte(s), nil
 	case NoticeKindSignalImmediate:
+		return []byte(s), nil
+	case NoticeKindAuthorizationSyncFailed:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -3155,6 +3161,9 @@ func (s *NoticeKind) UnmarshalText(data []byte) error {
 	case NoticeKindSignalImmediate:
 		*s = NoticeKindSignalImmediate
 		return nil
+	case NoticeKindAuthorizationSyncFailed:
+		*s = NoticeKindAuthorizationSyncFailed
+		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
@@ -3170,7 +3179,10 @@ func (s *NoticeKind) UnmarshalText(data []byte) error {
 // 信号；signal_not_visible 信号对收件人不可见或不属于该目标；signal_handled
 // 信号已不是待处理；throttled 超过每名收件人的即时
 // 通知上限，留给简报；merged_into_briefing
-// 安静时段内到达、结束时简报即将发送，并入简报.
+// 安静时段内到达、结束时简报即将发送，并入简报。 authorization_sync_failed 的
+// cancelled 另有：sync_recovered 发送前授权同步已恢复；not_decision_maker
+// 收件人此刻已不能 处理该跟进（不在单元上能更新跟进）；pursuit_closed
+// 跟进已关闭、撤销或持续跟踪已停止.
 // Ref: #/components/schemas/NoticeReason
 type NoticeReason string
 
@@ -3192,6 +3204,9 @@ const (
 	NoticeReasonSignalHandled       NoticeReason = "signal_handled"
 	NoticeReasonThrottled           NoticeReason = "throttled"
 	NoticeReasonMergedIntoBriefing  NoticeReason = "merged_into_briefing"
+	NoticeReasonSyncRecovered       NoticeReason = "sync_recovered"
+	NoticeReasonNotDecisionMaker    NoticeReason = "not_decision_maker"
+	NoticeReasonPursuitClosed       NoticeReason = "pursuit_closed"
 	NoticeReasonOther               NoticeReason = "other"
 )
 
@@ -3215,6 +3230,9 @@ func (NoticeReason) AllValues() []NoticeReason {
 		NoticeReasonSignalHandled,
 		NoticeReasonThrottled,
 		NoticeReasonMergedIntoBriefing,
+		NoticeReasonSyncRecovered,
+		NoticeReasonNotDecisionMaker,
+		NoticeReasonPursuitClosed,
 		NoticeReasonOther,
 	}
 }
@@ -3255,6 +3273,12 @@ func (s NoticeReason) MarshalText() ([]byte, error) {
 	case NoticeReasonThrottled:
 		return []byte(s), nil
 	case NoticeReasonMergedIntoBriefing:
+		return []byte(s), nil
+	case NoticeReasonSyncRecovered:
+		return []byte(s), nil
+	case NoticeReasonNotDecisionMaker:
+		return []byte(s), nil
+	case NoticeReasonPursuitClosed:
 		return []byte(s), nil
 	case NoticeReasonOther:
 		return []byte(s), nil
@@ -3316,6 +3340,15 @@ func (s *NoticeReason) UnmarshalText(data []byte) error {
 		return nil
 	case NoticeReasonMergedIntoBriefing:
 		*s = NoticeReasonMergedIntoBriefing
+		return nil
+	case NoticeReasonSyncRecovered:
+		*s = NoticeReasonSyncRecovered
+		return nil
+	case NoticeReasonNotDecisionMaker:
+		*s = NoticeReasonNotDecisionMaker
+		return nil
+	case NoticeReasonPursuitClosed:
+		*s = NoticeReasonPursuitClosed
 		return nil
 	case NoticeReasonOther:
 		*s = NoticeReasonOther

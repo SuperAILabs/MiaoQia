@@ -1,9 +1,9 @@
-"""语料：用真实来源样本检验解析器与领域 Schema。
+"""语料：用公开来源或显式合成夹具检验解析器与领域 Schema。
 
 目录结构（位于信息领域包内，例如 packs/information_domains/procurement/corpus/）：
 
   <样本编号>/
-    meta.yaml       source_url、source_id、fetched_at、rights_tag、说明
+    meta.yaml       公开来源：source_url/source_id/fetched_at/rights_tag；显式夹具：artifact_origin/manifest/本地键/observed_at
     raw.html        原始页面（公开来源信息按公开数据保留原文）
     expected.yaml   标注：facts: [{fact_type, fields: {JSON Pointer: 期望值}}]；只标注确定无疑的字段
 
@@ -36,6 +36,7 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
 from .document import Document
+from .corpus_source import corpus_source
 from .entrypoints import resolve_semantic_validator, validate_loaded_semantic_validator
 from .extraction import ExtractionContext
 from .testing import html_to_document
@@ -98,7 +99,7 @@ def _semantic_validator(schema_rel: str):
 
 
 def load_reviewed_sample(sample: Path):
-    """共用真实原件/人工映射加载，保留原件与规范化制品哈希验证。"""
+    """共用原件/人工映射加载，保留来源种类及原件、规范化制品哈希验证。"""
     meta = yaml.safe_load((sample / "meta.yaml").read_text())
     doc = _load_document(sample, meta)
     review = json.loads((sample / "reviewed.json").read_text())
@@ -131,6 +132,7 @@ def _get(doc, pointer: str):
 
 def _load_document(sample: Path, meta: dict) -> Document:
     raw = sample / ("raw.pdf" if (sample / "raw.pdf").exists() else "raw.html")
+    source = corpus_source(sample, meta, raw.read_bytes())
     for name, key in ((raw.name, "raw_sha256"), ("response.html", "response_sha256")):
         if meta.get(key):
             if hashlib.sha256((sample / name).read_bytes()).hexdigest() != meta[key]:
@@ -145,7 +147,7 @@ def _load_document(sample: Path, meta: dict) -> Document:
     # 样本快照稳定且按原件区分；不是生产标识分配或采集时间证明。
     from .extraction import _ulid_like
     snapshot = _ulid_like("snp", hashlib.sha256(raw.read_bytes()).hexdigest())
-    return Document(html_to_document(raw.read_text(), snapshot, meta.get("source_url")))
+    return Document(html_to_document(raw.read_text(), snapshot, source.source_url))
 
 
 def _gold_pointers(fact, patterns: tuple[str, ...]) -> dict[str, object]:

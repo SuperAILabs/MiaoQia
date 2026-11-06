@@ -1,0 +1,8 @@
+facts:
+- fact_type: organization.registration
+  fields:
+    /record_scope: fixture
+    /subject/name_raw: 【夹具】赤砂供货乙有限公司
+    /name/value: 【夹具】赤砂供货乙有限公司
+    /former_names/0/value: 【夹具】赤砂供货乙旧称有限公司
+    /former_names/1/value: 【夹具】共同演示旧称有限公司

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -66,13 +67,24 @@ func (s *Service) sync(ctx context.Context, tx pgx.Tx, id string) error {
 	if applied <= p.Applied {
 		return s.notify(ctx, tx, p)
 	}
-	if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET applied_version = $2, sync_pending_since = CASE WHEN $2 >= participation_version THEN NULL ELSE sync_pending_since END
- WHERE id = $1`, id, applied); err != nil {
+	// 待处理期间的告警记录（C-17）在同一把行锁下读取：同步完成即结束期间，告警过的发布 authorization_sync_recovered（与定时检查无论先后
+	// 与并发，都不会在完成之后告警，也不会漏发恢复）
+	var delayed, failedAt *time.Time
+	if err := tx.QueryRow(ctx, `SELECT sync_delayed_at, sync_failed_at FROM pur_pursuits WHERE id = $1`, id).Scan(&delayed, &failedAt); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET applied_version = $2, sync_pending_since = CASE WHEN $2 >= participation_version THEN NULL ELSE sync_pending_since END,
+ sync_delayed_at = CASE WHEN $2 >= participation_version THEN NULL ELSE sync_delayed_at END,
+ sync_failed_at = CASE WHEN $2 >= participation_version THEN NULL ELSE sync_failed_at END WHERE id = $1`, id, applied); err != nil {
 		return err
 	}
 	p.Applied = applied
 	if applied >= p.Participation {
+		pendingSince := p.PendingSince
 		p.PendingSince = nil
+		if err := s.recovered(ctx, tx, p, pendingSince, delayed, failedAt, applied); err != nil {
+			return err
+		}
 	}
 	if res.AppliedVersion == req.Version && p.Participation == req.Version && len(res.Rejected) > 0 && p.State != "voided" {
 		if err := s.rejected(ctx, tx, p, res.Rejected); err != nil {

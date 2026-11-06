@@ -1,12 +1,16 @@
-"""data 部署单元入口：mq-data migrate | mq-data --role <角色>（角色见 deploy/data/roles.yaml）。"""
-import argparse
+"""data 部署单元入口及 data-api 的最小可达内部 listener。"""
 import os
+import signal
+import sys
+import threading
 
-from miaoqia.kernel import db, runtime, tracing
+from miaoqia.kernel import runtime
+from miaoqia.kernel.internal_http import Client, Identity, Server, TLS
 
 
 def modules() -> list[runtime.Module]:
     from miaoqia import evidence
+    from miaoqia.evidence.api import Unbound
     from miaoqia.evidence import module as evidence_module
     from miaoqia.domain_intelligence import module as domain_intelligence_module
     from miaoqia.entity_graph import module as entity_graph_module
@@ -21,57 +25,107 @@ def modules() -> list[runtime.Module]:
     return [evidence_module(), domain_intelligence_module(extractions), entity_graph_module()]
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(prog="mq-data")
-    parser.add_argument("command", nargs="?", choices=["migrate"])
-    parser.add_argument("--role")
-    args = parser.parse_args()
-    if args.role == "data-api" and args.command is None:
-        run_data_api()
-        return
-    # Keep migrate and all worker roles on the shared runtime path.
-    runtime.main("data", modules())
+def _tls():
+    return TLS(*(os.environ.get("MIAOQIA_INTERNAL_TLS_" + k, "") for k in ("CERT", "KEY", "CA")))
 
 
-def run_data_api() -> None:
-    """Start the data-api query listener for the public data instance."""
-    from miaoqia.evidence import resolver
-    from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
+def _groups(facts, provenance, body, deadline):
+    """Resolve one fixed fact handle into owner-verified source groups."""
+    if not isinstance(body, dict) or not isinstance(body.get("version"), int):
+        return []
+    closure = facts.requirements(body.get("fact_id"), body["version"])
+    return [source.dto() for source in provenance.resolve(closure)]
+
+
+def _evidence_groups(provenance, body, deadline):
+    if not isinstance(body, dict) or not isinstance(body.get("evidence_ref"), str):
+        return []
+    return [source.dto() for source in provenance.resolve(provenance.evidence(body["evidence_ref"]))]
+
+
+def _query_groups_unavailable(_body, _deadline):
+    # A query must provide its persisted source-group union before any fact
+    # lookup.  Failing closed is safer than treating an unknown union as an
+    # empty authorization set.
+    raise ValueError("query source-group collector unavailable")
+
+
+def serve():
+    """Run the data-api listener; missing remote dependencies fail closed."""
+    from miaoqia import evidence
+    from miaoqia.acquisition.api.remote import RightsClient
     from miaoqia.domain_intelligence import queries
-    from .data_api import serve
+    from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, routes
+    from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
 
-    evidence_dsn = os.environ["MIAOQIA_EVIDENCE_DB_DSN"]
-    domain_dsn = os.environ["MIAOQIA_DOMAIN_INTELLIGENCE_DB_DSN"]
-    evidence_db = db.Database(evidence_dsn)
-    domain_db = db.Database(domain_dsn)
-    rights = _rights_policy()
-
-    def display(tags, purpose):
-        if not rights(tags, purpose):
-            return "none"
-        return "full_text" if purpose == "object_page" else "excerpt"
-
-    facts = queries(domain_db, allowed=rights)
-    evidence_reader = resolver(evidence_db, FilesystemObjectStore(
-        os.environ.get("MIAOQIA_EVIDENCE_OBJECT_STORE_DIR", "/var/lib/miaoqia/evidence")), display=display)
-    tracing.setup("data", "data-api")
+    dom_dsn = os.environ.get(runtime.env_key("domain-intelligence", "DB_DSN"))
+    evd_dsn = os.environ.get(runtime.env_key("evidence", "DB_DSN"))
+    root = os.environ.get("MIAOQIA_EVIDENCE_OBJECT_STORE_DIR")
+    rights_url = os.environ.get("MIAOQIA_ACQUISITION_RIGHTS_URL") or os.environ.get("MIAOQIA_ACQUISITION_URL")
+    listen = os.environ.get("MIAOQIA_DATA_LISTEN")
+    if not dom_dsn or not evd_dsn or not root or not rights_url or not listen:
+        raise SystemExit("data-api listener configuration unavailable")
+    from miaoqia.kernel import db
+    dom, evd = db.Database(dom_dsn), db.Database(evd_dsn)
     try:
-        serve(os.environ.get("MIAOQIA_DATA_API_ADDR", ":8094"), facts, evidence_reader,
-              evidence_object=facts.object_id_for_evidence)
+        identity = Identity(Client(os.environ["MIAOQIA_IDENTITY_URL"], _tls(), os.environ["MIAOQIA_IDENTITY_PEER"]))
+        rights = RightsClient(Client(rights_url, _tls(), os.environ["MIAOQIA_ACQUISITION_PEER"]))
+        provenance = evidence.source_requirements(evd)
+        # Route admission is the authoritative d0 gate; query callbacks still
+        # require a callback and therefore only accept already-admitted groups.
+        allowed = lambda groups, purpose: True
+        facts = queries(dom, authorize=allowed, provenance=provenance)
+        resolver = evidence.resolver(evd, FilesystemObjectStore(root), authorize=allowed)
+        auth = ReadAuthorization(rights, identity)
+        def fact_groups(operation):
+            return lambda body, deadline: facts.collect_source_groups(operation, body, deadline)
+        def evidence_groups(body, deadline):
+            try:
+                closure = provenance.evidence(body["evidence_ref"], deadline=deadline)
+            except Unbound:
+                return []
+            return [source.dto() for source in closure.sources]
+        collector = {
+            "data.get_fact": fact_groups("data.get_fact"),
+            "data.fact_history": fact_groups("data.fact_history"),
+            "data.query_facts": fact_groups("data.query_facts"),
+            "data.bid_result_units": fact_groups("data.bid_result_units"),
+            "data.resolve_evidence": evidence_groups,
+        }
+        delegations = _delegations(os.environ.get("MIAOQIA_DATA_DELEGATIONS", ""))
+        host, port = listen.rsplit(":", 1)
+        server = Server((host, int(port)), _tls(), delegations, identity,
+                        routes(facts, resolver, admit=auth.prepare,
+                               before_send=lambda op, value, hook: hook,
+                               collectors=collector))
+        stop = threading.Event()
+        signal.signal(signal.SIGTERM, lambda *_: stop.set())
+        signal.signal(signal.SIGINT, lambda *_: stop.set())
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            stop.wait()
+        finally:
+            server.shutdown(); server.server_close(); worker.join(5)
     finally:
-        evidence_db.close()
-        domain_db.close()
-        tracing.shutdown()
+        dom.close(); evd.close()
 
 
-def _rights_policy():
-    configured = {item.strip() for item in os.environ.get("MIAOQIA_DATA_PUBLIC_RIGHTS", "").split(",") if item.strip()}
+def _delegations(raw):
+    import json
+    value = json.loads(raw)
+    if not isinstance(value, list) or not value:
+        raise ValueError("explicit delegation list required")
+    result = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"peer", "operation", "purpose"}:
+            raise ValueError("invalid delegation")
+        result.append((item["peer"], item["operation"], item["purpose"]))
+    return result
 
-    def allowed(tags, _purpose):
-        if configured:
-            return any(tag in configured or "*" in configured for tag in tags)
-        if os.environ.get("MIAOQIA_ENV", "") == "development":
-            return any(tag == "public-official-review" or tag.startswith("corpus:") for tag in tags)
-        return False
 
-    return allowed
+def main() -> None:
+    if os.environ.get("MIAOQIA_DATA_API_LISTENER") == "1" and sys.argv[1:] in (["--role", "data-api"], ["--role=data-api"]):
+        serve()
+    else:
+        runtime.main("data", modules())

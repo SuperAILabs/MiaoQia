@@ -30,8 +30,14 @@ def module(extractions: Callable[[], evidence_api.Extractions] | None = None) ->
     return Module(name=NAME, database="dom", migrations=MIGRATIONS, consumers=consumers)
 
 
-def queries(database, *, allowed=None):
+def queries(database, *, allowed=None, authorize=None, provenance=None):
     """api.Facts 的本地绑定；database 使用 domain-intelligence 的账号，allowed 缺省拒绝。"""
     from .application.queries import Queries
 
-    return Queries(database, allowed)
+    return Queries(database, allowed, authorize=authorize, provenance=provenance)
+
+
+def backfill_requirements(database, extractions, enrichments, handles, *, actor, reason):
+    """Explicit owner-only verified fixed-version provenance backfill."""
+    from .application.requirements import backfill
+    return backfill(database, extractions, enrichments, handles, actor=actor, reason=reason)

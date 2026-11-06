@@ -159,7 +159,7 @@ func ModuleWith(adapters Adapters) runtime.Module {
 					Name: "channels.pursuit-notices", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
 					Topics: []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "pursuit")},
 					Handlers: map[string]consumer.Handler{app.PursuitTaskDue: svc.TaskDueEvent,
-						app.PursuitAuthorizationRejected: svc.AuthorizationRejectedEvent},
+						app.PursuitAuthorizationRejected: svc.AuthorizationRejectedEvent, app.PursuitAuthorizationSyncFailed: svc.AuthorizationSyncFailedEvent},
 				},
 				{
 					// C-08（PRD 第5段 F7）：信号的即时通知（事件只是触发，发送前以收件人本人再检查）

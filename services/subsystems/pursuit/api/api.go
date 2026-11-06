@@ -156,3 +156,34 @@ func (l localReminders) RunTracking(ctx context.Context, now time.Time, limit in
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "RunTrackingPeriods", Timeout: 60 * time.Second},
 		func(ctx context.Context) (int, error) { return l.impl.RunTracking(ctx, now, limit) })
 }
+
+// MonitorBinding 是授权同步告警与转交提醒转回在绑定表中的名称（C-17，本地绑定；由 scheduler 角色的周期任务调用）。
+const MonitorBinding = "pursuit.Monitor"
+
+// Monitor 以带租户的服务主体请求上下文调用（C-17，PRD 第6段 F12 第2、4、6条）：
+//   - CheckSync 检查授权同步待处理的跟进（期望参与版本高于 identity 已应用的版本），至多 limit 个：每个在自己的事务中锁定跟进行（跳过已被
+//     并发的同步或检查锁住的，下一轮再查）后按当前值再检查，待处理超过 5 分钟的发布一次 pursuit.pursuit.authorization_sync_delayed.v1，
+//     超过 24 小时的发布一次 pursuit.pursuit.authorization_sync_failed.v1（每个待处理期间各至多一次；同步在阈值前完成的不发布），并写
+//     运营告警日志。同步完成时由同步本身（同一行锁下）发布 authorization_sync_recovered。返回本次发布的告警数。可重复执行，并发执行不重复。
+//   - HandBack 处理已发出的转给决策者的提醒（escalated），至多 limit 条：任务负责人此刻以本人判断满足写入准入时，把同一提醒以
+//     handed_back 转回给负责人一次（锁定跟进行后再检查：跟进进行中、任务待办、截止版本未变、同一截止版本没有更晚的提醒发出）；不再
+//     适用的标为不转回；负责人仍不满足准入的留待下一轮（判断不可用时同样留待，不当作满足也不当作不满足）。返回本次转回的条数。
+type Monitor interface {
+	CheckSync(ctx context.Context, now time.Time, limit int) (int, error)
+	HandBack(ctx context.Context, now time.Time, limit int) (int, error)
+}
+
+// LocalMonitor 把本地实现包装为经调用管线的接口。
+func LocalMonitor(impl Monitor) Monitor { return localMonitor{impl} }
+
+type localMonitor struct{ impl Monitor }
+
+func (l localMonitor) CheckSync(ctx context.Context, now time.Time, limit int) (int, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "CheckAuthorizationSync", Timeout: 60 * time.Second},
+		func(ctx context.Context) (int, error) { return l.impl.CheckSync(ctx, now, limit) })
+}
+
+func (l localMonitor) HandBack(ctx context.Context, now time.Time, limit int) (int, error) {
+	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "HandBackReminders", Timeout: 60 * time.Second},
+		func(ctx context.Context) (int, error) { return l.impl.HandBack(ctx, now, limit) })
+}

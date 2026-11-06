@@ -26,6 +26,10 @@ def validate(doc: Document, facts: list[dict], evidence: dict[str, dict]) -> lis
         if ref and doc.quote(ref["locator"]) != node["value"]:
             errors.append(f"{path}: 文本字段与证据原文不一致")
     for i, fact in enumerate(facts):
+        categories = [c["category"] for c in fact.get("subject_categories", [])]
+        codes = [(c["scheme"], c["scheme_version"], c["code"]) for c in categories]
+        if len(codes) != len(set(codes)):
+            errors.append(f"facts/{i}: 公告主题品类重复")
         lots = fact.get("lots", [])
         keys = [lot.get("lot_key") for lot in lots]
         if len(keys) != len(set(keys)):

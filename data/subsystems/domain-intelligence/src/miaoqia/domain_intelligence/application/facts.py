@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Connection, text
 
 from miaoqia.contracts import models
-from miaoqia.kernel import ids, outbox, reqctx
+from miaoqia.kernel import ids, outbox, payloads, reqctx
 
 from ..api import FACT_UPSERTED, NAME
 from ..domain.versions import changed_fields, stabilize_result_ids, value_hash
@@ -28,7 +28,8 @@ EXTRACTION_REVISED = "evidence.extraction.revised.v1"
 
 # 信息领域 → (对象类型, 标识前缀, 契约模型, Schema 版本)。Schema 版本与 contracts/schemas 的 x-version 一致（测试核对）。
 OBJECT_TYPES = {
-    "INF-PROC": ("tendering.notice", "ntc", models.Notice, "1.1.0"),
+    "INF-PROC": ("tendering.notice", "ntc", models.Notice, "1.2.0"),
+    "INF-ORG": ("organization.registration", "ogr", models.OrgRegistration, "1.2.0"),
 }
 
 writer = outbox.Writer(subsystem=NAME, namespace="domain", zone=reqctx.PUBLIC)
@@ -64,8 +65,9 @@ class Materializer:
         conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
                      {"k": f"{revision.pack_id}|{revision.source_id}|{revision.source_key}"})
         # 多事实修订先按稳定顺序锁住全部身份；避免来源A/B以相反顺序竞争两个项目。
-        from .projects import lock_identities
-        lock_identities(conn, revision)
+        if revision.pack_id == "INF-PROC":
+            from .projects import lock_identities
+            lock_identities(conn, revision)
         published = []
         for ordinal, extracted in enumerate(revision.facts):
             row = conn.execute(text("""SELECT f.id, f.current_version, v.content FROM dom_facts f
@@ -85,21 +87,35 @@ class Materializer:
                                  object_type=object_type, model=model, schema_version=schema_version,
                                  source_id=revision.source_id, source_key=revision.source_key, ordinal=ordinal)
             if full is not None:
-                from .projects import aggregate_notice
-                aggregate_notice(conn, revision, full)
+                if revision.pack_id == "INF-PROC":
+                    from .projects import aggregate_notice
+                    aggregate_notice(conn, revision, full)
                 published.append(full)
         return published
 
 
 def write_version(conn, revision, fact, *, fact_id, version, prev, object_type, model, schema_version,
-                  source_id, source_key, ordinal=0, derivation_key="base", rights_tags=None):
+                  source_id, source_key, ordinal=0, derivation_key="base", rights_tags=None, compare_evidence=False, source_closure=None, defer_closure=False):
     """共用事实版本写入；调用者先持有来源/聚合事务锁。"""
-    digest = value_hash(fact)
-    if prev is not None and value_hash(prev) == digest:
-        return None
-    info_domain = revision.pack_id
     rights_tags = list(revision.rights_tags) if rights_tags is None else rights_tags
-    fields = changed_fields(prev, fact)
+    digest = value_hash(fact)
+    if compare_evidence:
+        from miaoqia.sdk.derivation import fingerprint
+        from ..domain.versions import META
+        body = {k: v for k, v in fact.items() if k not in META}
+        old_body = {k: v for k, v in (prev or {}).items() if k not in META}
+        fields = ["/" + k.replace("~", "~0").replace("/", "~1") for k in sorted(set(body) | set(old_body))
+                  if body.get(k) != old_body.get(k)]
+        if prev and prev["rights_tags"] != rights_tags:
+            fields.append("/rights_tags")
+        if prev is not None and not fields:
+            return None
+        digest = fingerprint({"body": body, "rights_tags": rights_tags})
+    else:
+        if prev is not None and value_hash(prev) == digest:
+            return None
+        fields = changed_fields(prev, fact)
+    info_domain = revision.pack_id
     now = datetime.now(timezone.utc)
     full = {**fact, "id": fact_id, "schema_version": schema_version, "version": version + 1,
             "info_domain": info_domain, "snapshot_ref": revision.snapshot_ref, "revision_ref": revision.id,
@@ -120,15 +136,20 @@ def write_version(conn, revision, fact, *, fact_id, version, prev, object_type, 
                  {"f": fact_id, "v": version + 1, "c": json.dumps(full, ensure_ascii=False), "h": digest,
                   "sv": schema_version, "dk": derivation_key, "snp": revision.snapshot_ref, "exr": revision.id, "cf": json.dumps(fields),
                   "r": json.dumps(rights_tags), "o": revision.observed_at, "rec": now})
-    writer.append(conn, outbox.Event(type=FACT_UPSERTED, subject=fact_id, partition_key=fact_id, data={
+    if not defer_closure:
+        from . import requirements
+        requirements.put(conn, full, source_closure if source_closure is not None else requirements.base(revision))
+    data = {
         "info_domain": info_domain, "fact_id": fact_id, "changed_fields": fields,
         "rights_tags": rights_tags, "snapshot_ref": revision.snapshot_ref, "revision_ref": revision.id,
-        "object_type": object_type, "fact_version": version + 1, "schema_version": schema_version}))
+        "object_type": object_type, "fact_version": version + 1, "schema_version": schema_version}
+    payloads.validator(FACT_UPSERTED, {}).validate(data)
+    writer.append(conn, outbox.Event(type=FACT_UPSERTED, subject=fact_id, partition_key=fact_id, data=data))
     return full
 
 
 def fact_version(conn: Connection, fact_id: str, version: int | None = None) -> dict | None:
-    """读取事实的当前版本或指定版本（GetFact 的当前口径；业务有效与当时已知口径随 data-api 交付）。"""
+    """内部读取事实的当前记录版本或固定版本；known_at选择与当前权利检查由application queries负责。"""
     if version is None:
         row = conn.execute(text("""SELECT v.content FROM dom_facts f JOIN dom_fact_versions v
                                    ON v.fact_id = f.id AND v.version = f.current_version WHERE f.id = :f"""), {"f": fact_id}).first()

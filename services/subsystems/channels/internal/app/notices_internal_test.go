@@ -33,3 +33,35 @@ func TestNoticeWhitelists(t *testing.T) {
 		}
 	}
 }
+
+// C-17：授权同步失败通知的再检查顺序与字段白名单（只带跟进，不带任务字段）。
+func TestSyncFailedNoticeRecheck(t *testing.T) {
+	cases := []struct {
+		target rejectedTarget
+		want   string
+	}{
+		{rejectedTarget{open: true, failed: true, resolver: true}, ""},
+		{rejectedTarget{open: false, failed: true, resolver: true}, "pursuit_closed"},
+		{rejectedTarget{open: true, failed: false, resolver: true}, "sync_recovered"},
+		{rejectedTarget{open: true, failed: true, resolver: false}, "not_decision_maker"},
+	}
+	for _, c := range cases {
+		if got := c.target.syncFailedReason(); got != c.want {
+			t.Fatalf("%+v：%q，期望 %q", c.target, got, c.want)
+		}
+	}
+	d := noticeEventData("dlv_1", NoticeSyncFailed, "u", "pur_1", "tsk_1", 3, true, 1)
+	for _, k := range []string{"task_id", "deadline_version", "escalated"} {
+		if _, ok := d[k]; ok {
+			t.Fatalf("授权同步失败通知不应带 %s：%+v", k, d)
+		}
+	}
+	for _, r := range []string{"sync_recovered", "not_decision_maker", "pursuit_closed"} {
+		if !noticeReasons["cancelled"][r] {
+			t.Fatalf("%s 应在白名单内", r)
+		}
+	}
+	if handedBack([]byte(`{"handed_back":true,"escalated":true}`)) || !handedBack([]byte(`{"handed_back":true,"escalated":false}`)) {
+		t.Fatal("转回只在未转交时成立")
+	}
+}

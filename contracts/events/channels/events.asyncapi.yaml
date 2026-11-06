@@ -14,6 +14,9 @@ info:
     逐项白名单，个人数据只有收件人（与简报投递事件相同），不含任务标题、正文、被拒成员或操作说明。追加
     信号即时通知的投递事件 channels.signal_notice.sent.v1 与 channels.signal_notice.failed.v1（与 channels.notice.* 同一语义：每条
     送达一次、每次渠道失败与每次结束各一次；字段白名单为通知、种类、收件人、渠道、信号、目标与尝试数，不含项目、中标方、金额或卡片正文）。
+    channels.notice.* 的 kind 追加 authorization_sync_failed（授权同步超过 24 小时未成功时给目标所在单元
+    决策者的通知，字段与 authorization_rejected 相同、只带跟进标识）；reason 追加 sync_recovered（发送前同步已恢复）、not_decision_maker
+    （收件人此刻已不能处理该跟进）与 pursuit_closed（跟进已关闭、撤销或停止）。
 channels:
   tenantChannels:
     address: cell-{cell}.channels
@@ -203,7 +206,7 @@ components:
       description: >-
         operation_id 即动作令牌标识（撤销另有令牌）。只在业务调用得到确定结果、结果固定在操作标识上时发布一次；操作开始前的拒绝
         （绑定无效、非收件人、令牌过期、他租户）与暂时失败只写审计，不发布本事件。parts 为各部分的变化（feedback 本人反馈、
-        status 处理状态），不含反馈原因与说明。pursue为卡片上的“跟进”：成功（新建或关联到已有跟进）与无变化（已有跟进且
+        status 处理状态），不含反馈原因与说明。pursue 为卡片上的“跟进”：成功（新建或关联到已有跟进）与无变化（已有跟进且
         信号已关联）带 pursuit_id（点击者不能查看已有跟进时不带），不带 parts。
       payload:
         type: object
@@ -379,6 +382,7 @@ components:
             enum:
             - task_due
             - authorization_rejected
+            - authorization_sync_failed
           recipient: *member
           channel: *channel
           pursuit_id: &pursuitID
@@ -425,7 +429,8 @@ components:
       description: >-
         final 为假时（state 为 retrying，reason 为 channel_error）将退避重试同一张卡片；为真时通知结束、不再发布：state 为 in_app
         （not_bound 未绑定渠道、cutoff 重试时限内仍未送达，留在 Web 与站内）或 cancelled（发送前以收件人本人再检查时取消：
-        member_inactive、task_not_visible、task_closed、superseded、reassigned、pursuit_not_visible）。乱序到达的旧提醒在记下时即被
+        member_inactive、task_not_visible、task_closed、superseded、reassigned、pursuit_not_visible；authorization_sync_failed 另有
+        sync_recovered、not_decision_maker、pursuit_closed）。乱序到达的旧提醒在记下时即被
         取消的（superseded，attempt 为 0）也发布一次。字段白名单与 channels.notice.sent.v1 相同。
       payload:
         type: object
@@ -470,6 +475,9 @@ components:
             - superseded
             - reassigned
             - pursuit_not_visible
+            - sync_recovered
+            - not_decision_maker
+            - pursuit_closed
           final:
             type: boolean
         allOf:

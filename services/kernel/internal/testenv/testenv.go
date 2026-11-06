@@ -6,9 +6,9 @@ package testenv
 import (
 	"context"
 	"fmt"
-	"math/rand/v2"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,6 +16,12 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
+
+var uniqueSequence atomic.Uint64
+
+func uniqueSuffix() string {
+	return fmt.Sprintf("%d_%d", time.Now().UnixNano(), uniqueSequence.Add(1))
+}
 
 // Database 是一个临时的子系统数据库：owner 执行迁移，app 是受 RLS 约束的应用账号，relay 是中继账号。
 type Database struct {
@@ -41,7 +47,7 @@ func NewDatabase(t testing.TB) Database {
 		t.Fatal(err)
 	}
 	defer conn.Close(ctx)
-	name := fmt.Sprintf("kt%d_%04d", time.Now().Unix()%100000, rand.IntN(10000))
+	name := "kt" + uniqueSuffix()
 	stmts := []string{
 		fmt.Sprintf(`CREATE ROLE %s_owner LOGIN PASSWORD 'pw'`, name),
 		fmt.Sprintf(`CREATE ROLE %s_app LOGIN PASSWORD 'pw' NOBYPASSRLS`, name),
@@ -120,7 +126,7 @@ func Topics(t testing.TB, names ...string) map[string]string {
 	}
 	defer cl.Close()
 	adm := kadm.NewClient(cl)
-	suffix := fmt.Sprintf("%d%04d", time.Now().Unix()%100000, rand.IntN(10000))
+	suffix := uniqueSuffix()
 	out := map[string]string{}
 	var all []string
 	for _, n := range names {

@@ -1,0 +1,130 @@
+[
+  {
+    "text": "PE给水管",
+    "codes": [
+      "CAT-PIPE-PE-WS"
+    ]
+  },
+  {
+    "text": "PE排水管",
+    "codes": [
+      "CAT-PIPE-PE-SOLID"
+    ]
+  },
+  {
+    "text": "铜水管",
+    "codes": [
+      "CAT-PIPE-CU"
+    ]
+  },
+  {
+    "text": "PE管件",
+    "codes": [
+      "CAT-FIT-PE"
+    ]
+  },
+  {
+    "text": "球墨铸铁管件",
+    "codes": [
+      "CAT-FIT-DI"
+    ]
+  },
+  {
+    "text": "玻璃钢管",
+    "codes": [
+      "CAT-PIPE-GRP"
+    ]
+  },
+  {
+    "text": "镀锌钢管",
+    "codes": [
+      "CAT-PIPE-STEEL-GALV"
+    ]
+  },
+  {
+    "text": "不锈钢管",
+    "codes": [
+      "CAT-PIPE-STEEL-SS"
+    ]
+  },
+  {
+    "text": "PP双壁波纹管",
+    "codes": [
+      "CAT-PIPE-PP"
+    ]
+  },
+  {
+    "text": "空调铜管",
+    "codes": []
+  },
+  {
+    "text": "冷凝铜管",
+    "codes": []
+  },
+  {
+    "text": "光缆通信管",
+    "codes": []
+  },
+  {
+    "text": "电缆双壁波纹管",
+    "codes": []
+  },
+  {
+    "text": "PE管与PVC管",
+    "codes": [
+      "CAT-PIPE-PE",
+      "CAT-PIPE-PVC"
+    ]
+  },
+  {
+    "text": "HDPE双壁波纹管和PP双壁波纹管",
+    "codes": [
+      "CAT-PIPE-PE-SW",
+      "CAT-PIPE-PP"
+    ]
+  },
+  {
+    "text": "PP和HDPE双壁波纹管",
+    "codes": []
+  },
+  {
+    "text": "球墨铸铁管材及管件",
+    "codes": [
+      "CAT-PIPE-DI"
+    ]
+  },
+  {
+    "text": "阀门、水泵",
+    "codes": []
+  },
+  {
+    "text": "DN100 PN16 PE100",
+    "codes": []
+  },
+  {
+    "text": "不采购PE管",
+    "codes": []
+  },
+  {
+    "text": "PE管不在本次采购范围",
+    "codes": []
+  },
+  {
+    "text": "非PE管",
+    "codes": []
+  },
+  {
+    "text": "PE给水管或PVC给水管",
+    "codes": []
+  },
+  {
+    "text": "PE管二选一PVC管",
+    "codes": []
+  },
+  {
+    "text": "非政府采购的镀锌钢管采购公告",
+    "codes": [
+      "CAT-PIPE-STEEL-GALV"
+    ]
+  }
+]

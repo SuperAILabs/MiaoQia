@@ -2,7 +2,7 @@
 pack:
   id: APP-TENDER
   kind: application_domain
-  version: 0.7.0                 # 草案：R1 策略模板评审中；M2-P2 定义已交付，推荐值待领域负责人核对
+  version: 0.8.0                 # 草案：R1 策略模板评审中；M2-P2 定义已交付，推荐值待领域负责人核对
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-PROC@^1.0

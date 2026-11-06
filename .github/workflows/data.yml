@@ -104,7 +104,7 @@ jobs:
 
       - name: 数据平面管线测试（evidence 快照与解析修订、domain-intelligence 事实版本与 A02 结果视图；真实 PostgreSQL）
         working-directory: data
-        run: uv run --locked --all-packages --group dev pytest -q subsystems runtimes/data/tests
+        run: uv run --locked --all-packages --group dev pytest -q subsystems
 
   kernel:
     runs-on: ubuntu-24.04

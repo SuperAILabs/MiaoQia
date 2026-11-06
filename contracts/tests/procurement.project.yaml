@@ -130,3 +130,27 @@ cases:
       code: '330106'
       scheme_version: '2024'
       prov: *id001
+- name: 固定公告成员版本
+  valid: true
+  patch:
+  - op: add
+    path: /notice_refs
+    value: [{id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1, version: 2}, {id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX2, version: 1}]
+- name: 成员版本必须为正数
+  valid: false
+  patch:
+  - op: add
+    path: /notice_refs
+    value: [{id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1, version: 0}]
+- name: 成员引用必须为公告
+  valid: false
+  patch:
+  - op: add
+    path: /notice_refs
+    value: [{id: pp_01JA8ZXXXXXXXXXXXXXXXXXXX1, version: 1}]
+- name: 不重复同一固定引用
+  valid: false
+  patch:
+  - op: add
+    path: /notice_refs
+    value: [{id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1, version: 1}, {id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1, version: 1}]

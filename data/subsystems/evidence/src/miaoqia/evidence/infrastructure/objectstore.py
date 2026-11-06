@@ -8,12 +8,11 @@ from __future__ import annotations
 import os
 import re
 import tempfile
-import datetime as dt
 import time
 from pathlib import Path
 from typing import Protocol
 
-KEY = re.compile(r"(raw|normalized)/[A-Za-z0-9_.-]{1,200}")
+KEY = re.compile(r"(raw|normalized|enrichment)/[A-Za-z0-9_.-]{1,200}")
 
 
 class ObjectConflict(RuntimeError):
@@ -23,7 +22,7 @@ class ObjectConflict(RuntimeError):
 class ObjectStore(Protocol):
     def put(self, key: str, data: bytes) -> None: ...
 
-    def get(self, key: str, *, max_bytes: int | None = None, deadline=None) -> bytes: ...
+    def get(self, key: str, *, max_bytes: int | None = None, deadline: float | None = None) -> bytes: ...
 
 
 class FilesystemObjectStore:
@@ -56,12 +55,22 @@ class FilesystemObjectStore:
         finally:
             os.unlink(tmp)
 
-    def get(self, key: str, *, max_bytes: int | None = None, deadline=None) -> bytes:
+    def get(self, key: str, *, max_bytes: int | None = None, deadline: float | None = None) -> bytes:
         path = self._path(key)
+        if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 0):
+            raise ValueError("invalid object size cap")
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError("object read deadline expired")
         if max_bytes is not None and path.stat().st_size > max_bytes:
-            raise ValueError("对象超过读取大小上限")
-        if deadline is not None:
-            seconds = deadline.timestamp() - time.time() if isinstance(deadline, dt.datetime) else float(deadline)
-            if seconds <= 0:
-                raise TimeoutError("对象读取已超过截止时间")
-        return path.read_bytes()
+            raise ValueError("object exceeds bounded read")
+        with path.open("rb") as stream:
+            data = bytearray()
+            while True:
+                if deadline is not None and time.monotonic() >= deadline:
+                    raise TimeoutError("object read deadline expired")
+                chunk = stream.read(min(64 * 1024, (max_bytes - len(data) + 1) if max_bytes is not None else 64 * 1024))
+                if not chunk:
+                    return bytes(data)
+                data.extend(chunk)
+                if max_bytes is not None and len(data) > max_bytes:
+                    raise ValueError("object exceeds bounded read")

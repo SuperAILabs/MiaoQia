@@ -1,0 +1,73 @@
+{
+  "version": "0.1.0",
+  "namespace": "fixture:r2-org",
+  "fixture_only": true,
+  "samples": {
+    "fixture-r2-org-a": {
+      "source_id": "fixture-r2-org",
+      "source_key": "fixture:r2-org:fixture-r2-org-a",
+      "rights_tag": "fixture:r2-org-record-a",
+      "raw_sha256": "83059332f90cd08b738724909c9f41ed80bfd724144816439e058b743426dac3"
+    },
+    "fixture-r2-org-b": {
+      "source_id": "fixture-r2-org",
+      "source_key": "fixture:r2-org:fixture-r2-org-b",
+      "rights_tag": "fixture:r2-org-record-b",
+      "raw_sha256": "0a0338bc4a663fccc6e8713c62d71f95154e8e2dcf5cabd48145064b7c5c8b3e"
+    },
+    "fixture-r2-org-c": {
+      "source_id": "fixture-r2-org",
+      "source_key": "fixture:r2-org:fixture-r2-org-c",
+      "rights_tag": "fixture:r2-org-record-c",
+      "raw_sha256": "dc5bffe4f787a7b0a664b2c73b024e118f8d622bff7d42677d68ed87f68c3226"
+    },
+    "fixture-r2-org-d": {
+      "source_id": "fixture-r2-org",
+      "source_key": "fixture:r2-org:fixture-r2-org-d",
+      "rights_tag": "fixture:r2-org-record-d",
+      "raw_sha256": "9ab24b150c8a9a2bbbc97f258217471de836af8db359ee981130fc1bb56067b8"
+    }
+  },
+  "data": {
+    "normalization": "trim-only@0.1.0",
+    "records": [
+      {
+        "sample": "fixture-r2-org-a",
+        "fixture_subject_key": "fixture:r2-org:a",
+        "org_id": "org_00000000000000000000000001",
+        "name": "【夹具】青岚采购甲有限公司",
+        "aliases": [
+          "【夹具】青岚采购甲旧称有限公司"
+        ]
+      },
+      {
+        "sample": "fixture-r2-org-b",
+        "fixture_subject_key": "fixture:r2-org:b",
+        "org_id": "org_00000000000000000000000002",
+        "name": "【夹具】赤砂供货乙有限公司",
+        "aliases": [
+          "【夹具】赤砂供货乙旧称有限公司",
+          "【夹具】共同演示旧称有限公司"
+        ]
+      },
+      {
+        "sample": "fixture-r2-org-c",
+        "fixture_subject_key": "fixture:r2-org:c",
+        "org_id": "org_00000000000000000000000003",
+        "name": "【夹具】赤砂供货丙有限公司",
+        "aliases": [
+          "【夹具】共同演示旧称有限公司"
+        ]
+      },
+      {
+        "sample": "fixture-r2-org-d",
+        "fixture_subject_key": "fixture:r2-org:d",
+        "org_id": "org_00000000000000000000000004",
+        "name": "【夹具】赤砂供货乙有限公司",
+        "aliases": [
+          "【夹具】赤砂供货丁旧称有限公司"
+        ]
+      }
+    ]
+  }
+}
