@@ -6688,7 +6688,7 @@
       ],
       "properties": {
         "change": {
-          "description": "activated 为首次激活（或重新启用后再次激活）使目标进入生效（0.2.0 起）",
+          "description": "activated 为首次激活（或重新启用后再次激活）使目标进入生效",
           "enum": [
             "enabled",
             "configured",
@@ -9036,7 +9036,7 @@
           "type": "string"
         },
         "unit_roles": {
-          "description": "绑定在组织单元上的角色（全量，1.1.0 起）；roles 为绑定在租户上的角色。退出时为空或缺省",
+          "description": "绑定在组织单元上的角色（全量）；roles 为绑定在租户上的角色。退出时为空或缺省",
           "items": {
             "additionalProperties": false,
             "properties": {

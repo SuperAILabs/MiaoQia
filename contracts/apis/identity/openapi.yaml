@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: identity 内部接口
-  version: 1.5.0
+  version: 0.0.0
   description: >-
     identity接口。授权Check、会话核验、组织单元读取与资源参与关系同步经mTLS内部端口；生命周期、组织单元、成员与邀请命令仅经外部网关。
     平台运营命令与成员读取要求已签名的 amr=mfa；租户管理命令（成员、单元、邀请）要求15分钟内的强认证：访问令牌带 amr=mfa 与
@@ -9,8 +9,8 @@ info:
     渠道免登会话（miaoqia_session_source=channel）与未知会话来源一律不满足。不满足时为 403 mfa_required；IdP 明确该账号尚未登记
     TOTP 时为 403 totp_enrollment_required（客户端先引导登记，原动作不执行）。租户来自上下文，cell归属来自identity目录。组织单元标识为租户根单元的保留值 root 或 unt_<ULID>
     （contracts/identifiers.yaml）；Check 的资源可为本租户的 tenant、org_unit 与已登记的业务资源（objective、pursuit、research_case）。
-    渠道免登会话的签发、撤销与对账列表（1.4.0）只经内部端口、只供 channels 的服务主体调用，按每个渠道绑定的撤销水位串行。
-    审批（1.5.0）：审批请求的列表、读取、决定与撤回经外部网关；提交（RequestApproval）与所属子系统使请求失效（CloseApproval）
+    渠道免登会话的签发、撤销与对账列表只经内部端口、只供 channels 的服务主体调用，按每个渠道绑定的撤销水位串行。
+    审批：审批请求的列表、读取、决定与撤回经外部网关；提交（RequestApproval）与所属子系统使请求失效（CloseApproval）
     经本地绑定与内部端口。申请人不能批准自己的请求；策略激活与回滚的提交与决定都要求15分钟内的强认证；请求绑定不可变的对象版本与基准。
 servers:
 - url: /internal

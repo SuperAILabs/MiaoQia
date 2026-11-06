@@ -6,12 +6,18 @@
             修改条件约束（if/then/else 等，保守判定）、删除类型
   additive  新增可选字段、新增枚举值、放宽约束、新增类型（消费者须容忍未知字段与枚举值）
   doc       只改说明、标题、默认值或注解
-版本要求：
-  Schema 文件（x-version）  breaking → 1.0 起升主版本，0.x 升次版本；additive → 升次版本；doc 不要求。
-                            被改动类型的所在文件，以及引用到它的全部顶层 Schema 都须满足。
-  事件（AsyncAPI）           已发布事件类型不允许 breaking 变更，也不允许删除；须发布新主版本 .v<n+1>。
+只约束会写入持久化数据、因而影响重放的版本：
+  Schema 文件（x-version）  领域事实以 schema_version 记录校验所用的 Schema 版本。breaking → 1.0 起升主版本，
+                            0.x 升次版本；additive → 升次版本；doc 不要求。被改动类型的所在文件，以及引用到它的
+                            全部顶层 Schema 都须满足。
+  事件（AsyncAPI）           事件写入发件箱与 Kafka 后可重放：已发布事件类型不允许 breaking 变更，也不允许删除；
+                            须发布新主版本 .v<n+1>。
   标识前缀                  不允许删除或改变含义（分配后永不复用）。
-  扩展包                    包内文件有变化须升 pack.version；策略模板内容变化须升模板 version。
+  扩展包                    已激活策略与事件载荷固定 pack_version 与 template_version：包内文件有变化须升
+                            pack.version；策略模板内容变化须升模板 version。
+  内核 SQL                  表结构变化须提供迁移文件；CREATE IF NOT EXISTS 不升级已有表。
+接口（OpenAPI）与工程配置在开发期不设版本号：生产方与调用方在同一仓库，破坏性变更须在同一提交中改齐调用方，
+本检查只报告变更级别。
 """
 from __future__ import annotations
 
@@ -256,12 +262,6 @@ def _inline(node, comps, depth=0, *, repo=None, base_uri="", seen=frozenset()):
 
 def compare_events(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
     r = Report()
-    for path in sorted((base.contracts / "events").glob("*/*.asyncapi.yaml")):
-        target = head.contracts / path.relative_to(base.contracts)
-        if target.exists():
-            old, new = load_yaml(path), load_yaml(target)
-            if _semver(new["info"]["version"]) < _semver(old["info"]["version"]):
-                r.error(str(target), "AsyncAPI文档版本不得回退")
     ob, nb = _messages(base), _messages(head)
     changes: list[Change] = []
     for name in sorted(set(ob) - set(nb)):
@@ -281,8 +281,6 @@ def compare_identifiers(base: Repo, head: Repo) -> Report:
     r = Report()
     old, new = load_yaml(base.contracts / "identifiers.yaml"), load_yaml(head.contracts / "identifiers.yaml")
     ob, nb = old["prefixes"], new["prefixes"]
-    if old.get("version") and not bump_ok(old["version"], new.get("version", "0.0.0"), "additive" if set(nb) - set(ob) else "doc"):
-        r.error("identifiers.yaml", "新增前缀须升次版本；登记版本不得回退")
     for p in sorted(set(ob) - set(nb)):
         r.error("identifiers.yaml", f"删除了前缀 {p}_：前缀分配后永不复用，不得删除")
     for p in sorted(set(ob) & set(nb)):
@@ -292,16 +290,14 @@ def compare_identifiers(base: Repo, head: Repo) -> Report:
 
 
 def compare_apis(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
-    """复用Schema差异算法；稳定接口的破坏性变更必须增加路径主版本。"""
+    """复用Schema差异算法，只报告变更级别；调用方由同一提交中的生成代码与测试保证改齐。"""
     r, changes = Report(), []
     for path in sorted((base.contracts / "apis").glob("*/openapi.yaml")):
         target = head.contracts / path.relative_to(base.contracts)
         if not target.exists():
-            r.error(str(path.relative_to(base.root)), "删除已发布接口")
+            r.note(f"删除接口文档 {path.relative_to(base.root)}")
             continue
         old, new = load_yaml(path), load_yaml(target)
-        if _semver(new["info"]["version"]) < _semver(old["info"]["version"]):
-            r.error(str(target), "OpenAPI版本不得回退")
         own = []
         for route, item in old["paths"].items():
             for verb, op in item.items():
@@ -309,7 +305,7 @@ def compare_apis(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
                     continue
                 newer = new.get("paths", {}).get(route, {}).get(verb)
                 if newer is None:
-                    r.error(str(target), f"删除接口 {verb} {route}；须保留过渡期")
+                    own.append(Change("breaking", f"api:{verb}:{route}", "删除接口"))
                     continue
                 def schemas(operation, components):
                     values = {}
@@ -332,13 +328,6 @@ def compare_apis(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
                     own.append(Change("breaking", f"api:{route}", "请求体改为必填"))
         for route in sorted(set(new["paths"]) - set(old["paths"])):
             own.append(Change("additive", f"api:{route}", "新增路径"))
-        if own:
-            level = max((c.level for c in own), key=LEVELS.get)
-            ov, nv = old["info"]["version"], new["info"]["version"]
-            if not bump_ok(ov, nv, level):
-                r.error(str(target), f"API {level}变更须提升info.version")
-            if level == "breaking" and _semver(ov)[0] >= 1:
-                r.error(str(target), "稳定API已发布路径不允许breaking变更，须新路径主版本并保留旧路径")
         changes += own
     return r, changes
 
@@ -348,13 +337,13 @@ def compare_storage(base: Repo, head: Repo) -> Report:
     old, new = base.contracts / "storage/kernel.sql", head.contracts / "storage/kernel.sql"
     if old.exists() and (not new.exists() or old.read_bytes() != new.read_bytes()):
         metadata = head.contracts / "storage/kernel.yaml"
-        prior = base.contracts / "storage/kernel.yaml"
-        if not metadata.exists() or not prior.exists():
-            r.error("storage/kernel.sql", "SQL变更缺少版本化迁移基线；须人工审查已有表升级")
+        if not metadata.exists():
+            r.error("storage/kernel.sql", "SQL变更缺少迁移登记；须人工审查已有表升级")
         else:
-            a, b = load_yaml(prior), load_yaml(metadata)
-            if not bump_ok(a["version"], b["version"], "breaking") or not b.get("migrations"):
-                r.error("storage/kernel.sql", "SQL变更须升版本并提供迁移文件；CREATE IF NOT EXISTS不升级已有表")
+            a = load_yaml(base.contracts / "storage/kernel.yaml") if (base.contracts / "storage/kernel.yaml").exists() else {}
+            b = load_yaml(metadata)
+            if set(b.get("migrations") or []) <= set(a.get("migrations") or []):
+                r.error("storage/kernel.sql", "SQL变更须新增迁移文件；CREATE IF NOT EXISTS不升级已有表")
             for migration in b.get("migrations", []):
                 if not (head.root / migration).is_file():
                     r.error("storage/kernel.sql", f"迁移文件不存在 {migration}")
@@ -368,12 +357,9 @@ def compare_profiles(base: Repo, head: Repo) -> Report:
         if not old.exists():
             continue
         if not new.exists():
-            r.error(relative, "不得删除工程契约基线")
-            continue
-        a, b = load_yaml(old), load_yaml(new)
-        level = "breaking" if {k:v for k,v in a.items() if k != "version"} != {k:v for k,v in b.items() if k != "version"} else "doc"
-        if not bump_ok(a["version"], b["version"], level):
-            r.error(relative, f"工程配置{level}变化须升版本（保守判定，语义须人工审查）")
+            r.error(relative, "不得删除工程契约")
+        elif load_yaml(old) != load_yaml(new):
+            r.note(f"工程配置变化：{relative}（语义须人工审查，调用方须在同一提交中改齐）")
     return r
 
 

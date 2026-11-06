@@ -14,8 +14,8 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
-// 目标当前的分派配置（0.7.0，C-14）：只在目标配置过分派规则时出现，版本从
-// 1 开始，规则按顺序（可以为空：已配置为空规则，信号记为 没有候选
+// 目标当前的分派配置（C-14）：只在目标配置过分派规则时出现，版本从 1
+// 开始，规则按顺序（可以为空：已配置为空规则，信号记为 没有候选
 // none）。detection
 // 生成信号时用同一次读取中的负责人与参与人过滤规则（assignee
 // 已不是负责人或参与人的规则跳过），第一条命中的
@@ -48,8 +48,8 @@ func (s *ActiveAssignment) SetRules(val []AssignmentRule) {
 }
 
 // 一个目标的生效策略（读取时的当前代次）。owner 与
-// participants（0.6.0，C-08）为目标当前版本的负责人与参与人：channels 据此确定
-// route 受众 objective_owner / objective_members
+// participants（C-08）为目标当前版本的负责人与参与人：channels 据此确定 route
+// 受众 objective_owner / objective_members
 // 的即时通知候选收件人，发送前仍以收件人本人再检查目标与信号的访问.
 // Ref: #/components/schemas/ActivePolicy
 type ActivePolicy struct {
@@ -67,8 +67,8 @@ type ActivePolicy struct {
 	// 本代次生效（激活或回滚执行）的业务时间.
 	EffectiveAt time.Time  `json:"effective_at"`
 	Owner       OptSubject `json:"owner"`
-	// 目标当前版本的参与人（0.6.0，C-08；可以包含负责人），route 受众
-	// objective_members 为负责人与参与人.
+	// 目标当前版本的参与人（C-08；可以包含负责人），route 受众 objective_members
+	// 为负责人与参与人.
 	Participants []Subject           `json:"participants"`
 	Assignment   OptActiveAssignment `json:"assignment"`
 }

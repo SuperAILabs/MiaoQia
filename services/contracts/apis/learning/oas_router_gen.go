@@ -391,7 +391,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							switch method {
 							case "GET":
 								r.name = GetOutcomeSummaryOperation
-								r.summary = "跟进结果汇总（评估报告的结果部分，0.4.0）"
+								r.summary = "跟进结果汇总（评估报告的结果部分）"
 								r.operationID = "getOutcomeSummary"
 								r.operationGroup = ""
 								r.pathPattern = "/v1/learning/objectives/{objectiveID}/outcome-summary"

@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: customer-context 客户上下文与目标事件
-  version: 0.2.0
+  version: 0.0.0
   description: >-
     由 customer-context 经发件箱发布（PRD 第2段第8节）。信封为 CloudEvents 1.0，约定见
     docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。租户域事件：miaoqiazone = tenant，
@@ -9,7 +9,7 @@ info:
     GetContextVersion，事件丢失、重复或乱序都不影响结果，版本不高于缓存的事件应被忽略。
     清单事件 customer_context.entity_list.changed.v1 与到期提醒 customer_context.qualification.expiring.v1
     随清单导入与到期提醒功能追加。
-    0.2.0 起发布策略事件（PRD 第7段）：草案保存 policy.drafted（learning 据此自动仿真）、批准后执行的 policy.activated 与
+    发布策略事件（PRD 第7段）：草案保存 policy.drafted（learning 据此自动仿真）、批准后执行的 policy.activated 与
     policy.rolled_back（带策略代次，只用于提前刷新策略缓存，正确性依赖求值前读取代次），以及批准后执行前核验未通过的
     policy.execution_failed（通知申请人与审批人）；目标首次激活以 objective.changed 的 change activated 发布。
 channels:
@@ -133,7 +133,7 @@ components:
             - disabled
             - reenabled
             - activated
-            description: activated 为首次激活（或重新启用后再次激活）使目标进入生效（0.2.0 起）
+            description: activated 为首次激活（或重新启用后再次激活）使目标进入生效
         allOf:
         - if:
             properties:
@@ -156,7 +156,7 @@ components:
     policyDrafted:
       name: customer_context.policy.drafted.v1
       x-fixtures-required: true
-      summary: 策略草案保存形成新修订（0.2.0 起）
+      summary: 策略草案保存形成新修订
       description: >-
         valid 为 false 的修订（编译失败或阈值不合法）不仿真。generation 与 base_version 是保存时的策略代次与草案所基于的生效版本。
         按 (objective_id, revision) 去重。
@@ -199,7 +199,7 @@ components:
     policyActivated:
       name: customer_context.policy.activated.v1
       x-fixtures-required: true
-      summary: 审批通过后激活新策略版本（0.2.0 起）
+      summary: 审批通过后激活新策略版本
       description: >-
         激活与目标的策略代次递增在同一事务中提交；本事件只用于提前刷新缓存，丢失或迟到不影响正确性（detection 每批求值前读取代次）。
         backfill_days 为申请时固定的首次激活回填天数（0 为不回填），回填由 detection 执行。effective_at 为激活的业务时间。
@@ -260,7 +260,7 @@ components:
     policyRolledBack:
       name: customer_context.policy.rolled_back.v1
       x-fixtures-required: true
-      summary: 审批通过后回滚到曾经生效的版本（0.2.0 起）
+      summary: 审批通过后回滚到曾经生效的版本
       description: >-
         重新激活目标版本原来的合成文档与启用领域集合，策略代次递增；已有信号不重算。只用于提前刷新缓存。
       payload:
@@ -295,7 +295,7 @@ components:
     policyExecutionFailed:
       name: customer_context.policy.execution_failed.v1
       x-fixtures-required: true
-      summary: 批准后执行前核验未通过，未执行（0.2.0 起）
+      summary: 批准后执行前核验未通过，未执行
       description: >-
         baseline_changed 生效版本或策略代次已不同于申请时的基准；object_changed 草案修订不一致、草案未被该申请锁定或仿真运行不是该修订的；
         objective_disabled 目标已停用；version_missing 回滚目标版本不存在或已是生效版本。原生效版本不变，通知申请人与审批人。

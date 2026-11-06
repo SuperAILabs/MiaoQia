@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: gateway 对象页 BFF 接口
-  version: 0.1.0
+  version: 0.0.0
   description: >-
     对象页与证据面板的 BFF（PRD 第4段，docs/01-product/prd/04-object-page-evidence.md；规格见
-    docs/03-architecture/subsystems/gateway.md 第2、10节）。草案：随第4段首个实现切片提交，未冻结。只有对外接口。
+    docs/03-architecture/subsystems/gateway.md 第2、10节）。只有对外接口。
     每个请求按调用方现场裁剪，按以下顺序检查，任一不通过即拒绝，后面的步骤不执行：身份与 tenant 上的 can_search_public
     （外部协作者与无会话的请求不能访问）→ 对象解析（按视角）→ 覆盖范围（entitlement.coverage_insufficient 时只返回对象名称）
     → 安全上限（翻页深度 200 条）→ 计量（quota.exhausted）。计量服务不可用时放行并事后补记（只补计数），其余检查不放宽。

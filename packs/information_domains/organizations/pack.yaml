@@ -3,7 +3,7 @@ pack:
   id: INF-ORG
   kind: information_domain
   namespace: org
-  version: 1.0.0                       # C4b 冻结基线，见 contracts/reviews/first-batch-freeze.yaml
+  version: 1.0.1
   platform_api: ">=1.0 <2.0"
   requires: []
   owners: [data-team]

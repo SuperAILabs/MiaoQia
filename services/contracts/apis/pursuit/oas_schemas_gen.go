@@ -836,7 +836,7 @@ func (s *Contribution) UnmarshalText(data []byte) error {
 	}
 }
 
-// 创建面板的默认负责人（0.3.0）。owner_source 为
+// 创建面板的默认负责人。owner_source 为
 // candidate（分派规则的候选，此刻有效）或 self（调用者本人）；candidate_state
 // 为
 // valid（候选有效）、none（信号上没有候选或请求不带信号）、no_access（候选已不是租户有效成员或不能查看该目标的信号）、
@@ -3733,7 +3733,7 @@ type Pursuit struct {
 	ViewerCanEdit       OptBool         `json:"viewer_can_edit"`
 	ViewerCanManageTeam OptBool         `json:"viewer_can_manage_team"`
 	ViewerCanVoid       OptBool         `json:"viewer_can_void"`
-	// 同一目标、同一采购项目（同一事实类型与主体，如同一中标结果公告）上其他中标方的进行中跟进；跟进目标不含标包，尚不能缩小到同一标包（0.3.0；按查看者对各跟进的当前权限分级投影）.
+	// 同一目标、同一采购项目（同一事实类型与主体，如同一中标结果公告）上其他中标方的进行中跟进；跟进目标不含标包，尚不能缩小到同一标包（按查看者对各跟进的当前权限分级投影）.
 	SiblingHints []SiblingHint `json:"sibling_hints"`
 }
 
@@ -4644,7 +4644,7 @@ func (s *ReviseOutcomeRequest) SetReason(val string) {
 }
 
 // 同一目标、同一采购项目（同一事实类型与主体）上另一家中标方的进行中跟进；跟进目标不含标包标识，尚不能缩小到同一标包（PRD
-// 第6段 F2 第1条、用例12，0.3.0）。按查看者对那个跟进的当前权限分级投影
+// 第6段 F2 第1条、用例12）。按查看者对那个跟进的当前权限分级投影
 // （白名单）：visibility 为 full
 // 时给出跟进标识、中标方、负责人、负责人是否有效与创建时间；为
 // owner_only（不能查看那个跟进）时只给 负责人，其他字段不出现。.
@@ -5308,7 +5308,7 @@ type TaskView struct {
 	PursuitState     PursuitStatus `json:"pursuit_state"`
 	ViewerCanEdit    bool          `json:"viewer_can_edit"`
 	ViewerIsAssignee bool          `json:"viewer_is_assignee"`
-	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0；负责人仍在团队中但写入准入不满足、且已发出转交提醒，0.4.0）.
+	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者；负责人仍在团队中但写入准入不满足、且已发出转交提醒）.
 	ViewerEscalated OptBool `json:"viewer_escalated"`
 }
 

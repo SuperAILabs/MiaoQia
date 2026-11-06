@@ -139,8 +139,7 @@ func (UnimplementedHandler) GetPursuit(ctx context.Context, params GetPursuitPar
 // 为调用者是否仍是任务负责人（且仍是跟进的有效负责人或协作者），viewer_escalated
 // 为任务已转给调用者处理
 // （跟进无有效负责人或任务负责人已不在团队中；或任务负责人仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出
-// （0.4.0）；且调用者在单元上有
-// can_edit_unit_pursuits）。负责人本人的判断不可用时
+// ；且调用者在单元上有 can_edit_unit_pursuits）。负责人本人的判断不可用时
 // 503。他租户、不存在与无权查看同为 404 task_not_found。.
 //
 // GET /v1/pursuit/tasks/{taskID}
@@ -153,7 +152,7 @@ func (UnimplementedHandler) GetTask(ctx context.Context, params GetTaskParams) (
 // 需要推进的
 // can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为
 // 404 pursuit_not_found。 另经内部端口供 channels
-// 以授权被拒通知的操作者本人再检查（0.4.0）。.
+// 以授权被拒通知的操作者本人再检查。.
 //
 // GET /v1/pursuit/tracking/{pursuitID}
 func (UnimplementedHandler) GetTracking(ctx context.Context, params GetTrackingParams) (r *Tracking, _ error) {
@@ -178,7 +177,7 @@ func (UnimplementedHandler) GetTrackingPeriod(ctx context.Context, params GetTra
 // 调用者在单元上有 can_edit_unit_pursuits
 // 时另含该单元内转给决策者的任务（escalated，与 getTask 的 viewer_escalated
 // 同一口径：
-// 任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出，0.4.0）。每页至多
+// 任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出）。每页至多
 // limit 条（默认且至多 100）， next_cursor 为签名游标。.
 //
 // GET /v1/pursuit/my-tasks

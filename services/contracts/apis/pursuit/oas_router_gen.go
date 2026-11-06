@@ -895,7 +895,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					switch method {
 					case "GET":
 						r.name = GetCreateDefaultsOperation
-						r.summary = "创建面板的默认负责人（0.3.0，C-10）"
+						r.summary = "创建面板的默认负责人（C-10）"
 						r.operationID = "getCreateDefaults"
 						r.operationGroup = ""
 						r.pathPattern = "/v1/pursuit/create-defaults"
@@ -1289,7 +1289,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "GET":
 							r.name = ListTrackingOperation
-							r.summary = "持续跟踪列表（0.3.0，C-10）"
+							r.summary = "持续跟踪列表（C-10）"
 							r.operationID = "listTracking"
 							r.operationGroup = ""
 							r.pathPattern = "/v1/pursuit/tracking"
@@ -1298,7 +1298,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "POST":
 							r.name = CreateTrackingOperation
-							r.summary = "创建持续跟踪（0.3.0，C-10；PRD 第6段 F10）"
+							r.summary = "创建持续跟踪（C-10；PRD 第6段 F10）"
 							r.operationID = "createTracking"
 							r.operationGroup = ""
 							r.pathPattern = "/v1/pursuit/tracking"
@@ -1331,7 +1331,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							switch method {
 							case "GET":
 								r.name = GetTrackingOperation
-								r.summary = "持续跟踪详情（0.3.0，C-10）"
+								r.summary = "持续跟踪详情（C-10）"
 								r.operationID = "getTracking"
 								r.operationGroup = ""
 								r.pathPattern = "/v1/pursuit/tracking/{pursuitID}"
@@ -1368,7 +1368,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									switch method {
 									case "POST":
 										r.name = UpdateTrackingMembersOperation
-										r.summary = "修改持续跟踪的对象集合（0.3.0）"
+										r.summary = "修改持续跟踪的对象集合"
 										r.operationID = "updateTrackingMembers"
 										r.operationGroup = ""
 										r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/members"
@@ -1405,7 +1405,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										switch method {
 										case "POST":
 											r.name = PauseTrackingOperation
-											r.summary = "暂停持续跟踪（PauseTracking，0.3.0）"
+											r.summary = "暂停持续跟踪（PauseTracking）"
 											r.operationID = "pauseTracking"
 											r.operationGroup = ""
 											r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/pause"
@@ -1429,7 +1429,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										switch method {
 										case "GET":
 											r.name = ListTrackingPeriodsOperation
-											r.summary = "持续跟踪的各期（0.3.0）"
+											r.summary = "持续跟踪的各期"
 											r.operationID = "listTrackingPeriods"
 											r.operationGroup = ""
 											r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/periods"
@@ -1463,7 +1463,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											switch method {
 											case "GET":
 												r.name = GetTrackingPeriodOperation
-												r.summary = "持续跟踪的一期（0.3.0）"
+												r.summary = "持续跟踪的一期"
 												r.operationID = "getTrackingPeriod"
 												r.operationGroup = ""
 												r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/periods/{seq}"
@@ -1492,7 +1492,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									switch method {
 									case "POST":
 										r.name = ResumeTrackingOperation
-										r.summary = "恢复持续跟踪（ResumeTracking，0.3.0）"
+										r.summary = "恢复持续跟踪（ResumeTracking）"
 										r.operationID = "resumeTracking"
 										r.operationGroup = ""
 										r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/resume"
@@ -1517,7 +1517,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									switch method {
 									case "POST":
 										r.name = StopTrackingOperation
-										r.summary = "停止持续跟踪（StopTracking，0.3.0）"
+										r.summary = "停止持续跟踪（StopTracking）"
 										r.operationID = "stopTracking"
 										r.operationGroup = ""
 										r.pathPattern = "/v1/pursuit/tracking/{pursuitID}/stop"

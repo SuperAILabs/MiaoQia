@@ -1,24 +1,24 @@
 openapi: 3.1.0
 info:
   title: customer-context 接口
-  version: 0.7.0
+  version: 0.0.0
   description: >-
     客户档案、上下文版本与快照、目标配置（PRD 第2段，docs/01-product/prd/02-profile-and-objectives.md；
-    规格见 docs/03-architecture/subsystems/customer-context.md）。草案：随第2段首个实现切片提交，未冻结。
+    规格见 docs/03-architecture/subsystems/customer-context.md）。
     租户、cell 与调用主体来自请求上下文，不出现在业务参数中；档案与目标命令只经外部网关，
     上下文版本与快照读取经 mTLS 内部端口。组织单元为 identity 的 OrgUnit：租户根单元为保留值 root，其他单元为
     unt_<ULID>（contracts/identifiers.yaml），不属于本租户的单元返回 404 org_unit_not_found。授权经 identity 的 Check：
     目标的查看、调整与参与人管理在目标资源上判断（含仅凭参与关系的查看），参与关系由本子系统经 identity 的
     SyncResourceParticipants 同步。错误为 application/problem+json 与稳定 code。
-    0.3.0 起提供策略（PRD 第7段）：策略页、草案保存与放弃、版本历史与规则级差异、激活与回滚申请（经 identity 审批，
+    提供策略（PRD 第7段）：策略页、草案保存与放弃、版本历史与规则级差异、激活与回滚申请（经 identity 审批，
     批准后由本子系统消费 identity.approval.decided.v1 执行），以及供 learning 读取的仿真输入（内部端口）。
-    0.4.0 起（PRD 第3段）：内部端口的生效策略读取（GetActivePolicies，detection 每批求值前读取策略代次）；目标访问判断追加
+    内部端口的生效策略读取（GetActivePolicies，detection 每批求值前读取策略代次）；目标访问判断追加
     can_view_signals 与 can_feedback（detection 的信号收件箱与反馈按本子系统的口径授权）；策略状态带策略标识 pol_。
-    0.5.0 起（PRD 第6段）：目标访问判断追加 can_assign（单元关系 can_assign_unit_objectives，或本地当前版本的负责人/参与人且
+    目标访问判断追加 can_assign（单元关系 can_assign_unit_objectives，或本地当前版本的负责人/参与人且
     identity 判断通过），响应追加目标所在单元、模板与状态（可选字段，供 pursuit 确定推进所在单元与结果原因代码）。
-    0.6.0 起（PRD 第5段 F7，C-08）：生效策略读取的每个目标追加可选的负责人 owner 与参与人 participants（目标当前版本的值），
+    生效策略读取的每个目标追加可选的负责人 owner 与参与人 participants（目标当前版本的值），
     供 channels 按策略 route 的 notify 受众（objective_owner、objective_members）确定即时通知的收件人；收件人在发送前仍以本人再检查访问。
-    0.7.0 起（PRD 第6段 F1 第2条，C-14）：目标的分派规则 getAssignmentRules / updateAssignmentRules（按顺序的规则，按区域与品类匹配信号，
+    目标的分派规则 getAssignmentRules / updateAssignmentRules（按顺序的规则，按区域与品类匹配信号，
     选出目标的负责人或参与人作为候选负责人；分派配置版本独立于目标版本），生效策略读取的每个目标追加可选的 assignment（分派配置版本与规则），
     detection 生成信号时据此算出候选负责人写入信号。候选只是建议，不授予访问；使用方以候选本人再检查。
 servers:
@@ -607,7 +607,7 @@ paths:
         可经参与关系获得的权限按“单元关系，或目标当前版本的负责人/参与人且 identity 判断通过”放行，移除参与人在本地提交后立即撤权，
         不等待 identity 同步。调用者须为用户主体（否则 403 forbidden）；不能查看目标与目标不存在同样 404 objective_not_found；
         授权服务不可用为 503 identity_unavailable（失败关闭）。allowed 为 relation 中被允许的部分（总含 can_view）。
-        0.5.0 起响应带目标所在单元 org_unit_id、模板 template_id 与状态 state（调用者能查看目标时才返回）。
+        响应带目标所在单元 org_unit_id、模板 template_id 与状态 state（调用者能查看目标时才返回）。
       x-timeout-ms: 5000
       x-idempotent: true
       parameters:
@@ -1903,7 +1903,7 @@ components:
       type: object
       additionalProperties: false
       description: >-
-        一个目标的生效策略（读取时的当前代次）。owner 与 participants（0.6.0，C-08）为目标当前版本的负责人与参与人：channels 据此确定
+        一个目标的生效策略（读取时的当前代次）。owner 与 participants（C-08）为目标当前版本的负责人与参与人：channels 据此确定
         route 受众 objective_owner / objective_members 的即时通知候选收件人，发送前仍以收件人本人再检查目标与信号的访问
       required:
       - objective_id
@@ -1964,7 +1964,7 @@ components:
           $ref: '#/components/schemas/Subject'
         participants:
           type: array
-          description: 目标当前版本的参与人（0.6.0，C-08；可以包含负责人），route 受众 objective_members 为负责人与参与人
+          description: 目标当前版本的参与人（C-08；可以包含负责人），route 受众 objective_members 为负责人与参与人
           uniqueItems: true
           maxItems: 50
           items:
@@ -1975,7 +1975,7 @@ components:
       type: object
       additionalProperties: false
       description: >-
-        目标当前的分派配置（0.7.0，C-14）：只在目标配置过分派规则时出现，版本从 1 开始，规则按顺序（可以为空：已配置为空规则，信号记为
+        目标当前的分派配置（C-14）：只在目标配置过分派规则时出现，版本从 1 开始，规则按顺序（可以为空：已配置为空规则，信号记为
         没有候选 none）。detection 生成信号时用同一次读取中的负责人与参与人过滤规则（assignee 已不是负责人或参与人的规则跳过），第一条命中的
         规则给出候选负责人，都不命中为 none；没有本字段（目标从未配置分派规则，或旧版本的提供方）时信号记为“分派规则不可用”rules_unavailable
       required:
