@@ -7,11 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
 	"reflect"
 	"time"
 
 	fga "github.com/openfga/go-sdk"
 	"github.com/openfga/go-sdk/client"
+	"github.com/openfga/go-sdk/credentials"
 	"github.com/openfga/language/pkg/go/transformer"
 
 	"github.com/superailabs/miaoqia/services/kernel/authz"
@@ -22,6 +25,8 @@ var modelDSL string
 
 // StoreName 是平台使用的 OpenFGA store。
 const StoreName = "miaoqia"
+
+const openFGAHTTPTimeout = 10 * time.Second
 
 // OpenFGA 是基于 OpenFGA 的授权决策点。
 type OpenFGA struct {
@@ -46,7 +51,14 @@ func Connect(ctx context.Context, url string) (*OpenFGA, error) {
 
 // ConnectStore 同 Connect，使用指定名称的 store（测试使用独立 store）。
 func ConnectStore(ctx context.Context, url, storeName string) (*OpenFGA, error) {
-	c, err := client.NewSdkClient(&client.ClientConfiguration{ApiUrl: url})
+	config := &client.ClientConfiguration{ApiUrl: url, HTTPClient: &http.Client{Timeout: openFGAHTTPTimeout}}
+	if token := os.Getenv("MIAOQIA_IDENTITY_OPENFGA_TOKEN"); token != "" {
+		config.Credentials = &credentials.Credentials{
+			Method: credentials.CredentialsMethodApiToken,
+			Config: &credentials.Config{ApiToken: token},
+		}
+	}
+	c, err := client.NewSdkClient(config)
 	if err != nil {
 		return nil, err
 	}
