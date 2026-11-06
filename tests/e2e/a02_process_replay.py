@@ -31,6 +31,9 @@ from data_plane import hostport  # noqa: E402
 WORK = ROOT / "deploy/local/.data/a02-process-replay"
 TENANT = "tnt_01M6DQA02XTRA0000000000001"
 CELL = "cell-01"
+# Event-driven steps wait long enough for a remote shared broker (consumer
+# group joins over the VPS tunnel can take minutes); local runs finish early.
+EVENT_WAIT = 300
 DM, BD, APPROVER, VISITOR, OTHER = "a02-dm", "a02-bd", "a02-approver", "a02-visitor", "a02-other"
 
 
@@ -159,10 +162,10 @@ def clear_tenant_state(env: dict[str, str]) -> None:
         c.commit()
 
 
-def wait_row(env: dict[str, str], dbname: str, sql: str, args: tuple, timeout: int = 90) -> tuple:
+def wait_row(env: dict[str, str], dbname: str, sql: str, args: tuple, timeout: int | None = None) -> tuple:
     pg = hostport(env["MIAOQIA_TEST_PG"])
     dsn = f"postgres://{dbname}_owner:{dbname}_owner@{pg}/{dbname}"
-    until = time.time() + timeout
+    until = time.time() + (timeout or EVENT_WAIT)
     while time.time() < until:
         with psycopg.connect(dsn) as c:
             row = c.execute(sql, args).fetchone()
@@ -233,6 +236,27 @@ def reset_replay_groups(env: dict[str, str]) -> None:
         except Exception:
             # Non-existent groups are the normal first-run case.
             pass
+
+
+def skip_existing_evidence(env: dict[str, str]) -> None:
+    """Commit the replay's evidence consumer group at the current end of public.evidence.
+
+    reset_replay_groups deletes the replay groups, which would otherwise restart
+    from the earliest offset and reprocess evidence events whose revisions no
+    longer exist locally. Only this replay-owned group is touched.
+    """
+    from confluent_kafka import Consumer, TopicPartition
+    consumer = Consumer({"bootstrap.servers": env["MIAOQIA_KAFKA_BROKERS"], "group.id": "domain-intelligence.facts",
+                         "enable.auto.commit": False})
+    try:
+        metadata = consumer.list_topics("public.evidence", timeout=30).topics["public.evidence"]
+        ends = []
+        for partition in metadata.partitions:
+            _, high = consumer.get_watermark_offsets(TopicPartition("public.evidence", partition), timeout=30)
+            ends.append(TopicPartition("public.evidence", partition, high))
+        consumer.commit(offsets=ends, asynchronous=False)
+    finally:
+        consumer.close()
 
 
 def reset_replay_topic(env: dict[str, str]) -> None:
@@ -335,6 +359,7 @@ def main() -> int:
         run([str(ROOT / "deploy/local/topics.sh")], env)
         reset_replay_topic(env)
         reset_replay_groups(env)
+        skip_existing_evidence(env)
         run([platform, "migrate"], env)
         run(["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "migrate"], env, ROOT / "data")
         data_plane.provision_rights(env, ROOT, topology)
@@ -384,7 +409,7 @@ def main() -> int:
         # real winner-result signal can still be evaluated.
         form["rules"] = [{"id": rule_id, "enabled": False} for rule_id in ("R-CAT", "R-REGION", "R-WINNER")]
         _, policy = request("PUT", policy_url + "/draft", dm_token, {"expected_version": policy["draft_version"], "form": form}, expected={200})
-        deadline = time.time() + 90
+        deadline = time.time() + EVENT_WAIT
         while time.time() < deadline:
             _, policy = request("GET", policy_url, dm_token, expected={200})
             draft = policy.get("draft") or {}
@@ -399,7 +424,7 @@ def main() -> int:
         approval_id = approval["approval_id"]
         _, approval_state = request("GET", f"http://127.0.0.1:8090/v1/identity/approvals/{approval_id}", approver_token, expected={200})
         request("POST", f"http://127.0.0.1:8090/v1/identity/approvals/{approval_id}/decide", approver_token, {"expected_version": approval_state["version"], "decision": "approve"}, expected={200})
-        deadline = time.time() + 90
+        deadline = time.time() + EVENT_WAIT
         while time.time() < deadline:
             _, policy = request("GET", policy_url, dm_token, expected={200})
             if policy.get("active_version", 0) > 0:

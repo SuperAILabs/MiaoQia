@@ -26,6 +26,10 @@ def modules() -> list[runtime.Module]:
     return [evidence_module(), domain_intelligence_module(extractions), entity_graph_module()]
 
 
+# Seconds; well below the listener's per-request budget (internal_http.Server timeout, at most 5).
+POOL_TIMEOUT = 1.0
+
+
 def _tls():
     return TLS(*(os.environ.get("MIAOQIA_INTERNAL_TLS_" + k, "") for k in ("CERT", "KEY", "CA")))
 
@@ -67,7 +71,9 @@ def serve():
     if not dom_dsn or not evd_dsn or not root or not rights_url or not listen:
         raise SystemExit("data-api listener configuration unavailable")
     from miaoqia.kernel import db
-    dom, evd = db.Database(dom_dsn), db.Database(evd_dsn)
+    # Pool checkout must fit inside one request budget: db.tx refuses a request
+    # whose remaining deadline is shorter than the checkout bound.
+    dom, evd = db.Database(dom_dsn, pool_timeout=POOL_TIMEOUT), db.Database(evd_dsn, pool_timeout=POOL_TIMEOUT)
     try:
         identity = Identity(Client(os.environ["MIAOQIA_IDENTITY_URL"], _tls(), os.environ["MIAOQIA_IDENTITY_PEER"]))
         rights = RightsClient(Client(rights_url, _tls(), os.environ["MIAOQIA_ACQUISITION_PEER"]))
