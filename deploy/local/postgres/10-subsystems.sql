@@ -1,5 +1,5 @@
 -- 由 tools/dev/gen_local.py 根据子系统索引生成，请勿手改。
--- 仅用于本地开发环境：密码与账号名相同。
+-- 可选 Docker 引导环境：密码与账号名相同；共享开发环境不依赖本文件。
 
 CREATE ROLE outbox_relay LOGIN PASSWORD 'outbox_relay';
 
@@ -53,6 +53,19 @@ ALTER SCHEMA public OWNER TO ent_owner;
 GRANT USAGE ON SCHEMA public TO ent_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE ent_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ent_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE ent_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ent_app;
+\connect postgres
+
+-- search（Go，platform）
+CREATE ROLE sea_owner LOGIN PASSWORD 'sea_owner';
+CREATE ROLE sea_app LOGIN PASSWORD 'sea_app' NOBYPASSRLS;
+CREATE DATABASE sea OWNER sea_owner;
+REVOKE ALL ON DATABASE sea FROM PUBLIC;
+GRANT CONNECT ON DATABASE sea TO sea_app, outbox_relay;
+\connect sea
+ALTER SCHEMA public OWNER TO sea_owner;
+GRANT USAGE ON SCHEMA public TO sea_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sea_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sea_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sea_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO sea_app;
 \connect postgres
 
 -- customer-context（Go，platform）

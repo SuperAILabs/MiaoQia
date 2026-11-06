@@ -4,7 +4,7 @@ subsystems:
   evidence: { plane: data_supply, language: python, unit: data, database: evd, data_scopes: [public, tenant] }
   domain-intelligence: { plane: data_supply, language: python, unit: data, database: dom, data_scopes: [public] }
   entity-graph: { plane: data_supply, language: python, unit: data, database: ent, data_scopes: [public] }
-  search: { plane: data_supply, language: go, unit: platform, data_scopes: [public, tenant] }
+  search: { plane: data_supply, language: go, unit: platform, database: sea, data_scopes: [public, tenant] }
   customer-context: { plane: customer_intelligence, language: go, unit: platform, database: ctx, data_scopes: [tenant] }
   detection: { plane: customer_intelligence, language: go, unit: platform, database: det, data_scopes: [tenant] }
   research: { plane: customer_intelligence, language: go, unit: platform, database: res, data_scopes: [tenant] }

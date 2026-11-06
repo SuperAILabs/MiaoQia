@@ -1,6 +1,6 @@
 // Package detection 组装 detection 监测与匹配 子系统。M2 第3段提供生效边界上的匹配（消费 domain.fact.upserted.v1，每批读取
-// 生效策略与策略代次）、信号收件箱、处理与反馈、批量与撤销（docs/01-product/prd/03-signal-inbox-feedback.md）：视图组装与订阅反查
-// 尚未接入（api.NotWired，事件处理失败并重试、转入死信），测试与演示使用标明为夹具的内存实现（api/facttest）。
+// 生效策略与策略代次）、信号收件箱、处理与反馈、批量与撤销（docs/01-product/prd/03-signal-inbox-feedback.md）：data-api Facts 与 search
+// percolator 适配器已接入 search 的独立持久化索引；无查询时失败关闭，测试与演示使用标明为夹具的内存实现（api/facttest）。
 // 第4段提供对象页的本租户信号分区（listObjectSignals；项目经归属边展开，归属边读取 api.ProjectLinks 尚未接入）与供 gateway
 // 读取信号固定求值输入的绑定（api.ExplainerBinding，内部端口为 explainSignal）。第5段提供简报取数、信号卡片与渠道内处理的绑定
 // （api.BriefingBinding，内部端口为 listBriefingSignals、listSignalCards、triageSignal、undoSignalTriage）。关注、回填、重新求值与漏报诊断随所属段落实现。
@@ -23,6 +23,7 @@ import (
 	detectionremote "github.com/superailabs/miaoqia/services/subsystems/detection/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/detection/internal/app"
 	"github.com/superailabs/miaoqia/services/subsystems/detection/migrations"
+	searchapi "github.com/superailabs/miaoqia/services/subsystems/search/api"
 )
 
 // 对外接口（经 gateway）的路由。
@@ -98,6 +99,12 @@ func ModuleWith(adapters Adapters) runtime.Module {
 					svc.Facts = facts
 				}
 			}
+			if _, configured := adapters.Candidates.(api.CandidateResolver); !configured && adapters.Candidates == nil {
+				if percolator, ok := runtime.Lookup[searchapi.Percolator](env.Bindings, searchapi.PercolatorBinding); ok {
+					svc.Candidates = searchCandidates{percolator: percolator}
+					svc.Watches = percolator
+				}
+			}
 			dir := env.Config("PACKS_DIR")
 			if dir == "" {
 				dir = "packs"
@@ -147,6 +154,10 @@ func ModuleWith(adapters Adapters) runtime.Module {
 				Name: "detection.fact-matching", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
 				Topics:   []string{outbox.Topic(reqctx.ZonePublic, "", "domain")},
 				Handlers: map[string]consumer.Handler{"domain.fact.upserted.v1": svc.FactUpserted},
+			}, {
+				Name: "detection.policy-watches", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,
+				Topics:   []string{outbox.Topic(reqctx.ZoneTenant, env.Cell, "customer_context")},
+				Handlers: map[string]consumer.Handler{app.PolicyActivated: svc.PolicyChanged, app.PolicyRolledBack: svc.PolicyChanged, app.ObjectiveChanged: svc.ObjectiveChanged},
 			}, {
 				// 信号的“已转跟进”：按 pursuit 的关联事件维护有效关联集合与转换基线（PRD 第6段 F3 第1条）
 				Name: "detection.pursuit-links", Subsystem: api.Name, Brokers: env.Brokers, DB: env.DB, Log: env.Log,

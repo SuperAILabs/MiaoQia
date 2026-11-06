@@ -80,8 +80,8 @@ import (
 // modules 是本单元全部子系统；顺序即启动顺序（提供绑定的子系统在前：gateway 的对象页依赖 commerce、customer-context 与 detection）。
 var modules = []func() runtime.Module{
 	identity.Module, governance.Module, commerce.Module, aiplatform.Module,
-	customercontext.Module, detection.Module, gateway.Module, research.Module, assessment.Module, pursuit.Module,
-	learning.Module, channels.Module, search.Module, operations.Module,
+	search.Module, customercontext.Module, detection.Module, gateway.Module, research.Module, assessment.Module, pursuit.Module,
+	learning.Module, channels.Module, operations.Module,
 }
 
 // remote 是可切换为远程绑定的子系统：provide 以远程客户端登记它提供的全部绑定；autoload 为真时，
@@ -270,13 +270,14 @@ func migrate(ctx context.Context, log *slog.Logger, role string) error {
 	if role == "" {
 		role = "api"
 	}
-	spec, scopes, _, err := loadRole(role)
+	spec, scopes, inventory, err := loadRole(role)
 	if err != nil {
 		return err
 	}
 	for _, mk := range modules {
 		m := mk()
-		if _, selected := scopes[m.Name]; !selected || m.Database == "" {
+		entry, registered := inventory.Subsystems[m.Name]
+		if _, selected := scopes[m.Name]; !selected || m.Database == "" || !registered || entry.Database == "" {
 			continue
 		}
 		dsn := os.Getenv(envKey(m.Name, "DB_OWNER_DSN"))

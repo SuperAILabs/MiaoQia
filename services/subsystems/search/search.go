@@ -2,11 +2,20 @@
 package search
 
 import (
+	"context"
+
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/subsystems/search/api"
+	"github.com/superailabs/miaoqia/services/subsystems/search/migrations"
 )
 
 // Module 返回 search 的模块定义。
 func Module() runtime.Module {
-	return runtime.Module{Name: api.Name, Database: ""}
+	return runtime.Module{
+		Name: api.Name, Database: "sea", Migrations: migrations.FS,
+		Start: func(_ context.Context, env *runtime.Env) error {
+			env.Bindings.Provide(api.PercolatorBinding, newPercolator(env.DB))
+			return nil
+		},
+	}
 }
