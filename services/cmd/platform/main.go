@@ -24,7 +24,7 @@
 //	MIAOQIA_COMMERCE_COVERAGE     数据覆盖包（产品目录接入前，全部租户相同），例如 INF-PROC=330000;INF-ORG=*；未配置时对象页 503
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
-//	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
+//	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA；development 下配置后内部端口与内部客户端同样使用 mTLS
 //	MIAOQIA_INTERNAL_ALLOWED_PEERS  精确SPIFFE URI SAN白名单
 //	MIAOQIA_RELAY_DSN_TEMPLATE    中继连接串模板，{db} 替换为数据库代码
 //	OTEL_EXPORTER_OTLP_ENDPOINT   追踪导出地址（OTLP/gRPC）
@@ -465,7 +465,8 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 		{Addr: addr("MIAOQIA_HTTP_ADDR", ":8090"), Handler: pub, ReadHeaderTimeout: 10 * time.Second},
 		{Addr: addr("MIAOQIA_INTERNAL_ADDR", ":8091"), Handler: internal, ReadHeaderTimeout: 10 * time.Second},
 	}
-	if !transportsecurity.Development() {
+	// Internal mTLS is mandatory outside development and used in development whenever configured.
+	if !transportsecurity.Plaintext() {
 		tlsConfig, err := transportsecurity.Config("MIAOQIA_INTERNAL_TLS", true)
 		if err != nil {
 			return err
@@ -474,6 +475,8 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 			return fmt.Errorf("missing internal peer allowlist")
 		}
 		servers[1].TLSConfig = tlsConfig
+	}
+	if !transportsecurity.Development() {
 		servers[0].TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 		for _, key := range []string{"MIAOQIA_PUBLIC_TLS_CERT", "MIAOQIA_PUBLIC_TLS_KEY"} {
 			if os.Getenv(key) == "" {
@@ -491,7 +494,7 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 	errc := make(chan error, len(servers))
 	for _, s := range servers {
 		go func() {
-			if transportsecurity.Development() {
+			if s.TLSConfig == nil {
 				errc <- s.ListenAndServe()
 			} else if s == servers[0] {
 				errc <- s.ListenAndServeTLS(os.Getenv("MIAOQIA_PUBLIC_TLS_CERT"), os.Getenv("MIAOQIA_PUBLIC_TLS_KEY"))

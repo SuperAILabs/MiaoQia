@@ -409,8 +409,9 @@ def main() -> None:
             fail(f"领域事实 {fact[0]} 没有 domain.fact.upserted.v1")
         ok(f"{revision} → {fact[0]} v{fact[1]}，domain.fact.upserted.v1 已进入发件箱")
 
-        # data-api is the mTLS internal listener that admits interactive users
-        # only; the service-principal read is gated on A02 gap D-06.
+        # data-api reads (mTLS listener, acq-admin rights, service reads) are
+        # covered by the A02 process replay; this E2E's remote-identity process
+        # still uses the plaintext internal port.
 
         print("\nM0 端到端验证通过。")
     finally:

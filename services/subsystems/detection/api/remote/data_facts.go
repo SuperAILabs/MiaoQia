@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -91,6 +92,10 @@ func (c factsClient) Units(ctx context.Context, ref api.FactRef) ([]api.Unit, er
 	version := int(ref.Version)
 	var page wirePage
 	if err := c.client.BidResultUnits(ctx, ref.ID, dataread.Basis{View: datareadBasisCurrent}, &version, &page); err != nil {
+		var denied *dataread.Error
+		if errors.As(err, &denied) && denied.Status == http.StatusForbidden {
+			return nil, fmt.Errorf("%w: %w", api.ErrReadDenied, err)
+		}
 		return nil, err
 	}
 	units := make([]api.Unit, 0, len(page.Items))

@@ -825,6 +825,8 @@ class Scope(BaseModel):
 
 class Purpose(Enum):
     interactive = "interactive"
+    monitoring = "monitoring"
+    simulation = "simulation"
 
 
 class SourceRightsPolicy(BaseModel):
@@ -836,7 +838,7 @@ class SourceRightsPolicy(BaseModel):
     version: conint(ge=1)
     source_id: constr(pattern=r"^[a-z][a-z0-9_-]{0,95}$")
     scopes: list[Scope] = Field(..., max_length=64, min_length=1)
-    purposes: list[Purpose] = Field(..., max_length=1, min_length=1)
+    purposes: list[Purpose] = Field(..., max_length=3, min_length=1)
     display: Display
     effective_at: AwareDatetime
     expires_at: AwareDatetime

@@ -48,8 +48,10 @@ class Database:
         with self.engine.begin() as conn:
             if deadline is not None:
                 remaining_ms = max(1, min(statement_cap_ms, int((deadline - time.monotonic()) * 1000)))
-                conn.execute(text("SET LOCAL statement_timeout = :ms"), {"ms": f"{remaining_ms}ms"})
-                conn.execute(text("SET LOCAL idle_in_transaction_session_timeout = :ms"), {"ms": f"{remaining_ms}ms"})
+                # SET LOCAL cannot take bind parameters; set_config(..., true) is the transaction-local equivalent.
+                conn.execute(text("SELECT set_config('statement_timeout', :ms, true), "
+                                  "set_config('idle_in_transaction_session_timeout', :ms, true)"),
+                             {"ms": f"{remaining_ms}ms"})
                 conn.execute(text("SET TRANSACTION READ ONLY"))
             conn.execute(
                 text("SELECT set_config('app.tenant_id', :t, true), set_config('app.cell', :c, true), "

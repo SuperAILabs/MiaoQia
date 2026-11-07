@@ -14,6 +14,7 @@ type FactUnit struct {
 	Categories []string       `json:"categories"`
 }
 
+// Fact 是反查输入。Units 为 nil 时是不读事实内容的粗筛（只按 cell）；非 nil 时按单位过滤。
 type Fact struct {
 	Cell       string
 	FactID     string

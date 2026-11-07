@@ -1,9 +1,12 @@
 """A02 L1 process-role replay.
 
-This gate uses the real platform/data processes and the shared PostgreSQL and
-Kafka services. It creates only an isolated tenant and a synthetic channel
-binding in the local development databases; the procurement facts come from a
-frozen official corpus sample and are never inserted by the harness.
+This gate uses the real platform/data/acquisition processes and the shared
+PostgreSQL and Kafka services. data-api runs its mTLS listener with source-rights
+admission through acq-admin; detection reads as a tenant-scoped monitoring
+service and learning as a simulation service. It creates only an isolated
+tenant, its source-rights entries and a synthetic channel binding in the local
+development databases; the procurement facts come from the frozen official
+building tender/award pair and are never inserted by the harness.
 """
 from __future__ import annotations
 
@@ -18,15 +21,19 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import base64
 from pathlib import Path
 
 import psycopg
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tests/e2e"))
+from data_plane import hostport  # noqa: E402
 WORK = ROOT / "deploy/local/.data/a02-process-replay"
 TENANT = "tnt_01M6DQA02XTRA0000000000001"
 CELL = "cell-01"
+# Event-driven steps wait long enough for a remote shared broker (consumer
+# group joins over the VPS tunnel can take minutes); local runs finish early.
+EVENT_WAIT = 300
 DM, BD, APPROVER, VISITOR, OTHER = "a02-dm", "a02-bd", "a02-approver", "a02-visitor", "a02-other"
 
 
@@ -73,15 +80,11 @@ def request(method: str, url: str, token: str | None = None, body: dict | None =
     req.add_header("User-Agent", "miaoqia-a02-process-replay/1")
     if raw is not None:
         req.add_header("Content-Type", "application/json")
-    if method not in {"GET", "HEAD"} and "/v1/" in url and not url.endswith("/data/get-fact"):
+    if method not in {"GET", "HEAD"} and "/v1/" in url:
         digest = hashlib.sha256((method + url + (raw.decode() if raw else "")).encode()).hexdigest()[:40]
         req.add_header("Idempotency-Key", "a02-process-" + digest)
     if token:
         req.add_header("Authorization", f"Bearer {token}")
-    if ":8094/" in url:
-        context = {"principal": {"id": "svc:a02-process", "kind": "service"}, "purpose": "object_page"}
-        encoded = base64.urlsafe_b64encode(json.dumps(context, separators=(",", ":")).encode()).rstrip(b"=").decode()
-        req.add_header("Miaoqia-Context", encoded)
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             status, data = r.status, json.loads(r.read() or b"{}")
@@ -110,11 +113,6 @@ def token(issuer: str, subject: str, *, tenant: str = TENANT, mfa: bool = False)
     req = urllib.request.Request(issuer.rstrip("/") + "/token", method="POST", data=body)
     with urllib.request.urlopen(req, timeout=5) as r:
         return json.loads(r.read())["access_token"]
-
-
-def hostport(dsn: str) -> str:
-    p = urllib.parse.urlparse(dsn)
-    return f"{p.hostname or 'localhost'}:{p.port or 5432}"
 
 
 def setup_directory(env: dict[str, str]) -> None:
@@ -156,6 +154,15 @@ def clear_tenant_state(env: dict[str, str]) -> None:
     # a local channel bootstrap; the production WeCom adapter remains an L2 gate.
     chn = f"postgres://chn_owner:chn_owner@{pg}/chn"
     with psycopg.connect(chn) as c:
+        # Briefings are one per subject and period: clear the replay tenant's
+        # briefing state so each run composes its own briefing.
+        for table in ("chn_deliveries", "chn_briefing_links", "chn_card_links", "chn_notices", "chn_briefing_windows", "chn_compose_marks", "chn_briefings", "chn_briefing_preferences"):
+            c.execute(f"DELETE FROM {table} WHERE tenant_id = %s", (TENANT,))
+        # The default schedule (07:30 on weekdays) composes nothing before the
+        # send time or at weekends. A 00:00 daily schedule makes today's period
+        # due whenever the replay runs; the API would only apply it from the
+        # next send boundary.
+        c.execute("INSERT INTO chn_briefing_preferences(tenant_id,subject,version,send_time,timezone,send_days,quiet_start,quiet_end,push_empty,effective_from,created_at) VALUES (%s,%s,1,'00:00','Asia/Shanghai',ARRAY[1,2,3,4,5,6,7],'21:00','07:00',true,'2026-01-01T00:00:00Z',now())", (TENANT, DM))
         c.execute("DELETE FROM chn_bindings WHERE tenant_id = %s", (TENANT,))
         c.execute("DELETE FROM chn_installations WHERE tenant_id = %s", (TENANT,))
         c.execute("INSERT INTO chn_installations(id,tenant_id,channel,state,version,corp_id,corp_name,verified_at) VALUES ('chi_01M6DQA02XTRA0000000000001',%s,'wecom','enabled',2,'corp-a02','A02本地渠道',now())", (TENANT,))
@@ -164,10 +171,10 @@ def clear_tenant_state(env: dict[str, str]) -> None:
         c.commit()
 
 
-def wait_row(env: dict[str, str], dbname: str, sql: str, args: tuple, timeout: int = 90) -> tuple:
+def wait_row(env: dict[str, str], dbname: str, sql: str, args: tuple, timeout: int | None = None) -> tuple:
     pg = hostport(env["MIAOQIA_TEST_PG"])
     dsn = f"postgres://{dbname}_owner:{dbname}_owner@{pg}/{dbname}"
-    until = time.time() + timeout
+    until = time.time() + (timeout or EVENT_WAIT)
     while time.time() < until:
         with psycopg.connect(dsn) as c:
             row = c.execute(sql, args).fetchone()
@@ -221,6 +228,26 @@ def republish_fact(env: dict[str, str], fact_id: str) -> None:
     producer.flush(30)
 
 
+def republish_revision(env: dict[str, str], revision: str) -> None:
+    """Re-emit evidence.extraction.revised.v1 for a replayed revision.
+
+    mq-evidence-replay is idempotent: a revision recorded by an earlier run
+    returns as existing without a new event, and skip_existing_evidence moved
+    the consumer group past earlier events. A fresh envelope through the outbox
+    relay lets domain-intelligence derive the facts (idempotently) in this run.
+    """
+    pg = hostport(env["MIAOQIA_TEST_PG"])
+    with psycopg.connect(f"postgres://evd_owner:evd_owner@{pg}/evd") as c:
+        row = c.execute("SELECT topic, partition_key, envelope FROM kernel_outbox WHERE envelope->>'type' = 'evidence.extraction.revised.v1' AND envelope->'data'->>'revision_ref' = %s ORDER BY seq DESC LIMIT 1", (revision,)).fetchone()
+        if row is None:
+            raise RuntimeError(f"没有修订 {revision} 的 evidence.extraction.revised.v1 发件箱记录")
+        topic, key, envelope = row
+        envelope["id"] = "evt_" + f"{time.time_ns():026X}"[-26:]
+        envelope["time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        c.execute("INSERT INTO kernel_outbox(event_id, topic, partition_key, envelope) VALUES (%s, %s, %s, %s)", (envelope["id"], topic, key, json.dumps(envelope)))
+        c.commit()
+
+
 def reset_replay_groups(env: dict[str, str]) -> None:
     """Start this isolated replay from the current Kafka high-water mark."""
     from confluent_kafka.admin import AdminClient
@@ -240,6 +267,27 @@ def reset_replay_groups(env: dict[str, str]) -> None:
             pass
 
 
+def skip_existing_evidence(env: dict[str, str]) -> None:
+    """Commit the replay's evidence consumer group at the current end of public.evidence.
+
+    reset_replay_groups deletes the replay groups, which would otherwise restart
+    from the earliest offset and reprocess evidence events whose revisions no
+    longer exist locally. Only this replay-owned group is touched.
+    """
+    from confluent_kafka import Consumer, TopicPartition
+    consumer = Consumer({"bootstrap.servers": env["MIAOQIA_KAFKA_BROKERS"], "group.id": "domain-intelligence.facts",
+                         "enable.auto.commit": False})
+    try:
+        metadata = consumer.list_topics("public.evidence", timeout=30).topics["public.evidence"]
+        ends = []
+        for partition in metadata.partitions:
+            _, high = consumer.get_watermark_offsets(TopicPartition("public.evidence", partition), timeout=30)
+            ends.append(TopicPartition("public.evidence", partition, high))
+        consumer.commit(offsets=ends, asynchronous=False)
+    finally:
+        consumer.close()
+
+
 def reset_replay_topic(env: dict[str, str]) -> None:
     """Use a clean public-domain topic for the isolated replay run."""
     from confluent_kafka.admin import AdminClient, NewTopic
@@ -251,30 +299,64 @@ def reset_replay_topic(env: dict[str, str]) -> None:
     admin.create_topics([NewTopic("public.domain", 12, 1)]) ["public.domain"].result()
 
 
+# The rights allowlist (acquisition 0001/0002) covers only the reviewed
+# building tender/award pair, so the replay uses that pair. The replay tenant
+# gets its own @1 entries with all three purposes; the deploy manifest stays
+# untouched. Fixed instants keep the immutable registration identical across
+# runs.
+RIGHTS_PAIR = (("building-tender", "corpus:official-building-tender-20261026"),
+               ("building-award", "corpus:official-building-award-20261026"))
+CORPUS = ROOT / "packs/information_domains/procurement/corpus"
+
+
+def rights_batch() -> list[dict]:
+    commands = []
+    for entry, tag in RIGHTS_PAIR:
+        commands += [
+            {"action": "register", "policy": {
+                "schema_version": 1, "entry_id": entry, "version": 1, "source_id": "official-qzygjy",
+                "scopes": [{"tenant": TENANT, "cell": CELL}], "purposes": ["interactive", "monitoring", "simulation"],
+                "display": "excerpt", "effective_at": "2026-10-26T00:00:00Z", "expires_at": "2027-12-31T00:00:00Z",
+                "redistribution": False}},
+            {"action": "bind", "source_id": "official-qzygjy", "tags": sorted([tag, "public-official-review"]),
+             "entry_id": entry, "version": 1},
+            {"action": "activate", "entry_id": entry, "version": 1},
+        ]
+    return commands
+
+
+def wait_tcp(address: str, seconds: int = 60) -> None:
+    import socket
+    host, port = address.rsplit(":", 1)
+    until = time.time() + seconds
+    while time.time() < until:
+        try:
+            socket.create_connection((host, int(port)), timeout=1).close()
+            return
+        except OSError:
+            time.sleep(0.5)
+    raise RuntimeError(f"{address} 未就绪")
+
+
+def user(subject: str, tenant: str = TENANT):
+    from miaoqia.kernel import reqctx
+    return reqctx.Context(reqctx.Principal(subject, "user"), tenant, CELL, "interactive")
+
+
 def main() -> int:
-    # The replay reads data-api as service principals (detection matching,
-    # learning simulation). The mTLS listener admits interactive users only,
-    # so the replay stays blocked until A02 gap D-06 adds delegated reads.
-    if os.environ.get("MIAOQIA_A02_REPLAY_FORCE") != "1":
-        print("A02 进程回放待 D-06（data-api 服务主体委托读取）关闭后再运行；见 docs/05-delivery/09-a02-end-to-end-acceptance.md 第4.1节", file=sys.stderr)
-        return 2
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
     from m0 import base_env  # type: ignore
+    import data_plane  # type: ignore
 
     env = base_env()
-    evidence_objects = ROOT / "deploy/local/.data/a02-real/objects"
-    if not evidence_objects.exists():
-        evidence_objects = WORK / "objects"
+    evidence_objects = Path(os.environ.get("MIAOQIA_EVIDENCE_OBJECT_STORE_DIR") or ROOT / "deploy/local/.data/a02-objects")
+    evidence_objects.mkdir(parents=True, exist_ok=True)
     env.update({
         "MIAOQIA_ENV": "development",
         "MIAOQIA_GATEWAY_ISSUER": "http://127.0.0.1:18080",
         "MIAOQIA_GATEWAY_AUDIENCE": "miaoqia-api",
         "MIAOQIA_IDENTITY_OPENFGA_URL": os.environ.get("MIAOQIA_IDENTITY_OPENFGA_URL", "http://127.0.0.1:8081"),
-        "MIAOQIA_DETECTION_DATA_API_URL": "http://127.0.0.1:8094",
-        "MIAOQIA_GATEWAY_DATA_API_URL": "http://127.0.0.1:8094",
-        "MIAOQIA_LEARNING_DATA_API_URL": "http://127.0.0.1:8094",
-        "MIAOQIA_DATA_PUBLIC_RIGHTS": "public-official-review",
         "MIAOQIA_CUSTOMER_CONTEXT_PACKS_DIR": str(ROOT / "packs"),
         "MIAOQIA_DETECTION_PACKS_DIR": str(ROOT / "packs"),
         "MIAOQIA_LEARNING_PACKS_DIR": str(ROOT / "packs"),
@@ -294,6 +376,10 @@ def main() -> int:
     if not env.get("MIAOQIA_KAFKA_BROKERS"):
         raise RuntimeError("未配置 MIAOQIA_KAFKA_BROKERS；请提供共享 Kafka 地址")
 
+    topology = data_plane.Topology(WORK)
+    platform_env = {role: dict(env, **topology.platform(role)) for role in ("api", "consumer", "scheduler", "outbox-relay")}
+    data_api_env = dict(env, **topology.data_api())
+    harness = topology.harness()
     procs = Procs()
     result = {"service_gate": "not-run", "process_role_replay": "pending"}
     try:
@@ -302,8 +388,11 @@ def main() -> int:
         run([str(ROOT / "deploy/local/topics.sh")], env)
         reset_replay_topic(env)
         reset_replay_groups(env)
+        skip_existing_evidence(env)
         run([platform, "migrate"], env)
         run(["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "migrate"], env, ROOT / "data")
+        data_plane.provision_rights(env, ROOT, topology)
+        data_plane.apply_rights(env, ROOT, topology, rights_batch(), WORK / "rights-batch.json", "A02 process replay tenant rights")
         setup_directory(env)
         clear_tenant_state(env)
 
@@ -313,14 +402,17 @@ def main() -> int:
         wait_http("http://127.0.0.1:18080/healthz")
         wait_http(env["MIAOQIA_IDENTITY_OPENFGA_URL"].rstrip("/") + "/healthz")
 
-        procs.start("platform-api", [platform, "-role", "api"], env)
-        procs.start("platform-consumer", [platform, "-role", "consumer"], env)
-        procs.start("platform-outbox-relay", [platform, "-role", "outbox-relay"], env)
-        procs.start("platform-scheduler", [platform, "-role", "scheduler"], env)
+        procs.start("platform-api", [platform, "-role", "api"], platform_env["api"])
+        procs.start("platform-consumer", [platform, "-role", "consumer"], platform_env["consumer"])
+        procs.start("platform-outbox-relay", [platform, "-role", "outbox-relay"], platform_env["outbox-relay"])
+        procs.start("acq-admin", ["uv", "run", "-q", "--locked", "--all-packages", "mq-acquisition", "--role", "acq-admin"],
+                    dict(env, **topology.acq_admin(hostport(env["MIAOQIA_TEST_PG"]))), ROOT / "data")
         procs.start("data-consumer", ["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "--role", "data-consumer"], env, ROOT / "data")
-        procs.start("data-api", ["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "--role", "data-api"], env, ROOT / "data")
+        procs.start("data-api", ["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "--role", "data-api"], data_api_env, ROOT / "data")
         wait_http("http://127.0.0.1:8090/")
-        wait_http("http://127.0.0.1:8094/healthz")
+        wait_tcp(data_plane.PLATFORM_INTERNAL)
+        wait_tcp(data_plane.RIGHTS_LISTEN)
+        wait_tcp(data_plane.DATA_LISTEN)
         procs.check()
 
         dm_token = token(env["MIAOQIA_GATEWAY_ISSUER"], DM)
@@ -345,7 +437,7 @@ def main() -> int:
         # real winner-result signal can still be evaluated.
         form["rules"] = [{"id": rule_id, "enabled": False} for rule_id in ("R-CAT", "R-REGION", "R-WINNER")]
         _, policy = request("PUT", policy_url + "/draft", dm_token, {"expected_version": policy["draft_version"], "form": form}, expected={200})
-        deadline = time.time() + 90
+        deadline = time.time() + EVENT_WAIT
         while time.time() < deadline:
             _, policy = request("GET", policy_url, dm_token, expected={200})
             draft = policy.get("draft") or {}
@@ -360,7 +452,7 @@ def main() -> int:
         approval_id = approval["approval_id"]
         _, approval_state = request("GET", f"http://127.0.0.1:8090/v1/identity/approvals/{approval_id}", approver_token, expected={200})
         request("POST", f"http://127.0.0.1:8090/v1/identity/approvals/{approval_id}/decide", approver_token, {"expected_version": approval_state["version"], "decision": "approve"}, expected={200})
-        deadline = time.time() + 90
+        deadline = time.time() + EVENT_WAIT
         while time.time() < deadline:
             _, policy = request("GET", policy_url, dm_token, expected={200})
             if policy.get("active_version", 0) > 0:
@@ -369,48 +461,53 @@ def main() -> int:
         else:
             raise RuntimeError(f"策略未激活：{policy}")
 
-        sample = ROOT / "packs/information_domains/procurement/corpus/official-candidate-20261014"
+        # Replay the reviewed building pair: the tender first, then the award
+        # notice that carries the result units detection evaluates.
         replay_env = dict(env, MIAOQIA_EVIDENCE_OBJECT_STORE_DIR=str(evidence_objects), MIAOQIA_PACKS_DIR=str(ROOT / "packs"))
-        replay = run(["uv", "run", "-q", "--locked", "--all-packages", "mq-evidence-replay", str(sample)], replay_env, ROOT / "data", capture=True)
-        replay_result = json.loads(replay.stdout.splitlines()[-1])
-        revisions = replay_result.get("revisions") or replay_result.get("existing_revisions")
-        if not revisions:
-            raise RuntimeError(f"冻结公告回放没有修订：{replay_result}")
-        revision = revisions[-1]
+        revision = None
+        for sample in ("official-building-tender-20261026", "official-building-award-20261026"):
+            replay = run(["uv", "run", "-q", "--locked", "--all-packages", "mq-evidence-replay", str(CORPUS / sample)], replay_env, ROOT / "data", capture=True)
+            replay_result = json.loads(replay.stdout.splitlines()[-1])
+            revisions = replay_result.get("revisions") or replay_result.get("existing_revisions")
+            if not revisions:
+                raise RuntimeError(f"冻结公告 {sample} 回放没有修订：{replay_result}")
+            revision = revisions[-1]
+            if not replay_result.get("revisions"):
+                republish_revision(env, revision)
         fact_id, fact_version = wait_row(env, "dom", "SELECT v.fact_id, v.version FROM dom_fact_versions v JOIN dom_facts f ON f.id = v.fact_id WHERE v.revision_ref = %s AND f.object_type = 'tendering.notice' ORDER BY v.version DESC LIMIT 1", (revision,))
-        fact_status, fact_body = request("POST", "http://127.0.0.1:8094/internal/v1/data/get-fact", None, {"fact_id": fact_id, "basis": {"view": "current"}}, expected={200})
-        if fact_body.get("fact", {}).get("id") != fact_id:
-            raise RuntimeError(f"data-api 未返回回放事实：{fact_body}")
-        evidence_id = walk_evidence(fact_body.get("fact", {}))
+        object_id, = wait_row(env, "dom", "SELECT project_id FROM dom_notice_links WHERE notice_id = %s AND project_id IS NOT NULL ORDER BY notice_version DESC LIMIT 1", (fact_id,))
+
+        # The harness reads data-api over mTLS as the replay decision maker.
+        status, fact_body = data_plane.read(harness, "/internal/v1/data/get-fact", {"fact_id": object_id, "basis": {"view": "current", "recorded_cutoff": None}, "version": None}, user(DM))
+        if status != 200 or (fact_body or {}).get("fact", {}).get("id") != object_id:
+            raise RuntimeError(f"data-api 未返回回放项目：{status} {fact_body}")
+        evidence_id = walk_evidence(fact_body["fact"])
         if not evidence_id:
-            raise RuntimeError("回放事实没有 evidence_ref")
+            raise RuntimeError("回放项目没有 evidence_ref")
+        status, resolved = data_plane.read(harness, "/internal/v1/data/resolve-evidence", {"evidence_ref": evidence_id}, user(DM))
+        if status != 200 or (resolved or {}).get("evidence", {}).get("id") != evidence_id:
+            raise RuntimeError(f"data-api 未解析证据 {evidence_id}：{status} {resolved}")
+        status, _ = data_plane.read(harness, "/internal/v1/data/get-fact", {"fact_id": object_id, "basis": {"view": "current", "recorded_cutoff": None}, "version": None}, user(OTHER, "tnt_01M6DQA02XTRB0000000000001"))
+        if status != 403:
+            raise RuntimeError(f"没有来源权利的租户读取未被拒绝：{status}")
+
         republish_fact(env, fact_id)
-        pg = hostport(env["MIAOQIA_TEST_PG"])
-        with psycopg.connect(f"postgres://dom_owner:dom_owner@{pg}/dom") as c:
-            object_id = c.execute("SELECT project_id FROM dom_notice_links WHERE notice_id = %s ORDER BY notice_version DESC LIMIT 1", (fact_id,)).fetchone()
-        if object_id and object_id[0]:
-            object_id = object_id[0]
-        else:
-            # Candidate notices intentionally keep a pending project namespace;
-            # use the frozen building project for the object/evidence leg while
-            # retaining the candidate signal as the live detection leg.
-            object_id = "pp_01M6C3K4A1T57GPSYR0R7WGEK9"
-            with psycopg.connect(f"postgres://dom_owner:dom_owner@{pg}/dom") as c:
-                project_content = c.execute("SELECT content FROM dom_fact_versions WHERE fact_id = %s ORDER BY version DESC LIMIT 1", (object_id,)).fetchone()
-            if project_content:
-                # Title evidence is present in the frozen object store and is
-                # the stable object-page citation used by the gateway replay.
-                evidence_id = "ev_6KN7A9QPS0QHPT9KE5BX7JGMQS"
         signal_id, = wait_row(env, "det", "SELECT id FROM det_signals WHERE tenant_id = %s AND subject_id = %s ORDER BY created_at DESC LIMIT 1", (TENANT, fact_id))
         _, inbox = request("GET", f"http://127.0.0.1:8090/v1/detection/objectives/{objective_id}/signals", dm_token, expected={200})
         if not any((row.get("signal_id") or row.get("id")) == signal_id for row in inbox.get("signals", [])):
             raise RuntimeError(f"信号未进入收件箱：{inbox}")
         _, object_page = request("GET", f"http://127.0.0.1:8090/v1/objects/{object_id}", dm_token, expected={200})
-        _, evidence = request("GET", f"http://127.0.0.1:8090/v1/evidence/{evidence_id}", dm_token, expected={200})
-        if evidence.get("object_id") != object_id:
+        # The gateway evidence panel is not wired to data-api yet (A02 gap
+        # D-11); it must fail closed until it is, and match the object after.
+        evidence_status, evidence = request("GET", f"http://127.0.0.1:8090/v1/evidence/{evidence_id}", dm_token, expected={200, 503})
+        if evidence_status == 200 and evidence.get("object_id") != object_id:
             raise RuntimeError(f"证据未关联项目：{evidence}")
 
-        # scheduler runs ComposeDue immediately. A synthetic bound channel makes
+        # The scheduler starts only now: its first ComposeDue runs immediately,
+        # and a run before the objective and signal exist would mark today's
+        # period as skipped (no audience) and never compose it.
+        procs.start("platform-scheduler", [platform, "-role", "scheduler"], platform_env["scheduler"])
+        # A synthetic bound channel makes
         # the in-app briefing observable without claiming the production WeCom adapter.
         briefing_id = wait_row(env, "chn", "SELECT id FROM chn_briefings WHERE tenant_id = %s AND subject = %s ORDER BY assembled_at DESC LIMIT 1", (TENANT, DM))[0]
         _, briefing = request("GET", f"http://127.0.0.1:8090/v1/channels/briefings/{briefing_id}", dm_token, expected={200})
@@ -423,23 +520,24 @@ def main() -> int:
         if s not in {403, 404}:
             raise RuntimeError(f"visitor 收件箱访问没有拒绝：{s}")
 
-        # Tighten source rights and verify the data plane returns a restricted view.
-        procs.stop_one("data-api")
-        restricted_env = dict(env, MIAOQIA_DATA_PUBLIC_RIGHTS="corpus:does-not-exist")
-        procs.start("data-api-restricted", ["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "--role", "data-api"], restricted_env, ROOT / "data")
-        wait_http("http://127.0.0.1:8094/healthz")
-        restricted_status, restricted = request("GET", f"http://127.0.0.1:8090/v1/evidence/{evidence_id}", dm_token, expected={200, 404, 503})
-        if restricted_status == 200 and restricted.get("display_level") not in {"none", "citation_only"}:
-            raise RuntimeError(f"收紧来源权利后证据未降级：{restricted}")
-        procs.stop_one("data-api-restricted")
-        procs.start("data-api", ["uv", "run", "-q", "--locked", "--all-packages", "mq-data", "--role", "data-api"], env, ROOT / "data")
-        wait_http("http://127.0.0.1:8094/healthz")
+        # Revoke the award rights: the object page closure includes the award,
+        # so the data plane must stop serving it. The next run re-activates.
+        data_plane.apply_rights(env, ROOT, topology, [{"action": "revoke", "entry_id": "building-award"}], WORK / "rights-revoke.json", "A02 process replay revocation control")
+        restricted_status, _ = request("GET", f"http://127.0.0.1:8090/v1/objects/{object_id}", dm_token)
+        if restricted_status == 200:
+            raise RuntimeError("撤销来源权利后对象页仍返回内容")
+        status, _ = data_plane.read(harness, "/internal/v1/data/get-fact", {"fact_id": object_id, "basis": {"view": "current", "recorded_cutoff": None}, "version": None}, user(DM))
+        if status != 403:
+            raise RuntimeError(f"撤销来源权利后 data-api 读取未被拒绝：{status}")
         procs.stop_one("data-api")
         status, _ = request("GET", f"http://127.0.0.1:8090/v1/objects/{object_id}", dm_token)
         if status != 503:
             raise RuntimeError(f"data-api 不可用时对象页未失败关闭：{status}")
 
-        result.update({"service_gate": "passed", "process_role_replay": "passed", "tenant_id": TENANT, "objective_id": objective_id, "fact_id": fact_id, "fact_version": fact_version, "signal_id": signal_id, "object_id": object_id, "evidence_id": evidence_id, "briefing_id": briefing_id, "replay_revision": revision, "negative_controls": {"cross_tenant": "denied", "visitor": "denied", "rights_restricted": "passed", "data_api_unavailable": "fail_closed"}})
+        result.update({"service_gate": "passed", "process_role_replay": "passed", "tenant_id": TENANT, "objective_id": objective_id, "fact_id": fact_id, "fact_version": fact_version, "signal_id": signal_id, "object_id": object_id, "evidence_id": evidence_id, "briefing_id": briefing_id, "replay_revision": revision,
+                       "data_api": {"transport": "mtls", "detection_read": "monitoring", "learning_read": "simulation", "harness_read": "interactive"},
+                       "gateway_evidence_panel": "passed" if evidence_status == 200 else "fail_closed (D-11)",
+                       "negative_controls": {"cross_tenant": "denied", "visitor": "denied", "rights_other_tenant": "denied", "rights_revoked": "denied", "object_page_after_revoke": restricted_status, "data_api_unavailable": "fail_closed"}})
         (WORK / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
@@ -452,5 +550,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.path.insert(0, str(ROOT / "tests/e2e"))
     raise SystemExit(main())

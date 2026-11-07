@@ -5,15 +5,31 @@ and the existing query port.  It accepts no SQL, source policy, or JSON paths.
 """
 from __future__ import annotations
 
+from contextvars import ContextVar
 from datetime import datetime
 import re
 
-from miaoqia.kernel.internal_http import PreparedResponse, closed
+from miaoqia.kernel.internal_http import INTERACTIVE, SERVICE_PURPOSES, PreparedResponse, closed
 from miaoqia.kernel import reqctx
 
 from ..api import Basis
 
 _ID = re.compile(r"^(?:ntc|pp|ev)_[A-Za-z0-9_-]{1,128}$")
+# Each data-read route maps to one closed acquisition source-rights operation.
+RIGHTS_OPERATIONS = {
+    "data.get_fact": "fact_read", "data.fact_history": "fact_read", "data.query_facts": "fact_read",
+    "data.bid_result_units": "fact_read", "data.resolve_evidence": "evidence_resolve",
+}
+
+
+# Display level admitted for the current request by its source-rights decision.
+# Request-local and fail-closed: anything not admitted in this request is "none".
+_admitted = ContextVar("miaoqia_admitted_display", default="none")
+
+
+def admitted_display(groups, purpose):
+    """Evidence display callback: the level the route admission granted, never more."""
+    return _admitted.get()
 
 
 class ReadAuthorization:
@@ -30,27 +46,41 @@ class ReadAuthorization:
             raise ValueError("bounded authorization inputs required")
         if len(inputs) > self.max_groups:
             raise ValueError("authorization group limit exceeded")
+        _admitted.set("none")
         ctx = reqctx.current()
         ctx.validate()
-        if ctx.principal.kind != "user" or not ctx.tenant or not ctx.cell or ctx.purpose != "interactive":
-            raise PermissionError("active user context required")
-        self.identity.resolve(deadline=deadline)
-        self.rights.status(deadline=deadline)
-        request = {"operation": operation, "inputs": list(inputs)}
+        if not ctx.tenant or not ctx.cell:
+            raise PermissionError("tenant context required")
+        if ctx.purpose == INTERACTIVE:
+            if ctx.principal.kind != "user":
+                raise PermissionError("active user context required")
+            interactive = True
+        elif ctx.purpose in SERVICE_PURPOSES:
+            # The listener already matched the exact delegated service principal.
+            if ctx.principal.kind != "service" or not ctx.principal.id.startswith("svc:"):
+                raise PermissionError("delegated service context required")
+            interactive = False
+        else:
+            raise PermissionError("unsupported purpose")
+        def current(remaining_deadline):
+            if interactive:
+                self.identity.resolve(deadline=remaining_deadline)
+            self.rights.status(deadline=remaining_deadline)
+        current(deadline)
+        if operation not in RIGHTS_OPERATIONS:
+            raise ValueError("unsupported data-read operation")
+        request = {"operation": RIGHTS_OPERATIONS[operation], "inputs": list(inputs)}
         # Empty result sets still perform status admission, but there is no
         # source-rights decision to resolve or receipt to confirm.
         if not inputs:
-            def confirm_empty(remaining_deadline):
-                self.identity.resolve(deadline=remaining_deadline)
-                self.rights.status(deadline=remaining_deadline)
-            return confirm_empty
+            return current
         decision = self.rights.resolve(request, deadline=deadline)
         if not decision.get("allowed") or "receipt" not in decision:
             raise PermissionError("source groups denied")
         receipt = decision["receipt"]
+        _admitted.set(decision.get("display", "none"))
         def confirm(remaining_deadline):
-            self.identity.resolve(deadline=remaining_deadline)
-            self.rights.status(deadline=remaining_deadline)
+            current(remaining_deadline)
             result = self.rights.confirm({**request, "receipt": receipt}, deadline=remaining_deadline)
             if not result.get("allowed"):
                 raise PermissionError("authorization expired or revoked")

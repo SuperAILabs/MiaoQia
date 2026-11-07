@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -51,5 +52,27 @@ func TestFactsRejectsMismatchedSubject(t *testing.T) {
 	ctx := reqctx.With(context.Background(), reqctx.Context{Tenant: "tnt_a", Cell: "cell-01", Principal: reqctx.Principal{ID: "usr_a", Kind: "user"}, Purpose: "interactive"})
 	if _, err := facts.Units(ctx, api.FactRef{ID: "pp_abc", Version: 1}); err == nil {
 		t.Fatal("mismatched subject accepted")
+	}
+}
+
+func TestFactsMapsForbiddenToReadDeniedAndKeepsUnavailableRetryable(t *testing.T) {
+	for _, tc := range []struct {
+		status int
+		denied bool
+	}{{http.StatusForbidden, true}, {http.StatusServiceUnavailable, false}} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
+			_, _ = w.Write([]byte(`{"title":"request rejected"}`))
+		}))
+		facts, err := NewFactsWithHTTPClient(server.URL, http.DefaultClient)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx := reqctx.With(context.Background(), reqctx.Context{Tenant: "tnt_a", Cell: "cell-01", Principal: reqctx.Principal{ID: "svc:detection", Kind: "service"}, Purpose: "monitoring"})
+		_, err = facts.Units(ctx, api.FactRef{ID: "pp_abc", Version: 1})
+		server.Close()
+		if err == nil || errors.Is(err, api.ErrReadDenied) != tc.denied {
+			t.Fatalf("status %d: err=%v", tc.status, err)
+		}
 	}
 }

@@ -19,6 +19,9 @@ import (
 // ErrNotWired 表示匹配适配器没有接入。
 var ErrNotWired = errors.New("detection：匹配适配器未接入")
 
+// ErrReadDenied 表示该租户的 monitoring 读取被数据平面拒绝（来源权利或委托不覆盖该租户）：匹配跳过该租户，不重试。
+var ErrReadDenied = errors.New("detection：事实读取被拒绝")
+
 // FactRef 是一条公共事实版本（domain.fact.upserted.v1 的载荷与信封）。
 type FactRef struct {
 	ID            string
@@ -92,13 +95,13 @@ type Facts interface {
 	Units(ctx context.Context, ref FactRef) ([]Unit, error)
 }
 
-// Candidates 返回 cell 中可能命中该事实版本的租户。
+// Candidates 返回 cell 中可能命中该事实版本的租户（只用事件元数据粗筛，不读事实内容）。
 type Candidates interface {
 	Tenants(ctx context.Context, cell string, ref FactRef) ([]string, error)
 }
 
-// CandidateResolver 是带事实视图的反查适配器。search 需要事实字段执行区域/品类过滤；
-// 保留 Candidates 兼容旧绑定，未实现该接口的适配器仍按 ref 反查。
+// CandidateResolver 是带事实视图的反查适配器：detection 以某租户读到的求值单位调用，结果含该租户时才求值。
+// search 用事实字段执行区域/品类过滤；未实现该接口的适配器只做粗筛。
 type CandidateResolver interface {
 	Candidates
 	TenantsFor(ctx context.Context, cell string, ref FactRef, units []Unit) ([]string, error)

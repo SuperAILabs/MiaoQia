@@ -329,6 +329,9 @@ def test_real_cli_batch_rollback_restart(registry, tmp_path):
     [
         {"scopes": []},
         {"purposes": ["research"]},
+        {"purposes": []},
+        {"purposes": ["monitoring", "monitoring"]},
+        {"purposes": "monitoring"},
         {"schema_version": True},
         {"version": True},
         {"display": "public"},
@@ -492,3 +495,51 @@ def test_reference_group_requires_independent_policy_and_explicit_activation(reg
         with pytest.raises(Exception):
             write.command({"action": "bind", "source_id": SOURCE, "tags": [TENDER,"public-official-review"],
                 "entry_id": p["entry_id"], "version": 1}, "reviewer", "cannot borrow official identity")
+
+
+MONITOR = reqctx.Context(
+    reqctx.Principal("svc:detection", "service"), CTX.tenant, CTX.cell, "monitoring"
+)
+SIMULATE = reqctx.Context(
+    reqctx.Principal("svc:learning", "service"), CTX.tenant, CTX.cell, "simulation"
+)
+
+
+def test_service_purposes_require_policy_purpose_and_service_principal(registry):
+    read, write, _ = registry
+    seed(write, purposes=["interactive", "monitoring"])
+    d = Decisions(read)
+    a = evaluate(d, context=MONITOR)
+    assert a["allowed"] and a["display"] == "excerpt"
+    assert evaluate(d, confirmed(request(), a), context=MONITOR, confirm=True)["allowed"]
+    # A receipt is bound to the caller and purpose.
+    assert not evaluate(d, confirmed(request(), a), context=CTX, confirm=True)["allowed"]
+    # simulation is not granted by this policy
+    assert not evaluate(d, context=SIMULATE)["allowed"]
+    for context in (
+        reqctx.Context(reqctx.Principal("user-a", "user"), CTX.tenant, CTX.cell, "monitoring"),
+        reqctx.Context(MONITOR.principal, CTX.tenant, CTX.cell, "interactive"),
+        reqctx.Context(reqctx.Principal("svc:detection", "service_account"), CTX.tenant, CTX.cell, "monitoring"),
+        reqctx.Context(reqctx.Principal("detection", "service"), CTX.tenant, CTX.cell, "monitoring"),
+        reqctx.Context(MONITOR.principal, "", "", "monitoring"),
+        reqctx.Context(MONITOR.principal, CTX.tenant, CTX.cell, "research"),
+    ):
+        with pytest.raises(PermissionError):
+            evaluate(d, context=context)
+    other = reqctx.Context(MONITOR.principal, "other-tenant", CTX.cell, "monitoring")
+    assert not evaluate(d, context=other)["allowed"]
+
+
+def test_current_version_cannot_add_purpose_missing_from_original(registry):
+    read, write, _ = registry
+    p, _ = seed(write)
+    with reqctx.use(CTX):
+        write.command(
+            {"action": "register", "policy": {**p, "version": 2, "purposes": ["interactive", "monitoring"]}},
+            "op",
+            "widen purpose",
+        )
+        write.command({"action": "activate", "entry_id": p["entry_id"], "version": 2}, "op", "activate")
+    d = Decisions(read)
+    assert evaluate(d)["allowed"]
+    assert not evaluate(d, context=MONITOR)["allowed"]

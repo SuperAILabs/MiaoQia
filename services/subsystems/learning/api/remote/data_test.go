@@ -13,6 +13,10 @@ import (
 
 func TestDatasetLoadsA02UnitsFromDataAPI(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := reqctx.Decode(r.Header.Get(reqctx.Header))
+		if err != nil || c.Purpose != "simulation" || c.Tenant != "tnt_01" || c.Principal.ID != "svc:learning" {
+			t.Errorf("simulation read context = %#v err=%v", c, err)
+		}
 		switch r.URL.Path {
 		case "/internal/v1/data/query-facts":
 			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{map[string]any{
@@ -34,7 +38,7 @@ func TestDatasetLoadsA02UnitsFromDataAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := reqctx.With(context.Background(), reqctx.Context{Tenant: "tnt_01", Cell: "cell-01", Principal: reqctx.Principal{ID: "svc:learning", Kind: "service"}, Purpose: "simulation"})
+	ctx := reqctx.With(context.Background(), reqctx.Context{Tenant: "tnt_01", Cell: "cell-01", Principal: reqctx.Principal{ID: "svc:learning", Kind: "service"}})
 	slice, err := client.Load(ctx, time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
@@ -54,4 +58,23 @@ func (t contextTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r = r.Clone(r.Context())
 	r.Header.Set(reqctx.Header, reqctx.Encode(c))
 	return t.base.RoundTrip(r)
+}
+
+func TestDatasetLoadRequiresTenantScopedServiceContext(t *testing.T) {
+	client, err := NewWithHTTPClient("http://127.0.0.1:1", &http.Client{Transport: contextTransport{base: http.DefaultTransport}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	from, to := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	for _, c := range []reqctx.Context{
+		{Principal: reqctx.Principal{ID: "svc:learning", Kind: "service"}},
+		{Tenant: "tnt_01", Cell: "cell-01", Principal: reqctx.Principal{ID: "usr_1", Kind: "user"}},
+	} {
+		if _, err := client.Load(reqctx.With(context.Background(), c), from, to); err == nil {
+			t.Fatalf("context %#v was accepted", c)
+		}
+	}
+	if _, err := client.Load(context.Background(), from, to); err == nil {
+		t.Fatal("missing context was accepted")
+	}
 }

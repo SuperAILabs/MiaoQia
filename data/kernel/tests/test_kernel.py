@@ -131,3 +131,18 @@ def test_outbox_consumer_dedupe_and_dead_letter(database, kafka):
     th.join(10)
     assert seen == ["prb_1", "prb_3"], seen
     d.close()
+
+
+def test_deadline_transaction_sets_local_timeouts_and_read_only(database):
+    d = db.Database(database["app"], pool_timeout=1.0)
+    with reqctx.use(tenant("tnt_a")), d.tx(deadline=time.monotonic() + 3) as conn:
+        statement, idle, read_only = conn.execute(text(
+            "SELECT current_setting('statement_timeout'), current_setting('idle_in_transaction_session_timeout'), "
+            "current_setting('transaction_read_only')")).one()
+        assert statement.endswith("ms") or statement.endswith("s")
+        assert statement != "0" and idle != "0" and read_only == "on"
+    # Transaction-local: a later transaction without a deadline keeps the defaults.
+    with reqctx.use(tenant("tnt_a")), d.tx() as conn:
+        assert conn.execute(text("SELECT current_setting('transaction_read_only')")).scalar() == "off"
+    with pytest.raises(TimeoutError), reqctx.use(tenant("tnt_a")), d.tx(deadline=time.monotonic() + 0.5):
+        pass

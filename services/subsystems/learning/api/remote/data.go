@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/superailabs/miaoqia/services/kernel/dataread"
+	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/subsystems/learning/api"
 )
 
@@ -70,7 +71,25 @@ type display struct {
 	AmountCNY *int64 `json:"amount_cny"`
 }
 
+// simulationContext 把仿真读取固定为草案所属租户的 purpose=simulation 服务读取（source-rights-runtime.md“服务主体按租户读取”）。
+// 没有租户或不是服务主体时不读取。
+func simulationContext(ctx context.Context) (context.Context, error) {
+	rc, ok := reqctx.From(ctx)
+	if !ok {
+		return nil, reqctx.ErrMissing
+	}
+	if rc.Tenant == "" || rc.Cell == "" || rc.Principal.Kind != "service" {
+		return nil, fmt.Errorf("learning simulation read requires a tenant-scoped service principal")
+	}
+	rc.Purpose = "simulation"
+	return reqctx.With(ctx, rc), nil
+}
+
 func (c *Client) Load(ctx context.Context, from, to time.Time) (*api.DatasetSlice, error) {
+	ctx, err := simulationContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	out := &api.DatasetSlice{Version: fmt.Sprintf("data-api:%s:%s", from.UTC().Format(time.RFC3339), to.UTC().Format(time.RFC3339)), Fixture: false,
 		CoverageStart: from.UTC(), FactDomains: map[string]string{"tendering.bid_result": "INF-PROC"},
 		ViewDomains: map[string]string{"winner.history_categories": "INF-PROC", "winner.supplied_brand_owners": "INF-PROC", "winner.credit_flags": "INF-CRED"}}

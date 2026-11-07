@@ -38,7 +38,7 @@
 
 网络：独立的出口网关与出口地址池；入站仅允许来自内部网络的管理请求。
 
-`acq-admin` 可显式启用[冻结语料当前权利只读接口](subsystems/source-rights-runtime.md)，以 TLS1.3/mTLS、精确委托矩阵与当前 identity 核验接收 data 调用。权利 reader/operator/owner 分离，data 只有远程 client，不持 acquisition DSN。默认关闭；该端口不提供写管理、来源内容或领域 live 证明。
+`acq-admin` 可显式启用[冻结语料当前权利只读接口](subsystems/source-rights-runtime.md)，以 TLS1.3/mTLS 与精确委托矩阵接收 data 调用：交互读取经当前 identity 核验，监控与仿真读取只接纳委托项点名的服务主体。权利 reader/operator/owner 分离，data 只有远程 client，不持 acquisition DSN。默认关闭；该端口不提供写管理、来源内容或领域 live 证明。
 
 以上角色只服务公共数据供应。客户系统集成复用同一镜像与连接器代码，以单元级的租户集成角色随租户单元部署，使用单元级凭证、存储、主题与出口，不与公共实例混用（[acquisition 第 10 节](subsystems/acquisition.md#10-租户集成)）；角色在首个租户集成启用时加入清单。
 
@@ -53,7 +53,7 @@
 
 客户授权文档（租户知识资产）的解析由 `tenant-document-worker` 的**单元级实例**完成：随租户单元部署，使用单元级凭证与存储，不与公共域实例混用。相同 database 代码按实例绑定不同数据库，迁移与备份也按实例执行。角色声明 `data_scopes: {evidence: tenant}` 与 `cell`；当前仅提供隔离组装骨架，租户文档业务处理随对应能力实现，不能启动公共探针消费者。
 
-`data-api` 的内部读取 listener 以 `MIAOQIA_DATA_API_LISTENER=1` 与 `--role data-api` 启用，监听 `MIAOQIA_DATA_LISTEN`；须配置 `MIAOQIA_INTERNAL_TLS_CERT`、`MIAOQIA_INTERNAL_TLS_KEY`、`MIAOQIA_INTERNAL_TLS_CA`、精确的委托矩阵 `MIAOQIA_DATA_DELEGATIONS`（peer、operation、purpose），以及 identity 与 acquisition 权利服务的地址和 peer。没有明文或开发绕过；缺任一配置不启动。
+`data-api` 的内部读取 listener 以 `MIAOQIA_DATA_API_LISTENER=1` 与 `--role data-api` 启用，监听 `MIAOQIA_DATA_LISTEN`；须配置 `MIAOQIA_INTERNAL_TLS_CERT`、`MIAOQIA_INTERNAL_TLS_KEY`、`MIAOQIA_INTERNAL_TLS_CA`、精确的委托矩阵 `MIAOQIA_DATA_DELEGATIONS`（peer、operation、purpose；monitoring/simulation 另写服务主体 principal，见[服务主体按租户读取](subsystems/source-rights-runtime.md#服务主体按租户读取)），以及 identity 与 acquisition 权利服务的地址和 peer。没有明文或开发绕过；缺任一配置不启动。platform 的内部端口与内部客户端在配置了 `MIAOQIA_INTERNAL_TLS_*` 时使用 mTLS（development 也如此），因此开发环境可以连接 data-api。
 
 ### 2.3 `platform` 单元
 

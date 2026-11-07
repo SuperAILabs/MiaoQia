@@ -4,7 +4,7 @@ acquisition 提供冻结语料的持久化当前权利端口，供 data-api runt
 
 ## 权威与引用
 
-[SourceRightsPolicy](../../../contracts/schemas/acquisition/source-rights.schema.json) 定义不可变原始版本：entry_id/version、source_id、精确 tenant/cell scopes、interactive purpose、展示上限、有效期及再分发限制。空 scope 不表示公共通配；业务读取仅支持 fact_read / evidence_resolve。原始版本及当前版本的每项限制同时生效；多个输入取交集、最低展示等级、最早到期和再分发 AND。扩权不能追溯放宽已有原始引用。
+[SourceRightsPolicy](../../../contracts/schemas/acquisition/source-rights.schema.json) 定义不可变原始版本：entry_id/version、source_id、精确 tenant/cell scopes、purposes（interactive、monitoring、simulation 的非空唯一子集）、展示上限、有效期及再分发限制。空 scope 不表示公共通配；业务读取仅支持 fact_read / evidence_resolve。原始版本及当前版本的每项限制同时生效；多个输入取交集、最低展示等级、最早到期和再分发 AND。扩权不能追溯放宽已有原始引用。
 
 数据库 `acq_rights` 保存不可变版本、精确 source+完整 tags 组合到原版本的不可变别名、当前版本/撤销指针、持久 epoch 与追加审计。操作通过受限 SECURITY DEFINER 函数串行执行，指针、epoch、审计同事务；别名不可改绑。运行 reader 仅 SELECT，operator 仅 SELECT 和执行受限 command，owner 只迁移/角色配置；禁止把 owner/operator 凭据放进运行进程。
 
@@ -42,7 +42,7 @@ owner 迁移 evidence0003/domain0004/acquisition0002，不激活任何政策。a
 
 ## 内部协议与确认边界
 
-acq-admin 内部 listener 使用标准库 ssl/http.server/http.client：TLS1.3、受信 CA、客户端证书、唯一 SPIFFE URI SAN、精确配置 peer。先校验传输 peer，才接受封闭的 Miaoqia-Context；无开发绕过、转发身份或静态 allow。data 不持 acquisition DSN，只导入 `acquisition.api.remote.RightsClient`。identity 继续使用现有平台内部 session 接口（HTTPS、禁止重定向），每次读取/确认/状态都核验当前 user、tenant、cell 和 interactive；service/service_account 首版拒绝。缺配置、依赖或策略失败关闭。
+acq-admin 内部 listener 使用标准库 ssl/http.server/http.client：TLS1.3、受信 CA、客户端证书、唯一 SPIFFE URI SAN、精确配置 peer。先校验传输 peer，才接受封闭的 Miaoqia-Context；无开发绕过、转发身份或静态 allow。data 不持 acquisition DSN，只导入 `acquisition.api.remote.RightsClient`。identity 继续使用现有平台内部 session 接口（HTTPS、禁止重定向），interactive 读取/确认/状态每次都核验当前 user、tenant、cell；monitoring/simulation 只接纳委托矩阵点名的服务主体（见下节）；service_account 拒绝。缺配置、依赖或策略失败关闭。
 
 | POST 路径 | 封闭请求 | 响应 |
 |---|---|---|
@@ -63,6 +63,24 @@ receipt 是最长30秒的随机 nonce/epoch/到期/HMAC 完整性封套，绑定
 3. 使用 operator DSN（`MIAOQIA_ACQUISITION_RIGHTS_OPERATOR_DSN`）执行 `mq-source-rights apply --file deploy/acquisition/source-rights-frozen.json --actor <operator-id> --reason <review-reason>`。整批至多16条、64KiB，事务失败全部回滚。重试相同操作不加 epoch/审计。
 4. [初始清单](../../../deploy/acquisition/source-rights-frozen.json) 仅登记/绑定，不 activate；scope 仅 tnt_01JA8ZXXXXXXXXXXXXXXXXXXX1/cell-01，展示 excerpt、不可再分发，2027-01-01 到期。真实 identity 未有该成员时自然拒绝；修改 scope 必须显式新版本评审，不能扩大旧原始引用。
 5. 需要 fixture 读取时，另写显式 activate 命令数组（action/entry_id/version）；撤销数组为 action=revoke + entry_id。版本登记为 action=register + policy，别名绑定为 action=bind + source_id/tags/entry_id/version。必须提供 actor/reason，不接受 SQL、通配目标或网络管理请求。
-6. 参考[关闭的配置示例](../../../deploy/acquisition/source-rights.env.example)，发放实际证书，配置精确 data peer→rights.resolve/confirm/status→interactive；设置 reader DSN、identity HTTPS/peer 和监听地址后才显式启用 `MIAOQIA_ACQUISITION_RIGHTS_ENABLED=1`，以 `mq-acquisition --role acq-admin` 启动。8092 是可配置推荐值，并非已有生产端口。
+6. 参考[关闭的配置示例](../../../deploy/acquisition/source-rights.env.example)，发放实际证书，配置精确 data peer→rights.resolve/confirm/status→interactive，以及 data 可转发的 monitoring（svc:detection）、simulation（svc:learning）服务读取项；设置 reader DSN、identity HTTPS/peer 和监听地址后才显式启用 `MIAOQIA_ACQUISITION_RIGHTS_ENABLED=1`，以 `mq-acquisition --role acq-admin` 启动。8092 是可配置推荐值，并非已有生产端口。
 
 现有 identity peer 使用 `spiffe://miaoqia/service/platform-api`；data-api/acq-admin 的 URI 随角色证书显式发放，示例不是生产默认许可。迁移仅 acquisition 自库，不借用 data/evidence/domain 凭据。停止依赖、失联、过期和撤销时失败关闭；不使用缺撤销保障的本地权利快照。最终响应确认、collector/查询结果装配和真实状态装配须独立实现/评审。
+
+## 服务主体按租户读取
+
+规则是“先定租户，再读取”：每次服务读取都带 tenant/cell，data-api 与 acq-admin 都没有无租户的公共读取路径。服务读取与用户读取走同一 mTLS listener、同一权利裁决与同一 receipt/confirm 流程，只是准入主体与用途不同。
+
+| purpose | 主体 | 调用方 | 租户来源 | 当前成员核验 |
+|---|---|---|---|---|
+| interactive | user | gateway 等用户请求 | 用户会话 | 每次经 identity 会话接口 |
+| monitoring | service（svc:detection） | detection 匹配 | search percolator 的候选租户 | 不调用 identity |
+| simulation | service（svc:learning） | learning 仿真 | 草案所属租户 | 不调用 identity |
+
+委托矩阵每项为 (peer, operation, purpose, principal)。interactive 项不写 principal，请求主体必须是 user 并通过 identity 核验；monitoring/simulation 项必须写精确的服务主体，请求主体须为 kind=service、id 与该项完全相同，且带 tenant/cell。peer 是证书上的 SPIFFE 身份：platform 每个进程角色一张证书（如 `spiffe://miaoqia/service/platform-consumer`），同一角色内承载多个子系统，因此主体由委托项点名，而不是从证书路径推断。acq-admin 的委托项以 data-api 为 peer，点名它可转发的服务主体；data-api 原样转发调用方上下文，不改写主体或用途。委托与主体的精确匹配由 kernel listener 执行；`Decisions.evaluate` 与 `ReadAuthorization.prepare` 再各自独立核对用途与主体类型（interactive 只接纳 user，monitoring/simulation 只接纳 `svc:` 服务主体）和 tenant/cell，任一层不满足即拒绝，返回 403。
+
+权利裁决对服务读取与用户读取相同：purpose 必须出现在全部原始版本与当前版本的 purposes 中，tenant/cell 必须在 scopes 中。因此原始版本没有授予 monitoring/simulation 的来源，不能靠新版本补上。
+
+detection 处理公共事实事件时分两步：先以事件元数据（cell、事实标识、对象类型）向 search percolator 取该 cell 内有监控查询的候选租户，这一步不读事实内容；再对每个候选租户以 purpose=monitoring 读取 `bid-result-units`，并用该租户的 percolator 区域/品类过滤核对读到的求值单位，通过后才求值。某租户的读取被拒绝时只跳过该租户并记录，不影响其他租户。learning 以草案所属租户、purpose=simulation 读取结果视图。
+
+服务读取不调用 identity，因此不证明租户仍有活跃成员；租户停用由 detection/learning 各自的生效策略读取把关。服务主体的委托与证书需要独立安全评审。

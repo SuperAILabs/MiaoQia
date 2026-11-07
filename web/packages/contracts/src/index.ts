@@ -1587,9 +1587,16 @@ export interface SourceRightsPolicy {
   ];
   /**
    * @minItems 1
-   * @maxItems 1
+   * @maxItems 3
    */
-  purposes: ["interactive"];
+  purposes:
+    | ["interactive" | "monitoring" | "simulation"]
+    | ["interactive" | "monitoring" | "simulation", "interactive" | "monitoring" | "simulation"]
+    | [
+        "interactive" | "monitoring" | "simulation",
+        "interactive" | "monitoring" | "simulation",
+        "interactive" | "monitoring" | "simulation"
+      ];
   display: "none" | "citation_only" | "excerpt" | "full_text";
   effective_at: string;
   expires_at: string;

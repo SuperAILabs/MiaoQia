@@ -20,6 +20,14 @@ from . import reqctx
 from .jsoncodec import MAX_BODY, closed, loads
 
 
+# interactive reads are user reads checked against identity on every request.
+# monitoring/simulation are delegated service reads; the delegation names the
+# exact service principal because one peer certificate may host several services.
+INTERACTIVE = "interactive"
+SERVICE_PURPOSES = frozenset({"monitoring", "simulation"})
+PURPOSES = frozenset({INTERACTIVE}) | SERVICE_PURPOSES
+
+
 class Problem(Exception):
     def __init__(self, status: int):
         self.status = status
@@ -201,6 +209,64 @@ class Identity:
                 "tenant_version": v["tenant_version"], "member_version": v["member_version"]}
 
 
+def delegation(peer, operation, purpose, principal=None):
+    """Validate one exact delegation as (peer, operation, purpose, principal).
+
+    interactive entries never name a principal; service entries always do.
+    """
+    if (
+        not isinstance(peer, str)
+        or not peer.startswith("spiffe://miaoqia/service/")
+        or not isinstance(operation, str)
+        or not operation
+        or purpose not in PURPOSES
+    ):
+        raise ValueError("invalid delegation")
+    if purpose == INTERACTIVE:
+        if principal is not None:
+            raise ValueError("interactive delegation cannot name a principal")
+    elif not isinstance(principal, str) or not principal.startswith("svc:") or len(principal) < 5:
+        raise ValueError("service delegation requires an exact service principal")
+    return (peer, operation, purpose, principal)
+
+
+def delegations(value, operations=None):
+    """Parse an explicit JSON delegation list; unknown keys or operations fail."""
+    if not isinstance(value, list) or not value:
+        raise ValueError("explicit delegation list required")
+    result = []
+    for item in value:
+        if (
+            not isinstance(item, dict)
+            or not {"peer", "operation", "purpose"} <= set(item)
+            or set(item) - {"peer", "operation", "purpose", "principal"}
+            or (operations is not None and item["operation"] not in operations)
+        ):
+            raise ValueError("invalid delegation")
+        result.append(delegation(item["peer"], item["operation"], item["purpose"], item.get("principal")))
+    return result
+
+
+def admit(context, peer, operation, allowed):
+    """Return True when the request needs an identity check (interactive user).
+
+    Raises Problem(403) unless the exact delegation exists and the principal kind
+    matches the purpose. Service reads must name a tenant/cell like user reads.
+    """
+    if not context.tenant or not context.cell or context.purpose not in PURPOSES:
+        raise Problem(403)
+    if context.purpose == INTERACTIVE:
+        if context.principal.kind != "user" or (peer, operation, INTERACTIVE, None) not in allowed:
+            raise Problem(403)
+        return True
+    if (
+        context.principal.kind != "service"
+        or (peer, operation, context.purpose, context.principal.id) not in allowed
+    ):
+        raise Problem(403)
+    return False
+
+
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     block_on_close = False
@@ -212,17 +278,11 @@ class Server(ThreadingHTTPServer):
     ):
         if not delegations or identity is None or not 0 < timeout <= 5:
             raise ValueError("internal admission configuration required")
-        # Exact (peer, operation, purpose), user-only. No implicit peer-wide delegation.
-        for p, op, purpose in delegations:
-            if (
-                not p.startswith("spiffe://miaoqia/service/")
-                or not op
-                or purpose != "interactive"
-            ):
-                raise ValueError("invalid delegation")
+        # Exact (peer, operation, purpose, principal). No implicit peer-wide delegation.
+        exact = frozenset(delegation(*d) for d in delegations)
         self.tls, self.delegations, self.identity, self.routes = (
             tls.context(server=True),
-            frozenset(delegations),
+            exact,
             identity,
             routes,
         )
@@ -253,7 +313,7 @@ class Server(ThreadingHTTPServer):
             # cannot serialize every accept or reach the HTTP parser before peer checks.
             secure = self.tls.wrap_socket(request, server_side=True)
             secure.verified_peer = peer(
-                secure.getpeercert(), {p for p, _, _ in self.delegations}
+                secure.getpeercert(), {d[0] for d in self.delegations}
             )
             # Budget the entire HTTP exchange, including request line and headers.
             secure.request_deadline = time.monotonic() + self.timeout_budget
@@ -301,17 +361,11 @@ class Handler(BaseHTTPRequestHandler):
             if route is None:
                 raise Problem(404)
             op, fn = route
-            if (
-                c.principal.kind != "user"
-                or not c.tenant
-                or not c.cell
-                or (self.connection.verified_peer, op, c.purpose)
-                not in self.server.delegations
-            ):
-                raise Problem(403)
+            interactive = admit(c, self.connection.verified_peer, op, self.server.delegations)
             context = reqctx.use(c)
             context.__enter__()
-            self.server.identity.resolve(deadline=deadline)
+            if interactive:
+                self.server.identity.resolve(deadline=deadline)
             lengths = self.headers.get_all("Content-Length", [])
             if (len(lengths) != 1 or not lengths[0].isdigit() or
                     not 0 < int(lengths[0]) <= MAX_BODY):
@@ -329,6 +383,9 @@ class Handler(BaseHTTPRequestHandler):
             status = 200
         except Problem as e:
             status = e.status
+        except PermissionError:
+            # Scope/purpose/source-rights denial is a stable 403, never a retryable 503.
+            status = 403
         except (ValueError, TypeError, RecursionError):
             status = 400
         except Exception:

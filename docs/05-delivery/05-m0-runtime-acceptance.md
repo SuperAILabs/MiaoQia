@@ -16,7 +16,7 @@
 
 ## 2. 认证配置
 
-默认按生产策略启动；只有显式 `MIAOQIA_ENV=development` 才允许实验环境明文传输。配置缺失不退回明文，也不跳过令牌或内部服务身份验证。
+默认按生产策略启动；只有显式 `MIAOQIA_ENV=development` 且未配置内部证书（`MIAOQIA_INTERNAL_TLS_*`）时才允许实验环境明文传输，配置了内部证书的开发进程内部端口与客户端照常使用 mTLS 并核验调用方白名单。配置缺失不退回明文，也不跳过令牌或内部服务身份验证。
 
 | 配置 | 含义 |
 |---|---|
@@ -53,7 +53,7 @@ tools/dev/run-local-acceptance.sh
 
 只运行代码、数据和契约检查时使用 `tools/dev/run-local-acceptance.sh --skip-e2e`；复用共享服务时不启动 Docker。需要本地授权服务时使用 `tools/dev/run-local-acceptance.sh --local-openfga --skip-e2e`（或组合 `--local-openfga` 与完整 E2E）；`--no-up` 保留为显式兼容写法，`--up` 才会启动可选的本地 Compose 组件。需要隔离本机边界时设置 `MIAOQIA_ACCEPTANCE_LOCAL_ONLY=true`，VPS 公共服务则通过 `tools/dev/run-m0-vps.sh` 单独验收。
 
-M0 E2E 不覆盖 data-api：data-api 是 mTLS 内部 listener，只接纳交互用户，E2E 的服务主体读取须等 [A02 缺口 D-06](09-a02-end-to-end-acceptance.md#41-数据供应d) 关闭后再接入。
+M0 E2E 不覆盖 data-api：data-api 的 mTLS 内部 listener、acq-admin 来源权利与服务主体读取由 [A02 进程回放](09-a02-end-to-end-acceptance.md#3-分级验收)覆盖；M0 E2E 的远程 identity 进程仍走明文内部端口，接入同一 mTLS 拓扑后再加入 data-api 读取。
 
 该入口的本地 E2E 使用开发环境的 HTTP Keycloak；HTTPS Keycloak、真实 mTLS 和生产认证策略仍须按本节的隔离组件命令单独复验。
 
