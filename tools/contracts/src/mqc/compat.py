@@ -134,6 +134,14 @@ def diff(old, new, where: str) -> list[Change]:
                 out.append(Change("breaking", w, f"{k} 由 {a} 收紧为 {b}"))
             else:
                 out.append(Change("additive", w, f"{k} 由 {a} 放宽为 {b}"))
+        elif k == "uniqueItems":
+            # 基线最多一项时不可能有重复，新增唯一性不收紧任何实例。
+            if b is True and old.get("maxItems") is not None and old["maxItems"] <= 1:
+                out.append(Change("additive", w, "新增 uniqueItems（基线 maxItems≤1，不收紧）"))
+            elif b is True:
+                out.append(Change("breaking", w, "新增 uniqueItems 约束"))
+            else:
+                out.append(Change("additive", w, "取消 uniqueItems 约束"))
         elif k in ("pattern", "format", "const", "multipleOf"):
             out.append(Change("additive" if b is None else "breaking", w, f"{k} 由 {a!r} 改为 {b!r}"))
         elif k in CONDITIONAL:

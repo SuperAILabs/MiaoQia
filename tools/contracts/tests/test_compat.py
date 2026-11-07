@@ -73,6 +73,22 @@ def test_diff_rules():
                        {"allOf": [{"if": {}, "then": {"required": ["b"]}}]}, "T")) == {"breaking"}
 
 
+def test_unique_items_rules():
+    arr = {"type": "array", "items": {"type": "string"}}
+    unique = {**arr, "uniqueItems": True}
+    # Absent or false → true tightens unless the base allows at most one item.
+    assert levels(diff(arr, unique, "T")) == {"breaking"}
+    assert levels(diff({**arr, "uniqueItems": False}, unique, "T")) == {"breaking"}
+    assert levels(diff({**arr, "maxItems": 2}, {**unique, "maxItems": 2}, "T")) == {"breaking"}
+    assert levels(diff({**arr, "maxItems": 1}, {**unique, "maxItems": 1}, "T")) == {"additive"}
+    assert levels(diff({**arr, "maxItems": 0}, {**unique, "maxItems": 0}, "T")) == {"additive"}
+    # The source-rights change: base maxItems 1, head maxItems 3 with uniqueItems.
+    assert levels(diff({**arr, "maxItems": 1}, {**unique, "maxItems": 3}, "T")) == {"additive"}
+    # true → false or removed loosens.
+    assert levels(diff(unique, {**arr, "uniqueItems": False}, "T")) == {"additive"}
+    assert levels(diff(unique, arr, "T")) == {"additive"}
+
+
 def test_bump_rules():
     assert bump_ok("0.1.0", "0.2.0", "breaking")       # 0.x：不兼容变更升次版本即可
     assert not bump_ok("0.1.0", "0.1.1", "breaking")
