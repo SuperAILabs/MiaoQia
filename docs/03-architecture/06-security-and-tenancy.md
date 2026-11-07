@@ -76,6 +76,21 @@ Tenant（签约客户）
 - 个人信息主体的删除、更正等权利请求由 `governance` 编排处理；
 - 自动化推送提供关闭方式。
 
+### 6.1 个人信息清单（草稿）
+
+下表按当前契约与设计列出已识别的个人信息，是 `governance` `PersonalInfoInventory` 与处理活动登记的初稿（立项准入 B6）。处理目的、保留期限与处理活动登记编号待法务与安全负责人验收后补齐；新增信息领域或字段时在其契约合入前补本表。
+
+| 类别 | 字段 | 契约 / 设计位置 | 分级与处理 | 删除、更正 |
+|---|---|---|---|---|
+| 公告业务联系人 | 姓名、电话、邮箱、角色 | [procurement defs `contact`](../../contracts/schemas/domains/procurement/defs.schema.json) | 公开；明文存储、检索、展示、进入模型 | 覆盖事实、检索索引与派生数据 |
+| 企业登记自然人 | 法定代表人、自然人股东、高管（姓名、原文职务） | [organization registration](../../contracts/schemas/domains/organization/registration.schema.json)、[common `person`](../../contracts/schemas/common/types.schema.json) | 公开；只作组织关系端点，不建个人画像、不以个人为查询入口 | 覆盖端点、边、检索投影与派生路径（[entity-graph 4.2](subsystems/entity-graph.md#42-自然人关系端点)） |
+| 司法信用记录中出现的自然人 | 姓名、职务 | [credit record `persons`](../../contracts/schemas/domains/credit/record.schema.json) | 公开；主体为自然人的记录不采集 | 同上 |
+| 投资项目审批中的自然人 | 待信息领域契约定义 | `packs/information_domains/investment_projects` | 待定 | 待定 |
+| 租户成员与受邀人 | 邮箱、姓名、角色、单元 | [identity 第4、5节](subsystems/identity.md#4-拥有的数据) | 内部；事件载荷不含邮箱与链接令牌 | 成员退出与租户删除编排 |
+| 渠道账号绑定 | 渠道成员标识、已验证邮箱 | [channels](subsystems/channels.md) | 内部 | 解绑与租户删除编排 |
+| 审计与支持访问记录 | 操作者、代表的租户、动作 | [governance](subsystems/governance.md) | 内部；只含引用与摘要 | 按保留策略；审计追加式不豁免主体删除要求 |
+| 租户上传文档与反馈中的个人信息 | 不定 | 租户文档、跟进记录 | 按所在租户数据分级（第5节），敏感默认不进模型 | 租户删除与主体请求编排 |
+
 ## 7. 公共数据暴露控制
 
 公共信源数据是平台的核心资产。用户与外部接口只能**按需、受控**地接触其中一部分，全量数据只供平台内部的 Agent 研究使用。
