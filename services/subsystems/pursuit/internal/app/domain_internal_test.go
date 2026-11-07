@@ -210,3 +210,36 @@ func TestSiblingHintWhitelist(t *testing.T) {
 		t.Fatalf("投影带出了白名单以外的字段：%s", raw)
 	}
 }
+
+// C-13：对象来源——保留的对象沿用加入版本与来源，新加入的记为新的成员版本与加入方式，移出的删除；C-13 之前的对象没有加入版本、记为手选。
+func TestTrackingMemberSources(t *testing.T) {
+	a, b, c := "org_01JA8ZXXXXXXXXXXXXXXXXXXX1", "org_01JA8ZXXXXXXXXXXXXXXXXXXX2", "org_01JA8ZXXXXXXXXXXXXXXXXXXX3"
+	tr := &trackingRow{Members: []string{a}, MembersVersion: 4, Sources: map[string]memberSource{}}
+	tr.setMembers([]string{a, b}, "import")
+	if tr.MembersVersion != 5 || tr.source(a).Version != nil || tr.source(a).Source != "manual" || *tr.source(b).Version != 5 || tr.source(b).Source != "import" {
+		t.Fatalf("%+v", tr.Sources)
+	}
+	tr.setMembers([]string{b, c}, "manual")
+	if _, ok := tr.Sources[a]; ok || *tr.source(b).Version != 5 || tr.source(b).Source != "import" || *tr.source(c).Version != 6 || tr.source(c).Source != "manual" {
+		t.Fatalf("%+v", tr.Sources)
+	}
+}
+
+// C-13：期末对象的实体来源版本——recorded 时有版本的记版本、没有的为 not_found；未接入与暂时不可用如实记录；读取之后（加锁前）新出现的
+// 对象为 unavailable，不当作不存在。
+func TestPeriodObjects(t *testing.T) {
+	a, b, c := "org_01JA8ZXXXXXXXXXXXXXXXXXXX1", "org_01JA8ZXXXXXXXXXXXXXXXXXXX2", "org_01JA8ZXXXXXXXXXXXXXXXXXXX3"
+	tr := &trackingRow{Members: []string{a, b, c}, Sources: map[string]memberSource{}}
+	got := entityVersions{state: "recorded", versions: map[string]int64{a: 7}, asked: []string{a, b}}.objects(tr)
+	if len(got) != 3 || got[0].EntityState != "recorded" || *got[0].EntityVersion != 7 || got[1].EntityState != "not_found" || got[1].EntityVersion != nil ||
+		got[2].EntityState != "unavailable" {
+		t.Fatalf("%+v", got)
+	}
+	for _, state := range []string{"not_wired", "unavailable"} {
+		for _, o := range (entityVersions{state: state, asked: []string{a, b, c}}).objects(tr) {
+			if o.EntityState != state || o.EntityVersion != nil || o.Source != "manual" {
+				t.Fatalf("%+v", o)
+			}
+		}
+	}
+}

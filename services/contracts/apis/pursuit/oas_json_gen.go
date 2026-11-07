@@ -3885,6 +3885,39 @@ func (s *OptTrackingCommandResultAuthorization) UnmarshalJSON(data []byte) error
 	return s.Decode(d)
 }
 
+// Encode encodes TrackingCommandResultImportCheck as json.
+func (o OptTrackingCommandResultImportCheck) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes TrackingCommandResultImportCheck from json.
+func (o *OptTrackingCommandResultImportCheck) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptTrackingCommandResultImportCheck to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptTrackingCommandResultImportCheck) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptTrackingCommandResultImportCheck) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes TrackingSummary as json.
 func (o OptTrackingSummary) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -8894,6 +8927,12 @@ func (s *TimelineEntryKind) Decode(d *jx.Decoder) error {
 		*s = TimelineEntryKindAuthorizationSyncFailed
 	case TimelineEntryKindAuthorizationSyncRecovered:
 		*s = TimelineEntryKindAuthorizationSyncRecovered
+	case TimelineEntryKindTrackingArchived:
+		*s = TimelineEntryKindTrackingArchived
+	case TimelineEntryKindTrackingUnarchived:
+		*s = TimelineEntryKindTrackingUnarchived
+	case TimelineEntryKindMembersImported:
+		*s = TimelineEntryKindMembersImported
 	default:
 		*s = TimelineEntryKind(v)
 	}
@@ -8950,6 +8989,16 @@ func (s *Tracking) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("owner_valid")
 		e.Bool(s.OwnerValid)
+	}
+	{
+		if s.Collaborators != nil {
+			e.FieldStart("collaborators")
+			e.ArrStart()
+			for _, elem := range s.Collaborators {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
 	}
 	{
 		e.FieldStart("members")
@@ -9012,6 +9061,12 @@ func (s *Tracking) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.ArchivedAt.Set {
+			e.FieldStart("archived_at")
+			s.ArchivedAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
 		e.FieldStart("timeline")
 		e.ArrStart()
 		for _, elem := range s.Timeline {
@@ -9027,7 +9082,7 @@ func (s *Tracking) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTracking = [21]string{
+var jsonFieldsNameOfTracking = [23]string{
 	0:  "id",
 	1:  "objective_id",
 	2:  "org_unit_id",
@@ -9035,20 +9090,22 @@ var jsonFieldsNameOfTracking = [21]string{
 	4:  "state",
 	5:  "owner",
 	6:  "owner_valid",
-	7:  "members",
-	8:  "members_version",
-	9:  "cadence",
-	10: "period_start",
-	11: "next_run_at",
-	12: "last_period_seq",
-	13: "version",
-	14: "authorization",
-	15: "created_by",
-	16: "created_at",
-	17: "updated_at",
-	18: "stopped_at",
-	19: "timeline",
-	20: "viewer_can_edit",
+	7:  "collaborators",
+	8:  "members",
+	9:  "members_version",
+	10: "cadence",
+	11: "period_start",
+	12: "next_run_at",
+	13: "last_period_seq",
+	14: "version",
+	15: "authorization",
+	16: "created_by",
+	17: "created_at",
+	18: "updated_at",
+	19: "stopped_at",
+	20: "archived_at",
+	21: "timeline",
+	22: "viewer_can_edit",
 }
 
 // Decode decodes Tracking from json.
@@ -9136,8 +9193,25 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"owner_valid\"")
 			}
+		case "collaborators":
+			if err := func() error {
+				s.Collaborators = make([]Subject, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem Subject
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Collaborators = append(s.Collaborators, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"collaborators\"")
+			}
 		case "members":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.Members = make([]OrgID, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -9155,7 +9229,7 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"members\"")
 			}
 		case "members_version":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int64()
 				s.MembersVersion = int64(v)
@@ -9167,7 +9241,7 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"members_version\"")
 			}
 		case "cadence":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				if err := s.Cadence.Decode(d); err != nil {
 					return err
@@ -9207,7 +9281,7 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"last_period_seq\"")
 			}
 		case "version":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int64()
 				s.Version = int64(v)
@@ -9219,7 +9293,7 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version\"")
 			}
 		case "authorization":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				if err := s.Authorization.Decode(d); err != nil {
 					return err
@@ -9229,7 +9303,7 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"authorization\"")
 			}
 		case "created_by":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				if err := s.CreatedBy.Decode(d); err != nil {
 					return err
@@ -9239,7 +9313,7 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_by\"")
 			}
 		case "created_at":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -9251,7 +9325,7 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "updated_at":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 2
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -9272,8 +9346,18 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"stopped_at\"")
 			}
+		case "archived_at":
+			if err := func() error {
+				s.ArchivedAt.Reset()
+				if err := s.ArchivedAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"archived_at\"")
+			}
 		case "timeline":
-			requiredBitSet[2] |= 1 << 3
+			requiredBitSet[2] |= 1 << 5
 			if err := func() error {
 				s.Timeline = make([]TimelineEntry, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -9310,9 +9394,9 @@ func (s *Tracking) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
-		0b11111111,
-		0b11100011,
-		0b00001011,
+		0b01111111,
+		0b11000111,
+		0b00100111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -9387,13 +9471,31 @@ func (s *TrackingCommandResult) encodeFields(e *jx.Encoder) {
 			s.Authorization.Encode(e)
 		}
 	}
+	{
+		if s.ImportRows != nil {
+			e.FieldStart("import_rows")
+			e.ArrStart()
+			for _, elem := range s.ImportRows {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		if s.ImportCheck.Set {
+			e.FieldStart("import_check")
+			s.ImportCheck.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfTrackingCommandResult = [4]string{
+var jsonFieldsNameOfTrackingCommandResult = [6]string{
 	0: "operation_id",
 	1: "result",
 	2: "tracking",
 	3: "authorization",
+	4: "import_rows",
+	5: "import_check",
 }
 
 // Decode decodes TrackingCommandResult from json.
@@ -9444,6 +9546,33 @@ func (s *TrackingCommandResult) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"authorization\"")
+			}
+		case "import_rows":
+			if err := func() error {
+				s.ImportRows = make([]TrackingImportResult, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem TrackingImportResult
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.ImportRows = append(s.ImportRows, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"import_rows\"")
+			}
+		case "import_check":
+			if err := func() error {
+				s.ImportCheck.Reset()
+				if err := s.ImportCheck.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"import_check\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
@@ -9541,6 +9670,46 @@ func (s *TrackingCommandResultAuthorization) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes TrackingCommandResultImportCheck as json.
+func (s TrackingCommandResultImportCheck) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TrackingCommandResultImportCheck from json.
+func (s *TrackingCommandResultImportCheck) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingCommandResultImportCheck to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TrackingCommandResultImportCheck(v) {
+	case TrackingCommandResultImportCheckVerified:
+		*s = TrackingCommandResultImportCheckVerified
+	case TrackingCommandResultImportCheckNotWired:
+		*s = TrackingCommandResultImportCheckNotWired
+	default:
+		*s = TrackingCommandResultImportCheck(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TrackingCommandResultImportCheck) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingCommandResultImportCheck) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes TrackingCommandResultResult as json.
 func (s TrackingCommandResultResult) Encode(e *jx.Encoder) {
 	e.Str(string(s))
@@ -9579,6 +9748,402 @@ func (s TrackingCommandResultResult) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TrackingCommandResultResult) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *TrackingImportRequest) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TrackingImportRequest) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("operation_id")
+		s.OperationID.Encode(e)
+	}
+	{
+		e.FieldStart("expected_version")
+		e.Int64(s.ExpectedVersion)
+	}
+	{
+		e.FieldStart("rows")
+		e.ArrStart()
+		for _, elem := range s.Rows {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfTrackingImportRequest = [3]string{
+	0: "operation_id",
+	1: "expected_version",
+	2: "rows",
+}
+
+// Decode decodes TrackingImportRequest from json.
+func (s *TrackingImportRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingImportRequest to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "operation_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.OperationID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"operation_id\"")
+			}
+		case "expected_version":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int64()
+				s.ExpectedVersion = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"expected_version\"")
+			}
+		case "rows":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				s.Rows = make([]TrackingImportRow, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem TrackingImportRow
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Rows = append(s.Rows, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rows\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TrackingImportRequest")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfTrackingImportRequest) {
+					name = jsonFieldsNameOfTrackingImportRequest[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TrackingImportRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingImportRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *TrackingImportResult) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TrackingImportResult) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("index")
+		e.Int(s.Index)
+	}
+	{
+		if s.OrgID.Set {
+			e.FieldStart("org_id")
+			s.OrgID.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("outcome")
+		s.Outcome.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfTrackingImportResult = [3]string{
+	0: "index",
+	1: "org_id",
+	2: "outcome",
+}
+
+// Decode decodes TrackingImportResult from json.
+func (s *TrackingImportResult) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingImportResult to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "index":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int()
+				s.Index = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"index\"")
+			}
+		case "org_id":
+			if err := func() error {
+				s.OrgID.Reset()
+				if err := s.OrgID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"org_id\"")
+			}
+		case "outcome":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.Outcome.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"outcome\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TrackingImportResult")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000101,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfTrackingImportResult) {
+					name = jsonFieldsNameOfTrackingImportResult[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TrackingImportResult) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingImportResult) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TrackingImportResultOutcome as json.
+func (s TrackingImportResultOutcome) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TrackingImportResultOutcome from json.
+func (s *TrackingImportResultOutcome) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingImportResultOutcome to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TrackingImportResultOutcome(v) {
+	case TrackingImportResultOutcomeAdded:
+		*s = TrackingImportResultOutcomeAdded
+	case TrackingImportResultOutcomeAlreadyMember:
+		*s = TrackingImportResultOutcomeAlreadyMember
+	case TrackingImportResultOutcomeDuplicate:
+		*s = TrackingImportResultOutcomeDuplicate
+	case TrackingImportResultOutcomeInvalid:
+		*s = TrackingImportResultOutcomeInvalid
+	case TrackingImportResultOutcomeNotFound:
+		*s = TrackingImportResultOutcomeNotFound
+	case TrackingImportResultOutcomeUnresolved:
+		*s = TrackingImportResultOutcomeUnresolved
+	case TrackingImportResultOutcomeOverLimit:
+		*s = TrackingImportResultOutcomeOverLimit
+	default:
+		*s = TrackingImportResultOutcome(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TrackingImportResultOutcome) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingImportResultOutcome) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *TrackingImportRow) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TrackingImportRow) encodeFields(e *jx.Encoder) {
+	{
+		if s.OrgID.Set {
+			e.FieldStart("org_id")
+			s.OrgID.Encode(e)
+		}
+	}
+	{
+		if s.Name.Set {
+			e.FieldStart("name")
+			s.Name.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfTrackingImportRow = [2]string{
+	0: "org_id",
+	1: "name",
+}
+
+// Decode decodes TrackingImportRow from json.
+func (s *TrackingImportRow) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingImportRow to nil")
+	}
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "org_id":
+			if err := func() error {
+				s.OrgID.Reset()
+				if err := s.OrgID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"org_id\"")
+			}
+		case "name":
+			if err := func() error {
+				s.Name.Reset()
+				if err := s.Name.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TrackingImportRow")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TrackingImportRow) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingImportRow) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -9845,6 +10410,248 @@ func (s *TrackingMembersRequest) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *TrackingObject) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TrackingObject) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("org_id")
+		s.OrgID.Encode(e)
+	}
+	{
+		if s.AddedMembersVersion.Set {
+			e.FieldStart("added_members_version")
+			s.AddedMembersVersion.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("source")
+		s.Source.Encode(e)
+	}
+	{
+		e.FieldStart("entity_state")
+		s.EntityState.Encode(e)
+	}
+	{
+		if s.EntityVersion.Set {
+			e.FieldStart("entity_version")
+			s.EntityVersion.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfTrackingObject = [5]string{
+	0: "org_id",
+	1: "added_members_version",
+	2: "source",
+	3: "entity_state",
+	4: "entity_version",
+}
+
+// Decode decodes TrackingObject from json.
+func (s *TrackingObject) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingObject to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "org_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.OrgID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"org_id\"")
+			}
+		case "added_members_version":
+			if err := func() error {
+				s.AddedMembersVersion.Reset()
+				if err := s.AddedMembersVersion.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"added_members_version\"")
+			}
+		case "source":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.Source.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"source\"")
+			}
+		case "entity_state":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.EntityState.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"entity_state\"")
+			}
+		case "entity_version":
+			if err := func() error {
+				s.EntityVersion.Reset()
+				if err := s.EntityVersion.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"entity_version\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TrackingObject")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001101,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfTrackingObject) {
+					name = jsonFieldsNameOfTrackingObject[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TrackingObject) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingObject) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TrackingObjectEntityState as json.
+func (s TrackingObjectEntityState) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TrackingObjectEntityState from json.
+func (s *TrackingObjectEntityState) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingObjectEntityState to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TrackingObjectEntityState(v) {
+	case TrackingObjectEntityStateRecorded:
+		*s = TrackingObjectEntityStateRecorded
+	case TrackingObjectEntityStateNotFound:
+		*s = TrackingObjectEntityStateNotFound
+	case TrackingObjectEntityStateUnavailable:
+		*s = TrackingObjectEntityStateUnavailable
+	case TrackingObjectEntityStateNotWired:
+		*s = TrackingObjectEntityStateNotWired
+	default:
+		*s = TrackingObjectEntityState(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TrackingObjectEntityState) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingObjectEntityState) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TrackingObjectSource as json.
+func (s TrackingObjectSource) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TrackingObjectSource from json.
+func (s *TrackingObjectSource) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TrackingObjectSource to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TrackingObjectSource(v) {
+	case TrackingObjectSourceManual:
+		*s = TrackingObjectSourceManual
+	case TrackingObjectSourceImport:
+		*s = TrackingObjectSourceImport
+	default:
+		*s = TrackingObjectSource(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TrackingObjectSource) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TrackingObjectSource) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *TrackingPeriod) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -9900,6 +10707,16 @@ func (s *TrackingPeriod) encodeFields(e *jx.Encoder) {
 		e.Bool(s.OwnerValid)
 	}
 	{
+		if s.Objects != nil {
+			e.FieldStart("objects")
+			e.ArrStart()
+			for _, elem := range s.Objects {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
 		e.FieldStart("briefing_state")
 		s.BriefingState.Encode(e)
 	}
@@ -9909,7 +10726,7 @@ func (s *TrackingPeriod) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTrackingPeriod = [12]string{
+var jsonFieldsNameOfTrackingPeriod = [13]string{
 	0:  "pursuit_id",
 	1:  "seq",
 	2:  "period_start",
@@ -9920,8 +10737,9 @@ var jsonFieldsNameOfTrackingPeriod = [12]string{
 	7:  "baseline_seq",
 	8:  "owner",
 	9:  "owner_valid",
-	10: "briefing_state",
-	11: "recorded_at",
+	10: "objects",
+	11: "briefing_state",
+	12: "recorded_at",
 }
 
 // Decode decodes TrackingPeriod from json.
@@ -10053,8 +10871,25 @@ func (s *TrackingPeriod) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"owner_valid\"")
 			}
+		case "objects":
+			if err := func() error {
+				s.Objects = make([]TrackingObject, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem TrackingObject
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Objects = append(s.Objects, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"objects\"")
+			}
 		case "briefing_state":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.BriefingState.Decode(d); err != nil {
 					return err
@@ -10064,7 +10899,7 @@ func (s *TrackingPeriod) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"briefing_state\"")
 			}
 		case "recorded_at":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.RecordedAt = v
@@ -10086,7 +10921,7 @@ func (s *TrackingPeriod) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b01111111,
-		0b00001111,
+		0b00011011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -10315,6 +11150,8 @@ func (s *TrackingState) Decode(d *jx.Decoder) error {
 		*s = TrackingStatePaused
 	case TrackingStateStopped:
 		*s = TrackingStateStopped
+	case TrackingStateArchived:
+		*s = TrackingStateArchived
 	default:
 		*s = TrackingState(v)
 	}
@@ -10369,6 +11206,16 @@ func (s *TrackingSummary) encodeFields(e *jx.Encoder) {
 		e.Bool(s.OwnerValid)
 	}
 	{
+		if s.Collaborators != nil {
+			e.FieldStart("collaborators")
+			e.ArrStart()
+			for _, elem := range s.Collaborators {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
 		e.FieldStart("members_count")
 		e.Int(s.MembersCount)
 	}
@@ -10400,20 +11247,21 @@ func (s *TrackingSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTrackingSummary = [13]string{
+var jsonFieldsNameOfTrackingSummary = [14]string{
 	0:  "id",
 	1:  "objective_id",
 	2:  "name",
 	3:  "state",
 	4:  "owner",
 	5:  "owner_valid",
-	6:  "members_count",
-	7:  "members_version",
-	8:  "next_run_at",
-	9:  "version",
-	10: "authorization",
-	11: "created_at",
-	12: "updated_at",
+	6:  "collaborators",
+	7:  "members_count",
+	8:  "members_version",
+	9:  "next_run_at",
+	10: "version",
+	11: "authorization",
+	12: "created_at",
+	13: "updated_at",
 }
 
 // Decode decodes TrackingSummary from json.
@@ -10489,8 +11337,25 @@ func (s *TrackingSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"owner_valid\"")
 			}
+		case "collaborators":
+			if err := func() error {
+				s.Collaborators = make([]Subject, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem Subject
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Collaborators = append(s.Collaborators, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"collaborators\"")
+			}
 		case "members_count":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Int()
 				s.MembersCount = int(v)
@@ -10502,7 +11367,7 @@ func (s *TrackingSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"members_count\"")
 			}
 		case "members_version":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int64()
 				s.MembersVersion = int64(v)
@@ -10524,7 +11389,7 @@ func (s *TrackingSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"next_run_at\"")
 			}
 		case "version":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int64()
 				s.Version = int64(v)
@@ -10536,7 +11401,7 @@ func (s *TrackingSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version\"")
 			}
 		case "authorization":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.Authorization.Decode(d); err != nil {
 					return err
@@ -10546,7 +11411,7 @@ func (s *TrackingSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"authorization\"")
 			}
 		case "created_at":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -10558,7 +11423,7 @@ func (s *TrackingSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "updated_at":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -10579,8 +11444,8 @@ func (s *TrackingSummary) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11111111,
-		0b00011110,
+		0b10111111,
+		0b00111101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

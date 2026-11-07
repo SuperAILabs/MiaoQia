@@ -8,6 +8,17 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// ArchiveTracking implements archiveTracking operation.
+	//
+	// 需要推进的 can_edit。已停止 →
+	// 已归档：只读，不再出现在缺省列表中（listTracking 的 archived=true
+	// 列出），已结束的各期保留。已归档为 no_change；跟踪中与已暂停 409
+	// invalid_transition（须先停止）；否则版本不一致 409
+	// conflict。已归档的跟踪不能暂停、恢复、停止、修改或 导入对象、改派（409
+	// invalid_transition）。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/archive
+	ArchiveTracking(ctx context.Context, req *VersionRequest, params ArchiveTrackingParams) (*TrackingCommandResult, error)
 	// AssignPursuit implements assignPursuit operation.
 	//
 	// 需要推进的
@@ -20,6 +31,18 @@ type Handler interface {
 	//
 	// POST /v1/pursuit/pursuits/{pursuitID}/assign
 	AssignPursuit(ctx context.Context, req *AssignRequest, params AssignPursuitParams) (*CommandResult, error)
+	// AssignTracking implements assignTracking operation.
+	//
+	// 与 assignPursuit 同一授权、写入准入与授权同步（推进的
+	// can_manage_team；负责人与协作者须为租户有效成员且能查看该目标的信号，否则
+	// 422 assignee_no_access；协作者至多 20 名）。负责人与协作者都不变为
+	// no_change；已归档 409 invalid_transition（跟踪中、已暂停与
+	// 已停止都可以改派）；否则版本不一致 409
+	// conflict。改派本地提交即生效，原负责人立即不能以负责人身份操作，新负责人在授权同步完成后
+	// 才能操作。之后结束的各期记录当时的负责人。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/assign
+	AssignTracking(ctx context.Context, req *AssignRequest, params AssignTrackingParams) (*TrackingCommandResult, error)
 	// ClosePursuit implements closePursuit operation.
 	//
 	// 需要推进的
@@ -132,6 +155,22 @@ type Handler interface {
 	//
 	// GET /v1/pursuit/tracking/{pursuitID}/periods/{seq}
 	GetTrackingPeriod(ctx context.Context, params GetTrackingPeriodParams) (*TrackingPeriod, error)
+	// ImportTrackingMembers implements importTrackingMembers operation.
+	//
+	// 需要推进的 can_edit。把一份名单（至多 500
+	// 行，每行为组织标识或名称）追加到对象集合，逐行给出结果（import_rows，按请求顺序）：
+	// added 已加入、already_member 已在集合中、duplicate 与前面的行重复、invalid
+	// 不是组织标识、not_found 实体图中不存在、 unresolved
+	// 只有名称（按名称解析组织尚未接入，不猜测）、over_limit 超过 200
+	// 个对象的上限。有加入的行时成员版本加一（succeeded）， 没有时为
+	// no_change；逐行结果与操作一起固定在操作标识上（重放返回同一结果）。组织是否存在经实体图核对：未接入时只校验标识格式，
+	// import_check 为
+	// not_wired（不当作“都存在”也不当作“都不存在”）；实体图暂时不可用时
+	// 503（不固定，用新键、同一操作标识重试）。 已停止与已归档 409
+	// invalid_transition；否则版本不一致 409 conflict。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/members/import
+	ImportTrackingMembers(ctx context.Context, req *TrackingImportRequest, params ImportTrackingMembersParams) (*TrackingCommandResult, error)
 	// ListMyTasks implements listMyTasks operation.
 	//
 	// 分派给调用者、未完成、截止在 before
@@ -159,8 +198,9 @@ type Handler interface {
 	// ListTracking implements listTracking operation.
 	//
 	// 只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多
-	// limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的
-	// objective_id，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。.
+	// limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的 objective_id 与
+	// archived，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。
+	// archived缺省为 false，只列未归档的；为 true 时只列已归档的。.
 	//
 	// GET /v1/pursuit/tracking
 	ListTracking(ctx context.Context, params ListTrackingParams) (*TrackingList, error)
@@ -207,11 +247,18 @@ type Handler interface {
 	// StopTracking implements stopTracking operation.
 	//
 	// 需要推进的 can_edit。跟踪中或已暂停 →
-	// 已停止：不再生成变化简报，已有各期保留。已停止为
-	// no_change；否则版本不一致 409 conflict。.
+	// 已停止：不再生成变化简报，已有各期保留。已停止为 no_change；已归档 409
+	// invalid_transition； 否则版本不一致 409 conflict。.
 	//
 	// POST /v1/pursuit/tracking/{pursuitID}/stop
 	StopTracking(ctx context.Context, req *VersionRequest, params StopTrackingParams) (*TrackingCommandResult, error)
+	// UnarchiveTracking implements unarchiveTracking operation.
+	//
+	// 需要推进的 can_edit。已归档 → 已停止（不恢复跟踪）。已停止为
+	// no_change；跟踪中与已暂停 409 invalid_transition；否则版本不一致 409 conflict。.
+	//
+	// POST /v1/pursuit/tracking/{pursuitID}/unarchive
+	UnarchiveTracking(ctx context.Context, req *VersionRequest, params UnarchiveTrackingParams) (*TrackingCommandResult, error)
 	// UpdateTask implements updateTask operation.
 	//
 	// 需要推进的
@@ -224,8 +271,9 @@ type Handler interface {
 	// UpdateTrackingMembers implements updateTrackingMembers operation.
 	//
 	// 需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为
-	// no_change；已停止 409 invalid_transition；否则版本不一致 409
-	// conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。.
+	// no_change；已停止与已归档 409 invalid_transition；否则版本 不一致 409
+	// conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。保留下来的对象沿用其加入版本与来源，新加入的记为
+	// manual。.
 	//
 	// POST /v1/pursuit/tracking/{pursuitID}/members
 	UpdateTrackingMembers(ctx context.Context, req *TrackingMembersRequest, params UpdateTrackingMembersParams) (*TrackingCommandResult, error)

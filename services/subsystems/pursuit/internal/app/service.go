@@ -80,6 +80,8 @@ type Service struct {
 	Log       *slog.Logger
 	// Candidates 是分派规则候选负责人的出站端口（C-10；缺省未接入）。
 	Candidates api.CandidateOwners
+	// Organizations 是实体图中组织版本的出站端口（C-13；缺省未接入）。
+	Organizations api.Organizations
 }
 
 var (

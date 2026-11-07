@@ -6,7 +6,9 @@ package pursuitapi
 type OperationName = string
 
 const (
+	ArchiveTrackingOperation       OperationName = "ArchiveTracking"
 	AssignPursuitOperation         OperationName = "AssignPursuit"
+	AssignTrackingOperation        OperationName = "AssignTracking"
 	ClosePursuitOperation          OperationName = "ClosePursuit"
 	CompleteTaskOperation          OperationName = "CompleteTask"
 	CreatePursuitOperation         OperationName = "CreatePursuit"
@@ -17,6 +19,7 @@ const (
 	GetTaskOperation               OperationName = "GetTask"
 	GetTrackingOperation           OperationName = "GetTracking"
 	GetTrackingPeriodOperation     OperationName = "GetTrackingPeriod"
+	ImportTrackingMembersOperation OperationName = "ImportTrackingMembers"
 	ListMyTasksOperation           OperationName = "ListMyTasks"
 	ListPursuitsOperation          OperationName = "ListPursuits"
 	ListTrackingOperation          OperationName = "ListTracking"
@@ -26,6 +29,7 @@ const (
 	ResumeTrackingOperation        OperationName = "ResumeTracking"
 	ReviseOutcomeOperation         OperationName = "ReviseOutcome"
 	StopTrackingOperation          OperationName = "StopTracking"
+	UnarchiveTrackingOperation     OperationName = "UnarchiveTracking"
 	UpdateTaskOperation            OperationName = "UpdateTask"
 	UpdateTrackingMembersOperation OperationName = "UpdateTrackingMembers"
 	VoidPursuitOperation           OperationName = "VoidPursuit"

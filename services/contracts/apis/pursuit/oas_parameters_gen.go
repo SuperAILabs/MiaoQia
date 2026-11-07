@@ -15,6 +15,149 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+// ArchiveTrackingParams is parameters of archiveTracking operation.
+type ArchiveTrackingParams struct {
+	IdempotencyKey string
+	PursuitID      PursuitID
+}
+
+func unpackArchiveTrackingParams(packed middleware.Parameters) (params ArchiveTrackingParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "Idempotency-Key",
+			In:   "header",
+		}
+		params.IdempotencyKey = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "pursuitID",
+			In:   "path",
+		}
+		params.PursuitID = packed[key].(PursuitID)
+	}
+	return params
+}
+
+func decodeArchiveTrackingParams(args [1]string, argsEscaped bool, r *http.Request) (params ArchiveTrackingParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: Idempotency-Key.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.IdempotencyKey = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^[A-Za-z0-9_-]{16,128}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.IdempotencyKey)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "Idempotency-Key",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	// Decode path: pursuitID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "pursuitID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotPursuitIDVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotPursuitIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.PursuitID = PursuitID(paramsDotPursuitIDVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.PursuitID.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "pursuitID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // AssignPursuitParams is parameters of assignPursuit operation.
 type AssignPursuitParams struct {
 	IdempotencyKey string
@@ -40,6 +183,149 @@ func unpackAssignPursuitParams(packed middleware.Parameters) (params AssignPursu
 }
 
 func decodeAssignPursuitParams(args [1]string, argsEscaped bool, r *http.Request) (params AssignPursuitParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: Idempotency-Key.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.IdempotencyKey = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^[A-Za-z0-9_-]{16,128}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.IdempotencyKey)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "Idempotency-Key",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	// Decode path: pursuitID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "pursuitID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotPursuitIDVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotPursuitIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.PursuitID = PursuitID(paramsDotPursuitIDVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.PursuitID.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "pursuitID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// AssignTrackingParams is parameters of assignTracking operation.
+type AssignTrackingParams struct {
+	IdempotencyKey string
+	PursuitID      PursuitID
+}
+
+func unpackAssignTrackingParams(packed middleware.Parameters) (params AssignTrackingParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "Idempotency-Key",
+			In:   "header",
+		}
+		params.IdempotencyKey = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "pursuitID",
+			In:   "path",
+		}
+		params.PursuitID = packed[key].(PursuitID)
+	}
+	return params
+}
+
+func decodeAssignTrackingParams(args [1]string, argsEscaped bool, r *http.Request) (params AssignTrackingParams, _ error) {
 	h := uri.NewHeaderDecoder(r.Header)
 	// Decode header: Idempotency-Key.
 	if err := func() error {
@@ -1273,6 +1559,149 @@ func decodeGetTrackingPeriodParams(args [2]string, argsEscaped bool, r *http.Req
 	return params, nil
 }
 
+// ImportTrackingMembersParams is parameters of importTrackingMembers operation.
+type ImportTrackingMembersParams struct {
+	IdempotencyKey string
+	PursuitID      PursuitID
+}
+
+func unpackImportTrackingMembersParams(packed middleware.Parameters) (params ImportTrackingMembersParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "Idempotency-Key",
+			In:   "header",
+		}
+		params.IdempotencyKey = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "pursuitID",
+			In:   "path",
+		}
+		params.PursuitID = packed[key].(PursuitID)
+	}
+	return params
+}
+
+func decodeImportTrackingMembersParams(args [1]string, argsEscaped bool, r *http.Request) (params ImportTrackingMembersParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: Idempotency-Key.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.IdempotencyKey = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^[A-Za-z0-9_-]{16,128}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.IdempotencyKey)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "Idempotency-Key",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	// Decode path: pursuitID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "pursuitID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotPursuitIDVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotPursuitIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.PursuitID = PursuitID(paramsDotPursuitIDVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.PursuitID.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "pursuitID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // ListMyTasksParams is parameters of listMyTasks operation.
 type ListMyTasksParams struct {
 	Before OptDateTime `json:",omitempty,omitzero"`
@@ -1776,6 +2205,7 @@ func decodeListPursuitsParams(args [0]string, argsEscaped bool, r *http.Request)
 // ListTrackingParams is parameters of listTracking operation.
 type ListTrackingParams struct {
 	ObjectiveID OptObjectiveID `json:",omitempty,omitzero"`
+	Archived    OptBool        `json:",omitempty,omitzero"`
 	Limit       OptInt         `json:",omitempty,omitzero"`
 	Cursor      OptCursor      `json:",omitempty,omitzero"`
 }
@@ -1788,6 +2218,15 @@ func unpackListTrackingParams(packed middleware.Parameters) (params ListTracking
 		}
 		if v, ok := packed[key]; ok {
 			params.ObjectiveID = v.(OptObjectiveID)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "archived",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Archived = v.(OptBool)
 		}
 	}
 	{
@@ -1872,6 +2311,47 @@ func decodeListTrackingParams(args [0]string, argsEscaped bool, r *http.Request)
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "objective_id",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: archived.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "archived",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotArchivedVal bool
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToBool(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotArchivedVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Archived.SetTo(paramsDotArchivedVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "archived",
 			In:   "query",
 			Err:  err,
 		}
@@ -2835,6 +3315,149 @@ func unpackStopTrackingParams(packed middleware.Parameters) (params StopTracking
 }
 
 func decodeStopTrackingParams(args [1]string, argsEscaped bool, r *http.Request) (params StopTrackingParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: Idempotency-Key.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "Idempotency-Key",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.IdempotencyKey = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:     0,
+					MinLengthSet:  false,
+					MaxLength:     0,
+					MaxLengthSet:  false,
+					Email:         false,
+					Hostname:      false,
+					Regex:         regexMap["^[A-Za-z0-9_-]{16,128}$"],
+					MinNumeric:    0,
+					MinNumericSet: false,
+					MaxNumeric:    0,
+					MaxNumericSet: false,
+				}).Validate(string(params.IdempotencyKey)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "Idempotency-Key",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	// Decode path: pursuitID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "pursuitID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotPursuitIDVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotPursuitIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.PursuitID = PursuitID(paramsDotPursuitIDVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.PursuitID.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "pursuitID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// UnarchiveTrackingParams is parameters of unarchiveTracking operation.
+type UnarchiveTrackingParams struct {
+	IdempotencyKey string
+	PursuitID      PursuitID
+}
+
+func unpackUnarchiveTrackingParams(packed middleware.Parameters) (params UnarchiveTrackingParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "Idempotency-Key",
+			In:   "header",
+		}
+		params.IdempotencyKey = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "pursuitID",
+			In:   "path",
+		}
+		params.PursuitID = packed[key].(PursuitID)
+	}
+	return params
+}
+
+func decodeUnarchiveTrackingParams(args [1]string, argsEscaped bool, r *http.Request) (params UnarchiveTrackingParams, _ error) {
 	h := uri.NewHeaderDecoder(r.Header)
 	// Decode header: Idempotency-Key.
 	if err := func() error {

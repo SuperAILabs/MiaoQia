@@ -209,7 +209,8 @@ func TestPursuitFollowUp(t *testing.T) {
 	directory := &flakyDirectory{Directory: localDirectory}
 	bindings.Provide(idapi.DirectoryBinding, idapi.Directory(directory))
 	cands := &fakeCandidates{owners: map[string]string{}}
-	purModule := pursuit.ModuleWith(pursuit.Adapters{Now: pclock.Now, Candidates: cands})
+	orgs := &fakeOrganizations{versions: map[string]int64{}, mode: "not_wired"}
+	purModule := pursuit.ModuleWith(pursuit.Adapters{Now: pclock.Now, Candidates: cands, Organizations: orgs})
 	purs := start(purModule, "api")
 	purModule.Routes(purs.env, public, internal)
 	purOwner := purs.owner
@@ -3773,6 +3774,442 @@ func TestPursuitFollowUp(t *testing.T) {
 		}
 	})
 
+	// ---- C-13：持续跟踪的改派与协作者、归档、按名单导入对象、各期对象的实体来源版本（PRD 第6段 F10 第1–3条） ----
+	trackAssign := func(t *testing.T, who, id, owner string, collaborators []string, status int, code ...string) map[string]any {
+		t.Helper()
+		if collaborators == nil {
+			collaborators = []string{}
+		}
+		list, _ := json.Marshal(collaborators)
+		return obj(t, expect(t, who, "POST", trackPath+"/"+id+"/assign", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"owner":%q,"collaborators":%s}`,
+			opID("ta"), trackingVersion(t, id), owner, list), status, code...))
+	}
+	importBody := func(t *testing.T, op, id string, rows ...map[string]string) string {
+		t.Helper()
+		raw, _ := json.Marshal(map[string]any{"operation_id": op, "expected_version": trackingVersion(t, id), "rows": rows})
+		return string(raw)
+	}
+	outcomes := func(t *testing.T, res map[string]any) []string {
+		t.Helper()
+		var out []string
+		rows, _ := res["import_rows"].([]any)
+		for i, r := range rows {
+			m := r.(map[string]any)
+			if num(m, "index") != int64(i) {
+				t.Fatalf("逐行结果不按请求顺序：%+v", rows)
+			}
+			out = append(out, m["outcome"].(string))
+		}
+		return out
+	}
+	newTracking := func(t *testing.T, who, owner string, members ...string) string {
+		t.Helper()
+		list, _ := json.Marshal(members)
+		res := obj(t, expect(t, who, "POST", trackPath, fmt.Sprintf(`{"operation_id":%q,"objective_id":%q,"name":"C-13","members":%s,"owner":%q}`,
+			opID("tc"), objective.ID, list, owner), 200))
+		drained(t)
+		return res["tracking"].(map[string]any)["id"].(string)
+	}
+	listIDs := func(t *testing.T, who, query string) []string {
+		t.Helper()
+		var out []string
+		for _, it := range obj(t, expect(t, who, "GET", trackPath+query, "", 200))["items"].([]any) {
+			out = append(out, it.(map[string]any)["id"].(string))
+		}
+		return out
+	}
+	orgD, orgE := ids.New("org"), ids.New("org")
+	var importedID string
+
+	run("C-13 F4、用例46：持续跟踪的改派与协作者——决策者改派负责人并设协作者（本地立即生效，新负责人与协作者在授权同步后才能写入，原负责人立即不能写）；无变化不写记录；之后结束的一期记录新负责人；越权与反例测试：他租户 404、只能查看的业务专家 403、他租户成员与非参与人作协作者 422 且确定失败固定、协作者超过 20 名 400、交易型标识 404、过期版本 409", func(t *testing.T) {
+		pclock.set(at(200, 9, 0), 0)
+		// 让 lead 重新取得目标参与关系（前面的用例让其退出又加入）
+		setParticipants(t, bd, bd2, expert, admin)
+		setParticipants(t, bd, bd2, lead, expert, admin)
+		drained(t)
+		id := newTracking(t, dm, bd, orgA)
+		if r := trackCmd(t, bd, id, "pause", 200); r["result"] != "succeeded" {
+			t.Fatalf("%+v", r)
+		}
+		trackCmd(t, bd, id, "resume", 200)
+		drained(t)
+		// 越权：他租户 404；业务专家与不参与的业务开拓者 bd3 能按单元关系查看但不能改派 403；没有单元关系、不在该跟踪中的 admin 404
+		expectAs(t, admin2, t2, "POST", trackPath+"/"+id+"/assign", fmt.Sprintf(`{"operation_id":%q,"expected_version":1,"owner":%q,"collaborators":[]}`, opID("x"), admin2),
+			"", 404, "pursuit_not_found")
+		trackAssign(t, expert, id, lead, nil, 403, "forbidden")
+		trackAssign(t, admin, id, lead, nil, 404, "pursuit_not_found")
+		trackAssign(t, bd3, id, lead, nil, 403, "forbidden")
+		// 交易型的标识不能经持续跟踪的改派接口
+		expect(t, dm, "POST", trackPath+"/"+p1+"/assign", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"owner":%q,"collaborators":[]}`, opID("x"), versionOf(t, p1), lead),
+			404, "pursuit_not_found")
+		// 被分派人：他租户成员与非参与人 422，确定失败固定在操作标识上（新键同一操作返回同一失败），不写入
+		before := trackingVersion(t, id)
+		op := opID("tfail")
+		bad := fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"owner":%q,"collaborators":[%q]}`, op, before, lead, admin2)
+		expect(t, dm, "POST", trackPath+"/"+id+"/assign", bad, 422, "assignee_no_access")
+		expect(t, dm, "POST", trackPath+"/"+id+"/assign", bad, 422, "assignee_no_access")
+		expect(t, bd2, "POST", trackPath+"/"+id+"/assign", bad, 409, "operation_conflict")
+		trackAssign(t, dm, id, bd3, nil, 422, "assignee_no_access")
+		// 协作者上限 20 名（契约 maxItems）
+		var many []string
+		for i := 0; i < 21; i++ {
+			many = append(many, fmt.Sprintf("x%02d-%s", i, suffix))
+		}
+		trackAssign(t, dm, id, lead, many, 400)
+		if v := trackingVersion(t, id); v != before {
+			t.Fatalf("拒绝的改派写入了：%d → %d", before, v)
+		}
+		// 过期版本 409
+		expect(t, dm, "POST", trackPath+"/"+id+"/assign", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"owner":%q,"collaborators":[]}`, opID("x"), before-1, lead),
+			409, "conflict")
+		// 决策者改派：负责人 lead、协作者 bd2；同键重放同一结果
+		body := fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"owner":%q,"collaborators":[%q]}`, opID("ta"), before, lead, bd2)
+		key := "track-assign-" + suffix
+		directory.fail.Store(true)
+		res := obj(t, expectAs(t, dm, t1, "POST", trackPath+"/"+id+"/assign", body, key, 200))
+		tr := res["tracking"].(map[string]any)
+		if res["result"] != "succeeded" || tr["owner"] != lead || !slices.Equal(strs(tr["collaborators"]), []string{bd2}) || res["authorization"] != "syncing" {
+			t.Fatalf("%+v", res)
+		}
+		if again := obj(t, expectAs(t, dm, t1, "POST", trackPath+"/"+id+"/assign", body, key, 200)); again["result"] != "succeeded" {
+			t.Fatalf("%+v", again)
+		}
+		// 同步前：原负责人 bd 立即不能写（只按单元关系查看）；新负责人与协作者也还不能写
+		trackCmd(t, bd, id, "pause", 403, "forbidden")
+		trackCmd(t, lead, id, "pause", 403, "authorization_syncing")
+		trackCmd(t, bd2, id, "pause", 403, "authorization_syncing")
+		directory.fail.Store(false)
+		drained(t)
+		if _, err := reminders.RetrySync(svc(t1), 100); err != nil {
+			t.Fatal(err)
+		}
+		drained(t)
+		d := obj(t, expect(t, dm, "GET", trackPath+"/"+id, "", 200))
+		if d["owner"] != lead || !slices.Equal(strs(d["collaborators"]), []string{bd2}) || !slices.Contains(kinds(d), "reassigned") ||
+			d["authorization"].(map[string]any)["state"] != "effective" {
+			t.Fatalf("%+v", d)
+		}
+		if n := audits(t, purOwner, "pursuit.tracking.assign", id); n != 1 {
+			t.Fatalf("改派审计 %d", n)
+		}
+		// 同步后：协作者 bd2 与新负责人 lead 能写；原负责人 bd 仍不能
+		if r := trackCmd(t, bd2, id, "pause", 200); r["result"] != "succeeded" {
+			t.Fatalf("%+v", r)
+		}
+		trackCmd(t, lead, id, "resume", 200)
+		trackCmd(t, bd, id, "pause", 403, "forbidden")
+		// 无变化：同一负责人与协作者不写记录
+		v := trackingVersion(t, id)
+		if r := trackAssign(t, dm, id, lead, []string{bd2}, 200); r["result"] != "no_change" || trackingVersion(t, id) != v {
+			t.Fatalf("%+v", r)
+		}
+		// 之后结束的一期记录新负责人
+		next := timeOf(t, d, "next_run_at")
+		if n := runTracking(t, next); n < 1 {
+			t.Fatalf("%d", n)
+		}
+		if p := period(t, dm, id, 1); p["owner"] != lead || p["owner_valid"] != true {
+			t.Fatalf("%+v", p)
+		}
+		// 协作者移出：bd2 立即不能写
+		trackAssign(t, dm, id, lead, nil, 200)
+		trackCmd(t, bd2, id, "pause", 403, "forbidden")
+		drained(t)
+		trackCmd(t, dm, id, "stop", 200)
+		drained(t)
+	})
+
+	run("C-13 F10 第2条：已停止 → 已归档（只读、不在缺省列表、不再结束新的一期），取消归档回到已停止；越权与反例测试：跟踪中不能归档、已归档的各种写入 409 invalid_transition、他租户与无关成员 404、业务专家 403、绑定筛选的游标不能换筛选、归档与改派并发只有一个成功", func(t *testing.T) {
+		pclock.set(at(210, 9, 0), 0)
+		id := newTracking(t, dm, bd, orgA, orgB)
+		trackCmd(t, dm, id, "archive", 409, "invalid_transition")
+		trackCmd(t, dm, id, "pause", 200)
+		trackCmd(t, dm, id, "archive", 409, "invalid_transition")
+		trackCmd(t, dm, id, "unarchive", 409, "invalid_transition")
+		trackCmd(t, dm, id, "stop", 200)
+		if r := trackCmd(t, dm, id, "unarchive", 200); r["result"] != "no_change" {
+			t.Fatalf("%+v", r)
+		}
+		// 越权
+		expectAs(t, admin2, t2, "POST", trackPath+"/"+id+"/archive", fmt.Sprintf(`{"operation_id":%q,"expected_version":1}`, opID("x")), "", 404, "pursuit_not_found")
+		trackCmd(t, admin, id, "archive", 404, "pursuit_not_found")
+		trackCmd(t, expert, id, "archive", 403, "forbidden")
+		key := "track-archive-" + suffix
+		body := fmt.Sprintf(`{"operation_id":%q,"expected_version":%d}`, opID("tr"), trackingVersion(t, id))
+		res := obj(t, expectAs(t, bd, t1, "POST", trackPath+"/"+id+"/archive", body, key, 200))
+		if res["result"] != "succeeded" || res["tracking"].(map[string]any)["state"] != "archived" {
+			t.Fatalf("%+v", res)
+		}
+		if again := obj(t, expectAs(t, bd, t1, "POST", trackPath+"/"+id+"/archive", body, key, 200)); again["result"] != "succeeded" {
+			t.Fatalf("%+v", again)
+		}
+		if r := trackCmd(t, bd, id, "archive", 200); r["result"] != "no_change" {
+			t.Fatalf("%+v", r)
+		}
+		d := obj(t, expect(t, bd, "GET", trackPath+"/"+id, "", 200))
+		if d["state"] != "archived" || d["archived_at"] == nil || d["stopped_at"] == nil || d["viewer_can_edit"] != false || !slices.Contains(kinds(d), "tracking_archived") {
+			t.Fatalf("%+v", d)
+		}
+		// 已归档：暂停、恢复、停止、修改与导入对象、改派都 409 invalid_transition，不写入
+		v := trackingVersion(t, id)
+		for _, a := range []string{"pause", "resume", "stop"} {
+			trackCmd(t, bd, id, a, 409, "invalid_transition")
+		}
+		expect(t, bd, "POST", trackPath+"/"+id+"/members", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"members":[%q]}`, opID("tm"), v, orgC), 409, "invalid_transition")
+		expect(t, bd, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("ti"), id, map[string]string{"org_id": orgC}), 409, "invalid_transition")
+		trackAssign(t, dm, id, lead, nil, 409, "invalid_transition")
+		if trackingVersion(t, id) != v {
+			t.Fatal("已归档的跟踪被写入")
+		}
+		// 不再结束新的一期
+		before := count(t, purOwner, `SELECT count(*) FROM pur_tracking_periods WHERE pursuit_id = $1`, id)
+		runTracking(t, at(300, 9, 0))
+		if n := count(t, purOwner, `SELECT count(*) FROM pur_tracking_periods WHERE pursuit_id = $1`, id); n != before {
+			t.Fatalf("已归档的跟踪结束了新的一期：%d → %d", before, n)
+		}
+		// 列表：缺省不含已归档；archived=true 只含已归档；游标绑定筛选
+		if slices.Contains(listIDs(t, bd, ""), id) || !slices.Contains(listIDs(t, bd, "?archived=true"), id) {
+			t.Fatal("归档筛选")
+		}
+		for _, x := range listIDs(t, bd, "?archived=true") {
+			if d := obj(t, expect(t, bd, "GET", trackPath+"/"+x, "", 200)); d["state"] != "archived" {
+				t.Fatalf("archived=true 列出了 %s", d["state"])
+			}
+		}
+		if items := obj(t, expectAs(t, admin2, t2, "GET", trackPath+"?archived=true", "", "", 200))["items"].([]any); len(items) != 0 {
+			t.Fatalf("他租户看到 %d 个已归档的持续跟踪", len(items))
+		}
+		page := obj(t, expect(t, bd, "GET", trackPath+"?limit=1", "", 200))
+		if cur, _ := page["next_cursor"].(string); cur != "" {
+			expect(t, bd, "GET", trackPath+"?limit=1&archived=true&cursor="+url.QueryEscape(cur), "", 400, "invalid_cursor")
+		}
+		// 已归档仍可读取各期（只读）
+		expect(t, bd, "GET", trackPath+"/"+id+"/periods", "", 200)
+		// 事件：state archived、reason archived
+		evs := eventsFor("pursuit.tracking.changed.v1", "pursuit_id", id)
+		if last := evs[len(evs)-1]; last["state"] != "archived" || last["reason"] != "archived" {
+			t.Fatalf("%+v", last)
+		}
+		// 取消归档：回到已停止（不恢复跟踪），再取消无变化
+		if r := trackCmd(t, bd, id, "unarchive", 200); r["result"] != "succeeded" || r["tracking"].(map[string]any)["state"] != "stopped" || r["tracking"].(map[string]any)["next_run_at"] != nil {
+			t.Fatalf("%+v", r)
+		}
+		if r := trackCmd(t, bd, id, "unarchive", 200); r["result"] != "no_change" {
+			t.Fatalf("%+v", r)
+		}
+		trackCmd(t, bd, id, "resume", 409, "invalid_transition")
+		// 并发：同一版本上的归档（负责人 bd）与改派（决策者改为 dm），只有一个成功；另一个 409（冲突或已归档），或归档者在锁内重读时
+		// 已不是负责人而被拒绝（403）
+		v = trackingVersion(t, id)
+		var wg sync.WaitGroup
+		codes := make([]int, 2)
+		raws := make([][]byte, 2)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			codes[0], raws[0] = do(t, bd, t1, false, "POST", trackPath+"/"+id+"/archive", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d}`, opID("tr"), v), "")
+		}()
+		go func() {
+			defer wg.Done()
+			codes[1], raws[1] = do(t, dm, t1, false, "POST", trackPath+"/"+id+"/assign", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"owner":%q,"collaborators":[]}`,
+				opID("ta"), v, dm), "")
+		}()
+		wg.Wait()
+		ok := 0
+		for i, c := range codes {
+			switch {
+			case c == 200 && obj(t, raws[i])["result"] == "succeeded":
+				ok++
+			case c == 409 && (codeOf(raws[i]) == "conflict" || codeOf(raws[i]) == "invalid_transition"):
+			// 改派先提交时，归档者 bd 在加锁重读后已不是负责人：以同一把锁下的当前值拒绝（授权同步中不固定，重试按新的关系判断）
+			case i == 0 && c == 403 && (codeOf(raws[i]) == "authorization_syncing" || codeOf(raws[i]) == "forbidden"):
+			default:
+				t.Fatalf("并发结果 %d：%s", c, raws[i])
+			}
+		}
+		if ok != 1 || trackingVersion(t, id) != v+1 {
+			t.Fatalf("并发的归档与改派：%d 个成功，版本 %d → %d", ok, v, trackingVersion(t, id))
+		}
+		drained(t)
+	})
+
+	run("C-13 F10 第1条：按名单导入对象——逐行结果（已加入、已在集合中、重复、非组织标识、只有名称未解析、实体图中不存在、超过上限）与操作一起固定；实体图未接入时只校验格式并说明 not_wired；越权与反例测试：他租户、无关成员与他租户的跟进标识 404，业务专家 403，他人用同一操作标识 409，实体图暂时不可用 503 不固定、恢复后同一操作成功，已停止 409，超过 500 行 400", func(t *testing.T) {
+		pclock.set(at(220, 9, 0), 0)
+		orgs.set("not_wired", map[string]int64{})
+		id := newTracking(t, dm, bd, orgA)
+		// 越权：他租户与无关成员 404（不调用实体图）、业务专家 403
+		calls := orgs.callCount()
+		expectAs(t, admin2, t2, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("x"), id, map[string]string{"org_id": orgB}), "", 404, "pursuit_not_found")
+		expect(t, admin, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("x"), id, map[string]string{"org_id": orgB}), 404, "pursuit_not_found")
+		expect(t, bd3, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("x"), id, map[string]string{"org_id": orgB}), 403, "forbidden")
+		expect(t, expert, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("x"), id, map[string]string{"org_id": orgB}), 403, "forbidden")
+		expect(t, bd, "POST", "/v1/pursuit/tracking/"+p1+"/members/import", importBody(t, opID("x"), id, map[string]string{"org_id": orgB}), 404, "pursuit_not_found")
+		if orgs.callCount() != calls {
+			t.Fatal("越权的导入调用了实体图")
+		}
+		// 超过 500 行 400；空名单 400
+		var rows []map[string]string
+		for i := 0; i < 501; i++ {
+			rows = append(rows, map[string]string{"org_id": orgB})
+		}
+		expect(t, bd, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("x"), id, rows...), 400)
+		expect(t, bd, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("x"), id), 400)
+		// 未接入：逐行结果
+		op := opID("ti")
+		body := importBody(t, op, id, map[string]string{"org_id": orgA}, map[string]string{"org_id": orgB}, map[string]string{"org_id": orgB},
+			map[string]string{"org_id": "usr_x"}, map[string]string{"name": "浙江某建工集团有限公司"}, map[string]string{}, map[string]string{"org_id": id},
+			map[string]string{"org_id": strings.Replace(orgB, "org_", "tnt_", 1)})
+		key := "track-import-" + suffix
+		res := obj(t, expectAs(t, bd, t1, "POST", trackPath+"/"+id+"/members/import", body, key, 200))
+		want := []string{"already_member", "added", "duplicate", "invalid", "unresolved", "invalid", "invalid", "invalid"}
+		if res["result"] != "succeeded" || res["import_check"] != "not_wired" || !slices.Equal(outcomes(t, res), want) ||
+			num(res["tracking"].(map[string]any), "members_version") != 2 || num(res["tracking"].(map[string]any), "members_count") != 2 {
+			t.Fatalf("%+v", res)
+		}
+		// 非组织标识不回显
+		for _, r := range res["import_rows"].([]any) {
+			if o, ok := r.(map[string]any)["org_id"].(string); ok && !strings.HasPrefix(o, "org_") {
+				t.Fatalf("回显了非组织标识 %s", o)
+			}
+		}
+		// 同键重放、新键同一操作都返回同一逐行结果；他人用同一操作标识 409；同键不同请求 409
+		if again := obj(t, expectAs(t, bd, t1, "POST", trackPath+"/"+id+"/members/import", body, key, 200)); !slices.Equal(outcomes(t, again), want) {
+			t.Fatalf("%+v", again)
+		}
+		if again := obj(t, expect(t, bd, "POST", trackPath+"/"+id+"/members/import", body, 200)); !slices.Equal(outcomes(t, again), want) || again["result"] != "succeeded" {
+			t.Fatalf("%+v", again)
+		}
+		expect(t, dm, "POST", trackPath+"/"+id+"/members/import", body, 409, "operation_conflict")
+		expectAs(t, bd, t1, "POST", trackPath+"/"+id+"/members/import", strings.Replace(body, orgB, orgC, 1), key, 409, "idempotency_conflict")
+		d := obj(t, expect(t, bd, "GET", trackPath+"/"+id, "", 200))
+		if !slices.Equal(strs(d["members"]), []string{orgA, orgB}) || !slices.Contains(kinds(d), "members_imported") {
+			t.Fatalf("%+v", d)
+		}
+		drained(t)
+		evs := eventsFor("pursuit.tracking.changed.v1", "pursuit_id", id)
+		if last := evs[len(evs)-1]; last["reason"] != "members_imported" || num(last, "members_version") != 2 {
+			t.Fatalf("%+v", last)
+		}
+		// 没有加入的行：无变化，逐行结果同样固定
+		v := trackingVersion(t, id)
+		nc := obj(t, expect(t, bd, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("ti"), id, map[string]string{"org_id": orgA}, map[string]string{"name": "x"}), 200))
+		if nc["result"] != "no_change" || !slices.Equal(outcomes(t, nc), []string{"already_member", "unresolved"}) || trackingVersion(t, id) != v {
+			t.Fatalf("%+v", nc)
+		}
+		// 实体图暂时不可用：503 不固定、不写入；恢复后用新键、同一操作标识成功（按实体图核对：不存在的为 not_found）
+		orgs.set("unavailable", nil)
+		op2 := opID("ti")
+		body2 := importBody(t, op2, id, map[string]string{"org_id": orgC}, map[string]string{"org_id": orgD})
+		expect(t, bd, "POST", trackPath+"/"+id+"/members/import", body2, 503, "entity_graph_unavailable")
+		if trackingVersion(t, id) != v {
+			t.Fatal("实体图不可用时写入了")
+		}
+		orgs.set("", map[string]int64{orgA: 5, orgB: 2, orgC: 3})
+		res2 := obj(t, expect(t, bd, "POST", trackPath+"/"+id+"/members/import", body2, 200))
+		if res2["result"] != "succeeded" || res2["import_check"] != "verified" || !slices.Equal(outcomes(t, res2), []string{"added", "not_found"}) {
+			t.Fatalf("%+v", res2)
+		}
+		// 上限：已有 3 个对象，补到 199 后再导入 3 个，只加入 1 个，其余 over_limit
+		var fill []string
+		for len(fill) < 196 {
+			fill = append(fill, ids.New("org"))
+		}
+		full := append([]string{orgA, orgB, orgC}, fill...)
+		list, _ := json.Marshal(full)
+		expect(t, bd, "POST", trackPath+"/"+id+"/members", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"members":%s}`, opID("tm"), trackingVersion(t, id), list), 200)
+		orgs.set("not_wired", nil)
+		res3 := obj(t, expect(t, bd, "POST", trackPath+"/"+id+"/members/import", importBody(t, opID("ti"), id, map[string]string{"org_id": orgD},
+			map[string]string{"org_id": orgE}, map[string]string{"org_id": ids.New("org")}), 200))
+		if !slices.Equal(outcomes(t, res3), []string{"added", "over_limit", "over_limit"}) || num(res3["tracking"].(map[string]any), "members_count") != 200 {
+			t.Fatalf("%+v", res3)
+		}
+		// 恢复为较小的集合供下一个用例使用（orgA 手选、orgB 与 orgC 导入）
+		expect(t, bd, "POST", trackPath+"/"+id+"/members", fmt.Sprintf(`{"operation_id":%q,"expected_version":%d,"members":[%q,%q,%q]}`, opID("tm"), trackingVersion(t, id),
+			orgA, orgB, orgC), 200)
+		drained(t)
+		importedID = id
+		// 已停止的跟踪不能导入
+		stopped := newTracking(t, dm, bd, orgA)
+		trackCmd(t, dm, stopped, "stop", 200)
+		expect(t, bd, "POST", trackPath+"/"+stopped+"/members/import", importBody(t, opID("ti"), stopped, map[string]string{"org_id": orgB}), 409, "invalid_transition")
+		drained(t)
+	})
+
+	run("C-13 用例47、F10 第3条：每期的成员快照记录每个对象的加入版本、来源与期末的实体来源版本（之后实体版本变化不改已结束的期）；实体图未接入、暂时不可用与不存在分别记录；C-13 之前结束的期没有 objects；事件只带对象标识与实体来源版本", func(t *testing.T) {
+		id := importedID
+		orgs.set("", map[string]int64{orgA: 5, orgB: 2})
+		next := timeOf(t, obj(t, expect(t, bd, "GET", trackPath+"/"+id, "", 200)), "next_run_at")
+		if n := runTracking(t, next); n < 1 {
+			t.Fatalf("%d", n)
+		}
+		p := period(t, bd, id, 1)
+		objs, _ := p["objects"].([]any)
+		if len(objs) != 3 {
+			t.Fatalf("%+v", p)
+		}
+		byOrg := map[string]map[string]any{}
+		for _, o := range objs {
+			m := o.(map[string]any)
+			byOrg[m["org_id"].(string)] = m
+		}
+		a, b, c := byOrg[orgA], byOrg[orgB], byOrg[orgC]
+		if a["source"] != "manual" || num(a, "added_members_version") != 1 || a["entity_state"] != "recorded" || num(a, "entity_version") != 5 {
+			t.Fatalf("%+v", a)
+		}
+		if b["source"] != "import" || num(b, "added_members_version") != 2 || b["entity_state"] != "recorded" || num(b, "entity_version") != 2 {
+			t.Fatalf("%+v", b)
+		}
+		if c["source"] != "import" || c["entity_state"] != "not_found" || c["entity_version"] != nil {
+			t.Fatalf("%+v", c)
+		}
+		ev := eventsFor("pursuit.tracking.period_closed.v1", "pursuit_id", id)
+		if len(ev) != 1 {
+			t.Fatalf("%+v", ev)
+		}
+		for _, o := range ev[0]["objects"].([]any) {
+			for k := range o.(map[string]any) {
+				if k != "org_id" && k != "entity_state" && k != "entity_version" {
+					t.Fatalf("事件对象夹带了 %s", k)
+				}
+			}
+		}
+		// 实体版本之后变化：已结束的一期不变；下一期未接入记为 not_wired，再下一期暂时不可用记为 unavailable（都照常结束）
+		orgs.set("not_wired", map[string]int64{orgA: 6, orgB: 2, orgC: 1})
+		next2 := next.AddDate(0, 0, 7)
+		if n := runTracking(t, next2); n < 1 {
+			t.Fatalf("%d", n)
+		}
+		if a := period(t, bd, id, 1)["objects"].([]any)[0].(map[string]any); num(a, "entity_version") != 5 {
+			t.Fatalf("已结束一期的来源版本被改变：%+v", a)
+		}
+		for _, o := range period(t, bd, id, 2)["objects"].([]any) {
+			if m := o.(map[string]any); m["entity_state"] != "not_wired" || m["entity_version"] != nil {
+				t.Fatalf("%+v", m)
+			}
+		}
+		orgs.set("unavailable", nil)
+		if n := runTracking(t, next2.AddDate(0, 0, 7)); n < 1 {
+			t.Fatalf("%d", n)
+		}
+		for _, o := range period(t, bd, id, 3)["objects"].([]any) {
+			if m := o.(map[string]any); m["entity_state"] != "unavailable" {
+				t.Fatalf("%+v", m)
+			}
+		}
+		orgs.set("not_wired", nil)
+		// C-13 之前结束的期没有 objects（迁移前的行为 NULL；以所有者连接模拟），读取时不出现、不当作“没有对象”
+		if _, err := purOwner.Exec(ctx, `UPDATE pur_tracking_periods SET objects = NULL WHERE pursuit_id = $1 AND seq = 1`, trackID); err != nil {
+			t.Fatal(err)
+		}
+		if old := period(t, bd, trackID, 1); old["objects"] != nil || len(strs(old["members"])) == 0 {
+			t.Fatalf("%+v", old)
+		}
+		// 越权：他租户读取各期 404
+		expectAs(t, admin2, t2, "GET", fmt.Sprintf("%s/%s/periods/1", trackPath, id), "", "", 404, "pursuit_not_found")
+		trackCmd(t, dm, id, "stop", 200)
+		drained(t)
+	})
+
 	if len(pending) != 0 {
 		t.Fatalf("结束时仍有 %d 个事件待重试", len(pending))
 	}
@@ -3815,4 +4252,47 @@ func (f *fakeCandidates) set(signal, owner string, err error, notWired bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.owners[signal], f.err, f.notWired = owner, err, notWired
+}
+
+// fakeOrganizations 是实体图组织版本的内存实现（C-13 测试注入；生产为 pursuitapi.NotWired）。mode 为 not_wired（未接入）、
+// unavailable（暂时不可用）或空（versions 中有的为存在）。
+type fakeOrganizations struct {
+	mu       sync.Mutex
+	versions map[string]int64
+	mode     string
+	calls    int
+}
+
+func (f *fakeOrganizations) OrganizationVersions(_ context.Context, ids []string) (map[string]int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	switch f.mode {
+	case "not_wired":
+		return nil, pursuitapi.ErrNotWired
+	case "unavailable":
+		return nil, errors.New("实体图暂时不可用")
+	}
+	out := map[string]int64{}
+	for _, id := range ids {
+		if v, ok := f.versions[id]; ok {
+			out[id] = v
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeOrganizations) set(mode string, versions map[string]int64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.mode = mode
+	if versions != nil {
+		f.versions = versions
+	}
+}
+
+func (f *fakeOrganizations) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
 }

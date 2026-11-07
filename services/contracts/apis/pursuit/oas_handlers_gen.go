@@ -33,6 +33,184 @@ func (c *codeRecorder) Unwrap() http.ResponseWriter {
 	return c.ResponseWriter
 }
 
+// handleArchiveTrackingRequest handles archiveTracking operation.
+//
+// 需要推进的 can_edit。已停止 →
+// 已归档：只读，不再出现在缺省列表中（listTracking 的 archived=true
+// 列出），已结束的各期保留。已归档为 no_change；跟踪中与已暂停 409
+// invalid_transition（须先停止）；否则版本不一致 409
+// conflict。已归档的跟踪不能暂停、恢复、停止、修改或 导入对象、改派（409
+// invalid_transition）。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/archive
+func (s *Server) handleArchiveTrackingRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("archiveTracking"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/pursuit/tracking/{pursuitID}/archive"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), ArchiveTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: ArchiveTrackingOperation,
+			ID:   "archiveTracking",
+		}
+	)
+	params, err := decodeArchiveTrackingParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeArchiveTrackingRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *TrackingCommandResult
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    ArchiveTrackingOperation,
+			OperationSummary: "归档持续跟踪（C-13）",
+			OperationID:      "archiveTracking",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "Idempotency-Key",
+					In:   "header",
+				}: params.IdempotencyKey,
+				{
+					Name: "pursuitID",
+					In:   "path",
+				}: params.PursuitID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = *VersionRequest
+			Params   = ArchiveTrackingParams
+			Response = *TrackingCommandResult
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackArchiveTrackingParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.ArchiveTracking(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.ArchiveTracking(ctx, request, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeArchiveTrackingResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleAssignPursuitRequest handles assignPursuit operation.
 //
 // 需要推进的
@@ -204,6 +382,185 @@ func (s *Server) handleAssignPursuitRequest(args [1]string, argsEscaped bool, w 
 	}
 
 	if err := encodeAssignPursuitResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleAssignTrackingRequest handles assignTracking operation.
+//
+// 与 assignPursuit 同一授权、写入准入与授权同步（推进的
+// can_manage_team；负责人与协作者须为租户有效成员且能查看该目标的信号，否则
+// 422 assignee_no_access；协作者至多 20 名）。负责人与协作者都不变为
+// no_change；已归档 409 invalid_transition（跟踪中、已暂停与
+// 已停止都可以改派）；否则版本不一致 409
+// conflict。改派本地提交即生效，原负责人立即不能以负责人身份操作，新负责人在授权同步完成后
+// 才能操作。之后结束的各期记录当时的负责人。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/assign
+func (s *Server) handleAssignTrackingRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("assignTracking"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/pursuit/tracking/{pursuitID}/assign"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), AssignTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: AssignTrackingOperation,
+			ID:   "assignTracking",
+		}
+	)
+	params, err := decodeAssignTrackingParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeAssignTrackingRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *TrackingCommandResult
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    AssignTrackingOperation,
+			OperationSummary: "持续跟踪的改派与协作者（C-13）",
+			OperationID:      "assignTracking",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "Idempotency-Key",
+					In:   "header",
+				}: params.IdempotencyKey,
+				{
+					Name: "pursuitID",
+					In:   "path",
+				}: params.PursuitID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = *AssignRequest
+			Params   = AssignTrackingParams
+			Response = *TrackingCommandResult
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackAssignTrackingParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.AssignTracking(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.AssignTracking(ctx, request, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeAssignTrackingResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -1899,6 +2256,189 @@ func (s *Server) handleGetTrackingPeriodRequest(args [2]string, argsEscaped bool
 	}
 }
 
+// handleImportTrackingMembersRequest handles importTrackingMembers operation.
+//
+// 需要推进的 can_edit。把一份名单（至多 500
+// 行，每行为组织标识或名称）追加到对象集合，逐行给出结果（import_rows，按请求顺序）：
+// added 已加入、already_member 已在集合中、duplicate 与前面的行重复、invalid
+// 不是组织标识、not_found 实体图中不存在、 unresolved
+// 只有名称（按名称解析组织尚未接入，不猜测）、over_limit 超过 200
+// 个对象的上限。有加入的行时成员版本加一（succeeded）， 没有时为
+// no_change；逐行结果与操作一起固定在操作标识上（重放返回同一结果）。组织是否存在经实体图核对：未接入时只校验标识格式，
+// import_check 为
+// not_wired（不当作“都存在”也不当作“都不存在”）；实体图暂时不可用时
+// 503（不固定，用新键、同一操作标识重试）。 已停止与已归档 409
+// invalid_transition；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/members/import
+func (s *Server) handleImportTrackingMembersRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("importTrackingMembers"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/pursuit/tracking/{pursuitID}/members/import"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), ImportTrackingMembersOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: ImportTrackingMembersOperation,
+			ID:   "importTrackingMembers",
+		}
+	)
+	params, err := decodeImportTrackingMembersParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeImportTrackingMembersRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *TrackingCommandResult
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    ImportTrackingMembersOperation,
+			OperationSummary: "按名单导入对象（C-13；PRD 第6段 F10 第1条“取自企业清单”）",
+			OperationID:      "importTrackingMembers",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "Idempotency-Key",
+					In:   "header",
+				}: params.IdempotencyKey,
+				{
+					Name: "pursuitID",
+					In:   "path",
+				}: params.PursuitID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = *TrackingImportRequest
+			Params   = ImportTrackingMembersParams
+			Response = *TrackingCommandResult
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackImportTrackingMembersParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.ImportTrackingMembers(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.ImportTrackingMembers(ctx, request, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeImportTrackingMembersResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleListMyTasksRequest handles listMyTasks operation.
 //
 // 分派给调用者、未完成、截止在 before
@@ -2242,8 +2782,9 @@ func (s *Server) handleListPursuitsRequest(args [0]string, argsEscaped bool, w h
 // handleListTrackingRequest handles listTracking operation.
 //
 // 只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多
-// limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的
-// objective_id，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。.
+// limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的 objective_id 与
+// archived，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。
+// archived缺省为 false，只列未归档的；为 true 时只列已归档的。.
 //
 // GET /v1/pursuit/tracking
 func (s *Server) handleListTrackingRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2344,6 +2885,10 @@ func (s *Server) handleListTrackingRequest(args [0]string, argsEscaped bool, w h
 					Name: "objective_id",
 					In:   "query",
 				}: params.ObjectiveID,
+				{
+					Name: "archived",
+					In:   "query",
+				}: params.Archived,
 				{
 					Name: "limit",
 					In:   "query",
@@ -3270,8 +3815,8 @@ func (s *Server) handleReviseOutcomeRequest(args [1]string, argsEscaped bool, w 
 // handleStopTrackingRequest handles stopTracking operation.
 //
 // 需要推进的 can_edit。跟踪中或已暂停 →
-// 已停止：不再生成变化简报，已有各期保留。已停止为
-// no_change；否则版本不一致 409 conflict。.
+// 已停止：不再生成变化简报，已有各期保留。已停止为 no_change；已归档 409
+// invalid_transition； 否则版本不一致 409 conflict。.
 //
 // POST /v1/pursuit/tracking/{pursuitID}/stop
 func (s *Server) handleStopTrackingRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3434,6 +3979,180 @@ func (s *Server) handleStopTrackingRequest(args [1]string, argsEscaped bool, w h
 	}
 
 	if err := encodeStopTrackingResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleUnarchiveTrackingRequest handles unarchiveTracking operation.
+//
+// 需要推进的 can_edit。已归档 → 已停止（不恢复跟踪）。已停止为
+// no_change；跟踪中与已暂停 409 invalid_transition；否则版本不一致 409 conflict。.
+//
+// POST /v1/pursuit/tracking/{pursuitID}/unarchive
+func (s *Server) handleUnarchiveTrackingRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("unarchiveTracking"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/pursuit/tracking/{pursuitID}/unarchive"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), UnarchiveTrackingOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: UnarchiveTrackingOperation,
+			ID:   "unarchiveTracking",
+		}
+	)
+	params, err := decodeUnarchiveTrackingParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeUnarchiveTrackingRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *TrackingCommandResult
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    UnarchiveTrackingOperation,
+			OperationSummary: "取消归档（C-13）",
+			OperationID:      "unarchiveTracking",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "Idempotency-Key",
+					In:   "header",
+				}: params.IdempotencyKey,
+				{
+					Name: "pursuitID",
+					In:   "path",
+				}: params.PursuitID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = *VersionRequest
+			Params   = UnarchiveTrackingParams
+			Response = *TrackingCommandResult
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackUnarchiveTrackingParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.UnarchiveTracking(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.UnarchiveTracking(ctx, request, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeUnarchiveTrackingResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -3621,8 +4340,9 @@ func (s *Server) handleUpdateTaskRequest(args [1]string, argsEscaped bool, w htt
 // handleUpdateTrackingMembersRequest handles updateTrackingMembers operation.
 //
 // 需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为
-// no_change；已停止 409 invalid_transition；否则版本不一致 409
-// conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。.
+// no_change；已停止与已归档 409 invalid_transition；否则版本 不一致 409
+// conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。保留下来的对象沿用其加入版本与来源，新加入的记为
+// manual。.
 //
 // POST /v1/pursuit/tracking/{pursuitID}/members
 func (s *Server) handleUpdateTrackingMembersRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {

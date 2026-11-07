@@ -18,6 +18,9 @@ info:
     pursuit.pursuit.authorization_sync_recovered.v1（告警之后同步完成）。每个待处理期间各至多一次，与状态变化在同一事务中发布；只含
     跟进、目标、单元、版本与时间，不含任何成员。task.due 追加可选的 handed_back（负责人恢复写入准入后，此前转给决策者的同一提醒转回给
     负责人一次）。
+    持续跟踪（C-13，PRD 第6段 F10 第1–3条）：tracking.changed 的 state 含 archived，reason 含 archived、unarchived 与 members_imported
+    （按名单导入对象）；tracking.period_closed 带可选的 objects（期末每个对象的实体来源版本：entity_state 为 recorded 时带 entity_version，
+    not_found、unavailable 与 not_wired 时不带；较早的事件可能没有）。
 channels:
   tenantPursuit:
     address: cell-{cell}.pursuit
@@ -653,6 +656,7 @@ components:
             - tracking
             - paused
             - stopped
+            - archived
           members:
             type: array
             maxItems: 200
@@ -672,6 +676,9 @@ components:
             - resumed
             - stopped
             - members_changed
+            - archived
+            - unarchived
+            - members_imported
           changed_at:
             $ref: '#/components/schemas/Timestamp'
     trackingPeriodClosed:
@@ -732,6 +739,29 @@ components:
             $ref: '#/components/schemas/Member'
           owner_valid:
             type: boolean
+          objects:
+            type: array
+            maxItems: 200
+            description: 期末每个对象的实体来源版本，顺序同 members
+            items:
+              type: object
+              additionalProperties: false
+              required:
+              - org_id
+              - entity_state
+              properties:
+                org_id:
+                  $ref: '#/components/schemas/OrgID'
+                entity_state:
+                  type: string
+                  enum:
+                  - recorded
+                  - not_found
+                  - unavailable
+                  - not_wired
+                entity_version:
+                  type: integer
+                  minimum: 1
           recorded_at:
             $ref: '#/components/schemas/Timestamp'
     authorizationSyncDelayed:

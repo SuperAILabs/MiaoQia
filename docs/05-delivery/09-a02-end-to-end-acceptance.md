@@ -24,7 +24,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | ③ 查看原文 | 从信号进入项目、中标方页面，字段回到原文片段 | 对象页与证据面板 BFF、对象信号分区、查看计量；事实与文档证据的本地读取绑定 | 数据平面读取与证据读取适配器（D-11）、归属边与组织解析（D-12）、信息领域服务状态与字段状态（D-10、D-13）、Web 对象页与证据面板（W-02） |
 | ④ 简报触达 | 早间在企业微信收到按目标分区的简报，卡片上反馈或跳转 Web | 企业微信绑定、免登会话与撤销（内存适配器）；简报组装与投递、偏好、历史、重新推送和卡片动作（C-04） | 第5段剩余功能（C-18～C-21）、覆盖与来源权利适配器、生产企业微信适配器与外网回调入口（C-01、C-02）、浏览器免登会话与卡片落地（W-04，按 Web 专项设计 WD2）、H5 落地页（W-03） |
 
-第6段跟进（指派、截止提醒、结果）在环节④之后接入，它的真实贯通依赖与④相同（渠道、调度、Web），不另列环节；未关闭部分登记为 C-12、C-13、C-15、C-16、C-18～C-24、D-18。
+第6段跟进（指派、截止提醒、结果）在环节④之后接入，它的真实贯通依赖与④相同（渠道、调度、Web），不另列环节；未关闭部分登记为 C-12、C-15、C-16、C-18～C-25、D-18。
 
 ## 3. 分级验收
 
@@ -82,7 +82,6 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | C-03 | IdP：Keycloak 管理接口与邀请邮件适配器、受邀新用户的账号准备、真实 TOTP 仪式与会话时长配置、Web 登录的保密客户端与后端通道登出。浏览器免登不再依赖 IdP 按免登会话铸造令牌（[Web 专项设计 WD2](../03-architecture/14-web-application.md#11-已确认事项)）：免登的浏览器会话由 W-04 承接，渠道网页授权与 `ChannelSSO` 的生产接入由 C-01、C-02 承接；Bearer 免登令牌只保留给测试签发方与非浏览器客户端，不阻断浏览器 L3 | [identity 第5节](../03-architecture/subsystems/identity.md#5-接口)；PRD 第1段用例6、18 | ①④ | L2 | — |
 | C-04 | 简报与卡片动作经生产企业微信的投递（站内部分已在 L1 关闭） | PRD 第5段；[channels 实现状况](../03-architecture/subsystems/channels.md) | ④ | L3 | 随 C-01 |
 | C-12 | 持续跟踪每期的变化简报（channels 消费 `pursuit.tracking.period_closed.v1`，按期末成员快照与上一期对比组装并投递）与 detection 关注消费 `pursuit.tracking.changed.v1`；依赖数据平面按对象集合与期间读取变化的内部接口（未建） | [契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约)；PRD 第6段 F10 | ④ | L2 | 随 D-12、D-04 |
-| C-13 | 持续跟踪的改派与协作者、归档状态、成员快照中每个对象的来源版本、对象合并（`entity.merged`）后的替换、企业名单导入；周期时区为缺省 Asia/Shanghai（租户与成员时区无所有者，见契约覆盖第9节） | PRD 第6段 F10 第3条 | — | L2 | 随 D-12 |
 | C-15 | 互相提示的范围为同一采购项目（同一事实类型与主体），跟进目标不含标包标识，尚不能缩小到同一标包 | PRD 第6段 F2 第1条 | — | L2 | 随 D-04 的 `lot_` |
 | C-16 | 评估报告的持久化与 Web 展示（`getOutcomeSummary` 只读计算，不留存报告版本） | [learning 实现状况](../03-architecture/subsystems/learning.md) | — | L2 | — |
 | C-18 | 简报的 AI 开头摘要（PRD 第5段第13节第8项，M2 不开启）。没有实现，也不建端口：需要 ai-platform 与生成标识的验收，真实模型调用未获授权；开启时摘要失败不得影响简报 | PRD 第5段第13节第8项 | — | — | 随 M3 研究入口 |
@@ -92,6 +91,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | C-22 | 分派规则只支持按区域与品类匹配；按我方主体（信号没有“由我方哪个主体承接”的字段）与组织单元（目标与信号同在目标所在单元，identity 登记单元覆盖前只有根单元）匹配的条件未提供；按角色选人（如“该单元的项目推进者”）需要按单元枚举持有角色的成员，依赖 C-07 的 `ListPermitted` | [customer-context 第11节](../03-architecture/subsystems/customer-context.md#11-分派配置) | — | L2 | 随 C-07 |
 | C-23 | 候选负责人只经 pursuit 的创建面板（`getCreateDefaults`）展示，信号详情（`getSignal`）、卡片与即时通知中不显示候选；规则变更后已有信号的候选不重算（保留生成时的建议与分派配置版本，随重新求值 D-14）；分派规则的 Web 配置页随 W-02 | PRD 第3段 F3 第1条；PRD 第6段 F1 第2条 | — | L2 | 随 D-14、W-02 |
 | C-24 | 授权同步告警（`authorization_sync_delayed` / `failed` / `recovered` 事件与 `alert` 键的结构化日志）尚无路由到值班的告警规则与通知渠道（仓库没有告警子系统，operations 只有链路探针）；未绑定渠道的决策者只在 Web 中看到“授权同步失败”（Web 列表与详情的展示随 W-02）；部分路径（成员变化、identity 拒绝后的重新同步）的 `sync_pending_since` 取数据库时钟而阈值按业务时钟判断 | [pursuit 第11节](../03-architecture/subsystems/pursuit.md#11-实现状况)；PRD 第6段 F12 第2、6条 | ④ | L2 | 随 R-04、W-02 |
+| C-25 | 对象合并后的替换（消费 entity-graph 的 `entity.merge.applied.v1` / `entity.merge.reverted.v1`：对象集合中被吸收的组织替换为存续组织、撤销合并时恢复，已结束各期的快照不变；事件契约已有、生产者未实现）、实体图中组织版本的生产读取（`api.Organizations` 生产适配器，缺省未接入：名单导入只校验标识格式、各期对象记为 `not_wired`）、按名称（与统一社会信用代码）解析名单行（`entity-graph.ResolveEntity`，当前只有名称的行为 `unresolved`、不猜测）、直接从 customer-context 企业清单（`TenantEntityList`，尚未实现）选取对象；周期时区仍为缺省 Asia/Shanghai（租户与成员时区无所有者，见契约覆盖第9节） | PRD 第6段 F10 第1、3条、用例47；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | — | L2 | 随 D-12 |
 | C-05 | 审批通知、策略执行失败通知、邀请通知的实际发送 | PRD 第7段用例13、14、20；identity | ① | L2 | 随 C-04 |
 | C-06 | 管理员账号恢复（IdP 管理接口与平台运营双人控制） | PRD 第1段用例17 | — | L5 前 | — |
 | C-07 | identity：`ListPermitted`、单元删除与变更事件、服务账号与外部协作者、个人租户免审批例外、额度条件 | [identity 第5节](../03-architecture/subsystems/identity.md#5-接口) | — | — | — |
@@ -135,6 +135,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | C-09 | 第6段渠道侧：提醒卡片投递与“完成/撤销”、简报“待我处理”任务、授权被拒通知、提醒安静时段（服务端） | `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`） |
 | C-10 | 持续跟踪 F10、创建面板候选负责人、同一采购项目的互相提示、评估报告结果汇总（服务端） | `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp`） |
 | C-11 | 渠道通知投递事件与统计、写入准入不满足时的转交、转交提醒分页展开、持续跟踪的授权被拒通知（服务端） | `services/kernel/integration/pursuit_test.go`、`services/subsystems/channels/internal/app/notices_internal_test.go` |
+| C-13 | 持续跟踪的改派与协作者（`assignTracking`）、归档与取消归档（`archiveTracking` / `unarchiveTracking`，已归档只读）、按名单导入对象（`importTrackingMembers`，逐行结果与操作一起固定）、成员快照中每个对象的加入版本与来源及期末实体来源版本（`TrackingPeriod.objects`、`tracking.period_closed` 的 `objects`）（服务端） | `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 C-13 子测试）、`services/subsystems/pursuit/internal/app/domain_internal_test.go`（`TestTrackingMemberSources`、`TestPeriodObjects`） |
 | C-14 | 目标分派规则配置与信号上的候选负责人，pursuit 候选适配器（服务端） | `services/kernel/integration/assignment_test.go`、`services/subsystems/detection/internal/app/assignment_test.go`、`services/subsystems/customercontext/internal/domain/assignment_test.go` |
 | C-17 | 授权同步待处理超过 5 分钟与超过 24 小时的告警事件、授权同步失败时通知能处理的决策者、负责人恢复写入准入后转交提醒的转回（服务端） | `services/kernel/integration/pursuit_test.go`（`TestPursuitFollowUp` 的 C-17 子测试）、`services/subsystems/channels/internal/app/notices_internal_test.go`、`services/cmd/platform/roles_test.go` |
 | R-01 | `scheduler` 角色运行各子系统声明的周期任务，主备同一时刻只一个实例执行 | `services/kernel/scheduler/scheduler_test.go`、`services/kernel/integration/tenants_test.go`、`services/subsystems/channels/jobs_test.go`、`services/cmd/platform/roles_test.go` |

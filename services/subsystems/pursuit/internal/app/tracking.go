@@ -23,6 +23,10 @@ import (
 // （admitWrite）都相同；交易型的接口对持续型的标识为 404，反之亦然。到达周期时点时由 Reminders.RunTracking 结束一期：记录实际期间、
 // 期末成员快照与对比基准，发布 pursuit.tracking.period_closed.v1 请求 channels 生成该期变化简报（channels 侧尚未实现）。暂停期间不结束、
 // 恢复后从恢复时起到下一个周期时点为一期，不补暂停期间的各期；停止不删除已结束的各期。
+//
+// C-13 追加：改派与协作者（assignTracking，与交易型同一流程 assignTeam）；已停止 ⇄ 已归档（已归档只读，不在缺省列表中）；按名单导入
+// 对象（逐行结果与操作一起固定）；每个对象的加入版本与来源（pur_tracking.member_sources），结束一期时连同实体图中的来源版本
+// （api.Organizations，未接入时为 not_wired）写入该期的 objects。
 
 // 事件类型（0.3.0）。
 const (
@@ -81,6 +85,12 @@ func (c Cadence) Next(after time.Time) (time.Time, error) {
 	return at.UTC(), nil
 }
 
+// memberSource 是一个对象的来源：加入对象集合时的成员版本（C-13 之前加入的没有）与加入方式（manual 手选、import 名单导入）。
+type memberSource struct {
+	Version *int64 `json:"v,omitempty"`
+	Source  string `json:"s"`
+}
+
 // trackingRow 是 pur_tracking 的一行。
 type trackingRow struct {
 	Name, State    string
@@ -91,22 +101,58 @@ type trackingRow struct {
 	NextRun        *time.Time
 	LastSeq        int64
 	StoppedAt      *time.Time
+	ArchivedAt     *time.Time
+	Sources        map[string]memberSource
 }
 
-const trackingColumns = `name, state, members, members_version, weekday, run_time, timezone, period_start, next_run_at, last_seq, stopped_at`
+const trackingColumns = `name, state, members, members_version, weekday, run_time, timezone, period_start, next_run_at, last_seq, stopped_at, archived_at,
+ member_sources`
 
 func scanTracking(row pgx.Row) (*trackingRow, error) {
 	var t trackingRow
+	var sources []byte
 	err := row.Scan(&t.Name, &t.State, &t.Members, &t.MembersVersion, &t.Cadence.Weekday, &t.Cadence.Time, &t.Cadence.Timezone, &t.PeriodStart, &t.NextRun,
-		&t.LastSeq, &t.StoppedAt)
+		&t.LastSeq, &t.StoppedAt, &t.ArchivedAt, &sources)
 	if err != nil {
 		return nil, err
 	}
 	if t.Members == nil {
 		t.Members = []string{}
 	}
+	t.Sources = map[string]memberSource{}
+	if len(sources) > 0 {
+		if err := json.Unmarshal(sources, &t.Sources); err != nil {
+			return nil, err
+		}
+	}
 	return &t, nil
 }
+
+// source 返回对象的来源（缺少记录时为 manual：C-13 之前只有手选）。
+func (t *trackingRow) source(org string) memberSource {
+	if m, ok := t.Sources[org]; ok && m.Source != "" {
+		return m
+	}
+	return memberSource{Source: "manual"}
+}
+
+// setMembers 以新的对象集合替换（成员版本加一）：保留下来的对象沿用其来源，新加入的记为 how 与新的成员版本，移出的删除来源。
+func (t *trackingRow) setMembers(members []string, how string) {
+	t.MembersVersion++
+	v := t.MembersVersion
+	next := map[string]memberSource{}
+	for _, m := range members {
+		if slices.Contains(t.Members, m) {
+			next[m] = t.source(m)
+		} else {
+			next[m] = memberSource{Version: &v, Source: how}
+		}
+	}
+	t.Members, t.Sources = members, next
+}
+
+// closed 表示持续跟踪已停止或已归档（不再结束新的一期，不能修改对象集合）。
+func (t *trackingRow) closed() bool { return t.State == "stopped" || t.State == "archived" }
 
 func loadTracking(ctx context.Context, tx pgx.Tx, id string, lock bool) (*trackingRow, error) {
 	q := `SELECT ` + trackingColumns + ` FROM pur_tracking WHERE pursuit_id = $1`
@@ -128,6 +174,7 @@ type TrackingSummary struct {
 	State          string        `json:"state"`
 	Owner          string        `json:"owner"`
 	OwnerValid     bool          `json:"owner_valid"`
+	Collaborators  []string      `json:"collaborators"`
 	MembersCount   int           `json:"members_count"`
 	MembersVersion int64         `json:"members_version"`
 	NextRunAt      *time.Time    `json:"next_run_at,omitempty"`
@@ -139,8 +186,13 @@ type TrackingSummary struct {
 
 func (s *Service) trackingSummary(p *Pursuit, t *trackingRow) TrackingSummary {
 	return TrackingSummary{ID: p.ID, ObjectiveID: p.ObjectiveID, Name: t.Name, State: t.State, Owner: p.Owner, OwnerValid: p.OwnerValid,
-		MembersCount: len(t.Members), MembersVersion: t.MembersVersion, NextRunAt: t.NextRun, Version: p.Version, Authorization: s.authorization(p),
+		Collaborators: collaboratorsOf(p), MembersCount: len(t.Members), MembersVersion: t.MembersVersion, NextRunAt: t.NextRun, Version: p.Version, Authorization: s.authorization(p),
 		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt}
+}
+
+// collaboratorsOf 返回协作者（按标识排序，空为空列表）。
+func collaboratorsOf(p *Pursuit) []string {
+	return dedupe(p.Collaborators, "")
 }
 
 // TrackingResult 是契约 TrackingCommandResult。
@@ -149,6 +201,8 @@ type TrackingResult struct {
 	Result        string           `json:"result"`
 	Tracking      *TrackingSummary `json:"tracking,omitempty"`
 	Authorization string           `json:"authorization,omitempty"`
+	ImportRows    []ImportRow      `json:"import_rows,omitempty"`
+	ImportCheck   string           `json:"import_check,omitempty"`
 }
 
 // projectTracking 按调用者当前的权限投影固定的结果（每次返回前，含重放）：能查看时给出摘要与返回时的授权状态，否则只给操作标识与结果。
@@ -179,6 +233,8 @@ func (s *Service) projectTracking(ctx context.Context, rc reqctx.Context, f *Fix
 	}
 	sum := s.trackingSummary(p, t)
 	out.Tracking = &sum
+	// 名单导入的逐行结果只给此刻仍能查看该跟踪的调用者（含“已在集合中”，不向已失去查看权的人透露对象集合）
+	out.ImportRows, out.ImportCheck = f.ImportRows, f.ImportCheck
 	out.Authorization = "effective"
 	if p.Applied < p.Participation {
 		out.Authorization = "syncing"
@@ -309,10 +365,15 @@ func (s *Service) CreateTracking(ctx context.Context, key string, req CreateTrac
 			if err != nil {
 				return nil, nil, err
 			}
-			t := &trackingRow{Name: req.Name, State: "tracking", Members: req.Members, MembersVersion: 1, Cadence: *req.Cadence, PeriodStart: &now, NextRun: &next}
+			t := &trackingRow{Name: req.Name, State: "tracking", Members: []string{}, Cadence: *req.Cadence, PeriodStart: &now, NextRun: &next}
+			t.setMembers(req.Members, "manual")
+			sources, err := json.Marshal(t.Sources)
+			if err != nil {
+				return nil, nil, err
+			}
 			if _, err := tx.Exec(ctx, `INSERT INTO pur_tracking (pursuit_id, tenant_id, name, state, members, members_version, weekday, run_time, timezone,
- period_start, next_run_at) VALUES ($1,$2,$3,'tracking',$4,1,$5,$6,$7,$8,$9)`, p.ID, rc.Tenant, t.Name, t.Members, t.Cadence.Weekday, t.Cadence.Time,
-				t.Cadence.Timezone, now, next); err != nil {
+ period_start, next_run_at, member_sources) VALUES ($1,$2,$3,'tracking',$4,1,$5,$6,$7,$8,$9,$10)`, p.ID, rc.Tenant, t.Name, t.Members, t.Cadence.Weekday,
+				t.Cadence.Time, t.Cadence.Timezone, now, next, sources); err != nil {
 				return nil, nil, err
 			}
 			if err := trackingEvent(ctx, tx, p, t, 1, "created", now); err != nil {
@@ -347,9 +408,14 @@ type TrackingMembersRequest struct {
 
 // trackingChange 是一次持续跟踪状态或对象集合的变化：apply 在加锁重读后按当前值决定结果（no_change、确定失败或修改 t），返回事件
 // 原因与时间线种类。
+//
+// prepare（可选）在读取权限与写入准入之后、提交之前执行（不持锁；例如经出站端口核对组织），返回的确定失败固定在操作标识上、暂时失败
+// 不固定。decorate（可选）给固定的结果追加内容（成功与无变化都调用；例如名单导入的逐行结果）。
 type trackingChange struct {
-	action string
-	apply  func(p *Pursuit, t *trackingRow, now time.Time) (reason, kind, detail string, err error)
+	action   string
+	apply    func(p *Pursuit, t *trackingRow, now time.Time) (reason, kind, detail string, err error)
+	prepare  func(ctx context.Context) error
+	decorate func(f *Fixed)
 }
 
 // errNoChange 表示请求的效果已成立（无变化）。
@@ -362,7 +428,7 @@ func (s *Service) PauseTracking(ctx context.Context, id, key string, req Version
 			switch t.State {
 			case "paused":
 				return "", "", "", errNoChange
-			case "stopped":
+			case "stopped", "archived":
 				return "", "", "", conflict("invalid_transition", p, nil)
 			}
 			t.State, t.PeriodStart, t.NextRun = "paused", nil, nil
@@ -377,7 +443,7 @@ func (s *Service) ResumeTracking(ctx context.Context, id, key string, req Versio
 			switch t.State {
 			case "tracking":
 				return "", "", "", errNoChange
-			case "stopped":
+			case "stopped", "archived":
 				return "", "", "", conflict("invalid_transition", p, nil)
 			}
 			next, err := t.Cadence.Next(now)
@@ -390,12 +456,15 @@ func (s *Service) ResumeTracking(ctx context.Context, id, key string, req Versio
 		}})
 }
 
-// StopTracking 停止（契约 stopTracking）：不再结束新的一期，已结束的各期保留。已停止为无变化。
+// StopTracking 停止（契约 stopTracking）：不再结束新的一期，已结束的各期保留。已停止为无变化，已归档 409 invalid_transition。
 func (s *Service) StopTracking(ctx context.Context, id, key string, req VersionRequest) (*TrackingResult, error) {
 	return s.changeTracking(ctx, id, key, req.OperationID, req.Expected, req, trackingChange{action: "stop_tracking",
 		apply: func(p *Pursuit, t *trackingRow, now time.Time) (string, string, string, error) {
-			if t.State == "stopped" {
+			switch t.State {
+			case "stopped":
 				return "", "", "", errNoChange
+			case "archived":
+				return "", "", "", conflict("invalid_transition", p, nil)
 			}
 			stopped := now
 			t.State, t.PeriodStart, t.NextRun, t.StoppedAt = "stopped", nil, nil, &stopped
@@ -412,7 +481,7 @@ func (s *Service) UpdateTrackingMembers(ctx context.Context, id, key string, req
 	req.Members = members
 	return s.changeTracking(ctx, id, key, req.OperationID, req.Expected, req, trackingChange{action: "tracking_members",
 		apply: func(p *Pursuit, t *trackingRow, now time.Time) (string, string, string, error) {
-			if t.State == "stopped" {
+			if t.closed() {
 				return "", "", "", conflict("invalid_transition", p, nil)
 			}
 			a, b := slices.Clone(t.Members), slices.Clone(members)
@@ -432,7 +501,7 @@ func (s *Service) UpdateTrackingMembers(ctx context.Context, id, key string, req
 					removed++
 				}
 			}
-			t.Members, t.MembersVersion = members, t.MembersVersion+1
+			t.setMembers(members, "manual")
 			return "members_changed", "members_changed", fmt.Sprintf("对象 +%d −%d；成员版本 %d", added, removed, t.MembersVersion), nil
 		}})
 }
@@ -457,6 +526,17 @@ func (s *Service) changeTracking(ctx context.Context, id, key, opID string, expe
 		if err := s.admitWrite(p, r, rc.Principal.ID); err != nil {
 			return s.fix(ctx, rc, o, err)
 		}
+		if c.prepare != nil {
+			if err := c.prepare(ctx); err != nil {
+				return s.fix(ctx, rc, o, err)
+			}
+		}
+		decorate := func(f *Fixed) *Fixed {
+			if c.decorate != nil {
+				c.decorate(f)
+			}
+			return f
+		}
 		return s.commit(ctx, rc, o, func(ctx context.Context, tx pgx.Tx) (*Fixed, any, error) {
 			now := s.businessNow()
 			p, err := loadPursuit(ctx, tx, id, true)
@@ -478,7 +558,7 @@ func (s *Service) changeTracking(ctx context.Context, id, key, opID string, expe
 			}
 			reason, kind, detail, err := c.apply(p, t, now)
 			if errors.Is(err, errNoChange) {
-				return &Fixed{Result: "no_change", PursuitID: id}, nil, nil
+				return decorate(&Fixed{Result: "no_change", PursuitID: id}), nil, nil
 			}
 			if err != nil {
 				return nil, nil, err
@@ -486,8 +566,13 @@ func (s *Service) changeTracking(ctx context.Context, id, key, opID string, expe
 			if p.Version != expected {
 				return nil, nil, conflict("conflict", p, nil)
 			}
-			if _, err := tx.Exec(ctx, `UPDATE pur_tracking SET state = $2, members = $3, members_version = $4, period_start = $5, next_run_at = $6, stopped_at = $7
- WHERE pursuit_id = $1`, id, t.State, t.Members, t.MembersVersion, t.PeriodStart, t.NextRun, t.StoppedAt); err != nil {
+			sources, err := json.Marshal(t.Sources)
+			if err != nil {
+				return nil, nil, err
+			}
+			if _, err := tx.Exec(ctx, `UPDATE pur_tracking SET state = $2, members = $3, members_version = $4, period_start = $5, next_run_at = $6, stopped_at = $7,
+ archived_at = $8, member_sources = $9 WHERE pursuit_id = $1`, id, t.State, t.Members, t.MembersVersion, t.PeriodStart, t.NextRun, t.StoppedAt, t.ArchivedAt,
+				sources); err != nil {
 				return nil, nil, err
 			}
 			if _, err := tx.Exec(ctx, `UPDATE pur_pursuits SET version = version + 1, changed_by = $2, updated_at = $3 WHERE id = $1`, id, rc.Principal.ID, now); err != nil {
@@ -503,7 +588,7 @@ func (s *Service) changeTracking(ctx context.Context, id, key, opID string, expe
 				id, o.id, p.Version+1, t.MembersVersion), Result: "succeeded", Basis: relEdit}); err != nil {
 				return nil, nil, err
 			}
-			return &Fixed{Result: "succeeded", PursuitID: id}, nil, nil
+			return decorate(&Fixed{Result: "succeeded", PursuitID: id}), nil, nil
 		})
 	})
 }
@@ -517,6 +602,7 @@ type TrackingDetail struct {
 	State          string          `json:"state"`
 	Owner          string          `json:"owner"`
 	OwnerValid     bool            `json:"owner_valid"`
+	Collaborators  []string        `json:"collaborators"`
 	Members        []string        `json:"members"`
 	MembersVersion int64           `json:"members_version"`
 	Cadence        Cadence         `json:"cadence"`
@@ -529,6 +615,7 @@ type TrackingDetail struct {
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
 	StoppedAt      *time.Time      `json:"stopped_at,omitempty"`
+	ArchivedAt     *time.Time      `json:"archived_at,omitempty"`
 	Timeline       []TimelineEntry `json:"timeline"`
 	ViewerCanEdit  bool            `json:"viewer_can_edit"`
 }
@@ -563,9 +650,9 @@ func (s *Service) GetTracking(ctx context.Context, id string) (*TrackingDetail, 
 	resolve := r.UnitEdit
 	auth.ViewerCanResolve = &resolve
 	return &TrackingDetail{ID: p.ID, ObjectiveID: p.ObjectiveID, OrgUnitID: p.OrgUnitID, Name: t.Name, State: t.State, Owner: p.Owner, OwnerValid: p.OwnerValid,
-		Members: t.Members, MembersVersion: t.MembersVersion, Cadence: t.Cadence, PeriodStart: t.PeriodStart, NextRunAt: t.NextRun, LastPeriodSeq: t.LastSeq,
+		Collaborators: collaboratorsOf(p), Members: t.Members, MembersVersion: t.MembersVersion, Cadence: t.Cadence, PeriodStart: t.PeriodStart, NextRunAt: t.NextRun, LastPeriodSeq: t.LastSeq,
 		Version: p.Version, Authorization: auth, CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt, StoppedAt: t.StoppedAt,
-		Timeline: entries, ViewerCanEdit: t.State != "stopped" && s.admitWrite(p, r, rc.Principal.ID) == nil}, nil
+		ArchivedAt: t.ArchivedAt, Timeline: entries, ViewerCanEdit: !t.closed() && s.admitWrite(p, r, rc.Principal.ID) == nil}, nil
 }
 
 // timelineOf 返回最近 200 条时间线（按平台记录时间排列）。
@@ -599,12 +686,14 @@ type trackingCursor struct {
 	Tenant    string    `json:"t"`
 	Subject   string    `json:"u"`
 	Objective string    `json:"o,omitempty"`
+	Archived  bool      `json:"a,omitempty"`
 	Created   time.Time `json:"c"`
 	ID        string    `json:"i"`
 }
 
-// ListTracking 列出调用者可查看的持续跟踪（契约 listTracking）：按创建时间倒序，每次读取按当前权限过滤（无权的不出现）。
-func (s *Service) ListTracking(ctx context.Context, objective string, limit int, cursor string) (*TrackingList, error) {
+// ListTracking 列出调用者可查看的持续跟踪（契约 listTracking）：按创建时间倒序，每次读取按当前权限过滤（无权的不出现）。archived 为
+// false 时只列未归档的，为 true 时只列已归档的（C-13）；游标绑定该筛选。
+func (s *Service) ListTracking(ctx context.Context, objective string, archived bool, limit int, cursor string) (*TrackingList, error) {
 	rc, err := userContext(ctx)
 	if err != nil {
 		return nil, err
@@ -612,10 +701,11 @@ func (s *Service) ListTracking(ctx context.Context, objective string, limit int,
 	if limit <= 0 || limit > 50 {
 		limit = 50
 	}
-	c := trackingCursor{Tenant: rc.Tenant, Subject: rc.Principal.ID, Objective: objective, Created: infinity, ID: "~"}
+	c := trackingCursor{Tenant: rc.Tenant, Subject: rc.Principal.ID, Objective: objective, Archived: archived, Created: infinity, ID: "~"}
 	if cursor != "" {
 		var got trackingCursor
-		if !s.unseal(purposeTrackingCursor, cursor, &got) || got.Tenant != rc.Tenant || got.Subject != rc.Principal.ID || got.Objective != objective {
+		if !s.unseal(purposeTrackingCursor, cursor, &got) || got.Tenant != rc.Tenant || got.Subject != rc.Principal.ID || got.Objective != objective ||
+			got.Archived != archived {
 			return nil, failure(400, "invalid_cursor")
 		}
 		c = got
@@ -666,7 +756,8 @@ func (s *Service) ListTracking(ctx context.Context, objective string, limit int,
 			if err != nil {
 				return nil, err
 			}
-			if r.View && it.t != nil {
+			if r.View && it.t != nil && (it.t.State == "archived") == archived {
+
 				if len(out.Items) == limit {
 					return s.trackingPage(out, c)
 				}
@@ -694,30 +785,39 @@ func (s *Service) trackingPage(out *TrackingList, c trackingCursor) (*TrackingLi
 
 // Period 是契约 TrackingPeriod。
 type Period struct {
-	PursuitID      string    `json:"pursuit_id"`
-	Seq            int64     `json:"seq"`
-	PeriodStart    time.Time `json:"period_start"`
-	PeriodEnd      time.Time `json:"period_end"`
-	Timezone       string    `json:"timezone"`
-	Members        []string  `json:"members"`
-	MembersVersion int64     `json:"members_version"`
-	BaselineSeq    *int64    `json:"baseline_seq,omitempty"`
-	Owner          string    `json:"owner"`
-	OwnerValid     bool      `json:"owner_valid"`
-	BriefingState  string    `json:"briefing_state"`
-	RecordedAt     time.Time `json:"recorded_at"`
+	PursuitID      string         `json:"pursuit_id"`
+	Seq            int64          `json:"seq"`
+	PeriodStart    time.Time      `json:"period_start"`
+	PeriodEnd      time.Time      `json:"period_end"`
+	Timezone       string         `json:"timezone"`
+	Members        []string       `json:"members"`
+	MembersVersion int64          `json:"members_version"`
+	BaselineSeq    *int64         `json:"baseline_seq,omitempty"`
+	Owner          string         `json:"owner"`
+	OwnerValid     bool           `json:"owner_valid"`
+	Objects        []PeriodObject `json:"objects,omitempty"`
+	BriefingState  string         `json:"briefing_state"`
+	RecordedAt     time.Time      `json:"recorded_at"`
 }
 
-const periodColumns = `pursuit_id, seq, period_start, period_end, timezone, members, members_version, baseline_seq, owner, owner_valid, briefing_state, recorded_at`
+const periodColumns = `pursuit_id, seq, period_start, period_end, timezone, members, members_version, baseline_seq, owner, owner_valid, briefing_state, recorded_at,
+ objects`
 
 func scanPeriod(row pgx.Row) (*Period, error) {
 	var p Period
+	var objects []byte
 	if err := row.Scan(&p.PursuitID, &p.Seq, &p.PeriodStart, &p.PeriodEnd, &p.Timezone, &p.Members, &p.MembersVersion, &p.BaselineSeq, &p.Owner, &p.OwnerValid,
-		&p.BriefingState, &p.RecordedAt); err != nil {
+		&p.BriefingState, &p.RecordedAt, &objects); err != nil {
 		return nil, err
 	}
 	if p.Members == nil {
 		p.Members = []string{}
+	}
+	// C-13 之前结束的期没有 objects（NULL，不是“没有对象”）
+	if len(objects) > 0 {
+		if err := json.Unmarshal(objects, &p.Objects); err != nil {
+			return nil, err
+		}
 	}
 	return &p, nil
 }
@@ -838,10 +938,24 @@ func (s *Service) RunTracking(ctx context.Context, now time.Time, limit int) (in
 	}
 	closed := 0
 	for _, id := range due {
-		var done bool
+		// 实体来源版本在加锁前读取（不在行锁内调用出站端口）；加锁后新出现的对象记为 unavailable
+		var members []string
 		err := s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+			t, err := loadTracking(ctx, tx, id, false)
+			if t != nil {
+				members = t.Members
+			}
+			return err
+		})
+		if err != nil {
+			s.logger().WarnContext(ctx, "持续跟踪的一期暂未结束，稍后再试", "pursuit", id, "error", err.Error())
+			continue
+		}
+		ev := s.readEntityVersions(ctx, members)
+		var done bool
+		err = s.tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 			var err error
-			done, err = s.closePeriod(ctx, tx, rc.Tenant, id, now)
+			done, err = s.closePeriod(ctx, tx, rc.Tenant, id, now, ev)
 			return err
 		})
 		if err != nil {
@@ -857,7 +971,7 @@ func (s *Service) RunTracking(ctx context.Context, now time.Time, limit int) (in
 
 // closePeriod 结束一个跟踪的进行中的一期（加行锁并跳过已被并发执行者锁住的；按当前值再检查仍为跟踪中、时点仍已到）。实际期间的结束取
 // 不晚于 now 的最近一个周期时点（执行者停止过时，错过的周期时点合并为一期，实际期间如实记录）。返回是否结束了一期。
-func (s *Service) closePeriod(ctx context.Context, tx pgx.Tx, tenant, id string, now time.Time) (bool, error) {
+func (s *Service) closePeriod(ctx context.Context, tx pgx.Tx, tenant, id string, now time.Time, ev entityVersions) (bool, error) {
 	t, err := scanTracking(tx.QueryRow(ctx, `SELECT `+trackingColumns+` FROM pur_tracking WHERE pursuit_id = $1 AND state = 'tracking' AND next_run_at <= $2
  FOR UPDATE SKIP LOCKED`, id, now))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -895,9 +1009,14 @@ func (s *Service) closePeriod(ctx context.Context, tx pgx.Tx, tenant, id string,
 		baseline = &b
 	}
 	recorded := s.businessNow()
+	objects := ev.objects(t)
+	rawObjects, err := json.Marshal(objects)
+	if err != nil {
+		return false, err
+	}
 	if _, err := tx.Exec(ctx, `INSERT INTO pur_tracking_periods (tenant_id, pursuit_id, seq, period_start, period_end, timezone, members, members_version,
- baseline_seq, owner, owner_valid, recorded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, tenant, id, seq, *t.PeriodStart, end, t.Cadence.Timezone,
-		t.Members, t.MembersVersion, baseline, p.Owner, p.OwnerValid, recorded); err != nil {
+ baseline_seq, owner, owner_valid, recorded_at, objects) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, tenant, id, seq, *t.PeriodStart, end,
+		t.Cadence.Timezone, t.Members, t.MembersVersion, baseline, p.Owner, p.OwnerValid, recorded, rawObjects); err != nil {
 		return false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE pur_tracking SET last_seq = $2, period_start = $3, next_run_at = $4 WHERE pursuit_id = $1`, id, seq, end, next); err != nil {
@@ -909,6 +1028,17 @@ func (s *Service) closePeriod(ctx context.Context, tx pgx.Tx, tenant, id string,
 	if baseline != nil {
 		data["baseline_seq"] = *baseline
 	}
+	// 事件只带对象标识与实体来源版本（白名单），不带加入方式
+	evObjects := make([]map[string]any, 0, len(objects))
+	for _, o := range objects {
+		item := map[string]any{"org_id": o.OrgID, "entity_state": o.EntityState}
+		if o.EntityVersion != nil {
+			item["entity_version"] = *o.EntityVersion
+		}
+		evObjects = append(evObjects, item)
+	}
+	data["objects"] = evObjects
+
 	_, err = writer.Append(ctx, tx, outbox.Event{Type: TrackingPeriodClosed, Subject: id, PartitionKey: id, Data: data})
 	return err == nil, err
 }

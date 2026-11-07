@@ -2,7 +2,7 @@
 // 从信号、卡片或手动创建与关联、撤销创建、改派与协作者、任务与截止、提醒、关闭与结果修订、列表与详情，以及经 identity 的授权同步。
 // 提醒的定时执行以 api.Reminders 端口提供，由 scheduler 角色周期调用；公开截止时间绑定随后续切片实现。C-10 追加持续跟踪（F10：
 // 跟踪计划、暂停 / 恢复 / 停止、按周期结束一期并请求变化简报，周期由 api.Reminders.RunTracking 驱动）、创建面板的默认负责人与
-// 同一标包其他中标方的提示。
+// 同一标包其他中标方的提示。C-13 追加持续跟踪的改派与协作者、归档、按名单导入对象与各期对象的实体来源版本（端口 api.Organizations）。
 package pursuit
 
 import (
@@ -42,6 +42,9 @@ var (
 		"POST /v1/pursuit/tracking/{pursuitID}/pause", "POST /v1/pursuit/tracking/{pursuitID}/resume", "POST /v1/pursuit/tracking/{pursuitID}/stop",
 		"POST /v1/pursuit/tracking/{pursuitID}/members", "GET /v1/pursuit/tracking/{pursuitID}/periods",
 		"GET /v1/pursuit/tracking/{pursuitID}/periods/{seq}",
+		// C-13：持续跟踪的改派与协作者、归档与取消归档、按名单导入对象
+		"POST /v1/pursuit/tracking/{pursuitID}/assign", "POST /v1/pursuit/tracking/{pursuitID}/archive", "POST /v1/pursuit/tracking/{pursuitID}/unarchive",
+		"POST /v1/pursuit/tracking/{pursuitID}/members/import",
 	}
 	internalRoutes = []string{"POST /internal/v1/pursuit/pursuits", "GET /internal/v1/pursuit/tasks/{taskID}",
 		"POST /internal/v1/pursuit/tasks/{taskID}/complete", "POST /internal/v1/pursuit/tasks/{taskID}/reopen",
@@ -61,14 +64,21 @@ func Module() runtime.Module { return ModuleWith(Adapters{}) }
 // Adapters 是 pursuit 的业务时钟（零值为系统时钟；测试使用可控时钟）与出站端口。Candidates 为零值时使用生产适配器（C-14）：
 // 经 detection 的 SignalCandidates 绑定读取信号生成时按目标分派规则算出的候选负责人（本地或远程）；服务对外接口的 api 角色缺少该绑定时
 // 不启动，其他角色（不服务创建面板）缺少时为 api.NotWired。
+//
+// Organizations 是实体图中组织版本的出站端口（C-13：持续跟踪的名单导入核对组织存在、各期记录实体来源版本）；零值为 api.NotWired
+// （entity-graph 尚未实现，见验收线 D-12）。
 type Adapters struct {
-	Now        func() time.Time
-	Candidates api.CandidateOwners
+	Now           func() time.Time
+	Candidates    api.CandidateOwners
+	Organizations api.Organizations
 }
 
 // ModuleWith 返回使用给定适配器的 pursuit 模块定义。
 func ModuleWith(adapters Adapters) runtime.Module {
-	svc := &app.Service{Now: adapters.Now, Candidates: adapters.Candidates}
+	svc := &app.Service{Now: adapters.Now, Candidates: adapters.Candidates, Organizations: adapters.Organizations}
+	if svc.Organizations == nil {
+		svc.Organizations = api.NotWired{}
+	}
 	return runtime.Module{
 		Name:       api.Name,
 		Database:   "pur",
