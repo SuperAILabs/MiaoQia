@@ -14,7 +14,7 @@
 | 数据供应 | [`evidence`](evidence.md) 证据与内容理解 | 文档处理、快照、解析修订、字段溯源、质量、AI 内容增强 | Python | `data`（租户文档解析为单元级实例） | `evd` |
 | 数据供应 | [`domain-intelligence`](domain-intelligence.md) 领域情报 | 领域事实与事件、生命周期、跨记录聚合、领域统计 | Python | `data` | `dom` |
 | 数据供应 | [`entity-graph`](entity-graph.md) 实体与关系图谱 | 实体主数据、实体解析、关系图谱 | Python | `data` | `ent` |
-| 数据供应 | [`search`](search.md) 检索与索引 | 索引投影、全文/语义/混合检索、订阅反查、租户知识检索 | Go | `platform` | `sea` |
+| 数据供应 | [`search`](search.md) 检索与索引 | 索引投影、全文与结构化检索、订阅反查、租户知识检索 | Go | `platform` | `sea` |
 | 客户智能 | [`customer-context`](customer-context.md) 客户上下文与策略 | 客户档案、目标、策略、知识资产 | Go | `platform` | `ctx` |
 | 客户智能 | [`detection`](detection.md) 监测与匹配 | 监测订阅、信号匹配、处置分层 | Go | `platform` | `det` |
 | 客户智能 | [`research`](research.md) Agent 研究 | 研究模板执行、Agent 运行、研究报告 | Go | `platform` | `res` |
@@ -26,7 +26,7 @@
 | 平台 | [`identity`](identity.md) 身份与权限 | 租户、成员、角色、授权决策、审批 | Go | `platform` | `iam` |
 | 平台 | [`commerce`](commerce.md) 订阅计量计费 | 套餐、权益、配额、计量、账单 | Go | `platform` | `com` |
 | 平台 | [`governance`](governance.md) 审计与合规 | 审计、数据分级、保留删除、合规登记 | Go | `platform` | `gov` |
-| 平台 | [`ai-platform`](ai-platform.md) AI 平台 | 模型网关、提示注册、嵌入、护栏、AI 计量 | Go | `platform` | `aip` |
+| 平台 | [`ai-platform`](ai-platform.md) AI 平台 | 模型网关、提示注册、护栏、AI 计量 | Go | `platform` | `aip` |
 | 平台 | [`operations`](operations.md) 运营工作台 | 人工复核队列、数据运营、托管服务、客户成功 | Go | `platform` | `ops` |
 
 “数据库”列是子系统的数据库代码；每个数据域/Cell实例分别绑定独占逻辑数据库与独立账号（公共与租户实例不能绑定同一数据库），见 [数据架构](../02-data-architecture.md)。代码包命名见 [代码库结构](../09-codebase-structure.md)。

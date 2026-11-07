@@ -19,8 +19,6 @@ type Capability string
 
 const (
 	CapGenerate Capability = "generate"
-	CapEmbed    Capability = "embed"
-	CapRerank   Capability = "rerank"
 	CapOCR      Capability = "ocr"
 	// CapClassify 与 CapScore 是决策能力：从任务给定的候选标签中选择，或在给定量表上评分，结果是类型化字段而不是自由文本。
 	// 它们服务于边界明确的小决策（公告类型、品类初筛、消息意图与处理路由），结果只是业务判断的输入；
@@ -117,38 +115,6 @@ type GenerateResult struct {
 	InvocationID string          `json:"invocation_id"`
 }
 
-// EmbedRequest 是向量化请求。
-type EmbedRequest struct {
-	Call
-	Purpose string   `json:"purpose"` // 例如 chunk、query
-	Texts   []string `json:"texts"`
-}
-
-// EmbedResult 的 Model 需记入索引版本；更换模型即构建新版本索引（ADR-0015）。
-type EmbedResult struct {
-	Vectors      [][]float32 `json:"vectors"`
-	Model        ModelRef    `json:"model"`
-	Usage        Usage       `json:"usage"`
-	Call         CallCost    `json:"call"`
-	InvocationID string      `json:"invocation_id"`
-}
-
-// RerankRequest 是重排请求。
-type RerankRequest struct {
-	Call
-	Query      string   `json:"query"`
-	Candidates []string `json:"candidates"`
-}
-
-// RerankResult 的 Scores 与 Candidates 一一对应。
-type RerankResult struct {
-	Scores       []float64 `json:"scores"`
-	Model        ModelRef  `json:"model"`
-	Usage        Usage     `json:"usage"`
-	Call         CallCost  `json:"call"`
-	InvocationID string    `json:"invocation_id"`
-}
-
 // Label 是分类任务的一个候选标签。Definition 是业务定义，与标签一起送入模型并随任务版本固定。
 type Label struct {
 	ID         string `json:"id"`
@@ -228,8 +194,6 @@ type Decision struct {
 // Gateway 是模型网关。业务子系统只经此接口使用模型，不直接接供应商。
 type Gateway interface {
 	Generate(context.Context, GenerateRequest) (*GenerateResult, error)
-	Embed(context.Context, EmbedRequest) (*EmbedResult, error)
-	Rerank(context.Context, RerankRequest) (*RerankResult, error)
 	Classify(context.Context, ClassifyRequest) (*Decision, error)
 	Score(context.Context, ScoreRequest) (*Decision, error)
 }
@@ -238,11 +202,11 @@ type Gateway interface {
 const (
 	CodeInvalidRequest      = "invalid_request"       // 请求缺字段、预算为负或输出 Schema 无法编译
 	CodeSensitiveNotAllowed = "sensitive_not_allowed" // 敏感数据默认不进入模型，租户授权尚未接入
-	CodeNoEligibleModel     = "no_eligible_model"     // 没有满足能力（决策能力还须声明该任务版本）、备案、地域与分级要求的端点
+	CodeNoEligibleModel     = "no_eligible_model"     // 没有满足能力（决策能力还须声明该任务版本）与分级要求的端点
 	CodeBudgetExceeded      = "budget_exceeded"       // 预计用量或费用超出本次上限（含主备切换中已发生的费用），未调用下一个端点
 	CodeProviderUnavailable = "provider_unavailable"  // 主备端点均不可用；不降级到不合规模型
 	CodeOutputInvalid       = "output_invalid"        // 模型输出未通过 Schema 校验，或决策结果的标签不在候选中、分数越界、含义与目录声明不符
-	CodeProviderResponseBad = "provider_response_bad" // 供应商返回与请求不一致（如向量数量不符）
+	CodeProviderResponseBad = "provider_response_bad" // 供应商返回与请求不一致
 )
 
 // Error 是网关的业务错误，可安全暴露给调用方。
@@ -266,16 +230,6 @@ type localGateway struct{ impl Gateway }
 func (g localGateway) Generate(ctx context.Context, req GenerateRequest) (*GenerateResult, error) {
 	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "Generate", Timeout: callTimeout},
 		func(ctx context.Context) (*GenerateResult, error) { return g.impl.Generate(ctx, req) })
-}
-
-func (g localGateway) Embed(ctx context.Context, req EmbedRequest) (*EmbedResult, error) {
-	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "Embed", Timeout: callTimeout},
-		func(ctx context.Context) (*EmbedResult, error) { return g.impl.Embed(ctx, req) })
-}
-
-func (g localGateway) Rerank(ctx context.Context, req RerankRequest) (*RerankResult, error) {
-	return binding.Invoke(ctx, binding.Local, binding.Op{Subsystem: Name, Name: "Rerank", Timeout: callTimeout},
-		func(ctx context.Context) (*RerankResult, error) { return g.impl.Rerank(ctx, req) })
 }
 
 func (g localGateway) Classify(ctx context.Context, req ClassifyRequest) (*Decision, error) {

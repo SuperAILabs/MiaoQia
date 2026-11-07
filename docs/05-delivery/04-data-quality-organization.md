@@ -9,12 +9,12 @@
 ### 1.1 来源治理
 
 - 候选来源唯一定义在 [source-inventory.yaml](../../packs/information_domains/procurement/source-inventory.yaml)：本地 Tender Intel 的40个入口（37个原型启用、3个未启用）已盘点；这些状态仅供参考，不代表妙洽已启用或获得商业使用权。
-- D1a 盘点核验（复现方法：用 YAML 解析该文件逐条统计字段与取值，并在仓库内检索引用方）：共40条，`source_id` 无重复；每条只有 `source_id`、`name`、`base_url`、`reference_access_mode`、`reference_enabled`、`readiness`、`rights_status`、`priority`、`owner` 九个字段，不含处理器、驱动、选择器、凭证或调度配置；`base_url` 均为站点根地址（33个 https、7个 http，1个为 IP:端口镜像），无路径、查询参数或账号；原型状态只出现在 `reference_*` 字段（37个原型启用、3个未启用；39个 public、1个 authenticated），妙洽自身状态全部为 `readiness: candidate`、`rights_status: pending_review`、`priority: pending_review`；仓库内没有代码读取该文件或 `reference_enabled`。3组条目共用同一站点（四川、重庆政府采购网，陕西公共资源交易中心），按下一条在 D1b 登记共同平台标识。
+- D1a 盘点核验（复现方法：用 YAML 解析该文件逐条统计字段与取值，并在仓库内检索引用方）：共40条，`source_id` 无重复；每条只有 `source_id`、`name`、`base_url`、`reference_access_mode`、`reference_enabled`、`readiness`、`priority`、`owner` 八个字段，不含处理器、驱动、选择器、凭证或调度配置；`base_url` 均为站点根地址（33个 https、7个 http，1个为 IP:端口镜像），无路径、查询参数或账号；原型状态只出现在 `reference_*` 字段（37个原型启用、3个未启用；39个 public、1个 authenticated），妙洽自身状态全部为 `readiness: candidate`、`priority: pending_review`；仓库内没有代码读取该文件或 `reference_enabled`。3组条目共用同一站点（四川、重庆政府采购网，陕西公共资源交易中心），按下一条在 D1b 登记共同平台标识。
 - 冻结语料的来源权利策略（[acquisition 当前权利端口](../03-architecture/subsystems/source-rights-runtime.md)，`deploy/acquisition/source-rights-frozen.json`）只登记复核语料在指定租户/cell 下的用途、展示级别与期限，`source_id` 为语料来源而非本盘点条目，不构成任何具体来源的 D1b 启用。
 - 覆盖顺序：国家级政府采购/公共资源 → 省级 → 主要央企/国企 → 地市按交易量排序。40个入口不等于全国覆盖，政府采购、工程建设、国企自主采购分别验收。
 - 同站多入口和镜像登记共同平台标识，来源覆盖不按入口数重复计数；每个来源确认 P0/P1/P2、地区、公告类型、可访问历史、频率、责任角色、权利与更新时间。
 - 每个来源启用前验证列表、详情正文、分页、公告更正、附件下载与格式；仅首页窗口可见的入口不得承诺完整历史或全量覆盖。登录入口只有授权完成并通过接入验收后启用。
-- 来源权利登记分别明确采集、保存、展示、再分发、模型处理与撤销后的下线责任。每日按省份/类型监控来源健康与采集量；中断时记录数据截至时间和覆盖缺口。
+- 初期来源均为公开信息、不对外二次商业发布，不做逐来源授权；每个来源登记来源跟踪（来源标识、采集时间、原始响应留存），每条事实可追溯到来源。特殊来源由法务个案处理。每日按省份/类型监控来源健康与采集量；中断时记录数据截至时间和覆盖缺口。
 
 ### 1.2 评估集
 

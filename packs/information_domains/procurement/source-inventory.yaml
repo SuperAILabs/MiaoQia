@@ -1,7 +1,7 @@
 version: 0.1.0
 reviewed_at: '2026-10-14'
 reference: Tender Intel source_catalog/*/source.yaml
-purpose: 妙洽候选信源盘点，仅登记公开定位信息，不迁移处理器、驱动、凭证或启用状态。来源权利与正文/附件能力验收完成前不得启用。
+purpose: 妙洽候选信源盘点，仅登记公开定位信息，不迁移处理器、驱动、凭证或启用状态。正文/附件能力验收并登记来源跟踪前不得启用。
 sources:
 - source_id: anhui-ggzy-construction
   name: 安徽省公共资源交易平台-工程建设公告
@@ -9,7 +9,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: anhui-government-procurement-spa
@@ -18,7 +17,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: bfjsjt-tender
@@ -27,7 +25,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: ccgp-central-public-tenders
@@ -36,7 +33,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: ccgp-sichuan-ggxx
@@ -45,7 +41,6 @@ sources:
   reference_access_mode: public
   reference_enabled: false
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: chongqing-ggzy-trade-014
@@ -54,7 +49,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: chongqing-government-procurement-homepage
@@ -63,7 +57,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: chongqing-government-procurement-spa
@@ -72,7 +65,6 @@ sources:
   reference_access_mode: public
   reference_enabled: false
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: cncecyc-ywgg1gc
@@ -81,7 +73,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: cotenders-news
@@ -90,7 +81,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: crccep-bidding-mat
@@ -99,7 +89,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: crecgec-home
@@ -108,7 +97,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: hefei-ggzy-engineer
@@ -117,7 +105,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: henan-ggzy-homepage-direct
@@ -126,7 +113,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: henan-government-procurement-home
@@ -135,7 +121,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: hubei-ggzy-construction
@@ -144,7 +129,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: hubei-government-procurement-homepage
@@ -153,7 +137,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: hunan-ggzy-construction
@@ -162,7 +145,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: hunan-government-procurement
@@ -171,7 +153,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: jiangxi-ggzy-announcements
@@ -180,7 +161,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: jiangxi-government-procurement-spa
@@ -189,7 +169,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: js-218-206-153-6-trade
@@ -198,7 +177,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: jsjyztb-web-list
@@ -207,7 +185,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: luzhou-ggzy-tzgg
@@ -216,7 +193,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: m2-bid-list
@@ -225,7 +201,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: national-public-resources
@@ -234,7 +209,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: scbid-zbxx
@@ -243,7 +217,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: shaanxi-ggzy-construction
@@ -252,7 +225,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: shaanxi-government-procurement
@@ -261,7 +233,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: shanxi-prec
@@ -270,7 +241,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: sichuan-ggzy-construction
@@ -279,7 +249,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: sichuan-government-procurement-homepage
@@ -288,7 +257,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: suzhou-ggzy-trade
@@ -297,7 +265,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: tibet-ggzy-construction
@@ -306,7 +273,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: tibet-government-procurement-home
@@ -315,7 +281,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: xinjiang-ggzy-construction
@@ -324,7 +289,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: xinjiang-government-procurement-home
@@ -333,7 +297,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: xuzhou-ggzy
@@ -342,7 +305,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: ygcgfwpt-transaction
@@ -351,7 +313,6 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review
 - source_id: ymzec-trade-info
@@ -360,6 +321,5 @@ sources:
   reference_access_mode: authenticated
   reference_enabled: false
   readiness: candidate
-  rights_status: pending_review
   owner: 数据负责人
   priority: pending_review

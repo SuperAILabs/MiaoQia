@@ -57,8 +57,6 @@ type ProviderDecision struct {
 // Provider 是供应商适配器。适配器只负责协议转换，不做路由、预算与校验。
 type Provider interface {
 	Generate(ctx context.Context, ep Endpoint, req ProviderRequest) (json.RawMessage, ProviderUsage, error)
-	Embed(ctx context.Context, ep Endpoint, texts []string) ([][]float32, ProviderUsage, error)
-	Rerank(ctx context.Context, ep Endpoint, query string, candidates []string) ([]float64, ProviderUsage, error)
 	Classify(ctx context.Context, ep Endpoint, req ProviderClassifyRequest) (ProviderDecision, ProviderUsage, error)
 	Score(ctx context.Context, ep Endpoint, req ProviderScoreRequest) (ProviderDecision, ProviderUsage, error)
 }
@@ -69,7 +67,6 @@ type StubBehavior struct {
 	Block  bool            // 阻塞直到上下文取消，用于验证端点时限
 	Output json.RawMessage // 生成输出；为空时返回 {}
 	Usage  ProviderUsage
-	Dim    int // 向量维度，默认 4
 	// Decision 是分类与评分的结果；为空时分类返回第一个候选标签、评分返回量表下限，均不带数值以外的字段。
 	Decision *ProviderDecision
 }
@@ -114,36 +111,6 @@ func (s *Stub) Generate(ctx context.Context, ep Endpoint, _ ProviderRequest) (js
 		return json.RawMessage(`{}`), b.Usage, nil
 	}
 	return b.Output, b.Usage, nil
-}
-
-func (s *Stub) Embed(ctx context.Context, ep Endpoint, texts []string) ([][]float32, ProviderUsage, error) {
-	b, err := s.behave(ctx, ep)
-	if err != nil {
-		return nil, b.Usage, err
-	}
-	dim := b.Dim
-	if dim == 0 {
-		dim = 4
-	}
-	out := make([][]float32, len(texts))
-	for i, t := range texts {
-		v := make([]float32, dim)
-		v[0] = float32(len([]rune(t)))
-		out[i] = v
-	}
-	return out, b.Usage, nil
-}
-
-func (s *Stub) Rerank(ctx context.Context, ep Endpoint, _ string, candidates []string) ([]float64, ProviderUsage, error) {
-	b, err := s.behave(ctx, ep)
-	if err != nil {
-		return nil, b.Usage, err
-	}
-	out := make([]float64, len(candidates))
-	for i := range candidates {
-		out[i] = 1 / float64(i+1)
-	}
-	return out, b.Usage, nil
 }
 
 func (s *Stub) Classify(ctx context.Context, ep Endpoint, req ProviderClassifyRequest) (ProviderDecision, ProviderUsage, error) {

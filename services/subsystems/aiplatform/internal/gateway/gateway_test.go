@@ -21,7 +21,6 @@ endpoints:
     model: m-large
     version: "2026-09"
     capabilities: [generate]
-    filed: true
     region: cn
     tier: 0
     billing: token
@@ -34,50 +33,17 @@ endpoints:
     model: m-small
     version: "2026-08"
     capabilities: [generate]
-    filed: true
     region: cn
     tier: 1
     billing: token
     input_price_per_1k: 500
     output_price_per_1k: 500
     no_training_on_customer: true
-  - id: gen-unfiled
-    provider: stub
-    model: m-x
-    version: "1"
-    capabilities: [generate, embed]
-    filed: false
-    region: cn
-    billing: token
-    input_price_per_1k: 1
-    no_training_on_customer: true
-  - id: gen-abroad
-    provider: stub
-    model: m-y
-    version: "1"
-    capabilities: [generate, embed, rerank]
-    filed: true
-    region: us
-    billing: token
-    input_price_per_1k: 1
-    no_training_on_customer: true
-  - id: emb
-    provider: stub
-    model: e-1
-    version: "1"
-    capabilities: [embed, rerank]
-    filed: true
-    region: cn
-    max_input_tokens: 100
-    billing: token
-    input_price_per_1k: 100
-    no_training_on_customer: true
   - id: dec-primary
     provider: stub
     model: d-1
     version: "1.0"
     capabilities: [classify, score]
-    filed: true
     region: cn
     tier: 0
     billing: request
@@ -92,7 +58,6 @@ endpoints:
     model: d-llm
     version: "3"
     capabilities: [classify]
-    filed: true
     region: cn
     tier: 1
     billing: token
@@ -106,7 +71,6 @@ endpoints:
     model: d-2
     version: "1"
     capabilities: [classify]
-    filed: true
     region: cn
     billing: request
     request_price: 200
@@ -209,7 +173,7 @@ func TestAllEndpointsDownFailsExplicitly(t *testing.T) {
 	if code(err) != api.CodeProviderUnavailable {
 		t.Fatalf("err = %v", err)
 	}
-	// 未备案与境外端点即使声明了能力也不参与，不降级到不合规模型。
+	// 未声明该能力的端点不参与。
 	if !slices.Equal(stub.Calls(), []string{"gen-primary", "gen-backup"}) {
 		t.Fatalf("calls = %v", stub.Calls())
 	}
@@ -297,54 +261,12 @@ func TestSensitiveAndInvalidRequestsRejected(t *testing.T) {
 	}
 }
 
-func TestEmbedAndRerank(t *testing.T) {
-	s, _, _ := setup(t, map[string]StubBehavior{"emb": {Usage: ProviderUsage{InputTokens: 6}}})
-	call := api.Call{Task: "search.chunk_embed", Classification: api.Public, Budget: api.Budget{MaxCostMicroYuan: 100}}
-	e, err := s.Embed(ctx(), api.EmbedRequest{Call: call, Purpose: "chunk", Texts: []string{"管材", "阀门"}})
-	if err != nil || len(e.Vectors) != 2 || e.Model.Endpoint != "emb" {
-		t.Fatalf("embed: %+v %v", e, err)
-	}
-	if e.Usage != (api.Usage{Unit: api.BillToken, InputTokens: 6, CostMicroYuan: 1}) {
-		t.Fatalf("embed usage: %+v", e.Usage)
-	}
-	rr, err := s.Rerank(ctx(), api.RerankRequest{Call: call, Query: "管材", Candidates: []string{"a", "b", "c"}})
-	if err != nil || len(rr.Scores) != 3 {
-		t.Fatalf("rerank: %+v %v", rr, err)
-	}
-	// 超出端点上下文时没有可用端点。
-	long := strings.Repeat("长", 101)
-	if _, err := s.Embed(ctx(), api.EmbedRequest{Call: call, Purpose: "chunk", Texts: []string{long}}); code(err) != api.CodeBudgetExceeded {
-		t.Fatalf("context limit: %v", err)
-	}
-	// 没有声明 OCR 能力的合规端点。
-	c, _ := ParseCatalog([]byte(catalogYAML))
-	if _, err := c.route(api.CapOCR, api.Public, ""); code(err) != api.CodeNoEligibleModel {
-		t.Fatalf("ocr: %v", err)
-	}
-}
-
-func TestEmbedCountMismatchRejected(t *testing.T) {
-	s, _, _ := setup(t, nil)
-	s.providers["stub"] = shortEmbed{NewStub(nil)}
-	_, err := s.Embed(ctx(), api.EmbedRequest{Call: api.Call{Task: "t", Classification: api.Public, Budget: api.Budget{MaxCostMicroYuan: 100}}, Purpose: "chunk", Texts: []string{"a", "b"}})
-	if code(err) != api.CodeProviderResponseBad {
-		t.Fatalf("err = %v", err)
-	}
-}
-
-type shortEmbed struct{ *Stub }
-
-func (s shortEmbed) Embed(ctx context.Context, ep Endpoint, texts []string) ([][]float32, ProviderUsage, error) {
-	v, u, err := s.Stub.Embed(ctx, ep, texts)
-	return v[:1], u, err
-}
-
 func TestCatalogValidation(t *testing.T) {
 	for name, y := range map[string]string{
-		"missing version": `endpoints: [{id: a, provider: stub, model: m, capabilities: [embed], region: cn, no_training_on_customer: true}]`,
-		"duplicate":       `endpoints: [{id: a, provider: stub, model: m, version: "1", capabilities: [embed], region: cn, no_training_on_customer: true}, {id: a, provider: stub, model: m, version: "1", capabilities: [embed], region: cn, no_training_on_customer: true}]`,
-		"no region":       `endpoints: [{id: a, provider: stub, model: m, version: "1", capabilities: [embed], no_training_on_customer: true}]`,
-		"training":        `endpoints: [{id: a, provider: stub, model: m, version: "1", capabilities: [embed], region: cn}]`,
+		"missing version": `endpoints: [{id: a, provider: stub, model: m, capabilities: [generate], region: cn, no_training_on_customer: true}]`,
+		"duplicate":       `endpoints: [{id: a, provider: stub, model: m, version: "1", capabilities: [generate], region: cn, no_training_on_customer: true}, {id: a, provider: stub, model: m, version: "1", capabilities: [generate], region: cn, no_training_on_customer: true}]`,
+		"no region":       `endpoints: [{id: a, provider: stub, model: m, version: "1", capabilities: [generate], no_training_on_customer: true}]`,
+		"training":        `endpoints: [{id: a, provider: stub, model: m, version: "1", capabilities: [generate], region: cn}]`,
 	} {
 		if _, err := ParseCatalog([]byte(y)); err == nil {
 			t.Fatalf("%s: 应拒绝", name)
@@ -352,12 +274,12 @@ func TestCatalogValidation(t *testing.T) {
 	}
 	const ep = `{id: a, provider: stub, model: m, version: "1", region: cn, no_training_on_customer: true, `
 	for name, y := range map[string]string{
-		"no billing":            `endpoints: [` + ep + `capabilities: [embed], input_price_per_1k: 1}]`,
-		"token without price":   `endpoints: [` + ep + `capabilities: [embed], billing: token}]`,
+		"no billing":            `endpoints: [` + ep + `capabilities: [generate], input_price_per_1k: 1}]`,
+		"token without price":   `endpoints: [` + ep + `capabilities: [generate], billing: token}]`,
 		"request without price": `endpoints: [` + ep + `capabilities: [classify], billing: request, decision_tasks: [{task: t, version: "1", capability: classify, score_meaning: none}]}]`,
-		"request with token":    `endpoints: [` + ep + `capabilities: [embed], billing: request, request_price: 1, input_price_per_1k: 1}]`,
+		"request with token":    `endpoints: [` + ep + `capabilities: [generate], billing: request, request_price: 1, input_price_per_1k: 1}]`,
 		"decision without task": `endpoints: [` + ep + `capabilities: [classify], billing: request, request_price: 1}]`,
-		"task without cap":      `endpoints: [` + ep + `capabilities: [embed], billing: request, request_price: 1, decision_tasks: [{task: t, version: "1", capability: classify, score_meaning: none}]}]`,
+		"task without cap":      `endpoints: [` + ep + `capabilities: [generate], billing: request, request_price: 1, decision_tasks: [{task: t, version: "1", capability: classify, score_meaning: none}]}]`,
 		"score as probability":  `endpoints: [` + ep + `capabilities: [score], billing: request, request_price: 1, decision_tasks: [{task: t, version: "1", capability: score, score_meaning: probability}]}]`,
 		"classify as scale":     `endpoints: [` + ep + `capabilities: [classify], billing: request, request_price: 1, decision_tasks: [{task: t, version: "1", capability: classify, score_meaning: scale}]}]`,
 		"meaning mismatch": `endpoints: [` + ep + `capabilities: [classify], billing: request, request_price: 1, decision_tasks: [{task: t, version: "1", capability: classify, score_meaning: probability}]},` +
@@ -368,7 +290,7 @@ func TestCatalogValidation(t *testing.T) {
 		}
 	}
 	c, err := ParseCatalog([]byte(catalogYAML))
-	if err != nil || !slices.Equal(c.AllowedRegions, []string{"cn"}) || c.Endpoints[0].Timeout != 50*time.Millisecond {
+	if err != nil || c.Endpoints[0].Timeout != 50*time.Millisecond {
 		t.Fatalf("defaults: %+v %v", c, err)
 	}
 	if _, err := New(c, map[string]Provider{}, nil, nil); err == nil {
@@ -665,9 +587,9 @@ func TestLocalBindingDecision(t *testing.T) {
 
 const failoverCatalog = `
 endpoints:
-  - {id: p, provider: stub, model: m, version: "1", capabilities: [classify], filed: true, region: cn, tier: 0, billing: request, request_price: 300, no_training_on_customer: true,
+  - {id: p, provider: stub, model: m, version: "1", capabilities: [classify], region: cn, tier: 0, billing: request, request_price: 300, no_training_on_customer: true,
      decision_tasks: [{task: notice.doc_type, version: "2", capability: classify, score_meaning: probability}]}
-  - {id: b, provider: stub, model: m, version: "2", capabilities: [classify], filed: true, region: cn, tier: 1, billing: request, request_price: 300, no_training_on_customer: true,
+  - {id: b, provider: stub, model: m, version: "2", capabilities: [classify], region: cn, tier: 1, billing: request, request_price: 300, no_training_on_customer: true,
      decision_tasks: [{task: notice.doc_type, version: "2", capability: classify, score_meaning: probability}]}
 `
 
@@ -759,11 +681,6 @@ func TestNegativeBudgetRejected(t *testing.T) {
 		if _, err := s.Generate(ctx(), g); code(err) != api.CodeInvalidRequest {
 			t.Fatalf("generate %d: %v", i, err)
 		}
-		e := api.EmbedRequest{Call: api.Call{Task: "t", Classification: api.Public}, Purpose: "chunk", Texts: []string{"a"}}
-		neg(&e.Budget)
-		if _, err := s.Embed(ctx(), e); code(err) != api.CodeInvalidRequest {
-			t.Fatalf("embed %d: %v", i, err)
-		}
 	}
 	if len(stub.Calls()) != 0 {
 		t.Fatalf("calls = %v", stub.Calls())
@@ -784,13 +701,24 @@ func TestInputEstimateCoversFullPayload(t *testing.T) {
 	if _, err := s.Generate(ctx(), r); code(err) != api.CodeBudgetExceeded || len(stub.Calls()) != 0 {
 		t.Fatalf("schema: err=%v calls=%v", err, stub.Calls())
 	}
-	// 非 ASCII 按 UTF-8 字节计：33 个汉字为 99+1，在 100 的上下文内；34 个为 102+1，超出。
-	call := api.Call{Task: "search.chunk_embed", Classification: api.Public, Budget: api.Budget{MaxCostMicroYuan: 100}}
-	if _, err := s.Embed(ctx(), api.EmbedRequest{Call: call, Purpose: "chunk", Texts: []string{strings.Repeat("长", 33)}}); err != nil {
-		t.Fatalf("33: %v", err)
+	// 非 ASCII 按 UTF-8 字节计：33 个汉字为 99+1，34 个为 102+1。
+	if a, b := inputTokensUpper(strings.Repeat("长", 33)), inputTokensUpper(strings.Repeat("长", 34)); a != 100 || b != 103 {
+		t.Fatalf("utf-8: %d %d", a, b)
 	}
-	if _, err := s.Embed(ctx(), api.EmbedRequest{Call: call, Purpose: "chunk", Texts: []string{strings.Repeat("长", 34)}}); code(err) != api.CodeBudgetExceeded {
-		t.Fatalf("34: %v", err)
+	// 超出端点上下文的端点不参与；没有其他端点时明确失败。
+	small, _, _ := setupCatalog(t, `
+endpoints:
+  - {id: g, provider: stub, model: m, version: "1", capabilities: [generate], region: cn, max_input_tokens: 100, billing: token, input_price_per_1k: 1, no_training_on_customer: true}
+`, nil)
+	long := genReq()
+	long.Inputs = []api.Input{{Name: "notice", Content: strings.Repeat("长", 101)}}
+	if _, err := small.Generate(ctx(), long); code(err) != api.CodeBudgetExceeded {
+		t.Fatalf("context limit: %v", err)
+	}
+	// 没有声明 OCR 能力的端点。
+	c, _ := ParseCatalog([]byte(catalogYAML))
+	if _, err := c.route(api.CapOCR, api.Public, ""); code(err) != api.CodeNoEligibleModel {
+		t.Fatalf("ocr: %v", err)
 	}
 	// 适配器附加量计入端点的输入上界。
 	ep := Endpoint{RequestOverheadTokens: 50}

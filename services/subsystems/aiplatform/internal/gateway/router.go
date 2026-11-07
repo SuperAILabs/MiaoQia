@@ -6,7 +6,7 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/aiplatform/api"
 )
 
-// route 返回可用于该能力与分级的端点，按主选在前排序。只返回合规端点：没有时由调用方返回明确错误，不降级到不合规模型。
+// route 返回可用于该能力与分级的端点，按主选在前排序。没有时由调用方返回明确错误。
 // 决策能力另按 task（任务@版本）过滤，只返回声明了该任务版本的端点；目录校验保证这些端点的输出语义一致。
 func (c *Catalog) route(capability api.Capability, class api.Classification, task string) ([]Endpoint, error) {
 	switch class {
@@ -19,7 +19,7 @@ func (c *Catalog) route(capability api.Capability, class api.Classification, tas
 	}
 	var out []Endpoint
 	for _, e := range c.Endpoints {
-		if !e.Filed || !e.has(capability) || !slices.Contains(c.AllowedRegions, e.Region) {
+		if !e.has(capability) {
 			continue
 		}
 		if capability.Decision() {
