@@ -975,7 +975,7 @@ fixtures:
   - name: 已暂停
     valid: true
     instance: paused
-  - name: 已归档（0.6.0）
+  - name: 已归档
     valid: true
     instance: archived
   - name: 未登记的状态
@@ -1212,7 +1212,7 @@ fixtures:
     patch:
     - op: remove
       path: /members
-  - name: 带每个对象的来源版本（0.6.0）
+  - name: 带每个对象的来源版本
     valid: true
     patch:
     - op: add
@@ -1273,7 +1273,7 @@ fixtures:
     - op: replace
       path: /authorization
       value: cleaning
-  - name: 名单导入的逐行结果（0.6.0）
+  - name: 名单导入的逐行结果
     valid: true
     instance:
       operation_id: op-tracking-0004

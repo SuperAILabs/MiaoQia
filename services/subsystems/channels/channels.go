@@ -1,7 +1,7 @@
 // Package channels 组装 channels 渠道与会话 子系统。M1 第1段提供企业微信渠道的安装与停用、账号绑定与解绑、免登与卡片跳转
 // （docs/01-product/prd/01-tenant-onboarding-and-sso.md F4–F7）；企业微信适配器尚未接入（api.NotWired），渠道内对话与通知随所属
 // 段落实现。M2 第5段提供简报（偏好、组装、投递、历史与完整简报、重新推送、链接）与卡片快捷动作（docs/01-product/prd/05-briefing-quick-actions.md）：
-// 组装、投递与动作执行以本地绑定 api.Briefings 提供，定时任务与工作进程尚未接入；覆盖与来源权利端口未接入（api.NotWired）。
+// 组装、投递与动作执行以本地绑定 api.Briefings 提供，scheduler 角色已接入周期任务；覆盖与来源权利端口按配置提供。
 // C-08：信号的即时通知（PRD 第5段 F7）消费 detection.signal.detected.v1，经渠道通知的投递入口 api.Notices.DeliverNotices 发送。
 package channels
 

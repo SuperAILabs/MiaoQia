@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: evidence 事件
-  version: 1.0.0
+  version: 0.0.0
   description: '由 evidence 发布。链路探针经过数据单元时发布 probe.forwarded（见 contracts/events/operations）。
     信封为 CloudEvents 1.0；公共域事件：miaoqiazone = public。
 

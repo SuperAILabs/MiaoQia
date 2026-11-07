@@ -459,3 +459,43 @@ def test_http_budget_includes_slow_request_headers(tls_factory, running_server):
         assert b"200" not in response
         assert time.monotonic() - start < 1.5
     assert calls == [{}]
+
+
+def test_network_service_relay_skips_identity_and_matches_named_principal(
+    registry, tls_factory, running_server
+):
+    from test_rights import MONITOR, SIMULATE
+
+    read, write, _ = registry
+    seed(write, purposes=["interactive", "monitoring"])
+    data_tls = tls_factory("relay-data", DATA)
+    acq_tls = tls_factory("relay-acq", ACQ)
+
+    class FailingIdentity:
+        def resolve(self, **kw):
+            raise AssertionError("service reads never call identity")
+
+    srv = Server(
+        ("localhost", 0),
+        acq_tls,
+        {(DATA, op, "monitoring", "svc:detection")
+         for op in ("rights.resolve", "rights.confirm", "rights.status")},
+        FailingIdentity(),
+        routes(Decisions(read)),
+    )
+    client = RightsClient(Client(running_server(srv) + "/internal/v1", data_tls, ACQ))
+    a = call(client, context=MONITOR)
+    assert a["allowed"]
+    assert call(client, "confirm", {**request(), "receipt": a["receipt"]}, MONITOR)["allowed"]
+    assert call(client, "status", {}, MONITOR)["capability"] == "frozen_source_rights_only"
+    for ctx in (
+        SIMULATE,  # no simulation delegation
+        reqctx.Context(reqctx.Principal("svc:learning", "service"), CTX.tenant, CTX.cell, "monitoring"),
+        reqctx.Context(reqctx.Principal("user-a", "user"), CTX.tenant, CTX.cell, "monitoring"),
+        reqctx.Context(MONITOR.principal, CTX.tenant, CTX.cell, "interactive"),
+        reqctx.Context(reqctx.Principal("svc:detection", "service_account"), CTX.tenant, CTX.cell, "monitoring"),
+        reqctx.Context(MONITOR.principal),  # tenant-less
+    ):
+        with pytest.raises(Problem) as e:
+            call(client, context=ctx)
+        assert e.value.status == 403

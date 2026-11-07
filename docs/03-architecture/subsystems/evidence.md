@@ -1,6 +1,6 @@
 # 证据与内容理解子系统（evidence）
 
-> 状态：评审中 · 版本：3.7 · 更新：2026-10-27 · 平面：数据供应
+> 状态：评审中 · 平面：数据供应
 
 ## 1. 使命
 
@@ -123,25 +123,25 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 
 ## 12. 实现状况
 
-A02 贯通验收 L1-1（[验收线第8节](../../05-delivery/09-a02-end-to-end-acceptance.md#8-l1-实施进度)）交付公共实例的最小文档管线，代码位于 `data/subsystems/evidence/`：
+公共实例的最小文档管线，代码位于 `data/subsystems/evidence/`：
 
 - `snapshotter`：同一来源对象（来源 + 来源对象键）的规范化内容与最新快照不同即为新快照，序号递增，内容回到历史取值同样是新快照；原件按内容寻址存 `raw/<sha256>`，规范化文档存 `normalized/<snp>.json`，对象不可覆盖；
-- `document_pipeline`：HTML 使用 SDK 的规范化（`doc.html-dev@0.1.0`，与语料评测同一坐标系）；PDF 只接受经复核的规范化表示，PDF 文本层、OCR 与版面随 M1；
+- `document_pipeline`：HTML 使用 SDK 的规范化（`doc.html-dev`，与语料评测同一坐标系）；PDF 只接受经复核的规范化表示，PDF 文本层、OCR 与版面随 M1；
 - `extraction_orchestrator`：按包清单加载解析器与领域校验（入口须位于包内），同一快照同一解析器版本只解析一次；证据或领域语义校验不通过、或任一事实被解析器标为 `suspect` 的修订记为 `suspect`（按最严格状态汇总），下游不物化；
 - `provenance`：文档证据引用入库，快照、修订与证据引用由触发器保持不可变；
 - 事件：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`，与数据同事务经发件箱发布；公共管线拒绝租户上下文；
 - 回放：`mq-evidence-replay` 投放冻结语料（核对原件哈希，权利标签追加 `corpus:<样本>`），不构成来源启用；
 - 读取：`api.Extractions`（解析修订）在数据单元内以本地绑定注入 domain-intelligence。
 
-L1-2a 交付文档证据 `api.EvidenceResolver` 的本地绑定 `evidence.resolver(database, store, display=...)`，以及互斥的 keyword-only `authorize(groups,purpose)` 可信分组模式（[闭包与绑定](source-rights-runtime.md#固定版本可信来源闭包)）。原回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
+文档证据 `api.EvidenceResolver` 的本地绑定为 `evidence.resolver(database, store, display=...)`，以及互斥的 keyword-only `authorize(groups,purpose)` 可信分组模式（[闭包与绑定](source-rights-runtime.md#固定版本可信来源闭包)）。原回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
 
 本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。data-api 已有内部 listener、TLS/身份 admission、deadline 约束与五路由 source-group collector；真实网络 smoke、生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待具备依赖的环境和后续接入验证。未实现：`GetDocument` 等远程查询，结构化记录集/记录证据、生产增强器、质量规则、语料快照与重放工作流，S3 对象存储实现（R-03）。
 
 `evidence.enrichments(...)` 本地装配提供不可变参考数据登记、封闭recipe运行登记与 `api.Enrichments.get(run_key)`。结果、派生证据及参考内容保存在既有对象存储的 `enrichment/<sha256>.json`，PG存固定输入引用、对象键/哈希、完整分组来源闭包及运行元数据；`evd_reference_data`、`evd_derivations`、`evd_enrichments` 不可更新或删除。对象先写，登记与现有 `evidence.enrichment.completed.v1` 发件箱同事务；回滚可留下未引用对象，重跑按指纹复用证据ID和结果。当前事件唯一键为快照、真实解析修订及recipe，当前recipe明确拒绝多事实修订，不默选序号。
 
-默认没有启用的recipe。显式测试模式只有 `test.buyer-provenance@0.1.0`、`test.winner-provenance@0.1.0`、`test.buyer-provenance@0.1.1`，以 `test.identity@0.1.0` 和不可变 `test-identity-policy@1` 保持原名取值，替换对应名称容器的 `prov`，只证明派生通道。0.1.1与0.1.0使用相同依据，供验证recipe-only运行不追加领域版本。它们不识别生产组织或品类，也不把模型推断标为确定性计算。未登记或未显式启用的recipe拒绝。
+默认没有启用的recipe。显式测试模式只有 `test.buyer-provenance@0.1.0`、`test.winner-provenance@0.1.0`、`test.buyer-provenance@0.1.1`，以 `test.identity@0.1.0` 和不可变 `test-identity-policy@1` 保持原名取值，替换对应名称容器的 `prov`，只证明派生通道。`test.buyer-provenance@0.1.1` 与 `test.buyer-provenance@0.1.0` 使用相同依据，供验证recipe-only运行不追加领域版本。它们不识别生产组织或品类，也不把模型推断标为确定性计算。未登记或未显式启用的recipe拒绝。
 
-`api.Recipe` 描述固定字段、转换、参考版本/内容及输出重建函数，由部署单元通过 `evidence.load_recipe` 复用包内入口来源校验后显式注入；evidence核心不导入行业词表。`proc.building-topic@0.1.0` 只读 `/title/value`，由IND-BUILDING-MATERIALS分发版本0.3.1提供，直接使用字节不变的原building-materials taxonomy/vocabulary 0.2.0 YAML，参考指纹还固定控制配置、独立评测manifest及人工scope复核manifest。全部最大字面跨度跨分类支系消歧，not_when仅在两侧均完整的并列产品短语局部检查；否定/替代/省略歧义为unknown。所有hard gate通过且输入confidence≥0.8才有rule_score=1并发布，category/prov的confidence为min(1,input)，不是统计正确率。候选与未发布原因留在L3 diagnostics。
+`api.Recipe` 描述固定字段、转换、参考版本/内容及输出重建函数，由部署单元通过 `evidence.load_recipe` 复用包内入口来源校验后显式注入；evidence核心不导入行业词表。`proc.building-topic@0.1.0` 只读 `/title/value`，由 IND-BUILDING-MATERIALS 提供，直接使用字节不变的 building-materials taxonomy/vocabulary YAML，参考指纹还固定控制配置、独立评测manifest及人工scope复核manifest。全部最大字面跨度跨分类支系消歧，not_when仅在两侧均完整的并列产品短语局部检查；否定/替代/省略歧义为unknown。所有hard gate通过且输入confidence≥0.8才有rule_score=1并发布，category/prov的confidence为min(1,input)，不是统计正确率。候选与未发布原因留在L3 diagnostics。
 
 发布仅限 `building-topic-scope.json` 中两份官方原件：核对原source_id/URL/raw hash、标题及类型、reviewed与lifecycle引用哈希；标题原证据ID和字段内码点跨度保留于封闭recipe输出。scope_check与类别一同重算，写入不可变result及domain receipt.outputs；未复核原件默认unknown。任意调用方eligible标志不能授权。官方pair只支持CAT-PIPE-DI（自动标题输入0.95，输出0.95），不由“管材及管件”补FIT-DI，不造items/lot，不证明中标人实际供货。真实来源、组织识别和生产认证尚未启用。
 

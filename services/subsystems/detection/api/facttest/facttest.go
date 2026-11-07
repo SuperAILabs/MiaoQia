@@ -1,7 +1,7 @@
 // Package facttest 是匹配端口（detection api.Facts 与 api.Candidates）的内存实现，只用于测试与演示。
 //
 // 这里的事实全部是夹具数据（FIXTURE）：不是公共事实，不来自任何真实来源，标题、金额、主体与地区均为虚构，标识只借用登记前缀的
-// 格式。不做任何外部调用。生产适配器（domain-intelligence 的事实视图投影、entity-graph 的关联视图项与 search 的订阅反查）尚未接入。
+// 格式。不做任何外部调用。生产适配器（domain-intelligence 的事实视图投影与 entity-graph 的关联视图项）尚未接入；search 的订阅反查由生产 percolator 提供。
 package facttest
 
 import (

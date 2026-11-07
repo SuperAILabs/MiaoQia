@@ -470,7 +470,7 @@ fixtures:
     - op: replace
       path: /version
       value: 2
-  - name: 归档（0.5.0）
+  - name: 归档
     valid: true
     patch:
     - op: replace
@@ -479,7 +479,7 @@ fixtures:
     - op: replace
       path: /reason
       value: archived
-  - name: 按名单导入（0.5.0）
+  - name: 按名单导入
     valid: true
     patch:
     - op: replace
@@ -533,7 +533,7 @@ fixtures:
     - op: replace
       path: /seq
       value: 0
-  - name: 带每个对象的实体来源版本（0.5.0）
+  - name: 带每个对象的实体来源版本
     valid: true
     patch:
     - op: add

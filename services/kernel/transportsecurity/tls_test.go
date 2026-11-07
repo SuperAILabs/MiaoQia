@@ -62,3 +62,57 @@ func TestProductionMissingConfigFailsClosed(t *testing.T) {
 		t.Fatal("missing TLS accepted")
 	}
 }
+
+func TestDevelopmentUsesMutualTLSWhenConfigured(t *testing.T) {
+	t.Setenv("MIAOQIA_ENV", "development")
+	t.Setenv("MIAOQIA_INTERNAL_TLS_CERT", "")
+	if !transportsecurity.Plaintext() {
+		t.Fatal("development without certificates should stay plaintext")
+	}
+	if rt, err := transportsecurity.Client(); err != nil || rt != http.DefaultTransport {
+		t.Fatalf("plaintext client = %v err=%v", rt, err)
+	}
+	f := testenv.NewTLS(t)
+	t.Setenv("MIAOQIA_INTERNAL_TLS_CERT", f.CertPath)
+	t.Setenv("MIAOQIA_INTERNAL_TLS_KEY", f.KeyPath)
+	t.Setenv("MIAOQIA_INTERNAL_TLS_CA", f.CA)
+	t.Setenv("MIAOQIA_INTERNAL_ALLOWED_PEERS", "spiffe://miaoqia/service/other")
+	if transportsecurity.Plaintext() {
+		t.Fatal("configured certificates must disable plaintext")
+	}
+	rt, err := transportsecurity.Client()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if transport, ok := rt.(*http.Transport); !ok || transport.TLSClientConfig == nil || len(transport.TLSClientConfig.Certificates) != 1 {
+		t.Fatalf("configured client is not mTLS: %#v", rt)
+	}
+	s := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !transportsecurity.Peer(r) {
+			w.WriteHeader(401)
+			return
+		}
+		w.WriteHeader(204)
+	}))
+	s.TLS = &tls.Config{MinVersion: tls.VersionTLS13, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: f.Pool, Certificates: []tls.Certificate{f.Cert}}
+	s.StartTLS()
+	defer s.Close()
+	// TLS requests enforce the allowlist even in development.
+	response, err := (&http.Client{Transport: rt}).Get(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != 401 {
+		t.Fatalf("unallowlisted development TLS peer status = %d", response.StatusCode)
+	}
+	t.Setenv("MIAOQIA_INTERNAL_ALLOWED_PEERS", "spiffe://miaoqia/service/platform-api")
+	response, err = (&http.Client{Transport: rt}).Get(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != 204 {
+		t.Fatalf("allowlisted development TLS peer status = %d", response.StatusCode)
+	}
+}

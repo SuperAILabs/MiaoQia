@@ -1,10 +1,10 @@
 asyncapi: 3.0.0
 info:
   title: learning 反馈学习与评估事件
-  version: 0.1.0
+  version: 0.0.0
   description: >-
     由 learning 经发件箱发布。信封为 CloudEvents 1.0，约定见 docs/03-architecture/03-integration-contracts.md；本文件只定义 data 载荷。
-    租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。0.1.0 只有仿真完成（PRD 第7段 F3）；反馈、评估、漂移与策略建议事件随所属功能追加。
+    租户域事件：miaoqiazone = tenant，租户与 cell 只在信封中。只有仿真完成（PRD 第7段 F3）；反馈、评估、漂移与策略建议事件随所属功能追加。
 channels:
   tenantLearning:
     address: cell-{cell}.learning

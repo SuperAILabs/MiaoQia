@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: 审计事件流
-  version: 1.1.0
+  version: 0.0.0
   description: >
     全部子系统经审计 SDK 发布（与业务写入同事务进入发件箱），由 governance 消费并不可篡改地存储
     （docs/03-architecture/subsystems/governance.md）。审计条目只含引用与摘要，不含敏感内容。

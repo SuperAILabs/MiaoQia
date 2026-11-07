@@ -1,6 +1,6 @@
 # M0 最小身份生命周期与 cell-01 路由
 
-> 状态：已批准 · 版本：1.0 · 更新：2026-10-15 · 负责人：identity、安全与平台工程负责人
+> 状态：已批准 · 负责人：identity、安全与平台工程负责人
 
 本文界定 M0-06 的工程验收范围。身份认证由 Keycloak 负责，identity 保存租户、成员、角色与单元目录；网关从已验证令牌取得待核对的租户上下文，再由目录确认当前有效状态和 cell 归属。产品交互与原型由独立设计工作交付，不在本文范围内。
 
@@ -21,7 +21,7 @@
 
 ## 2. 接口、存储和绑定
 
-[identity OpenAPI](../../contracts/apis/identity/openapi.yaml)当前为1.1.0，生命周期接口复用生成服务端与Problem错误；原授权Check结构保持兼容。
+[identity OpenAPI](../../contracts/apis/identity/openapi.yaml)的生命周期接口复用生成服务端与Problem错误；原授权Check结构保持兼容。
 
 | 接口 | 边界 |
 |---|---|
@@ -44,7 +44,7 @@
 
 在M0中，托管租户的Check只支持当前主体对当前tenant根资源的关系；其他资源类型、代其他成员决策、服务账号/协作者需在其能力启用前增加权威归属和身份核验，默认拒绝。现有权限矩阵描述目标模型，不代表所有业务资源与管理API均已交付。
 
-[集成配置](../../contracts/integration.yaml)升为3.0.0，原因是租户请求新增强制目录核验。首批冻结与此前运行时验收记录按历史审计保留，不改写原哈希，也不声称当前字节与旧冻结制品相同。
+[集成配置](../../contracts/integration.yaml)对租户请求增加强制目录核验。
 
 ## 3. 验证与复现
 
@@ -63,4 +63,4 @@ uv run --project tools/contracts --python 3.12 --locked mqc compat --base HEAD
 uv run --project tools/contracts --python 3.12 --locked mqc generate --check
 ```
 
-缺组件或跳过真实Keycloak子用例不能关闭对应门禁。完整测试结果及明确范围由[身份验收记录](../../contracts/reviews/m0-identity-acceptance.yaml)登记；整个M0状态仍以[阶段基线](06-stage-baseline.md)为准。
+缺组件或跳过真实Keycloak子用例不能关闭对应门禁。整个M0状态仍以[阶段基线](06-stage-baseline.md)为准。

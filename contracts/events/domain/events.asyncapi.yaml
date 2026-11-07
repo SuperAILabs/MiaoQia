@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: domain公共数据事件
-  version: 1.0.0
+  version: 0.0.0
   description: CloudEvents 1.0公共域信封，miaoqiazone=public；只定义data载荷。
 channels:
   public.domain:

@@ -73,6 +73,22 @@ def test_diff_rules():
                        {"allOf": [{"if": {}, "then": {"required": ["b"]}}]}, "T")) == {"breaking"}
 
 
+def test_unique_items_rules():
+    arr = {"type": "array", "items": {"type": "string"}}
+    unique = {**arr, "uniqueItems": True}
+    # Absent or false → true tightens unless the base allows at most one item.
+    assert levels(diff(arr, unique, "T")) == {"breaking"}
+    assert levels(diff({**arr, "uniqueItems": False}, unique, "T")) == {"breaking"}
+    assert levels(diff({**arr, "maxItems": 2}, {**unique, "maxItems": 2}, "T")) == {"breaking"}
+    assert levels(diff({**arr, "maxItems": 1}, {**unique, "maxItems": 1}, "T")) == {"additive"}
+    assert levels(diff({**arr, "maxItems": 0}, {**unique, "maxItems": 0}, "T")) == {"additive"}
+    # The source-rights change: base maxItems 1, head maxItems 3 with uniqueItems.
+    assert levels(diff({**arr, "maxItems": 1}, {**unique, "maxItems": 3}, "T")) == {"additive"}
+    # true → false or removed loosens.
+    assert levels(diff(unique, {**arr, "uniqueItems": False}, "T")) == {"additive"}
+    assert levels(diff(unique, arr, "T")) == {"additive"}
+
+
 def test_bump_rules():
     assert bump_ok("0.1.0", "0.2.0", "breaking")       # 0.x：不兼容变更升次版本即可
     assert not bump_ok("0.1.0", "0.1.1", "breaking")
@@ -172,13 +188,14 @@ def test_event_compat_resolves_external_schema_constraints(sandbox):
     assert any("tendering.notice.published.v1" in e and "删除枚举值" in e for e in errors)
 
 
-def test_stable_api_breaking_requires_new_path(sandbox):
+def test_api_breaking_change_is_reported_not_blocked(sandbox):
     p = sandbox / 'contracts/apis/identity/openapi.yaml'
     d = yaml.safe_load(p.read_text())
     d['components']['schemas']['CheckRequest']['required'].append('subject')
-    d['info']['version'] = '2.0.0'
     p.write_text(yaml.safe_dump(d))
-    assert any('新路径主版本' in e for e in run(sandbox).errors)
+    r = run(sandbox)
+    assert r.errors == []
+    assert any('[breaking]' in n and '新增必填' in n for n in r.notes)
 
 
 def test_api_component_change_cannot_hide_behind_ref(sandbox):
@@ -186,7 +203,7 @@ def test_api_component_change_cannot_hide_behind_ref(sandbox):
     d = yaml.safe_load(p.read_text())
     d['components']['schemas']['CheckRequest']['properties']['relation']['pattern'] = '^read$'
     p.write_text(yaml.safe_dump(d))
-    assert any('API breaking' in e for e in run(sandbox).errors)
+    assert any('[breaking]' in n and 'pattern' in n for n in run(sandbox).notes)
 
 
 def test_storage_change_requires_migration(sandbox):
@@ -195,13 +212,11 @@ def test_storage_change_requires_migration(sandbox):
     assert any('迁移文件' in e for e in run(sandbox).errors)
 
 
-def test_api_additive_requires_version(sandbox):
+def test_api_change_needs_no_version(sandbox):
     p = sandbox / 'contracts/apis/identity/openapi.yaml'
     d = yaml.safe_load(p.read_text())
     d['components']['schemas']['CheckRequest']['properties']['reason'] = {'type': 'string'}
     p.write_text(yaml.safe_dump(d))
-    assert any('API additive' in e for e in run(sandbox).errors)
-    bump_version(sandbox, 'contracts/apis/identity/openapi.yaml', 'info')
     assert run(sandbox).errors == []
 
 
@@ -218,21 +233,19 @@ def test_versions_cannot_regress(sandbox):
     assert any('不得回退' in e for e in run(sandbox).errors)
 
 
-def test_new_identifier_requires_minor_version(sandbox):
+def test_new_identifier_needs_no_version(sandbox):
     p = sandbox / 'contracts/identifiers.yaml'
     d = yaml.safe_load(p.read_text())
     d['prefixes']['new'] = {'object':'NewObject','owner':'kernel'}
     p.write_text(yaml.safe_dump(d))
-    assert any('新增前缀' in e for e in run(sandbox).errors)
-    major, minor, _ = map(int, d['version'].split('.'))
-    d['version'] = f'{major}.{minor + 1}.0'
-    p.write_text(yaml.safe_dump(d))
     assert run(sandbox).errors == []
 
 
-def test_engineering_profile_change_requires_major(sandbox):
+def test_engineering_profile_change_is_reported(sandbox):
     p = sandbox / 'contracts/integration.yaml'
     d = yaml.safe_load(p.read_text())
     d['context']['header'] = 'Other-Context'
     p.write_text(yaml.safe_dump(d))
-    assert any('工程配置breaking' in e for e in run(sandbox).errors)
+    r = run(sandbox)
+    assert r.errors == []
+    assert any('工程配置变化' in n for n in r.notes)

@@ -168,8 +168,7 @@ func (UnimplementedHandler) GetPursuit(ctx context.Context, params GetPursuitPar
 // 为调用者是否仍是任务负责人（且仍是跟进的有效负责人或协作者），viewer_escalated
 // 为任务已转给调用者处理
 // （跟进无有效负责人或任务负责人已不在团队中；或任务负责人仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出
-// （0.4.0）；且调用者在单元上有
-// can_edit_unit_pursuits）。负责人本人的判断不可用时
+// ；且调用者在单元上有 can_edit_unit_pursuits）。负责人本人的判断不可用时
 // 503。他租户、不存在与无权查看同为 404 task_not_found。.
 //
 // GET /v1/pursuit/tasks/{taskID}
@@ -182,7 +181,7 @@ func (UnimplementedHandler) GetTask(ctx context.Context, params GetTaskParams) (
 // 需要推进的
 // can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为
 // 404 pursuit_not_found。 另经内部端口供 channels
-// 以授权被拒通知的操作者本人再检查（0.4.0）。.
+// 以授权被拒通知的操作者本人再检查。.
 //
 // GET /v1/pursuit/tracking/{pursuitID}
 func (UnimplementedHandler) GetTracking(ctx context.Context, params GetTrackingParams) (r *Tracking, _ error) {
@@ -226,7 +225,7 @@ func (UnimplementedHandler) ImportTrackingMembers(ctx context.Context, req *Trac
 // 调用者在单元上有 can_edit_unit_pursuits
 // 时另含该单元内转给决策者的任务（escalated，与 getTask 的 viewer_escalated
 // 同一口径：
-// 任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出，0.4.0）。每页至多
+// 任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出）。每页至多
 // limit 条（默认且至多 100）， next_cursor 为签名游标。.
 //
 // GET /v1/pursuit/my-tasks
@@ -254,7 +253,7 @@ func (UnimplementedHandler) ListPursuits(ctx context.Context, params ListPursuit
 // 只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多
 // limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的 objective_id 与
 // archived，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。
-// archived（0.6.0）缺省为 false，只列未归档的；为 true 时只列已归档的。.
+// archived缺省为 false，只列未归档的；为 true 时只列已归档的。.
 //
 // GET /v1/pursuit/tracking
 func (UnimplementedHandler) ListTracking(ctx context.Context, params ListTrackingParams) (r *TrackingList, _ error) {
@@ -354,7 +353,7 @@ func (UnimplementedHandler) UpdateTask(ctx context.Context, req *UpdateTaskReque
 // 需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为
 // no_change；已停止与已归档 409 invalid_transition；否则版本 不一致 409
 // conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。保留下来的对象沿用其加入版本与来源，新加入的记为
-// manual（0.6.0）。.
+// manual。.
 //
 // POST /v1/pursuit/tracking/{pursuitID}/members
 func (UnimplementedHandler) UpdateTrackingMembers(ctx context.Context, req *TrackingMembersRequest, params UpdateTrackingMembersParams) (r *TrackingCommandResult, _ error) {

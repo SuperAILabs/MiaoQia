@@ -8,8 +8,8 @@ import (
 
 // 以下是策略仿真的出站端口（PRD 第7段 F3；learning.md 第5节 SimulatePolicy）：
 //
-//   - Dataset 读取被回放的公共事实（M1 已启用来源）。生产适配器（公共事实的版本化快照）尚未接入；
-//   - DomainStatus 读取信息领域服务状态（domain-intelligence GetCoverage）。生产适配器尚未接入。
+//   - Dataset 读取被回放的公共事实（M1 已启用来源）。data-api 已提供 A02 结果视图的最小适配器；
+//   - DomainStatus 读取信息领域服务状态（domain-intelligence GetCoverage）。当前适配器只启用配置的数据领域，完整覆盖服务仍待接入。
 //
 // 生产组装使用“未接入”实现（NotWired）：调用返回 ErrNotWired，仿真运行失败（dataset_unavailable / domain_status_unavailable），
 // 不以空数据冒充“没有信号”。测试与演示使用标明为夹具的内存实现（api/datasettest，报告 inputs.dataset_fixture 为 true）。

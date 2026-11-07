@@ -147,7 +147,7 @@ func (s *Server) handleArchiveTrackingRequest(args [1]string, argsEscaped bool, 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ArchiveTrackingOperation,
-			OperationSummary: "归档持续跟踪（0.6.0，C-13）",
+			OperationSummary: "归档持续跟踪（C-13）",
 			OperationID:      "archiveTracking",
 			Body:             request,
 			RawBody:          rawBody,
@@ -505,7 +505,7 @@ func (s *Server) handleAssignTrackingRequest(args [1]string, argsEscaped bool, w
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    AssignTrackingOperation,
-			OperationSummary: "持续跟踪的改派与协作者（0.6.0，C-13）",
+			OperationSummary: "持续跟踪的改派与协作者（C-13）",
 			OperationID:      "assignTracking",
 			Body:             request,
 			RawBody:          rawBody,
@@ -1395,7 +1395,7 @@ func (s *Server) handleCreateTrackingRequest(args [0]string, argsEscaped bool, w
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreateTrackingOperation,
-			OperationSummary: "创建持续跟踪（0.3.0，C-10；PRD 第6段 F10）",
+			OperationSummary: "创建持续跟踪（C-10；PRD 第6段 F10）",
 			OperationID:      "createTracking",
 			Body:             request,
 			RawBody:          rawBody,
@@ -1558,7 +1558,7 @@ func (s *Server) handleGetCreateDefaultsRequest(args [0]string, argsEscaped bool
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetCreateDefaultsOperation,
-			OperationSummary: "创建面板的默认负责人（0.3.0，C-10）",
+			OperationSummary: "创建面板的默认负责人（C-10）",
 			OperationID:      "getCreateDefaults",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -1786,8 +1786,7 @@ func (s *Server) handleGetPursuitRequest(args [1]string, argsEscaped bool, w htt
 // 为调用者是否仍是任务负责人（且仍是跟进的有效负责人或协作者），viewer_escalated
 // 为任务已转给调用者处理
 // （跟进无有效负责人或任务负责人已不在团队中；或任务负责人仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出
-// （0.4.0）；且调用者在单元上有
-// can_edit_unit_pursuits）。负责人本人的判断不可用时
+// ；且调用者在单元上有 can_edit_unit_pursuits）。负责人本人的判断不可用时
 // 503。他租户、不存在与无权查看同为 404 task_not_found。.
 //
 // GET /v1/pursuit/tasks/{taskID}
@@ -1945,7 +1944,7 @@ func (s *Server) handleGetTaskRequest(args [1]string, argsEscaped bool, w http.R
 // 需要推进的
 // can_view（同跟进）；每次读取按当前权限判断。他租户、不存在、无权查看与交易型跟进的标识同为
 // 404 pursuit_not_found。 另经内部端口供 channels
-// 以授权被拒通知的操作者本人再检查（0.4.0）。.
+// 以授权被拒通知的操作者本人再检查。.
 //
 // GET /v1/pursuit/tracking/{pursuitID}
 func (s *Server) handleGetTrackingRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2037,7 +2036,7 @@ func (s *Server) handleGetTrackingRequest(args [1]string, argsEscaped bool, w ht
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetTrackingOperation,
-			OperationSummary: "持续跟踪详情（0.3.0，C-10）",
+			OperationSummary: "持续跟踪详情（C-10）",
 			OperationID:      "getTracking",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -2193,7 +2192,7 @@ func (s *Server) handleGetTrackingPeriodRequest(args [2]string, argsEscaped bool
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetTrackingPeriodOperation,
-			OperationSummary: "持续跟踪的一期（0.3.0）",
+			OperationSummary: "持续跟踪的一期",
 			OperationID:      "getTrackingPeriod",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -2376,7 +2375,7 @@ func (s *Server) handleImportTrackingMembersRequest(args [1]string, argsEscaped 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ImportTrackingMembersOperation,
-			OperationSummary: "按名单导入对象（0.6.0，C-13；PRD 第6段 F10 第1条“取自企业清单”）",
+			OperationSummary: "按名单导入对象（C-13；PRD 第6段 F10 第1条“取自企业清单”）",
 			OperationID:      "importTrackingMembers",
 			Body:             request,
 			RawBody:          rawBody,
@@ -2447,7 +2446,7 @@ func (s *Server) handleImportTrackingMembersRequest(args [1]string, argsEscaped 
 // 调用者在单元上有 can_edit_unit_pursuits
 // 时另含该单元内转给决策者的任务（escalated，与 getTask 的 viewer_escalated
 // 同一口径：
-// 任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出，0.4.0）。每页至多
+// 任务负责人已不在团队中；或仍在团队中但此刻不满足写入准入、且当前截止版本已有转给决策者的提醒发出）。每页至多
 // limit 条（默认且至多 100）， next_cursor 为签名游标。.
 //
 // GET /v1/pursuit/my-tasks
@@ -2785,7 +2784,7 @@ func (s *Server) handleListPursuitsRequest(args [0]string, argsEscaped bool, w h
 // 只列调用者可查看的持续跟踪（与跟进相同的授权口径；无权时为空列表而不是拒绝），按创建时间倒序。每页至多
 // limit 条（默认且至多 50）， next_cursor 为签名游标（须带相同的 objective_id 与
 // archived，只在签发它的租户与调用者内有效，篡改为 400 invalid_cursor）。
-// archived（0.6.0）缺省为 false，只列未归档的；为 true 时只列已归档的。.
+// archived缺省为 false，只列未归档的；为 true 时只列已归档的。.
 //
 // GET /v1/pursuit/tracking
 func (s *Server) handleListTrackingRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2877,7 +2876,7 @@ func (s *Server) handleListTrackingRequest(args [0]string, argsEscaped bool, w h
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListTrackingOperation,
-			OperationSummary: "持续跟踪列表（0.3.0，C-10）",
+			OperationSummary: "持续跟踪列表（C-10）",
 			OperationID:      "listTracking",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3044,7 +3043,7 @@ func (s *Server) handleListTrackingPeriodsRequest(args [1]string, argsEscaped bo
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListTrackingPeriodsOperation,
-			OperationSummary: "持续跟踪的各期（0.3.0）",
+			OperationSummary: "持续跟踪的各期",
 			OperationID:      "listTrackingPeriods",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3223,7 +3222,7 @@ func (s *Server) handlePauseTrackingRequest(args [1]string, argsEscaped bool, w 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    PauseTrackingOperation,
-			OperationSummary: "暂停持续跟踪（PauseTracking，0.3.0）",
+			OperationSummary: "暂停持续跟踪（PauseTracking）",
 			OperationID:      "pauseTracking",
 			Body:             request,
 			RawBody:          rawBody,
@@ -3573,7 +3572,7 @@ func (s *Server) handleResumeTrackingRequest(args [1]string, argsEscaped bool, w
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ResumeTrackingOperation,
-			OperationSummary: "恢复持续跟踪（ResumeTracking，0.3.0）",
+			OperationSummary: "恢复持续跟踪（ResumeTracking）",
 			OperationID:      "resumeTracking",
 			Body:             request,
 			RawBody:          rawBody,
@@ -3924,7 +3923,7 @@ func (s *Server) handleStopTrackingRequest(args [1]string, argsEscaped bool, w h
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    StopTrackingOperation,
-			OperationSummary: "停止持续跟踪（StopTracking，0.3.0）",
+			OperationSummary: "停止持续跟踪（StopTracking）",
 			OperationID:      "stopTracking",
 			Body:             request,
 			RawBody:          rawBody,
@@ -4098,7 +4097,7 @@ func (s *Server) handleUnarchiveTrackingRequest(args [1]string, argsEscaped bool
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UnarchiveTrackingOperation,
-			OperationSummary: "取消归档（0.6.0，C-13）",
+			OperationSummary: "取消归档（C-13）",
 			OperationID:      "unarchiveTracking",
 			Body:             request,
 			RawBody:          rawBody,
@@ -4343,7 +4342,7 @@ func (s *Server) handleUpdateTaskRequest(args [1]string, argsEscaped bool, w htt
 // 需要推进的 can_edit。以完整集合替换对象集合，成员版本加一；集合不变为
 // no_change；已停止与已归档 409 invalid_transition；否则版本 不一致 409
 // conflict。已结束的各期保留其当期成员快照，修改只影响之后结束的期。保留下来的对象沿用其加入版本与来源，新加入的记为
-// manual（0.6.0）。.
+// manual。.
 //
 // POST /v1/pursuit/tracking/{pursuitID}/members
 func (s *Server) handleUpdateTrackingMembersRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4450,7 +4449,7 @@ func (s *Server) handleUpdateTrackingMembersRequest(args [1]string, argsEscaped 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdateTrackingMembersOperation,
-			OperationSummary: "修改持续跟踪的对象集合（0.3.0）",
+			OperationSummary: "修改持续跟踪的对象集合",
 			OperationID:      "updateTrackingMembers",
 			Body:             request,
 			RawBody:          rawBody,

@@ -6,6 +6,7 @@ import threading
 
 from miaoqia.kernel import runtime
 from miaoqia.kernel.internal_http import Client, Identity, Server, TLS
+from miaoqia.kernel.internal_http import delegations as parse_delegations
 
 
 def modules() -> list[runtime.Module]:
@@ -23,6 +24,10 @@ def modules() -> list[runtime.Module]:
         return evidence.extractions(os.environ[key])
 
     return [evidence_module(), domain_intelligence_module(extractions), entity_graph_module()]
+
+
+# Seconds; well below the listener's per-request budget (internal_http.Server timeout, at most 5).
+POOL_TIMEOUT = 1.0
 
 
 def _tls():
@@ -55,7 +60,7 @@ def serve():
     from miaoqia import evidence
     from miaoqia.acquisition.api.remote import RightsClient
     from miaoqia.domain_intelligence import queries
-    from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, routes
+    from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, admitted_display, routes
     from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
 
     dom_dsn = os.environ.get(runtime.env_key("domain-intelligence", "DB_DSN"))
@@ -66,7 +71,9 @@ def serve():
     if not dom_dsn or not evd_dsn or not root or not rights_url or not listen:
         raise SystemExit("data-api listener configuration unavailable")
     from miaoqia.kernel import db
-    dom, evd = db.Database(dom_dsn), db.Database(evd_dsn)
+    # Pool checkout must fit inside one request budget: db.tx refuses a request
+    # whose remaining deadline is shorter than the checkout bound.
+    dom, evd = db.Database(dom_dsn, pool_timeout=POOL_TIMEOUT), db.Database(evd_dsn, pool_timeout=POOL_TIMEOUT)
     try:
         identity = Identity(Client(os.environ["MIAOQIA_IDENTITY_URL"], _tls(), os.environ["MIAOQIA_IDENTITY_PEER"]))
         rights = RightsClient(Client(rights_url, _tls(), os.environ["MIAOQIA_ACQUISITION_PEER"]))
@@ -75,7 +82,8 @@ def serve():
         # require a callback and therefore only accept already-admitted groups.
         allowed = lambda groups, purpose: True
         facts = queries(dom, authorize=allowed, provenance=provenance)
-        resolver = evidence.resolver(evd, FilesystemObjectStore(root), authorize=allowed)
+        # Evidence needs a display level: the one this request's rights decision admitted.
+        resolver = evidence.resolver(evd, FilesystemObjectStore(root), authorize=admitted_display)
         auth = ReadAuthorization(rights, identity)
         def fact_groups(operation):
             return lambda body, deadline: facts.collect_source_groups(operation, body, deadline)
@@ -113,15 +121,10 @@ def serve():
 
 def _delegations(raw):
     import json
-    value = json.loads(raw)
-    if not isinstance(value, list) or not value:
-        raise ValueError("explicit delegation list required")
-    result = []
-    for item in value:
-        if not isinstance(item, dict) or set(item) != {"peer", "operation", "purpose"}:
-            raise ValueError("invalid delegation")
-        result.append((item["peer"], item["operation"], item["purpose"]))
-    return result
+    return parse_delegations(json.loads(raw), {
+        "data.get_fact", "data.fact_history", "data.query_facts",
+        "data.bid_result_units", "data.resolve_evidence",
+    })
 
 
 def main() -> None:

@@ -117,8 +117,8 @@ func (l localTrackings) GetTracking(ctx context.Context, tracking string) (*Trac
 		func(ctx context.Context) (*Tracking, error) { return l.impl.GetTracking(ctx, tracking) })
 }
 
-// RemindersBinding 是任务提醒的持久定时器与授权同步重试在绑定表中的名称（本地绑定；定时任务角色尚未接入，
-// 见 docs/05-delivery/09-a02-end-to-end-acceptance.md 缺口 R-01）。
+// RemindersBinding 是任务提醒的持久定时器与授权同步重试在绑定表中的名称；scheduler 角色通过该绑定周期调用，
+// 集成证据见 docs/05-delivery/09-a02-end-to-end-acceptance.md 的 R-01。
 const RemindersBinding = "pursuit.Reminders"
 
 // Reminders 以带租户的服务主体请求上下文调用：

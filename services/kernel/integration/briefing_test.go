@@ -164,8 +164,8 @@ func (f *fakeRights) FieldRights(_ context.Context, signals []string) (map[strin
 
 // PRD 第5段服务端切片（简报与卡片快捷动作）：真实 PostgreSQL（各子系统自己的库、行级安全、应用账号）+ 真实 identity 目录与 OpenFGA +
 // 外部网关令牌校验 + 生成的 HTTP 服务端。channels 读取 detection 的简报取数与卡片、identity 的审批经 mTLS 内部端口的远程绑定；
-// 企业微信为内存实现（wecomtest），覆盖与来源权利为标明为夹具的端口；定时任务与工作进程未接入，测试以本地绑定 Briefings 直接驱动
-// 组装、投递与动作执行，业务时钟由测试控制。用例编号对应 PRD 第5段第12节。
+// 企业微信为内存实现（wecomtest），覆盖与来源权利为标明为夹具的端口；本测试以本地绑定 Briefings 直接驱动
+// 组装、投递与动作执行并控制业务时钟，scheduler 角色的周期装配已在 A02 进程回放中验证。用例编号对应 PRD 第5段第12节。
 func TestBriefingQuickActions(t *testing.T) {
 	fga := os.Getenv("MIAOQIA_TEST_OPENFGA")
 	if fga == "" || os.Getenv("MIAOQIA_TEST_PG") == "" {

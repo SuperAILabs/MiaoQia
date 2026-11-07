@@ -15,13 +15,16 @@
 //	MIAOQIA_HTTP_ADDR / MIAOQIA_INTERNAL_ADDR   对外与内部监听地址，默认 :8090 / :8091
 //	MIAOQIA_GATEWAY_ISSUER / MIAOQIA_GATEWAY_AUDIENCE   HTTPS Keycloak realm与资源受众
 //	MIAOQIA_GATEWAY_CURSOR_KEY    对象页分区游标的签名密钥（base64，至少32字节，全部api实例相同）；仅development可缺省
+//	MIAOQIA_GATEWAY_DATA_API_URL data-api 内部读取地址；设置后装配 A02 对象与证据读取
+//	MIAOQIA_WEB_DEV_TOKEN_URL    开发环境登录签发端点；仅development的 /auth/dev-login 使用
+//	MIAOQIA_WEB_DEV_SUBJECT/TENANT/CELL 开发环境登录缺省身份；生产环境不启用 dev-login
 //	MIAOQIA_CHANNELS_SIGNING_KEY  简报卡片动作令牌与简报历史游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_PURSUIT_SIGNING_KEY   跟进列表与待我处理翻页游标的签名密钥（base64，至少32字节，全部实例相同）；仅development可缺省
 //	MIAOQIA_GATEWAY_DATA_API_URL  data-api 内部读取接口地址（HTTPS，mTLS）；对象页的采购项目读取，未配置时对象页 503
 //	MIAOQIA_COMMERCE_COVERAGE     数据覆盖包（产品目录接入前，全部租户相同），例如 INF-PROC=330000;INF-ORG=*；未配置时对象页 503
 //	MIAOQIA_ENV                 默认生产策略；仅development允许实验环境明文
 //	MIAOQIA_PUBLIC_TLS_CERT / KEY  对外HTTPS证书文件
-//	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA
+//	MIAOQIA_INTERNAL_TLS_CERT / KEY / CA  内部mTLS证书、私钥及CA；development 下配置后内部端口与内部客户端同样使用 mTLS
 //	MIAOQIA_INTERNAL_ALLOWED_PEERS  精确SPIFFE URI SAN白名单
 //	MIAOQIA_RELAY_DSN_TEMPLATE    中继连接串模板，{db} 替换为数据库代码
 //	OTEL_EXPORTER_OTLP_ENDPOINT   追踪导出地址（OTLP/gRPC）
@@ -81,8 +84,8 @@ import (
 // modules 是本单元全部子系统；顺序即启动顺序（提供绑定的子系统在前：gateway 的对象页依赖 commerce、customer-context 与 detection）。
 var modules = []func() runtime.Module{
 	identity.Module, governance.Module, commerce.Module, aiplatform.Module,
-	customercontext.Module, detection.Module, gateway.Module, research.Module, assessment.Module, pursuit.Module,
-	learning.Module, channels.Module, search.Module, operations.Module,
+	search.Module, customercontext.Module, detection.Module, gateway.Module, research.Module, assessment.Module, pursuit.Module,
+	learning.Module, channels.Module, operations.Module,
 }
 
 // remote 是可切换为远程绑定的子系统：provide 以远程客户端登记它提供的全部绑定；autoload 为真时，
@@ -271,13 +274,14 @@ func migrate(ctx context.Context, log *slog.Logger, role string) error {
 	if role == "" {
 		role = "api"
 	}
-	spec, scopes, _, err := loadRole(role)
+	spec, scopes, inventory, err := loadRole(role)
 	if err != nil {
 		return err
 	}
 	for _, mk := range modules {
 		m := mk()
-		if _, selected := scopes[m.Name]; !selected || m.Database == "" {
+		entry, registered := inventory.Subsystems[m.Name]
+		if _, selected := scopes[m.Name]; !selected || m.Database == "" || !registered || entry.Database == "" {
 			continue
 		}
 		dsn := os.Getenv(envKey(m.Name, "DB_OWNER_DSN"))
@@ -438,10 +442,19 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 			break
 		}
 	}
-	pub, err := gateway.Public(ctx, os.Getenv("MIAOQIA_GATEWAY_ISSUER"), os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public, resolver)
+	issuer := os.Getenv("MIAOQIA_GATEWAY_ISSUER")
+	pub, err := gateway.Public(ctx, issuer, os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public, resolver)
 	if err != nil {
 		return err
 	}
+	pub = gateway.WebSession(pub, gateway.WebSessionConfig{
+		Issuer:      issuer,
+		Development: transportsecurity.Development(),
+		DevTokenURL: os.Getenv("MIAOQIA_WEB_DEV_TOKEN_URL"),
+		DevSubject:  os.Getenv("MIAOQIA_WEB_DEV_SUBJECT"),
+		DevTenant:   os.Getenv("MIAOQIA_WEB_DEV_TENANT"),
+		DevCell:     os.Getenv("MIAOQIA_WEB_DEV_CELL"),
+	})
 	addr := func(k, def string) string {
 		if v := os.Getenv(k); v != "" {
 			return v
@@ -452,7 +465,8 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 		{Addr: addr("MIAOQIA_HTTP_ADDR", ":8090"), Handler: pub, ReadHeaderTimeout: 10 * time.Second},
 		{Addr: addr("MIAOQIA_INTERNAL_ADDR", ":8091"), Handler: internal, ReadHeaderTimeout: 10 * time.Second},
 	}
-	if !transportsecurity.Development() {
+	// Internal mTLS is mandatory outside development and used in development whenever configured.
+	if !transportsecurity.Plaintext() {
 		tlsConfig, err := transportsecurity.Config("MIAOQIA_INTERNAL_TLS", true)
 		if err != nil {
 			return err
@@ -461,6 +475,8 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 			return fmt.Errorf("missing internal peer allowlist")
 		}
 		servers[1].TLSConfig = tlsConfig
+	}
+	if !transportsecurity.Development() {
 		servers[0].TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 		for _, key := range []string{"MIAOQIA_PUBLIC_TLS_CERT", "MIAOQIA_PUBLIC_TLS_KEY"} {
 			if os.Getenv(key) == "" {
@@ -478,7 +494,7 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 	errc := make(chan error, len(servers))
 	for _, s := range servers {
 		go func() {
-			if transportsecurity.Development() {
+			if s.TLSConfig == nil {
 				errc <- s.ListenAndServe()
 			} else if s == servers[0] {
 				errc <- s.ListenAndServeTLS(os.Getenv("MIAOQIA_PUBLIC_TLS_CERT"), os.Getenv("MIAOQIA_PUBLIC_TLS_KEY"))

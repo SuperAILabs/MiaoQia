@@ -8,13 +8,14 @@
 校验：探针完成且经过全部子系统；授权允许与拒绝都留下审计；三个单元的处理位于同一条追踪；
 另起一个 api 进程把 identity 切换为远程绑定，同样完成探针并拒绝无权用户。
 
-前置：deploy/local/up.sh 已启动基础组件。用法（仓库根目录）：
+前置：共享开发环境的 PostgreSQL、Kafka、OpenFGA、Keycloak 与 OTLP 已启动，并通过环境变量提供连接信息。Docker Compose 仅是可选的本地引导方式，不由本脚本自动启动。用法（仓库根目录）：
 
   uv run --project data python tests/e2e/m0.py
 """
 from __future__ import annotations
 
 import json
+import argparse
 import os
 import shutil
 import signal
@@ -30,11 +31,50 @@ import psycopg
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def load_local_environment() -> None:
+    """Load an explicitly selected environment file without overriding shell variables."""
+    selected = os.environ.get("MIAOQIA_ENV_FILE", "")
+    if not selected:
+        return
+    path = Path(selected)
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip()
+        if key.startswith("export "):
+            key = key[7:].strip()
+        if key and key not in os.environ:
+            os.environ[key] = value.strip("\"'")
+
+
+load_local_environment()
+
 WORK = ROOT / "deploy/local/.data/e2e"
 TRACES = ROOT / "deploy/local/.data/otel/traces.jsonl"
-PG = "localhost:5432"
-ISSUER = "http://localhost:8080/realms/miaoqia"
-OPENFGA = "http://localhost:8081"
+
+
+def postgres_hostport() -> str:
+    configured = os.environ.get("MIAOQIA_E2E_PG", "")
+    if configured and "://" not in configured:
+        return configured
+    dsn = configured or os.environ.get("MIAOQIA_TEST_PG", "")
+    if dsn:
+        parsed = urllib.parse.urlparse(dsn)
+        if parsed.hostname:
+            return f"{parsed.hostname}:{parsed.port or 5432}"
+    return "localhost:5432"
+
+
+PG = postgres_hostport()
+ISSUER = os.environ.get("MIAOQIA_GATEWAY_ISSUER", "http://localhost:8080/realms/miaoqia")
+OPENFGA = os.environ.get("MIAOQIA_IDENTITY_OPENFGA_URL", "http://localhost:8081")
+TRACES = Path(os.environ.get("MIAOQIA_E2E_TRACES", str(TRACES)))
 
 
 def step(msg: str) -> None:
@@ -57,9 +97,9 @@ def base_env() -> dict[str, str]:
         if "database" not in s:
             continue
         k, d = "MIAOQIA_" + name.upper().replace("-", "_"), s["database"]
-        env[f"{k}_DB_DSN"] = f"postgres://{d}_app:{d}_app@{PG}/{d}"
-        env[f"{k}_DB_OWNER_DSN"] = f"postgres://{d}_owner:{d}_owner@{PG}/{d}"
-    env.update({
+        env.setdefault(f"{k}_DB_DSN", f"postgres://{d}_app:{d}_app@{PG}/{d}")
+        env.setdefault(f"{k}_DB_OWNER_DSN", f"postgres://{d}_owner:{d}_owner@{PG}/{d}")
+    defaults = {
         "MIAOQIA_DEPLOY_DIR": str(ROOT / "deploy"),
         "MIAOQIA_KAFKA_BROKERS": "localhost:9092",
         "MIAOQIA_IDENTITY_OPENFGA_URL": OPENFGA,
@@ -70,7 +110,9 @@ def base_env() -> dict[str, str]:
         "MIAOQIA_RELAY_DSN_TEMPLATE": f"postgres://outbox_relay:outbox_relay@{PG}/{{db}}",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
         "OTEL_BSP_SCHEDULE_DELAY": "500",
-    })
+    }
+    for key, value in defaults.items():
+        env.setdefault(key, value)
     return env
 
 
@@ -102,6 +144,7 @@ class Procs:
 
 def http(method: str, url: str, token: str | None = None) -> tuple[int, dict]:
     req = urllib.request.Request(url, method=method, data=b"" if method == "POST" else None)
+    req.add_header("User-Agent", "miaoqia-e2e/1")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     try:
@@ -112,8 +155,15 @@ def http(method: str, url: str, token: str | None = None) -> tuple[int, dict]:
 
 
 def token(user: str) -> tuple[str, str]:
-    body = urllib.parse.urlencode({"client_id": "miaoqia-dev", "username": user, "password": user, "grant_type": "password"}).encode()
-    with urllib.request.urlopen(f"{ISSUER}/protocol/openid-connect/token", body, timeout=10) as r:
+    body = urllib.parse.urlencode({
+        "client_id": os.environ.get("MIAOQIA_E2E_CLIENT_ID", "miaoqia-dev"),
+        "username": user,
+        "password": os.environ.get(f"MIAOQIA_E2E_{user.upper()}_PASSWORD", user),
+        "grant_type": "password",
+    }).encode()
+    req = urllib.request.Request(f"{ISSUER}/protocol/openid-connect/token", data=body, method="POST",
+                                 headers={"User-Agent": "miaoqia-e2e/1"})
+    with urllib.request.urlopen(req, timeout=10) as r:
         tok = json.loads(r.read())["access_token"]
     payload = tok.split(".")[1]
     sub = json.loads(__import__("base64").urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))["sub"]
@@ -124,7 +174,7 @@ def wait_http(url: str, seconds: int = 60) -> None:
     deadline = time.time() + seconds
     while time.time() < deadline:
         try:
-            urllib.request.urlopen(url, timeout=2)
+            urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "miaoqia-e2e/1"}), timeout=2)
             return
         except urllib.error.HTTPError:
             return  # 已在监听
@@ -201,12 +251,44 @@ def trace_services(probe_id: str, offset: int) -> set[str]:
     return {svc for t, svc, _ in spans if t in traces} if len(traces) == 1 else ({"多条追踪"} if traces else set())
 
 
+def check_connections() -> bool:
+    """Read-only check for the configured PostgreSQL, Kafka, HTTP services and trace mode."""
+    env = base_env()
+    checks = [
+        ("Keycloak", ISSUER, None),
+        ("OpenFGA", OPENFGA.rstrip("/") + "/healthz", env.get("MIAOQIA_IDENTITY_OPENFGA_TOKEN")),
+        ("OTLP", env["OTEL_EXPORTER_OTLP_ENDPOINT"].rstrip("/") + "/", None),
+    ]
+    ready = True
+    for name, url, token_value in checks:
+        try:
+            headers = {"User-Agent": "miaoqia-e2e/1"}
+            if token_value:
+                headers["Authorization"] = f"Bearer {token_value}"
+            urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=5)
+            ok(f"{name} 可达")
+        except urllib.error.HTTPError as exc:
+            if name == "OTLP" and exc.code in {404, 405}:
+                ok(f"{name} 可达")
+            else:
+                print(f"  ✗ {name} 不可达：{url}")
+                ready = False
+        except OSError:
+            print(f"  ✗ {name} 不可达：{url}")
+            ready = False
+    if not TRACES.exists() and os.environ.get("MIAOQIA_E2E_TRACE_REQUIRED", "true").lower() not in {"0", "false", "no"}:
+        print(f"  ✗ 本地追踪文件不存在：{TRACES}")
+        ready = False
+    return ready
+
+
 def main() -> None:
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
     env = base_env()
     procs = Procs()
     trace_offset = TRACES.stat().st_size if TRACES.exists() else 0
+    trace_required = os.environ.get("MIAOQIA_E2E_TRACE_REQUIRED", "true").lower() not in {"0", "false", "no"}
     try:
         step("按契约创建 Kafka 主题")
         subprocess.run([str(ROOT / "deploy/local/topics.sh")], check=True, capture_output=True)
@@ -269,16 +351,19 @@ def main() -> None:
             fail(f"拒绝审计不符：{denied[-1]}")
         ok("visitor 403 并审计 denied；无令牌 401")
 
-        step("追踪：同一条追踪覆盖三个单元")
-        want = {"platform", "acquisition", "data"}
-        deadline = time.time() + 30
-        services: set[str] = set()
-        while time.time() < deadline and not want <= services:
-            time.sleep(1)
-            services = trace_services(pr["probe_id"], trace_offset)
-        if not want <= services:
-            fail(f"探针 {pr['probe_id']} 的追踪只覆盖 {sorted(services)}")
-        ok(f"探针 {pr['probe_id']} 的事件处理位于同一条追踪，覆盖 {', '.join(sorted(services))}")
+        if trace_required:
+            step("追踪：同一条追踪覆盖三个单元")
+            want = {"platform", "acquisition", "data"}
+            deadline = time.time() + 30
+            services: set[str] = set()
+            while time.time() < deadline and not want <= services:
+                time.sleep(1)
+                services = trace_services(pr["probe_id"], trace_offset)
+            if not want <= services:
+                fail(f"探针 {pr['probe_id']} 的追踪只覆盖 {sorted(services)}")
+            ok(f"探针 {pr['probe_id']} 的事件处理位于同一条追踪，覆盖 {', '.join(sorted(services))}")
+        else:
+            ok("追踪文件未在本机落盘，已按配置跳过本地追踪文件门禁")
 
         step("远程绑定：identity 经内部接口调用")
         pr2 = run_probe("http://localhost:8092", op_token, procs)
@@ -290,12 +375,13 @@ def main() -> None:
         started = next(json.loads(l) for l in log.splitlines() if '"msg":"进程角色启动"' in l)
         if "identity" in started["subsystems"]:
             fail("远程绑定的 api 进程不应在本地加载 identity")
-        deadline = time.time() + 30
-        while time.time() < deadline and "identity /internal/v1/authz:check" not in span_names(pr2["probe_id"], trace_offset):
-            time.sleep(1)
-        if "identity /internal/v1/authz:check" not in span_names(pr2["probe_id"], trace_offset):
-            fail("探针的追踪中没有 identity 内部接口的服务端 span：授权未经远程调用")
-        ok("授权经 identity 内部接口远程调用（追踪中可见服务端 span），允许与拒绝与本地绑定一致")
+        if trace_required:
+            deadline = time.time() + 30
+            while time.time() < deadline and "identity /internal/v1/authz:check" not in span_names(pr2["probe_id"], trace_offset):
+                time.sleep(1)
+            if "identity /internal/v1/authz:check" not in span_names(pr2["probe_id"], trace_offset):
+                fail("探针的追踪中没有 identity 内部接口的服务端 span：授权未经远程调用")
+            ok("授权经 identity 内部接口远程调用（追踪中可见服务端 span），允许与拒绝与本地绑定一致")
         ok("同一套契约用例对本地与远程绑定通过：go test ./subsystems/identity")
 
         step("L1 回放：官方中标公告经数据平面管线成为领域事实（evidence → Kafka → domain-intelligence）")
@@ -303,7 +389,11 @@ def main() -> None:
         sample = ROOT / "packs/information_domains/procurement/corpus/official-award-20261014"
         out = subprocess.run(["uv", "run", "-q", "mq-evidence-replay", str(sample)], cwd=ROOT / "data", env=replay_env,
                              check=True, capture_output=True, text=True).stdout
-        revision = json.loads(out.splitlines()[-1])["revisions"][0]
+        replay_result = json.loads(out.splitlines()[-1])
+        revisions = replay_result["revisions"] or replay_result["existing_revisions"]
+        if not revisions:
+            fail(f"官方样本回放未返回新建或已有解析修订：{replay_result}")
+        revision = revisions[0]
         deadline, fact = time.time() + 60, None
         while time.time() < deadline and fact is None:
             time.sleep(1)
@@ -319,10 +409,17 @@ def main() -> None:
             fail(f"领域事实 {fact[0]} 没有 domain.fact.upserted.v1")
         ok(f"{revision} → {fact[0]} v{fact[1]}，domain.fact.upserted.v1 已进入发件箱")
 
+        # data-api reads (mTLS listener, acq-admin rights, service reads) are
+        # covered by the A02 process replay; this E2E's remote-identity process
+        # still uses the plaintext internal port.
+
         print("\nM0 端到端验证通过。")
     finally:
         procs.stop()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description="M0 工程探针")
+    parser.add_argument("--check", action="store_true", help="只读检查当前环境配置和公共服务")
+    args = parser.parse_args()
+    sys.exit(0 if check_connections() else 1) if args.check else sys.exit(main())

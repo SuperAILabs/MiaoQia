@@ -1451,7 +1451,7 @@ func (s *OutcomeSection) SetAmounts(val []OutcomeAmountTotal) {
 	s.Amounts = val
 }
 
-// 跟进结果汇总（0.4.0）：时点评估与事后统计分开给出，不合并.
+// 跟进结果汇总：时点评估与事后统计分开给出，不合并.
 // Ref: #/components/schemas/OutcomeSummary
 type OutcomeSummary struct {
 	ObjectiveID string      `json:"objective_id"`

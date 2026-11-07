@@ -1,6 +1,6 @@
 # PRD 第7段：策略编辑、仿真与审批
 
-> 状态：设计交接通过 · 版本：1.2 · 更新：2026-10-26 · 负责人：产品负责人、客户智能负责人、身份与安全负责人 · 原型：[prototypes/07-policy-simulation-approval.html](prototypes/07-policy-simulation-approval.html)
+> 状态：设计交接通过 · 负责人：产品负责人、客户智能负责人、身份与安全负责人 · 原型：[prototypes/07-policy-simulation-approval.html](prototypes/07-policy-simulation-approval.html)
 
 本段让决策者把第2段启用的 A02 目标从“未激活”变成“生效”，并在之后安全地调整它：在表单里修改策略草案，系统用历史公告仿真出“改了以后会多出、少掉、变了哪些信号”，申请人凭仿真报告提交激活申请，另一位有批准权的成员强认证后批准，系统才激活新版本。回滚走同样的申请与批准。旅程上，本段的首次激活发生在第2段之后、第3段之前：激活前目标不产生信号，激活后第3段的收件箱才有内容。
 
@@ -242,7 +242,7 @@
 
 证据位置在实现时逐条填入：自动化用例写测试文件与用例名，走查写记录链接。
 
-服务端切片：identity 契约 1.5.0（事件契约 1.3.0）实现审批服务（提交、读取、列表、决定、撤回、所属子系统失效与到期），见 [identity 第5节实现状况](../../03-architecture/subsystems/identity.md#5-接口)；customer-context 契约 0.3.0 草案（事件 0.2.0）实现策略草案、版本、差异与激活和回滚申请及其执行，见 [customer-context 第6节实现状况](../../03-architecture/subsystems/customer-context.md#6-接口)；learning 契约 0.1.0 草案实现仿真与报告，见 [learning 第5节实现状况](../../03-architecture/subsystems/learning.md#5-接口)。第3段切片（customer-context 契约 0.4.0 草案的 `GetActivePolicies`，detection 契约 0.1.0 草案）实现生效边界上的匹配，见 [detection 第8节实现状况](../../03-architecture/subsystems/detection.md#8-伸缩与可靠性)；事实视图与订阅反查以端口的内存夹具（`facttest`，事实均为虚构）测试，生产适配器未接入。仿真的数据集与信息领域服务状态以端口的内存夹具（`datasettest`，事实均为虚构，报告标 `dataset_fixture`）测试，生产适配器未接入（运行以 `dataset_unavailable` 失败）；强认证时间来自测试签发方签名的 `auth_time`。detection 的回填执行、channels 的通知、升级草案（F7）与 Web 页面未实现。下表“全部”只指服务端可自动化的部分，走查与界面状态仍待实现。当前自动化证据（均在 `services/kernel/integration/policy_approval_test.go` 的 `TestPolicySimulationApproval` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，并发用例以屏障同时放行）：
+服务端实现以子系统规格为准，未关闭的缺口见 [A02 真实贯通验收线第4节](../../05-delivery/09-a02-end-to-end-acceptance.md#4-缺口清单)；下表“全部”只指服务端可自动化的部分。当前自动化证据（均在 `services/kernel/integration/policy_approval_test.go` 的 `TestPolicySimulationApproval` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，并发用例以屏障同时放行）：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|

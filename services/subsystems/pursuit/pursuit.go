@@ -1,6 +1,6 @@
 // Package pursuit 组装 pursuit 推进与结果 子系统。M2 第6段提供交易型跟进（docs/01-product/prd/06-pursuit-follow-up.md）：
 // 从信号、卡片或手动创建与关联、撤销创建、改派与协作者、任务与截止、提醒、关闭与结果修订、列表与详情，以及经 identity 的授权同步。
-// 提醒的定时执行以本地绑定 api.Reminders 提供，定时任务角色尚未接入；公开截止时间绑定随后续切片实现。C-10 追加持续跟踪（F10：
+// 提醒的定时执行以 api.Reminders 端口提供，由 scheduler 角色周期调用；公开截止时间绑定随后续切片实现。C-10 追加持续跟踪（F10：
 // 跟踪计划、暂停 / 恢复 / 停止、按周期结束一期并请求变化简报，周期由 api.Reminders.RunTracking 驱动）、创建面板的默认负责人与
 // 同一标包其他中标方的提示。C-13 追加持续跟踪的改派与协作者、归档、按名单导入对象与各期对象的实体来源版本（端口 api.Organizations）。
 package pursuit

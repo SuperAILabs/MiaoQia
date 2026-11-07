@@ -1,7 +1,6 @@
 # ADR-0011：证据不可变与双版本
 
 > 状态：已批准 · 日期：2026-10-12 · 决策者：首席架构师、产品负责人 · 批准：项目负责人
-> 修订：2026-10-16 并入结构化证据与派生证据（任务书 D1），按项目负责人审阅意见修订，随所在 PR 合并生效；新增三份契约仍为草案，运行能力按下文首次启用门禁验收
 
 ## 背景
 
@@ -21,7 +20,7 @@
 
 | 形态 | 契约 | 坐标系 | 不可变依据 |
 |---|---|---|---|
-| 文档证据 | `contracts/schemas/evidence/evidence-ref.schema.json`（1.0.0，已冻结，不带 `kind`） | 规范化文档的块、字符区间、表格单元 | 快照 + 处理管线版本 + `quote_hash` |
+| 文档证据 | `contracts/schemas/evidence/evidence-ref.schema.json`（不带 `kind`） | 规范化文档的块、字符区间、表格单元 | 快照 + 处理管线版本 + `quote_hash` |
 | 记录证据 | `record-evidence-ref.schema.json`（`kind=record`，草案） | 结构化记录集（`structured-record.schema.json`，草案）的记录键 + 字段路径 | 快照 + 处理管线版本 + `value_hash` |
 | 派生证据 | `derivation-evidence-ref.schema.json`（`kind=derivation`，草案） | 输入列表：每项的证据，及固定的事实版本与字段路径 | 转换版本 + 参考数据版本 + 输入 + `value_hash` |
 

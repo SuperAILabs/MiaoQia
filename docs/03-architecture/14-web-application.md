@@ -1,6 +1,6 @@
 # Web 与 H5 专项设计
 
-> 状态：已批准 · 版本：1.1 · 更新：2026-10-26 · 负责人：首席架构师、产品负责人、设计负责人、安全负责人 · 原型：[prototypes/00-web-shell.html](../01-product/prd/prototypes/00-web-shell.html)
+> 状态：已批准 · 负责人：首席架构师、产品负责人、设计负责人、安全负责人 · 原型：[prototypes/00-web-shell.html](../01-product/prd/prototypes/00-web-shell.html)
 
 本文是[阶段基线 M2-P12](../05-delivery/06-stage-baseline.md#4-m2-前置条件与能力交接)要求的 Web 专项设计，对应 [A02 真实贯通验收线](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)缺口 W-01（第11节事项已确认，W-01 已关闭）：补齐浏览器端流程（登录、强认证、渠道免登与卡片落地）、具体 BFF 契约与保存视图的所有者，并把七段 PRD 中标为“随 Web”的行为落到页面、组件与接口上，为 L2 界面贯通的实现做准备。
 
@@ -289,7 +289,7 @@ BFF 聚合端点的共同规则：
 - **不缓存**：M2 的聚合端点不缓存响应；将来缓存时只缓存按调用者裁剪后的结果，键含租户、用户、权利与权益版本，命中后仍执行全部检查（[安全与租户第3节](06-security-and-tenancy.md#3-隔离层次)）；
 - **超时与降级**：整体超时 3 秒，单个下游 1.5 秒，超时的分区为 `unavailable`（可重试）；
 - **字段白名单**：只返回页面需要的字段，Schema `additionalProperties: false`；
-- **契约**：OpenAPI 随首个使用该端点的 Web 实现 PR 写入 `contracts/apis/gateway/openapi.yaml`（追加，升次版本），与生成代码、契约测试和越权反例一起评审（[契约覆盖第9节](13-contract-readiness.md#9-随功能追加的契约)）。本节是这些 OpenAPI 的设计依据，字段名在写入契约时可调整，语义不变。
+- **契约**：OpenAPI 随首个使用该端点的 Web 实现 PR 写入 `contracts/apis/gateway/openapi.yaml`，与生成代码、契约测试和越权反例一起评审（[契约覆盖第9节](13-contract-readiness.md#9-随功能追加的契约)）。本节是这些 OpenAPI 的设计依据，字段名在写入契约时可调整，语义不变。
 
 ### 7.2 会话
 
@@ -399,16 +399,11 @@ L2 环境中重新执行、并由 Web 实现 PR 附带的浏览器侧越权与�
 | W4 环节④ 简报触达 | P07、P08 卡片落地、P15、P05、P06 | 第5段服务端（C-04）；L3 时换生产企业微信适配器 |
 | W5 跟进与工作台 | P16、团队保存视图、列表组件的列配置与导出 | 第6段服务端 |
 
-### 10.2 新增缺口
+当前进度与缺口以[贯通验收线第4.4节](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)为准；按[阶段基线第1.1节](../05-delivery/06-stage-baseline.md#11-当前主线)，Web 只完成已开工的页面与已登记的缺口，不扩展新页面。已实现的页面与工程结构见 [`web/README.md`](../../web/README.md)。
 
-以下缺口登记到[贯通验收线第4.4节](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)；W-01 随第11节事项确认关闭：
+### 10.2 缺口
 
-| 编号 | 缺口 | 最早级别 |
-|---|---|---|
-| W-04 | gateway `web_session`（会话、`/auth/*`、CSRF、后端通道登出）与 `/v1/web/*` 聚合端点及其 OpenAPI | L2 |
-| W-05 | Web 页面需要、尚未公开的子系统接口：identity `ListMembers`、`PreviewInvitation`、邀请的账号准备；entity-graph `ResolveEntity` 的公开读取；evidence 证书文件上传；learning `ReportMiss` 的公开接口；domain-intelligence `GetCoverage` 的公开读取（随 D-05） | L2 |
-| W-06 | Web 工程：`web/apps/workspace`、`web/packages/api`（OpenAPI 生成）、`ui`（设计令牌、九种状态组件、统一列表组件）、`copy`（文案目录与覆盖检查）、CI 中的构建、类型检查与端到端浏览器测试 | L2 |
-| W-07 | 保存视图：customer-context `SavedView` 与接口（个人视图随 W2，团队视图随 W5） | L2（个人）、L5 前（团队） |
+Web 相关缺口（W-02～W-07）登记在[贯通验收线第4.4节](../05-delivery/09-a02-end-to-end-acceptance.md#44-界面w)，本文不复述其状态。
 
 ## 11. 已确认事项
 

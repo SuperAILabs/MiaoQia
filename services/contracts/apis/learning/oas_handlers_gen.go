@@ -302,7 +302,7 @@ func (s *Server) handleGetOutcomeSummaryRequest(args [1]string, argsEscaped bool
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetOutcomeSummaryOperation,
-			OperationSummary: "跟进结果汇总（评估报告的结果部分，0.4.0）",
+			OperationSummary: "跟进结果汇总（评估报告的结果部分）",
 			OperationID:      "getOutcomeSummary",
 			Body:             nil,
 			RawBody:          rawBody,

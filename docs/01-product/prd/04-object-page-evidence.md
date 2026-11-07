@@ -1,6 +1,6 @@
 # PRD 第4段：对象页与证据
 
-> 状态：设计交接通过 · 版本：1.3 · 更新：2026-10-26 · 负责人：产品负责人、招投标领域负责人、数据负责人 · 原型：[prototypes/04-object-page-evidence.html](prototypes/04-object-page-evidence.html)
+> 状态：设计交接通过 · 负责人：产品负责人、招投标领域负责人、数据负责人 · 原型：[prototypes/04-object-page-evidence.html](prototypes/04-object-page-evidence.html)
 
 本段让销售从一条 A02 信号进入采购项目、上位项目、中标方（总包）与采购人的对象页，看清“这个项目是什么、谁中了标、这家总包和这家采购人过去做过什么”，并让页面上的每个关键字段都能回到原文。它承接第3段（信号详情中的证据角标与“查看对象”入口），为第6段的跟进提供判断依据。对象页展示的是公共事实，叠加本租户自己的信号、清单标记与跟进；公共事实不因客户反馈改变，本租户的内容不出现在其他租户的页面上。
 
@@ -233,7 +233,7 @@
 
 事件：沿用 `domain.fact.upserted.v1`、事实撤回事件（随首个撤回识别能力加入领域事件契约）、`entity.merge.applied.v1`、`entity.merge.reverted.v1`、`entity.relationship.changed.v1`、`entity.project_link.changed.v1`。本段不新增事件；页面通过版本检查发现变化，不依赖事件推送到浏览器。契约随本段实现写入 `contracts/`。
 
-实现时补充一个内部事件 `gateway.view_meter.deferred.v1`（[契约](../../../contracts/events/gateway/events.asyncapi.yaml) 0.1.0 草案）：第13节第3项“`commerce` 暂不可用时放行查看并在本地记录”的本地记录即 gateway 发件箱中的这条事件，由 `commerce` 消费后按计量操作标识补记（[commerce 第5节](../../03-architecture/subsystems/commerce.md#5-事件) 已列出消费 `gateway.*`）。它只承载计量，不是业务事件，不推送到浏览器，不改变上面“不新增业务事件”的结论。
+实现时补充一个内部事件 `gateway.view_meter.deferred.v1`（[契约](../../../contracts/events/gateway/events.asyncapi.yaml)）：第13节第3项“`commerce` 暂不可用时放行查看并在本地记录”的本地记录即 gateway 发件箱中的这条事件，由 `commerce` 消费后按计量操作标识补记（[commerce 第5节](../../03-architecture/subsystems/commerce.md#5-事件) 已列出消费 `gateway.*`）。它只承载计量，不是业务事件，不推送到浏览器，不改变上面“不新增业务事件”的结论。
 
 ## 9. 异常、重试与撤销
 
@@ -320,7 +320,7 @@
 
 证据位置在实现时逐条填入：自动化用例写测试文件与用例名，走查写记录链接。
 
-服务端切片：gateway 的对象页与证据面板 BFF（契约 [`contracts/apis/gateway/openapi.yaml`](../../../contracts/apis/gateway/openapi.yaml) 0.1.0 草案）、commerce 的查看计量（[`contracts/apis/commerce/openapi.yaml`](../../../contracts/apis/commerce/openapi.yaml) 0.1.0 草案）与 detection 的对象信号分区和信号解释的内部绑定（契约 0.2.0 草案），见 [gateway 第10节](../../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)、[commerce 第10节](../../03-architecture/subsystems/commerce.md#10-查看计量的实现状况) 与 [detection 第5节实现状况](../../03-architecture/subsystems/detection.md#5-接口)。数据平面的 domain-intelligence 事实读取与 evidence 文档证据解析已有本地绑定，data-api 已有内部 listener、路由 admission、deadline 约束与 source-group collectors；真实网络 smoke、entity-graph 查询、生产来源权利策略与 commerce 覆盖判断仍未接入：gateway 经端口读取，生产组装在这些依赖不可用时为“未接入”（对象页与证据面板 503，不以空数据冒充没有记录），测试使用 `services/subsystems/gateway/api/publictest` 的内存夹具（对象、分区内容、证据与覆盖均为虚构）；这些契约登记在 [契约就绪第9节](../../03-architecture/13-contract-readiness.md#9-随功能追加的契约)。字段级的状态（原文未提供、低置信、冲突、更正与撤回）、时间轴与版本检查由数据平面提供，本切片只透传分区内容，不判断。Web 页面、H5 与走查未实现。下表“全部”只指服务端可自动化的部分。当前自动化证据（均在 `services/kernel/integration/object_page_test.go` 的 `TestObjectPageEvidence` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，gateway 经 mTLS 内部端口的远程绑定调用 commerce 计量与 detection 信号解释）：
+服务端实现以子系统规格为准，未关闭的缺口见 [A02 真实贯通验收线第4节](../../05-delivery/09-a02-end-to-end-acceptance.md#4-缺口清单)；下表“全部”只指服务端可自动化的部分。当前自动化证据（均在 `services/kernel/integration/object_page_test.go` 的 `TestObjectPageEvidence` 中，另注明的除外；数据库与授权为真实 PostgreSQL 与 OpenFGA，gateway 经 mTLS 内部端口的远程绑定调用 commerce 计量与 detection 信号解释）：
 
 | 用例 | 状态 | 证据位置 |
 |---|---|---|

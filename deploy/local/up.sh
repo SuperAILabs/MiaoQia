@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 启动本地基础组件并等待就绪，然后创建 Kafka 主题。用法：deploy/local/up.sh [--down]
+# 可选的本地基础组件引导脚本；开发验收默认复用共享组件，不自动调用本脚本。
+# 用法：deploy/local/up.sh [--down]
 set -euo pipefail
 cd "$(dirname "$0")"
 if [[ "${1:-}" == "--down" ]]; then

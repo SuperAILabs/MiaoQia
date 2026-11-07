@@ -85,7 +85,7 @@ func (unwiredPursuits) GetTracking(context.Context, string) (*pursuitapi.Trackin
 
 // PRD 第6段服务端切片（交易型跟进）：真实 PostgreSQL（各子系统自己的库、行级安全、应用账号）+ 真实 identity 目录与 OpenFGA + 外部网关
 // 令牌校验 + 生成的 HTTP 服务端。channels 经 mTLS 内部端口的远程绑定调用 pursuit 的渠道内动作（卡片“跟进”）；企业微信为内存实现
-// （wecomtest）；定时任务未接入，测试以本地绑定 pursuit.Reminders 驱动提醒与授权同步重试，业务时钟由测试控制；identity 的参与关系
+// （wecomtest）；本测试以本地绑定 pursuit.Reminders 驱动提醒与授权同步重试并控制业务时钟，scheduler 角色的周期装配另在 A02 进程回放中验证；identity 的参与关系
 // 同步可注入不可用。用例编号对应 PRD 第6段第12节。
 func TestPursuitFollowUp(t *testing.T) {
 	fga := os.Getenv("MIAOQIA_TEST_OPENFGA")
@@ -1755,8 +1755,8 @@ func TestPursuitFollowUp(t *testing.T) {
 	})
 
 	// C-09：任务提醒卡片（“完成”“撤销”）、简报“待我处理”中的任务、授权被拒时通知操作者、提醒的安静时段（PRD 第6段 F9、F12 第6条，
-	// 用例30、43、44、58）。channels 从这里起消费 pursuit 的提醒与授权被拒事件；定时任务未接入，测试以本地绑定 channels.Notices
-	// 驱动通知投递（调度器接入后周期调用 DeliverNotices）。
+	// 用例30、43、44、58）。channels 从这里起消费 pursuit 的提醒与授权被拒事件；本测试以本地绑定 channels.Notices
+	// 驱动通知投递并控制时钟，scheduler 角色周期调用 DeliverNotices 已在 A02 进程回放中验证。
 	notices, _ := runtime.Lookup[chapi.Notices](bindings, chapi.NoticesBinding)
 	if notices == nil {
 		t.Fatal("channels 未提供 Notices")

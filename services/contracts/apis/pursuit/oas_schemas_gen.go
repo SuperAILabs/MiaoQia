@@ -252,7 +252,7 @@ type Authorization struct {
 	PendingSince   OptDateTime        `json:"pending_since"`
 	// 调用者此刻在跟进所在单元上能更新跟进（can_edit_unit_pursuits，决策者），授权同步失败时可改派或关闭（PRD
 	// 第6段 F12 第6条）。 只在 getPursuit 与 getTracking
-	// 中给出（每次按调用者当前权限实时判断；0.5.0），其他响应不带；不带不等于
+	// 中给出（每次按调用者当前权限实时判断），其他响应不带；不带不等于
 	// false。.
 	ViewerCanResolve OptBool `json:"viewer_can_resolve"`
 }
@@ -851,7 +851,7 @@ func (s *Contribution) UnmarshalText(data []byte) error {
 	}
 }
 
-// 创建面板的默认负责人（0.3.0）。owner_source 为
+// 创建面板的默认负责人。owner_source 为
 // candidate（分派规则的候选，此刻有效）或 self（调用者本人）；candidate_state
 // 为
 // valid（候选有效）、none（信号上没有候选或请求不带信号）、no_access（候选已不是租户有效成员或不能查看该目标的信号）、
@@ -3794,7 +3794,7 @@ type Pursuit struct {
 	ViewerCanEdit       OptBool         `json:"viewer_can_edit"`
 	ViewerCanManageTeam OptBool         `json:"viewer_can_manage_team"`
 	ViewerCanVoid       OptBool         `json:"viewer_can_void"`
-	// 同一目标、同一采购项目（同一事实类型与主体，如同一中标结果公告）上其他中标方的进行中跟进；跟进目标不含标包，尚不能缩小到同一标包（0.3.0；按查看者对各跟进的当前权限分级投影）.
+	// 同一目标、同一采购项目（同一事实类型与主体，如同一中标结果公告）上其他中标方的进行中跟进；跟进目标不含标包，尚不能缩小到同一标包（按查看者对各跟进的当前权限分级投影）.
 	SiblingHints []SiblingHint `json:"sibling_hints"`
 }
 
@@ -4705,7 +4705,7 @@ func (s *ReviseOutcomeRequest) SetReason(val string) {
 }
 
 // 同一目标、同一采购项目（同一事实类型与主体）上另一家中标方的进行中跟进；跟进目标不含标包标识，尚不能缩小到同一标包（PRD
-// 第6段 F2 第1条、用例12，0.3.0）。按查看者对那个跟进的当前权限分级投影
+// 第6段 F2 第1条、用例12）。按查看者对那个跟进的当前权限分级投影
 // （白名单）：visibility 为 full
 // 时给出跟进标识、中标方、负责人、负责人是否有效与创建时间；为
 // owner_only（不能查看那个跟进）时只给 负责人，其他字段不出现。.
@@ -5369,7 +5369,7 @@ type TaskView struct {
 	PursuitState     PursuitStatus `json:"pursuit_state"`
 	ViewerCanEdit    bool          `json:"viewer_can_edit"`
 	ViewerIsAssignee bool          `json:"viewer_is_assignee"`
-	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者，0.2.0；负责人仍在团队中但写入准入不满足、且已发出转交提醒，0.4.0）.
+	// 任务已转给调用者处理（无有效负责人的跟进转给单元的决策者；负责人仍在团队中但写入准入不满足、且已发出转交提醒）.
 	ViewerEscalated OptBool `json:"viewer_escalated"`
 }
 
@@ -5932,7 +5932,7 @@ type TrackingCommandResult struct {
 	Result        TrackingCommandResultResult           `json:"result"`
 	Tracking      OptTrackingSummary                    `json:"tracking"`
 	Authorization OptTrackingCommandResultAuthorization `json:"authorization"`
-	// ImportTrackingMembers 的逐行结果（0.6.0，按请求顺序，与操作一起固定）.
+	// ImportTrackingMembers 的逐行结果（按请求顺序，与操作一起固定）.
 	ImportRows []TrackingImportResult `json:"import_rows"`
 	// ImportTrackingMembers
 	// 是否经实体图核对了组织存在（verified）或实体图未接入、只校验了标识格式（not_wired）.
@@ -6373,8 +6373,8 @@ func (s *TrackingMembersRequest) SetMembers(val []OrgID) {
 	s.Members = val
 }
 
-// 期末成员快照中的一个对象（0.6.0）：added_members_version
-// 为它加入对象集合时的成员版本（0.6.0 之前加入的没有）、source 为加入方式
+// 期末成员快照中的一个对象：added_members_version
+// 为它加入对象集合时的成员版本（较早加入的可能没有）、source 为加入方式
 // （manual 手选、import 名单导入）；entity_state
 // 为期末时点实体图中的来源版本：recorded（entity_version
 // 为当时的实体版本）、
@@ -6539,7 +6539,7 @@ func (s *TrackingObjectSource) UnmarshalText(data []byte) error {
 // 为周期所用的时区）、期末的成员快照与成员版本、
 // 对比基准（上一期的序号，第一期没有）、期末的负责人。成员快照在该期结束时固定，之后修改对象集合不改变它。briefing_state
 // 为 requested（已请求 channels 生成；channels
-// 侧的变化简报尚未接入）。objects（0.6.0）为期末每个对象的加入版本、来源与实体来源版本。.
+// 侧的变化简报尚未接入）。objects为期末每个对象的加入版本、来源与实体来源版本。.
 // Ref: #/components/schemas/TrackingPeriod
 type TrackingPeriod struct {
 	PursuitID      PursuitID `json:"pursuit_id"`
@@ -6552,7 +6552,7 @@ type TrackingPeriod struct {
 	BaselineSeq    OptInt64  `json:"baseline_seq"`
 	Owner          Subject   `json:"owner"`
 	OwnerValid     bool      `json:"owner_valid"`
-	// 期末成员快照中每个对象的加入版本、来源与实体来源版本（0.6.0；之前结束的期没有），顺序同
+	// 期末成员快照中每个对象的加入版本、来源与实体来源版本（较早结束的期可能没有），顺序同
 	// members.
 	Objects       []TrackingObject            `json:"objects"`
 	BriefingState TrackingPeriodBriefingState `json:"briefing_state"`
@@ -6750,7 +6750,7 @@ func (s *TrackingPeriodList) SetNextCursor(val OptCursor) {
 }
 
 // 持续跟踪的状态：tracking 跟踪中、paused 已暂停、stopped 已停止、archived
-// 已归档（0.6.0）.
+// 已归档.
 // Ref: #/components/schemas/TrackingState
 type TrackingState string
 

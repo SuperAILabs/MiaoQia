@@ -13,11 +13,14 @@ import (
 //   - Facts 是视图组装的读取（domain-intelligence 的事实视图投影与 entity-graph 的关联视图项）：给定一条公共事实版本，
 //     返回其中的求值单位（如结果公告中的每条中标结果）及其视图字段、关联视图项、证据与展示字段。
 //
-// 生产适配器尚未接入：生产组装使用“未接入”实现（NotWired），调用返回 ErrNotWired，事件处理失败并按消费框架重试、转入死信，
+// search percolator 的生产接口与最小持久化索引已装配；未装配时使用 NotWired 或失败关闭，
 // 不以空数据冒充“没有信号”。测试与演示使用标明为夹具的内存实现（api/facttest）。
 
 // ErrNotWired 表示匹配适配器没有接入。
 var ErrNotWired = errors.New("detection：匹配适配器未接入")
+
+// ErrReadDenied 表示该租户的 monitoring 读取被数据平面拒绝（来源权利或委托不覆盖该租户）：匹配跳过该租户，不重试。
+var ErrReadDenied = errors.New("detection：事实读取被拒绝")
 
 // FactRef 是一条公共事实版本（domain.fact.upserted.v1 的载荷与信封）。
 type FactRef struct {
@@ -92,9 +95,16 @@ type Facts interface {
 	Units(ctx context.Context, ref FactRef) ([]Unit, error)
 }
 
-// Candidates 返回 cell 中可能命中该事实版本的租户。
+// Candidates 返回 cell 中可能命中该事实版本的租户（只用事件元数据粗筛，不读事实内容）。
 type Candidates interface {
 	Tenants(ctx context.Context, cell string, ref FactRef) ([]string, error)
+}
+
+// CandidateResolver 是带事实视图的反查适配器：detection 以某租户读到的求值单位调用，结果含该租户时才求值。
+// search 用事实字段执行区域/品类过滤；未实现该接口的适配器只做粗筛。
+type CandidateResolver interface {
+	Candidates
+	TenantsFor(ctx context.Context, cell string, ref FactRef, units []Unit) ([]string, error)
 }
 
 // ProjectLinks 是项目（prj_）到采购项目（pp_）的归属边读取（entity-graph 的 part_of，当前有效且已确认或置信度不低于 0.9 的边，
