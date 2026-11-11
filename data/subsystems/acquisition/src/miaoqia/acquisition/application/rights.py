@@ -1,4 +1,9 @@
-"""No reusable positive permits: confirmation binds every input and caller and rechecks time/current rights."""
+"""No reusable positive permits: confirmation binds every input and caller and rechecks time/current rights.
+
+Public sources need no per-source or per-tenant grant: an input tagged exactly public:<source_id> for a source
+in the registry is readable in full by every admitted tenant and purpose, never redistributable. Frozen-corpus
+inputs still need their registered, active policy; mixed inputs take the intersection as before.
+"""
 
 from __future__ import annotations
 
@@ -51,6 +56,9 @@ class Decisions:
             selected = [(source, snap.versions(source)) for source in sources]
             now = snap.current_time()
             for source, versions in selected:
+                if snap.public_source(source):
+                    redistribute = False
+                    continue
                 if versions is None:
                     allowed = False
                     continue
@@ -111,5 +119,5 @@ class Decisions:
         with self.registry.snapshot():
             return {
                 "domain_service": "not_live",
-                "capability": "frozen_source_rights_only",
+                "capability": "frozen_and_public_source_rights",
             }

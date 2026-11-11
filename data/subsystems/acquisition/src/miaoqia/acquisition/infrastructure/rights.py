@@ -64,6 +64,15 @@ class Snapshot:
     def current_time(self):
         return self.conn.execute(text("SELECT clock_timestamp()")).scalar_one()
 
+    def public_source(self, source):
+        """A declared public source read through its own provenance tag: exactly ["public:<source_id>"] and
+        the source is in the registry (only capability-verified sources can be declared)."""
+        if source.tags != (f"public:{source.source_id}",):
+            return False
+        return self.conn.execute(
+            text("SELECT 1 FROM public.acq_sources WHERE source_id = :s"), {"s": source.source_id}
+        ).first() is not None
+
     def versions(self, source):
         row = self.conn.execute(
             text("""SELECT v.policy,cur.policy,c.revoked

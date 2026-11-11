@@ -130,6 +130,7 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 - `extraction_orchestrator`：按包清单加载解析器与领域校验（入口须位于包内），同一快照同一解析器版本只解析一次；证据或领域语义校验不通过、或任一事实被解析器标为 `suspect` 的修订记为 `suspect`（按最严格状态汇总），下游不物化；
 - `provenance`：文档证据引用入库，快照、修订与证据引用由触发器保持不可变；
 - 事件：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`，与数据同事务经发件箱发布；公共管线拒绝租户上下文；
+- 实际采集入库：配置 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR`（与 acquisition 共用对象存储）时，公共实例消费 `acquisition.fetch.completed.v1`，按内容哈希读回原件并核对后送入本管线；来源对象键为公告的公开地址 `source_url`，同一公告的补采成为同一来源对象的快照；原件按原样归档，不是 HTML 的原件由领域包的文档适配器（`provides.documents`）取出公告正文；
 - 回放：`mq-evidence-replay` 投放冻结语料（核对原件哈希，权利标签追加 `corpus:<样本>`），不构成来源启用；
 - 读取：`api.Extractions`（解析修订）在数据单元内以本地绑定注入 domain-intelligence。
 

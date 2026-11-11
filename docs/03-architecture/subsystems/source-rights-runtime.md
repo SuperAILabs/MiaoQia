@@ -1,10 +1,12 @@
-# 冻结语料的当前来源权利与可信来源闭包
+# 当前来源权利与可信来源闭包
 
-acquisition 提供冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 的事实/证据查询 listener 带 TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络进程验收尚未完成。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
+acquisition 提供公开来源与冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 的事实/证据查询 listener 带 TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络进程验收尚未完成。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
 
 ## 权威与引用
 
-[SourceRightsPolicy](../../../contracts/schemas/acquisition/source-rights.schema.json) 定义不可变原始版本：entry_id/version、source_id、精确 tenant/cell scopes、purposes（interactive、monitoring、simulation 的非空唯一子集）、展示上限、有效期及再分发限制。空 scope 不表示公共通配；业务读取仅支持 fact_read / evidence_resolve。原始版本及当前版本的每项限制同时生效；多个输入取交集、最低展示等级、最早到期和再分发 AND。扩权不能追溯放宽已有原始引用。
+**公开来源**：公开来源的信息不对外二次商业发布，不需要逐来源、逐租户授权，只做来源跟踪。输入恰为一个 `public:<source_id>` 标签、且该来源在 acquisition 来源登记（`acq_sources`，只有能力验收通过的盘点条目可以声明）中时，任何通过身份准入的租户与用途都可完整读取（`full_text`），再分发恒为否；身份准入、receipt 与确认流程不变。标签不完全一致、来源未登记或多余标签按下述冻结语料规则判断。公开来源与冻结语料混合输入时取交集。特殊来源由法务个案处理，登记为冻结语料式的显式策略。
+
+**冻结语料**：[SourceRightsPolicy](../../../contracts/schemas/acquisition/source-rights.schema.json) 定义不可变原始版本：entry_id/version、source_id、精确 tenant/cell scopes、purposes（interactive、monitoring、simulation 的非空唯一子集）、展示上限、有效期及再分发限制。空 scope 不表示公共通配；业务读取仅支持 fact_read / evidence_resolve。原始版本及当前版本的每项限制同时生效；多个输入取交集、最低展示等级、最早到期和再分发 AND。扩权不能追溯放宽已有原始引用。
 
 数据库 `acq_rights` 保存不可变版本、精确 source+完整 tags 组合到原版本的不可变别名、当前版本/撤销指针、持久 epoch 与追加审计。操作通过受限 SECURITY DEFINER 函数串行执行，指针、epoch、审计同事务；别名不可改绑。运行 reader 仅 SELECT，operator 仅 SELECT 和执行受限 command，owner 只迁移/角色配置；禁止把 owner/operator 凭据放进运行进程。
 
@@ -48,7 +50,7 @@ acq-admin 内部 listener 使用标准库 ssl/http.server/http.client：TLS1.3�
 |---|---|---|
 | /internal/v1/source-rights/resolve | operation，inputs（1–64 个 source_id/tags） | allowed/display/redistribution/epoch/receipt |
 | /internal/v1/source-rights/confirm | 同样 operation/inputs，加原 receipt | 重新计算的同形决策；不含 receipt 字段 |
-| /internal/v1/source-rights/status | {} | domain_service=not_live、capability=frozen_source_rights_only |
+| /internal/v1/source-rights/status | {} | domain_service=not_live、capability=frozen_and_public_source_rights |
 
 receipt 是最长30秒的随机 nonce/epoch/到期/HMAC 完整性封套，绑定原 user/tenant/cell/purpose、operation、全部 source/tags。它不能单独授权：confirm 必须重新读取当前 identity、全部当前权利和权威数据库时间；epoch 变化、同 epoch 到期、主体/引用/用途变化均不通过。进程重启使旧 receipt 失效；没有跨请求正向许可缓存。receipt 可在原范围内重复确认，但每次都是新的当前授权计算，不能当作已授权 boolean 保存或转交给其他主体。
 

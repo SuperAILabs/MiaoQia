@@ -124,7 +124,7 @@ def test_network_positive_revocation_no_inventory_and_status(remote):
     assert call(client, "confirm", {**request(), "receipt": a["receipt"]})["allowed"]
     assert call(client, "status", {}) == {
         "domain_service": "not_live",
-        "capability": "frozen_source_rights_only",
+        "capability": "frozen_and_public_source_rights",
     }
     assert ident.sessions["seen"][-1] == CTX
     with reqctx.use(CTX):
@@ -487,7 +487,7 @@ def test_network_service_relay_skips_identity_and_matches_named_principal(
     a = call(client, context=MONITOR)
     assert a["allowed"]
     assert call(client, "confirm", {**request(), "receipt": a["receipt"]}, MONITOR)["allowed"]
-    assert call(client, "status", {}, MONITOR)["capability"] == "frozen_source_rights_only"
+    assert call(client, "status", {}, MONITOR)["capability"] == "frozen_and_public_source_rights"
     for ctx in (
         SIMULATE,  # no simulation delegation
         reqctx.Context(reqctx.Principal("svc:learning", "service"), CTX.tenant, CTX.cell, "monitoring"),

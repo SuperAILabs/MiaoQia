@@ -39,3 +39,7 @@ def provision(owner_dsn, reader, operator):
                 "GRANT EXECUTE ON FUNCTION acq_rights.command(jsonb,text,text) TO {}"
             ).format(sql.Identifier(operator))
         )
+        # The reader resolves public sources against the source registry (read-only).
+        c.execute(
+            sql.SQL("GRANT SELECT ON public.acq_sources TO {}").format(sql.Identifier(reader))
+        )

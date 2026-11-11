@@ -868,7 +868,7 @@ class DomainService(Enum):
 
 
 class Capability(Enum):
-    frozen_source_rights_only = "frozen_source_rights_only"
+    frozen_and_public_source_rights = "frozen_and_public_source_rights"
 
 
 class SourceRightsStatus(BaseModel):
