@@ -54,7 +54,7 @@ type plan struct {
 	call       api.Call
 	promptRef  string
 	inputHash  string
-	payload    int // 送给供应商的全部内容的输入 token 上界，见 inputTokensUpper
+	payload    int // 送给供应商的全部内容的输入 token 上界，见 inputTokensUpper 与 framingUpper
 }
 
 func (s *Service) Generate(ctx context.Context, req api.GenerateRequest) (*api.GenerateResult, error) {
@@ -76,7 +76,7 @@ func (s *Service) Generate(ctx context.Context, req api.GenerateRequest) (*api.G
 		}
 	}
 	parts := append(appendInputs([]string{req.Instructions}, req.Inputs), string(req.OutputSchema))
-	p := plan{capability: api.CapGenerate, call: req.Call, promptRef: req.PromptRef, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
+	p := plan{capability: api.CapGenerate, call: req.Call, promptRef: req.PromptRef, inputHash: hash(parts...), payload: inputTokensUpper(parts...) + framingUpper(len(req.Inputs), 0)}
 	preq := ProviderRequest{Instructions: req.Instructions, Inputs: req.Inputs, OutputSchema: req.OutputSchema, MaxOutputTokens: req.Budget.MaxOutputTokens}
 	out, r, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) (json.RawMessage, ProviderUsage, error) {
@@ -119,7 +119,7 @@ func (s *Service) Classify(ctx context.Context, req api.ClassifyRequest) (*api.D
 	}
 	parts = appendInputs(parts, req.Inputs)
 	key := req.Task + "@" + req.TaskVersion
-	p := plan{capability: api.CapClassify, call: req.Call, promptRef: key, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
+	p := plan{capability: api.CapClassify, call: req.Call, promptRef: key, inputHash: hash(parts...), payload: inputTokensUpper(parts...) + framingUpper(len(req.Inputs), len(req.Labels))}
 	preq := ProviderClassifyRequest{Task: key, Inputs: req.Inputs, Labels: req.Labels, MaxOutputTokens: req.Budget.MaxOutputTokens}
 	var meaning api.ScoreMeaning
 	d, r, err := attempt(ctx, s, p, bad,
@@ -156,7 +156,7 @@ func (s *Service) Score(ctx context.Context, req api.ScoreRequest) (*api.Decisio
 	}
 	parts := appendInputs([]string{req.Task, req.TaskVersion, fmt.Sprint(sc.Min, sc.Max), sc.Definition}, req.Inputs)
 	key := req.Task + "@" + req.TaskVersion
-	p := plan{capability: api.CapScore, call: req.Call, promptRef: key, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
+	p := plan{capability: api.CapScore, call: req.Call, promptRef: key, inputHash: hash(parts...), payload: inputTokensUpper(parts...) + framingUpper(len(req.Inputs), 0)}
 	preq := ProviderScoreRequest{Task: key, Inputs: req.Inputs, Scale: sc, MaxOutputTokens: req.Budget.MaxOutputTokens}
 	d, r, err := attempt(ctx, s, p, bad,
 		func(ctx context.Context, pr Provider, ep Endpoint) (ProviderDecision, ProviderUsage, error) {
@@ -352,6 +352,11 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 				s.record(ctx, inv)
 				continue
 			}
+			if errors.Is(err, ErrInvalidOutput) {
+				inv.ErrorCode = api.CodeOutputInvalid
+				s.record(ctx, inv)
+				return zero, done{}, &api.Error{Code: api.CodeOutputInvalid, Detail: err.Error()}
+			}
 			inv.ErrorCode = api.CodeProviderResponseBad
 			s.record(ctx, inv)
 			return zero, done{}, &api.Error{Code: api.CodeProviderResponseBad, Detail: ep.ID}
@@ -404,8 +409,8 @@ func hash(parts ...string) string {
 
 // inputTokensUpper 是请求内容的输入 token 保守上界：UTF-8 字节数，每段再加 1。
 // 字节级 BPE 与带字节回退的 SentencePiece 分词中每个 token 至少对应 1 个字节，分段时的前缀标记由每段加 1 覆盖；
-// 字符数不是通用上界（一个汉字可能拆成多个 token）。适配器附加的模板与角色标记由端点的 request_overhead_tokens 覆盖。
-// 真实适配器可在接入时换用供应商的精确计数，但不得低于实际发送内容。
+// 字符数不是通用上界（一个汉字可能拆成多个 token）。适配器给每段输入与候选标签加的分隔标记由 framingUpper 按条数计入，
+// 与条数无关的模板与角色标记由端点的 request_overhead_tokens 覆盖；适配器原样发送输入内容，不转义，因此字节数仍是上界。
 func inputTokensUpper(parts ...string) int {
 	n := 0
 	for _, p := range parts {

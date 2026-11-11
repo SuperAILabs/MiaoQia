@@ -1,5 +1,6 @@
-// Package gateway 实现 ai-platform 的模型网关骨架：模型目录与路由、主备切换、预算上限、输出校验与计量。
-// 供应商适配器只有故障桩；真实供应商在 M1 首次调用前按 C3/C7a 评测选定后接入（ADR-0015）。
+// Package gateway 实现 ai-platform 的模型网关：模型目录与路由、主备切换、预算上限、输出校验与计量。
+// 供应商适配器：DeepSeek、豆包、OpenAI、Google 共用 OpenAI 兼容适配器，Anthropic 用原生 Messages API 适配器（ADR-0015）；
+// 各能力的主备端点按 C3/C7a 评测选定后登记模型目录。故障桩 Stub 用于离线验证网关行为。
 package gateway
 
 import (
@@ -19,7 +20,7 @@ import (
 // 价格按 Billing 声明的单位登记：token 计费按每千 token 的微元，按请求计费按每次请求的微元；未登记价格的端点不能通过校验，不按免费处理。
 type Endpoint struct {
 	ID               string           `yaml:"id"`
-	Provider         string           `yaml:"provider"` // 适配器名，例如 openai_compatible、stub
+	Provider         string           `yaml:"provider"` // 适配器名：deepseek、doubao、openai、anthropic、google（见 VendorProviders），测试用 stub
 	Model            string           `yaml:"model"`
 	Version          string           `yaml:"version"`
 	Capabilities     []api.Capability `yaml:"capabilities"`
@@ -31,7 +32,8 @@ type Endpoint struct {
 	RequestPrice     int64            `yaml:"request_price"`
 	DecisionTasks    []DecisionTask   `yaml:"decision_tasks"` // 声明 classify/score 能力的端点经任务评测准入的任务版本
 	MaxInputTokens   int              `yaml:"max_input_tokens"`
-	// RequestOverheadTokens 是适配器在请求内容之外附加的 token 上界（模板、角色与格式标记），计入输入估算。
+	// RequestOverheadTokens 是适配器在请求内容之外附加的、与输入条数无关的 token 上界（指令模板、决策任务契约与 Schema、
+	// json_object 模式下附在指令后的 Schema 说明、角色与格式标记），计入输入估算；每段输入与候选标签的分隔标记由网关按条数另计。
 	RequestOverheadTokens int           `yaml:"request_overhead_tokens"`
 	Timeout               time.Duration `yaml:"timeout"`
 	NoTrainingOnCustomer  bool          `yaml:"no_training_on_customer"` // 合同与配置禁止用客户数据训练

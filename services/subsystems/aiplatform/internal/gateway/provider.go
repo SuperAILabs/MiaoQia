@@ -12,6 +12,9 @@ import (
 // ErrUnavailable 表示端点暂时不可用（网络错误、限流、5xx、超时）；网关据此切换到下一个合规端点。
 var ErrUnavailable = errors.New("模型端点不可用")
 
+// ErrInvalidOutput 表示供应商成功响应但内容不是约定的结构化结果（无法解析为 JSON 或缺少类型化字段）；网关返回 output_invalid，不切换端点。
+var ErrInvalidOutput = errors.New("模型输出不符合约定结构")
+
 // ProviderRequest 是交给适配器的生成请求。适配器必须把 Trusted 为 false 的输入放在与指令分开的数据消息中并标注为不可信，不得拼入指令。
 type ProviderRequest struct {
 	Instructions    string

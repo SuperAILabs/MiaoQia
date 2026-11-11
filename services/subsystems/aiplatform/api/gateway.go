@@ -41,7 +41,8 @@ const (
 
 // Budget 是一次逻辑调用（含主备切换）的上限；任何一项超出即在调用供应商前停止。零值表示不设该项上限，MaxCostMicroYuan 除外：零值表示不允许产生费用。
 // 负值是非法请求。费用上限对所有计费单位生效：按请求计费的端点同样先按目录价格估算，不因不计 token 而视为免费。
-// 输入 token 按送给供应商的全部内容（指令、输入、输出 Schema、候选标签与量表）的 UTF-8 字节数加端点登记的附加量保守估算。
+// 输入 token 按送给供应商的全部内容（指令、输入、输出 Schema、候选标签与量表）的 UTF-8 字节数、每段输入与候选标签的分隔标记上界，
+// 加端点登记的附加量保守估算。
 type Budget struct {
 	MaxInputTokens   int   `json:"max_input_tokens,omitempty"`
 	MaxOutputTokens  int   `json:"max_output_tokens,omitempty"`

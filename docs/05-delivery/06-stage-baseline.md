@@ -42,7 +42,7 @@
 | M0-04 平台横切与完整探针 | 上下文、绑定、发件箱/中继、消费框架、审计/授权 SDK、HTTP 认证和完整探针已通过[运行时验收](05-m0-runtime-acceptance.md)；四个现有消费者通过 | 平台/数据：保持既有门禁；新增处理函数补载荷、业务语义与真实组件证据。此项已完成的验收不重开 |
 | M0-05 同步接口可拆分 | M0 身份验收覆盖 identity.Authorizer 与 identity.SessionResolver；Check 及权威目录核验均有本地/远程和真实 mTLS 证据，见[身份验收](07-m0-identity-acceptance.md)；后续业务接口按[契约就绪第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约)逐项登记；[远程登记](../../services/cmd/platform/main.go)复用生成客户端 | 架构：M0 退出按全部已实现同步接口逐项核对，M0 身份证据不代证后续业务接口；新增接口首次启用前必须具备配置切换和同一契约测试，不能声称18子系统的未来接口均已验证 |
 | M0-06 最小身份生命周期与 cell 路由 | 实现及真实组件验收通过：[身份验收](07-m0-identity-acceptance.md)。租户创建/停用/恢复、成员加入/退出/角色、末位管理员、权威cell-01核验及旧/新令牌撤权；真实PG/FGA/HTTPS Keycloak/mTLS/Kafka验证 | identity/安全：维持回归门禁；审批、服务账号/协作者、组织层级及多cell迁移分阶段验收。实际生产IdP/MFA流程、客户端和部署不由测试签发方或本地realm代证 |
-| M0-07 最小模型网关骨架 | 网关骨架已实现并有离线单元测试：[网关接口](../../services/subsystems/aiplatform/api/gateway.go)（生成，分类与评分决策能力，分级、预算、按 token 或按请求计费、错误码、本地绑定）与[实现](../../services/subsystems/aiplatform/internal/gateway/)（模型目录校验、按能力/分级及决策任务版本路由、主备切换且主备数值含义一致、调用前预算停止（按完整请求内容的保守输入上界，上限约束含主备切换的整次调用，负预算拒绝）、输出 Schema 与决策结果校验、未知/拒答与故障分开表达、计量接口、故障桩）；决策能力定义见 [ai-platform 第11节](../03-architecture/subsystems/ai-platform.md#11-决策能力类-jev-决策模型)。敏感数据一律拒绝，租户授权未接入；计量只在内存，无持久化与事件；无真实适配器、OCR 接口与远程绑定 | AI/平台：services CI 通过后本项骨架关闭。M1 首次调用前按 C3/C7a 接入选定供应商的适配器与 OCR 接口，补计量持久化、`ai_platform.invocation.recorded.v1`、调用记录标识前缀登记与远程绑定契约测试（M0-05 的新增接口规则）；决策能力的候选随 C3/C7a 评测，任务的自动判断范围与阈值验证后才可启用；骨架不代证供应商可用 |
+| M0-07 最小模型网关骨架 | 网关骨架已实现并有离线单元测试：[网关接口](../../services/subsystems/aiplatform/api/gateway.go)（生成，分类与评分决策能力，分级、预算、按 token 或按请求计费、错误码、本地绑定）与[实现](../../services/subsystems/aiplatform/internal/gateway/)（模型目录校验、按能力/分级及决策任务版本路由、主备切换且主备数值含义一致、调用前预算停止（按完整请求内容的保守输入上界，上限约束含主备切换的整次调用，负预算拒绝）、输出 Schema 与决策结果校验、未知/拒答与故障分开表达、计量接口、故障桩，以及五家供应商的适配器与模拟协议测试）；决策能力定义见 [ai-platform 第11节](../03-architecture/subsystems/ai-platform.md#11-决策能力类-jev-决策模型)。敏感数据一律拒绝，租户授权未接入；计量只在内存，无持久化与事件；无 OCR 接口与远程绑定，未用真实密钥调用供应商 | AI/平台：services CI 通过后本项骨架关闭。M1 首次调用前按 C3/C7a 用真实密钥验收选定端点并接入 OCR 接口，补计量持久化、`ai_platform.invocation.recorded.v1`、调用记录标识前缀登记与远程绑定契约测试（M0-05 的新增接口规则）；决策能力的候选随 C3/C7a 评测，任务的自动判断范围与阈值验证后才可启用；骨架不代证供应商可用 |
 | M0-08 CI与一键环境 | [services](../../.github/workflows/services.yml)、[data](../../.github/workflows/data.yml)、[contracts](../../.github/workflows/contracts.yml)、[开发E2E](../../.github/workflows/e2e.yml)已有；`tools/dev/run-local-acceptance.sh` 默认复用共享 PostgreSQL/Kafka/OpenFGA/Keycloak/data-api，验收脚本会先探测本机已运行的共享 PostgreSQL（CI/隔离环境仍由 `MIAOQIA_TEST_PG` 显式覆盖），OpenFGA 网络长尾时可用 `--local-openfga` 启动本机内存服务，`--up` 仅作为可选 Compose 引导；`tools/dev/run-m0-vps.sh` 已在开发 VPS 完成迁移、主题、三个单元进程、探针、审计、拒绝授权、远程 identity、数据平面回放；A02 进程级回放入口 `tools/dev/run-a02-process-replay.sh` 已完成真实进程回放并保存五类 ID 及负向证据；本机追踪文件按 `MIAOQIA_E2E_TRACE_REQUIRED=false` 显式跳过 | 平台：以候选版本 SHA 重新执行并保留 CI、环境和日志制品。补本地追踪文件或等价的远程 Collector 追踪证据。M0-08 的候选版本/CI 证据收口独立于 A02 贯通级别跟踪 |
 | M0-09 产品概念与设计规范 | **概念与设计范围已关闭**：两类客户已确认；总体体验、故事板、统一列表/证据/渠道卡片规范已有；A02 第1–7段功能 PRD 与低保真原型已设计交接通过 | 客户任务观察、可用性记录和试点成功标准移到 M2-P9/L5；它们不再阻断 M0 |
 
@@ -53,7 +53,7 @@
 M0 是一次性工程基线，不是持续运行的总门禁。M0-01、M0-07、M0-08 必须针对同一个候选版本快照各关闭一次：
 
 - M0-01 只证明开发 VPS 的非敏感配置、组件版本、连接边界和重建步骤可复现；生产高可用、备份恢复、值班和远程公共服务持续健康属于 C11 与上线门禁。
-- M0-07 只证明模型网关骨架、预算/输出校验、错误语义和本地绑定；供应商适配、OCR、持久化计量和远程绑定属于 M1 首次调用前门禁。
+- M0-07 只证明模型网关骨架、预算/输出校验、错误语义和本地绑定；供应商适配器已实现但只经模拟协议测试，真实调用验收、OCR、持久化计量和远程绑定属于 M1 首次调用前门禁。
 - M0-08 只保留候选版本标识、对应 CI 制品、M0 E2E 日志和追踪/审计证据；A02、M1 或 Web 的后续改动不重新打开已关闭的 M0 门，除非改动触及 M0 组件或出现 M0 回归。
 
 客户任务观察和可用性记录由 M2-P9/L5 验收；远程 OpenFGA、生产渠道和外部供应商健康不作为 M0 的隐含重试条件。开发验收可按运行时验收文档使用本地 OpenFGA 替代网络长尾。
