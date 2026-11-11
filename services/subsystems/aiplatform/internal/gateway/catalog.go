@@ -23,7 +23,6 @@ type Endpoint struct {
 	Model            string           `yaml:"model"`
 	Version          string           `yaml:"version"`
 	Capabilities     []api.Capability `yaml:"capabilities"`
-	Filed            bool             `yaml:"filed"` // 已完成模型备案
 	Region           string           `yaml:"region"`
 	Tier             int              `yaml:"tier"` // 0 主选，1 起为备选，同级内按 ID 排序
 	Billing          api.BillingUnit  `yaml:"billing"`
@@ -49,10 +48,9 @@ type DecisionTask struct {
 
 func (d DecisionTask) key() string { return d.Task + "@" + d.Version }
 
-// Catalog 是模型目录与路由约束。AllowedRegions 为空时只允许境内（cn）处理；境外地域须显式列入，且只在完成跨境评估后配置。
+// Catalog 是模型目录。
 type Catalog struct {
-	AllowedRegions []string   `yaml:"allowed_regions"`
-	Endpoints      []Endpoint `yaml:"endpoints"`
+	Endpoints []Endpoint `yaml:"endpoints"`
 }
 
 // ParseCatalog 解析并校验 YAML 模型目录。
@@ -69,9 +67,6 @@ func ParseCatalog(raw []byte) (*Catalog, error) {
 
 // Validate 拒绝不完整或不合规的端点登记，避免路由时才发现。
 func (c *Catalog) Validate() error {
-	if len(c.AllowedRegions) == 0 {
-		c.AllowedRegions = []string{"cn"}
-	}
 	seen := map[string]bool{}
 	var errs []error
 	for _, e := range c.Endpoints {

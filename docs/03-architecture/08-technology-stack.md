@@ -64,7 +64,7 @@
 |---|---|---|
 | 事务数据库 | **PostgreSQL 17+**（CloudNativePG，ADR-0007） | RLS、分区、只读副本、PITR |
 | 对象存储 | **受测S3公共子集**；生产使用 IaaS 供应商对象存储（ADR-0014 价格例外）；私有部署与 `staging` 使用 Ceph RGW（Rook） | MinIO 社区版已停止积极维护，不采用 |
-| 检索 | **OpenSearch 3.x**（自建，OpenSearch Operator；ADR-0007、ADR-0013） | 中文分词、k-NN、混合检索、percolator；版本化索引与别名切换 |
+| 检索 | **OpenSearch 3.x**（自建，OpenSearch Operator；ADR-0007、ADR-0013） | 中文分词、全文与结构化检索、percolator；版本化索引与别名切换；不建向量索引 |
 | 图查询读模型 | M3 末以真实查询基准测试后选定，候选：PostgreSQL 递归查询、Apache AGE、NebulaGraph | 接口已固定为 `GraphQuery`；M4 才需要 |
 | 事件总线 | **Kafka 4.x KRaft**（Strimzi，ADR-0004） | 持久、可重放、分区有序 |
 | 发件箱中继 | 自研 Go 中继（轮询 + 通知），读取全部子系统库 | 与语言无关；规模化后可替换为 CDC（Debezium） |
@@ -79,11 +79,10 @@
 | 浏览器渲染 | Playwright（Chromium） | 动态页面采集 |
 | HTML 解析 | lxml、selectolax | 高性能 |
 | PDF | pdfplumber、pypdfium2 | 文本与版面；PyMuPDF（AGPL）未取得商业许可前不作为默认依赖 |
-| OCR 与版面 | 文档解析/OCR API 与多模态模型 API；前期不建设私有OCR推理 | 前期不建设 GPU |
+| OCR 与版面 | 上述供应商的多模态模型 API；前期不建设私有OCR推理 | 前期不建设 GPU |
 | Office | python-docx、openpyxl 等；必要时 LibreOffice 沙箱转换 | — |
-| 模型访问 | 自研模型网关（`ai-platform`，Go），OpenAI 兼容协议适配器为主 | 统一路由、计量与治理；私有部署客户可指向自有端点 |
-| 模型供应商 | 境内已备案的多家模型 API | 合规已由法务确认；按评测选定主选与备选 |
-| 嵌入与重排 | 供应商嵌入与重排 API | 公共域一次计算、多租户复用；模型版本记录在索引版本中 |
+| 模型访问 | 自研模型网关（`ai-platform`，Go），每家供应商一个适配器 | 统一路由、计量与治理；私有部署客户可指向自有端点 |
+| 模型供应商 | DeepSeek、豆包、OpenAI、Anthropic、Google 的模型 API | 每项能力按评测在这五家中选定主选与备选 |
 | 私有模型推理 | 不建设 | 重新评估条件见 ADR-0015 |
 | Agent 运行时 | 自研（基于 Temporal Go SDK） | 完全掌控工具权限与可观测（ADR-0010） |
 

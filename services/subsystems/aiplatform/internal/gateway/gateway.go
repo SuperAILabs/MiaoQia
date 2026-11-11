@@ -98,51 +98,6 @@ func (s *Service) Generate(ctx context.Context, req api.GenerateRequest) (*api.G
 	return &api.GenerateResult{Output: out, Model: r.ref, Usage: r.usage, Call: r.call, InvocationID: r.id}, nil
 }
 
-func (s *Service) Embed(ctx context.Context, req api.EmbedRequest) (*api.EmbedResult, error) {
-	bad := ""
-	if len(req.Texts) == 0 || req.Purpose == "" {
-		bad = "缺少 texts 或 purpose"
-	}
-	p := plan{capability: api.CapEmbed, call: req.Call, inputHash: hash(req.Texts...), payload: inputTokensUpper(req.Texts...)}
-	out, r, err := attempt(ctx, s, p, bad,
-		func(ctx context.Context, pr Provider, ep Endpoint) ([][]float32, ProviderUsage, error) {
-			return pr.Embed(ctx, ep, req.Texts)
-		},
-		func(out [][]float32, _ Endpoint) (api.Outcome, error) {
-			if len(out) != len(req.Texts) {
-				return "", &api.Error{Code: api.CodeProviderResponseBad, Detail: "向量数量与输入不符"}
-			}
-			return "", nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	return &api.EmbedResult{Vectors: out, Model: r.ref, Usage: r.usage, Call: r.call, InvocationID: r.id}, nil
-}
-
-func (s *Service) Rerank(ctx context.Context, req api.RerankRequest) (*api.RerankResult, error) {
-	bad := ""
-	if req.Query == "" || len(req.Candidates) == 0 {
-		bad = "缺少 query 或 candidates"
-	}
-	parts := append([]string{req.Query}, req.Candidates...)
-	p := plan{capability: api.CapRerank, call: req.Call, inputHash: hash(parts...), payload: inputTokensUpper(parts...)}
-	out, r, err := attempt(ctx, s, p, bad,
-		func(ctx context.Context, pr Provider, ep Endpoint) ([]float64, ProviderUsage, error) {
-			return pr.Rerank(ctx, ep, req.Query, req.Candidates)
-		},
-		func(out []float64, _ Endpoint) (api.Outcome, error) {
-			if len(out) != len(req.Candidates) {
-				return "", &api.Error{Code: api.CodeProviderResponseBad, Detail: "分数数量与候选不符"}
-			}
-			return "", nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	return &api.RerankResult{Scores: out, Model: r.ref, Usage: r.usage, Call: r.call, InvocationID: r.id}, nil
-}
-
 // Classify 在任务给定的候选标签中选择一个。结果只接受供应商的类型化字段；标签不在候选中、数值越界或与目录声明的含义不符时
 // 返回 output_invalid，不改选标签、不切换端点。未知与拒答作为成功结果返回。
 func (s *Service) Classify(ctx context.Context, req api.ClassifyRequest) (*api.Decision, error) {
