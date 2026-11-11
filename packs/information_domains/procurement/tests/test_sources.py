@@ -110,8 +110,9 @@ def test_anhui_ccgp_document_adapter_and_tender_fields():
     (fact,) = ex.extract(doc, ExtractionContext(doc, f"{ex.id}@{ex.version}")).facts
     # The method label lists every option; the title decides it.
     assert fact["method"] == "consultation" and fact["title"]["value"].endswith("竞争性磋商公告[2026]")
-    with pytest.raises(ValueError):
-        anhui_ccgp_html(b'{"success":false,"result":null}')
+    for bad in (b'{"success":false,"result":null}', b"\xff\xfe", b'{"success":true', b"[1]"):
+        with pytest.raises(ValueError):
+            anhui_ccgp_html(bad)
 
 
 def test_live_pages_select_the_right_extractor():

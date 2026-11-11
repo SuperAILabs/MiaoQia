@@ -7,7 +7,12 @@ from html import escape
 
 def anhui_ccgp_html(raw: bytes) -> str:
     """安徽政府采购网详情接口：正文 HTML 在 result.data.content，标题另在 result.data.title。"""
-    body = json.loads(raw.decode("utf-8"))
+    try:
+        body = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("detail response is not UTF-8 JSON") from exc
+    if not isinstance(body, dict):
+        raise ValueError("detail response is not a JSON object")
     data = (body.get("result") or {}).get("data") or {}
     content, title = data.get("content"), data.get("title") or ""
     if body.get("success") is not True or not isinstance(content, str) or not content.strip():
