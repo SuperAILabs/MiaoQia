@@ -22,7 +22,7 @@ from miaoqia.sdk.validation import validate_extraction
 from ..api import EXTRACTION_REVISED, NAME, SNAPSHOT_CREATED
 from ..domain.snapshot import normalized_hash, quality_status, raw_hash
 from ..extensions.packs import PackExtractor
-from ..infrastructure.objectstore import ObjectStore
+from miaoqia.kernel.objectstore import ObjectStore
 
 HTML_PIPELINE = "doc.html-dev@0.1.0"     # SDK 的 HTML 规范化（与语料评测同一坐标系）；PDF/OCR 管线随 M1 交付
 

@@ -17,7 +17,7 @@ from miaoqia.domain_intelligence.domain.views import bid_result_units
 from miaoqia.evidence import MIGRATIONS as EVD_MIGRATIONS
 from miaoqia.evidence.application.pipeline import Pipeline
 from miaoqia.evidence.extensions import packs
-from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
+from miaoqia.kernel.objectstore import FilesystemObjectStore
 from miaoqia.evidence.replay import replay
 from miaoqia.kernel import db, payloads, reqctx
 

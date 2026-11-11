@@ -1,0 +1,573 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安徽省公共资源交易监管网</title>
+    <link rel="stylesheet" href="/res/ah/css/basic.css">
+    <link rel="stylesheet" href="/res/ah/css/oldModel.css">
+    <script type="text/javascript" src="/res/ah/js/oldModel.js"></script>
+    <link rel="stylesheet" href="/res/ah/css/main.css">
+    <script type="text/javascript" src="/res/ah/js/jquery-1.10.1.min.js"></script>
+    <script type="text/javascript" src="/res/ah/js/main.js"></script>
+    <script>var currentServerTime = "2026-11-11 15:49:19";</script>
+    <script type="text/javascript" src="/res/js/common.js"></script>
+</head>
+<body>
+    <div class="container">
+<script>
+    var _hmt = _hmt || [];
+    (function() {
+        var hm = document.createElement("script");
+        hm.src = "https://hm.baidu.com/hm.js?2bfb8d2d4303cc91d8f06fa464f36346";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+<div class="header">
+        <div class="header-content clear">
+            <div class="header-content-left float-l">
+                <div><a class="btn-hover" href="https://www.ggzy.gov.cn/" target="_blank">全国公共资源交易平台</a></div>
+                <div class="m-l-50"><a class="btn-hover" href="https://fzggw.ah.gov.cn/" target="_blank">安徽省发展改革委</a></div>
+            </div>
+            <div class="header-content-right float-r" style="margin-left: 30px;width: 250px">
+                <form id="searchForm" action="/souSuo" method="post" style="margin-top: 8px">
+                    <input id="search"  type="text" name="param" value="" placeholder="搜索关键字"
+                           style="width: 200px;border: 1px solid #2B94D0;height: 25px;background:rgba(255, 255, 255, 0.5);padding-left: 10px;font-size:12px;padding-right: 35px;position: relative"
+                           onkeyup="$(this).val()==''?$(this).next().next().hide():$(this).next().next().show()" maxlength="100"/>
+                    <img src="/res/ah/images/sousuo.png" onclick="searchAll()"  style="position: relative;left: -28px;cursor: pointer;top: 3px;">
+                    <img src="/res/ah/images/close.png" onclick="$('#searchForm #search').val(''); $(this).hide();" style="display: none;position: relative;left: -70px;cursor: pointer;top: 5px;width: 15px">
+                </form>
+            </div>
+            <div class="header-content-right float-r">
+                <div>
+                    <span class="m-r-10" id="yangliny"></span>
+                    <!--<span class="m-r-10" id="time"></span>-->
+                    <span class="m-r-10" id="week"></span>
+                    <!--<span class="m-r-10" id="nongliYear"></span>
+                    <span id="nongliDay"></span>-->
+                </div>
+            </div>
+        </div>
+    </div>
+    <form id="searchForm" action="/souSuo" method="post">
+    <div class="banner" style="height: 180px">
+        <div style="position: relative;padding-left: 80%;top: 3%">
+            <ul>
+                <span class="noActive" id="zbb"><a href="javascript:void(0)" >长辈版</a></span>
+                <span class="noActive" id="wza"><a href="javascript:void(0);" id="toolbarSwitch" onclick="EsdToolbarInit.openClickFunc();" onkeydown="EsdToolbarInit.openKeydownFunc(event);">无障碍</a></span>
+            </ul>
+        </div>
+        <img src="/res/ah/images/banner_bg.gif?t=2026-11-11 15:49:19" style="position: relative;left: 55%;top: 20%;" />
+    </div>
+    </form>
+    <div class="menu" style="margin-top: 0px">
+        <div class="menu-content">
+            <li class="btn-hover choose"><a href="https://ggzy.ah.gov.cn">首&nbsp;&nbsp;页</a></li>
+            <li class="btn-hover"><a href="/jsgc/list">交易信息</a></li>
+            <li class="btn-hover"><a href="/performance/list">履约信息</a></li>
+            <li class="btn-hover"><a href="/jgAdminSupervise/list">监管信息</a></li>
+            <li class="btn-hover"><a href="/xyxx/list">信用信息</a></li>
+            <li class="btn-hover"><a href="/zhutiku/ztLegalInfoList">主体信息</a></li>
+            <li class="btn-hover"><a href="/jyzk/gfwj">政策法规</a></li>
+            <li class="btn-hover"><a href="/hdjl/list">互动交流</a></li>
+        </div>
+    </div>
+    <script>
+       $(function(){
+    	   $(".btn-hover a").hover(function(){
+    		   $(this).parent().addClass("choose").siblings().removeClass("choose");
+    	   });
+    	   $(".btn-hover a").mouseout(function(){ 
+    		   $(this).parent().removeClass("choose");
+    	   });
+    	   $(".search-close").click(function () {
+               $("#search").val("");
+               $(this).hide();
+           })
+       });
+       function searchAll(){
+           var sousuo = $.trim($("form#searchForm input#search").val());
+    		if (sousuo=="") {
+                $("form#searchForm input#search").val('')
+    			alert("请输入搜索条件！");
+    			return;
+    		} else {
+    			$("#searchForm").attr("target", "_blank");
+    			$("#searchForm").submit();
+    		}
+    		
+    	}
+
+    </script>
+        <div class="center">
+<div class="center-code" style="z-index:99999">
+    <div class="code-one">
+        <img src="/res/ah/images/center-code-bg.png"/>
+        <p>全国公共资源交易服务平台</p>
+    </div>
+    <div class="code-two" style="display: none">
+        <img src="/res/ah/images/center-code-bg.png"/>
+        <p>小程序</p>
+    </div>
+</div>
+<div class="center-code" style="z-index:99999;margin-top: 170px;background: none">
+    <div class="code-one" onclick="location.href='http://ggzy.ah.gov.cn/hdjl/report'" style="cursor: pointer">
+        <img src="/res/ah/images/wangzhannianbao.png"/>
+    </div>
+</div>            <div class="index-container">
+                <div class="tran-info-list center-item m-b-30 clear">
+
+<div class="tran-info-list-menu float-l">
+     <ul class="tran-info-list-list">
+         <li class="tran-info-list-menu-title"><img src="/res/ah/images/menu-icon.png" />交易信息</li>
+         <li class="tran-info-list-menu-item develop btn-hover">工程建设</li>
+         <ul class="tran-info-list-menu-develop">
+             <a href="/jsgc/list?tenderProjectType=1"><li class="btn-hover">建筑工程</li></a>
+             <a href="/jsgc/list?tenderProjectType=2"><li class="btn-hover">水利工程</li></a>
+             <a href="/jsgc/list?tenderProjectType=3"><li class="btn-hover">交通工程</li></a>
+             <a href="/jsgc/list?tenderProjectType=5"><li class="btn-hover">农业工程</li></a>
+             <a href="/jsgc/list?tenderProjectType=4"><li class="btn-hover">其他工程</li></a>
+         </ul>
+         <a href="/zfcg/list"><li class="tran-info-list-menu-item btn-hover">政府采购</li></a>
+         <a href="/cqjy/list"><li class="tran-info-list-menu-item btn-hover">产权交易</li></a>
+         <a href="/kyqcr/list"><li class="tran-info-list-menu-item btn-hover">土地矿权</li></a>
+         <a href="/qtjy/list"><li class="tran-info-list-menu-item btn-hover">其他行业</li></a>
+     </ul>
+
+ </div>                    <div class="tran-info-list-content float-l">
+                        <div class="tran-info-list-content-header clear">
+                            <div class="tran-info-list-content-title float-l">
+                            建筑工程
+                            
+                            
+                            
+                            
+                            </div>
+                            <div class="bread-crumb float-r">当前位置 》
+                                <a class="btn-hover" href="javascript:/">首页</a>》
+                                <a class="btn-hover" href="javascript:/jsgc/list">交易信息</a>》
+                                <a class="btn-hover" href="javascript:void(0)">
+                                建筑工程
+                            	
+                            	
+                                
+                            	
+                                </a>
+                            </div>
+                        </div>
+                        <div class="tran-info-list-content-search clear">
+                         <form id="search1" action ="/jsgc/list" method="post">
+                           <input type="hidden" id ="currentPage" name ="currentPage" value="1">
+                           <input type="hidden" id ="tenderProjectType" name ="tenderProjectType" value="1">
+                            <div>
+                                <span class="label">公告类型：</span>
+                                <div class="btn-group select_box">
+                                    <a class="dropdown-btn">
+                                        <span class="select_name1 beyond_ellipsis clamp-1">
+                                        招标公告
+                                        
+                                        
+                                        </span>
+                                        <span class="caret"></span>
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                    	<input type="hidden" name="bulletinNature" value="1">
+                                        <li><a href="javascript:selectBulletinNature(1);" title="招标公告">招标公告</a></li>
+                                        <li><a href="javascript:selectBulletinNature(2);" title="中标候选人公示">中标候选人公示</a></li>
+                                        <li><a href="javascript:selectBulletinNature(3);" title="中标结果公告">中标结果公告</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="label">来源区划：</span>
+                                <div class="btn-group select_box">
+                                    <a class="dropdown-btn">
+                                        <span class="select_name1 beyond_ellipsis clamp-1">
+                                                 请选择
+                                        </span>
+                                        <span class="caret"></span>
+                                    </a>
+                                    <input name="jyptId" type="hidden" value=""/>
+                                    <ul class="dropdown-menu">
+                                        <li><a href="javascript:selectPlat('');">请选择</a></li>
+                                        <li><a href="javascript:selectPlat('P3401000001');" title="合肥市">合肥市</a></li>
+                                        <li><a href="javascript:selectPlat('P3402000002');" title="芜湖市">芜湖市</a></li>
+                                        <li><a href="javascript:selectPlat('P3403000003');" title="蚌埠市">蚌埠市</a></li>
+                                        <li><a href="javascript:selectPlat('P3404000004');" title="淮南市">淮南市</a></li>
+                                        <li><a href="javascript:selectPlat('P3405000005');" title="马鞍山市">马鞍山市</a></li>
+                                        <li><a href="javascript:selectPlat('P3406000006');" title="淮北市">淮北市</a></li>
+                                        <li><a href="javascript:selectPlat('P3407000007');" title="铜陵市">铜陵市</a></li>
+                                        <li><a href="javascript:selectPlat('P3408000008');" title="安庆市">安庆市</a></li>
+                                        <li><a href="javascript:selectPlat('P3410000009');" title="黄山市">黄山市</a></li>
+                                        <li><a href="javascript:selectPlat('P3411000010');" title="滁州市">滁州市</a></li>
+                                        <li><a href="javascript:selectPlat('P3412000011');" title="阜阳市">阜阳市</a></li>
+                                        <li><a href="javascript:selectPlat('P3413000012');" title="宿州市">宿州市</a></li>
+                                        <li><a href="javascript:selectPlat('P3415000013');" title="六安市">六安市</a></li>
+                                        <li><a href="javascript:selectPlat('P3416000014');" title="亳州市">亳州市</a></li>
+                                        <li><a href="javascript:selectPlat('P3418000016');" title="宣城市">宣城市</a></li>
+                                        <li><a href="javascript:selectPlat('P3417000015');" title="池州市">池州市</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="label">项目所属区划：</span>
+                                <div class="btn-group select_box">
+                                    <a class="dropdown-btn">
+                                        <span class="select_name1 beyond_ellipsis clamp-1">
+                                                请选择
+                                        </span>
+                                        <span class="caret"></span>
+                                    </a>
+                                    <input name="region" type="hidden" value=""/>
+                                   <ul class="dropdown-menu">
+                                       <li><a href="javascript:selectDivisionCode('')">请选择</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340000');" title="安徽省">安徽省</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340100');" title="合肥市">合肥市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340600');" title="淮北市">淮北市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341600');" title="亳州市">亳州市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341300');" title="宿州市">宿州市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340300');" title="蚌埠市">蚌埠市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341200');" title="阜阳市">阜阳市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340400');" title="淮南市">淮南市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341100');" title="滁州市">滁州市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341500');" title="六安市">六安市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340500');" title="马鞍山市">马鞍山市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340200');" title="芜湖市">芜湖市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341800');" title="宣城市">宣城市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340700');" title="铜陵市">铜陵市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341700');" title="池州市">池州市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('340800');" title="安庆市">安庆市</a></li>
+                                        <li><a href="javascript:selectDivisionCode('341000');" title="黄山市">黄山市</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn" onclick="search()">搜索</button>
+                            </div>
+                            </form>
+                        </div>
+                        <div class="list clear">
+                             <ul>
+                               <li class="list-item1">
+                                    <span class="title clamp-1 listTitle1" >标题</span>
+                                    <span class="float-r listTitle2">发布时间</span>
+                                </li>
+                            </ul>
+                            <ul>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【黄山市-屯溪区-招标公告】</span>
+                                            <span class="title clamp-1" title="黄山市中心城区供排水一体化综合整治（一期）工程--江南片区内涝点整治项目EPC公开招标公告">
+                                            黄山市中心城区供排水一体化综合整治（一期）...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-11</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=7eda89ea-87d6-4b8b-a232-b7bc183a7e2d&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【芜湖市-鸠江区-招标公告】</span>
+                                            <span class="title clamp-1" title="芜湖市官陡街道萌宠商业街区项目初步设计(一标段)招标公告">
+                                            芜湖市官陡街道萌宠商业街区项目初步设计(一...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-11</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=13e688d2-cb25-4486-9dd2-2ffdb7f7fdd1&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【芜湖市-湾沚区-招标公告】</span>
+                                            <span class="title clamp-1" title="新一代航空器梦想工厂项目全过程咨询招标公告">
+                                            新一代航空器梦想工厂项目全过程咨询招标公告...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-11</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=cff4dca3-ed1e-4bf3-b547-be0b677ebd54&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【滁州市-来安县-招标公告】</span>
+                                            <span class="title clamp-1" title="长三角一体化来安县特色农产品产业园综合管网工程招标公告信息">
+                                            长三角一体化来安县特色农产品产业园综合管网...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-10</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=e4c5ae8d-7328-4f3d-8444-838efe04dc58&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【淮北市-烈山区-招标公告】</span>
+                                            <span class="title clamp-1" title="烈山区城市排水防涝提升改造工程-一标段公开招标公告">
+                                            烈山区城市排水防涝提升改造工程-一标段公开...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-10</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=31dd86a8-21cc-4796-bf6f-0c7d53b0100b&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【马鞍山市-市辖区-招标公告】</span>
+                                            <span class="title clamp-1" title="郑蒲港新区第二（北区）污水处理厂一期提标改造及二期扩建工程项目招标公告">
+                                            郑蒲港新区第二（北区）污水处理厂一期提标改...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-10</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=162695E7-EBB5-4371-8E21-A7F64D5A6AFA&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【淮南市-市辖区-招标公告】</span>
+                                            <span class="title clamp-1" title="淮南联合大学产教融合实训基地建设工程项目监理招标公告（第1次）">
+                                            淮南联合大学产教融合实训基地建设工程项目监...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-10</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=a5feef8a-5cf0-4ce5-a052-03d57e4ad553&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【马鞍山市-市辖区-招标公告】</span>
+                                            <span class="title clamp-1" title="含山县市政基础设施改造提升补短板项目-城市公共空间提升一期工程招标公告">
+                                            含山县市政基础设施改造提升补短板项目-城市...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-10</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=3e316de0-1001-4887-afac-a3362fbf8656&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【马鞍山市-和县-招标公告】</span>
+                                            <span class="title clamp-1" title="和县公共卫生体系提升建设项目二期-和县人民医院工程-和县人民医院医共体资源共享中心和中心药房智能化招标公告">
+                                            和县公共卫生体系提升建设项目二期-和县人民...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-10</span>
+                                </li>
+                                <li class="list-item">
+                                        <a href="/jsgc/newDetail?guid=2B2F162D-6E83-478D-91EC-0AEFCFA3C893&tenderProjectType=1&bulletinNature=1" target="_blank">
+                                            <span class="area m-l-25">【淮南市-市辖区-招标公告】</span>
+                                            <span class="title clamp-1" title="淮南经开区原料药及制剂产业园建设项目供电工程招标公告（第1次）">
+                                            淮南经开区原料药及制剂产业园建设项目供电工...
+                                            </span>
+                                        </a>
+                                    <span class="date float-r m-r-40">2026-11-10</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="gcxxfy">
+					  		<div class="mmggxlh"><a href="javascript:void(0);">上一页</a>
+
+<a href="javascript:void(0);" class="one">1</a>
+
+
+<a href="javascript:void(0);" onclick="pagination(2);return false;">2</a>
+
+
+<a href="javascript:void(0);" onclick="pagination(3);return false;">3</a>
+
+
+<a href="javascript:void(0);" onclick="pagination(4);return false;">4</a>
+
+
+<a href="javascript:void(0);" onclick="pagination(5);return false;">5</a>
+
+
+
+&nbsp;···&nbsp;
+<a href="javascript:void(0);" onclick="pagination(2334);return false;">2334</a>
+
+<a href="javascript:void(0);" onclick="pagination(1+1);return false;">下一页</a>
+<a  class="rmhover">跳转到<input id="pageNo" type="text" name="pageNo" style="width:25px;border-bottom: 1px solid #e3e3e3"
+							 data-options="required:true" value="1"></input>页</a>
+<a id="turnbtn" value="go" class="rmhover" style="width: 45px;height: 33px">go</a>
+<!--<span class="dian">共2334页，当前为第1页</span>-->
+
+<style>
+	a.rmhover:hover{
+		background:#fafafa;
+		color: rgba(102,102,102,1);
+	}
+
+</style>
+<script>
+	$(function(){
+		$('.refresh').on('click',function(event){
+			var currentPage = $('#pageNo').val();
+			var totalPage = $('#totalPage').val();
+			var totalPageT = parseInt(currentPage);
+			if (totalPageT>totalPage){
+				totalPageT = totalPage;
+			}
+			pagination(totalPageT);
+		});
+
+		$('#pageNo').on('keypress',function(event){
+			if(event.keyCode == 13){
+				var currentPage = $('#pageNo').val();
+				var totalPage = $('#totalPage').val();
+				var totalPageT = parseInt(currentPage);
+				if (totalPageT>totalPage){
+					totalPageT = totalPage;
+				}
+				pagination(totalPageT);
+			}
+		});
+
+		$('#turnbtn').on('click',function(event){
+			var currentPage = $('#pageNo').val();
+			pagination(currentPage);
+		});
+	});
+</script>
+</div>
+					 	</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+<div class="footer">
+	<div class="footer-content clear" style="width:1400px">
+		<div class="footer-content-left float-l" style="width: 977.36px">
+			<p>
+				<span class="m-r-15">主办单位：<a class="btn-hover" href="javascript:void(0)">安徽省发展和改革委员会</a></span>
+				<span class="m-r-15">网站标识码：3400000108</span>
+				<span><img src="/res/ah/images/header_badge.png"></span>
+				<span class="m-r-15"><a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=34011102001497" target="_blank">皖公网安备：34011102001497号</a> </span>
+				<span class="m-r-15">地址：合肥市中山路1号</span>
+			</p>
+			<p>
+				<span class="m-r-15">邮编：230091</span>
+				<span class="m-r-15">电子信箱：ahsggb@126.com</span>
+				<span class="m-r-15">电话：0551-62603810（专家咨询）62601439、62603813（技术支持）</span>
+				<span class="m-l-15"><a href="/indexMap" target="_blank">网站地图</a> </span>
+			</p>
+			<p>
+				<span class="m-r-15">制作维护：<a class="btn-hover" href="http://fzggw.ah.gov.cn/jgsz/wsdw/sjjxxzxsdzzwzx/index.html">安徽省经济信息中心</a></span>
+				<span class="m-r-15">本站今日访问：21987 次</span>
+				<span class="m-r-15">本站累计访问：161566322 次</span>
+				<span  class="m-r-15" style="margin-left: 50px" ><a href="https://beian.miit.gov.cn/" target="_blank">皖ICP备09029153号-7</a></span>
+			</p>
+		</div>
+		<div class="footer-content-right float-l" style="width:400px">
+			<img class="float-l" style="margin-left: 5px;cursor: pointer" src="/res/ah/images/footer_badge.png" onclick="window.open('http://bszs.conac.cn/sitename?method=show&id=54CDF5A7D7841023E053012819ACA025')"/>
+			<img class="float-l" style="margin-left: 50px;cursor: pointer;width: 110px;height: 55px" src="/res/ah/images/jiucuo.png" onclick="window.open('https://zfwzgl.www.gov.cn/exposure/jiucuo.html?site_code=3400000108&url=http%3A%2F%2Fggzy.ah.gov.cn%2F')"/>
+			<img class="float-l" style="margin-left: 50px;cursor: pointer;width: 110px;height: 55px;" src="/res/ah/images/wza.png"/>
+		</div>
+	</div>
+</div>
+
+<script>
+	$(".info-center-menu-item").each(function(){
+		if(($(".info-center-content-title").text()).replace(/\s+/g,"")==($(this).text()).replace(/\s+/g,"")){
+			$(this).addClass("active");
+			$(this).siblings().removeClass("active");
+		}
+	})
+	$(".tran-info-list-menu-item").each(function(){
+		// if($(this).text()=='工程建设'||$(this).text()=='地方性法规'||$(this).text()=='规范性文本'){
+		if($(this).text()=='工程建设'||$(this).text()=='地方性法规'||$(this).text()=='规范性文件'||$(this).text()=='规章'||$(this).text()=='国务院级有关部门'||$(this).text()=='省级有关部门'){
+			$(this).click(function(){
+				var that = this;
+				$(this).addClass("active");
+				$(this).siblings().removeClass("active");
+				$(this).parent().find("ul").each(function (){
+					//隐藏其他ul列表，不隐藏当前点击元素紧邻的ul，用于展示当前元素多次点击的隐藏展开效果
+					if (!$(this).get(0) == $(that).next().get(0)) {
+						$(this).hide();
+					}
+				})
+
+				$(this).next().toggle();
+				if ($(this).hasClass("develop")) {
+					$(this).removeClass("develop");
+					$(this).addClass("develop1");
+				}else if ($(this).hasClass("develop1")) {
+					$(this).removeClass("develop1");
+					$(this).addClass("develop");
+				}else if ($(this).hasClass("develop2")) {
+					$(this).removeClass("develop2");
+					$(this).addClass("develop3");
+				}else if ($(this).hasClass("develop3")) {
+					$(this).removeClass("develop3");
+					$(this).addClass("develop2");
+				}else if ($(this).hasClass("develop4")) {
+					$(this).removeClass("develop4");
+					$(this).addClass("develop5");
+				}else if ($(this).hasClass("develop5")) {
+					$(this).removeClass("develop5");
+					$(this).addClass("develop4");
+				}else if ($(this).hasClass("develop6")) {
+					$(this).removeClass("develop6");
+					$(this).addClass("develop7");
+				}else if ($(this).hasClass("develop7")) {
+					$(this).removeClass("develop6");
+					$(this).addClass("develop6");
+				}
+			})
+
+			$(".tran-info-list-menu-develop").hide();
+
+			var isGcjs=false;
+			$(".tran-info-list-menu-develop li").each(function(){
+				if(($(".tran-info-list-content-title").text()).replace(/\s+/g,"")==($(this).text()).replace(/\s+/g,"")){
+					$(this).addClass("active");
+					$(this).siblings().removeClass("active");
+					$(this).parent().parent().last().addClass("active");
+					$(this).parent().parent().last().siblings().removeClass("active");
+					$(this).parent().parent().parent().find("ul").css("display","none");
+					$(this).parent().parent().css("display","block");
+
+					// $(this).addClass("active");
+					// $(this).siblings().removeClass("active");
+
+					var that = $(this).parent().parent().parent();
+					$(this).parent().parent().parent().parent().find("li").each(function (){
+						//隐藏其他ul列表，不隐藏当前点击元素紧邻的ul，用于展示当前元素多次点击的隐藏展开效果
+						if ($(that).get(0) == $(this).next().get(0)) {
+							if ($(this).hasClass("develop")) {
+								$(this).removeClass("develop");
+								$(this).addClass("develop1");
+							}else if ($(this).hasClass("develop2")) {
+								$(this).removeClass("develop2");
+								$(this).addClass("develop3");
+							}else if ($(this).hasClass("develop4")) {
+								$(this).removeClass("develop4");
+								$(this).addClass("develop5");
+							}else if ($(this).hasClass("develop6")) {
+								$(this).removeClass("develop6");
+								$(this).addClass("develop7");
+							}
+						}
+					})
+
+					$(this).parent().parent().parent().css("display","block");
+
+					isGcjs=true;
+				}
+
+			})
+			if ($(this).next().hasClass('active')) {
+				$(this).removeClass('develop').addClass('develop1');
+			}
+
+		}else if(($(".tran-info-list-content-title").text()).replace(/\s+/g,"")==($(this).text()).replace(/\s+/g,"")){
+			$(this).addClass("active");
+			$(this).siblings().removeClass("active");
+		}
+	})
+</script>
+<script src="https://auth.mangren.com/boots/ggzy.ah.gov.cn/esdToolsInit.js" charset="UTF-8"></script>    </div>
+    <script type="text/javascript">
+	function pagination(currentPage) {
+		$("#currentPage").attr("value",currentPage);
+		$("#search1").submit();
+	}
+	function selectDivisionCode(param){
+	    $("input[name='region']").val(param);
+	}
+	function selectBulletinNature(obj){
+		$("input[name='bulletinNature']").val(obj);
+	}
+	function selectPlat(obj){
+		$("input[name='jyptId']").val(obj);
+	}
+	function search(){
+		$("#currentPage").attr("value",1);
+		$("#search1").submit();
+	}
+</script>
+</body>
+</html>

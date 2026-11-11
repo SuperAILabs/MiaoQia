@@ -129,4 +129,6 @@ M0探针消费者在公共消费框架中先验证operations请求载荷，再�
 
 ## 12. 当前实现边界
 
-已实现[冻结语料当前权利端口（d0）](source-rights-runtime.md)：acquisition 自有 PostgreSQL 的不可变版本/组合别名、原子当前撤销与审计、本地受限 operator CLI、acq-admin 内部 mTLS 只读接口和跨单元 remote client。允许两个已复核 building corpus/source 组合及一个精确 building-topic 参考 source/tags 组合登记；参考内容身份由 evidence 固定 manifest/绑定核验，两个独立 register/bind 批次均不激活；所有输入的原始和当前限制同时成立才允许。旧 tags、事实、事件与快照保持不变。真实来源采集、完整来源治理及 rights_changed 事件、data 查询 listener、Go 生产适配和完整 R2 未交付；A02 保持 L0。
+已实现[冻结语料当前权利端口（d0）](source-rights-runtime.md)：acquisition 自有 PostgreSQL 的不可变版本/组合别名、原子当前撤销与审计、本地受限 operator CLI、acq-admin 内部 mTLS 只读接口和跨单元 remote client。允许两个已复核 building corpus/source 组合及一个精确 building-topic 参考 source/tags 组合登记；参考内容身份由 evidence 固定 manifest/绑定核验，两个独立 register/bind 批次均不激活；所有输入的原始和当前限制同时成立才允许。旧 tags、事实、事件与快照保持不变。完整来源治理及 rights_changed 事件、data 查询 listener、Go 生产适配和完整 R2 未交付；A02 保持 L0。
+
+已实现抓取运行时（`source_registry`、`fetch_runtime`、`archive` 的首个切片）：信息领域包在 `provides.sources` 声明来源处理器与访问契约，只有盘点中 `readiness: capability_verified` 的来源可以声明（当前为[安徽试点](../../05-delivery/11-d1b-anhui-pilot-sources.md)三个 P0 来源）。运行时按访问契约逐来源限速，429 指数退避，网络错误与 5xx 有限重试；每次请求记入 `acq_fetch_attempts`；已归档的详情请求按请求指纹跳过，补采得到相同内容不产生新制品；原件按内容哈希写入对象存储 `raw/<sha256>`（与 evidence 共用 kernel 的对象存储端口），元数据记入 `acq_raw_artifacts`，同事务经发件箱发布 `fetch.completed`，最终失败发布 `fetch.failed`。来源返回验证码或 401/403 时标记为 blocked 并停止，操作员复核后才能恢复，不处理验证码。制品权利标签为 `public:<source_id>`。当前只有操作员单次命令 `mq-acquisition-fetch`；定时调度、来源健康与 `health_changed`、evidence 消费 `fetch.completed`、浏览器渲染与附件获取未实现。

@@ -14,7 +14,7 @@ from sqlalchemy import text
 from miaoqia.evidence import MIGRATIONS
 from miaoqia.evidence.application.pipeline import Pipeline, TenantScopeRejected
 from miaoqia.evidence.extensions import packs
-from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore, ObjectConflict
+from miaoqia.kernel.objectstore import FilesystemObjectStore, ObjectConflict
 from miaoqia.evidence.infrastructure.store import SqlExtractions
 from miaoqia.evidence.replay import corpus_artifact, replay
 from miaoqia.kernel import db, payloads, reqctx

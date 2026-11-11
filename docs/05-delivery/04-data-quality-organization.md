@@ -9,7 +9,7 @@
 ### 1.1 来源治理
 
 - 候选来源唯一定义在 [source-inventory.yaml](../../packs/information_domains/procurement/source-inventory.yaml)：本地 Tender Intel 的40个入口（37个原型启用、3个未启用）已盘点；这些状态仅供参考，不代表妙洽已启用或获得商业使用权。
-- D1a 盘点核验（复现方法：用 YAML 解析该文件逐条统计字段与取值，并在仓库内检索引用方）：共40条，`source_id` 无重复；每条只有 `source_id`、`name`、`base_url`、`reference_access_mode`、`reference_enabled`、`readiness`、`priority`、`owner` 八个字段，不含处理器、驱动、选择器、凭证或调度配置；`base_url` 均为站点根地址（33个 https、7个 http，1个为 IP:端口镜像），无路径、查询参数或账号；原型状态只出现在 `reference_*` 字段（37个原型启用、3个未启用；39个 public、1个 authenticated），妙洽自身状态除安徽试点的三个 P0 条目外均为 `readiness: candidate`、`priority: pending_review`（试点条目见 [D1b 试点来源启用验收](11-d1b-anhui-pilot-sources.md)）；仓库内没有代码读取该文件或 `reference_enabled`。3组条目共用同一站点（四川、重庆政府采购网，陕西公共资源交易中心），按下一条在 D1b 登记共同平台标识。
+- D1a 盘点核验（复现方法：用 YAML 解析该文件逐条统计字段与取值，并在仓库内检索引用方）：共40条，`source_id` 无重复；每条只有 `source_id`、`name`、`base_url`、`reference_access_mode`、`reference_enabled`、`readiness`、`priority`、`owner` 八个字段，不含处理器、驱动、选择器、凭证或调度配置；`base_url` 均为站点根地址（33个 https、7个 http，1个为 IP:端口镜像），无路径、查询参数或账号；原型状态只出现在 `reference_*` 字段（37个原型启用、3个未启用；39个 public、1个 authenticated），妙洽自身状态除安徽试点的三个 P0 条目外均为 `readiness: candidate`、`priority: pending_review`（试点条目见 [D1b 试点来源启用验收](11-d1b-anhui-pilot-sources.md)）；仓库内代码只有 acquisition 的来源声明加载读取该文件的 `readiness`（只允许 `capability_verified` 条目声明处理器），没有代码读取 `reference_enabled`。3组条目共用同一站点（四川、重庆政府采购网，陕西公共资源交易中心），按下一条在 D1b 登记共同平台标识。
 - 冻结语料的来源权利策略（[acquisition 当前权利端口](../03-architecture/subsystems/source-rights-runtime.md)，`deploy/acquisition/source-rights-frozen.json`）只登记复核语料在指定租户/cell 下的用途、展示级别与期限，`source_id` 为语料来源而非本盘点条目，不构成任何具体来源的 D1b 启用。
 - 覆盖顺序：国家级政府采购/公共资源 → 省级 → 主要央企/国企 → 地市按交易量排序。40个入口不等于全国覆盖，政府采购、工程建设、国企自主采购分别验收。
 - 同站多入口和镜像登记共同平台标识，来源覆盖不按入口数重复计数；每个来源确认 P0/P1/P2、地区、公告类型、可访问历史、频率、责任角色、权利与更新时间。

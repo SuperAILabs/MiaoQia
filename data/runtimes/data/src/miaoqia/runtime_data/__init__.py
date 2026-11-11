@@ -61,7 +61,7 @@ def serve():
     from miaoqia.acquisition.api.remote import RightsClient
     from miaoqia.domain_intelligence import queries
     from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, admitted_display, routes
-    from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
+    from miaoqia.kernel.objectstore import FilesystemObjectStore
 
     dom_dsn = os.environ.get(runtime.env_key("domain-intelligence", "DB_DSN"))
     evd_dsn = os.environ.get(runtime.env_key("evidence", "DB_DSN"))

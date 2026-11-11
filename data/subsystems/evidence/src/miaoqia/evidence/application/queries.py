@@ -17,7 +17,7 @@ from miaoqia.sdk.validation import validate_extraction
 
 from ..api import ResolvedEvidence
 from ..domain.snapshot import normalized_hash
-from ..infrastructure.objectstore import ObjectStore
+from miaoqia.kernel.objectstore import ObjectStore
 
 
 class EvidenceIntegrityError(ValueError):

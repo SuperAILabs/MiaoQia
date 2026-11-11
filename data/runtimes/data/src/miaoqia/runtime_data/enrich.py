@@ -10,7 +10,7 @@ from miaoqia import domain_intelligence, evidence
 from miaoqia.domain_intelligence.api import Basis
 from miaoqia.domain_intelligence.application.enrichments import apply, prepare
 from miaoqia.evidence.application.enrichments import REFERENCE, TEST_CONTENT
-from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
+from miaoqia.kernel.objectstore import FilesystemObjectStore
 from miaoqia.kernel import db, reqctx
 from miaoqia.kernel.runtime import env_key
 

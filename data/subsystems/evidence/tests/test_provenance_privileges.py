@@ -9,7 +9,7 @@ from psycopg import sql
 import pytest
 
 from miaoqia import evidence
-from miaoqia.evidence.infrastructure.objectstore import FilesystemObjectStore
+from miaoqia.kernel.objectstore import FilesystemObjectStore
 from miaoqia.evidence.infrastructure.privileges import provision
 from miaoqia.kernel import db, reqctx
 
