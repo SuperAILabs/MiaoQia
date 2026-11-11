@@ -1,0 +1,85 @@
+# Example ai-platform model catalog (services/subsystems/aiplatform/internal/gateway, ParseCatalog).
+# It shows one endpoint per ADR-0015 vendor; it is not a selection. Primary and backup per capability,
+# model versions and tiers are set by the model vendor evaluation (docs/05-delivery/08-model-vendor-evaluation.md).
+# Prices are placeholders in micro-yuan and must be replaced with the contracted prices before use.
+#
+# No credentials belong in this file. Each provider reads its key from deployment config:
+#   MIAOQIA_AI_PLATFORM_DEEPSEEK_API_KEY, MIAOQIA_AI_PLATFORM_DOUBAO_API_KEY, MIAOQIA_AI_PLATFORM_OPENAI_API_KEY,
+#   MIAOQIA_AI_PLATFORM_ANTHROPIC_API_KEY, MIAOQIA_AI_PLATFORM_GOOGLE_API_KEY
+# Optional per vendor: ..._BASE_URL (region, proxy or private deployment) and, for OpenAI-compatible
+# vendors, ..._STRUCTURED (json_schema or json_object) and ..._STRICT (true or false; strict decision schemas).
+# request_overhead_tokens must cover the fixed text each adapter adds; the gateway rejects a lower value.
+# The platform process does not load a model catalog yet: gateway assembly ships with persisted metering
+# (docs/03-architecture/subsystems/ai-platform.md).
+endpoints:
+  - id: deepseek-chat
+    provider: deepseek
+    model: deepseek-chat
+    version: example
+    capabilities: [generate, classify, score]
+    region: cn
+    tier: 0
+    billing: token
+    input_price_per_1k: 1
+    output_price_per_1k: 1
+    max_input_tokens: 64000
+    request_overhead_tokens: 2048
+    timeout: 60s
+    no_training_on_customer: true
+    decision_tasks:
+      - {task: notice.doc_type, version: "1", capability: classify, score_meaning: none}
+      - {task: notice.relevance, version: "1", capability: score, score_meaning: scale}
+  - id: doubao-seed
+    provider: doubao
+    model: doubao-seed-1-6 # an Ark model ID or inference endpoint ID
+    version: example
+    capabilities: [generate, classify]
+    region: cn
+    tier: 1
+    billing: token
+    input_price_per_1k: 1
+    output_price_per_1k: 1
+    request_overhead_tokens: 2048
+    timeout: 60s
+    no_training_on_customer: true
+    decision_tasks:
+      - {task: notice.doc_type, version: "1", capability: classify, score_meaning: none}
+  - id: openai-gpt
+    provider: openai
+    model: gpt-5
+    version: example
+    capabilities: [generate]
+    region: us
+    tier: 1
+    billing: token
+    input_price_per_1k: 1
+    output_price_per_1k: 1
+    request_overhead_tokens: 2048
+    timeout: 60s
+    no_training_on_customer: true
+  - id: anthropic-sonnet
+    provider: anthropic
+    model: claude-sonnet-5-5
+    version: example
+    capabilities: [generate]
+    region: us
+    tier: 2
+    billing: token
+    input_price_per_1k: 1
+    output_price_per_1k: 1
+    request_overhead_tokens: 2048
+    timeout: 60s
+    no_training_on_customer: true
+  - id: google-gemini
+    provider: google
+    model: gemini-2.5-flash
+    version: example
+    capabilities: [generate]
+    region: us
+    tier: 2
+    billing: token
+    input_price_per_1k: 1
+    output_price_per_1k: 1
+    request_overhead_tokens: 2048
+    timeout: 60s
+    no_training_on_customer: true
