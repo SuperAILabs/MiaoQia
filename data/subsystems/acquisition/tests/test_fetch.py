@@ -297,3 +297,21 @@ def test_repository_schedules_fit_their_period():
         windows = s.lookback_days + 1 if src.handler.windowed else 1
         worst = len(src.handler.channels) * windows * s.max_pages * (1 + details_per_page)
         assert worst * src.access.min_interval_seconds <= s.every_minutes * 60, src.source_id
+
+
+def test_module_jobs_disabled_without_object_store(monkeypatch):
+    from miaoqia.acquisition import module
+    from miaoqia.kernel.runtime import Env
+    monkeypatch.delenv("MIAOQIA_ACQUISITION_OBJECT_STORE_DIR", raising=False)
+    assert module().jobs(Env(role="acq-scheduler", brokers="", db=None, subsystem="acquisition")) == []
+
+
+def test_module_jobs_one_per_scheduled_source(monkeypatch, tmp_path):
+    from miaoqia.acquisition import module
+    from miaoqia.kernel.runtime import Env
+    monkeypatch.setenv("MIAOQIA_ACQUISITION_OBJECT_STORE_DIR", str(tmp_path))
+    monkeypatch.setenv("MIAOQIA_PACKS_DIR", str(REPO / "packs"))
+    jobs = module().jobs(Env(role="acq-scheduler", brokers="", db=None, subsystem="acquisition"))
+    assert sorted(j.name for j in jobs) == ["acquisition.collect-anhui-ggzy-construction",
+                                            "acquisition.collect-anhui-government-procurement-spa",
+                                            "acquisition.collect-national-public-resources"]

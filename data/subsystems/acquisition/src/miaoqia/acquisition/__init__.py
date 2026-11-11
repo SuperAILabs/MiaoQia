@@ -1,6 +1,7 @@
 """acquisition 子系统：来源采集。接口、事件与数据随所属里程碑实现（docs/05-delivery/01-roadmap.md）。"""
 from __future__ import annotations
 
+import logging
 from importlib import resources
 
 from miaoqia.kernel.consumer import Consumer
@@ -29,7 +30,11 @@ def module() -> Module:
 
         objects = env.config("OBJECT_STORE_DIR")
         if not objects:
-            raise ValueError("MIAOQIA_ACQUISITION_OBJECT_STORE_DIR is required for scheduled collection")
+            # Collection is opt-in: without an object store (CI, local smoke) the role keeps its other duties
+            # and contacts no live source.
+            logging.getLogger("miaoqia.acquisition").warning(
+                "scheduled collection disabled: MIAOQIA_ACQUISITION_OBJECT_STORE_DIR not set")
+            return []
         fetcher = Fetcher(env.db, FilesystemObjectStore(objects), UrllibTransport())
         return collect.jobs(fetcher, env.db, sources.load(os.environ.get("MIAOQIA_PACKS_DIR", "packs")))
 
