@@ -34,6 +34,26 @@ func framingUpper(inputs, labels int) int {
 	return inputs*inputFramingBytes + labels*labelFramingBytes
 }
 
+// jsonObjectSchemaPrompt introduces the output schema appended to the system message in json_object mode.
+const jsonObjectSchemaPrompt = "\n\nRespond with one JSON object that conforms to this JSON Schema:\n"
+
+// fixedTemplateBytes is the largest fixed text an adapter adds to a request beyond what the gateway counts
+// (instructions, inputs, output schema, task, labels and scale): the untrusted-input notice, the decision
+// contract and decision schema, and in json_object mode the schema prompt. Bytes bound tokens from above.
+func fixedTemplateBytes(jsonObject bool) int {
+	n := len(renderGenerate(ProviderRequest{}).System)
+	if c := len(renderClassify(ProviderClassifyRequest{}).System) + len(classifySchema); c > n {
+		n = c
+	}
+	if s := len(renderScore(ProviderScoreRequest{}).System) + len(scoreSchema); s > n {
+		n = s
+	}
+	if jsonObject {
+		n += len(jsonObjectSchemaPrompt)
+	}
+	return n
+}
+
 // rendered is the vendor-neutral form of one request.
 type rendered struct {
 	System string
@@ -42,6 +62,9 @@ type rendered struct {
 	Schema json.RawMessage
 	// SchemaName names the schema where the vendor requires a name.
 	SchemaName string
+	// Strict marks a schema written for strict structured output (closed and fully required): the fixed
+	// decision schemas. Caller-supplied generate schemas are not assumed to be strict-compatible.
+	Strict bool
 }
 
 func newNonce() string {
@@ -104,7 +127,7 @@ func renderClassify(req ProviderClassifyRequest) rendered {
 	}
 	b.WriteString("Set label to one of the label ids above when outcome is decided.\n")
 	b.WriteString(decisionContract + "\n\n" + untrustedNotice(nonce))
-	return rendered{System: b.String(), User: renderInputs(nonce, req.Inputs), Schema: json.RawMessage(classifySchema), SchemaName: "classification"}
+	return rendered{System: b.String(), User: renderInputs(nonce, req.Inputs), Schema: json.RawMessage(classifySchema), SchemaName: "classification", Strict: true}
 }
 
 func renderScore(req ProviderScoreRequest) rendered {
@@ -114,7 +137,7 @@ func renderScore(req ProviderScoreRequest) rendered {
 		req.Task, fmt.Sprint(req.Scale.Min), fmt.Sprint(req.Scale.Max), req.Scale.Definition)
 	b.WriteString("Set score to a number within the scale when outcome is decided.\n")
 	b.WriteString(decisionContract + "\n\n" + untrustedNotice(nonce))
-	return rendered{System: b.String(), User: renderInputs(nonce, req.Inputs), Schema: json.RawMessage(scoreSchema), SchemaName: "score"}
+	return rendered{System: b.String(), User: renderInputs(nonce, req.Inputs), Schema: json.RawMessage(scoreSchema), SchemaName: "score", Strict: true}
 }
 
 // decisionJSON is the typed result the decision schemas produce.

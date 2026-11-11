@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -137,6 +138,7 @@ endpoints:
     input_price_per_1k: 1000
     output_price_per_1k: 2000
     timeout: 200ms
+    request_overhead_tokens: 2048
     no_training_on_customer: true
     decision_tasks:
       - {task: notice.doc_type, version: "2", capability: classify, score_meaning: none}
@@ -292,7 +294,7 @@ func TestVendorSchemaInvalidOutputDoesNotFailover(t *testing.T) {
 			}
 			// A decision answer that is not the typed object is also output_invalid.
 			f.set(reply{content: `award`})
-			if _, err := s.Classify(ctx(), classifyReq()); code(err) != api.CodeOutputInvalid {
+			if _, err := s.Classify(ctx(), vendorClassifyReq()); code(err) != api.CodeOutputInvalid {
 				t.Fatalf("classify: %v", err)
 			}
 			if len(stub.Calls()) != 0 {
@@ -314,6 +316,9 @@ func TestVendorTransientErrorsFailover(t *testing.T) {
 		"500":     {status: http.StatusInternalServerError},
 		"503":     {status: http.StatusServiceUnavailable},
 		"529":     {status: 529},
+		"401":     {status: http.StatusUnauthorized},
+		"403":     {status: http.StatusForbidden},
+		"404":     {status: http.StatusNotFound},
 		"timeout": {block: true},
 	}
 	for _, v := range allVendors {
@@ -339,7 +344,7 @@ func TestVendorTransientErrorsFailover(t *testing.T) {
 
 func TestVendorNonTransientErrorsFailClosed(t *testing.T) {
 	for _, v := range allVendors {
-		for _, rep := range []reply{{status: http.StatusBadRequest}, {status: http.StatusUnauthorized}, {noUsage: true, content: `{"category":"pipe"}`}} {
+		for _, rep := range []reply{{status: http.StatusBadRequest}, {status: http.StatusUnprocessableEntity}, {noUsage: true, content: `{"category":"pipe"}`}} {
 			t.Run(fmt.Sprintf("%s/%d/noUsage=%t", v, rep.status, rep.noUsage), func(t *testing.T) {
 				s, f, stub, meter := setupVendor(t, v)
 				f.set(rep)
@@ -364,7 +369,7 @@ func TestVendorDecisions(t *testing.T) {
 			s, f, _, _ := setupVendor(t, v)
 
 			f.set(reply{content: `{"outcome":"decided","label":"award","unknown_reason":""}`})
-			d, err := s.Classify(ctx(), classifyReq())
+			d, err := s.Classify(ctx(), vendorClassifyReq())
 			if err != nil || d.Outcome != api.OutcomeDecided || d.Label != "award" || d.Score != nil || d.ScoreMeaning != api.MeaningNone {
 				t.Fatalf("decided: %+v %v", d, err)
 			}
@@ -378,17 +383,17 @@ func TestVendorDecisions(t *testing.T) {
 			}
 
 			f.set(reply{content: `{"outcome":"unknown","label":"","unknown_reason":"ambiguous"}`})
-			if d, err := s.Classify(ctx(), classifyReq()); err != nil || d.Outcome != api.OutcomeUnknown || d.UnknownReason != api.UnknownAmbiguous {
+			if d, err := s.Classify(ctx(), vendorClassifyReq()); err != nil || d.Outcome != api.OutcomeUnknown || d.UnknownReason != api.UnknownAmbiguous {
 				t.Fatalf("unknown: %+v %v", d, err)
 			}
 
 			f.set(reply{refusal: true})
-			if d, err := s.Classify(ctx(), classifyReq()); err != nil || d.Outcome != api.OutcomeRefused || d.Label != "" {
+			if d, err := s.Classify(ctx(), vendorClassifyReq()); err != nil || d.Outcome != api.OutcomeRefused || d.Label != "" {
 				t.Fatalf("refused: %+v %v", d, err)
 			}
 
 			f.set(reply{content: `{"outcome":"decided","label":"lease","unknown_reason":""}`})
-			if _, err := s.Classify(ctx(), classifyReq()); code(err) != api.CodeOutputInvalid {
+			if _, err := s.Classify(ctx(), vendorClassifyReq()); code(err) != api.CodeOutputInvalid {
 				t.Fatalf("label outside candidates: %v", err)
 			}
 
@@ -460,17 +465,80 @@ func TestRequestOverheadCoversFixedTemplates(t *testing.T) {
 			minOverhead = e.RequestOverheadTokens
 		}
 	}
-	jsonObjectPrompt := len("\n\nRespond with one JSON object that conforms to this JSON Schema:\n")
-	labels := []api.Label{{ID: "a", Definition: "b"}}
-	for name, fixed := range map[string]int{
-		// Variable parts (instructions, schema, task, labels, scale definition) are counted by the gateway.
-		"generate": len(renderGenerate(ProviderRequest{}).System) + jsonObjectPrompt,
-		"classify": len(renderClassify(ProviderClassifyRequest{Labels: labels}).System) - len("- a: b\n") + jsonObjectPrompt + len(classifySchema),
-		"score":    len(renderScore(ProviderScoreRequest{}).System) + jsonObjectPrompt + len(scoreSchema),
-	} {
-		if fixed > minOverhead {
-			t.Errorf("%s: fixed adapter text %d bytes > request_overhead_tokens %d", name, fixed, minOverhead)
+	if fixed := fixedTemplateBytes(true); fixed > minOverhead {
+		t.Errorf("fixed adapter text %d bytes > request_overhead_tokens %d", fixed, minOverhead)
+	}
+}
+
+// TestNewRejectsOverheadBelowAdapterFloor: a vendor endpoint must register at least the fixed text its
+// adapter adds, otherwise the pre-call input estimate is not an upper bound.
+func TestNewRejectsOverheadBelowAdapterFloor(t *testing.T) {
+	for _, v := range allVendors {
+		f := newFakeVendor(t, v)
+		prefix := strings.ToUpper(v) + "_"
+		cfg := map[string]string{prefix + "API_KEY": "k", prefix + "BASE_URL": f.srv.URL}
+		providers, err := VendorProviders(func(k string) string { return cfg[k] }, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
+		providers["stub"] = NewStub(nil)
+		c, err := ParseCatalog([]byte(strings.Replace(vendorCatalog(v), "request_overhead_tokens: 2048", "request_overhead_tokens: 100", 1)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := New(c, providers, nil, nil); err == nil || !strings.Contains(err.Error(), "request_overhead_tokens") {
+			t.Fatalf("%s: low overhead accepted: %v", v, err)
+		}
+		floor := providers[v].(OverheadFloor).RequestOverheadFloor()
+		if floor < len(decisionContract)+len(classifySchema) {
+			t.Fatalf("%s: floor %d does not cover the decision contract and schema", v, floor)
+		}
+	}
+}
+
+// TestStrictOnlyForDecisionSchemas: OpenAI sends strict json_schema for the fixed decision schemas and
+// non-strict for caller generate schemas; STRICT=false turns it off.
+func TestStrictOnlyForDecisionSchemas(t *testing.T) {
+	strict := func(f *fakeVendor) any {
+		_, _, body := f.last()
+		return body["response_format"].(map[string]any)["json_schema"].(map[string]any)["strict"]
+	}
+	s, f, _, _ := setupVendor(t, VendorOpenAI)
+	f.set(reply{content: `{"category":"pipe"}`})
+	if _, err := s.Generate(ctx(), vendorGenReq()); err != nil {
+		t.Fatal(err)
+	}
+	if strict(f) != false {
+		t.Fatalf("generate strict = %v", strict(f))
+	}
+	f.set(reply{content: `{"outcome":"decided","label":"award","unknown_reason":""}`})
+	if _, err := s.Classify(ctx(), vendorClassifyReq()); err != nil {
+		t.Fatal(err)
+	}
+	if strict(f) != true {
+		t.Fatalf("classify strict = %v", strict(f))
+	}
+	p, err := VendorProviders(func(k string) string {
+		return map[string]string{"OPENAI_API_KEY": "k", "OPENAI_STRICT": "false"}[k]
+	}, nil)
+	if err != nil || p[VendorOpenAI].(*OpenAICompatible).cfg.Strict {
+		t.Fatalf("STRICT=false not applied: %v", err)
+	}
+	if _, err := VendorProviders(func(k string) string {
+		return map[string]string{"OPENAI_API_KEY": "k", "OPENAI_STRICT": "yes"}[k]
+	}, nil); err == nil {
+		t.Fatal("invalid STRICT accepted")
+	}
+}
+
+// TestVendorFailureDetailStaysInternal: callers get the endpoint, not the vendor's error text.
+func TestVendorFailureDetailStaysInternal(t *testing.T) {
+	s, f, _, _ := setupVendor(t, VendorAnthropic)
+	f.set(reply{refusal: true})
+	_, err := s.Generate(ctx(), vendorGenReq())
+	var ae *api.Error
+	if !errors.As(err, &ae) || ae.Code != api.CodeOutputInvalid || ae.Detail != "primary" {
+		t.Fatalf("err = %#v", err)
 	}
 }
 
@@ -511,4 +579,11 @@ func TestExampleCatalogAndVendorProviders(t *testing.T) {
 	if _, err := VendorProviders(func(k string) string { return cfg[k] }, nil); err == nil {
 		t.Fatal("unknown structured mode accepted")
 	}
+}
+
+// vendorClassifyReq raises the cost cap so the registered template overhead fits the primary's estimate.
+func vendorClassifyReq() api.ClassifyRequest {
+	r := classifyReq()
+	r.Budget.MaxCostMicroYuan = 1_000_000
+	return r
 }

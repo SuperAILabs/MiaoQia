@@ -66,14 +66,14 @@ M1的OCR/增强前必须完成最小供应商目录、适配、分级路由、�
 
 **实现状况**：`services/subsystems/aiplatform/internal/gateway` 有模型目录路由、主备切换、整次逻辑调用的预算停止（按 token 与按请求计费）、输出校验、计量与分类/评分任务版本校验，以及五家供应商的适配器：
 
-- **协议**：DeepSeek、豆包（火山方舟）、OpenAI、Google（Gemini 的 OpenAI 兼容端点）共用 OpenAI Chat Completions 兼容适配器，按供应商配置结构化输出方式（DeepSeek 用 `json_object` 并把 Schema 附在指令后，其余用 `json_schema`）；Anthropic 用原生 Messages API 适配器（`output_config.format`）。目录的 `provider` 字段取 `deepseek`、`doubao`、`openai`、`anthropic`、`google`。
-- **输入隔离**：指令在系统消息，输入在用户消息并以每次请求的随机标记分隔，不可信输入标注 `trusted=false`；输入原样发送，网关按条数计入分隔标记的字节上界，与条数无关的模板由端点的 `request_overhead_tokens` 覆盖。
+- **协议**：DeepSeek、豆包（火山方舟）、OpenAI、Google（Gemini 的 OpenAI 兼容端点）共用 OpenAI Chat Completions 兼容适配器，按供应商配置结构化输出方式（DeepSeek 用 `json_object` 并把 Schema 附在指令后，其余用 `json_schema`）；固定的决策 Schema 按严格模式发送（OpenAI 默认开启，其他供应商经 `_STRICT` 开启），调用方的生成 Schema 不按严格模式发送，由网关校验；Anthropic 用原生 Messages API 适配器（`output_config.format`）。目录的 `provider` 字段取 `deepseek`、`doubao`、`openai`、`anthropic`、`google`。
+- **输入隔离**：指令在系统消息，输入在用户消息并以每次请求的随机标记分隔，不可信输入标注 `trusted=false`；输入原样发送，网关按条数计入分隔标记的字节上界，与条数无关的模板由端点的 `request_overhead_tokens` 覆盖；端点登记值低于其适配器附加的固定内容上界时网关拒绝加载目录。
 - **决策能力**：分类与评分用固定的类型化 JSON Schema（结果状态、标签或分数、未知原因），供应商的拒答信号（`refusal` 字段、`content_filter`、Anthropic 的 `refusal` 停止原因）转为拒答结果；分类不返回数值。
-- **用量与错误**：用量取供应商报告（Anthropic 的缓存读写计入输入）；成功响应缺少用量时调用失败，按调用前估算上界扣减预算。网络错误、超时、408、429 与 5xx 归为端点不可用并触发主备切换；其他 4xx 直接失败；成功响应无法解析为约定结构时返回 `output_invalid`，不切换端点。
-- **凭据**：API 密钥只经部署配置注入（平台进程中为 `MIAOQIA_AI_PLATFORM_<供应商>_API_KEY`，可选 `_BASE_URL`、`_STRUCTURED`），未配置密钥的供应商不注册，引用它的目录无法加载；目录示例见 `deploy/platform/model-catalog.example.yaml`。
+- **用量与错误**：用量取供应商报告（Anthropic 的缓存读写计入输入）；成功响应缺少用量时调用失败，按调用前估算上界扣减预算。网络错误、超时、408、429、5xx，以及只属于该端点的 401/403（凭据）与 404（模型或路径）触发主备切换；其他 4xx 描述请求本身，直接失败；成功响应无法解析为约定结构时返回 `output_invalid`，不切换端点。返回调用方的错误只含端点标识，供应商状态码与错误信息只写入日志。
+- **凭据**：API 密钥只经部署配置注入（平台进程中为 `MIAOQIA_AI_PLATFORM_<供应商>_API_KEY`，可选 `_BASE_URL`、`_STRUCTURED`、`_STRICT`），未配置密钥的供应商不注册，引用它的目录无法加载；目录示例见 `deploy/platform/model-catalog.example.yaml`。
 - **测试**：模拟各供应商协议的本地 HTTP 服务覆盖成功、Schema 不符、限流、5xx、超时、拒答与用量计量，CI 不发起外部调用；真实调用测试需设置 `MIAOQIA_AI_INTEGRATION=1` 与密钥，默认跳过。
 
-未完成的部分：未用真实密钥调用过任何供应商，各供应商对结构化输出参数的实际支持以首次真实调用为准；网关尚未接入平台进程装配；计量只在内存。OCR 能力已登记为常量，但网关没有 OCR 方法：图像输入、带页面坐标的输出契约和图像输入的费用估算（字节上界不适用于图像 token）需要随 C7a 单独定义。首次使用门禁的真实调用部分随 C3/C7a 评测（[评测方案第8节](../../05-delivery/08-model-vendor-evaluation.md#8-关闭条件与当前状态)）。
+未完成的部分：未用真实密钥调用过任何供应商，各供应商对结构化输出参数的实际支持以首次真实调用为准；网关尚未接入平台进程装配，平台进程不读取模型目录：计量持久化是首次真实调用的门禁，接入与计量持久化一起交付；计量只在内存。OCR 能力已登记为常量，但网关没有 OCR 方法：图像输入、带页面坐标的输出契约和图像输入的费用估算（字节上界不适用于图像 token）需要随 C7a 单独定义。首次使用门禁的真实调用部分随 C3/C7a 评测（[评测方案第8节](../../05-delivery/08-model-vendor-evaluation.md#8-关闭条件与当前状态)）。
 
 ## 10. 评估责任
 

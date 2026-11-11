@@ -7,7 +7,10 @@
 #   MIAOQIA_AI_PLATFORM_DEEPSEEK_API_KEY, MIAOQIA_AI_PLATFORM_DOUBAO_API_KEY, MIAOQIA_AI_PLATFORM_OPENAI_API_KEY,
 #   MIAOQIA_AI_PLATFORM_ANTHROPIC_API_KEY, MIAOQIA_AI_PLATFORM_GOOGLE_API_KEY
 # Optional per vendor: ..._BASE_URL (region, proxy or private deployment) and, for OpenAI-compatible
-# vendors, ..._STRUCTURED (json_schema or json_object).
+# vendors, ..._STRUCTURED (json_schema or json_object) and ..._STRICT (true or false; strict decision schemas).
+# request_overhead_tokens must cover the fixed text each adapter adds; the gateway rejects a lower value.
+# The platform process does not load a model catalog yet: gateway assembly ships with persisted metering
+# (docs/03-architecture/subsystems/ai-platform.md).
 endpoints:
   - id: deepseek-chat
     provider: deepseek

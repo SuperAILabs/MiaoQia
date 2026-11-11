@@ -24,7 +24,8 @@ type OpenAICompatibleConfig struct {
 	APIKey  string
 	// Structured is StructuredJSONSchema or StructuredJSONObject.
 	Structured string
-	// Strict sets json_schema.strict; strict mode rejects schemas that are not closed and fully required.
+	// Strict enables json_schema.strict for schemas written for it (the fixed decision schemas); generate
+	// schemas from callers are sent non-strict and validated by the gateway.
 	Strict bool
 	// MaxTokensParam is the request field for the output cap: max_tokens or max_completion_tokens.
 	MaxTokensParam string
@@ -92,10 +93,10 @@ func (p *OpenAICompatible) complete(ctx context.Context, ep Endpoint, r rendered
 	case StructuredJSONSchema:
 		body["response_format"] = map[string]any{
 			"type":        "json_schema",
-			"json_schema": map[string]any{"name": r.SchemaName, "schema": r.Schema, "strict": p.cfg.Strict},
+			"json_schema": map[string]any{"name": r.SchemaName, "schema": r.Schema, "strict": r.Strict && p.cfg.Strict},
 		}
 	case StructuredJSONObject:
-		system += "\n\nRespond with one JSON object that conforms to this JSON Schema:\n" + string(r.Schema)
+		system += jsonObjectSchemaPrompt + string(r.Schema)
 		body["response_format"] = map[string]any{"type": "json_object"}
 	}
 	body["messages"] = []chatMessage{{Role: "system", Content: system}, {Role: "user", Content: r.User}}
@@ -115,7 +116,7 @@ func (p *OpenAICompatible) complete(ctx context.Context, ep Endpoint, r rendered
 	}
 	res := completion{usage: ProviderUsage{InputTokens: resp.Usage.PromptTokens, OutputTokens: resp.Usage.CompletionTokens, Requests: 1, Reported: true}}
 	if len(resp.Choices) == 0 {
-		return res, fmt.Errorf("%s: %w: response has no choices", p.cfg.Vendor, ErrInvalidOutput)
+		return res, fmt.Errorf("%s: response has no choices", p.cfg.Vendor)
 	}
 	c := resp.Choices[0]
 	if (c.Message.Refusal != nil && *c.Message.Refusal != "") || c.FinishReason == "content_filter" {
@@ -127,6 +128,11 @@ func (p *OpenAICompatible) complete(ctx context.Context, ep Endpoint, r rendered
 	}
 	res.content = *c.Message.Content
 	return res, nil
+}
+
+// RequestOverheadFloor implements OverheadFloor.
+func (p *OpenAICompatible) RequestOverheadFloor() int {
+	return fixedTemplateBytes(p.cfg.Structured == StructuredJSONObject)
 }
 
 func (p *OpenAICompatible) Generate(ctx context.Context, ep Endpoint, req ProviderRequest) (json.RawMessage, ProviderUsage, error) {

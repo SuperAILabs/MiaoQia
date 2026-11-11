@@ -41,6 +41,10 @@ func New(c *Catalog, providers map[string]Provider, meter Meter, log *slog.Logge
 		if providers[e.Provider] == nil {
 			return nil, fmt.Errorf("端点 %q 的适配器 %q 未注册", e.ID, e.Provider)
 		}
+		if f, ok := providers[e.Provider].(OverheadFloor); ok && e.RequestOverheadTokens < f.RequestOverheadFloor() {
+			return nil, fmt.Errorf("端点 %q 的 request_overhead_tokens 为 %d，低于适配器 %q 附加的固定内容上界 %d",
+				e.ID, e.RequestOverheadTokens, e.Provider, f.RequestOverheadFloor())
+		}
 	}
 	if log == nil {
 		log = slog.Default()
@@ -342,6 +346,9 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 		}
 		if err != nil {
 			inv.Status = StatusFailed
+			// Vendor status and error body go to the log for diagnosis, never to the caller; the body excerpt
+			// is the vendor's error message, not request content.
+			s.log.WarnContext(ctx, "模型端点调用失败", "endpoint", ep.ID, "attempt", cc.Attempts, "task", p.call.Task, "error", err)
 			if ctx.Err() != nil {
 				inv.ErrorCode = api.CodeProviderUnavailable
 				s.record(ctx, inv)
@@ -355,7 +362,7 @@ func attempt[T any](ctx context.Context, s *Service, p plan, bad string,
 			if errors.Is(err, ErrInvalidOutput) {
 				inv.ErrorCode = api.CodeOutputInvalid
 				s.record(ctx, inv)
-				return zero, done{}, &api.Error{Code: api.CodeOutputInvalid, Detail: err.Error()}
+				return zero, done{}, &api.Error{Code: api.CodeOutputInvalid, Detail: ep.ID}
 			}
 			inv.ErrorCode = api.CodeProviderResponseBad
 			s.record(ctx, inv)

@@ -30,7 +30,7 @@ var _ Provider = (*Anthropic)(nil)
 // NewAnthropic builds the adapter; client nil means http.DefaultClient.
 func NewAnthropic(cfg AnthropicConfig, client *http.Client) (*Anthropic, error) {
 	if cfg.BaseURL == "" || cfg.APIKey == "" {
-		return nil, fmt.Errorf("anthropic: base URL and API key are required")
+		return nil, fmt.Errorf("%s: base URL and API key are required", VendorAnthropic)
 	}
 	if cfg.DefaultMaxTokens <= 0 {
 		cfg.DefaultMaxTokens = defaultDecisionMaxTokens
@@ -39,7 +39,7 @@ func NewAnthropic(cfg AnthropicConfig, client *http.Client) (*Anthropic, error) 
 		client = http.DefaultClient
 	}
 	cfg.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
-	return &Anthropic{cfg: cfg, http: vendorHTTP{client: client, vendor: "anthropic"}}, nil
+	return &Anthropic{cfg: cfg, http: vendorHTTP{client: client, vendor: VendorAnthropic}}, nil
 }
 
 type anthropicResponse struct {
@@ -74,7 +74,7 @@ func (p *Anthropic) complete(ctx context.Context, ep Endpoint, r rendered, maxTo
 		return completion{}, err
 	}
 	if resp.Usage == nil {
-		return completion{}, fmt.Errorf("anthropic: response has no usage")
+		return completion{}, fmt.Errorf("%s: response has no usage", VendorAnthropic)
 	}
 	u := resp.Usage
 	// Cache writes and reads are input tokens too; metering them at the input price is an upper bound.
@@ -92,11 +92,14 @@ func (p *Anthropic) complete(ctx context.Context, ep Endpoint, r rendered, maxTo
 			return res, nil
 		}
 	}
-	return res, fmt.Errorf("anthropic: %w: response has no text block (stop_reason %q)", ErrInvalidOutput, resp.StopReason)
+	return res, fmt.Errorf("%s: %w: response has no text block (stop_reason %q)", VendorAnthropic, ErrInvalidOutput, resp.StopReason)
 }
 
+// RequestOverheadFloor implements OverheadFloor.
+func (p *Anthropic) RequestOverheadFloor() int { return fixedTemplateBytes(false) }
+
 func (p *Anthropic) Generate(ctx context.Context, ep Endpoint, req ProviderRequest) (json.RawMessage, ProviderUsage, error) {
-	return generateWith(ctx, "anthropic", p.complete, ep, req)
+	return generateWith(ctx, VendorAnthropic, p.complete, ep, req)
 }
 
 func (p *Anthropic) Classify(ctx context.Context, ep Endpoint, req ProviderClassifyRequest) (ProviderDecision, ProviderUsage, error) {

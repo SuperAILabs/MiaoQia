@@ -9,8 +9,16 @@ import (
 	"github.com/superailabs/miaoqia/services/subsystems/aiplatform/api"
 )
 
-// ErrUnavailable 表示端点暂时不可用（网络错误、限流、5xx、超时）；网关据此切换到下一个合规端点。
+// ErrUnavailable 表示该端点无法完成本次调用而其他端点可能可以（网络错误、限流、5xx、超时，以及凭据失效、模型不存在等端点配置错误）；
+// 网关据此切换到下一个合规端点。
 var ErrUnavailable = errors.New("模型端点不可用")
+
+// OverheadFloor is implemented by adapters that add fixed text around the request content. New rejects a
+// catalog endpoint whose request_overhead_tokens is below the floor of its adapter, so the pre-call input
+// estimate stays an upper bound of what is sent.
+type OverheadFloor interface {
+	RequestOverheadFloor() int
+}
 
 // ErrInvalidOutput 表示供应商成功响应但内容不是约定的结构化结果（无法解析为 JSON 或缺少类型化字段）；网关返回 output_invalid，不切换端点。
 var ErrInvalidOutput = errors.New("模型输出不符合约定结构")
