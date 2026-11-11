@@ -2548,7 +2548,7 @@ type SourceRightsStatus struct {
 
 type SourceRightsStatusCapability string
 
-const SourceRightsStatusCapabilityFrozenSourceRightsOnly SourceRightsStatusCapability = "frozen_source_rights_only"
+const SourceRightsStatusCapabilityFrozenAndPublicSourceRights SourceRightsStatusCapability = "frozen_and_public_source_rights"
 
 type SourceRightsStatusDomainService string
 

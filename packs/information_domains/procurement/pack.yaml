@@ -3,7 +3,7 @@ pack:
   id: INF-PROC
   kind: information_domain
   namespace: tendering                 # 领域事件与事实类型的命名空间（tendering.*）
-  version: 1.7.0                       # 安徽试点三个 P0 来源的处理器与访问契约
+  version: 1.8.0                       # 实际来源文档适配器；招标公告标题识别扩展到项目全称
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-ORG@^1.0                     # 采购人、代理、投标人解析为组织
@@ -21,4 +21,5 @@ pack:
     semantic_validator: miaoqia_pack_procurement.validation:validate   # 领域语义校验，SDK 只做证据完整性
     relationships: relationships.yaml  # 关系类型定义（mqc P8）
     sources: sources.yaml              # 来源处理器与访问契约（acquisition SourceHandler SPI）
+    documents: documents.yaml          # 非 HTML 原件的公告正文适配器（evidence 实际采集入库）
     # 待补：更正/合同/验收/失败公告的解析器、聚合规则、质量规则、检索映射、统计与查询模板、研究工具

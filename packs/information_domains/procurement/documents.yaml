@@ -1,0 +1,6 @@
+# 文档适配器：原件不是 HTML 的实际来源，如何取出公告正文 HTML（evidence 实际采集入库）。
+# 未登记的来源原件即公告 HTML。
+documents:
+  - source_id: anhui-government-procurement-spa
+    media_type: application/json
+    adapter: miaoqia_pack_procurement.documents:anhui_ccgp_html

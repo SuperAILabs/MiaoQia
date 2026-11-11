@@ -54,3 +54,33 @@ def load(packs_dir: str | Path) -> list[PackExtractor]:
     if len(refs) != len(set(refs)):
         raise ValueError("解析器标识与版本重复")
     return out
+
+
+@dataclass(frozen=True)
+class DocumentAdapter:
+    """How to get the announcement HTML out of a live source's original response (pack.yaml provides.documents)."""
+
+    source_id: str
+    media_type: str
+    to_html: Callable[[bytes], str]
+
+
+def load_documents(packs_dir: str | Path) -> dict[str, DocumentAdapter]:
+    """Sources without an adapter deliver HTML originals."""
+    out: dict[str, DocumentAdapter] = {}
+    for manifest in sorted(Path(packs_dir).glob("information_domains/*/pack.yaml")):
+        ref = yaml.safe_load(manifest.read_text(encoding="utf-8"))["pack"].get("provides", {}).get("documents")
+        if ref is None:
+            continue
+        for item in yaml.safe_load((manifest.parent / ref).read_text(encoding="utf-8"))["documents"]:
+            if set(item) != {"source_id", "media_type", "adapter"}:
+                raise ValueError(f"{manifest.parent.name}: document adapter fields must be source_id, media_type, adapter")
+            entry = item["adapter"]
+            if not isinstance(entry, str) or not ENTRY_PATTERN.fullmatch(entry):
+                raise ValueError(f"{manifest.parent.name}: invalid document adapter entry {entry!r}")
+            module, name = entry.split(":")
+            fn = getattr(load_pack_module(manifest.parent, module), name)
+            if not callable(fn) or item["source_id"] in out:
+                raise ValueError(f"{manifest.parent.name}: invalid or duplicate document adapter for {item['source_id']}")
+            out[item["source_id"]] = DocumentAdapter(item["source_id"], item["media_type"], fn)
+    return out

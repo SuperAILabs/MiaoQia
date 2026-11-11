@@ -543,3 +543,47 @@ def test_current_version_cannot_add_purpose_missing_from_original(registry):
     d = Decisions(read)
     assert evaluate(d)["allowed"]
     assert not evaluate(d, context=MONITOR)["allowed"]
+
+
+LIVE = "anhui-ggzy-construction"
+
+
+def declare_public(dsns, source=LIVE):
+    with psycopg.connect(dsns["owner"]) as c:
+        c.execute("INSERT INTO acq_sources (source_id, handler, access) VALUES (%s, 'pack:Handler', '{}')", (source,))
+
+
+def test_public_source_needs_no_grant_for_any_admitted_tenant(registry):
+    read, write, dsns = registry
+    declare_public(dsns)
+    d = Decisions(read)
+    r = request(f"public:{LIVE}", source=LIVE)
+    for ctx in (CTX, reqctx.Context(reqctx.Principal("user-b", "user"), "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX2", "cell-02", "interactive"),
+                reqctx.Context(reqctx.Principal("svc:detection", "service"), CTX.tenant, CTX.cell, "monitoring")):
+        a = evaluate(d, r, context=ctx)
+        assert (a["allowed"], a["display"], a["redistribution"]) == (True, "full_text", False)
+        assert evaluate(d, confirmed(r, a), context=ctx, confirm=True)["allowed"]
+
+
+@pytest.mark.parametrize("tags, source", [
+    ([f"public:{LIVE}"], "anhui-government-procurement-spa"),      # source not in the registry
+    (["public:other-source"], LIVE),                                # tag names another source
+    ([f"public:{LIVE}", "extra"], LIVE),                            # extra tag
+    (["public-official-review"], LIVE),                             # not the public provenance tag
+])
+def test_public_rule_requires_exact_tag_and_registered_source(registry, tags, source):
+    read, write, dsns = registry
+    declare_public(dsns)
+    assert not evaluate(Decisions(read), request(*tags, source=source))["allowed"]
+
+
+def test_public_and_frozen_inputs_intersect(registry):
+    read, write, dsns = registry
+    declare_public(dsns)
+    seed(write)
+    r = request()
+    r["inputs"] += request(f"public:{LIVE}", source=LIVE)["inputs"]
+    a = evaluate(Decisions(read), r)
+    assert (a["allowed"], a["display"], a["redistribution"]) == (True, "excerpt", False)
+    other = reqctx.Context(CTX.principal, "tnt_01JA8ZXXXXXXXXXXXXXXXXXXX2", CTX.cell, CTX.purpose)
+    assert not evaluate(Decisions(read), r, context=other)["allowed"]

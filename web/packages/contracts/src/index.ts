@@ -1612,7 +1612,7 @@ export interface SourceRightsResolveRequest {
 }
 export interface SourceRightsStatus {
   domain_service: "not_live";
-  capability: "frozen_source_rights_only";
+  capability: "frozen_and_public_source_rights";
 }
 export interface StructuredRecord {
   /**

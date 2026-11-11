@@ -92,3 +92,45 @@ def test_national_captcha_blocks_source():
     with pytest.raises(SourceBlocked) as exc:
         NationalPublicResources().parse_list("2:01", FetchResponse(200, "application/json", body, "u"))
     assert exc.value.code == "captcha_challenge"
+
+
+def _doc(html: str):
+    from miaoqia.sdk import Document
+    from miaoqia.sdk.testing import html_to_document
+    return Document(html_to_document(html, "snp_" + "0" * 26, "https://example.invalid/"))
+
+
+def test_anhui_ccgp_document_adapter_and_tender_fields():
+    from miaoqia.sdk import ExtractionContext
+    from miaoqia_pack_procurement.documents import anhui_ccgp_html
+    from miaoqia_pack_procurement.extractors.tender_notice import TenderNoticeExtractor
+    doc = _doc(anhui_ccgp_html((FIXTURES / "anhui_ccgp_detail.json").read_bytes()))
+    ex = TenderNoticeExtractor()
+    assert ex.applies(doc, {})
+    (fact,) = ex.extract(doc, ExtractionContext(doc, f"{ex.id}@{ex.version}")).facts
+    # The method label lists every option; the title decides it.
+    assert fact["method"] == "consultation" and fact["title"]["value"].endswith("竞争性磋商公告[2026]")
+    with pytest.raises(ValueError):
+        anhui_ccgp_html(b'{"success":false,"result":null}')
+
+
+def test_live_pages_select_the_right_extractor():
+    from miaoqia_pack_procurement.extractors.result_notice import ResultNoticeExtractor
+    from miaoqia_pack_procurement.extractors.tender_notice import TenderNoticeExtractor
+    tender = _doc((FIXTURES / "anhui_ggzy_detail_tender.html").read_text(encoding="utf-8"))
+    award = _doc((FIXTURES / "national_detail_body.html").read_text(encoding="utf-8"))
+    assert TenderNoticeExtractor().applies(tender, {}) and not ResultNoticeExtractor().applies(tender, {})
+    assert ResultNoticeExtractor().applies(award, {}) and not TenderNoticeExtractor().applies(award, {})
+
+
+@pytest.mark.parametrize("title, tender", [
+    ("某某工程EPC公开招标公告", True),
+    ("某某项目竞争性磋商公告[2026]", True),
+    ("某某项目招标公告（第2次）", True),
+    ("某某项目中标结果公告", False),
+    ("某某项目招标公告更正公告", False),
+    ("某某项目采购意向公告", False),
+])
+def test_tender_full_title_matching(title, tender):
+    from miaoqia_pack_procurement.extractors.tender_notice import TenderNoticeExtractor
+    assert TenderNoticeExtractor().applies(_doc(f"<html><body><h1>{title}</h1><p>项目编号：A1</p></body></html>"), {}) is tender

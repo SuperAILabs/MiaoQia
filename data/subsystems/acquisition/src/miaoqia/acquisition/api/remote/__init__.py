@@ -28,7 +28,7 @@ class RightsClient:
         )
         if value != {
             "domain_service": "not_live",
-            "capability": "frozen_source_rights_only",
+            "capability": "frozen_and_public_source_rights",
         }:
             raise Problem(503)
         return value

@@ -38,6 +38,7 @@ class Artifact:
     """一份原始制品：来源与来源对象键、媒体类型、原件字节、权利标签与观察时间。
 
     normalized 只用于原件没有可用文本层的情形（如扫描 PDF），必须是经复核的规范化表示，其 snapshot_ref 会被替换。
+    html 用于原件不是 HTML、正文由领域包的文档适配器从原件取出的情形（如接口返回的 JSON）；原件仍按原样归档。
     """
 
     source_id: str
@@ -48,6 +49,7 @@ class Artifact:
     observed_at: datetime
     source_url: str | None = None
     normalized: dict | None = None
+    html: str | None = None
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,8 @@ class Pipeline:
         placeholder = "snp_" + "0" * 26
         if art.normalized is not None:
             return {**art.normalized, "snapshot_ref": placeholder}
+        if art.html is not None:
+            return html_to_document(art.html, placeholder, art.source_url, pipeline_version=HTML_PIPELINE)
         if art.media_type != "text/html":
             raise ValueError(f"不支持的媒体类型：{art.media_type}（PDF 需提供经复核的规范化表示）")
         return html_to_document(art.raw.decode("utf-8"), placeholder, art.source_url, pipeline_version=HTML_PIPELINE)
