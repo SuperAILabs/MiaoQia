@@ -17,4 +17,20 @@ def module() -> Module:
         return [Consumer(name=f"{NAME}.probe", subsystem=NAME, brokers=env.brokers, topics=["platform.operations"],
                          handlers={probe.REQUESTED: probe.on_requested}, db=env.db)]
 
-    return Module(name=NAME, database="acq", migrations=MIGRATIONS, consumers=consumers)
+    def jobs(env: Env):
+        """Scheduled collection (acq-scheduler role): MIAOQIA_ACQUISITION_OBJECT_STORE_DIR and MIAOQIA_PACKS_DIR."""
+        import os
+
+        from miaoqia.kernel.objectstore import FilesystemObjectStore
+
+        from .application import collect, sources
+        from .application.fetch import Fetcher
+        from .infrastructure.transport import UrllibTransport
+
+        objects = env.config("OBJECT_STORE_DIR")
+        if not objects:
+            raise ValueError("MIAOQIA_ACQUISITION_OBJECT_STORE_DIR is required for scheduled collection")
+        fetcher = Fetcher(env.db, FilesystemObjectStore(objects), UrllibTransport())
+        return collect.jobs(fetcher, env.db, sources.load(os.environ.get("MIAOQIA_PACKS_DIR", "packs")))
+
+    return Module(name=NAME, database="acq", migrations=MIGRATIONS, consumers=consumers, jobs=jobs)

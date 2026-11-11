@@ -31,7 +31,7 @@
 
 | 进程角色 | 内容 | 伸缩依据 |
 |---|---|---|
-| `acq-scheduler` | 采集计划与回填工作流（Temporal worker，任务队列 `acquisition-schedule`）；消费控制类事件（回填请求、链路探针） | 固定副本 |
+| `acq-scheduler` | 按来源的增量采集周期任务（kernel scheduler，`jobs: true`）；回填工作流（Temporal worker，任务队列 `acquisition-schedule`）；消费控制类事件（回填请求、链路探针） | 固定副本（主备）：每轮按任务取 PostgreSQL 会话级咨询锁 |
 | `acq-fetcher` | HTTP/API 抓取执行器 | 任务队列深度 |
 | `acq-browser` | 浏览器渲染池（Playwright） | 渲染任务队列深度、内存 |
 | `acq-admin` | 已实现显式启用的冻结语料权利内部只读接口；写管理为本地 operator CLI，运营控制台和完整来源管理后续实现 | 固定副本 |

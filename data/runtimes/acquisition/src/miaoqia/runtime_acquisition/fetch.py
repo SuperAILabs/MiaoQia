@@ -4,7 +4,7 @@
                        [--refetch] [--unblock] [--packs packs]
 
 Configuration: MIAOQIA_ACQUISITION_DB_DSN (migrated acq database), MIAOQIA_ACQUISITION_OBJECT_STORE_DIR.
-The window defaults to today. Prints the run report as JSON; exits 2 when the source is blocked.
+The window defaults to today (China date). Prints the run report as JSON; exits 2 when the source is blocked.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from datetime import date
 
 from miaoqia.acquisition.api.handlers import Window
 from miaoqia.acquisition.application import sources
-from miaoqia.acquisition.application.fetch import Fetcher, SourceStopped
+from miaoqia.acquisition.application.fetch import Fetcher, SourceStopped, china_today
 from miaoqia.acquisition.infrastructure.transport import UrllibTransport
 from miaoqia.kernel import db
 from miaoqia.kernel.objectstore import FilesystemObjectStore
@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     declared = sources.load(a.packs)
     if a.source not in declared:
         ap.error(f"source {a.source!r} has no declaration; declared: {', '.join(sorted(declared)) or 'none'}")
-    until = a.until or date.today()
+    until = a.until or china_today()
     window = Window(a.since or until, until)
     database = db.Database(dsn, pool_size=1)
     try:

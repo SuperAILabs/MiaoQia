@@ -15,7 +15,7 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Protocol
 
 from sqlalchemy import Connection, text
@@ -30,6 +30,13 @@ from .sources import DeclaredSource
 
 COMPLETED = "acquisition.fetch.completed.v1"
 FAILED = "acquisition.fetch.failed.v1"
+HEALTH_CHANGED = "acquisition.source.health_changed.v1"
+CHINA = timezone(timedelta(hours=8))
+
+
+def china_today() -> date:
+    """Publication dates on the pilot sources are China dates."""
+    return datetime.now(CHINA).date()
 
 writer = outbox.Writer(subsystem=NAME, namespace=NAME, zone=reqctx.PUBLIC)
 
@@ -76,6 +83,8 @@ class RunReport:
     skipped: int = 0
     failed: int = 0
     blocked: str | None = None
+    truncated: bool = False                      # the run reached its deadline before finishing
+    health: str | None = None
     failures: list[dict] = field(default_factory=list)
 
 
@@ -93,6 +102,7 @@ class Fetcher:
         self.clock = clock or SystemClock()
         self._last: dict[str, float] = {}
         self._last_url: dict[str, str] = {}
+        self._deadline: float | None = None
 
     # ---- registry -------------------------------------------------------------------------------------------
     def register(self, conn: Connection, src: DeclaredSource) -> str:
@@ -107,7 +117,8 @@ class Fetcher:
 
     # ---- run ------------------------------------------------------------------------------------------------
     def run(self, src: DeclaredSource, window: Window, *, max_pages: int, refetch: bool = False,
-            unblock: bool = False) -> RunReport:
+            unblock: bool = False, deadline: float | None = None) -> RunReport:
+        """Collect one source. deadline (clock.monotonic()) stops the run between requests; health is updated last."""
         if max_pages < 1:
             raise ValueError("max_pages must be positive")
         with reqctx.use(reqctx.service(NAME)):
@@ -119,13 +130,22 @@ class Fetcher:
                     conn.execute(text("UPDATE acq_sources SET state = 'active', state_reason = NULL, updated_at = now() "
                                       "WHERE source_id = :s"), {"s": src.source_id})
             report = RunReport(src.source_id)
+            self._deadline = deadline
             try:
                 for channel in src.handler.channels:
                     for w in self._windows(src, window):
+                        if self._expired(report):
+                            break
                         self._channel(src, channel, w, window, max_pages, refetch, report)
             except SourceBlocked as blocked:
                 self._block(src, blocked.code, report)
+            self._health(src, report)
             return report
+
+    def _expired(self, report: RunReport) -> bool:
+        if self._deadline is not None and self.clock.monotonic() >= self._deadline:
+            report.truncated = True
+        return report.truncated
 
     def _windows(self, src: DeclaredSource, window: Window) -> list[Window]:
         if not src.handler.windowed:
@@ -136,6 +156,8 @@ class Fetcher:
     def _channel(self, src, channel, w, window, max_pages, refetch, report) -> None:
         handler = src.handler
         for page in range(1, max_pages + 1):
+            if self._expired(report):
+                return
             request = handler.list_request(channel, w, page)
             resp = self._send(src, request)
             if isinstance(resp, _Failure):
@@ -156,6 +178,8 @@ class Fetcher:
                     continue
                 report.listed += 1
                 for fetch in handler.detail_fetches(channel, ref):
+                    if self._expired(report):
+                        return
                     self._detail(src, ref, fetch, refetch, report)
             if not listing.has_next or older or not listing.refs:
                 return
@@ -272,6 +296,37 @@ class Fetcher:
             conn.execute(text("UPDATE acq_sources SET state = 'blocked', state_reason = :r, updated_at = now() "
                               "WHERE source_id = :s"), {"s": src.source_id, "r": code})
             self._failed_event(conn, src, self._last_url[src.source_id], _Failure(code, False))
+
+    def _health(self, src: DeclaredSource, report: RunReport) -> None:
+        """Health from the run: blocked or nothing succeeded → unavailable; some failures → degraded; else healthy.
+        A change of state is published as source.health_changed in the same transaction."""
+        succeeded = report.pages + report.archived + report.unchanged + report.skipped
+        if report.blocked:
+            state, reason = "unavailable", report.blocked
+        elif report.failed == 0:
+            state, reason = "healthy", "ok"
+        elif succeeded:
+            state, reason = "degraded", "partial_failures"
+        else:
+            state, reason = "unavailable", "all_failed"
+        report.health = state
+        now = self.clock.now()
+        run = {"pages": report.pages, "listed": report.listed, "archived": report.archived, "unchanged": report.unchanged,
+               "skipped": report.skipped, "failed": report.failed, "truncated": report.truncated}
+        with self.db.tx() as conn:
+            before = conn.execute(text("SELECT state FROM acq_source_health WHERE source_id = :s FOR UPDATE"),
+                                  {"s": src.source_id}).scalar_one_or_none()
+            conn.execute(text("""
+                INSERT INTO acq_source_health (source_id, state, reason_code, checked_at, last_success_at, last_run)
+                VALUES (:s, :st, :r, :t, CASE WHEN :ok THEN CAST(:t AS timestamptz) END, CAST(:run AS jsonb))
+                ON CONFLICT (source_id) DO UPDATE SET state = EXCLUDED.state, reason_code = EXCLUDED.reason_code,
+                    checked_at = EXCLUDED.checked_at, last_run = EXCLUDED.last_run,
+                    last_success_at = COALESCE(EXCLUDED.last_success_at, acq_source_health.last_success_at)"""),
+                {"s": src.source_id, "st": state, "r": reason, "t": now, "ok": succeeded > 0, "run": json.dumps(run)})
+            if before != state:
+                writer.append(conn, outbox.Event(
+                    type=HEALTH_CHANGED, subject=src.source_id, partition_key=src.source_id,
+                    data={"source_id": src.source_id, "before": before or "unknown", "after": state, "reason_code": reason}))
 
     def _failed_event(self, conn: Connection, src: DeclaredSource, url: str, failure: _Failure) -> None:
         writer.append(conn, outbox.Event(

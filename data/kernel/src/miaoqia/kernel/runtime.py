@@ -18,7 +18,7 @@ from typing import Callable
 
 import yaml
 
-from . import db, tracing
+from . import db, scheduler, tracing
 from .consumer import Consumer
 from .scopes import instance_scope, role_scopes
 
@@ -48,6 +48,8 @@ class Module:
     database: str = ""
     migrations: str | None = None                    # Alembic 迁移目录
     consumers: Callable[[Env], list[Consumer]] | None = None
+    # Periodic jobs (kernel.scheduler); run only in roles whose roles.yaml entry sets jobs: true.
+    jobs: Callable[[Env], list[scheduler.Job]] | None = None
     extra: dict = field(default_factory=dict)
 
 
@@ -83,14 +85,19 @@ def run(unit: str, role: str, modules: list[Module]) -> None:
     tracing.setup(unit, role)
     brokers = os.environ.get("MIAOQIA_KAFKA_BROKERS", "")
     consumers: list[Consumer] = []
+    jobs: list[scheduler.Job] = []
+    run_jobs = spec.get("jobs") is True
     for m in modules:
         if m.name not in want:
             continue
-        d = db.Database(os.environ[env_key(m.name, "DB_DSN")]) if m.database and m.consumers else None
+        d = db.Database(os.environ[env_key(m.name, "DB_DSN")]) if m.database and (m.consumers or (run_jobs and m.jobs)) else None
         env = Env(role=role, brokers=brokers, db=d, subsystem=m.name, data_scope=scopes[m.name], cell=spec.get("cell", ""))
         if m.consumers:
             consumers += m.consumers(env)
-    log.info("进程角色启动 unit=%s role=%s subsystems=%s consumers=%d", unit, role, sorted(want), len(consumers))
+        if run_jobs and m.jobs:
+            jobs += m.jobs(env)
+    runner = scheduler.Runner(jobs) if jobs else None
+    log.info("进程角色启动 unit=%s role=%s subsystems=%s consumers=%d jobs=%d", unit, role, sorted(want), len(consumers), len(jobs))
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
@@ -106,11 +113,14 @@ def run(unit: str, role: str, modules: list[Module]) -> None:
             stop.set()
 
     threads = [threading.Thread(target=consume, args=(c,), name=c.name, daemon=True) for c in consumers]
+    if runner is not None:
+        threads.append(threading.Thread(target=runner.run, args=(stop,), name="scheduler", daemon=True))
     try:
         for t in threads:
             t.start()
         stop.wait()
     finally:
+        stop.set()
         for c in consumers:
             c.stop()
         for t in threads:
