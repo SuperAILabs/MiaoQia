@@ -45,9 +45,9 @@ def enrichments(database, store, *, facts, display=None, enable_test_recipe=Fals
 
 def load_recipe(pack_dir, entrypoint, packs_dir):
     """本地显式recipe装配；复用包入口来源检查，不自动启用所有行业包。"""
-    from .extensions.packs import _load_module
+    from miaoqia.sdk.entrypoints import load_pack_module
     module, name = entrypoint.split(":")
-    return getattr(_load_module(pack_dir, module), name)(packs_dir)
+    return getattr(load_pack_module(pack_dir, module), name)(packs_dir)
 
 
 def source_requirements(database):

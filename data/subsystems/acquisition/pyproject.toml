@@ -3,10 +3,11 @@ name = "miaoqia-acquisition"
 version = "0.1.0"
 description = "acquisition 子系统：来源采集（规格见 docs/03-architecture/subsystems/acquisition.md）"
 requires-python = ">=3.12"
-dependencies = ["miaoqia-kernel"]
+dependencies = ["miaoqia-kernel", "miaoqia-sdk"]
 
 [tool.uv.sources]
 miaoqia-kernel = { workspace = true }
+miaoqia-sdk = { workspace = true }
 
 [build-system]
 requires = ["hatchling==1.27.0"]

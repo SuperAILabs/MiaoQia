@@ -26,7 +26,7 @@ from miaoqia.sdk.corpus_source import corpus_source
 from .api import NAME
 from .application.pipeline import Artifact, Ingested, Pipeline
 from .extensions import packs
-from .infrastructure.objectstore import FilesystemObjectStore
+from miaoqia.kernel.objectstore import FilesystemObjectStore
 
 
 def corpus_artifact(sample: Path) -> Artifact:

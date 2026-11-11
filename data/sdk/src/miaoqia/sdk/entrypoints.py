@@ -1,15 +1,32 @@
 """扩展包入口的静态登记与加载后校验：格式、位置与签名的唯一定义。
 
-只用标准库，不导入领域包代码：语料加载（corpus）直接调用，契约检查（mqc）按文件路径加载。
+只用标准库。静态校验不导入领域包代码：语料加载（corpus）直接调用，契约检查（mqc）按文件路径加载；
+load_pack_module 是运行时子系统（evidence 解析器、acquisition 来源处理器）导入领域包代码的唯一入口。
 """
 from __future__ import annotations
 
 import ast
+import importlib
 import inspect
 import re
+import sys
 from pathlib import Path
 
 ENTRY_PATTERN = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*")
+
+
+def load_pack_module(pack_dir: Path, module: str):
+    """导入领域包 src/ 下的模块；加载后核对来源文件，避免入口指向其他包或平台代码。"""
+    root = (pack_dir / "src").resolve()
+    expected = (root / Path(*module.split("."))).with_suffix(".py").resolve()
+    if not expected.is_relative_to(root) or not expected.is_file():
+        raise ValueError(f"{pack_dir.name}: 入口模块不在包内：{module}")
+    if str(root) not in sys.path:
+        sys.path.append(str(root))
+    loaded = importlib.import_module(module)
+    if not getattr(loaded, "__file__", None) or Path(loaded.__file__).resolve() != expected:
+        raise ValueError(f"{pack_dir.name}: 入口模块来源与登记包不一致：{module}")
+    return loaded
 
 
 def resolve_semantic_validator(pack_dir: Path, ref) -> tuple[str, str, Path]:
