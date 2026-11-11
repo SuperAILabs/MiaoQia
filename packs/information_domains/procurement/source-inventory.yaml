@@ -34,7 +34,7 @@ sources:
   reference_enabled: true
   readiness: candidate
   owner: 数据负责人
-  priority: P0
+  priority: pending_review
 - source_id: ccgp-sichuan-ggxx
   name: 四川政府采购公告
   base_url: https://www.ccgp-sichuan.gov.cn/
@@ -208,9 +208,9 @@ sources:
   base_url: https://www.ggzy.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
   owner: 数据负责人
-  priority: pending_review
+  priority: P0
 - source_id: scbid-zbxx
   name: 四川招投标网
   base_url: https://www.scbid.com/
