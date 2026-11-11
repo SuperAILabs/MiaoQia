@@ -56,7 +56,8 @@ docs/
 │   ├── 07-m0-identity-acceptance.md 身份生命周期与cell路由验收
 │   ├── 08-model-vendor-evaluation.md 模型供应商评测方案（C3/C7a）
 │   ├── 09-a02-end-to-end-acceptance.md A02 真实贯通验收线与缺口清单
-│   └── 10-vps-public-services.md VPS 公共测试服务接入
+│   ├── 10-vps-public-services.md VPS 公共测试服务接入
+│   └── 11-d1b-anhui-pilot-sources.md D1b 试点来源启用验收（安徽）
 ```
 
 ## 2. 阅读路径
