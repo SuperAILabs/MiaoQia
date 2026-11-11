@@ -8,17 +8,17 @@ sources:
   base_url: https://ggzy.ah.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
   owner: 数据负责人
-  priority: pending_review
+  priority: P0
 - source_id: anhui-government-procurement-spa
   name: 安徽政府采购网
   base_url: https://www.ccgp-anhui.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
   owner: 数据负责人
-  priority: pending_review
+  priority: P0
 - source_id: bfjsjt-tender
   name: 新疆北方建设集团招标采购平台
   base_url: http://zb.bfjsjt.com/
@@ -208,9 +208,9 @@ sources:
   base_url: https://www.ggzy.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
   owner: 数据负责人
-  priority: pending_review
+  priority: P0
 - source_id: scbid-zbxx
   name: 四川招投标网
   base_url: https://www.scbid.com/
