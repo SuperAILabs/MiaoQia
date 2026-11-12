@@ -28,6 +28,8 @@
 
 因此拆分子系统只改变部署配置，不改变调用方代码。见 [部署拓扑](07-deployment-topology.md)。
 
+跨语言调用的接口必须先在 `contracts/apis/<subsystem>/` 中有 OpenAPI，远程客户端由契约生成，提供方按契约校验请求与响应，并纳入 `mqc compat`；内部监听端口（如 data-api）同样适用。当前 data-api 的内部读取路由（`/internal/v1/data/*`）尚无 OpenAPI，Go 端 `kernel/dataread` 为手写客户端；补齐契约并改为生成客户端之前，不扩展 data-api 的读取接口。
+
 ### 2.2 约定
 
 | 方面 | 约定 |

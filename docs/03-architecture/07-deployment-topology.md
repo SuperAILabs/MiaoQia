@@ -180,9 +180,21 @@ flowchart LR
 | `prod` | 生产 | 真实数据 |
 | `private-<customer>` | 私有部署 | 客户环境 |
 
-前期使用不限定厂商的 VPS 作为共享开发环境，开发优先选择中国大陆节点；不满足境内处理条件的节点仅运行合成数据。开发环境不承诺生产 SLA，真实客户持续服务必须先满足相应安全与运行门禁。单机故障可重建，外部备份与数据导出须验证。
+前期使用不限定厂商的主机作为共享开发环境。开发环境不承诺生产 SLA，真实客户持续服务必须先满足相应安全与运行门禁。单机故障可重建，外部备份与数据导出须验证。
 
-开发环境默认复用已运行的共享 PostgreSQL、Kafka、OpenFGA、Keycloak、OTLP 与 data-api，三个部署单元以进程角色启动；`tests/e2e/m0.py` 在该共享环境上验证完整探针和当前 identity 接口的本地/远程切换。开发 VPS 的公共组件使用 MiaoQia 自有 `miaoqia_public` 网络，配置与重建清单见 [VPS 公共测试服务接入](../05-delivery/10-vps-public-services.md)，不依赖其他项目的网络名称。OpenFGA 出现网络长尾时，`tools/dev/run-local-acceptance.sh --local-openfga` 可用本机 `openfga` 二进制的内存存储替代共享 OpenFGA，仅用于本次开发验收，服务结束后进程退出。`deploy/local/up.sh` 与其 Docker Compose 文件只作为没有共享环境时的可选引导方式，不是开发验收前置条件。它使用显式开发策略；生产 HTTP 认证策略另由[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)覆盖。整个 M0 退出还须满足[阶段基线](../05-delivery/06-stage-baseline.md)的其他交付。
+开发环境按[存储类](02-data-architecture.md#21-存储类与放置)放置，允许多个存储类合并到同一台主机：
+
+| 存储类 | 开发环境放置 | 数据 |
+|---|---|---|
+| `public-raw`、`public-derived`、`public-meta` | 境内公开数据主机（腾讯云，`43.142.169.43`，Asia/Shanghai）：对象存储目录与 `acq`、`evd`、`dom`、`ent` 数据库 | 真实公开来源数据；尚未部署 |
+| `stream` | 开发 VPS：Kafka、OpenTelemetry Collector（[VPS 公共测试服务接入](../05-delivery/10-vps-public-services.md)） | 合成数据、夹具，及公开数据链路的事件（开发期例外，见下） |
+| `platform` | Keycloak、OpenFGA 及其数据库在开发 VPS；平台子系统数据库在开发者本机 | 测试账号与合成数据 |
+| `tenant`、`agent` | 开发者本机与 CI | 合成数据与夹具 |
+| `public-index` | 未部署 | — |
+
+驻留规则：真实数据的权威存储（`public-raw`、`public-derived`、`public-meta`）只放境内节点；开发 VPS 不作为境内节点对待，只承载合成数据与夹具。开发期例外：公开来源数据链路的事件可以经过开发 VPS 的 Kafka，相应日志与链路数据可以进入开发 VPS 的采集器；例外只限公开数据，不含任何租户数据，Kafka 主题保留期不超过 7 天，超过保留期的事件由发件箱与权威数据重新生成。生产环境不适用此例外（第 11 节）。
+
+开发环境的三个部署单元以进程角色启动，连接按上表放置的数据库与公共组件；`tests/e2e/m0.py` 使用本机 PostgreSQL 与开发 VPS 的公共组件验证完整探针和当前 identity 接口的本地/远程切换。开发 VPS 的公共组件使用 MiaoQia 自有 `miaoqia_public` 网络，配置与重建清单见 [VPS 公共测试服务接入](../05-delivery/10-vps-public-services.md)，不依赖其他项目的网络名称。OpenFGA 出现网络长尾时，`tools/dev/run-local-acceptance.sh --local-openfga` 可用本机 `openfga` 二进制的内存存储替代共享 OpenFGA，仅用于本次开发验收，服务结束后进程退出。`deploy/local/up.sh` 与其 Docker Compose 文件只作为没有共享环境时的可选引导方式，不是开发验收前置条件。它使用显式开发策略；生产 HTTP 认证策略另由[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)覆盖。整个 M0 退出还须满足[阶段基线](../05-delivery/06-stage-baseline.md)的其他交付。
 
 ## 7. 地域与合规
 
@@ -267,7 +279,7 @@ C1b 关闭条件与证据：两家同规格报价（含第 9 节总成本口径�
 
 ## 11. 数据驻留
 
-驻留是对数据和访问实际所在位置的约束，不只是给 Cell 加一个地域字段。每个 Cell 和私有部署引用一份驻留策略：按存储与访问类型列出允许的区域集合。默认策略为全部位于中国大陆区域（第 7 节）。
+驻留是对数据和访问实际所在位置的约束，不只是给 Cell 加一个地域字段。每个 Cell 和私有部署引用一份驻留策略：按存储与访问类型列出允许的区域集合，并按[存储类](02-data-architecture.md#21-存储类与放置)判定每个存储与复制目标。默认策略为全部位于中国大陆区域（第 7 节）；开发环境的公开数据事件例外只适用于开发环境（第 6 节）。
 
 | 范围 | 驻留要求 | 校验位置 |
 |---|---|---|
