@@ -126,7 +126,7 @@ APP-TENDER 的矩阵见 `packs/application_domains/tendering/coverage.yaml`：�
 
 | SPI | 子系统 | 方法要点 |
 |---|---|---|
-| `SourceHandler` | acquisition | `list_request(channel, window, page)`、`parse_list(channel, response) → refs`、`detail_fetches(channel, ref)`、`check_detail(response)`；只构造请求与解析响应，不访问网络，请求、限速、去重与归档由 acquisition 执行（`miaoqia.acquisition.api.handlers`）；包清单 `provides.sources` 登记处理器与访问契约 |
+| `SourceHandler` | acquisition | `list_request(channel, window, page)`、`parse_list(channel, response) → refs`、`detail_fetches(channel, ref)`、`check_detail(response)`；只构造请求与解析响应，不访问网络，请求、限速、去重与归档由 acquisition 执行（`miaoqia.acquisition.api.handlers`）；包清单 `provides.sources` 登记处理器、访问契约与增量采集计划 |
 | 文档适配器 | evidence | 包清单 `provides.documents` 按来源登记 `(raw: bytes) → html`：原件不是 HTML（如接口 JSON）时取出公告正文，原件仍按原样归档 |
 | `Connector` | acquisition | 新访问方式（授权 API、文件投递、客户系统）；客户系统连接器只在单元级租户集成实例中加载 |
 | `Extractor` | evidence | `extract(document, ctx) → fields + provenance` |

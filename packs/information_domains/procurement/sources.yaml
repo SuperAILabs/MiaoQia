@@ -1,13 +1,17 @@
-# 来源声明：盘点条目（source-inventory.yaml，readiness 须为 capability_verified）的处理器与访问契约。
+# 来源声明：盘点条目（source-inventory.yaml，readiness 须为 capability_verified）的处理器、访问契约与增量采集计划。
 # 接口与限速依据见 docs/05-delivery/11-d1b-anhui-pilot-sources.md；SPI 见 miaoqia.acquisition.api.handlers。
 sources:
   - source_id: anhui-ggzy-construction
     handler: miaoqia_pack_procurement.sources.anhui_ggzy:AnhuiGgzyConstruction
     access: {min_interval_seconds: 2, throttle_backoff_seconds: 60, max_attempts: 3, timeout_seconds: 30}
+    schedule: {every_minutes: 60, lookback_days: 1, max_pages: 3}
   - source_id: anhui-government-procurement-spa
     handler: miaoqia_pack_procurement.sources.anhui_ccgp:AnhuiGovernmentProcurement
     # 间隔 1.5 秒连续 6 个请求后返回 429 并持续数分钟
     access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 3, timeout_seconds: 30}
+    # 每轮最多约 160 个请求（约 27 分钟），已归档的详情跳过
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 2}
   - source_id: national-public-resources
     handler: miaoqia_pack_procurement.sources.national_ggzy:NationalPublicResources
     access: {min_interval_seconds: 2, throttle_backoff_seconds: 60, max_attempts: 3, timeout_seconds: 30}
+    schedule: {every_minutes: 60, lookback_days: 1, max_pages: 5}

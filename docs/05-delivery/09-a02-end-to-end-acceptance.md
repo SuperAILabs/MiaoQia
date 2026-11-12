@@ -56,7 +56,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 | 编号 | 缺口 | 来源 | 环节 | 最早级别 | 外部前置 |
 |---|---|---|---|---|---|
-| D-01 | acquisition 调度与来源健康未实现；来源声明、抓取、归档与 evidence 入库已有操作员单次命令触发的链路（[acquisition 第12节](../03-architecture/subsystems/acquisition.md#12-当前实现边界)） | [阶段基线 M1](06-stage-baseline.md#3-m1-前置条件与能力交接) | ② | L4 | M1-P1、M1-P2、M1-P7 |
+| D-01 | 来源声明、增量采集周期任务、抓取、归档、来源健康与 evidence 入库已实现（[acquisition 第12节](../03-architecture/subsystems/acquisition.md#12-当前实现边界)），尚未在部署环境持续运行；回填工作流未实现 | [阶段基线 M1](06-stage-baseline.md#3-m1-前置条件与能力交接) | ② | L4 | M1-P1、M1-P2、M1-P7 |
 | D-02 | evidence 的远程查询与生产来源权利策略、PDF/OCR 管线、内容增强与重放未实现（公共文档管线与文档证据本地读取见 [evidence 实现状况](../03-architecture/subsystems/evidence.md#12-实现状况)） | [阶段基线 M1-P6](06-stage-baseline.md#3-m1-前置条件与能力交接) | ②③ | L1 | — |
 | D-03 | INF-PROC 更正公告解析器未实现；招标与结果公告解析器 `proc.tender-notice`、`proc.result-notice` 以人工映射为黄金标注评测 | `packs/information_domains/procurement/src/` | ② | L1 | — |
 | D-04 | 标包 `lot_`、其他来源与完整生命周期的项目聚合未实现；冻结来源的 `pp_` 聚合与复核官方 pair 的公告主题品类只是局部实现（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)） | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |

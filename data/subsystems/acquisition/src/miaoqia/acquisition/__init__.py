@@ -1,6 +1,7 @@
 """acquisition 子系统：来源采集。接口、事件与数据随所属里程碑实现（docs/05-delivery/01-roadmap.md）。"""
 from __future__ import annotations
 
+import logging
 from importlib import resources
 
 from miaoqia.kernel.consumer import Consumer
@@ -17,4 +18,24 @@ def module() -> Module:
         return [Consumer(name=f"{NAME}.probe", subsystem=NAME, brokers=env.brokers, topics=["platform.operations"],
                          handlers={probe.REQUESTED: probe.on_requested}, db=env.db)]
 
-    return Module(name=NAME, database="acq", migrations=MIGRATIONS, consumers=consumers)
+    def jobs(env: Env):
+        """Scheduled collection (acq-scheduler role): MIAOQIA_ACQUISITION_OBJECT_STORE_DIR and MIAOQIA_PACKS_DIR."""
+        import os
+
+        from miaoqia.kernel.objectstore import FilesystemObjectStore
+
+        from .application import collect, sources
+        from .application.fetch import Fetcher
+        from .infrastructure.transport import UrllibTransport
+
+        objects = env.config("OBJECT_STORE_DIR")
+        if not objects:
+            # Collection is opt-in: without an object store (CI, local smoke) the role keeps its other duties
+            # and contacts no live source.
+            logging.getLogger("miaoqia.acquisition").warning(
+                "scheduled collection disabled: MIAOQIA_ACQUISITION_OBJECT_STORE_DIR not set")
+            return []
+        fetcher = Fetcher(env.db, FilesystemObjectStore(objects), UrllibTransport())
+        return collect.jobs(fetcher, env.db, sources.load(os.environ.get("MIAOQIA_PACKS_DIR", "packs")))
+
+    return Module(name=NAME, database="acq", migrations=MIGRATIONS, consumers=consumers, jobs=jobs)

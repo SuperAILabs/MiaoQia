@@ -1,6 +1,7 @@
 """Fetch runtime against a real PostgreSQL with a scripted transport and a fake clock (no network)."""
 from __future__ import annotations
 
+import dataclasses
 import json
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -14,7 +15,7 @@ from miaoqia.acquisition.api.handlers import (AccessContract, DetailFetch, Detai
 from miaoqia.acquisition.application import sources
 from miaoqia.acquisition.application.fetch import Fetcher, SourceStopped
 from miaoqia.acquisition.infrastructure.transport import TransportError
-from miaoqia.kernel import db
+from miaoqia.kernel import db, reqctx
 from miaoqia.kernel.objectstore import FilesystemObjectStore
 
 REPO = Path(__file__).resolve().parents[4]
@@ -228,3 +229,89 @@ def test_declaration_requires_verified_inventory_entry(tmp_path):
                                        "  access: {min_interval_seconds: 2, throttle_backoff_seconds: 60}\n")
     with pytest.raises(ValueError, match="not capability_verified"):
         sources.load(tmp_path)
+
+
+def health(database):
+    return rows(database, "SELECT state, reason_code, last_success_at IS NOT NULL FROM acq_source_health")
+
+
+def test_health_transitions_publish_changes_once(env):
+    database = env[0]
+    f, transport = fetcher(env, {
+        LIST_URL: [listing("a"), listing("b"), listing("c"), FetchResponse(403, "text/html", b"", "u")],
+        "https://src.example/d/a": [ok(b"A")],
+        "https://src.example/d/b": [TransportError("timeout")] * 3,
+        "https://src.example/d/c": [ok(b"C")],
+    })
+    assert f.run(SOURCE, Window(DAY, DAY), max_pages=1).health == "healthy"
+    assert health(database) == [("healthy", "ok", True)]
+    assert f.run(SOURCE, Window(DAY, DAY), max_pages=1).health == "degraded"   # list ok, detail failed
+    assert f.run(SOURCE, Window(DAY, DAY), max_pages=1).health == "healthy"
+    assert f.run(SOURCE, Window(DAY, DAY), max_pages=1).health == "unavailable"
+    assert health(database) == [("unavailable", "http_403", True)]
+    changes = [(e["data"]["before"], e["data"]["after"], e["data"]["reason_code"])
+               for e in events(database, "acquisition.source.health_changed.v1")]
+    assert changes == [("unknown", "healthy", "ok"), ("healthy", "degraded", "partial_failures"),
+                       ("degraded", "healthy", "ok"), ("healthy", "unavailable", "http_403")]
+
+
+def test_all_failed_run_is_unavailable_without_success(env):
+    f, transport = fetcher(env, {LIST_URL: [FetchResponse(500, "text/html", b"", "u")] * 3})
+    assert f.run(SOURCE, Window(DAY, DAY), max_pages=1).health == "unavailable"
+    assert health(env[0]) == [("unavailable", "all_failed", False)]
+
+
+def test_deadline_stops_between_requests(env):
+    database, store, clock = env
+    f, transport = fetcher(env, {LIST_URL: [listing("a", "b")], "https://src.example/d/a": [ok(b"A")]})
+    # The deadline is checked before each request (a request may start up to one pacing interval after it):
+    # the list at t=0 and detail a (checked at t=0, sent at t=2) run; detail b is checked at t=2 and skipped.
+    report = f.run(SOURCE, Window(DAY, DAY), max_pages=5, deadline=clock.t + 1.5)
+    assert report.truncated and report.archived == 1 and report.health == "healthy"
+    assert [r.url for r in transport.sent] == [LIST_URL, "https://src.example/d/a"]
+
+
+def test_scheduled_jobs_collect_declared_sources(env, monkeypatch):
+    from miaoqia.acquisition.application import collect, fetch as fetch_mod
+    database, store, clock = env
+    scheduled = dataclasses.replace(SOURCE, schedule=sources.Schedule(every_minutes=60, lookback_days=1, max_pages=2))
+    f, transport = fetcher(env, {LIST_URL: [listing("a"), listing("a")], "https://src.example/d/a": [ok(b"A")]})
+    monkeypatch.setattr(collect, "china_today", lambda: DAY)
+    (job,) = collect.jobs(f, database, {"test-source": scheduled, "unscheduled": SOURCE})
+    assert job.name == "acquisition.collect-test-source" and job.every == 3600 and job.database is database
+    assert job.run(clock.monotonic() + 3600) == 1
+    assert job.run(clock.monotonic() + 3600) == 0               # archived details are skipped
+    with reqctx.use(reqctx.service("acquisition")), database.tx() as c:
+        c.execute(text("UPDATE acq_sources SET state = 'blocked', state_reason = 'captcha_challenge'"))
+    sent = len(transport.sent)
+    assert job.run(clock.monotonic() + 3600) == 0 and len(transport.sent) == sent
+
+
+def test_repository_schedules_fit_their_period():
+    declared = sources.load(REPO / "packs")
+    for src in declared.values():
+        s = src.schedule
+        assert s is not None, src.source_id
+        details_per_page = {"anhui-ggzy-construction": 10, "anhui-government-procurement-spa": 15,
+                            "national-public-resources": 20}[src.source_id]
+        windows = s.lookback_days + 1 if src.handler.windowed else 1
+        worst = len(src.handler.channels) * windows * s.max_pages * (1 + details_per_page)
+        assert worst * src.access.min_interval_seconds <= s.every_minutes * 60, src.source_id
+
+
+def test_module_jobs_disabled_without_object_store(monkeypatch):
+    from miaoqia.acquisition import module
+    from miaoqia.kernel.runtime import Env
+    monkeypatch.delenv("MIAOQIA_ACQUISITION_OBJECT_STORE_DIR", raising=False)
+    assert module().jobs(Env(role="acq-scheduler", brokers="", db=None, subsystem="acquisition")) == []
+
+
+def test_module_jobs_one_per_scheduled_source(monkeypatch, tmp_path):
+    from miaoqia.acquisition import module
+    from miaoqia.kernel.runtime import Env
+    monkeypatch.setenv("MIAOQIA_ACQUISITION_OBJECT_STORE_DIR", str(tmp_path))
+    monkeypatch.setenv("MIAOQIA_PACKS_DIR", str(REPO / "packs"))
+    jobs = module().jobs(Env(role="acq-scheduler", brokers="", db=None, subsystem="acquisition"))
+    assert sorted(j.name for j in jobs) == ["acquisition.collect-anhui-ggzy-construction",
+                                            "acquisition.collect-anhui-government-procurement-spa",
+                                            "acquisition.collect-national-public-resources"]

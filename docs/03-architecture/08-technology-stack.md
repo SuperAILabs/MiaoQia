@@ -43,7 +43,7 @@
 | 领域类型生成 | datamodel-code-generator | 由 JSON Schema 生成 Pydantic 模型 |
 | 数据访问 / 迁移 | SQLAlchemy 2.x / Alembic | 成熟、支持 RLS 会话变量 |
 | 事件 | confluent-kafka-python | librdkafka 绑定 |
-| 工作流 | Temporal Python SDK | 采集计划、回填、重放 |
+| 工作流 | Temporal Python SDK；周期任务用 kernel scheduler | 回填、重放；增量采集是按来源的周期任务 |
 | 包与工作区 | uv workspace | 单仓多包、快速、可复现锁定 |
 | 依赖规则 / 静态检查 | import-linter / ruff、pyright | — |
 | 批处理与语料 | Parquet + Apache Arrow + DuckDB | 语料快照、批量重算增强（ADR-0013） |

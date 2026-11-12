@@ -15,6 +15,21 @@ from miaoqia.sdk.entrypoints import ENTRY_PATTERN, load_pack_module
 from ..api.handlers import AccessContract, SourceHandler
 
 ACCESS_KEYS = {"min_interval_seconds", "throttle_backoff_seconds", "max_attempts", "timeout_seconds"}
+SCHEDULE_KEYS = {"every_minutes", "lookback_days", "max_pages"}
+
+
+@dataclass(frozen=True)
+class Schedule:
+    """Incremental collection: every every_minutes, over the last lookback_days (inclusive of today), up to
+    max_pages list pages per channel and window. A round may use the whole period."""
+
+    every_minutes: int
+    lookback_days: int
+    max_pages: int
+
+    def __post_init__(self):
+        if not (5 <= self.every_minutes <= 24 * 60 and 0 <= self.lookback_days <= 31 and 1 <= self.max_pages <= 50):
+            raise ValueError("invalid schedule bounds")
 HANDLER_ATTRS = ("source_id", "channels", "windowed", "list_request", "parse_list", "detail_fetches", "check_detail")
 
 
@@ -24,6 +39,7 @@ class DeclaredSource:
     handler_ref: str
     handler: SourceHandler
     access: AccessContract
+    schedule: Schedule | None = None
 
     def access_json(self) -> dict:
         a = self.access
@@ -49,8 +65,11 @@ def load(packs_dir: str | Path) -> dict[str, DeclaredSource]:
 
 
 def _declared(pack_dir: Path, item: dict, inventory: dict) -> DeclaredSource:
-    if set(item) != {"source_id", "handler", "access"}:
-        raise ValueError(f"{pack_dir.name}: source declaration fields must be source_id, handler, access")
+    if not {"source_id", "handler", "access"} <= set(item) <= {"source_id", "handler", "access", "schedule"}:
+        raise ValueError(f"{pack_dir.name}: source declaration fields must be source_id, handler, access and optional schedule")
+    schedule = item.get("schedule")
+    if schedule is not None and (not isinstance(schedule, dict) or set(schedule) != SCHEDULE_KEYS):
+        raise ValueError(f"{pack_dir.name}: {item['source_id']} schedule keys must be {sorted(SCHEDULE_KEYS)}")
     sid, ref, access = item["source_id"], item["handler"], item["access"]
     entry = inventory.get(sid)
     if entry is None:
@@ -68,4 +87,4 @@ def _declared(pack_dir: Path, item: dict, inventory: dict) -> DeclaredSource:
             raise ValueError(f"{pack_dir.name}: handler {ref} lacks {attr}")
     if handler.source_id != sid or not handler.channels:
         raise ValueError(f"{pack_dir.name}: handler {ref} does not serve {sid}")
-    return DeclaredSource(sid, ref, handler, AccessContract(**access))
+    return DeclaredSource(sid, ref, handler, AccessContract(**access), Schedule(**schedule) if schedule else None)

@@ -3,7 +3,7 @@ pack:
   id: INF-PROC
   kind: information_domain
   namespace: tendering                 # 领域事件与事实类型的命名空间（tendering.*）
-  version: 1.8.0                       # 实际来源文档适配器；招标公告标题识别扩展到项目全称
+  version: 1.9.0                       # 安徽试点三个来源的增量采集计划
   platform_api: ">=1.0 <2.0"
   requires:
     - INF-ORG@^1.0                     # 采购人、代理、投标人解析为组织
