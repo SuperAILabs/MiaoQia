@@ -2,7 +2,7 @@
 
 > 状态：已验收 · 负责人：平台工程负责人
 
-VPS 承载 Kafka、Keycloak、OpenFGA、OpenTelemetry Collector，以及 Keycloak/OpenFGA 各自独立的 VPS PostgreSQL 数据库。MiaoQia 的 17 个业务子系统数据库继续位于开发者本机 PostgreSQL 服务，不迁移到 VPS。
+VPS 承载 Kafka、Keycloak、OpenFGA、OpenTelemetry Collector，以及 Keycloak/OpenFGA 各自独立的 VPS PostgreSQL 数据库，即开发环境的 `stream` 存储类与 `platform` 存储类中的基础组件部分。MiaoQia 业务子系统的数据库不放在 VPS：公开数据存储类（`acq`、`evd`、`dom`、`ent` 与对象存储）放在境内公开数据主机，其余业务数据库在开发者本机；放置与驻留规则以[部署拓扑第 6 节](../03-architecture/07-deployment-topology.md#6-环境)为准。VPS 只承载合成数据与夹具，以及该节允许的公开数据链路事件。
 
 ## 1. 访问地址
 
@@ -24,7 +24,7 @@ VPS 现有 PostgreSQL 服务中创建了两个独立数据库和账号：
 - database `miaoqia_keycloak` / role `miaoqia_keycloak`
 - database `miaoqia_fga` / role `miaoqia_fga`
 
-这两个数据库只存公共服务自身的认证和授权状态，不存 MiaoQia 业务对象。MiaoQia 的 `acq`、`evd`、`dom`、`ent`、`ctx`、`det`、`res`、`asm`、`pur`、`lrn`、`gwy`、`chn`、`iam`、`com`、`gov`、`aip`、`ops` 数据库在本机 PostgreSQL 中维护。VPS 不需要访问本机 PostgreSQL。
+这两个数据库只存公共服务自身的认证和授权状态，不存 MiaoQia 业务对象。MiaoQia 的 17 个业务数据库都不在 VPS 上：`acq`、`evd`、`dom`、`ent` 属于公开数据存储类，常驻实例放在境内公开数据主机（尚未部署）；`ctx`、`det`、`res`、`asm`、`pur`、`lrn`、`gwy`、`chn`、`iam`、`com`、`gov`、`aip`、`ops` 在开发者本机 PostgreSQL 中维护；本机开发与 E2E 同样使用本机的 17 个库。VPS 不访问任何业务数据库。
 
 ## 3. MiaoQia 测试环境变量
 
@@ -39,7 +39,7 @@ tools/dev/configure-m0-vps-env.sh
 tools/dev/run-m0-vps.sh
 ```
 
-`run-m0-vps.sh` 会临时把本机 `29094` 转发到 VPS Kafka 的内部 listener，测试结束后自动关闭。它不会转发或暴露 PostgreSQL；业务数据库始终使用本机 PostgreSQL。
+`run-m0-vps.sh` 会临时把本机 `29094` 转发到 VPS Kafka 的内部 listener，测试结束后自动关闭。它不会转发或暴露 PostgreSQL；E2E 的业务数据库使用本机 PostgreSQL。
 
 VPS 首次部署或重建时，先创建 `miaoqia_public` 外部网络，再使用版本化 Compose 清单启动 PostgreSQL、Keycloak/OpenFGA，最后安装 Nginx 上游并执行 `nginx -t && systemctl reload nginx`。迁移或升级前保存 Compose、Nginx、网络检查结果和 `miaoqia_fga`/`miaoqia_keycloak` 数据库导出；不要执行会删除生产数据卷的 `down -v`。远端网络与健康检查使用 [`tools/dev/check-vps-public-network.sh`](../../tools/dev/check-vps-public-network.sh)。
 

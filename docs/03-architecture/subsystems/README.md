@@ -71,6 +71,28 @@
 | 模型目录、提示版本、模型调用记录 | `ai-platform` | 接口查询 |
 | 复核任务、服务工单 | `operations` | 接口查询、事件 |
 
+### 3.1 存储类归属
+
+存储类的定义与放置规则见[数据架构第 2.1 节](../02-data-architecture.md#21-存储类与放置)。每个数据库与对象前缀只属于一个存储类；有公共与租户两个实例的子系统按实例登记。
+
+| 子系统（实例） | 数据库 | 对象前缀 | 存储类 |
+|---|---|---|---|
+| acquisition | `acq` | — | `public-meta` |
+| acquisition | — | `raw/` | `public-raw` |
+| evidence（公共） | `evd` | — | `public-meta` |
+| evidence（公共） | — | `normalized/`、`enrichment/`、`corpus/` | `public-derived` |
+| domain-intelligence | `dom` | — | `public-meta` |
+| entity-graph | `ent` | — | `public-meta` |
+| entity-graph | 图读模型 | — | `public-index` |
+| search（公共） | `sea` | — | `public-meta` |
+| search（公共） | 检索索引 | — | `public-index` |
+| evidence、search（租户，随 Cell） | 各自单元级数据库 | 租户前缀 | `tenant` |
+| customer-context、detection、pursuit、learning、gateway、channels | `ctx`、`det`、`pur`、`lrn`、`gwy`、`chn` | 租户前缀 | `tenant` |
+| research、assessment | `res`、`asm` | 研究产物前缀 | `agent` |
+| identity、commerce、governance、ai-platform、operations | `iam`、`com`、`gov`、`aip`、`ops` | 导出前缀 | `platform` |
+| Keycloak、OpenFGA（基础组件） | 各自数据库 | — | `platform` |
+| Kafka、OpenTelemetry 采集器（基础组件） | — | — | `stream` |
+
 ## 4. 运行实例的数据域
 
 平面登记表示逻辑能力归属；语言表示实现方式；部署单元表示镜像打包。三者都不是数据隔离边界。默认数据域：数据供应为 `public`，客户智能与交互为 `tenant`，平台为 `platform`（平台支撑服务按授权处理租户标识与数据）。以下能力在不同实例中复用代码：
