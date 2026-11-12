@@ -1,7 +1,7 @@
 """公共实例的文档管线：原始制品 → 规范化文档 → 快照判定 → 解析编排 → 字段证据（evidence.md 第3节）。
 
 一次 ingest 在一个数据库事务内完成快照、解析修订、证据引用与发件箱事件，事件与数据一致；对象存储写入先于事务，
-对象不可变且按内容寻址（原件）或按快照（规范化文档），事务回滚只会留下无人引用的对象，不会改写已发布对象。
+对象不可变且按内容寻址（原件 raw/<sha256>）或按管线版本与快照（规范化文档 normalized/<管线>/<版本>/<快照>.json），事务回滚只会留下无人引用的对象，不会改写已发布对象。
 
 同一来源对象的规范化内容与最新快照相同时不产生新快照（回到历史内容仍是新快照）；同一快照在同一解析器版本下只解析一次，重复投放幂等，不重复发布事件。
 本管线只处理公共来源：租户上下文下调用被拒绝（租户文档属于租户实例，见 evidence.md 第11节）。
@@ -22,7 +22,7 @@ from miaoqia.sdk.validation import validate_extraction
 from ..api import EXTRACTION_REVISED, NAME, SNAPSHOT_CREATED
 from ..domain.snapshot import normalized_hash, quality_status, raw_hash
 from ..extensions.packs import PackExtractor
-from miaoqia.kernel.objectstore import ObjectStore
+from miaoqia.kernel.objectstore import ObjectStore, versioned
 
 HTML_PIPELINE = "doc.html-dev@0.1.0"     # SDK 的 HTML 规范化（与语料评测同一坐标系）；PDF/OCR 管线随 M1 交付
 
@@ -94,7 +94,7 @@ class Pipeline:
             snapshot = ids.new("snp")
             document["snapshot_ref"] = snapshot
             artifact_ref = f"raw/{raw_digest.removeprefix('sha256:')}"
-            document_ref = f"normalized/{snapshot}.json"
+            document_ref = f"normalized/{versioned(document['pipeline_version'])}/{snapshot}.json"
             self.store.put(artifact_ref, art.raw)
             self.store.put(document_ref, json.dumps(document, ensure_ascii=False, sort_keys=True).encode("utf-8"))
             seq = conn.execute(text("SELECT coalesce(max(seq), 0) + 1 FROM evd_snapshots WHERE source_id = :s AND source_key = :k"),

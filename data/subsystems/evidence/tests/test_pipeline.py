@@ -137,9 +137,36 @@ def test_object_store_never_overwrites_and_rejects_escaping_keys(tmp_path):
     with pytest.raises(ObjectConflict):
         store.put("raw/abc", b"two")
     assert store.get("raw/abc") == b"one"
-    for key in ("../escape", "raw/../../x", "/etc/passwd", "other/abc"):
+    for key in ("../escape", "raw/../../x", "/etc/passwd", "other/abc", "normalized/./x", "normalized/.tmp-x",
+                "raw/", "raw//x", "normalized/a/b/c/d/e/f", "raw/" + "a" * 201):
         with pytest.raises(ValueError):
             store.put(key, b"x")
+    store.put("normalized/doc.html-dev/0.1.0/snp_x.json", b"doc")
+    store.put("enrichment/run/test.buyer-provenance/0.1.0/abc.json", b"run")
+    assert store.get("normalized/doc.html-dev/0.1.0/snp_x.json") == b"doc"
+
+
+def test_versioned_key_paths():
+    from miaoqia.kernel.objectstore import segment, versioned
+    assert versioned("doc.html-dev@0.1.0") == "doc.html-dev/0.1.0"
+    for bad in ("doc.html-dev", "a/b@1", "@1", "x@", "x@../1"):
+        with pytest.raises(ValueError):
+            versioned(bad)
+    with pytest.raises(ValueError):
+        segment("..")
+
+
+def test_snapshot_objects_use_content_and_pipeline_versioned_keys(evd):
+    database, pipeline, _ = evd
+    (result,) = replay(database, pipeline, [CORPUS / "official-award-20261014"])
+    with reqctx.use(reqctx.service("test")), database.tx() as conn:
+        artifact_ref, document_ref, raw, version = conn.execute(text(
+            "SELECT artifact_ref, document_ref, raw_sha256, pipeline_version FROM evd_snapshots WHERE id = :s"),
+            {"s": result.snapshot_ref}).one()
+    assert artifact_ref == "raw/" + raw.removeprefix("sha256:")
+    name, version_no = version.split("@")
+    assert document_ref == f"normalized/{name}/{version_no}/{result.snapshot_ref}.json"
+    assert pipeline.store.get(document_ref)
 
 
 def test_load_document_keeps_bounded_read_for_current_object_store():
