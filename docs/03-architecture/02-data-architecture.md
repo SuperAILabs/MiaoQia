@@ -108,8 +108,9 @@ PostgreSQL 中的领域事实只保存结构化字段（采购人、金额、截
 | 前缀 | 内容 | 格式 | 生命周期 |
 |---|---|---|---|
 | `raw/<sha256>` | 原始制品，按内容寻址：同一内容只存一份，写入天然幂等；来源、URL、获取时间与请求记录在 `acquisition` 的元数据中 | 原始格式 | 标准存储 → 按对象年龄转低频 → 按来源权利转归档（经元数据选出对象） |
-| `normalized/<pipeline_version>/<snapshot_id>.json.zst` | 规范化文档（含分块） | 压缩 JSON | 当前版本保持标准存储，旧版本按策略降级或删除 |
-| `enrichment/<enricher>/<version>/<partition>/…` | 增强结果 | 压缩 JSONL（每行一个快照或分块） | 当前与上一版本保留，其余删除 |
+| `normalized/<pipeline>/<version>/<snapshot_id>.json` | 规范化文档（含分块），按处理管线版本隔离（`pipeline_version` 的 `<pipeline>@<version>` 拆为两级） | JSON | 当前版本保持标准存储，旧版本按策略降级或删除 |
+| `enrichment/run/<enricher>/<version>/<sha256>.json` | 单次增强运行结果，按增强器版本隔离、按内容哈希命名 | JSON | 当前与上一版本保留，其余删除 |
+| `enrichment/derivation/<transform>/<version>/<sha256>.json`、`enrichment/reference/<name>/<version>/<sha256>.json` | 派生证据与不可变参考数据，按转换与参考版本隔离 | JSON | 随引用它们的增强结果与事实版本保留 |
 | `corpus/<domain>/<yyyy-mm>/…parquet` | 语料快照：按月汇总的规范化文本与元数据 | Parquet | 用于批量重算增强、评估与模型调优 |
 
 语料快照让大规模重算（例如新分类器上线后对三年历史数据重新打标）可以用批处理顺序读取，而不必逐条访问对象或查询数据库。批处理在 `workflow-worker` 中使用 Arrow / DuckDB 等嵌入式工具执行，不引入独立的数据湖服务。

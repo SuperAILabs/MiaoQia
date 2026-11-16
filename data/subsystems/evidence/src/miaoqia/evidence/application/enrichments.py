@@ -6,6 +6,7 @@ import json
 from sqlalchemy import text
 
 from miaoqia.kernel import ids, outbox, payloads, reqctx
+from miaoqia.kernel.objectstore import segment, versioned
 from miaoqia.sdk.derivation import canonical, evaluate, field_input, fingerprint
 
 from ..api import NAME, ResolvedEvidence, Recipe
@@ -181,9 +182,14 @@ class EnrichmentStore:
                 put(conn, kind, key, digest, closure, actor=actor, reason=reason)
         return len(closures)
 
-    def _put(self, value):
+    def _put(self, value, path):
+        """Write a canonical object under enrichment/<path>/<sha256>.json (data-architecture 3.2).
+
+        path is reference/<name>/<version>, derivation/<transform>/<version> or run/<enricher>/<version>, so results of
+        different recipe, transform or reference versions never share a prefix and can be recomputed per version.
+        """
         digest = fingerprint(value)
-        key = "enrichment/" + digest.removeprefix("sha256:") + ".json"
+        key = f"enrichment/{path}/{digest.removeprefix('sha256:')}.json"
         self.store.put(key, canonical(value))
         return key, digest
 
@@ -198,7 +204,7 @@ class EnrichmentStore:
             raise PermissionError("structured readers cannot register references")
         if self.level([rights_tags]) != "full_text":
             raise PermissionError("参考登记需要完整权限")
-        key, digest = self._put(content)
+        key, digest = self._put(content, f"reference/{segment(name)}/{segment(version)}")
         with self.database.tx() as conn:
             conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": "ref:" + name + ":" + version})
             old = conn.execute(text("SELECT * FROM evd_reference_data WHERE name=:n AND version=:v"),
@@ -341,7 +347,7 @@ class EnrichmentStore:
                                   transforms=self.transforms)
                 if result != value:
                     raise ValueError("重算输出不一致")
-                object_ref, content_hash = self._put(ref)
+                object_ref, content_hash = self._put(ref, f"derivation/{versioned(descriptor.transform_id)}")
                 conn.execute(text("INSERT INTO evd_derivations VALUES (:id,:f,:o,:h,CAST(:r AS jsonb))"),
                              {"id": ref["id"], "f": deriv_digest, "o": object_ref, "h": content_hash, "r": json.dumps(requirements)})
             from .provenance import put
@@ -353,7 +359,7 @@ class EnrichmentStore:
                       "input_hash": fingerprint(ref["inputs"]), "reference_hash": reference["hash"],
                       "rights_tags": sorted({t for tags in requirements for t in tags}),
                       "outputs": descriptor.outputs(source, value, ref, snapshot)}
-            object_ref, content_hash = self._put(bundle)
+            object_ref, content_hash = self._put(bundle, f"run/{versioned(recipe)}")
             conn.execute(text("INSERT INTO evd_enrichments(run_key,snapshot_ref,revision_ref,recipe,object_ref,content_hash,rights_requirements) VALUES (:k,:s,:r,:p,:o,:h,CAST(:q AS jsonb))"),
                          {"k": key, "s": source["snapshot_ref"], "r": source["revision_ref"], "p": recipe, "o": object_ref, "h": content_hash, "q": json.dumps(requirements)})
             if closure is not None:

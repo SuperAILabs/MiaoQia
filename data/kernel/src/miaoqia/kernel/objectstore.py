@@ -12,7 +12,27 @@ import time
 from pathlib import Path
 from typing import Protocol
 
-KEY = re.compile(r"(raw|normalized|enrichment)/[A-Za-z0-9_.-]{1,200}")
+# Keys follow data-architecture 3.2: raw/<sha256> (content-addressed), normalized/<pipeline>/<version>/<snapshot>.json,
+# enrichment/<kind>/<name>/<version>/<sha256>.json. A segment never starts with "." (no "."/".." and no clash with the
+# ".tmp-" files of the filesystem store).
+SEGMENT = r"[A-Za-z0-9_@-][A-Za-z0-9_.@-]{0,199}"
+KEY = re.compile(rf"(raw|normalized|enrichment)(/{SEGMENT}){{1,5}}")
+MAX_KEY = 512
+
+
+def segment(value: str) -> str:
+    """Return value when it is a valid single key segment (used to build versioned keys)."""
+    if not re.fullmatch(SEGMENT, value):
+        raise ValueError(f"非法对象键片段：{value!r}")
+    return value
+
+
+def versioned(identifier: str) -> str:
+    """Turn a versioned identifier ``<name>@<version>`` into the key path ``<name>/<version>``."""
+    name, sep, version = identifier.partition("@")
+    if not sep:
+        raise ValueError(f"缺少版本的标识：{identifier!r}")
+    return f"{segment(name)}/{segment(version)}"
 
 
 class ObjectConflict(RuntimeError):
@@ -31,7 +51,7 @@ class FilesystemObjectStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _path(self, key: str) -> Path:
-        if not KEY.fullmatch(key):
+        if len(key) > MAX_KEY or not KEY.fullmatch(key):
             raise ValueError(f"非法对象键：{key!r}")
         path = (self.root / key).resolve()
         if not path.is_relative_to(self.root):

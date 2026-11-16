@@ -91,6 +91,13 @@ def test_real_console_register_apply_retry_disabled_and_no_config(plane):
     first = subprocess.run(args, env=env, capture_output=True, text=True)
     assert first.returncode == 0, first.stderr
     assert json.loads(first.stdout)[0]["action"] == "applied"
+    with reqctx.use(CTX), plane[0].tx() as conn:
+        refs = {table: [r[0] for r in conn.execute(text(f"SELECT object_ref FROM {table}"))]
+                for table in ("evd_reference_data", "evd_derivations", "evd_enrichments")}
+    name, version = REFERENCE["name"], REFERENCE["version"]
+    assert any(r.startswith(f"enrichment/reference/{name}/{version}/") for r in refs["evd_reference_data"])
+    assert refs["evd_derivations"] and all(r.startswith("enrichment/derivation/test.identity/0.1.0/") for r in refs["evd_derivations"])
+    assert refs["evd_enrichments"] == [f"enrichment/run/{BUYER.replace('@', '/')}/" + refs["evd_enrichments"][0].rsplit("/", 1)[1]]
     full = next(n for n in _facts(plane[1]) if n["id"] == notice["id"])
     assert full["version"] == 2 and full["buyer"]["name_raw"] == notice["buyer"]["name_raw"]
     assert full["buyer"]["prov"]["evidence_ref"] != notice["buyer"]["prov"]["evidence_ref"]
