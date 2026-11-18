@@ -1,0 +1,24 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:14318
+processors:
+  batch:
+    timeout: 1s
+exporters:
+  file:
+    path: /data/traces.jsonl
+    rotation:
+      max_megabytes: 20
+      max_backups: 5
+      max_days: 7
+service:
+  telemetry:
+    metrics:
+      level: none
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file]
