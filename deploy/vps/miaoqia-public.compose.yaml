@@ -90,7 +90,13 @@ services:
     command: ["--config=/etc/otel/collector.yaml"]
     user: "0:0"
     volumes:
-      - ./otel/collector.yaml:/etc/otel/collector.yaml:ro
+      - type: bind
+        source: ./otel/collector.yaml
+        target: /etc/otel/collector.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+          selinux: Z
       - ./data/otel:/data:Z
 
 networks:

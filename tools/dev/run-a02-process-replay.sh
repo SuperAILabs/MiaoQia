@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run the A02 L1 gate with one real process for each required role.
-# Shared PostgreSQL/Kafka are prerequisites; Docker is never started.
+# Use dedicated PostgreSQL and Kafka instances: this resets replay state, the
+# public.domain topic and consumer groups. This script never starts Docker.
 set -euo pipefail
 
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
@@ -20,11 +21,9 @@ done
 
 export MIAOQIA_ENV="${MIAOQIA_ENV:-development}"
 export MIAOQIA_TEST_PG="${MIAOQIA_TEST_PG:-$("$root_dir/tools/dev/resolve-test-pg.sh")}"
-# 与 run-local-acceptance 保持一致：开发机默认复用本机共享 Kafka；VPS 隧道或 CI
-# 通过 MIAOQIA_KAFKA_BROKERS / MIAOQIA_TEST_KAFKA 显式覆盖。脚本本身不启动 Docker。
 export MIAOQIA_KAFKA_BROKERS="${MIAOQIA_KAFKA_BROKERS:-${MIAOQIA_TEST_KAFKA:-localhost:9092}}"
 python3 "$root_dir/tools/dev/check_tcp.py" --label Kafka --endpoints "$MIAOQIA_KAFKA_BROKERS" || {
-  echo "请先连接共享 Kafka，或通过 MIAOQIA_KAFKA_BROKERS/MIAOQIA_TEST_KAFKA 显式指定地址；进程回放不会自动启动 Docker。" >&2
+  echo "请通过 MIAOQIA_KAFKA_BROKERS 或 MIAOQIA_TEST_KAFKA 指定独占测试 Kafka；进程回放不会自动启动 Docker。" >&2
   exit 1
 }
 

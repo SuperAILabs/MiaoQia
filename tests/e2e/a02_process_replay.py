@@ -1,7 +1,7 @@
 """A02 L1 process-role replay.
 
-This gate uses the real platform/data/acquisition processes and the shared
-PostgreSQL and Kafka services. data-api runs its mTLS listener with source-rights
+This gate uses the real platform/data/acquisition processes with dedicated
+test PostgreSQL and Kafka services. data-api runs its mTLS listener with source-rights
 admission through acq-admin; detection reads as a tenant-scoped monitoring
 service and learning as a simulation service. It creates only an isolated
 tenant, its source-rights entries and a synthetic channel binding in the local
@@ -31,8 +31,7 @@ from data_plane import hostport  # noqa: E402
 WORK = ROOT / "deploy/local/.data/a02-process-replay"
 TENANT = "tnt_01M6DQA02XTRA0000000000001"
 CELL = "cell-01"
-# Event-driven steps wait long enough for a remote shared broker (consumer
-# group joins over the VPS tunnel can take minutes); local runs finish early.
+# Event-driven steps allow time for consumer group joins and asynchronous processing.
 EVENT_WAIT = 300
 DM, BD, APPROVER, VISITOR, OTHER = "a02-dm", "a02-bd", "a02-approver", "a02-visitor", "a02-other"
 
@@ -221,7 +220,7 @@ def republish_fact(env: dict[str, str], fact_id: str) -> None:
     # The outbox relay remains the authoritative path and marks this row
     # published. Publish the same immutable envelope once directly as a
     # bounded replay nudge so a pre-existing Kafka group offset cannot hide the
-    # live consumer assertion in a shared development broker.
+    # live consumer assertion when the dedicated broker is reused.
     from confluent_kafka import Producer
     producer = Producer({"bootstrap.servers": env["MIAOQIA_KAFKA_BROKERS"]})
     producer.produce("public.domain", key=envelope["subject"], value=json.dumps(envelope).encode())
@@ -374,7 +373,7 @@ def main() -> int:
     # The replay is intentionally bound to a configured broker; it must not
     # silently fall back to a local Docker broker.
     if not env.get("MIAOQIA_KAFKA_BROKERS"):
-        raise RuntimeError("未配置 MIAOQIA_KAFKA_BROKERS；请提供共享 Kafka 地址")
+        raise RuntimeError("未配置 MIAOQIA_KAFKA_BROKERS；请提供独占测试 Kafka 地址")
 
     topology = data_plane.Topology(WORK)
     platform_env = {role: dict(env, **topology.platform(role)) for role in ("api", "consumer", "scheduler", "outbox-relay")}
