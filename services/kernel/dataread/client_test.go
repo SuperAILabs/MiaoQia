@@ -6,8 +6,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"sync/atomic"
 	"testing"
 
+	dataapi "github.com/superailabs/miaoqia/services/contracts/apis/data-api"
+	"github.com/superailabs/miaoqia/services/kernel/binding"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 )
 
@@ -27,7 +31,7 @@ func TestClientPostsClosedReadAndCarriesContext(t *testing.T) {
 			t.Fatalf("unexpected body: %#v", body)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"fact":{"id":"pp_abc"}}`))
+		_, _ = w.Write([]byte(`{"basis":{"view":"current","recorded_cutoff":null},"fact":{"id":"pp_abc","version":1}}`))
 	}))
 	defer server.Close()
 	client, err := NewWithHTTPClient(server.URL, &http.Client{Transport: transportWithContext{base: http.DefaultTransport}})
@@ -59,8 +63,9 @@ func (t transportWithContext) RoundTrip(r *http.Request) (*http.Response, error)
 func TestClientMapsServerErrorsAndRejectsOversizedResponses(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/internal/v1/data/get-fact" {
+			w.Header().Set("Content-Type", "application/problem+json")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte(`{"code":"source_unavailable"}`))
+			_, _ = w.Write([]byte(`{"title":"unavailable","status":503,"code":"source_unavailable"}`))
 			return
 		}
 		_, _ = w.Write(make([]byte, maxResponseBytes+1))
@@ -85,7 +90,27 @@ func TestClientMapsServerErrorsAndRejectsOversizedResponses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := oversizeClient.call(ctx, "Oversize", "/internal/v1/data/oversize", map[string]any{}, &map[string]any{}); err == nil {
+	if err := oversizeClient.GetFact(ctx, "pp_abc", Basis{View: "current"}, nil, &map[string]any{}); err == nil {
 		t.Fatal("oversized response accepted")
+	}
+}
+
+func TestGeneratedServerOverrideCannotForwardContext(t *testing.T) {
+	var leaked atomic.Bool
+	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		leaked.Store(true)
+	}))
+	defer sink.Close()
+	client, err := NewWithHTTPClient("http://localhost:1", &http.Client{Transport: binding.Transport{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := url.Parse(sink.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := dataapi.WithServerURL(readContext(), other)
+	if _, err := client.ReadFact(ctx, factRequest("ntc_fixture", Basis{View: "current"}, nil)); err == nil || leaked.Load() {
+		t.Fatal("generated server override accepted")
 	}
 }

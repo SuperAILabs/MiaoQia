@@ -6,23 +6,28 @@ package relay
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 // Source 是一个子系统数据库（以 outbox_relay 账号连接）。
 type Source struct {
-	Name string // 子系统名，用于日志与指标
-	DSN  string
+	Name     string // 子系统名，用于日志与指标
+	DSN      string
+	Validate func(topic string, envelope []byte) error
 }
 
 // Relay 发布若干数据库的发件箱。
 type Relay struct {
-	Sources   []Source
-	Producer  *kgo.Client
+	Sources  []Source
+	Producer interface {
+		ProduceSync(context.Context, ...*kgo.Record) kgo.ProduceResults
+	}
 	Batch     int           // 每批最多发布条数，默认 500
 	Poll      time.Duration // 无通知时的轮询间隔，默认 1s
 	Log       *slog.Logger
@@ -93,7 +98,7 @@ func (r *Relay) serve(ctx context.Context, s Source) error {
 		return err
 	}
 	for {
-		n, err := r.publishBatch(ctx, conn)
+		n, err := r.publishBatch(ctx, conn, s)
 		if err != nil {
 			return err
 		}
@@ -112,7 +117,12 @@ func (r *Relay) serve(ctx context.Context, s Source) error {
 	}
 }
 
-func (r *Relay) publishBatch(ctx context.Context, conn *pgx.Conn) (int, error) {
+type batchConnection interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func (r *Relay) publishBatch(ctx context.Context, conn batchConnection, source Source) (int, error) {
 	rows, err := conn.Query(ctx, `SELECT seq, event_id, topic, partition_key, envelope::text
 		FROM kernel_outbox WHERE published_at IS NULL ORDER BY seq LIMIT $1`, r.Batch)
 	if err != nil {
@@ -137,6 +147,13 @@ func (r *Relay) publishBatch(ctx context.Context, conn *pgx.Conn) (int, error) {
 	}
 	if len(recs) == 0 {
 		return 0, nil
+	}
+	if source.Validate != nil {
+		for index, record := range recs {
+			if err := source.Validate(record.Topic, record.Value); err != nil {
+				return 0, fmt.Errorf("发件箱记录验证失败：%s seq=%d: %w", source.Name, seqs[index], err)
+			}
+		}
 	}
 	// 同一分区键的记录按 seq 顺序进入同一分区；生产者开启幂等，失败时整批重试（至少一次）
 	if err := r.Producer.ProduceSync(ctx, recs...).FirstErr(); err != nil {

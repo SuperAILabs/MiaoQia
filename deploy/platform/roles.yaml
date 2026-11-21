@@ -18,6 +18,7 @@ roles:
     cell: cell-01
     subsystems: [identity, commerce, customer-context, detection, pursuit, channels, operations]
 
+  # 角色凭据和迁移见 public-search.md。
   public-search-api:
     subsystems: [search]
     data_scopes: {search: public}
@@ -28,6 +29,7 @@ roles:
     subsystems: [search]
     data_scopes: {search: public}
 
-# outbox-relay 读取全部子系统数据库的发件箱（含 Python 子系统），数据库清单取自子系统索引。
+# 中继数据库取自子系统索引。境内公共进程通过 sources 显式选择对应的公共子系统。
 outbox_relay:
   dsn_template: ${MIAOQIA_RELAY_DSN_TEMPLATE}   # 例如 postgres://outbox_relay:…@pg:5432/{db}
+  sources: ${MIAOQIA_RELAY_SOURCES}             # acquisition,evidence,domain-intelligence,entity-graph

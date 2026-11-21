@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,13 +18,17 @@ func TestFactsReadsAndValidatesBidResultUnits(t *testing.T) {
 		if r.URL.Path != "/internal/v1/data/bid-result-units" || r.Method != http.MethodPost {
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{map[string]any{
-			"key": "tendering.bid_result:pp_abc:bdr_1", "fact_type": "tendering.bid_result", "domain": "INF-PROC",
-			"subject": map[string]any{"id": "pp_abc", "version": 2, "part_id": "bdr_1"}, "event": "tendering.result.published.v1",
-			"fields": map[string]any{"winner": map[string]any{"name_raw": "示例公司"}}, "items": map[string]any{}, "item_domains": map[string]string{},
-			"item_refs": []any{}, "evidence": map[string]any{"fact.winner": map[string]any{"confidence": 0.99, "method": "rule", "suspect": false}},
-			"display": map[string]any{"title": "示例项目", "winner_name": "示例公司", "categories": []string{"pipe"}},
-		}}})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"basis":       map[string]any{"view": "current", "recorded_cutoff": nil},
+			"next_cursor": nil,
+			"items": []any{map[string]any{
+				"key": "tendering.bid_result:pp_abc:bdr_1", "fact_type": "tendering.bid_result", "domain": "INF-PROC",
+				"subject": map[string]any{"id": "pp_abc", "version": 2, "part_id": "bdr_1"}, "event": "tendering.result.published.v1",
+				"fields": map[string]any{"result_type": "awarded", "candidates": []any{}, "winner": map[string]any{"name_raw": "示例公司"}}, "items": map[string]any{}, "item_domains": map[string]string{},
+				"item_refs": []any{}, "evidence": map[string]any{"fact.winner": map[string]any{"confidence": 0.99, "method": "rule", "suspect": false}},
+				"display": map[string]any{"title": "示例项目", "winner_name": "示例公司", "lot_key": "1"},
+			}}})
 	}))
 	defer server.Close()
 	facts, err := NewFactsWithHTTPClient(server.URL, http.DefaultClient)
@@ -42,7 +47,8 @@ func TestFactsReadsAndValidatesBidResultUnits(t *testing.T) {
 
 func TestFactsRejectsMismatchedSubject(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"items":[{"key":"x","fact_type":"tendering.bid_result","domain":"INF-PROC","subject":{"id":"pp_other","version":1,"part_id":"bdr_1"},"fields":{},"items":{},"item_domains":{},"item_refs":[],"evidence":{},"display":{}}]}`))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"basis":{"view":"current","recorded_cutoff":null},"next_cursor":null,"items":[{"key":"x","fact_type":"tendering.bid_result","domain":"INF-PROC","event":"tendering.result.published.v1","subject":{"id":"pp_other","version":1,"part_id":"bdr_1"},"fields":{"result_type":"awarded","winner":{"name_raw":"测试"},"candidates":[]},"items":{},"item_domains":{},"item_refs":[],"evidence":{},"display":{"title":"","winner_name":"测试","lot_key":"1"}}]}`))
 	}))
 	defer server.Close()
 	facts, err := NewFactsWithHTTPClient(server.URL, http.DefaultClient)
@@ -61,8 +67,9 @@ func TestFactsMapsForbiddenToReadDeniedAndKeepsUnavailableRetryable(t *testing.T
 		denied bool
 	}{{http.StatusForbidden, true}, {http.StatusServiceUnavailable, false}} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/problem+json")
 			w.WriteHeader(tc.status)
-			_, _ = w.Write([]byte(`{"title":"request rejected"}`))
+			_, _ = fmt.Fprintf(w, `{"title":"request rejected","status":%d}`, tc.status)
 		}))
 		facts, err := NewFactsWithHTTPClient(server.URL, http.DefaultClient)
 		if err != nil {

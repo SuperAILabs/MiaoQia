@@ -78,6 +78,7 @@ func (f *fakeDataAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	rc, err := reqctx.Decode(r.Header.Get(reqctx.Header))
 	if err != nil || rc.Principal.Kind != "user" || rc.Tenant == "" || rc.Purpose != "interactive" {
+		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(403)
 		_, _ = w.Write([]byte(`{"title":"request rejected","status":403}`))
 		return
@@ -88,6 +89,7 @@ func (f *fakeDataAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.contexts = append(f.contexts, rc)
 	id := body["fact_id"].(string)
 	if f.deny[id] == rc.Tenant {
+		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(403)
 		_, _ = w.Write([]byte(`{"title":"request rejected","status":403}`))
 		return
