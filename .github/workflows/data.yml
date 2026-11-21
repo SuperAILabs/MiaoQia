@@ -95,6 +95,13 @@ jobs:
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
     env:
       MIAOQIA_TEST_PG: postgres://postgres:postgres@localhost:5432/postgres
+      MIAOQIA_TEST_FROZEN_S3_ENDPOINT: http://127.0.0.1:8333
+      AWS_ACCESS_KEY_ID: fixture
+      AWS_SECRET_ACCESS_KEY: fixture
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: /dev/null
+      AWS_SHARED_CREDENTIALS_FILE: /dev/null
     steps:
       - uses: actions/checkout@v4
 
@@ -102,7 +109,23 @@ jobs:
         with:
           version: "0.11.32"
 
-      - name: 数据平面管线测试（evidence 快照与解析修订、domain-intelligence 事实版本与 A02 结果视图；真实 PostgreSQL）
+      - name: 启动临时 S3（冻结批次恢复与证据回放）
+        run: |
+          docker run -d --rm --name data-frozen-s3 -p 127.0.0.1:8333:8333 \
+            -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY --entrypoint weed chrislusf/seaweedfs:4.54 \
+            mini -ip=127.0.0.1 -ip.bind=0.0.0.0 -dir=/tmp/mq-data -s3.port=8333 \
+            -admin.ui=false -master.telemetry=false -master.volumeSizeLimitMB=64
+          for attempt in $(seq 1 30); do
+            if curl -fs --max-time 2 --aws-sigv4 "aws:amz:$AWS_DEFAULT_REGION:s3" \
+              --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" "$MIAOQIA_TEST_FROZEN_S3_ENDPOINT/" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Disposable SeaweedFS S3 endpoint did not become ready" >&2
+          exit 1
+
+      - name: 数据平面管线测试（真实 PostgreSQL 与 S3）
         working-directory: data
         run: uv run --locked --all-packages --group dev pytest -q subsystems
 

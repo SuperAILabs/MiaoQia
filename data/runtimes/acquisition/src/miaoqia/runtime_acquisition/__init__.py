@@ -5,8 +5,12 @@ from miaoqia.kernel import runtime
 
 def modules() -> list[runtime.Module]:
     from miaoqia.acquisition import module as acquisition_module
+    from .bindings import operator_callable
 
-    return [acquisition_module()]
+    def browser():
+        return operator_callable("MIAOQIA_ACQUISITION_BROWSER_RENDERER")()
+
+    return [acquisition_module(browser_factory=browser)]
 
 
 def main() -> None:
