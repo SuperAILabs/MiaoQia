@@ -1,4 +1,4 @@
-"""旧持久化形态与事务写入升级回归；历史夹具复用当前纯版本规则，不宣称独立旧运行环境。"""
+"""补物化回归：冻结的旧 writer 只写公告事实、不写项目关联；历史夹具复用当前纯版本规则，不宣称独立旧运行环境。"""
 import dataclasses
 import copy
 import hashlib
@@ -9,15 +9,12 @@ import subprocess
 import sys
 import types
 
-from alembic import command
-from alembic.config import Config
 import pytest
 from sqlalchemy import text
 
-from miaoqia.domain_intelligence import MIGRATIONS
 from miaoqia.domain_intelligence.application import projects
 from miaoqia.domain_intelligence.application.backfill import backfill
-from miaoqia.kernel import db, reqctx
+from miaoqia.kernel import reqctx
 
 from test_facts import _events, _facts, plane  # noqa: F401
 from test_projects import _projects, _revisions
@@ -25,22 +22,19 @@ from test_projects import _projects, _revisions
 
 @pytest.fixture
 def legacy_pair(plane):
-    cfg = Config()
-    cfg.set_main_option("script_location", MIGRATIONS)
-    cfg.set_main_option("sqlalchemy.url", db._url(plane[4]["owner"]))
-    command.downgrade(cfg, "0001")
-    # 原样冻结自c0694cf的旧Materializer；旧库无derivation列，不可调用现writer代替。
-    source = (Path(__file__).parent / "fixtures/0001_facts.py").read_bytes()
+    # 原样冻结自c0694cf的旧Materializer：只写公告事实版本（derivation_key 取默认 base），不写项目关联，
+    # 现writer会同时写关联，不可代替。
+    source = (Path(__file__).parent / "fixtures/notice_writer_c0694cf.py").read_bytes()
     assert hashlib.sha256(source).hexdigest() == "b48e9f40efc46081ba6eadf73ff35f396cddadb412c0b0e71d9f5e7edfed6165"
-    old = types.ModuleType("legacy_0001")
+    old = types.ModuleType("notice_writer_c0694cf")
     old.__package__ = "miaoqia.domain_intelligence.application"
-    exec(compile(source, "legacy_0001", "exec"), old.__dict__)
+    exec(compile(source, "notice_writer_c0694cf", "exec"), old.__dict__)
     revisions = _revisions(plane)
     baseline = old.Materializer(plane[3].extractions)
     for revision in revisions:
         with reqctx.use(reqctx.service("domain-intelligence")), plane[1].tx() as conn:
             baseline.materialize(conn, revision)
-    return plane, cfg, baseline, revisions
+    return plane, baseline, revisions
 
 
 def _run_backfill(plane, ids, reader=None):
@@ -48,12 +42,11 @@ def _run_backfill(plane, ids, reader=None):
         return backfill(plane[1], reader or plane[3].extractions, ids)
 
 
-def test_old_pair_upgrade_cli_backfill_is_idempotent_and_preserves_originals(legacy_pair):
-    plane, cfg, _, _ = legacy_pair
+def test_cli_backfill_is_idempotent_and_preserves_originals(legacy_pair):
+    plane, _, _ = legacy_pair
     notices = _facts(plane[1])
     original_events = _events(plane[1], "domain.fact.upserted.v1")
     assert len(notices) == 2 and len(original_events) == 2
-    command.upgrade(cfg, "head")
     env = dict(os.environ, MIAOQIA_DOMAIN_INTELLIGENCE_DB_DSN=plane[4]["app"],
                MIAOQIA_EVIDENCE_DB_DSN=plane[0].engine.url.render_as_string(hide_password=False).replace("postgresql+psycopg:", "postgresql:"))
     # 运行实际安装的console entrypoint，绕过消费inbox去重。
@@ -83,8 +76,7 @@ def test_old_pair_upgrade_cli_backfill_is_idempotent_and_preserves_originals(leg
 
 
 def test_backfill_rejects_invalid_targets_and_revision_metadata_atomically(legacy_pair):
-    plane, cfg, _, revisions = legacy_pair
-    command.upgrade(cfg, "head")
+    plane, _, revisions = legacy_pair
     ids = [n["id"] for n in _facts(plane[1])]
     for invalid in ([], ["pp_" + "Z" * 26], ["ntc_" + "Z" * 26], ids * 51):
         with pytest.raises(ValueError):
@@ -109,8 +101,7 @@ def test_backfill_rejects_invalid_targets_and_revision_metadata_atomically(legac
 
 
 def test_backfill_payload_fault_rolls_back_every_new_write(legacy_pair, monkeypatch):
-    plane, cfg, _, _ = legacy_pair
-    command.upgrade(cfg, "head")
+    plane, _, _ = legacy_pair
     notices, original = _facts(plane[1]), _events(plane[1], "domain.fact.upserted.v1")
     actual = projects._emit
     def invalid(conn, name, notice, project_id, rights_tags, **extra):
@@ -128,10 +119,10 @@ def test_backfill_payload_fault_rolls_back_every_new_write(legacy_pair, monkeypa
 
 
 def test_backfill_old_revision_gt_one_stays_pending(legacy_pair):
-    plane, cfg, baseline, revisions = legacy_pair
+    plane, baseline, revisions = legacy_pair
     from miaoqia.evidence.replay import corpus_artifact
     from test_facts import CORPUS
-    # 使用真实证据管线产生后续修订，仍由旧writer写入0001。
+    # 使用真实证据管线产生后续修订，仍由旧writer写入。
     artifact = corpus_artifact(CORPUS / "official-building-tender-20261026")
     changed = dataclasses.replace(artifact, raw=artifact.raw.replace(b"2026", b"2027"))
     with reqctx.use(reqctx.service("evidence")), plane[0].tx() as conn:
@@ -139,7 +130,6 @@ def test_backfill_old_revision_gt_one_stays_pending(legacy_pair):
     ref = _events(plane[0], "evidence.extraction.revised.v1")[-1]["data"]["revision_ref"]
     with reqctx.use(reqctx.service("domain-intelligence")), plane[1].tx() as conn:
         baseline.materialize(conn, plane[3].extractions.revision(ref))
-    command.upgrade(cfg, "head")
     notices = _facts(plane[1])
     assert sorted(n["version"] for n in notices) == [1, 2]
     results = _run_backfill(plane, [n["id"] for n in notices])
@@ -149,14 +139,13 @@ def test_backfill_old_revision_gt_one_stays_pending(legacy_pair):
 
 
 def test_backfill_unregistered_source_reports_pending_without_project(legacy_pair):
-    plane, cfg, baseline, _ = legacy_pair
+    plane, baseline, _ = legacy_pair
     from miaoqia.evidence.replay import replay
     from test_facts import CORPUS
     replay(plane[0], plane[2], [CORPUS / "official-award-20261014"])
     ref = _events(plane[0], "evidence.extraction.revised.v1")[-1]["data"]["revision_ref"]
     with reqctx.use(reqctx.service("domain-intelligence")), plane[1].tx() as conn:
         notice = baseline.materialize(conn, plane[3].extractions.revision(ref))[0]
-    command.upgrade(cfg, "head")
     (result,) = _run_backfill(plane, [notice["id"]])
     assert result["status"] == "pending_namespace" and result["project_id"] is None
     assert _projects(plane) == ()

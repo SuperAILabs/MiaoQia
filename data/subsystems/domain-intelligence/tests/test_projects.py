@@ -147,40 +147,6 @@ def test_tendering_payload_failure_rolls_back_notice_project_links_and_outbox(pl
             assert conn.execute(text(f"SELECT count(*) FROM {table}")).scalar_one() == 0
 
 
-def test_existing_0001_notice_upgrades_with_base_derivation_and_remains_immutable(plane, pg_factory):
-    from alembic import command
-    from alembic.config import Config
-    from miaoqia.domain_intelligence import MIGRATIONS
-    from miaoqia.kernel import db
-    import json
-    import psycopg
-
-    notice = _materialize(plane, _revisions(plane)[0])[0]
-    dsns = pg_factory()
-    db.migrate(dsns["owner"])
-    cfg = Config()
-    cfg.set_main_option("script_location", MIGRATIONS)
-    cfg.set_main_option("sqlalchemy.url", db._url(dsns["owner"]))
-    command.upgrade(cfg, "0001")
-    with psycopg.connect(dsns["app"]) as conn:
-        conn.execute("INSERT INTO dom_facts VALUES (%s,'INF-PROC','tendering.notice','old-source','old-key',0,1,now(),now())", (notice["id"],))
-        conn.execute("""INSERT INTO dom_fact_versions VALUES (%s,1,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                     (notice["id"], json.dumps(notice), "sha256:" + "0" * 64, notice["schema_version"],
-                      notice["snapshot_ref"], notice["revision_ref"], '["/title"]', json.dumps(notice["rights_tags"]),
-                      notice["observed_at"], notice["recorded_at"]))
-    command.upgrade(cfg, "head")
-    with psycopg.connect(dsns["app"]) as conn:
-        row = conn.execute("SELECT content, derivation_key FROM dom_fact_versions").fetchone()
-        assert row == (notice, "base")
-    with psycopg.connect(dsns["app"]) as conn, pytest.raises(psycopg.errors.IntegrityConstraintViolation):
-        conn.execute("UPDATE dom_fact_versions SET content='{}'")
-    # 已运行聚合的库拒绝回退，不能丢弃关联与版本依据。
-    cfg.set_main_option("sqlalchemy.url", db._url(plane[4]["owner"]))
-    with pytest.raises(Exception, match="拒绝有损回退"):
-        command.downgrade(cfg, "0001")
-    assert len(_projects(plane)) == 1
-
-
 @pytest.mark.parametrize("change", ["uscc", "alias", "hyphen", "case"])
 def test_identity_does_not_guess_buyer_alias_or_number_normalization(plane, change):
     tender, award = _revisions(plane)

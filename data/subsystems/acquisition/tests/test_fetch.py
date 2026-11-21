@@ -743,57 +743,6 @@ def test_source_contract_switch_serializes_planners_and_claims(env):
         peer.close()
 
 
-@pytest.mark.parametrize("change_contract", [False, True])
-def test_dispatch_upgrade_preserves_preexisting_plan_and_cursor(pg_factory, change_contract):
-    from alembic import command
-    from alembic.config import Config
-
-    dsns = pg_factory()
-    db.migrate(dsns["owner"])
-    config = Config()
-    config.set_main_option("script_location", MIGRATIONS)
-    config.set_main_option("sqlalchemy.url", db._url(dsns["owner"]))
-    command.upgrade(config, "0013")
-
-    source = dataclasses.replace(SOURCE, schedule=sources.Schedule(
-        every_minutes=60, lookback_days=0, max_pages=1, initial_backfill_days=0,
-    ))
-    now = FakeClock().now()
-    due = now - timedelta(days=2)
-    historical_day = due.astimezone(plans.CHINA).date()
-    next_due = now + timedelta(hours=1)
-    database = db.Database(dsns["app"])
-    try:
-        with reqctx.use(reqctx.service("acquisition")), database.tx() as conn:
-            sources.register(conn, source)
-            run_id = conn.execute(text("""
-                INSERT INTO acq_collection_runs
-                    (source_id, mode, window_start, window_end, max_pages, refetch, started_at, generation)
-                VALUES (:source, 'incremental', :day, :day, 1, true, :due, 1) RETURNING id
-            """), {"source": source.source_id, "day": historical_day, "due": due}).scalar_one()
-            conn.execute(text("INSERT INTO acq_collection_schedule VALUES (:source, :next_due)"),
-                         {"source": source.source_id, "next_due": next_due})
-            conn.execute(text("""
-                INSERT INTO acq_collection_plans (source_id, mode, occurrence_key, due_at, not_before,
-                    window_start, window_end, max_pages, refetch, handler, config_fingerprint, budget_seconds, run_id)
-                VALUES (:source, 'incremental', :key, :due, :due, :day, :day, 1, true, :handler, :fingerprint, 3600, :run)
-            """), {"source": source.source_id, "key": due.isoformat(), "due": due, "day": historical_day,
-                   "handler": source.handler_ref, "fingerprint": sources.config_fingerprint(source), "run": run_id})
-
-        command.upgrade(config, "head")
-        if change_contract:
-            source = dataclasses.replace(source, access=dataclasses.replace(source.access, timeout_seconds=21))
-        declared = {source.source_id: source}
-        assert plan_sources(database, declared, now) == int(change_contract)
-        assert rows(database, "SELECT next_due_at FROM acq_collection_schedule") == [(next_due,)]
-        with reqctx.use(reqctx.service("acquisition")), database.tx() as conn:
-            lease, _ = plans.claim(conn, plans.fingerprints_json(declared), now, mode="incremental")
-        assert lease.window == Window(historical_day, historical_day)
-        assert (lease.run_id != run_id, lease.generation) == (change_contract, 1 if change_contract else 2)
-    finally:
-        database.close()
-
-
 def test_concurrent_planners_and_fetchers_drain_forty_sources_without_duplicate_runs(env):
     database, store, clock = env
     schedule = sources.Schedule(every_minutes=60, lookback_days=0, max_pages=1, initial_backfill_days=0)

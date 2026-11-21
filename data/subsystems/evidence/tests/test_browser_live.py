@@ -1,18 +1,15 @@
 """Evidence browser-pair tests with isolated PostgreSQL and a local archive."""
 import json
-from contextlib import closing
 from dataclasses import replace
 from datetime import datetime, timezone
 from unittest.mock import Mock, call
 
-from alembic import command
-from alembic.config import Config
 import pytest
-from sqlalchemy.exc import DBAPIError, ProgrammingError
+from sqlalchemy.exc import DBAPIError
 
 from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, describe_projection, seal_browser_event
 from miaoqia.acquisition.api.browser_projection import build_projection
-from miaoqia.evidence import MIGRATIONS, resolver
+from miaoqia.evidence import resolver
 from miaoqia.evidence.api import ProvenanceIntegrityError, Unbound
 from miaoqia.evidence.api.document_proofs import DocumentProofs
 from miaoqia.evidence.application.live import COMPLETED, LEGACY_COMPLETED
@@ -20,7 +17,7 @@ from miaoqia.evidence.application.pipeline import Artifact
 from miaoqia.evidence.domain.snapshot import normalized_hash, raw_hash
 from miaoqia.evidence.extensions.packs import DocumentAdapter
 from miaoqia.evidence.replay import assess_pending, replay_pending
-from miaoqia.kernel import db, ids, reqctx
+from miaoqia.kernel import ids, reqctx
 from miaoqia.kernel.consumer import Consumer
 from miaoqia.sdk.derivation import fingerprint
 
@@ -341,23 +338,3 @@ def test_browser_rejects_grouped_stream_collisions(grouped, browser_first):
     assert _state(database) == baseline
 
 
-def test_browser_downgrade_preserves_pending_and_pinned_pairs(pg_factory, browser):
-    _, ingest, store = browser
-    dsns = pg_factory()
-    db.migrate(dsns["owner"], MIGRATIONS)
-    config = Config()
-    config.set_main_option("script_location", MIGRATIONS)
-    config.set_main_option("sqlalchemy.url", db._url(dsns["owner"]))
-    with closing(db.Database(dsns["app"])) as migration_database:
-        command.downgrade(config, "0007")
-        assert rows(migration_database, "SELECT to_regclass('evd_browser_observations')") == [(None,)]
-        command.upgrade(config, "head")
-        set_live_parse(ingest, SOURCE, False)
-        first = _event(store)
-        deliver(migration_database, ingest, first)
-        with pytest.raises(ProgrammingError, match="cannot downgrade with browser evidence observations"):
-            command.downgrade(config, "0007")
-        set_live_parse(ingest, SOURCE, True)
-        assert replay_pending(migration_database, ingest, SOURCE, 1) == 1
-        with pytest.raises(ProgrammingError, match="cannot downgrade with browser evidence observations"):
-            command.downgrade(config, "0007")

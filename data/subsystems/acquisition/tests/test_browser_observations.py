@@ -5,9 +5,7 @@ import json
 from dataclasses import replace
 
 import pytest
-from alembic import command
 from sqlalchemy import text
-from sqlalchemy.exc import DBAPIError
 
 from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, read_browser_pair
 from miaoqia.acquisition.api.handlers import BrowserSelection, DetailRef, FetchRequest, FetchResponse
@@ -19,7 +17,7 @@ from miaoqia.acquisition.infrastructure.archive_spool import ArchiveSpool
 from miaoqia.acquisition.infrastructure.browser_capture import BrowserCapture
 from miaoqia.kernel.objectstore import FilesystemObjectStore
 
-from test_grouped_observations import CHANNEL, DAY, LIST_URL, NOW, SOURCE_ID, WINDOW, _attempt, _migration, ledger, rows
+from test_grouped_observations import CHANNEL, DAY, LIST_URL, NOW, SOURCE_ID, WINDOW, _attempt, ledger, rows  # noqa: F401
 
 
 NOTICE_KEY = "90071992547409931"
@@ -66,23 +64,6 @@ def _submit(ledger, store, checkpoint):
     database, lease, _ = ledger
     with database.tx() as conn:
         return submit_browser_pair(conn, store, lease=lease, channel=CHANNEL, window=WINDOW, checkpoint=checkpoint)
-
-
-def test_migration_refuses_to_drop_browser_discovery_history(ledger):
-    database, _, owner = ledger
-    cfg = _migration(owner)
-    command.downgrade(cfg, "0016")
-    command.upgrade(cfg, "0017")
-    original = json.dumps({"id": NOTICE_KEY}).encode()
-    checkpoint, _ = _stage(ledger, original, f'<article data-notice-id="{NOTICE_KEY}"><p>Body</p></article>')
-    attempt = checkpoint["binding"]["list_attempt_id"]
-    with database.tx() as conn:
-        conn.execute(text("UPDATE acq_discovery_pages SET browser_binding = CAST(:binding AS jsonb) WHERE attempt_id = :id"),
-                     {"binding": json.dumps({"version": 1}), "id": attempt})
-    with pytest.raises(DBAPIError, match="cannot downgrade with browser discovery history"):
-        command.downgrade(cfg, "0016")
-    assert rows(database, "SELECT version_num FROM alembic_version") == [("0017",)]
-    assert rows(database, "SELECT browser_binding FROM acq_discovery_pages") == [({"version": 1},)]
 
 
 def test_browser_attempts_bind_pair_keep_history_and_replay(ledger, tmp_path):

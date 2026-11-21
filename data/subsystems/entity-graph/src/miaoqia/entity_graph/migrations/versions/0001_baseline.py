@@ -1,4 +1,8 @@
-"""Append-only public organization identity and version authority."""
+"""Entity graph baseline schema: append-only public organization identity and version authority, and the durable
+organization search projection revisions with bounded source pagination.
+
+Revision ID: 0001
+"""
 from alembic import op
 
 revision = "0001"
@@ -55,11 +59,17 @@ CREATE TRIGGER ent_organization_versions_immutable BEFORE UPDATE OR DELETE OR TR
     FOR EACH STATEMENT EXECUTE FUNCTION ent_organizations_immutable();
 CREATE TRIGGER ent_organization_conflicts_immutable BEFORE UPDATE OR DELETE OR TRUNCATE ON ent_organization_conflicts
     FOR EACH STATEMENT EXECUTE FUNCTION ent_organizations_immutable();
+
+CREATE TABLE ent_search_projection (
+    org_id text PRIMARY KEY,
+    public_version bigint NOT NULL CHECK (public_version > 0),
+    revision bigint NOT NULL CHECK (revision > 0),
+    digest text NOT NULL CHECK (digest ~ '^sha256:[0-9a-f]{64}$'),
+    FOREIGN KEY (org_id, public_version) REFERENCES ent_organization_versions (org_id, version)
+);
+CREATE INDEX ent_organizations_source_order ON ent_organizations (source_id, org_id COLLATE "C");
 """)
 
 
 def downgrade():
-    op.execute("""
-DROP TABLE ent_organization_conflicts, ent_organization_versions, ent_organizations;
-DROP FUNCTION ent_organizations_immutable();
-""")
+    raise RuntimeError("organization identity history cannot be destructively downgraded")

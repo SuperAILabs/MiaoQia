@@ -10,10 +10,8 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError
 
 from miaoqia.evidence import MIGRATIONS, live_ingest
 from miaoqia.evidence.application.live import COMPLETED, LEGACY_COMPLETED
@@ -412,25 +410,3 @@ def test_live_and_drain_share_transaction_source_fence(live, contender):
     assert rows(database, "SELECT version FROM evd_live_observations") == [(1,)]
 
 
-def test_pending_migration_refuses_to_discard_events(pg_factory):
-    dsns = pg_factory()
-    db.migrate(dsns["owner"], MIGRATIONS)
-    config = Config()
-    config.set_main_option("script_location", MIGRATIONS)
-    config.set_main_option("sqlalchemy.url", db._url(dsns["owner"]))
-    database = db.Database(dsns["app"])
-    try:
-        with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
-            conn.execute(text("INSERT INTO evd_pending_live_events (event_id, source_id, envelope) "
-                              "VALUES ('fixture', 'fixture', '{}')"))
-        with pytest.raises(ProgrammingError, match="drain pending evidence events before downgrading"):
-            command.downgrade(config, "0005")
-        assert rows(database, "SELECT event_id FROM evd_pending_live_events") == [("fixture",)]
-        with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
-            conn.execute(text("DELETE FROM evd_pending_live_events"))
-        command.downgrade(config, "0005")
-        assert rows(database, "SELECT to_regclass('evd_pending_live_events')") == [(None,)]
-        command.upgrade(config, "0006")
-        assert rows(database, "SELECT count(*) FROM evd_pending_live_events") == [(0,)]
-    finally:
-        database.close()

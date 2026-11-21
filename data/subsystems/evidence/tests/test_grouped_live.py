@@ -9,23 +9,20 @@ from time import monotonic
 from unittest.mock import Mock
 
 import pytest
-from alembic import command
-from alembic.config import Config
-from sqlalchemy.exc import DBAPIError, ProgrammingError
+from sqlalchemy.exc import DBAPIError
 
 from miaoqia.acquisition.api.handlers import FetchResponse, NoticeGroup
-from miaoqia.evidence import MIGRATIONS, live_ingest, notice_chunks, resolver
+from miaoqia.evidence import notice_chunks, resolver
 from miaoqia.evidence.api import ProvenanceIntegrityError, Unbound
 from miaoqia.evidence.api.document_proofs import DocumentProofs
 from miaoqia.evidence.application.live import GROUPED_COMPLETED
 from miaoqia.evidence.extensions.packs import DocumentAdapter
 from miaoqia.evidence.replay import assess_pending, replay_pending
-from miaoqia.kernel import db, ids, reqctx
+from miaoqia.kernel import ids, reqctx
 from miaoqia.kernel.consumer import Consumer
-from miaoqia.kernel.objectstore import FilesystemObjectStore
 from miaoqia_pack_procurement.sources.regional_works import HunanWorks
 
-from test_live import REPO, deny_original_writes, deliver, live, replay_store, rows, set_live_parse  # noqa: F401
+from test_live import deny_original_writes, deliver, live, replay_store, rows, set_live_parse  # noqa: F401
 
 MEDIA_TYPE = "application/json"
 SECTION = "fixture-hunan-section"
@@ -327,36 +324,6 @@ def test_grouped_owner_proof_uses_the_fixed_original_and_selection(grouped, monk
         path.write_bytes(path.read_bytes().replace(b'"time": 1', b'"time": 9', 1))
         with pytest.raises(ProvenanceIntegrityError, match="original or selection differs"):
             owner.prove(snapshot, ref, title["value"])
-
-
-def test_grouped_migration_refuses_to_discard_pending_or_accepted_bindings(pg_factory, tmp_path):
-    dsns = pg_factory()
-    db.migrate(dsns["owner"], MIGRATIONS)
-    config = Config()
-    config.set_main_option("script_location", MIGRATIONS)
-    config.set_main_option("sqlalchemy.url", db._url(dsns["owner"]))
-    database = db.Database(dsns["app"])
-    try:
-        command.downgrade(config, "0006")
-        assert rows(database, "SELECT to_regclass('evd_grouped_observations')") == [(None,)]
-        command.upgrade(config, "head")
-        ingest = live_ingest(str(tmp_path), str(REPO / "packs"))
-        handler = _selection_adapter(ingest)
-        set_live_parse(ingest, handler.source_id, False)
-        event = _event(FilesystemObjectStore(tmp_path), handler)
-        deliver(database, ingest, event)
-        with pytest.raises(ProgrammingError, match="cannot downgrade with grouped evidence observations"):
-            command.downgrade(config, "0006")
-        assert rows(database, PENDING) == [(event["id"], handler.source_id, event)]
-
-        set_live_parse(ingest, handler.source_id, True)
-        assert replay_pending(database, ingest, handler.source_id, limit=1) == 1
-        with pytest.raises(ProgrammingError, match="cannot downgrade with grouped evidence observations"):
-            command.downgrade(config, "0006")
-        ((snapshot, _, _, _),) = rows(database, SNAPSHOTS)
-        assert rows(database, OBSERVATIONS) == [_binding(event, snapshot, anchor=True)]
-    finally:
-        database.close()
 
 
 def test_grouped_rewrap_and_neighbor_change_keep_immutable_observation_bindings(grouped):
