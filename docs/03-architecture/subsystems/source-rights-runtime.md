@@ -1,6 +1,6 @@
 # 当前来源权利与可信来源闭包
 
-acquisition 提供公开来源与冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 的事实/证据查询 listener 带 TLS/身份 admission、deadline 约束与五路 source-group collectors；真实网络进程验收尚未完成。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
+acquisition 提供公开来源与冻结语料的持久化当前权利端口，供 data-api runtime 注入；evidence/domain 的本地端口提供固定版本可信来源闭包。data-api 的事实/证据查询 listener 带 TLS/身份 admission、deadline 约束与来源闭包收集；固定公告的跨语言 mTLS 测试和 A02 隔离进程回放已通过，生产策略与部署分别验收。登记和激活读取许可都不启用来源采集，不证明领域 live。采集、模型使用、治理下线及真实来源审批不属于此只读契约。
 
 ## 权威与引用
 
@@ -8,7 +8,7 @@ acquisition 提供公开来源与冻结语料的持久化当前权利端口，�
 
 **冻结语料**：[SourceRightsPolicy](../../../contracts/schemas/acquisition/source-rights.schema.json) 定义不可变原始版本：entry_id/version、source_id、精确 tenant/cell scopes、purposes（interactive、monitoring、simulation 的非空唯一子集）、展示上限、有效期及再分发限制。空 scope 不表示公共通配；业务读取仅支持 fact_read / evidence_resolve。原始版本及当前版本的每项限制同时生效；多个输入取交集、最低展示等级、最早到期和再分发 AND。扩权不能追溯放宽已有原始引用。
 
-数据库 `acq_rights` 保存不可变版本、精确 source+完整 tags 组合到原版本的不可变别名、当前版本/撤销指针、持久 epoch 与追加审计。操作通过受限 SECURITY DEFINER 函数串行执行，指针、epoch、审计同事务；别名不可改绑。运行 reader 仅 SELECT，operator 仅 SELECT 和执行受限 command，owner 只迁移/角色配置；禁止把 owner/operator 凭据放进运行进程。
+数据库 `acq_rights` 保存不可变版本、精确 source+完整 tags 组合到原版本的不可变别名、当前版本/撤销指针、持久 epoch 与追加审计。操作通过受限 SECURITY DEFINER 函数串行执行，指针、epoch、审计同事务；别名不可改绑。公开源撤权与恢复同时发布 `acquisition.source.rights_changed.v1` 到事务发件箱。运行 reader 仅 SELECT，operator 仅 SELECT 和执行受限 command，owner 只迁移/角色配置；禁止把 owner/operator 凭据放进运行进程。
 
 允许登记的原始组合由 owner 迁移固定为下表；acquisition 的清单决定来源/tag 组合资格，参考内容哈希由 evidence 的固定清单独立核验：
 
@@ -18,7 +18,7 @@ acquisition 提供公开来源与冻结语料的持久化当前权利端口，�
 | official-qzygjy | public-official-review + corpus:official-building-award-20261026 | building-award@1 |
 | reference-proc-building-topic-v0-1 | review:building-topic-pair | building-topic-reference@1 |
 
-`public-official-review` 单独不足授权，其他 source、未知或多余 tag、前缀近似、空输入、撤销或缺当前指针都拒绝。旧事实、事件、快照和 tags 原样保留。调用方必须从已验证的持久化来源/固定依赖取得每个原始输入的 source 和完整 tags；不得从用户传参宣称来源，也不得把聚合 tags 并集猜成单个授权条目。受认证 data peer 对这种来源绑定负责；d0 不读取 data 私库核验任意来源断言，本地可信装配通过下述 owner 元数据端口提供；listener 的最终响应提交与 collector/查询结果装配仍待独立实现。
+`public-official-review` 单独不足授权，其他 source、未知或多余 tag、前缀近似、空输入、撤销或缺当前指针都拒绝。旧事实、事件、快照和 tags 原样保留。调用方必须从已验证的持久化来源/固定依赖取得每个原始输入的 source 和完整 tags；不得从用户传参宣称来源，也不得把聚合 tags 并集猜成单个授权条目。受认证 data peer 对这种来源绑定负责；d0 不读取 data 私库核验任意来源断言，本地可信装配通过下述 owner 元数据端口提供；data-api 在同一次固定选择中装配结果与来源闭包，并在发送前以原 receipt 确认。
 
 ## 固定版本可信来源闭包
 
@@ -44,7 +44,7 @@ owner 迁移 evidence0003/domain0004/acquisition0002，不激活任何政策。a
 
 ## 内部协议与确认边界
 
-acq-admin 内部 listener 使用标准库 ssl/http.server/http.client：TLS1.3、受信 CA、客户端证书、唯一 SPIFFE URI SAN、精确配置 peer。先校验传输 peer，才接受封闭的 Miaoqia-Context；无开发绕过、转发身份或静态 allow。data 不持 acquisition DSN，只导入 `acquisition.api.remote.RightsClient`。identity 继续使用现有平台内部 session 接口（HTTPS、禁止重定向），interactive 读取/确认/状态每次都核验当前 user、tenant、cell；monitoring/simulation 只接纳委托矩阵点名的服务主体（见下节）；service_account 拒绝。缺配置、依赖或策略失败关闭。
+acq-admin 内部 listener 使用标准库 ssl/http.server/http.client：TLS1.3、受信 CA、客户端证书、唯一 SPIFFE URI SAN、精确配置 peer。先校验传输 peer，才接受封闭的 Miaoqia-Context；无开发绕过、转发身份或静态 allow。data-api 通过 `acquisition.api.remote.RightsClient` 查询权利。独立搜索出口在装配时经 acquisition 自有 Registry reader 读取当前公开来源状态，使用低权限专用 DSN，查询用户仍经 data-api 验权。identity 继续使用现有平台内部 session 接口（HTTPS、禁止重定向），interactive 读取/确认/状态每次都核验当前 user、tenant、cell；monitoring/simulation 只接纳委托矩阵点名的服务主体（见下节）；service_account 拒绝。缺配置、依赖或策略失败关闭。
 
 | POST 路径 | 封闭请求 | 响应 |
 |---|---|---|
@@ -54,7 +54,7 @@ acq-admin 内部 listener 使用标准库 ssl/http.server/http.client：TLS1.3�
 
 receipt 是最长30秒的随机 nonce/epoch/到期/HMAC 完整性封套，绑定原 user/tenant/cell/purpose、operation、全部 source/tags。它不能单独授权：confirm 必须重新读取当前 identity、全部当前权利和权威数据库时间；epoch 变化、同 epoch 到期、主体/引用/用途变化均不通过。进程重启使旧 receipt 失效；没有跨请求正向许可缓存。receipt 可在原范围内重复确认，但每次都是新的当前授权计算，不能当作已授权 boolean 保存或转交给其他主体。
 
-每次判断在 acquisition 本地共享事务锁下读取当前状态，与 operator 撤销的独占锁排序；成功 confirm 的最终检查是授权线性化点。data 必须在响应发送前确认，不能跨单元持有数据库事务。最终远程确认后到数据发出仍有不可消除的间隔，已发出的披露不能撤回；d0 不宣称补齐 d1/d2 的响应提交集成。
+每次判断在 acquisition 本地共享事务锁下读取当前状态，与 operator 撤销的独占锁排序；成功 confirm 的最终检查是授权线性化点。data 必须在响应发送前确认，不能跨单元持有数据库事务。最终远程确认后到数据发出仍有不可消除的间隔，已发出的披露不能撤回；data-api 的事实、证据及搜索复核读取通过同一响应提交机制复核。
 
 明确范围/purpose/当前成员拒绝为403；无效 DTO 为400；认证握手失败没有业务响应；缺依赖/未装配/超时为503。通过请求级 admission 后，未知与无权组合均返回同形 allowed=false，不枚举 registry。无正文、SQL、下载 URL 或写 HTTP 接口。TLS 握手受独立 socket 超时及32个工作线程上限约束；验证对端后，HTTP 总期限从读取请求行和请求头前开始，覆盖正文、身份解析与响应。头/体/深度/并发/期限有界，错误不返回路径、DSN、证书或异常堆栈。status 仍执行相同 admission；数据库连通不等于领域 live。
 

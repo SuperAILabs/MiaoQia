@@ -1,0 +1,34 @@
+[Unit]
+Description=MiaoQia development public data role %i
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+DynamicUser=yes
+User=mqdp-%i
+WorkingDirectory=/opt/miaoqia-data-plane/current/src
+Environment=MIAOQIA_DEPLOY_DIR=/opt/miaoqia-data-plane/current/src/deploy
+Environment=MIAOQIA_PACKS_DIR=/opt/miaoqia-data-plane/current/src/packs
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 AWS_EC2_METADATA_DISABLED=true
+EnvironmentFile=/etc/miaoqia/data-plane/runtime/%i.env
+StateDirectory=miaoqia-dev-%i
+StateDirectoryMode=0700
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LimitCORE=0
+ExecStart=/opt/miaoqia-data-plane/current/bin/%i --role %i
+Restart=always
+RestartSec=15s
+TimeoutStopSec=90s
+
+[Install]
+WantedBy=multi-user.target

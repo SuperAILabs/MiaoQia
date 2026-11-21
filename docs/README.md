@@ -41,6 +41,7 @@ docs/
 │   ├── 12-capacity-plan.md
 │   ├── 13-contract-readiness.md
 │   ├── 14-web-application.md     Web 与 H5 专项设计
+│   ├── 15-data-plane-pilot.md    数据供应平面端到端设计
 │   └── subsystems/               18 个子系统的规格说明
 │
 ├── 04-decisions/                 架构决策记录（ADR）
@@ -57,7 +58,9 @@ docs/
 │   ├── 08-model-vendor-evaluation.md 模型供应商评测方案（C3/C7a）
 │   ├── 09-a02-end-to-end-acceptance.md A02 真实贯通验收线与缺口清单
 │   ├── 10-vps-public-services.md VPS 公共测试服务接入
-│   └── 11-d1b-anhui-pilot-sources.md D1b 试点来源启用验收（安徽）
+│   ├── 11-d1b-anhui-pilot-sources.md D1b 试点来源启用验收（安徽）
+│   ├── 12-public-source-probe.md 首批公共来源单栏探测记录
+│   └── 13-public-data-plane-audit.md 公共数据面接入、运行与实网数据审查
 ```
 
 ## 2. 阅读路径
@@ -67,6 +70,7 @@ docs/
 | 新成员 | `glossary` → `01-product/01` → `02-business/01` → `03-architecture/01` |
 | 产品与业务 | `01-product/*` → `02-business/*` → `05-delivery/02` |
 | 架构与研发 | `03-architecture/01` → `subsystems/README` → `04-decisions/*` → `03-architecture/09` → `05-delivery/03` |
+| 数据供应 | [数据架构](03-architecture/02-data-architecture.md) → [端到端设计](03-architecture/15-data-plane-pilot.md) → [质量与验收](05-delivery/02-quality-and-acceptance.md) |
 | 领域扩展 | `02-business/03`、`04` → `03-architecture/04` → 对应应用领域目录 |
 | 安全与合规 | `03-architecture/06` → `subsystems/governance.md` → `subsystems/identity.md` |
 

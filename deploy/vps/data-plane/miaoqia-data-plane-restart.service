@@ -1,0 +1,14 @@
+[Unit]
+Description=Restart existing MiaoQia public data-plane containers
+StartLimitIntervalSec=10min
+StartLimitBurst=4
+
+[Service]
+Type=oneshot
+TimeoutStartSec=45s
+Restart=on-failure
+RestartSec=15s
+ExecStart=/usr/bin/podman start --all --filter label=com.docker.compose.project=miaoqia-data-plane --filter should-start-on-boot=true
+
+[Install]
+WantedBy=default.target

@@ -8,12 +8,12 @@
 
 ### 1.1 来源治理
 
-- 候选来源唯一定义在 [source-inventory.yaml](../../packs/information_domains/procurement/source-inventory.yaml)：本地 Tender Intel 的40个入口（37个原型启用、3个未启用）已盘点；这些状态仅供参考，不代表妙洽已启用或获得商业使用权。
-- D1a 盘点核验（复现方法：用 YAML 解析该文件逐条统计字段与取值，并在仓库内检索引用方）：共40条，`source_id` 无重复；每条只有 `source_id`、`name`、`base_url`、`reference_access_mode`、`reference_enabled`、`readiness`、`priority`、`owner` 八个字段，不含处理器、驱动、选择器、凭证或调度配置；`base_url` 均为站点根地址（33个 https、7个 http，1个为 IP:端口镜像），无路径、查询参数或账号；原型状态只出现在 `reference_*` 字段（37个原型启用、3个未启用；39个 public、1个 authenticated），妙洽自身状态除安徽试点的三个 P0 条目外均为 `readiness: candidate`、`priority: pending_review`（试点条目见 [D1b 试点来源启用验收](11-d1b-anhui-pilot-sources.md)）；仓库内代码只有 acquisition 的来源声明加载读取该文件的 `readiness`（只允许 `capability_verified` 条目声明处理器），没有代码读取 `reference_enabled`。3组条目共用同一站点（四川、重庆政府采购网，陕西公共资源交易中心），按下一条在 D1b 登记共同平台标识。
+- [首批接入范围](06-stage-baseline.md#11-当前主线)按[来源清单](../../packs/information_domains/procurement/source-inventory.yaml)由妙洽逐源接入。Tender Intel 的历史启用状态仅用于来源参考。单源受阻时记录缺口，其余验收通过的来源继续供数。
+- D1a 目录含 40 个唯一 `source_id`。`base_url` 保存站点根地址。`reference_*` 保存原型的访问方式和启用状态。妙洽的 `readiness` 和 `readiness_gap` 记录当前验证结论，处理器、访问预算及调度单独在运行声明中配置。已有处理器的候选可逐源验证，运行时要求 `admission: active` 与 `readiness: capability_verified`。同站多入口在覆盖评估中按共同平台归并。[现行逐源验收](12-public-source-probe.md)
 - 冻结语料的来源权利策略（[acquisition 当前权利端口](../03-architecture/subsystems/source-rights-runtime.md)，`deploy/acquisition/source-rights-frozen.json`）只登记复核语料在指定租户/cell 下的用途、展示级别与期限，`source_id` 为语料来源而非本盘点条目，不构成任何具体来源的 D1b 启用。
 - 覆盖顺序：国家级政府采购/公共资源 → 省级 → 主要央企/国企 → 地市按交易量排序。40个入口不等于全国覆盖，政府采购、工程建设、国企自主采购分别验收。
 - 同站多入口和镜像登记共同平台标识，来源覆盖不按入口数重复计数；每个来源确认 P0/P1/P2、地区、公告类型、可访问历史、频率、责任角色、权利与更新时间。
-- 每个来源启用前验证列表、详情正文、分页、公告更正、附件下载与格式；仅首页窗口可见的入口不得承诺完整历史或全量覆盖。登录入口只有授权完成并通过接入验收后启用。
+- 每个来源启用的栏目须验证列表、分页、公告标识和详情正文。更正识别和附件下载按已验证能力纳入范围，记录关联或下载缺口。附件只从当前公告的正文容器或专用字段提取，验收覆盖有效路径的页面公共链接误收。仅首页窗口可见的入口须登记历史覆盖缺口。登录入口在授权及接入验收后启用。采集与解析按来源和公告类型分别验收，分别报告覆盖缺口与字段未知。
 - 初期来源均为公开信息、不对外二次商业发布，不做逐来源授权；每个来源登记来源跟踪（来源标识、采集时间、原始响应留存），每条事实可追溯到来源。特殊来源由法务个案处理。每日按省份/类型监控来源健康与采集量；中断时记录数据截至时间和覆盖缺口。
 
 ### 1.2 评估集

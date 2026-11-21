@@ -82,7 +82,7 @@ M0探针消费者先验证acquisition载荷，再核对来源、subject和前序
 
 **发布**：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`（载荷含快照、修订、领域包标识、质量状态）、`evidence.quality.flagged.v1`、`evidence.artifact.refetch_requested.v1`、`evidence.enrichment.completed.v1`（单个快照的增强完成）、`evidence.enricher.promoted.v1`（增强器新版本生效）。
 
-**公共实例消费**：`acquisition.fetch.completed.v1`、`acquisition.source.rights_changed.v1`（更新公共证据的可见性标签）。本节发布清单属于公共实例；租户文档的命令/事件契约和消费者随知识资产管线实现，不能套用公共主题。
+公共实例消费单公告 `acquisition.fetch.completed.v2`、分组成员 `v3` 以及浏览器配对观察 `v4`，兼容历史 `v1`。证据读取按当前来源权利确认展示等级。租户文档使用租户范围的命令、事件和消费者。[来源权利](source-rights-runtime.md)
 
 ## 7. 扩展点
 
@@ -123,6 +123,38 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 
 ## 12. 实现状况
 
+采集准入和自动解析分开配置。待验收字段质量的来源可先归档、核验原件和提供授权冻结批次。首批已有采集处理器的新增来源均显式声明解析准入，包括只发现列表的来源和需要登录授权的来源。新疆采购与西藏工程的旧观察保留在待解析队列，预验需要经过原站正文绑定。`documents.yaml` 中设为 `live_parse: false` 的来源由 evidence 将原件观察事件与消费收件箱在同一事务提交到待解析表，保留交付顺序与原件引用。暂存期间该来源不生成新的规范化快照或字段事实。未声明该选项的既有来源沿用实时解析。含待解析观察的 evidence 数据库拒绝降级到 `0005`。
+
+实时消费和待解析回放均读取采集已归档的原件，在校验引用及字节哈希后创建规范化对象和解析修订。线上 evidence 对 `raw/` 使用读取权限。直接投放的离线语料经验证后由投放进程写入原件并创建规范化对象。
+
+附件充当公告正文时，解析准入须覆盖对应来源、公告类型与实际文件结构。附件选择固定到公告观察和该版附件键，并核对来源原件及可验证的正文角色。字段证据须定位原文件的页、段落或表格单元，绑定附件长度、哈希和解析版本。缺件、格式不支持或证据不足的字段保持未知。仅含元数据的详情不能替代附件内容。排队回放按观察原序，保留未经解析的原件和缺口。
+
+采购解析器能从规范化文档开头辨认出属于当前公告的独立主标题时，以该标题判定公告类型和结果阶段，并将标题字段的证据定位到同一标题。首级标题只有“招标公告”或“采购公告”等已知类型标记时，由该标记确定路由，标题字段仍沿用后续居中标题行的拼接和引用规则。正文标签及正文引用的旧公告标题不得覆盖这些判定或替换标题证据。主标题难以辨认或文档采用既有非独立标题格式时，沿用原有回退规则。缺乏可确认的类型证据时保持未知。
+
+广材网 M2 的附件型与内嵌型样本均已完成授权冻结读回。附件型详情缺少内嵌正文，两份标称 XLS 的附件实际包含 Excel 导出的 HTML 表格，公告正文角色尚未核实。内嵌型样本从 `noticeName` 和 `context` 生成规范化文档。该样本缺少可确认公告类型的证据，类型和字段保持未知。详情 JSON 为公告观察的主原件，附件另存并绑定自己的字段出处。`live_parse` 保持 `false`。[M2 验收记录](../../05-delivery/12-public-source-probe.md#广材网-m2-招采商机复查)
+
+中国化学工程招标的详情适配优先使用原件中的公告专用标题节点。招标提取器以规范化首级公告标题定位完整标题，保留正文内括号中可直接定位的公告编号。列表标题只用于独立对照。该来源的自动解析按独立字段评估准入。[逐源验收](../../05-delivery/12-public-source-probe.md#中国化学工程招标复查)
+
+分组响应的支持与 `acquisition.fetch.completed.v3` 一起验收。原件是完整响应，适配器按观察固定的选择器只提取一条公告，重验公告键、日期和成员摘要，再生成该公告的规范化文档、字段证据和检索分块。证据绑定同时保留完整原件哈希和成员验证信息。冻结批次为分组项单立版本，测试服务经授权读取成员投影。完整组原件的校验与恢复由有相应权限的原件所有者执行。既有单公告原件、快照和冻结 v1 清单沿用原契约。
+
+数据负责人可在公共 evidence 环境对已排队、声明 `live_parse: false` 的来源执行只读预验。命令按入队顺序读取一批固定归档观察，使用正式管线的原件校验、适配器、规范化和字段证据校验。
+
+```sh
+mq-evidence-replay --packs packs --assess-pending-source "$source_id" --limit 8
+```
+
+为 `MIAOQIA_EVIDENCE_DB_DSN` 配置仅获 `evd_pending_live_events` 读取权限的 evidence 运维连接。VPS 发布包提供 `mq_evidence_assess_ro`。使用 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR` 只读打开现有归档，文件目录须已存在，S3 身份只授原件和浏览器投影的读取权限。[发布装配](../../../deploy/vps/data-plane/README.md#发布顺序)
+
+命令默认 8 条、最多 16 条。返回观察事件 ID、版本、原件及规范化哈希、解析器版本、质量状态、事实、证据及错误计数。报告只含诊断元数据。规范化成功时的 `field_evidence` 区分 `no_matching_extractor`、`no_valid_evidence` 和 `available`。只有质量校验通过的修订且其事实引用了已验证的证据，才报告 `available`。没有样本、任一条发生读取或解析失败、任一条缺少有效字段证据时退出码为 1。预验独立处理各条观察，待解析队列、快照、对象存储和发件箱无需写入。字段准确率仍用已授权的样本逐项核对，测试服务继续通过采集冻结批次获取材料。采购公告的独立字段验收须逐条核对公告类型、适用的结果阶段、完整标题及其证据位置，确认所引标题属于当前公告。列表标题可供独立对照。
+
+通过独立解析验收后，将该来源设为 `live_parse: true`，更新全部公共 `data-consumer` 副本，再用相同版本的领域包按来源回放。回放过程使用公共 evidence 的应用账号和共享对象存储配置，无需重抓原件。
+
+```sh
+mq-evidence-replay --packs packs --pending-source "$source_id" --limit 100
+```
+
+每次调用按提交顺序处理至上限，返回 JSON `processed`。重复调用直到返回 `0`。同源新观察排在积压之后，其他来源继续处理。每条观察独立提交，沿用实时入口的原件哈希、版本、权利标签和发件箱规则。处理失败时命令退出，该观察及后续观察保持待处理，修复后可从该条继续。
+
 公共实例的最小文档管线，代码位于 `data/subsystems/evidence/`：
 
 - `snapshotter`：同一来源对象（来源 + 来源对象键）的规范化内容与最新快照不同即为新快照，序号递增，内容回到历史取值同样是新快照；原件按内容寻址存 `raw/<sha256>`，规范化文档存 `normalized/<管线>/<版本>/<snp>.json`，增强运行结果、派生证据与参考数据分别存 `enrichment/run|derivation|reference/<名称>/<版本>/<sha256>.json`（[数据架构 3.2](../02-data-architecture.md#32-对象存储的组织)），对象不可覆盖；
@@ -130,13 +162,13 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 - `extraction_orchestrator`：按包清单加载解析器与领域校验（入口须位于包内），同一快照同一解析器版本只解析一次；证据或领域语义校验不通过、或任一事实被解析器标为 `suspect` 的修订记为 `suspect`（按最严格状态汇总），下游不物化；
 - `provenance`：文档证据引用入库，快照、修订与证据引用由触发器保持不可变；
 - 事件：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`，与数据同事务经发件箱发布；公共管线拒绝租户上下文；
-- 实际采集入库：配置 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR`（与 acquisition 共用对象存储）时，公共实例消费 `acquisition.fetch.completed.v1`，按内容哈希读回原件并核对后送入本管线；来源对象键为公告的公开地址 `source_url`，同一公告的补采成为同一来源对象的快照；原件按原样归档，不是 HTML 的原件由领域包的文档适配器（`provides.documents`）取出公告正文；
+- 实际采集入库：按稳定公告键及观察序号接收变化，读回并校验原件哈希。重复或低于已接受序号的事件不推进快照。采集方提供的存量关联证据与旧快照核对后，可沿用既有快照和证据链。历史 `v1` 在对应地址进入观察处理前兼容接收。对象存储由 `MIAOQIA_EVIDENCE_OBJECT_STORE_DIR` 配置，与 acquisition 指向同一份归档。领域包通过 `provides.documents` 声明正文适配器，分组响应使用 `selection_adapter`。浏览器来源声明 `browser_projection: true`、原件媒体类型和独立的 `live_parse`，从核验通过的惰性文档生成规范化内容。隔离环境已验证 Chromium 同次捕获的 `v4` 进入待解析队列，随后显式重放并从对象存储回读规范化快照。浏览器来源发布仍按采集准入执行。[交付收据](../../../deploy/vps/data-plane/browser/receipt-provider-ingest.jsonl)
 - 回放：`mq-evidence-replay` 投放冻结语料（核对原件哈希，权利标签追加 `corpus:<样本>`），不构成来源启用；
 - 读取：`api.Extractions`（解析修订）在数据单元内以本地绑定注入 domain-intelligence。
 
 文档证据 `api.EvidenceResolver` 的本地绑定为 `evidence.resolver(database, store, display=...)`，以及互斥的 keyword-only `authorize(groups,purpose)` 可信分组模式（[闭包与绑定](source-rights-runtime.md#固定版本可信来源闭包)）。原回调 `display(rights_tags, purpose)` 通过当前请求上下文核验主体、租户、单元与用途，按当前来源权利返回 `none`、`citation_only`、`excerpt` 或 `full_text`；未装配、用途为空或策略级别未知时拒绝。`none` 与不存在同形；`citation_only` 只返回来源和快照信息，不读对象；`excerpt` 只返回最多512码点的引用片段与定位；`full_text` 返回完整引用与所在块的上下文。正文读取先复用 `normalized_hash` 核对整份规范化文档与快照保存的哈希，再复用 SDK 的快照、管线、定位与 `quote_hash` 校验，损坏或缺失时失败，不返回未经核验的正文。
 
-本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。data-api 已有内部 listener、TLS/身份 admission、deadline 约束与五路由 source-group collector；真实网络 smoke、生产来源权利策略、对象覆盖判断及证据到采购项目的归属仍待具备依赖的环境和后续接入验证。未实现：`GetDocument` 等远程查询，结构化记录集/记录证据、生产增强器、质量规则、语料快照与重放工作流，S3 对象存储实现（R-03）。
+本地绑定不缓存权限，不生成原件下载 URL，不推定来源可达。data-api 已有内部 listener、TLS/身份 admission、deadline 约束与固定证据和公告分块的来源闭包收集；固定 mock 公告测试通过实际 mTLS 读取事实、证据与分块，部署环境的身份、生产来源权利和原件恢复按各自前置条件验收。未实现：`GetDocument` 等远程查询，结构化记录集/记录证据、生产增强器、质量规则、语料快照与重放工作流。文件系统与 S3 兼容对象存储已接入，部署提供商兼容性按[部署拓扑](../07-deployment-topology.md#6-环境)验收。
 
 `evidence.enrichments(...)` 本地装配提供不可变参考数据登记、封闭recipe运行登记与 `api.Enrichments.get(run_key)`。结果、派生证据及参考内容保存在既有对象存储的 `enrichment/<sha256>.json`，PG存固定输入引用、对象键/哈希、完整分组来源闭包及运行元数据；`evd_reference_data`、`evd_derivations`、`evd_enrichments` 不可更新或删除。对象先写，登记与现有 `evidence.enrichment.completed.v1` 发件箱同事务；回滚可留下未引用对象，重跑按指纹复用证据ID和结果。当前事件唯一键为快照、真实解析修订及recipe，当前recipe明确拒绝多事实修订，不默选序号。
 

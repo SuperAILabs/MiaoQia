@@ -41,6 +41,7 @@
 | Web 框架 | FastAPI | 内部接口与运营管理接口 |
 | 数据校验 | Pydantic v2 | 与 JSON Schema 双向映射 |
 | 领域类型生成 | datamodel-code-generator | 由 JSON Schema 生成 Pydantic 模型 |
+| HTTP 采集 | Python 自研运行时，当前传输用 `urllib.request` | 按[请求执行设计](subsystems/acquisition.md#133-请求执行与复查)实现下载槽、中间件、重试和优先级，采集任务状态由 acquisition 管理 |
 | 数据访问 / 迁移 | SQLAlchemy 2.x / Alembic | 成熟、支持 RLS 会话变量 |
 | 事件 | confluent-kafka-python | librdkafka 绑定 |
 | 工作流 | Temporal Python SDK；周期任务用 kernel scheduler | 回填、重放；增量采集是按来源的周期任务 |
