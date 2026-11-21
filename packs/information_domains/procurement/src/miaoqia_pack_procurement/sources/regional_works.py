@@ -853,7 +853,8 @@ class HunanWorks:
                 raise ValueError("invalid Hunan construction notice in section response")
             if key in records:
                 raise ValueError("duplicate Hunan construction notice key")
-            published_on = datetime.fromisoformat(published).date()
+            # strptime rejects hour 24 on every Python version; fromisoformat accepts it from 3.14.
+            published_on = datetime.strptime(published, "%Y-%m-%d %H:%M:%S").date()
             self._notice_body(content)
             selector = GroupSelector(self._selector_kind, self._selector_version, section_id, key)
             canonical = json.dumps([selector.kind, selector.version, record], ensure_ascii=False, sort_keys=True,
