@@ -4,6 +4,7 @@ from sqlalchemy import text
 from miaoqia.acquisition.api import SourceInput, inputs
 from miaoqia.sdk.derivation import fingerprint
 from ..api.provenance import Closure, ReferenceInput, Unbound, ProvenanceIntegrityError, source_input, revision_proof
+from .bindings import browser_anchor, snapshot_with_binding
 
 
 def put(conn, kind, key, subject_hash, closure, *, actor="writer", reason="fixed input closure"):
@@ -33,11 +34,28 @@ class Provenance:
 
     def snapshot(self, snapshot_ref, *, deadline=None):
         with self.database.tx(deadline=deadline) as conn:
-            row = conn.execute(text("SELECT * FROM evd_snapshots WHERE id=:i"), {"i": snapshot_ref}).mappings().one_or_none()
+            row = snapshot_with_binding(conn, snapshot_ref)
         if row is None:
             raise Unbound("snapshot unavailable")
         source = source_input({"source_id": row["source_id"], "tags": row["rights_tags"]})
-        digest = fingerprint({k: row[k] for k in ("id", "source_id", "source_key", "rights_tags", "normalized_hash", "raw_sha256")})
+        subject = {k: row[k] for k in ("id", "source_id", "source_key", "rights_tags", "normalized_hash", "raw_sha256")}
+        if (binding := row["grouped_binding"]) is not None:
+            # RFC 8785 numbers cannot represent the entire PostgreSQL bigint range.
+            subject["grouped_binding"] = {
+                k: binding[k] for k in ("source_id", "notice_key", "selector", "published_on", "record_digest",
+                                        "raw_sha256", "media_type", "size_bytes")
+            } | {"observation_version": str(binding["observation_version"])}
+        if row["browser_binding"] is not None:
+            try:
+                event = browser_anchor(row)
+            except ValueError as exc:
+                raise ProvenanceIntegrityError("invalid browser snapshot anchor") from exc
+            subject["browser_binding"] = {
+                "observation_version": str(event["observation_version"]),
+                "projection": event["projection"],
+                "binding_digest": event["binding_digest"],
+            }
+        digest = fingerprint(subject)
         return Closure((source,)).with_dependency("snapshot", row["id"], digest)
 
     def revision(self, revision_ref, snapshot_ref, *, deadline=None):

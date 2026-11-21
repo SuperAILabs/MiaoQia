@@ -25,13 +25,13 @@ def live_ingest(object_store_dir: str, packs_dir: str):
     """Live fetch consumer (MIAOQIA_EVIDENCE_OBJECT_STORE_DIR shared with acquisition); None when not configured."""
     if not object_store_dir:
         return None
-    from miaoqia.kernel.objectstore import FilesystemObjectStore
+    from miaoqia.kernel.objectstore import open_object_store
 
     from .application.pipeline import Pipeline
     from .extensions import packs
 
-    return live_mod.LiveIngest(FilesystemObjectStore(object_store_dir), Pipeline(FilesystemObjectStore(object_store_dir),
-                               packs.load(packs_dir)), packs.load_documents(packs_dir))
+    store = open_object_store(object_store_dir)
+    return live_mod.LiveIngest(store, Pipeline(store, packs.load(packs_dir)), packs.load_documents(packs_dir))
 
 
 def module() -> Module:
@@ -41,9 +41,13 @@ def module() -> Module:
             return []
         out = [Consumer(name=f"{NAME}.probe", subsystem=NAME, brokers=env.brokers, topics=["public.acquisition"],
                         handlers={probe.EMITTED: probe.on_emitted}, db=env.db)]
+        if env.role != "data-consumer":
+            return out
         if live := live_ingest(env.config("OBJECT_STORE_DIR"), os.environ.get("MIAOQIA_PACKS_DIR", "packs")):
             out.append(Consumer(name=f"{NAME}.live", subsystem=NAME, brokers=env.brokers, topics=["public.acquisition"],
-                                handlers={live_mod.COMPLETED: live.on_completed}, db=env.db))
+                                handlers={kind: live.on_completed for kind in
+                                          (live_mod.LEGACY_COMPLETED, live_mod.COMPLETED, live_mod.GROUPED_COMPLETED,
+                                           live_mod.BROWSER_COMPLETED)}, db=env.db))
         return out
 
     return Module(name=NAME, database="evd", migrations=MIGRATIONS, consumers=consumers)
@@ -73,3 +77,9 @@ def source_requirements(database):
     """Owner metadata-only port; no content objects or caller source assertions."""
     from .application.provenance import Provenance
     return Provenance(database)
+
+
+def notice_chunks(database, store):
+    from .application.notice_chunks import NoticeChunkReader
+
+    return NoticeChunkReader(database, store)

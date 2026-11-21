@@ -27,6 +27,7 @@ class Revision:
     extractor: str
     quality_status: str
     facts: tuple[dict, ...]
+    snapshot_seq: int = 0
 
 
 class Extractions(Protocol):

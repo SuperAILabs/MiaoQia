@@ -25,3 +25,9 @@ def trusted_fixture_resolver(*, manifest_path, handles, facts, extractions, evid
     from .application.fixtures import TrustedFixtureResolver
     return TrustedFixtureResolver(manifest_path=manifest_path, handles=handles, facts=facts, extractions=extractions,
                                   evidence=evidence, provenance=provenance, references=references)
+
+
+def public_organizations(database, *, registrations, evidence, admit):
+    """Bind the public organization authority to the ent database and authorized owner ports."""
+    from .application.organizations import PublicOrganizations
+    return PublicOrganizations(database, registrations=registrations, evidence=evidence, admit=admit)
