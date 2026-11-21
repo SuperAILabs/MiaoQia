@@ -58,9 +58,9 @@
 
 ```sh
 go -C services test -race -count=1 ./kernel/integration ./subsystems/identity/... ./subsystems/gateway/...
-uv run --project tools/contracts --python 3.12 --locked mqc check
-uv run --project tools/contracts --python 3.12 --locked mqc compat --base HEAD
-uv run --project tools/contracts --python 3.12 --locked mqc generate --check
+uv run --project tools/contracts --python 3.14 --locked mqc check
+uv run --project tools/contracts --python 3.14 --locked mqc compat --base HEAD
+uv run --project tools/contracts --python 3.14 --locked mqc generate --check
 ```
 
 缺组件或跳过真实Keycloak子用例不能关闭对应门禁。整个M0状态仍以[阶段基线](06-stage-baseline.md)为准。

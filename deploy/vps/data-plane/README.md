@@ -31,7 +31,7 @@
 
 ## 开发 VPS 的原生角色
 
-在现有境内开发 VPS 上，可以使用宿主机的 Python 3.12、PostgreSQL 和 systemd 运行公开数据面。采集数据库使用独立集群，原件进入专用 S3 桶。部署前核对主机身份、机房地域，以及宿主服务和容器两处的实例清单。
+在现有境内开发 VPS 上，可以使用宿主机的 Python 3.14、PostgreSQL 和 systemd 运行公开数据面。采集数据库使用独立集群，原件进入专用 S3 桶。部署前核对主机身份、机房地域，以及宿主服务和容器两处的实例清单。
 
 开发发布从同一份逐文件 SHA-256 清单安装代码、领域包和角色清单，使用 `uv.lock` 安装 Python 依赖，Go 程序从同一源码快照构建。应用只读版本目录位于 `/opt/miaoqia-data-plane/releases/`，`current` 指向运行版本。每个角色在版本的 `bin/` 下链接到对应的正式入口。角色的数据库、对象存储和消息凭据由 systemd 从 `/etc/miaoqia/data-plane/runtime/<角色>.env` 加载。配置由 root 持有并设为 `0600`。每个角色使用独立服务用户和私有状态目录。
 
@@ -40,7 +40,7 @@
 ```sh
 : "${release:?set the verified release directory}"
 UV_PROJECT_ENVIRONMENT="$release/venv" UV_PYTHON_DOWNLOADS=never \
-  uv sync --project "$release/src/data" --python /usr/bin/python3.12 \
+  uv sync --project "$release/src/data" --python /usr/bin/python3.14 \
   --locked --all-packages --no-editable --no-dev
 (cd "$release/src/services" && CGO_ENABLED=0 go build -mod=readonly -trimpath \
   -buildvcs=false -o "$release/platform" ./cmd/platform)

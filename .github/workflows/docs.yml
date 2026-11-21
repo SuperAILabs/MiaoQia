@@ -48,4 +48,4 @@ jobs:
           git diff --check "origin/${{ github.base_ref }}" HEAD -- '*.md'
 
       - name: 契约检查（文档引用的契约与扩展包保持一致）
-        run: uv run --project tools/contracts --python 3.12 --locked mqc check
+        run: uv run --project tools/contracts --python 3.14 --locked mqc check

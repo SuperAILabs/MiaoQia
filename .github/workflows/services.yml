@@ -67,7 +67,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.11.32"
-          python-version: "3.12"
+          python-version: "3.14"
 
       - name: Python真实模块依赖
         run: uv sync --project data --locked --all-packages
