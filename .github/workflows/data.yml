@@ -6,6 +6,8 @@ on:
     paths:
       - "data/**"
       - "tests/contract/**"
+      - "tests/e2e/test_backup_manifest.py"
+      - "tests/e2e/test_list_retention.py"
       - "tools/dev/**"
       - "deploy/**"
       - "docs/03-architecture/subsystems/README.md"
@@ -49,9 +51,9 @@ jobs:
       - name: 迁移随 wheel 分发（脱离源码目录安装后定位）
         run: uv run --project data --locked python tools/dev/check_installed_migrations.py
 
-      - name: SDK 与信息领域包测试
+      - name: SDK、信息领域包、归档与留存测试
         working-directory: data
-        run: uv run --locked --all-packages --group dev pytest -q sdk/tests subsystems/evidence/tests ../packs/information_domains/procurement/tests ../packs/information_domains/organizations/tests
+        run: uv run --locked --all-packages --group dev pytest -q sdk/tests subsystems/evidence/tests ../packs/information_domains/procurement/tests ../packs/information_domains/organizations/tests ../tests/e2e/test_backup_manifest.py ../tests/e2e/test_list_retention.py
 
       - name: INF-PROC 语料评测（Schema 校验 + 关键字段准确率 ≥ 95%）
         working-directory: data

@@ -273,15 +273,28 @@ def skip_existing_evidence(env: dict[str, str]) -> None:
     from the earliest offset and reprocess evidence events whose revisions no
     longer exist locally. Only this replay-owned group is touched.
     """
-    from confluent_kafka import Consumer, TopicPartition
+    from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
     consumer = Consumer({"bootstrap.servers": env["MIAOQIA_KAFKA_BROKERS"], "group.id": "domain-intelligence.facts",
                          "enable.auto.commit": False})
     try:
-        metadata = consumer.list_topics("public.evidence", timeout=30).topics["public.evidence"]
-        ends = []
-        for partition in metadata.partitions:
-            _, high = consumer.get_watermark_offsets(TopicPartition("public.evidence", partition), timeout=30)
-            ends.append(TopicPartition("public.evidence", partition, high))
+        topic = "public.evidence"
+        waiting_for_leader = {KafkaError.LEADER_NOT_AVAILABLE, KafkaError.NOT_LEADER_FOR_PARTITION}
+        deadline = time.monotonic() + 30
+        while True:
+            try:
+                metadata = consumer.list_topics(topic, timeout=max(0.1, deadline - time.monotonic())).topics[topic]
+                if metadata.error is not None:
+                    raise KafkaException(metadata.error)
+                ends = []
+                for partition in metadata.partitions:
+                    _, high = consumer.get_watermark_offsets(TopicPartition(topic, partition),
+                                                            timeout=max(0.1, deadline - time.monotonic()))
+                    ends.append(TopicPartition(topic, partition, high))
+                break
+            except KafkaException as exc:
+                if exc.args[0].code() not in waiting_for_leader or time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.25)
         consumer.commit(offsets=ends, asynchronous=False)
     finally:
         consumer.close()

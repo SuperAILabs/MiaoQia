@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/playwright/python@sha256:abf13b369f8829eb45e29df38d6c5221f7e7521649cb5d2de7989c82bdb574ad
+WORKDIR /fixture
+COPY requirements.txt nss.deb ./
+RUN dpkg-deb -x nss.deb /opt/nss && rm nss.deb \
+    && pip --isolated install --disable-pip-version-check --no-cache-dir --require-hashes --only-binary=:all: -r requirements.txt \
+    && pip --isolated check
+COPY miaoqia/ ./miaoqia/
+COPY publisher.py renderer.py chromium_home.py ./
+COPY lifecycle/ ./lifecycle/
+COPY deploy/ ./deploy/
+RUN printf '%s\n' '#!/usr/bin/env python3' 'from miaoqia.runtime_acquisition import main' 'main()' \
+      > /usr/local/bin/mq-acquisition && chmod 755 /usr/local/bin/mq-acquisition
+RUN if [ -f /fixture/deploy/platform/platform ]; then \
+      ln -s /fixture/deploy/platform/platform /usr/local/bin/platform \
+      && printf '%s\n' '#!/usr/bin/env python3' 'from miaoqia.runtime_data import main' 'main()' \
+         > /usr/local/bin/mq-data \
+      && printf '%s\n' '#!/usr/bin/env python3' 'from miaoqia.evidence.replay import main' 'raise SystemExit(main())' \
+         > /usr/local/bin/mq-evidence-replay \
+      && chmod 755 /usr/local/bin/mq-data /usr/local/bin/mq-evidence-replay; \
+    fi
+RUN chmod -R a+rX /fixture
+ENV PYTHONPATH=/fixture PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+USER 1001:1001

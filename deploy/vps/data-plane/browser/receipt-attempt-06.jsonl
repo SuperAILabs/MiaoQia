@@ -1,0 +1,25 @@
+{"base_image_digest": "sha256:abf13b369f8829eb45e29df38d6c5221f7e7521649cb5d2de7989c82bdb574ad", "image_id": "fb3a4bcf3411b4b6e263a221c1c9c4c1b714a957678c30a5f588c7c0510672b4", "kind": "build", "playwright": "1.60.0", "podman": "5.8.2", "seccomp_sha256": "fac13bcb29f3f878db0b2eb6a4ea01f0a85a0cae4dc22f8e144885ee0d8fec33", "staged_context_sha256": "9bba90a0046c55811d357abd8a72329697b229f0a02daa6f3355fb979dda13b8"}
+{"browser_bind_or_volume_mounts": 0, "browser_networks": 1, "canary_arrivals": 0, "kind": "kernel", "namespace_default_routes": 0, "no_inherited_proxy_or_credential_env": true, "packet_counts": {"dns": 1, "ipv6": 6, "other_destination": 2, "other_port": 1, "pinned_https": 0, "udp": 1}, "passed": false, "policy_before_chromium": true, "read_only_rootfs": true, "rootless": true, "socket_probes": {"bridge_first_address": true, "business_peer": true, "ipv6_loopback": true, "kind": "socket_probes", "other_peer": true, "other_port": true}, "synthetic_business_network_attached": false}
+{"kind": "tls_sni"}
+{"case": "pair", "executed": false, "kind": "case"}
+{"case": "redirect", "executed": false, "kind": "case"}
+{"case": "path", "executed": false, "kind": "case"}
+{"case": "method", "executed": false, "kind": "case"}
+{"case": "query", "executed": false, "kind": "case"}
+{"case": "duplicate", "executed": false, "kind": "case"}
+{"case": "foreign", "executed": false, "kind": "case"}
+{"case": "gzip", "executed": false, "kind": "case"}
+{"case": "iframe", "executed": false, "kind": "case"}
+{"case": "popup", "executed": false, "kind": "case"}
+{"case": "worker", "executed": false, "kind": "case"}
+{"case": "websocket", "executed": false, "kind": "case"}
+{"case": "prefetch", "executed": false, "kind": "case"}
+{"case": "untrusted_ca", "executed": false, "kind": "case"}
+{"case": "wrong_name", "executed": false, "kind": "case"}
+{"case": "control_loss", "executed": false, "kind": "case"}
+{"case": "forbidden_status", "executed": false, "kind": "case"}
+{"case": "throttled", "executed": false, "kind": "case"}
+{"all_target_http_policy_verified": false, "bounded_cases_passed": false, "kind": "result", "renderer_exit": 1, "unclassified_origin_requests": 0}
+{"case": "pair", "error_type": "AttributeError", "kind": "fixture_failure", "stack": [{"function": "__aenter__", "line": 210, "module": "contextlib.py"}, {"function": "provider", "line": 112, "module": "renderer.py"}, {"function": "on", "line": 15346, "module": "_generated.py"}, {"function": "on", "line": 80, "module": "_async_base.py"}, {"function": "_wrap_handler", "line": 75, "module": "_async_base.py"}, {"function": "wrap_handler", "line": 141, "module": "_impl_to_api_mapping.py"}]}
+{"kind":"incomplete","stage":"receipt","exit":1}
+{"kind":"cleanup","containers":0,"networks":0,"namespace_removed":true,"temporary_storage_removed":true,"verified":true}

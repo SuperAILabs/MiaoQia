@@ -1,0 +1,266 @@
+name: miaoqia-data-plane
+
+# Use images built from the same release. Their working directories contain
+# the bundled deployment manifests and, for Python, the source packs.
+x-process: &process
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:mode=1777,nosuid,nodev"]
+  networks: [private]
+
+x-python-image: &python-image
+  <<: *process
+  image: ${MQ_DATA_PLANE_PYTHON_IMAGE:?set the Python runtime image}
+
+x-platform-image: &platform-image
+  <<: *process
+  image: ${MQ_DATA_PLANE_PLATFORM_IMAGE:?set the platform runtime image}
+
+x-runtime: &runtime
+  restart: unless-stopped
+  stop_grace_period: 60s
+
+x-migration: &migration
+  profiles: [migrate]
+  restart: "no"
+
+x-role-env: &role-env
+  required: true
+  format: raw
+
+# A connection-material directory belongs to exactly one service. Only stage
+# the CA files and role credentials that service needs. Never store env files here.
+x-role-files: &role-files
+  type: bind
+  target: /run/miaoqia
+  read_only: true
+  bind:
+    create_host_path: false
+    selinux: z
+
+x-archive-spool: &archive-spool
+  type: bind
+  target: /var/lib/miaoqia/archive-spool
+  bind:
+    create_host_path: false
+    selinux: z
+
+x-spool-env: &spool-env
+  MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_DIR: /var/lib/miaoqia/archive-spool
+  AWS_EC2_METADATA_DISABLED: "true"
+
+x-public-search-worker: &public-search-worker
+  <<: [*platform-image, *runtime]
+  command: [platform, -role, public-search-workflow-worker]
+  environment:
+    MIAOQIA_ENV: production
+
+services:
+  acquisition-migrate:
+    <<: [*python-image, *migration]
+    command: [mq-acquisition, migrate, --role, acq-admin]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/acquisition-migrate.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/acquisition-migrate
+
+  data-migrate:
+    <<: [*python-image, *migration]
+    command: [mq-data, migrate, --role, data-api]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/data-migrate.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/data-migrate
+
+  public-search-migrate:
+    <<: [*platform-image, *migration]
+    command: [platform, -role, public-search-consumer, migrate]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/public-search-migrate.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/public-search-migrate
+
+  acq-scheduler:
+    <<: [*python-image, *runtime]
+    profiles: [acquisition]
+    command: [mq-acquisition, --role, acq-scheduler]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/acq-scheduler.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/acq-scheduler
+
+  acq-coverage:
+    <<: *python-image
+    profiles: [ops]
+    restart: "no"
+    command: [mq-acquisition-fetch, --list-sources, --require-runtime]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/acq-coverage.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/acq-coverage
+
+  acq-fetcher:
+    <<: [*python-image, *runtime]
+    profiles: [acquisition]
+    command: [mq-acquisition, --role, acq-fetcher]
+    networks: [private, source-egress]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/acq-fetcher.env
+    environment: *spool-env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/acq-fetcher
+      - <<: *archive-spool
+        source: ${MQ_DATA_PLANE_HTTP_SPOOL_DIR:-./spool/acq-fetcher}
+
+  acq-browser:
+    <<: [*python-image, *runtime]
+    profiles: [browser]
+    command: [mq-acquisition, --role, acq-browser]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/acq-browser.env
+    environment:
+      <<: *spool-env
+      PYTHONPATH: /opt/miaoqia-browser-provider
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/acq-browser
+      - <<: *archive-spool
+        source: ${MQ_DATA_PLANE_BROWSER_SPOOL_DIR:-./spool/acq-browser}
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_BROWSER_PROVIDER_DIR:-./provider}
+        target: /opt/miaoqia-browser-provider
+
+  outbox-relay:
+    <<: [*platform-image, *runtime]
+    profiles: [data-ingest]
+    command: [platform, -role, outbox-relay]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/outbox-relay.env
+    environment:
+      MIAOQIA_RELAY_SOURCES: acquisition,evidence,domain-intelligence,entity-graph
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/outbox-relay
+
+  data-consumer:
+    <<: [*python-image, *runtime]
+    profiles: [data-ingest]
+    command: [mq-data, --role, data-consumer]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/data-consumer.env
+    environment:
+      AWS_EC2_METADATA_DISABLED: "true"
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/data-consumer
+
+  acq-admin:
+    <<: [*python-image, *runtime]
+    profiles: [data-read]
+    command: [mq-acquisition, --role, acq-admin]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/acq-admin.env
+    environment:
+      MIAOQIA_ACQUISITION_RIGHTS_ENABLED: "1"
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/acq-admin
+
+  data-api:
+    <<: [*python-image, *runtime]
+    profiles: [data-read]
+    command: [mq-data, --role, data-api]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/data-api.env
+    environment:
+      MIAOQIA_DATA_API_LISTENER: "1"
+      AWS_EC2_METADATA_DISABLED: "true"
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/data-api
+
+  public-search-export:
+    <<: [*python-image, *runtime]
+    profiles: [search-export]
+    command: [python, -m, miaoqia.runtime_data.search_projection, serve]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/public-search-export.env
+    environment:
+      AWS_EC2_METADATA_DISABLED: "true"
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/public-search-export
+
+  public-search-api:
+    <<: [*platform-image, *runtime]
+    profiles: [search-read]
+    command: [platform, -role, public-search-api]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/public-search-api.env
+    environment:
+      MIAOQIA_ENV: production
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/public-search-api
+
+  public-search-consumer:
+    <<: [*platform-image, *runtime]
+    profiles: [search-ingest]
+    command: [platform, -role, public-search-consumer]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/public-search-consumer.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/public-search-consumer
+
+  public-search-workflow-worker:
+    <<: *public-search-worker
+    profiles: [search-worker]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/public-search-workflow-worker.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/public-search-workflow-worker
+
+  public-search-secondary-worker:
+    <<: *public-search-worker
+    profiles: [search-secondary]
+    env_file:
+      - <<: *role-env
+        path: ${MQ_DATA_PLANE_ENV_DIR:-./env}/public-search-secondary-worker.env
+    volumes:
+      - <<: *role-files
+        source: ${MQ_DATA_PLANE_FILES_DIR:-./files}/public-search-secondary-worker
+
+# The operator provisions both networks. The private network has only the
+# approved service routes. Source egress must enforce the publisher allowlist.
+networks:
+  private:
+    external: true
+    name: ${MQ_DATA_PLANE_PRIVATE_NETWORK:?set the private runtime network name}
+  source-egress:
+    external: true
+    name: ${MQ_DATA_PLANE_SOURCE_EGRESS_NETWORK:?set the controlled HTTP source egress network name}

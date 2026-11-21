@@ -1,0 +1,4 @@
+{"kind":"recovery_setup","owned_network_present":true}
+{"containers": 0, "kind": "cleanup", "networks": 0, "storage_removed": true, "verified": true}
+{"already_absent": true, "kind": "cleanup", "verified": true}
+{"already_absent": true, "kind": "cleanup", "verified": true}
