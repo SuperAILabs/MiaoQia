@@ -9,6 +9,7 @@ on:
       - "data/**"
       - "tools/dev/**"
       - "deploy/local/keycloak/**"
+      - "deploy/local/postgres/10-subsystems.sql"
       - "contracts/policy/**"
       - "contracts/events/**"
       - "contracts/storage/**"
@@ -94,6 +95,24 @@ jobs:
           test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
           go vet ./...
 
+      - name: 初始化公共检索与 Cell 检索的独立 PostgreSQL 角色
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$POSTGRES_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f - \
+            < deploy/local/postgres/10-subsystems.sql
+          docker exec -i "$POSTGRES_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f - \
+            < deploy/platform/public-search.postgres.sql
+          docker exec -i "$POSTGRES_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f - <<'SQL'
+          ALTER ROLE sea_public_owner LOGIN PASSWORD 'sea_public_owner';
+          ALTER ROLE sea_public_app LOGIN PASSWORD 'sea_public_app';
+          SQL
+
       - name: 测试（含竞态检查、依赖规则；集成与契约测试使用真实 PostgreSQL、Kafka、OpenFGA）
         working-directory: services
+        env:
+          MIAOQIA_TEST_PUBLIC_SEARCH_PG_OWNER: postgres://sea_public_owner:sea_public_owner@localhost:5432/sea_public
+          MIAOQIA_TEST_PUBLIC_SEARCH_PG_APP: postgres://sea_public_app:sea_public_app@localhost:5432/sea_public
+          MIAOQIA_TEST_CELL_SEARCH_PG_OWNER: postgres://sea_owner:sea_owner@localhost:5432/sea
+          MIAOQIA_TEST_CELL_SEARCH_PG_APP: postgres://sea_app:sea_app@localhost:5432/sea
         run: go test -race ./...
