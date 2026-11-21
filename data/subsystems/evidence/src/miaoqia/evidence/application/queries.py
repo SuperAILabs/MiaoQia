@@ -16,15 +16,12 @@ from miaoqia.sdk import Document
 from miaoqia.sdk.validation import validate_extraction
 
 from ..api import ResolvedEvidence
-from ..domain.snapshot import normalized_hash
+from ..domain.snapshot import OBJECT_READ_MAX, normalized_hash, raw_hash
 from miaoqia.kernel.objectstore import ObjectStore
 
 
 class EvidenceIntegrityError(ValueError):
     """已发布证据与对象存储不一致。"""
-
-OBJECT_READ_MAX = 4 * 1024 * 1024
-
 
 def load_document(store, row, *, deadline=None):
     """唯一规范化对象完整性检查；调用者必须先判定当前正文读取权利。"""
@@ -104,19 +101,24 @@ class Resolver:
         return level
 
     def snapshot(self, snapshot_ref):
-        """Owner full read; reject before reading either object when display is clipped."""
-        import hashlib
+        """Full read of a standalone original at the current display level."""
         from ..api import SnapshotRead
         # Admission runs even for an absent handle.
         self._level((), lambda: self.provenance.snapshot(snapshot_ref))
         with self.database.tx() as conn:
             conn.execute(text("SET TRANSACTION READ ONLY"))
-            row = conn.execute(text("SELECT * FROM evd_snapshots WHERE id=:i"),
+            row = conn.execute(text("""
+                SELECT s.* FROM evd_snapshots s WHERE s.id = :i AND NOT EXISTS (
+                    SELECT 1 FROM evd_grouped_observations g WHERE g.snapshot_id = s.id AND g.is_anchor
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM evd_browser_observations b WHERE b.snapshot_id = s.id AND b.is_anchor
+                )
+            """),
                                {"i": snapshot_ref}).mappings().one_or_none()
         if row is None or self._level(tuple(row["rights_tags"]), lambda: self.provenance.snapshot(snapshot_ref)) != "full_text":
             return None
         raw = self.store.get(row["artifact_ref"])
-        if "sha256:" + hashlib.sha256(raw).hexdigest() != row["raw_sha256"]:
+        if raw_hash(raw) != row["raw_sha256"]:
             raise EvidenceIntegrityError("原件与快照哈希不符")
         return SnapshotRead(row["id"], row["source_id"], row["source_key"], tuple(row["rights_tags"]),
                             row["raw_sha256"], raw, load_document(self.store, row))

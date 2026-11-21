@@ -18,11 +18,11 @@ class SqlExtractions:
         with self.engine.connect() as conn:
             row = conn.execute(text("""
                 SELECT r.id, s.id, s.source_id, s.source_key, s.observed_at, s.rights_tags, r.pack_id, r.pack_version,
-                       r.extractor, r.quality_status, r.facts
+                       r.extractor, r.quality_status, r.facts, s.seq
                 FROM evd_extraction_revisions r JOIN evd_snapshots s ON s.id = r.snapshot_id
                 WHERE r.id = :id"""), {"id": revision_ref}).first()
         if row is None:
             return None
         return Revision(id=row[0], snapshot_ref=row[1], source_id=row[2], source_key=row[3], observed_at=row[4],
                         rights_tags=tuple(row[5]), pack_id=row[6], pack_version=row[7], extractor=row[8],
-                        quality_status=row[9], facts=tuple(row[10]))
+                        quality_status=row[9], facts=tuple(row[10]), snapshot_seq=row[11])

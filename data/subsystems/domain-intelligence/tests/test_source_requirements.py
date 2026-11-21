@@ -313,3 +313,87 @@ def test_owner_metadata_is_immutable_and_fixed_port_requires_a_version(plane):
     finally:
         evd.close()
         dom.close()
+
+
+def test_prepared_read_receipt_covers_page_lookahead_and_derived_dependencies(plane):
+    from time import monotonic
+
+    from miaoqia.runtime_data import read_routes
+
+    recipe = evidence.load_recipe(CORPUS.parents[2] / "industries/building-materials",
+        "miaoqia_pack_building_materials.topic:build_recipe", CORPUS.parents[2])
+    service = _setup(plane, recipes=[recipe])
+    award = next(n for n in _facts(plane[1]) if n["notice_type"] == "award")
+    key, parent = _register(plane, service, award, recipe.id)
+    _apply(plane, service, key, parent)
+    owner, domain_owner = _owner_databases(plane)
+    try:
+        with reqctx.use(CTX), owner.tx() as conn:
+            conn.execute(text("SELECT evd_provenance.bind_reference('proc-building-topic','0.1.0','reviewer','fixed reviewed reference')"))
+    finally:
+        owner.close()
+        domain_owner.close()
+
+    tender = "corpus:official-building-tender-20261026"
+    decisions = []
+
+    class Identity:
+        def resolve(self, *, deadline):
+            assert reqctx.current().principal.kind == "user"
+
+    class Rights:
+        deny_tender = False
+
+        def status(self, *, deadline):
+            assert deadline > monotonic()
+
+        def resolve(self, request, *, deadline):
+            self.status(deadline=deadline)
+            decisions.append(request)
+            allowed = not self.deny_tender or all(tender not in g["tags"] for g in request["inputs"])
+            return {"allowed": allowed, "display": "excerpt", "receipt": "fixture"}
+
+        def confirm(self, request, *, deadline):
+            self.status(deadline=deadline)
+            assert request == {**decisions[-1], "receipt": "fixture"}
+            return {"allowed": True, "display": "excerpt"}
+
+    rights = Rights()
+    routes = read_routes(plane[1], plane[0], plane[2].store, rights, Identity())
+    user = reqctx.Context(reqctx.Principal("fixture", "user"), "mock-tenant", "mock-cell", "interactive")
+    basis = {"view": "current", "recorded_cutoff": None}
+
+    def read(path, body):
+        deadline = monotonic() + 5
+        response = routes["/internal/v1/data/" + path][1](body, deadline)
+        response.before_send(deadline)
+        return response.payload
+
+    with reqctx.use(user):
+        unit_body = {"fact_id": award["id"], "basis": basis, "version": 2}
+        unit, = read("bid-result-units", unit_body)["items"]
+        assert unit["fields"]["categories"] == ["CAT-PIPE-DI"]
+        assert {ref["name"] for ref in unit["item_refs"]} == {"fact", "project"}
+        assert {group["source_id"] for group in decisions[-1]["inputs"]} == {
+            "official-qzygjy", "reference-proc-building-topic-v0-1",
+        }
+        assert len(decisions[-1]["inputs"]) == 3
+        assert any(tender in g["tags"] for g in decisions[-1]["inputs"])
+
+        derivation = service.get(key)["outputs"][0]["evidence_ref"]
+        assert service.resolve(derivation).derivation is not None
+        # The listener has always assembled the document resolver without Enrichments.
+        assert read("resolve-evidence", {"evidence_ref": derivation}) is None
+
+        rights.deny_tender = True
+        # The standalone award is covered, the derived result also depends on the tender.
+        assert read("get-fact", unit_body)["fact"]["version"] == 2
+        with pytest.raises(PermissionError):
+            read("bid-result-units", unit_body)
+        page_body = {"info_domain": "INF-PROC", "object_type": "tendering.notice", "basis": basis, "after": "", "limit": 1}
+        with pytest.raises(PermissionError):
+            read("query-facts", page_body)
+        rights.deny_tender = False
+        page = read("query-facts", page_body)
+        assert len(page["items"]) == 1 and page["next_cursor"] == page["items"][0]["id"]
+        assert any(tender in g["tags"] for g in decisions[-1]["inputs"])

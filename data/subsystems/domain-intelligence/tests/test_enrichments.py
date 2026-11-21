@@ -291,6 +291,8 @@ def test_pre_enrichment_migration_upgrade_preserves_existing_pair(plane, monkeyp
     from miaoqia.domain_intelligence import MIGRATIONS as DOM
     from miaoqia.evidence import MIGRATIONS as EVD
     from miaoqia.kernel import db
+    # Seed immutable evidence before moving the databases to their pre-enrichment schemas.
+    revisions = _revisions(plane)
     configs = []
     for migrations, owner, version in ((DOM, plane[4]["owner"], "0002"),
         (EVD, plane[0].engine.url.render_as_string(hide_password=False).replace("postgresql+psycopg:", "postgresql:").replace("_app:", "_owner:"), "0001")):
@@ -312,13 +314,15 @@ def test_pre_enrichment_migration_upgrade_preserves_existing_pair(plane, monkeyp
         frozen[name] = module
     frozen["projects"].write_version = frozen["facts"].write_version
     with monkeypatch.context() as legacy:
+        legacy.setattr(facts.Materializer, "materialize", frozen["facts"].Materializer.materialize)
         legacy.setattr(facts, "write_version", frozen["facts"].write_version)
         legacy.setattr(projects, "_write_project", frozen["projects"]._write_project)
-        for revision in _revisions(plane):
+        for revision in revisions:
             _materialize(plane, revision)
     notices, project, events = _facts(plane[1]), _projects(plane), _events(plane[1], "domain.fact.upserted.v1")
     for cfg in configs:
         command.upgrade(cfg, "head")
+    assert _revisions(plane) == revisions
     assert _facts(plane[1]) == notices and _projects(plane) == project
     assert _events(plane[1], "domain.fact.upserted.v1") == events
     service = _service(plane)

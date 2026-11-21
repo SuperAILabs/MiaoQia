@@ -11,7 +11,6 @@ from miaoqia.kernel.internal_http import delegations as parse_delegations
 
 def modules() -> list[runtime.Module]:
     from miaoqia import evidence
-    from miaoqia.evidence.api import Unbound
     from miaoqia.evidence import module as evidence_module
     from miaoqia.domain_intelligence import module as domain_intelligence_module
     from miaoqia.entity_graph import module as entity_graph_module
@@ -34,34 +33,29 @@ def _tls():
     return TLS(*(os.environ.get("MIAOQIA_INTERNAL_TLS_" + k, "") for k in ("CERT", "KEY", "CA")))
 
 
-def _groups(facts, provenance, body, deadline):
-    """Resolve one fixed fact handle into owner-verified source groups."""
-    if not isinstance(body, dict) or not isinstance(body.get("version"), int):
-        return []
-    closure = facts.requirements(body.get("fact_id"), body["version"])
-    return [source.dto() for source in provenance.resolve(closure)]
+def read_routes(dom, evd, store, rights, identity, *, bind_public_organizations=None):
+    from miaoqia import evidence
+    from miaoqia.domain_intelligence import queries
+    from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, admitted_display, routes
 
+    provenance = evidence.source_requirements(evd)
+    facts = queries(dom, provenance=provenance)
+    resolver = evidence.resolver(evd, store, authorize=admitted_display)
 
-def _evidence_groups(provenance, body, deadline):
-    if not isinstance(body, dict) or not isinstance(body.get("evidence_ref"), str):
-        return []
-    return [source.dto() for source in provenance.resolve(provenance.evidence(body["evidence_ref"]))]
+    def evidence_groups(ref, deadline):
+        closure = provenance.evidence(ref, deadline=deadline)
+        return [source.dto() for source in provenance.resolve(closure, deadline=deadline)]
 
-
-def _query_groups_unavailable(_body, _deadline):
-    # A query must provide its persisted source-group union before any fact
-    # lookup.  Failing closed is safer than treating an unknown union as an
-    # empty authorization set.
-    raise ValueError("query source-group collector unavailable")
+    return routes(facts, resolver, admit=ReadAuthorization(rights, identity).prepare,
+                  evidence_groups=evidence_groups, notice_chunks=evidence.notice_chunks(evd, store),
+                  bind_public_organizations=bind_public_organizations)
 
 
 def serve():
     """Run the data-api listener; missing remote dependencies fail closed."""
-    from miaoqia import evidence
     from miaoqia.acquisition.api.remote import RightsClient
-    from miaoqia.domain_intelligence import queries
-    from miaoqia.domain_intelligence.application.read_transport import ReadAuthorization, admitted_display, routes
-    from miaoqia.kernel.objectstore import FilesystemObjectStore
+    from miaoqia.kernel.objectstore import open_object_store
+    from .organization_read import configured_public_organizations
 
     dom_dsn = os.environ.get(runtime.env_key("domain-intelligence", "DB_DSN"))
     evd_dsn = os.environ.get(runtime.env_key("evidence", "DB_DSN"))
@@ -77,54 +71,30 @@ def serve():
     try:
         identity = Identity(Client(os.environ["MIAOQIA_IDENTITY_URL"], _tls(), os.environ["MIAOQIA_IDENTITY_PEER"]))
         rights = RightsClient(Client(rights_url, _tls(), os.environ["MIAOQIA_ACQUISITION_PEER"]))
-        provenance = evidence.source_requirements(evd)
-        # Route admission is the authoritative d0 gate; query callbacks still
-        # require a callback and therefore only accept already-admitted groups.
-        allowed = lambda groups, purpose: True
-        facts = queries(dom, authorize=allowed, provenance=provenance)
-        # Evidence needs a display level: the one this request's rights decision admitted.
-        resolver = evidence.resolver(evd, FilesystemObjectStore(root), authorize=admitted_display)
-        auth = ReadAuthorization(rights, identity)
-        def fact_groups(operation):
-            return lambda body, deadline: facts.collect_source_groups(operation, body, deadline)
-        def evidence_groups(body, deadline):
-            try:
-                closure = provenance.evidence(body["evidence_ref"], deadline=deadline)
-            except Unbound:
-                return []
-            return [source.dto() for source in closure.sources]
-        collector = {
-            "data.get_fact": fact_groups("data.get_fact"),
-            "data.fact_history": fact_groups("data.fact_history"),
-            "data.query_facts": fact_groups("data.query_facts"),
-            "data.bid_result_units": fact_groups("data.bid_result_units"),
-            "data.resolve_evidence": evidence_groups,
-        }
         delegations = _delegations(os.environ.get("MIAOQIA_DATA_DELEGATIONS", ""))
         host, port = listen.rsplit(":", 1)
-        server = Server((host, int(port)), _tls(), delegations, identity,
-                        routes(facts, resolver, admit=auth.prepare,
-                               before_send=lambda op, value, hook: hook,
-                               collectors=collector))
-        stop = threading.Event()
-        signal.signal(signal.SIGTERM, lambda *_: stop.set())
-        signal.signal(signal.SIGINT, lambda *_: stop.set())
-        worker = threading.Thread(target=server.serve_forever, daemon=True)
-        worker.start()
-        try:
-            stop.wait()
-        finally:
-            server.shutdown(); server.server_close(); worker.join(5)
+        store = open_object_store(root)
+        with configured_public_organizations(os.environ, dom, evd, store, evd_dsn, pool_timeout=POOL_TIMEOUT) as bind:
+            server = Server((host, int(port)), _tls(), delegations, identity,
+                            read_routes(dom, evd, store, rights, identity, bind_public_organizations=bind))
+            stop = threading.Event()
+            signal.signal(signal.SIGTERM, lambda *_: stop.set())
+            signal.signal(signal.SIGINT, lambda *_: stop.set())
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                stop.wait()
+            finally:
+                server.shutdown(); server.server_close(); worker.join(5)
     finally:
         dom.close(); evd.close()
 
 
 def _delegations(raw):
     import json
-    return parse_delegations(json.loads(raw), {
-        "data.get_fact", "data.fact_history", "data.query_facts",
-        "data.bid_result_units", "data.resolve_evidence",
-    })
+    from miaoqia.domain_intelligence.application.read_transport import RIGHTS_OPERATIONS
+
+    return parse_delegations(json.loads(raw), RIGHTS_OPERATIONS)
 
 
 def main() -> None:

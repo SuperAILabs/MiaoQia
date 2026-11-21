@@ -25,11 +25,12 @@ class Queries:
         self.authorize, self.provenance = authorize, provenance
         self.database = database
         self.allowed = allowed
+        self._collect_requirements = None
 
     def _require_access(self):
         context = reqctx.current()
         context.validate()
-        if not context.purpose or (self.allowed is None and self.authorize is None):
+        if not context.purpose or (self.allowed is None and self.authorize is None and self._collect_requirements is None):
             raise PermissionError("未装配来源权利判定或缺少用途")
         return context
 
@@ -48,6 +49,15 @@ class Queries:
 
     def _allowed(self, conn, fact, *, deadline=None):
         context = self._require_access()
+        if self._collect_requirements is not None:
+            from miaoqia.evidence.api import Unbound
+            from . import requirements
+
+            closure = requirements.read(conn, fact)
+            if not (closure.sources or closure.references):
+                raise Unbound("fact closure has no source proof")
+            self._collect_requirements(closure)
+            return True
         if self.authorize is not None:
             from miaoqia.evidence.api import Unbound
             if self.provenance is None:
@@ -176,42 +186,28 @@ class Queries:
             return {"project": project, "categories": output["value"]}
         return None
 
-    def collect_source_groups(self, operation, body, deadline=None):
-        """Collect the persisted source-group union before content admission."""
-        from . import requirements
-        from miaoqia.evidence.api.provenance import Closure
-        basis = body.get("basis")
-        if isinstance(basis, dict):
-            from datetime import datetime
-            basis = Basis(basis["view"], datetime.fromisoformat(basis["recorded_cutoff"].replace("Z", "+00:00")) if basis.get("recorded_cutoff") else None)
-        facts = []
-        with self.database.tx(deadline=deadline) as conn:
-            conn.execute(text("SET TRANSACTION READ ONLY"))
-            if operation in ("data.get_fact", "data.bid_result_units"):
-                # Collector runs before rights admission; read persisted closure
-                # directly and never apply the response authorization callback.
-                version = body.get("version")
-                if version is None:
-                    fact = fact_version(conn, body["fact_id"], None)
-                else:
-                    fact = fact_version(conn, body["fact_id"], version)
-                if fact is not None and basis.view == "known_at" and basis.recorded_cutoff is not None:
-                    if datetime.fromisoformat(fact["recorded_at"].replace("Z", "+00:00")) > basis.recorded_cutoff:
-                        fact = None
-                if fact is not None: facts.append(fact)
-            elif operation == "data.fact_history":
-                rows = conn.execute(text("SELECT content FROM dom_fact_versions WHERE fact_id=:f AND version>:a AND (CAST(:r AS timestamptz) IS NULL OR recorded_at<=:r) ORDER BY version"), {"f": body["fact_id"], "a": body.get("after", 0), "r": basis.recorded_cutoff}).all()
-                if len(rows) > 1000:
-                    raise ValueError("source-group collector result too large")
-                facts = [r[0] for r in rows]
-            elif operation == "data.query_facts":
-                rows = conn.execute(text("""SELECT selected.content FROM dom_facts f JOIN LATERAL (SELECT content FROM dom_fact_versions v WHERE v.fact_id=f.id AND (CAST(:r AS timestamptz) IS NULL OR v.recorded_at<=:r) ORDER BY v.version DESC LIMIT 1) selected ON true WHERE f.info_domain=:d AND f.object_type=:t AND f.id>:a ORDER BY f.id"""), {"d": body["info_domain"], "t": body["object_type"], "a": body.get("after", ""), "r": basis.recorded_cutoff}).all()
-                if len(rows) > 1000:
-                    raise ValueError("source-group collector result too large")
-                facts = [r[0] for r in rows]
-            closures = [requirements.read(conn, f) for f in facts]
-        merged = Closure.merge(*closures) if closures else None
-        return [] if merged is None else [x.dto() for x in merged.sources]
+    def prepare_read(self, select, *, deadline):
+        """Freeze a result and its claimed inputs from the same owner read.
+
+        The selector uses the normal queries and records the durable closure
+        of every fact they consult, including lookahead and derived dependencies.
+        Only the transport may release the result after admitting this union.
+        """
+        from miaoqia.evidence.api.provenance import Closure, ProvenanceIntegrityError
+
+        if self.provenance is None:
+            raise ProvenanceIntegrityError("unbound source requirements reader")
+        closures = []
+        selected = Queries(self.database)
+        selected._collect_requirements = closures.append
+        value = select(selected)
+        groups = self.provenance.resolve(Closure.merge(*closures), deadline=deadline) if closures else ()
+        has_payload = isinstance(value, FactRead) or (
+            isinstance(value, Page) and (value.items or value.next_cursor is not None)
+        )
+        if not groups and has_payload:
+            raise ProvenanceIntegrityError("nonempty read has no source proof")
+        return value, [source.dto() for source in groups]
 
     def bid_result_units(self, fact_id: str, basis: Basis, *, version: int | None = None, deadline=None) -> Page:
         self._require_access()

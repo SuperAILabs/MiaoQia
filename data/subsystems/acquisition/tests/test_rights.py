@@ -5,6 +5,7 @@ import os
 import subprocess
 import time
 import psycopg
+from psycopg import sql
 import pytest
 from miaoqia.acquisition.api import policy
 from miaoqia.acquisition.infrastructure.rights import validate_command
@@ -353,6 +354,21 @@ def test_reader_role_startup_and_database_ddl_denied(registry):
         read.ensure_reader()
         with pytest.raises(PermissionError):
             write.ensure_reader()
+    with psycopg.connect(dsns["app"]) as c:
+        c.execute("SELECT source_id FROM public.acq_sources LIMIT 1")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            c.execute("SELECT seq FROM public.kernel_outbox LIMIT 1")
+
+    # Column grants are not reported by has_table_privilege.
+    role = sql.Identifier(dsns["reader_role"])
+    with psycopg.connect(dsns["owner"]) as c:
+        c.execute(sql.SQL("GRANT UPDATE (state) ON public.acq_sources TO {}").format(role))
+    with reqctx.use(CTX), pytest.raises(PermissionError):
+        read.ensure_reader()
+    with psycopg.connect(dsns["owner"]) as c:
+        c.execute(sql.SQL("REVOKE UPDATE (state) ON public.acq_sources FROM {}").format(role))
+    with reqctx.use(CTX):
+        read.ensure_reader()
     for role in ("app", "operator"):
         for statement in (
             "CREATE TABLE public.forbidden(x int)",
