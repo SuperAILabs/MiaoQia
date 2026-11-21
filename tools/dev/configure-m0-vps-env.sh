@@ -3,9 +3,8 @@
 set -euo pipefail
 
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-key_path=${MIAOQIA_VPS_SSH_KEY:-$HOME/.SSH/id_rsa}
-ssh_user=${MIAOQIA_VPS_SSH_USER:-almalinux}
-ssh_host=${MIAOQIA_VPS_HOST:-15.204.173.155}
+# shellcheck source=vps-env.sh
+. "$root_dir/tools/dev/vps-env.sh"
 remote_env=$(ssh -i "$key_path" "$ssh_user@$ssh_host" 'sudo -n cat /opt/miaoqia-public/.env')
 
 value() {
