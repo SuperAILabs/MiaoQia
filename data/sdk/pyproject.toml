@@ -2,7 +2,7 @@
 name = "miaoqia-sdk"
 version = "0.1.0"
 description = "信息领域包 SPI：规范化文档访问、字段溯源、中文值解析、语料评测"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
   "miaoqia-contracts",
   "jsonschema[format-nongpl]==4.26.0",

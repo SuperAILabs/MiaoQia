@@ -61,8 +61,8 @@ M0 E2E 不覆盖 data-api：data-api 的 mTLS 内部 listener、acq-admin 来源
 uv sync --project data --locked --all-packages
 go -C services test -race -count=1 ./kernel/integration ./kernel/relay ./kernel/transportsecurity ./subsystems/gateway/internal/auth
 uv run --project data --locked --all-packages --group dev pytest -q data/kernel/tests
-uv run --project tools/contracts --python 3.12 --locked mqc check
-uv run --project tools/contracts --python 3.12 --locked mqc generate --check
+uv run --project tools/contracts --python 3.14 --locked mqc check
+uv run --project tools/contracts --python 3.14 --locked mqc generate --check
 ```
 
 services CI运行完整Go竞态测试和真实跨语言链路；data CI运行Python消费框架与载荷正反例；contracts CI检查运行时制品与源契约的一致性。缺少真实组件时测试会显示skip，不能据此关闭门禁。

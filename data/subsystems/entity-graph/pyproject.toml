@@ -2,7 +2,7 @@
 name = "miaoqia-entity-graph"
 version = "0.1.0"
 description = "entity-graph 子系统：实体与关系图谱（规格见 docs/03-architecture/subsystems/entity-graph.md）"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = ["miaoqia-kernel"]
 
 [tool.uv.sources]

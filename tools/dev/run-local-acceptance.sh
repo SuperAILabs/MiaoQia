@@ -148,8 +148,8 @@ echo "[2/4] Python 数据面测试"
   sdk/tests ../packs/information_domains/procurement/tests ../packs/information_domains/organizations/tests)
 
 echo "[3/4] 契约检查与生成一致性"
-uv run --project "$root_dir/tools/contracts" --python 3.12 --locked mqc check
-uv run --project "$root_dir/tools/contracts" --python 3.12 --locked mqc generate --check
+uv run --project "$root_dir/tools/contracts" --python 3.14 --locked mqc check
+uv run --project "$root_dir/tools/contracts" --python 3.14 --locked mqc generate --check
 
 if ((run_e2e)); then
   echo "[4/4] M0 本地端到端验证"
