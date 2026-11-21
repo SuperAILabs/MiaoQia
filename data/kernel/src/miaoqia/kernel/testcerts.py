@@ -37,8 +37,19 @@ class TestCA:
                       "-out", name + ".csr", "-subj", "/CN=localhost")
         sans = ["DNS:localhost", "IP:127.0.0.1"] + ["URI:" + u for u in (uri, extra_uri) if u]
         (self.directory / (name + ".ext")).write_text("subjectAltName=" + ",".join(sans) + _EXTENSIONS)
+        validity = self._validity(days)
         self._openssl("x509", "-req", "-in", name + ".csr", "-CA", "ca.crt", "-CAkey", "ca.key",
-                      "-CAcreateserial", "-out", name + ".crt", "-days", "0" if days == "-1" else days,
+                      "-CAcreateserial", "-out", name + ".crt", *validity,
                       "-extfile", name + ".ext")
         return TLS(str(self.directory / (name + ".crt")), str(self.directory / (name + ".key")),
                    str(self.directory / "ca.crt"))
+
+    def _validity(self, days: str) -> tuple[str, ...]:
+        if days != "-1":
+            return "-days", days
+        # OpenSSL 4 rejects a zero duration and can issue a cert with explicit
+        # validity dates. Older test environments use their zero-day fixture.
+        help_text = subprocess.run(["openssl", "x509", "-help"], capture_output=True).stderr
+        if b"-not_before" in help_text and b"-not_after" in help_text:
+            return "-not_before", "20000101000000Z", "-not_after", "20000102000000Z"
+        return "-days", "0"

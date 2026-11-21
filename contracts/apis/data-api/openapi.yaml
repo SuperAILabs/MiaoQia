@@ -1,0 +1,480 @@
+openapi: 3.1.0
+info:
+  title: data-api 内部事实与证据读取
+  version: 0.0.0
+  description: >-
+    data 部署单元所有者读取接口，只接受内部 TLS 1.3 双向认证与按 SPIFFE peer、operation、purpose、
+    principal 精确授权的调用。Miaoqia-Context 依 contracts/schemas/integration/request-context.schema.json 编码，
+    tenant 与 cell 必填。interactive 按当前用户会话校验，monitoring 和 simulation 要求显式委托的服务主体。
+    请求不得提供来源权利或 SQL。来源组来自所有者的持久化证明，返回前重新校验当前权利。
+    Go 客户端核验服务端 SPIFFE 身份 spiffe://miaoqia/service/data-api。单次 HTTP 请求和 Go
+    调用使用五秒预算，仅瞬时故障可重试。请求与响应的 JSON 正文均以 65536 字节为上限。
+    接口仅用于受权内部读取。来源采集、对外再分发、搜索和研究授权需要各自的准入。
+paths:
+  /internal/v1/data/get-notice-chunk:
+    post:
+      operationId: getNoticeChunk
+      summary: 读取仍为当前版本的授权公共公告分块
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/NoticeChunkRequest'}
+      responses:
+        '200':
+          description: 可读的规范化原文分块。无当前匹配版本或无分块时返回 JSON null。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NoticeChunkRead'}
+        default:
+          description: 当前会话或来源权限失败，或读取不可用
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /internal/v1/data/get-fact:
+    post:
+      operationId: getFact
+      summary: 读取事实的当前、截至时点或固定版本
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody: &factRequest
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FactRequest'}
+      responses:
+        '200':
+          description: 固定事实。当前口径或指定条件下无该事实时返回 JSON null。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FactRead'}
+        default: &problem
+          description: 请求格式错误 400，身份失效 401，授权拒绝 403，路径未知 404，依赖或读取不可用 503。握手失败可能无 HTTP 响应。
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /internal/v1/data/get-public-organization:
+    post:
+      operationId: getPublicOrganization
+      summary: 按固定版本读取当前已确认的公开登记主体
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PublicOrganizationRequest'}
+      responses:
+        '200':
+          description: 当前固定版的登记名称、统一社会信用代码和全部公开来源标签。没有符合条件的当前主体版本时返回 JSON null。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicOrganizationRead'}
+        default: *problem
+  /internal/v1/data/fact-history:
+    post:
+      operationId: factHistory
+      summary: 按版本顺序读取事实历史
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FactHistoryRequest'}
+      responses:
+        '200':
+          description: 历史页。下一页游标是十进制版本号。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FactHistoryPage'}
+        default: *problem
+  /internal/v1/data/query-facts:
+    post:
+      operationId: queryFacts
+      summary: 按领域、对象类型及读取口径查询
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QueryFactsRequest'}
+      responses:
+        '200':
+          description: 按事实标识排序的一页结果。下一页游标是该页末尾事实标识。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FactPage'}
+        default: *problem
+  /internal/v1/data/bid-result-units:
+    post:
+      operationId: bidResultUnits
+      summary: 读取固定事实版本的采购结果求值单位
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody: *factRequest
+      responses:
+        '200':
+          description: 同一事实版本的投影；无求值单位时 items 为空，next_cursor 始终为 null。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BidResultPage'}
+        default: *problem
+  /internal/v1/data/resolve-evidence:
+    post:
+      operationId: resolveEvidence
+      summary: 按当前展示许可解析固定证据引用
+      x-timeout-ms: 5000
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EvidenceRequest'}
+      responses:
+        '200':
+          description: 权威证据。没有可展示证据时返回 JSON null。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EvidenceRead'}
+        default: *problem
+components:
+  schemas:
+    # Ogen generates the wire shape. The conditions also express the cutoff rules
+    # for Draft 2020-12 validators.
+    Basis:
+      type: object
+      additionalProperties: false
+      required: [view, recorded_cutoff]
+      properties:
+        view: {type: string, enum: [current, known_at]}
+        recorded_cutoff: &timestamp {type: [string, 'null'], format: date-time}
+      if: {properties: {view: {const: current}}}
+      then: {properties: {recorded_cutoff: {type: 'null'}}}
+      else: {properties: {recorded_cutoff: {type: string}}}
+    FactRequest:
+      type: object
+      additionalProperties: false
+      required: [fact_id, basis, version]
+      properties:
+        fact_id: &factID {type: string, pattern: '^(ntc|pp)_[A-Za-z0-9_-]{1,128}$'}
+        basis: &basis {$ref: '#/components/schemas/Basis'}
+        version: {type: [integer, 'null'], format: int64, minimum: 1, maximum: 9223372036854775807}
+    FactHistoryRequest:
+      type: object
+      additionalProperties: false
+      required: [fact_id, basis, after, limit]
+      properties:
+        fact_id: *factID
+        basis: *basis
+        after: {type: integer, format: int64, minimum: 0, maximum: 9223372036854775807}
+        limit: &limit {type: integer, minimum: 1, maximum: 100}
+    QueryFactsRequest:
+      type: object
+      additionalProperties: false
+      required: [info_domain, object_type, basis, after, limit]
+      properties:
+        info_domain: &nonempty {type: string, minLength: 1}
+        object_type: *nonempty
+        basis: *basis
+        after: {type: string}
+        limit: *limit
+    EvidenceRequest:
+      type: object
+      additionalProperties: false
+      required: [evidence_ref]
+      properties:
+        evidence_ref: &evidenceID {type: string, pattern: '^ev_[A-Za-z0-9_-]{1,128}$'}
+    FactRead:
+      type: [object, 'null']
+      additionalProperties: false
+      required: [basis, fact]
+      properties:
+        basis: *basis
+        fact: &fact {$ref: '#/components/schemas/Fact'}
+    Fact:
+      type: object
+      description: >-
+        公告、采购项目或企业登记的固定领域事实。保留所有者 JSON，由下面的所有者 Schema 闭合。
+      required: [id, version]
+      properties:
+        id: {type: string, pattern: '^(ntc|pp|ogr)_[A-Za-z0-9_-]{1,128}$'}
+        version: &positive {type: integer, format: int64, minimum: 1, maximum: 9223372036854775807}
+      additionalProperties: true
+      dependentSchemas:
+        id:
+          oneOf:
+          - $ref: 'https://schemas.miaoqia.com/domains/procurement/notice.schema.json'
+          - $ref: 'https://schemas.miaoqia.com/domains/procurement/procurement-project.schema.json'
+          - $ref: 'https://schemas.miaoqia.com/domains/organization/registration.schema.json'
+    FactHistoryPage:
+      type: object
+      additionalProperties: false
+      required: [basis, items, next_cursor]
+      properties:
+        basis: *basis
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [fact, changed_fields]
+            properties:
+              fact: *fact
+              changed_fields: {type: array, items: {type: string}}
+        next_cursor: {type: [string, 'null'], pattern: '^[1-9][0-9]*$'}
+    FactPage:
+      type: object
+      additionalProperties: false
+      required: [basis, items, next_cursor]
+      properties:
+        basis: *basis
+        items: {type: array, maxItems: 100, items: *fact}
+        next_cursor: {type: [string, 'null'], pattern: '^(ntc|pp|ogr)_[A-Za-z0-9_-]{1,128}$'}
+    BidResultPage:
+      type: object
+      additionalProperties: false
+      required: [basis, items, next_cursor]
+      properties:
+        basis: *basis
+        next_cursor: {type: 'null'}
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, fact_type, domain, subject, event, fields, items, item_domains, item_refs, evidence, display]
+            properties:
+              key: *nonempty
+              fact_type: {type: string, enum: [tendering.bid_result]}
+              domain: {type: string, enum: [INF-PROC]}
+              event: {type: string, enum: [tendering.result.published.v1]}
+              subject:
+                type: object
+                additionalProperties: false
+                required: [id, version, part_id]
+                properties:
+                  id: *factID
+                  version: *positive
+                  part_id: *nonempty
+              fields:
+                type: object
+                additionalProperties: false
+                required: [result_type, winner, candidates]
+                properties:
+                  result_type: {type: string, enum: [candidate_published, awarded]}
+                  winner: &org
+                    type: object
+                    additionalProperties: false
+                    required: [name_raw]
+                    properties:
+                      name_raw: {type: string}
+                      org_id: *nonempty
+                      uscc: *nonempty
+                  buyer: *org
+                  location: {type: string}
+                  project_id: *factID
+                  amount:
+                    type: object
+                    additionalProperties: false
+                    required: [value, currency]
+                    properties:
+                      value: {type: string}
+                      currency: {type: string}
+                  awarded_items:
+                    type: array
+                    items:
+                      type: object
+                      required: [name]
+                      additionalProperties: true
+                      dependentSchemas:
+                        name:
+                          $ref: 'https://schemas.miaoqia.com/domains/procurement/defs.schema.json#/$defs/awarded_item'
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [stage, bidder]
+                      properties:
+                        stage: {type: string}
+                        bidder: *org
+                        rank: {type: integer, minimum: 1}
+                  org_ids: &strings {type: array, items: {type: string}}
+                  categories: *strings
+                  categories_scope: {type: string, enum: [notice_subject]}
+              items: &empty {type: object, additionalProperties: false}
+              item_domains: *empty
+              item_refs:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [name, id, version, domain]
+                  properties:
+                    name: {type: string, enum: [fact, project]}
+                    id: *factID
+                    version: *positive
+                    domain: {type: string, enum: [INF-PROC]}
+              evidence:
+                type: object
+                additionalProperties: false
+                properties:
+                  fact.winner: &confidence
+                    type: object
+                    additionalProperties: false
+                    required: [confidence, method, suspect]
+                    properties:
+                      confidence: {type: number, minimum: 0, maximum: 1}
+                      method: {type: string}
+                      suspect: {type: boolean}
+                  fact.amount: *confidence
+                  fact.categories: *confidence
+              display:
+                type: object
+                additionalProperties: false
+                required: [title, winner_name, lot_key]
+                properties:
+                  title: {type: string}
+                  winner_name: {type: string}
+                  lot_key: {type: string}
+                  winner_org_id: *nonempty
+                  buyer_name: {type: string}
+                  buyer_org_id: *nonempty
+                  location: {type: string}
+                  procurement_project_id: *factID
+                  amount_value: {type: string}
+                  amount_currency: {type: string}
+                  amount_cny: {type: integer, format: int64}
+    EvidenceRead:
+      type: [object, 'null']
+      additionalProperties: false
+      required: [kind, evidence]
+      properties:
+        kind: {type: string, enum: [doc]}
+        evidence:
+          type: object
+          additionalProperties: false
+          required: [id, display_level, snapshot_ref, source_id, source_key, observed_at, locator, snippet, context, derivation]
+          properties:
+            id: *evidenceID
+            display_level: {type: string, enum: [citation_only, excerpt, full_text]}
+            snapshot_ref: {type: string, minLength: 1}
+            source_id: *nonempty
+            source_key:
+              type: string
+              minLength: 1
+              description: 站点对象稳定键。原始制品字节的地址由采集和证据所有者管理。
+            observed_at: {type: string, format: date-time}
+            locator:
+              type: [object, 'null']
+              additionalProperties: false
+              required: [block]
+              properties:
+                block: &index {type: integer, minimum: 0}
+                block_end: *index
+                char_start: *index
+                char_end: *index
+                row: *index
+                col: *index
+            snippet: {type: [string, 'null']}
+            context: {type: [string, 'null']}
+            derivation: {type: 'null', description: 当前 listener 只装配文档证据。}
+          allOf:
+          - if: {properties: {display_level: {const: citation_only}}}
+            then:
+              properties:
+                locator: {type: 'null'}
+                snippet: {type: 'null'}
+                context: {type: 'null'}
+          - if: {properties: {display_level: {const: excerpt}}}
+            then:
+              properties:
+                locator: {type: object}
+                snippet: {type: string, maxLength: 512}
+                context: {type: 'null'}
+          - if: {properties: {display_level: {const: full_text}}}
+            then:
+              properties:
+                locator: {type: object}
+                snippet: {type: string}
+                context: {type: string}
+    NoticeChunkRequest:
+      type: object
+      additionalProperties: false
+      required: [fact_id, version, ordinal]
+      properties:
+        fact_id: &chunkFactID {type: string, pattern: '^ntc_[0-9A-HJKMNP-TV-Z]{26}$'}
+        version: {type: integer, format: int64, minimum: 1}
+        ordinal: &chunkOrdinal {type: integer, format: int64, minimum: 0, maximum: 11}
+    NoticeChunkRead:
+      type: [object, 'null']
+      additionalProperties: false
+      required: [fact_id, version, ordinal, snapshot_ref, locator, text, rights_tags, metadata]
+      properties:
+        fact_id: *chunkFactID
+        version: {type: integer, format: int64, minimum: 1}
+        ordinal: *chunkOrdinal
+        snapshot_ref: {type: string, pattern: '^snp_[0-9A-HJKMNP-TV-Z]{26}$'}
+        locator:
+          type: object
+          additionalProperties: false
+          required: [block, char_start, char_end]
+          properties:
+            block: &coordinate {type: integer, format: int64, minimum: 0}
+            row: *coordinate
+            col: *coordinate
+            char_start: *coordinate
+            char_end: *coordinate
+        text: {type: string, minLength: 1, maxLength: 768}
+        rights_tags: &publicSourceTags
+          type: array
+          minItems: 1
+          maxItems: 64
+          uniqueItems: true
+          items: {type: string, pattern: '^public:[a-z][a-z0-9_-]{0,95}$'}
+        metadata:
+          type: object
+          additionalProperties: false
+          required: [identifiers]
+          properties:
+            identifiers:
+              type: array
+              minItems: 1
+              maxItems: 3
+              items: {type: string, minLength: 1}
+            title: {type: string, minLength: 1}
+            region: {type: string, minLength: 1}
+            notice_type: {type: string, minLength: 1}
+            published_at: {type: string, format: date-time}
+    PublicOrganizationRequest:
+      type: object
+      additionalProperties: false
+      required: [org_id, version]
+      properties:
+        org_id: &publicOrgID {type: string, pattern: '^org_[0-9A-HJKMNP-TV-Z]{26}$'}
+        version: &publicOrgVersion {type: integer, format: int64, minimum: 1, maximum: 9223372036854775807}
+    PublicOrganizationRead:
+      description: 要求非空且全部获当前 full_text 权限的公开来源闭包。USCC 须通过校验码验证。
+      type: [object, 'null']
+      additionalProperties: false
+      required: [org_id, version, name, uscc, rights_tags]
+      properties:
+        org_id: *publicOrgID
+        version: *publicOrgVersion
+        name: {type: string, minLength: 1, maxLength: 512}
+        uscc: {type: string, pattern: '^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$'}
+        rights_tags: *publicSourceTags
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [title, status]
+      properties:
+        title: *nonempty
+        status: {type: integer, minimum: 400, maximum: 599}
+        code: *nonempty
+        detail: {type: string}

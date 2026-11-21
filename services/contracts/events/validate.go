@@ -37,7 +37,8 @@ func Compile(raw any) (*jsonschema.Schema, error) {
 func Schema(name string) (*jsonschema.Schema, error) {
 	once.Do(func() {
 		var all struct {
-			Schemas map[string]any `json:"schemas"`
+			// Keep integer bounds exact when forwarding schemas to the compiler.
+			Schemas map[string]json.RawMessage `json:"schemas"`
 		}
 		if loadError = json.Unmarshal(payloads, &all); loadError != nil {
 			return
