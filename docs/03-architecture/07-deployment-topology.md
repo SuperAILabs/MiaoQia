@@ -31,12 +31,30 @@
 
 | 进程角色 | 内容 | 伸缩依据 |
 |---|---|---|
-| `acq-scheduler` | 按来源的增量采集周期任务（kernel scheduler，`jobs: true`）；回填工作流（Temporal worker，任务队列 `acquisition-schedule`）；消费控制类事件（回填请求、链路探针） | 固定副本（主备）：每轮按任务取 PostgreSQL 会话级咨询锁 |
-| `acq-fetcher` | HTTP/API 抓取执行器 | 任务队列深度 |
-| `acq-browser` | 浏览器渲染池（Playwright） | 渲染任务队列深度、内存 |
+| `acq-scheduler` | 周期写入逐源增量和初始回填计划，同时消费链路探针。 | 计划事务耗时与到期水位，重叠实例在 PostgreSQL 内幂等登记 |
+| `acq-fetcher` | 三个在线执行线程、一个历史执行线程，按共享预算 [领取并执行窗口](subsystems/acquisition.md#133-请求执行与复查)，清理到期列表及暂存。 | 就绪队列深度、在途请求、归档积压与副本连接数 |
+| `acq-browser` | 领取浏览器来源的计划，使用部署方绑定的受控渲染器获取列表及正文。浏览器发现、捕获、成对归档和重放已做隔离验收，正式出口和真实来源按 [浏览器采集规则](subsystems/acquisition.md#134-归档范围与字节定义)逐个准入。 | 渲染任务队列深度、内存 |
 | `acq-admin` | 已实现显式启用的冻结语料权利内部只读接口；写管理为本地 operator CLI，运营控制台和完整来源管理后续实现 | 固定副本 |
 
 网络：独立的出口网关与出口地址池；入站仅允许来自内部网络的管理请求。
+
+Acquisition 数据库迁移支持窗口派发、分组观察、浏览器列表发现和正文配对收据。`mq-acquisition --role acq-scheduler` 和 `mq-acquisition --role acq-fetcher` 各自配置 `MIAOQIA_ACQUISITION_OBJECT_STORE_DIR` 后分别启动计划和执行。各角色读取同版本领域包。执行角色持有存储凭证。启用分组或浏览器来源前，先迁移生产者和消费者数据库，升级公共中继及 evidence 消费者，再按来源打开调度。
+
+来源运行声明以 `transport` 区分 `http` 和 `browser`，既有来源沿用 `http`。计划由同一调度器登记，执行角色按各自的来源和契约指纹领取。浏览器执行角色分为受信控制器和隔离浏览器。控制器持有租约、归档和当前权利，隔离浏览器使用监督器提供的单轮 Playwright 执行会话和受控出口。出站规则在浏览器启动前生效，逐请求校验允许的公开地址及实际连接目标，捕获证据用于核验同次列表或正文响应。发布者准入按来源验证导航、网络权限、响应绑定与持续覆盖。[跨进程接线验收](../../deploy/vps/data-plane/browser/README.md#控制进程边界)
+
+`acq-browser` 的部署方在受信启动环境提供 `MIAOQIA_ACQUISITION_BROWSER_RENDERER` 工厂入口及私有归档暂存。控制器只向该受信渲染器交付来源已声明的导航与正文任务。当前执行器每次接受独立页面的两个已许可 GET，逐个占用共享下载预算，拒绝其他请求、重复及跳转。浏览器进程隔离和所连接出口由渲染器的部署装配落实。
+
+开发 VPS 的 Chromium HTTPS 夹具使用临时配置和受限网络，在启动前固定批准的 IP 和端口，保留 TLS 主机名校验。渲染器先装配上下文限制，再安装页面许可。获准的请求继续经过部署方已有的路由和页面许可，部署方可进一步拒绝。上下文装配失败或拒绝本次渲染中的请求时中止配对。合成发布者观测到两次许可 GET 和精确字节配对，复用许可地址的弹窗和未经许可的 WebSocket 均为零到达。[Chromium 验收夹具](../../deploy/vps/data-plane/browser/README.md)
+
+独立 Linux 监督夹具通过 pidfd 观察自有控制器子进程退出，并撤销内核租约。租约也可独立到期。合成 HTTPS 组合验收在同一 Chromium 进程和上下文仍可用时验证了既有连接及新连接尝试被内核丢弃，健康的合成服务记录了零个新增浏览器连接和请求。常驻绑定继续验证所有目标和浏览器级流量、真实 DNS 变化及控制器异常退出，发布者逐源验证公开依赖、分页与原件归档。[控制器生命周期验收](../../deploy/vps/data-plane/browser/lifecycle/README.md) · [C11 开发验收记录](../../contracts/reviews/c11-dev-operations.yaml)
+
+独立控制容器的合成 HTTPS 验收使用真实 Acquisition renderer 处理许可与响应。宿主监督器核对 Unix 对端凭据与 pidfd，许可两个请求后原件及 DOM 投影摘要与合成证据相符。杀死另一个停在正文许可阶段的控制器后，监督器确认撤销，合成发布者正文零到达。该夹具按容器放宽了合成控制进程的 SELinux 标签，常驻链路仍需使用目标进程标签独立验收。[控制进程边界](../../deploy/vps/data-plane/browser/README.md#控制进程边界)
+
+在该监督边界中，合成 `acq-browser` 角色通过独立会话领取列表和正文任务。控制器的私网连接专用 PostgreSQL 与 S3 兼容服务。归档验收核对列表原件、正文、投影和事务内 V4，列表账本的到期值按 30 天计算。消息交付与独立解析需要各自证据。[采集角色与归档验收](../../deploy/vps/data-plane/browser/README.md#采集角色与归档验收)
+
+升级调度程序时先迁移并替换旧调度、执行和手工采集程序，随后切换来源契约。切换前停止使用旧来源配置的调度实例及手工采集。每个来源在现有租约结算或过期后切换，调度记录当前契约指纹，执行进程只领取与本机及已登记指纹都一致的计划。回退前停下写入、核对未结轮次与来源租约，并保留计划和水位。存在未结窗口或已保留的契约替换记录时，保留对应的数据库迁移版本。
+
+启用待解析的采集来源前，先升级公共 evidence 数据库至当前迁移，公共 `data-consumer` 副本使用同版本领域包。待解析来源在 `documents.yaml` 声明 `live_parse: false`。消费一条合成观察并核对待解析表和快照状态后，启用对应采集计划。[解析准入与回放](subsystems/evidence.md#12-实现状况)
 
 `acq-admin` 可显式启用[冻结语料当前权利只读接口](subsystems/source-rights-runtime.md)，以 TLS1.3/mTLS 与精确委托矩阵接收 data 调用：交互读取经当前 identity 核验，监控与仿真读取只接纳委托项点名的服务主体。权利 reader/operator/owner 分离，data 只有远程 client，不持 acquisition DSN。默认关闭；该端口不提供写管理、来源内容或领域 live 证明。
 
@@ -51,6 +69,8 @@
 | `document-worker` | evidence | 文档处理、解析、增强（OCR 与版面经模型 API） | 文档队列深度 |
 | `data-workflow-worker` | evidence、domain-intelligence、entity-graph | 重放、批量增强、语料快照、回填 | 工作流任务队列深度 |
 
+公共采集完成事件由 `data-consumer` 的 `evidence.live` 消费。副本使用同版本领域包和同一解析准入。`data-api` 提供读取，文档与工作流执行角色承接各自的文档或批任务。
+
 客户授权文档（租户知识资产）的解析由 `tenant-document-worker` 的**单元级实例**完成：随租户单元部署，使用单元级凭证与存储，不与公共域实例混用。相同 database 代码按实例绑定不同数据库，迁移与备份也按实例执行。角色声明 `data_scopes: {evidence: tenant}` 与 `cell`；当前仅提供隔离组装骨架，租户文档业务处理随对应能力实现，不能启动公共探针消费者。
 
 `data-api` 的内部读取 listener 以 `MIAOQIA_DATA_API_LISTENER=1` 与 `--role data-api` 启用，监听 `MIAOQIA_DATA_LISTEN`；须配置 `MIAOQIA_INTERNAL_TLS_CERT`、`MIAOQIA_INTERNAL_TLS_KEY`、`MIAOQIA_INTERNAL_TLS_CA`、精确的委托矩阵 `MIAOQIA_DATA_DELEGATIONS`（peer、operation、purpose；monitoring/simulation 另写服务主体 principal，见[服务主体按租户读取](subsystems/source-rights-runtime.md#服务主体按租户读取)），以及 identity 与 acquisition 权利服务的地址和 peer。没有明文或开发绕过；缺任一配置不启动。platform 的内部端口与内部客户端在配置了 `MIAOQIA_INTERNAL_TLS_*` 时使用 mTLS（development 也如此），因此开发环境可以连接 data-api。
@@ -62,10 +82,12 @@
 | `api` | gateway + 本单元全部子系统的接口实现 | 处理同步请求（REST、BFF、MCP） | 请求速率、延迟 |
 | `consumer` | search、detection、assessment、pursuit、customer-context、learning、channels、commerce、governance 等的事件消费者 | 事件处理、索引投影、读模型更新、匹配 | 消费延迟 |
 | `workflow-worker` | research、learning、customer-context、pursuit、governance、search 等的 Temporal worker | 研究运行、仿真、回填、索引构建、删除编排、推进时限 | 工作流任务队列深度 |
-| `outbox-relay` | 全部子系统（含 Python 子系统）的发件箱中继 | 发件箱 → Kafka | 发件箱积压 |
+| `outbox-relay` | 子系统发件箱中继，包含独立境内公共库配置 | 发件箱 → Kafka | 发件箱积压 |
 | `scheduler` | 声明了周期任务的子系统（platform 当前为 identity、channels、pursuit，及其依赖 commerce、customer-context、detection）与 operations | 定时任务：子系统在 `runtime.Module.Jobs` 中声明，只调用本子系统可重复执行的维护入口；按租户的任务经 identity 的本地租户枚举逐租户执行，identity 须本地加载 | 固定副本（主备）：每轮按任务取 PostgreSQL 会话级咨询锁，同一任务同一时刻只在一个实例执行 |
 
 各单元的角色清单为 `deploy/<单元>/roles.yaml`；角色中的子系统必须属于该单元（由子系统索引生成的 `deploy/subsystems.yaml` 校验）。入口：platform 为 `services/cmd/platform -role <角色>`，acquisition 与 data 为 `mq-acquisition` / `mq-data --role <角色>`；配置项见各入口的说明。
+
+境内公共主机的中继用 `MIAOQIA_RELAY_SOURCES=acquisition,evidence,domain-intelligence,entity-graph` 选择公共库，可按部署拆分成非空子集。`MIAOQIA_RELAY_DSN_TEMPLATE` 的 `{db}` 依索引解析为对应的境内 `acq`、`evd`、`dom`、`ent`。中继账号只连接所选公共库，拥有发件箱读取和结算权限。每条事件在发布前核对所属来源、`public.*` 主题与事件契约，验证失败时该批保持待发布。本机集成环境可省略来源选择，对索引中的数据库逐库中继。
 
 ### 2.4 基础组件的部署约定
 
@@ -186,13 +208,19 @@ flowchart LR
 
 | 存储类 | 开发环境放置 | 数据 |
 |---|---|---|
-| `public-raw`、`public-derived`、`public-meta` | 境内公开数据主机（腾讯云，`43.142.169.43`，Asia/Shanghai）：对象存储目录与 `acq`、`evd`、`dom`、`ent` 数据库 | 真实公开来源数据；尚未部署 |
-| `stream` | 开发 VPS：Kafka、OpenTelemetry Collector（[VPS 公共测试服务接入](../05-delivery/10-vps-public-services.md)） | 合成数据、夹具，及公开数据链路的事件（开发期例外，见下） |
+| `public-raw`、`public-derived`、`public-meta` | 现有境内开发 VPS 上的 S3 兼容对象存储和公开数据面专用 PostgreSQL 集群，包含 `acq`、`evd`、`dom`、`ent`、`sea_public`。开发阶段可用简化的兼容存储部署验证。 | 真实公开来源数据；持续运行待验收 |
+| `stream` | 境内数据面的 Kafka 与 Collector 承载公开数据链路，公共测试 VPS 的 Kafka 与 Collector 承载合成验证（[VPS 公共测试服务接入](../05-delivery/10-vps-public-services.md)） | 合成数据、夹具及公开数据链路的事件 |
 | `platform` | Keycloak、OpenFGA 及其数据库在开发 VPS；平台子系统数据库在开发者本机 | 测试账号与合成数据 |
 | `tenant`、`agent` | 开发者本机与 CI | 合成数据与夹具 |
-| `public-index` | 未部署 | — |
+| `public-index` | 境内常驻开发 VPS 的独立公共 OpenSearch，待部署验收 | 公共搜索投影 |
 
-驻留规则：真实数据的权威存储（`public-raw`、`public-derived`、`public-meta`）只放境内节点；开发 VPS 不作为境内节点对待，只承载合成数据与夹具。开发期例外：公开来源数据链路的事件可以经过开发 VPS 的 Kafka，相应日志与链路数据可以进入开发 VPS 的采集器；例外只限公开数据，不含任何租户数据，Kafka 主题保留期不超过 7 天，超过保留期的事件由发件箱与权威数据重新生成。生产环境不适用此例外（第 11 节）。
+采集和证据的 `MIAOQIA_ACQUISITION_OBJECT_STORE_DIR`、`MIAOQIA_EVIDENCE_OBJECT_STORE_DIR` 接受本地目录路径或 `s3://bucket/prefix`。S3 兼容端点通过 `AWS_ENDPOINT_URL_S3` 配置；区域和凭证走 SDK 配置。两端在 `raw/` 和 `projection/` 使用同一桶和前缀。采集持有原件、惰性投影与列表的读取和条件创建权限，删除权限只给 `discovery/`。证据读取原件与成对的惰性投影，并能条件创建其规范化和派生对象。版本桶按列表留存要求清理非当前版本和删除标记，用只读工具核验按版本读取、标记枚举和长期原件对照。候选提供商需验证 `If-None-Match: *` 条件创建、并发写入、到期删除及 PostgreSQL 引用恢复。[版本留存验收](../../deploy/vps/data-plane/README.md#版本留存验收)
+
+采集恢复使用 `MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_DIR` 指定独立的本地持久卷。目录必须归进程用户所有，权限为 0700，且位于相应数据的驻留区域。`MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_MAX_BYTES` 默认 512 MiB，`MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_TTL_SECONDS` 默认 86400。请求发出前按最大响应量预留配额，同一暂存卷的在途下载与完整暂存共同计入上限。进程重启后可恢复已完整写入且绑定尝试的响应。遗留的未完成下载在暂存清理时回收。换机没有原暂存时沿轮次补采，覆盖报告保留未完成状态。对临时开发环境可省略暂存目录，使用补采恢复。
+
+真实公开数据的权威存储放在境内节点。境内开发 VPS 承担常驻公开数据部署，实际来源连通性、存储和恢复按该主机验证。公开数据链路事件和对应遥测可以进入该主机上的 Kafka 与 Collector，租户数据留在其获准环境。开发环境的公开数据主题保留期不超过 7 天，超过保留期的事件由发件箱与权威数据重新生成。生产配置按第 11 节执行。
+
+公开数据面的 VPS 发布包独立于现有公共测试组件。发布包使用锁定依赖构建 Python 与 Go 运行镜像，按数据写入与读取、搜索 journal、索引接续、搜索读取和采集阶段启动，使用部署方提供的私有 PostgreSQL、S3、OpenSearch 和 Kafka 端点。运行凭据按角色装配，数据库迁移使用独立的一次性任务与所有者凭据。容器内部接口通过部署网络连接，受控采集出口单独分配给出站角色，索引切换及语料供数继续经过各自的权利和验收入口。开机恢复由发布账号的 rootless Podman 恢复本项目中此前已启用且满足重启策略的容器。Kafka 支持按角色配置证书验证及 SCRAM。使用明文连接的隔离环境将端点及其广播地址限制到获准的私有网络。常驻角色启动前按第 12 节完成 C11 开发验收。[发布包与装配命令](../../deploy/vps/data-plane/README.md)
 
 开发环境的三个部署单元以进程角色启动，连接按上表放置的数据库与公共组件；`tests/e2e/m0.py` 使用本机 PostgreSQL 与开发 VPS 的公共组件验证完整探针和当前 identity 接口的本地/远程切换。开发 VPS 的公共组件使用 MiaoQia 自有 `miaoqia_public` 网络，配置与重建清单见 [VPS 公共测试服务接入](../05-delivery/10-vps-public-services.md)，不依赖其他项目的网络名称。OpenFGA 出现网络长尾时，`tools/dev/run-local-acceptance.sh --local-openfga` 可用本机 `openfga` 二进制的内存存储替代共享 OpenFGA，仅用于本次开发验收，服务结束后进程退出。`deploy/local/up.sh` 与其 Docker Compose 文件只作为没有共享环境时的可选引导方式，不是开发验收前置条件。它使用显式开发策略；生产 HTTP 认证策略另由[运行时验收](../05-delivery/05-m0-runtime-acceptance.md)覆盖。整个 M0 退出还须满足[阶段基线](../05-delivery/06-stage-baseline.md)的其他交付。
 
@@ -304,3 +332,5 @@ C1b 关闭条件与证据：两家同规格报价（含第 9 节总成本口径�
 | 生产运行 | 生产迁移切换前复验，且不晚于 M4 发布前（[质量与验收第 11 节](../05-delivery/02-quality-and-acceptance.md#11-阶段与运行门禁)） | 平台工程负责人 | 在生产等价 `staging` 上满足[数据架构第 11 节](02-data-architecture.md#11-备份与容灾)的 RPO/RTO；单节点/可用区故障、派生索引重建与降级窗口按[容量规划第 7 节](12-capacity-plan.md#7-开发与峰值验证)测量；第 9 节迁移与回退演练通过；告警到处置演练与值班生效 | 验收记录 `contracts/reviews/c11-prod-operations.yaml`；此后每季度恢复演练追加记录 |
 
 未取得对应阶段的验收记录前，不承诺持续服务或生产 SLA。
+
+开发环境使用 `c11_alert_probe.py --config FILE` 采样，运行方在启动配置中提供阈值、所测范围和只读身份。来源中断、采集队列和错误率取自采集账本，死信按固定观察窗的主题位点增量计量，发件箱按各公共库测量待发记录，磁盘水位取自指定卷。输出为 JSON，退出码 `0` 表示健康，`1` 表示超限，`2` 表示采样不可用。真实通知由部署环境按值班登记路由。隔离演练已确认六类告警均可触发和清除，共享环境的 TLS 与只读身份、告警阈值、通知路由和响应仍按实际接入验收。[探针入口](../../tools/dev/c11_alert_probe.py) · [开发验收记录](../../contracts/reviews/c11-dev-operations.yaml)

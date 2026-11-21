@@ -108,3 +108,7 @@ research 拥有研究模板的引用、事实质量、完成率与预算指标�
 复用产生新的研究案例，引用被复用的报告并记录复用依据；界面标明“复用 X 日的报告”，用户可以要求重新研究。报告只在租户内共享，不对外发送（[identity 第 7 节](identity.md#7-授权模型)）。
 
 **预算**按目标分配：租户的研究预算（模型成本、工具调用次数）在各目标之间分配额度，研究案例从所属目标的额度扣减，没有目标的临时提问从租户的公共额度扣减；复用不扣模型成本。单次运行的预算上限仍由研究模板声明（[AI 与 Agent 架构第 2 节](../05-ai-and-agent-architecture.md#2-研究模板)）。额度用尽时新研究排队或需要有权限的人追加，不降级为不完整的研究冒充完成。
+
+## 12. 固定公告研究入口
+
+Cell API 配置 `MIAOQIA_RESEARCH_DATA_API_URL` 时挂载 `POST /v1/research/a02`。已认证用户提交组织单元和固定公告版本，identity 检查该租户内的 `can_start_research`，Runner 经 data-api 获取结果和可展示的原文引文。同步报告明确列出固定事实、未知与建议，最多 16 次权威读取、20 秒，模型调用预算为零。异步案例、界面、生产模型和完整研究工具随各自的治理与评估验收。[接口契约](../../../contracts/apis/research/openapi.yaml) · [Runner](../../../services/subsystems/research/README.md)

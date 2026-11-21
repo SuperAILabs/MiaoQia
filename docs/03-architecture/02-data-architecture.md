@@ -2,6 +2,8 @@
 
 > 状态：评审中 · 负责人：数据架构负责人
 
+首次贯通采集、证据、实体、检索与上层读取的实施设计见[数据供应平面端到端设计](15-data-plane-pilot.md)。
+
 ## 1. 数据分区
 
 ```text
@@ -88,9 +90,9 @@
 
 | 层 | 内容 | 存储 | 所有者 | 可变性 | 是否可重建 |
 |---|---|---|---|---|---|
-| L0 原始层 | 原始响应、附件、抓取元数据 | 对象存储 | `acquisition` | 不可变 | 否（唯一原件） |
+| L0 原始层 | 原始响应、附件和文件字节 | 对象存储 | `acquisition` | 不可变 | 否（唯一原件） |
 | L1 规范化层 | 正文文本、版面结构、表格、分块、页码坐标；结构化来源的记录集（记录键 + 原样字段） | 对象存储 | `evidence` | 按管线版本追加 | 是（由 L0 重新处理） |
-| L2 结构层 | 来源目录、快照与修订元数据、领域事实的结构化字段、证据定位符、实体、关系、生命周期 | PostgreSQL | `acquisition`、`evidence`、`domain-intelligence`、`entity-graph` | 版本化 | 部分（领域事实可由 L1 重放） |
+| L2 结构层 | 来源目录、扫描与抓取记录、来源观察、快照与修订元数据、领域事实字段、证据定位符、实体、关系、生命周期 | PostgreSQL | `acquisition`、`evidence`、`domain-intelligence`、`entity-graph` | 版本化 | 部分（领域事实可由 L1 重放） |
 | L3 增强层 | AI 与规则产生的检索增强：标签、分类、实体提及、关键词、摘要 | 对象存储（结果）+ PostgreSQL（增强运行登记） | `evidence`（增强管线） | 按增强器版本追加 | 是（由 L1 重算） |
 | L4 检索层 | 面向检索的组合文档 | OpenSearch | `search` | 随索引版本重建 | 是（由 L1+L2+L3 重建） |
 
@@ -107,7 +109,9 @@ PostgreSQL 中的领域事实只保存结构化字段（采购人、金额、截
 
 | 前缀 | 内容 | 格式 | 生命周期 |
 |---|---|---|---|
-| `raw/<sha256>` | 原始制品，按内容寻址：同一内容只存一份，写入天然幂等；来源、URL、获取时间与请求记录在 `acquisition` 的元数据中 | 原始格式 | 标准存储 → 按对象年龄转低频 → 按来源权利转归档（经元数据选出对象） |
+| `raw/<sha256>` | 原始制品，在允许共用的存储范围内按内容寻址；来源、URL、获取时间和观察顺序按 [acquisition 记录](subsystems/acquisition.md#132-身份与版本)持久化 | 原始格式 | 标准存储 → 按对象年龄转低频 → 按来源权利转归档（经元数据选出对象） |
+| `projection/<sha256>` | 浏览器从同次导航选出的惰性公告文档，与原件按采集收据绑定 | 版本化 JSON | 按配对观察的保留与访问策略管理 |
+| `discovery/<source>/<attempt>/<sha256>` | 获准留存的列表响应，查询窗口、页、发现键和哈希在 PostgreSQL | 原始格式 | 默认 30 天，逐来源调整；到期移除对象字节并保留收据 |
 | `normalized/<pipeline>/<version>/<snapshot_id>.json` | 规范化文档（含分块），按处理管线版本隔离（`pipeline_version` 的 `<pipeline>@<version>` 拆为两级） | JSON | 当前版本保持标准存储，旧版本按策略降级或删除 |
 | `enrichment/run/<enricher>/<version>/<sha256>.json` | 单次增强运行结果，按增强器版本隔离、按内容哈希命名 | JSON | 当前与上一版本保留，其余删除 |
 | `enrichment/derivation/<transform>/<version>/<sha256>.json`、`enrichment/reference/<name>/<version>/<sha256>.json` | 派生证据与不可变参考数据，按转换与参考版本隔离 | JSON | 随引用它们的增强结果与事实版本保留 |
@@ -206,7 +210,7 @@ PostgreSQL 中的领域事实只保存结构化字段（采购人、金额、截
 | 时间字段 | 含义 |
 |---|---|
 | `published_at` | 来源声明的发布时间（可能缺失或不准确） |
-| `observed_at` | 系统首次观察到该内容的时间 |
+| `observed_at` | 系统首次观察到该次来源变化的时间。同一原件可对应不同时间的观察 |
 | `valid_from` / `valid_to` | 事实在现实世界中的有效区间（如资质有效期、关系存续期） |
 | `recorded_at` | 系统记录该版本的时间 |
 
@@ -215,8 +219,8 @@ PostgreSQL 中的领域事实只保存结构化字段（采购人、金额、截
 ## 6. 版本模型
 
 ```text
-RawArtifact (内容哈希, 不可变)
-  └─ SourceSnapshot v1, v2 …          来源内容实际变化 → 新快照
+SourceObservation ─固定引用→ RawArtifact (内容哈希, 不可变)
+  └─ SourceSnapshot v1, v2 …          规范化内容变化 → 新快照
        └─ ExtractionRevision r1, r2 … 解析器升级/人工修正 → 新修订
             └─ DomainFactVersion       领域事实版本（引用修订）
                  └─ Entity/Relationship 版本（引用事实）
