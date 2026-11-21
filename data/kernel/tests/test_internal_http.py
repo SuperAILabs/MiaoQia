@@ -95,3 +95,36 @@ def test_server_constructor_validates_four_part_delegations():
         with pytest.raises(ValueError):
             Server(("127.0.0.1", 0), TLS("", "", ""), bad, object(), {})
     assert delegation(CONSUMER, "op", "simulation", "svc:learning")[3] == "svc:learning"
+
+
+def test_certificate_service_derives_unscoped_identity_and_rejects_request_context(tls_factory, running_server):
+    import http.client
+    import json
+
+    from miaoqia.kernel import reqctx
+    from miaoqia.kernel.internal_http import Server
+
+    def project(body, deadline):
+        assert body == {"example": "event"}
+        context = reqctx.current()
+        return {"principal": context.principal.id, "tenant": context.tenant, "cell": context.cell}
+
+    server = Server(("127.0.0.1", 0), tls_factory("server", DATA), (), None,
+                    {"/mutations": ("search.mutations", project), "/other": ("other", project)},
+                    certificate_services={(CONSUMER, "search.mutations")})
+    running_server(server)
+    credentials = tls_factory("consumer", CONSUMER)
+
+    def post(path, headers):
+        client = http.client.HTTPSConnection("127.0.0.1", server.server_port, context=credentials.context(), timeout=5)
+        try:
+            client.request("POST", path, body=b'{"example":"event"}', headers=headers)
+            response = client.getresponse()
+            return response.status, json.loads(response.read())
+        finally:
+            client.close()
+
+    assert post("/mutations", {}) == (200, {"principal": "svc:platform-consumer", "tenant": "", "cell": ""})
+    assert post("/other", {})[0] == 403
+    forged = Context(Principal("usr_test", "user"), "tnt_test", "cell-01", "interactive")
+    assert post("/mutations", {"Miaoqia-Context": forged.encode()})[0] == 400

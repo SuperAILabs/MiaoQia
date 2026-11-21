@@ -1,0 +1,35 @@
+fixtures:
+- schema: PublicSearchRequest
+  base:
+    query: {kind: chunk, text: 合成证据, domain: INF-PROC}
+    page_size: 20
+  cases:
+  - name: 页大小越界
+    valid: false
+    patch: [{op: replace, path: /page_size, value: 51}]
+  - name: 禁止请求体传租户
+    valid: false
+    patch: [{op: add, path: /tenant, value: forged}]
+- schema: PublicSearchPage
+  base:
+    indexed_as_of: '2026-11-19T08:00:00Z'
+    hits:
+    - ref: {kind: chunk, domain: INF-PROC, id: 'ntc_00000000000000000000000000~00', version: '1'}
+      snapshot_ref: snp_00000000000000000000000000
+      text: 合成证据
+      locator: {block: 0, char_start: 0, char_end: 4}
+    - ref: {kind: entity, domain: INF-ORG, id: org_00000000000000000000000000, version: '3'}
+      title: 合成登记企业
+  cases:
+  - name: 固定版本不能为空
+    valid: false
+    patch: [{op: replace, path: /hits/0/ref/version, value: ''}]
+  - name: 禁止返回索引分数
+    valid: false
+    patch: [{op: add, path: /hits/0/_score, value: 1}]
+- schema: Problem
+  base: {title: search_denied, status: 403, code: search_denied}
+  cases:
+  - name: 错误返回须带状态
+    valid: false
+    patch: [{op: remove, path: /status}]

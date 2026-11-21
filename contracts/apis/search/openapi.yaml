@@ -1,0 +1,99 @@
+openapi: 3.1.0
+info:
+  title: 公共事实与证据检索
+  version: '0.0.0'
+paths:
+  /v1/search:
+    post:
+      operationId: searchPublic
+      x-timeout-ms: 8000
+      x-idempotent: true
+      description: 使用当前租户会话与来源权利核验候选。续页绑定查询、已认证身份和活动索引。
+      security: [{bearer: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PublicSearchRequest'}
+      responses:
+        '200':
+          description: 固定版本命中及索引截至时间
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicSearchPage'}
+        default:
+          description: 权限、游标、输入或依赖错误
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+components:
+  securitySchemes:
+    bearer: {type: http, scheme: bearer}
+  schemas:
+    PublicSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query, page_size]
+      properties:
+        query:
+          type: object
+          additionalProperties: false
+          description: 文本及标识等字符串各最多 512 UTF-8 字节。from 含边界，before 排除边界。
+          properties:
+            kind: &kind {type: string, enum: [notice, chunk, fact, entity]}
+            text: &queryString {type: string, maxLength: 512}
+            identifier: *queryString
+            domain: *queryString
+            region: *queryString
+            notice_type: *queryString
+            from: &instant {type: string, format: date-time}
+            before: *instant
+        page_size: {type: integer, minimum: 1, maximum: 50}
+        cursor: &cursor {type: string, maxLength: 16384}
+    PublicSearchPage:
+      type: object
+      additionalProperties: false
+      required: [hits, indexed_as_of]
+      properties:
+        indexed_as_of: *instant
+        next_cursor: *cursor
+        hits:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [ref]
+            properties:
+              ref:
+                type: object
+                additionalProperties: false
+                required: [kind, domain, id, version]
+                properties:
+                  kind: *kind
+                  domain: {type: string, minLength: 1, maxLength: 128}
+                  id: {type: string, minLength: 1, maxLength: 512}
+                  version: {type: string, pattern: '^[1-9][0-9]*$'}
+              title: &displayString {type: string, minLength: 1}
+              excerpt: *displayString
+              text: {type: string, minLength: 1, maxLength: 768}
+              evidence_ref: *displayString
+              snapshot_ref: {type: string, pattern: '^snp_[0-9A-HJKMNP-TV-Z]{26}$'}
+              locator:
+                type: object
+                additionalProperties: false
+                required: [block, char_start, char_end]
+                properties:
+                  block: &coordinate {type: integer, format: int64, minimum: 0}
+                  row: *coordinate
+                  col: *coordinate
+                  char_start: *coordinate
+                  char_end: *coordinate
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        code: {type: string}

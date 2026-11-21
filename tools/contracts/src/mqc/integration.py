@@ -48,7 +48,7 @@ def check_integration(repo):
             covered.add(spec["schema"])
             schema = {"components": components, **components["schemas"][spec["schema"]]}
             Draft202012Validator.check_schema(schema)
-            validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+            validator = Draft202012Validator(schema, registry=repo.registry, format_checker=Draft202012Validator.FORMAT_CHECKER)
             total += check_cases(validator, spec, str(path), r)
             if not any(not case["valid"] for case in spec.get("cases", [])):
                 r.error(str(path), f"A2 {spec['schema']}缺少反例")
