@@ -1,7 +1,7 @@
 version: 0.1.0
 reviewed_at: '2026-10-14'
-reference: Tender Intel source_catalog/*/source.yaml
-purpose: 妙洽候选信源盘点，仅登记公开定位信息，不迁移处理器、驱动、凭证或启用状态。正文/附件能力验收并登记来源跟踪前不得启用。
+reference: Tender Intel source_catalog/*/source.yaml 与逐源原站探测记录
+purpose: 妙洽首批信源及原站定位。运行接入由 sources.yaml 声明和逐源验证决定。readiness_gap 记录已有依据下的接入缺口。
 sources:
 - source_id: anhui-ggzy-construction
   name: 安徽省公共资源交易平台-工程建设公告
@@ -24,7 +24,8 @@ sources:
   base_url: http://zb.bfjsjt.com/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: attachment_download_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: ccgp-central-public-tenders
@@ -32,7 +33,8 @@ sources:
   base_url: https://www.ccgp.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: rolling_archive_boundary_intermittent_access_and_attachment_coverage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: ccgp-sichuan-ggxx
@@ -41,6 +43,7 @@ sources:
   reference_access_mode: public
   reference_enabled: false
   readiness: candidate
+  readiness_gap: public_list_captcha_observed
   owner: 数据负责人
   priority: pending_review
 - source_id: chongqing-ggzy-trade-014
@@ -48,7 +51,8 @@ sources:
   base_url: https://www.cqggzy.com/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: trade_and_procurement_first_pages_only_development_vps_http_403_attachments_and_corrections_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: chongqing-government-procurement-homepage
@@ -57,14 +61,16 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
+  readiness_gap: browser_rendered_notice_capture_required
   owner: 数据负责人
   priority: pending_review
 - source_id: chongqing-government-procurement-spa
-  name: 重庆市政府采购网（SPA，待验证）
+  name: 重庆市政府采购网-采购公告栏目（SPA）
   base_url: https://www.ccgp-chongqing.gov.cn/
   reference_access_mode: public
   reference_enabled: false
   readiness: candidate
+  readiness_gap: browser_rendered_notice_capture_required
   owner: 数据负责人
   priority: pending_review
 - source_id: cncecyc-ywgg1gc
@@ -72,7 +78,8 @@ sources:
   base_url: https://bid.cncecyc.com/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: attachment_download_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: cotenders-news
@@ -80,7 +87,8 @@ sources:
   base_url: https://www.cotenders.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: no_observed_recent_notices_attachment_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: crccep-bidding-mat
@@ -88,7 +96,8 @@ sources:
   base_url: https://www.crccep.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: intermittent_detail_transport_and_attachment_coverage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: crecgec-home
@@ -97,6 +106,7 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
+  readiness_gap: public_notice_detail_loading_shell
   owner: 数据负责人
   priority: pending_review
 - source_id: hefei-ggzy-engineer
@@ -104,15 +114,17 @@ sources:
   base_url: https://ggzy.hefei.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: attachment_download_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: henan-ggzy-homepage-direct
-  name: 河南省公共资源交易中心-首页直达招标公告
+  name: 河南省公共资源交易中心-工程招标公告
   base_url: https://hnsggzyjy.henan.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: public_page_limit_full_history_attachments_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: henan-government-procurement-home
@@ -120,7 +132,8 @@ sources:
   base_url: https://zfcg.henan.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: homepage_current_window_procurement_archive_search_requires_captcha
   owner: 数据负责人
   priority: pending_review
 - source_id: hubei-ggzy-construction
@@ -128,7 +141,8 @@ sources:
   base_url: https://www.hbggzyfwpt.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: rolling_archive_depth_attachment_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: hubei-government-procurement-homepage
@@ -136,7 +150,8 @@ sources:
   base_url: https://www.ccgp-hubei.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: homepage_only_procurement_search_no_valid_results_observed
   owner: 数据负责人
   priority: pending_review
 - source_id: hunan-ggzy-construction
@@ -144,7 +159,8 @@ sources:
   base_url: https://www.hnsggzy.com/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: open_construction_front_two_pages_grouped_notice_window_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: hunan-government-procurement
@@ -152,15 +168,17 @@ sources:
   base_url: http://www.ccgp-hunan.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: attachment_download_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: jiangxi-ggzy-announcements
   name: 江西省公共资源交易平台-交易公告
-  base_url: https://ggzy.jiangxi.gov.cn/
+  base_url: https://www.jxsggzy.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: target_runtime_tls_full_history_attachments_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: jiangxi-government-procurement-spa
@@ -169,6 +187,7 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
+  readiness_gap: anonymous_http_412_observed
   owner: 数据负责人
   priority: pending_review
 - source_id: js-218-206-153-6-trade
@@ -176,15 +195,17 @@ sources:
   base_url: http://218.206.153.6:8099/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: homepage_current_window_attachment_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: jsjyztb-web-list
   name: 如东县限额交易平台-交易列表
-  base_url: http://jsjyztb.com/
+  base_url: http://rudong.net/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: public_pagination_captcha_after_page_six_development_vps_timeout_attachments_and_corrections_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: luzhou-ggzy-tzgg
@@ -192,7 +213,8 @@ sources:
   base_url: https://www.lzsggzy.com/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: attachment_download_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: m2-bid-list
@@ -200,7 +222,8 @@ sources:
   base_url: https://gzc.m2.com.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: attachment_coverage_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: national-public-resources
@@ -216,7 +239,8 @@ sources:
   base_url: https://www.scbid.com/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: full_publication_date_unavailable_in_list_and_pagination_beyond_page_2_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: shaanxi-ggzy-construction
@@ -224,7 +248,8 @@ sources:
   base_url: https://www.sxggzyjy.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: target_runtime_tls_full_history_attachments_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: shaanxi-government-procurement
@@ -232,7 +257,8 @@ sources:
   base_url: https://www.sxggzyjy.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: procurement_front_two_pages_only_full_history_attachments_and_target_runtime_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: shanxi-prec
@@ -240,7 +266,8 @@ sources:
   base_url: https://prec.sxzwfw.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: rolling_history_depth_attachment_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: sichuan-ggzy-construction
@@ -248,7 +275,8 @@ sources:
   base_url: https://ggzyjy.sc.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: other_channels_full_history_attachments_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: sichuan-government-procurement-homepage
@@ -257,14 +285,16 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
+  readiness_gap: rendered_detail_signed_request_observed
   owner: 数据负责人
   priority: pending_review
 - source_id: suzhou-ggzy-trade
   name: 苏州市公共资源交易平台
-  base_url: http://ggzy.suzhou.gov.cn/
+  base_url: https://ggzy.suzhou.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: engineering_only_public_page_cap_attachment_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: tibet-ggzy-construction
@@ -273,6 +303,7 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
+  readiness_gap: public_project_detail_api_access_denied
   owner: 数据负责人
   priority: pending_review
 - source_id: tibet-government-procurement-home
@@ -280,7 +311,8 @@ sources:
   base_url: http://www.ccgp-xizang.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: homepage_current_window_intermittent_transport_and_attachment_only_notices_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: xinjiang-ggzy-construction
@@ -288,7 +320,8 @@ sources:
   base_url: https://ggzy.xinjiang.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: additional_categories_history_attachment_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: xinjiang-government-procurement-home
@@ -297,6 +330,7 @@ sources:
   reference_access_mode: public
   reference_enabled: true
   readiness: candidate
+  readiness_gap: publisher_list_post_and_iframe_original_binding_unverified_on_target
   owner: 数据负责人
   priority: pending_review
 - source_id: xuzhou-ggzy
@@ -304,7 +338,8 @@ sources:
   base_url: https://ggzy.zwb.xz.gov.cn/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: full_backfill_attachment_and_correction_linkage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: ygcgfwpt-transaction
@@ -312,7 +347,8 @@ sources:
   base_url: https://www.ygcgfwpt.com/
   reference_access_mode: public
   reference_enabled: true
-  readiness: candidate
+  readiness: capability_verified
+  readiness_gap: pagination_requires_captcha_attachment_coverage_unverified
   owner: 数据负责人
   priority: pending_review
 - source_id: ymzec-trade-info
@@ -321,5 +357,6 @@ sources:
   reference_access_mode: authenticated
   reference_enabled: false
   readiness: candidate
+  readiness_gap: authorized_login_required
   owner: 数据负责人
   priority: pending_review

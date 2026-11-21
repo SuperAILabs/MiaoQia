@@ -1,4 +1,5 @@
-# 来源声明：盘点条目（source-inventory.yaml，readiness 须为 capability_verified）的处理器、访问契约与增量采集计划。
+# 来源声明：处理器、访问契约与增量计划。公开 staged 来源可用 --validate-source 逐源验证。
+# 持久化采集与增量调度要求 active 准入和 capability_verified。
 # 接口与限速依据见 docs/05-delivery/11-d1b-anhui-pilot-sources.md；SPI 见 miaoqia.acquisition.api.handlers。
 sources:
   - source_id: anhui-ggzy-construction
@@ -9,9 +10,167 @@ sources:
     handler: miaoqia_pack_procurement.sources.anhui_ccgp:AnhuiGovernmentProcurement
     # 间隔 1.5 秒连续 6 个请求后返回 429 并持续数分钟
     access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 3, timeout_seconds: 30}
-    # 每轮最多约 160 个请求（约 27 分钟），已归档的详情跳过
+    # 增量轮次最多约 160 个请求（约 27 分钟），回看窗口内复查详情
     schedule: {every_minutes: 120, lookback_days: 1, max_pages: 2}
   - source_id: national-public-resources
     handler: miaoqia_pack_procurement.sources.national_ggzy:NationalPublicResources
     access: {min_interval_seconds: 2, throttle_backoff_seconds: 60, max_attempts: 3, timeout_seconds: 30}
     schedule: {every_minutes: 60, lookback_days: 1, max_pages: 5}
+  - source_id: cncecyc-ywgg1gc
+    admission: active
+    handler: miaoqia_pack_procurement.sources.html_boards:ChemicalEngineeringBoard
+    access: {min_interval_seconds: 3, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 5, backfill_max_pages: 25}
+  - source_id: crecgec-home
+    admission: staged
+    handler: miaoqia_pack_procurement.sources.html_boards:RailwayMaterialsBoard
+    access: {min_interval_seconds: 2, throttle_backoff_seconds: 60}
+  - source_id: scbid-zbxx
+    admission: active
+    handler: miaoqia_pack_procurement.sources.html_boards:SichuanBiddingBoard
+    access: {min_interval_seconds: 5, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 180, lookback_days: 2, max_pages: 2, backfill_max_pages: 2}
+  - source_id: ygcgfwpt-transaction
+    admission: active
+    handler: miaoqia_pack_procurement.sources.html_boards:ShangraoProcurementBoard
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 6, backfill_max_pages: 6}
+  - source_id: ccgp-central-public-tenders
+    admission: active
+    handler: miaoqia_pack_procurement.sources.ccgp_html:CentralPublicTenders
+    access: {min_interval_seconds: 5, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 180, lookback_days: 1, max_pages: 25, backfill_max_pages: 25}
+  - source_id: hubei-government-procurement-homepage
+    admission: active
+    handler: miaoqia_pack_procurement.sources.ccgp_html:HubeiGovernmentProcurement
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 60, lookback_days: 1, max_pages: 1, backfill_max_pages: 1}
+  - source_id: hunan-government-procurement
+    admission: active
+    handler: miaoqia_pack_procurement.sources.hunan_ccgp:HunanProcurementCategory
+    access: {min_interval_seconds: 5, throttle_backoff_seconds: 120, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 3, backfill_max_pages: 5}
+  - source_id: hefei-ggzy-engineer
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:HefeiWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 5, backfill_max_pages: 25}
+  - source_id: henan-ggzy-homepage-direct
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:HenanHomepageWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 2, backfill_max_pages: 6}
+  - source_id: hubei-ggzy-construction
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:HubeiWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 2, backfill_max_pages: 12}
+  - source_id: hunan-ggzy-construction
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:HunanWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 2, backfill_max_pages: 2}
+  - source_id: jiangxi-ggzy-announcements
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:JiangxiAnnouncements
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 3, backfill_max_pages: 12}
+  - source_id: shaanxi-ggzy-construction
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:ShaanxiWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 6, backfill_max_pages: 12}
+  - source_id: shaanxi-government-procurement
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:ShaanxiGovernmentProcurement
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 180, lookback_days: 1, max_pages: 2, backfill_max_pages: 2}
+  - source_id: shanxi-prec
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:ShanxiWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 24, backfill_max_pages: 50}
+  - source_id: sichuan-ggzy-construction
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:SichuanWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 180, lookback_days: 1, max_pages: 3, backfill_max_pages: 12}
+  - source_id: tibet-ggzy-construction
+    admission: staged
+    handler: miaoqia_pack_procurement.sources.regional_works:TibetWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+  - source_id: xinjiang-ggzy-construction
+    admission: active
+    handler: miaoqia_pack_procurement.sources.regional_works:XinjiangWorks
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 3, backfill_max_pages: 12}
+  - source_id: henan-government-procurement-home
+    admission: active
+    handler: miaoqia_pack_procurement.sources.procurement_homepages:HenanProcurementHomepage
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1}
+    schedule: {every_minutes: 60, lookback_days: 1, max_pages: 1, backfill_max_pages: 1}
+  - source_id: tibet-government-procurement-home
+    admission: active
+    handler: miaoqia_pack_procurement.sources.procurement_homepages:TibetProcurementHomepage
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 1, backfill_max_pages: 1}
+  - source_id: xinjiang-government-procurement-home
+    admission: staged
+    handler: miaoqia_pack_procurement.sources.procurement_homepages:XinjiangProcurementHomepage
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1}
+  - source_id: bfjsjt-tender
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_html:BeifangTender
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 180, lookback_days: 1, max_pages: 1, backfill_max_pages: 12}
+  - source_id: chongqing-ggzy-trade-014
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_html:ChongqingTrade014
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 1, backfill_max_pages: 1}
+  - source_id: cotenders-news
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_api:CotendersNews
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 8, backfill_max_pages: 12}
+  - source_id: crccep-bidding-mat
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_api:CrccepBiddingMaterials
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30,
+             attachment_origins: [https://epur.crccep.cn]}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 8, backfill_max_pages: 10}
+  - source_id: js-218-206-153-6-trade
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_html:JiangsuTradeMirror
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 60, lookback_days: 1, max_pages: 1, backfill_max_pages: 1}
+  - source_id: jsjyztb-web-list
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_api:RudongNoticeBoard
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 6, backfill_max_pages: 6}
+  - source_id: luzhou-ggzy-tzgg
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_api:LuzhouNotices
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 5, backfill_max_pages: 30}
+  - source_id: m2-bid-list
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_api:M2BidList
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30,
+             attachment_origins: [https://guangzc-pd-file.obs.cn-north-1.myhuaweicloud.com]}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 2, backfill_max_pages: 4}
+  - source_id: suzhou-ggzy-trade
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_html:SuzhouTrade
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 180, lookback_days: 1, max_pages: 10, backfill_max_pages: 10}
+  - source_id: xuzhou-ggzy
+    admission: active
+    handler: miaoqia_pack_procurement.sources.trade_html:XuzhouTrade
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
+    schedule: {every_minutes: 120, lookback_days: 1, max_pages: 8, backfill_max_pages: 8}
+  - source_id: ymzec-trade-info
+    admission: staged
+    handler: miaoqia_pack_procurement.sources.trade_api:YmzecTradeInfo
+    access: {min_interval_seconds: 10, throttle_backoff_seconds: 300, max_attempts: 1, timeout_seconds: 30}
