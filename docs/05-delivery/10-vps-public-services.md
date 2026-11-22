@@ -41,10 +41,35 @@ tools/dev/run-m0-vps.sh
 
 `run-m0-vps.sh` 会临时把本机 `29094` 转发到 VPS Kafka 的内部 listener，测试结束后自动关闭。它不会转发或暴露 PostgreSQL；E2E 的业务数据库使用本机 PostgreSQL。
 
-VPS 首次部署或重建时，先创建 `miaoqia_public` 外部网络，再使用版本化 Compose 清单启动 PostgreSQL、Keycloak/OpenFGA，最后安装 Nginx 上游并执行 `nginx -t && systemctl reload nginx`。迁移或升级前保存 Compose、Nginx、网络检查结果和 `miaoqia_fga`/`miaoqia_keycloak` 数据库导出；不要执行会删除生产数据卷的 `down -v`。远端网络与健康检查使用 [`tools/dev/check-vps-public-network.sh`](../../tools/dev/check-vps-public-network.sh)。
+## 4. 干净主机重建
 
-## 4. 当前验收边界
+从同一个候选提交取 [VPS Compose 清单](../../deploy/vps/miaoqia-public.compose.yaml)、[PostgreSQL 初始化脚本](../../deploy/vps/postgres/01-init-public-databases.sh)、[VPS Collector 配置](../../deploy/vps/otel/collector.yaml)和 [Nginx 模板](../../deploy/vps/mq-public.nginx.conf)。将 Compose 清单安装为 `/opt/miaoqia-public/compose.yaml`，其余挂载源保留 `postgres/`、`otel/` 相对目录。Collector 使用只读文件挂载，配置缺失时容器启动报错。它仅在宿主机 `127.0.0.1:14318` 接收 OTLP/HTTP 追踪，与 Nginx 上游地址一致。
 
-2026-11-04 完成公共网络迁移并通过 [`tools/dev/check-vps-public-network.sh`](../../tools/dev/check-vps-public-network.sh)：Keycloak issuer 可达，OpenFGA `/healthz` 返回 `SERVING`，OpenFGA 数据库迁移退出码为 0，MiaoQia 的 PostgreSQL、Keycloak、OpenFGA 均只接入 `miaoqia_public`。迁移前备份位于 VPS `/opt/miaoqia-public/backups/network-migration-20261104T161618Z/`。Cloudflare 域名、Kafka topic 初始化、Collector HTTP 接收端点、Keycloak realm 和公共服务连接边界继续按下方 M0/A02 脚本验收。
+平台工程负责人在启动前提供部署专用 `.env`、`keycloak/` 下供 `--import-realm` 使用的 `miaoqia` realm 导入文件及 Nginx origin TLS 文件。Keycloak 使用受控的 VPS 测试 realm 导出，仓库内的本地/CI realm 含开发夹具凭据，仅用于本地和 CI。预先创建 `miaoqia_public` 外部网络（内部网络，`10.89.14.0/24`）、专用 Kafka 数据目录，并以 `0700` 权限创建 `/opt/miaoqia-public/data/otel`。进入 `/opt/miaoqia-public` 后执行 `docker compose config --quiet` 校验，再启动 PostgreSQL 并等初始化完成，随后启动其余服务。安装 Nginx 模板后执行 `nginx -t && systemctl reload nginx`。
 
-`tools/dev/run-m0-vps.sh` 运行的 M0 E2E 覆盖迁移、探针、审计、授权拒绝、远程 identity 绑定，以及“官方中标公告 → evidence → domain fact → 发件箱”的数据平面回放；data-api 的 mTLS 读取由 A02 进程回放（`tools/dev/run-a02-process-replay.sh`）覆盖，M0 E2E 尚未包含。它不覆盖 detection 收件箱、gateway 对象页或 channels 简报，不关闭 A02 的 L1 贯通。公共服务不依赖开发者本机 PostgreSQL；MiaoQia 业务进程在本机运行时继续使用本机 PostgreSQL。
+在部署目录内先检查 Collector 配置，再使用以下探针核对接收与落盘。探针只发送合成追踪，使用 Bash、`openssl`、`curl` 和 `jq`，以有权读取私有 `data/otel` 的运维账号执行。
+
+```bash
+set -eo pipefail
+docker compose run --rm --no-deps otel-collector validate --config=/etc/otel/collector.yaml
+trace_id=$(openssl rand -hex 16)
+span_id=$(openssl rand -hex 8)
+timestamp=$(date +%s)
+curl -fsS --max-time 10 -H 'Content-Type: application/json' --data-binary @- \
+  http://127.0.0.1:14318/v1/traces <<EOF | jq -e '(.partialSuccess.rejectedSpans // 0 | tonumber) == 0'
+{"resourceSpans":[{"scopeSpans":[{"spans":[{"traceId":"$trace_id","spanId":"$span_id","name":"mq-vps-collector-smoke","startTimeUnixNano":"${timestamp}000000000","endTimeUnixNano":"${timestamp}000000001"}]}]}]}
+EOF
+for attempt in $(seq 1 20); do
+  grep -Fq "$trace_id" data/otel/traces.jsonl 2>/dev/null && break
+  sleep 1
+done
+grep -Fq "$trace_id" data/otel/traces.jsonl
+```
+
+Collector 将追踪写入 `data/otel/traces.jsonl`，轮转时最多保留五份归档，并清理超过七天的归档。重建证据记录候选 SHA、Collector 镜像、时间和合成追踪 ID。整栈另需核验 `miaoqia` issuer、OpenFGA 健康、Kafka 主题、Nginx 与外部接入。迁移或升级前保存 Compose、Nginx、网络检查结果和 `miaoqia_fga`/`miaoqia_keycloak` 数据库导出，保留现有数据卷。远端网络与健康检查使用 [`tools/dev/check-vps-public-network.sh`](../../tools/dev/check-vps-public-network.sh)。
+
+## 5. 当前验收边界
+
+现有公共网络验收记录确认 Keycloak issuer 可达，OpenFGA `/healthz` 返回 `SERVING` 且数据库迁移退出码为 0，PostgreSQL、Keycloak、OpenFGA 均只接入 `miaoqia_public`。迁移前备份位于 VPS `/opt/miaoqia-public/backups/network-migration-20261104T161618Z/`。Collector 的 HTTP 接收与落盘按重建探针单独验证。M0 的应用追踪 exporter 使用 OTLP/gRPC，走 VPS HTTP 入口的应用追踪仍需独立的协议适配和端到端验证。
+
+`tools/dev/run-m0-vps.sh` 运行的 M0 E2E 覆盖迁移、探针、审计、授权拒绝、远程 identity 绑定和“官方中标公告 → evidence → domain fact → 发件箱”的数据平面回放。data-api 的 mTLS 读取、detection 收件箱、gateway 对象页和 channels 简报由 [A02 独占环境进程回放](09-a02-end-to-end-acceptance.md#3-分级验收)覆盖。公共服务使用 VPS PostgreSQL，本机 MiaoQia 业务进程使用本机 PostgreSQL。

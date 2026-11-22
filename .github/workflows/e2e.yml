@@ -1,4 +1,4 @@
-# M0 工程探针与 identity 本地/远程绑定验证（tests/e2e/m0.py）；整体退出另按阶段基线验收。
+# M0 工程探针和 A02 L1 进程回放各用独立环境；阶段验收另按交付基线执行。
 name: e2e
 
 on:
@@ -8,6 +8,7 @@ on:
       - "data/**"
       - "deploy/**"
       - "contracts/**"
+      - "packs/**"
       - "tools/dev/**"
       - "tests/e2e/**"
       - ".github/workflows/e2e.yml"
@@ -46,3 +47,92 @@ jobs:
       - name: 进程日志
         if: failure()
         run: tail -n 100 deploy/local/.data/e2e/*.log
+
+  a02-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      MIAOQIA_TEST_PG: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      MIAOQIA_KAFKA_BROKERS: localhost:9092
+      MIAOQIA_IDENTITY_OPENFGA_URL: http://127.0.0.1:8081
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+        id: checkout
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+
+      - name: 启动 A02 独占基础组件
+        id: dependencies
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          docker compose -f deploy/local/compose.yaml -p miaoqia-a02 up -d --wait postgres kafka openfga
+          for mapping in postgres:5432:5432 kafka:9092:9092 openfga:8080:8081; do
+            IFS=: read -r service target published <<< "$mapping"
+            address=$(docker compose -f deploy/local/compose.yaml -p miaoqia-a02 port "$service" "$target")
+            test "${address##*:}" = "$published"
+          done
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 --max-time 5 \
+            "$MIAOQIA_IDENTITY_OPENFGA_URL/healthz" | jq -e '.status == "SERVING"'
+
+      - name: A02 L1 进程回放
+        id: replay
+        env:
+          MIAOQIA_EVIDENCE_OBJECT_STORE_DIR: ${{ runner.temp }}/a02-objects
+        run: |
+          env -i PATH="$PATH" HOME="$HOME" UV_PYTHON="$UV_PYTHON" \
+            MIAOQIA_TEST_PG="$MIAOQIA_TEST_PG" \
+            MIAOQIA_KAFKA_BROKERS="$MIAOQIA_KAFKA_BROKERS" \
+            MIAOQIA_IDENTITY_OPENFGA_URL="$MIAOQIA_IDENTITY_OPENFGA_URL" \
+            MIAOQIA_EVIDENCE_OBJECT_STORE_DIR="$MIAOQIA_EVIDENCE_OBJECT_STORE_DIR" \
+            tools/dev/run-a02-process-replay.sh
+
+      - name: 记录候选提交与回放结果
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        env:
+          DEPENDENCIES_OUTCOME: ${{ steps.dependencies.outcome }}
+          REPLAY_OUTCOME: ${{ steps.replay.outcome }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/a02-evidence"
+          jq -n --arg commit "$(git rev-parse HEAD)" --arg expected "$GITHUB_SHA" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" --arg pr_head "$PR_HEAD_SHA" \
+            --arg dependencies "$DEPENDENCIES_OUTCOME" --arg replay "$REPLAY_OUTCOME" \
+            '{commit: $commit, github_sha: $expected, run_id: $run, run_attempt: $attempt,
+              pr_head_sha: (if $pr_head == "" then null else $pr_head end),
+              dependencies: $dependencies, replay: $replay}' > "$RUNNER_TEMP/a02-evidence/run.json"
+          result=deploy/local/.data/a02-process-replay/result.json
+          if test -f "$result"; then
+            jq 'del(.error)' "$result" > "$RUNNER_TEMP/a02-evidence/result.json"
+          fi
+          if test "$REPLAY_OUTCOME" = success; then
+            jq -e '.process_role_replay == "passed"' "$RUNNER_TEMP/a02-evidence/result.json"
+          fi
+
+      - name: 上传 A02 回放证据
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: a02-replay-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/a02-evidence/
+          if-no-files-found: error
+
+      - name: A02 进程日志
+        if: ${{ failure() && steps.replay.outcome == 'failure' }}
+        run: |
+          replay_dir=deploy/local/.data/a02-process-replay
+          if test -d "$replay_dir"; then
+            find "$replay_dir" -maxdepth 1 -name '*.log' -exec tail -n 100 {} +
+          fi
