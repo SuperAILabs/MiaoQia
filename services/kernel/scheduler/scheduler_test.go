@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/internal/testenv"
 	"github.com/superailabs/miaoqia/services/kernel/scheduler"
@@ -178,6 +180,30 @@ func TestOnceAdvisoryLockAcrossInstances(t *testing.T) {
 	}
 	if runs.Load() != 2 {
 		t.Fatalf("应恰好执行两轮：%d", runs.Load())
+	}
+}
+
+// The advisory lock must not hold a pool connection: when a subsystem declares
+// more jobs than its pool has connections (pgxpool defaults to
+// max(4, NumCPU)), lock holders exhaust the pool and every job's own
+// transaction waits until the round times out.
+func TestOnceLockDoesNotConsumePoolConnections(t *testing.T) {
+	cfg := openDB(t).Pool.Config()
+	cfg.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	h := &db.DB{Pool: pool}
+	job := scheduler.Job{Name: "a.pool", Every: 3 * time.Second, Run: func(ctx context.Context) (int, error) {
+		var one int
+		return one, h.Pool.QueryRow(ctx, `SELECT 1`).Scan(&one)
+	}}
+	var errRound error
+	r := &scheduler.Runner{OnRound: func(_ string, _ scheduler.Outcome, _ int, err error) { errRound = err }}
+	if o := r.Once(context.Background(), scheduler.Bound{Job: job, DB: h}); o != scheduler.Ran {
+		t.Fatalf("单连接池中任务应能执行自己的查询：%s %v", o, errRound)
 	}
 }
 

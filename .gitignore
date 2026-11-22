@@ -11,3 +11,7 @@ node_modules/
 # Local environment overrides may contain service tokens and passwords.
 config/local/*.env
 /web/apps/*/dist/
+# Local agent tooling output (Playwright MCP console logs, Specability runtime state)
+.playwright-mcp/
+.specability/runtime/
+data/.specability/
