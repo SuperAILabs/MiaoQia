@@ -54,9 +54,17 @@ done
 ln -s ../platform "$release/bin/outbox-relay"
 ```
 
-管理员接管版本目录所有权并让角色只读，再建立 `current` 链接。模板的 `%i` 为角色名，例如 `acq-fetcher`。抓取角色的私有暂存路径配置为 `/var/lib/miaoqia-dev-acq-fetcher`，由 systemd 建立。模板用于接受 `--role` 参数的常驻进程。迁移、一次性覆盖报告和使用独立模块入口的搜索出口分别按各自入口执行。
+管理员接管版本目录所有权并让角色只读，再建立 `current` 链接。模板的 `%i` 为角色名，例如 `acq-fetcher`。抓取角色的私有暂存目录由 systemd 建立。模板使用 `DynamicUser=yes`，`/var/lib/miaoqia-dev-acq-fetcher` 是指向 `/var/lib/private/` 的符号链接，暂存目录拒绝符号链接，因此 `MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_DIR` 配置为实际路径 `/var/lib/private/miaoqia-dev-acq-fetcher`。模板用于接受 `--role` 参数的常驻进程。迁移、一次性覆盖报告和使用独立模块入口的搜索出口分别按各自入口执行。
 
-安装[原生角色模板](miaoqia-dev-data@.service)后，先执行对应数据库迁移，再分角色启动。公开采集可先在开发实例持续归档，原件及事务发件箱与采集数据库一起持久化。消费者通过同一稳定版本接续待交付事件。新来源的字段解析沿用其独立准入。观察服务使用 `systemctl is-active miaoqia-dev-data@acq-fetcher.service`，采集验收另查逐源回填游标、公告观察及 S3 原件哈希。升级时先停止对应角色，切换经过验证的版本目录，再恢复进程。常驻实绩、发布权限与异机恢复分别登记在 [C11](../../../contracts/reviews/c11-dev-operations.yaml)。
+安装[原生角色模板](miaoqia-dev-data@.service)后，先执行对应数据库迁移，再分角色启动。公开采集可先在开发实例持续归档，原件及事务发件箱与采集数据库一起持久化。消费者通过同一稳定版本接续待交付事件。新来源的字段解析沿用其独立准入。模板以 `ProtectSystem=strict` 运行，角色只能写入自己的 StateDirectory。尚未接入 S3 时，采集可把原件写入本地文件对象存储：为 `acq-fetcher` 增加 drop-in，并将两个采集角色的 `MIAOQIA_ACQUISITION_OBJECT_STORE_DIR` 设为 `/var/lib/miaoqia-acq-objects`。该目录只归抓取角色所有，Evidence 等其他角色无法读取，启用 Evidence 前须将原件迁入 S3 桶。
+
+```ini
+# /etc/systemd/system/miaoqia-dev-data@acq-fetcher.service.d/10-object-store.conf
+[Service]
+StateDirectory=miaoqia-acq-objects
+```
+
+观察服务使用 `systemctl is-active miaoqia-dev-data@acq-fetcher.service`，采集验收另查逐源回填游标、公告观察及 S3 原件哈希。升级时先停止对应角色，切换经过验证的版本目录，再恢复进程。常驻实绩、发布权限与异机恢复分别登记在 [C11](../../../contracts/reviews/c11-dev-operations.yaml)。
 
 ## 构建和配置
 

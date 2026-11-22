@@ -404,14 +404,28 @@ external_prerequisites:
     owner_roles: [platform_engineering_lead, data_lead]
     required: Supply durable storage, backup and index configuration and scoped credentials on the designated permanent VPS, plus per-source publication, retention and access admission for continuous collection.
     latest_readback:
-      date: "2026-11-21"
-      scope: Inspected host systemd services, root-managed Podman containers, the operator release environment path and containers with the documented Compose project label on the shared test VPS.
-      shared_test_host_region: outside mainland China
-      native_services_seen: [postgresql-18]
-      miaoqia_public_services_seen: [postgres, kafka, keycloak, openfga, otel-collector]
-      data_plane_resident_jobs_started: false
-      documented_release_env_present: false
-      running_release_labeled_containers: 0
+      date: "2026-11-22"
+      host_region: mainland China (designated data-plane VPS)
+      scope: Native systemd acquisition roles from release 279f080, read back after about ten minutes of operation.
+      release_commit: 279f080
+      release_files_verified_against_manifest: 1082
+      postgres_cluster: dedicated PostgreSQL 18 cluster, localhost only, SCRAM, data checksums
+      logins_enabled: [acq_owner, acq_app]
+      acquisition_migration: "0001"
+      data_plane_resident_jobs_started: true
+      roles_running: [acq-scheduler, acq-fetcher]
+      roles_not_deployed: [outbox-relay, acq-admin, acq-browser, data-consumer, data-api, public-search]
+      raw_object_store: local file store owned by acq-fetcher; S3 bucket pending
+      enabled_sources: 31
+      sources_with_observations: 12
+      sources_unavailable_from_host: 5
+      notice_observations: 325
+      raw_artifacts_readback: {artifacts: 361, hash_matches: 361, missing: 0}
+      outbox_pending_without_relay: 361
+      open_items:
+        - Move raw artifacts to the S3 bucket before Evidence starts and run the 30-day list-retention check.
+        - Deploy the outbox relay and the mainland Kafka endpoint.
+        - Check the five sources that fail from this host one by one.
   - id: related_m0_clean_host_reconstruction
     owner_role: platform_engineering_lead
     required: Record the separate M0-01 candidate clean-host reconstruction. The public stack uses a controlled environment file, approved Keycloak realm export, and Nginx origin TLS material.
