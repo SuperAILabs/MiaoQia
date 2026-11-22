@@ -45,9 +45,7 @@ def module() -> Module:
             return out
         if live := live_ingest(env.config("OBJECT_STORE_DIR"), os.environ.get("MIAOQIA_PACKS_DIR", "packs")):
             out.append(Consumer(name=f"{NAME}.live", subsystem=NAME, brokers=env.brokers, topics=["public.acquisition"],
-                                handlers={kind: live.on_completed for kind in
-                                          (live_mod.LEGACY_COMPLETED, live_mod.COMPLETED, live_mod.GROUPED_COMPLETED,
-                                           live_mod.BROWSER_COMPLETED)}, db=env.db))
+                                handlers={kind: live.on_archived for kind in live_mod.ARCHIVED_EVENTS}, db=env.db))
         return out
 
     return Module(name=NAME, database="evd", migrations=MIGRATIONS, consumers=consumers)

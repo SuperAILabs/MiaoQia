@@ -217,9 +217,8 @@ checks:
     log: /private/tmp/mq-acq-unit.7mQx2V4k/run.Wc8jAVPp/drill.log
     cleanup: passed
     schema_history_guard:
-      decision: Keep the compatible 0017 database in an application rollback. Physical recovery to 0016 uses a verified pre-upgrade backup.
-      verification: The current migration rejects downgrade when a committed browser list receipt exists. Empty rollback and upgrade still pass.
-      test: data/subsystems/acquisition/tests/test_browser_observations.py::test_migration_refuses_to_drop_browser_discovery_history
+      decision: An application rollback keeps the current compatible database schema. Physical recovery to an earlier schema uses a verified pre-upgrade backup.
+      verification: Acquisition migrations provide no downgrade; the baseline downgrade raises before touching any table.
   chromium_egress:
     status: partial
     scope: Disposable rootless Podman, Chromium and a synthetic TLS publisher on the shared test VPS.

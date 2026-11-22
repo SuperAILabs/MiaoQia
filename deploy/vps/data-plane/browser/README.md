@@ -10,7 +10,7 @@
 bash deploy/vps/data-plane/browser/verify-confinement.sh --ssh "$MQ_FIXTURE_SSH_HELPER" > chromium-receipt.jsonl
 ```
 
-由运维方在本地提供已授权的 SSH helper。它以一个参数接收远端 Shell 命令，并透传 stdin 和 stdout。在具备上述依赖的本地 Linux 上可省略 `--ssh`。默认模式传输当前工作树的采集源码、对应加锁依赖和夹具源码。V4 交付模式另传输数据角色源码和 Go 中继二进制。发布凭据留在原环境。
+由运维方在本地提供已授权的 SSH helper。它以一个参数接收远端 Shell 命令，并透传 stdin 和 stdout。在具备上述依赖的本地 Linux 上可省略 `--ssh`。默认模式传输当前工作树的采集源码、对应加锁依赖和夹具源码。浏览器归档事件交付模式另传输数据角色源码和 Go 中继二进制。发布凭据留在原环境。
 
 可将 `--tls-pair` 放在 `--ssh` 前，仅运行同次导航配对与两个证书反例。该收据会标记其余用例未执行。Acquisition 运行时的 [渲染器测试](../../../../data/runtimes/acquisition/tests/test_browser_renderer.py) 检查目标、资源类型、HTTP 方法、部署方路由的继续执行和上下文限制装配失败。
 
@@ -67,7 +67,7 @@ bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-ipc \
 
 ## 采集角色与归档验收
 
-角色夹具由同一 `acq-browser` 进程领取一条计划，依次采集列表和正文。每次渲染开启独立 operator provider 会话，由监督器针对同一个已固定进程核对 IPC 对端并签发一次内核租约。控制器只连接夹具私网中的 PostgreSQL 与 S3 兼容服务。浏览器只连接合成发布者。列表和详情各用两次精确 GET，原站键来自当前合成来源规则。分别核对列表字节、正文和投影的 S3 回读、已结算计划、浏览器观察绑定与 V4 发件箱。归档收据与后续 Kafka 交付、解析和持久环境验收分开记录。
+角色夹具由同一 `acq-browser` 进程领取一条计划，依次采集列表和正文。每次渲染开启独立 operator provider 会话，由监督器针对同一个已固定进程核对 IPC 对端并签发一次内核租约。控制器只连接夹具私网中的 PostgreSQL 与 S3 兼容服务。浏览器只连接合成发布者。列表和详情各用两次精确 GET，原站键来自当前合成来源规则。分别核对列表字节、正文和投影的 S3 回读、已结算计划、浏览器观察绑定与浏览器归档事件发件箱。归档收据与后续 Kafka 交付、解析和持久环境验收分开记录。
 
 ```sh
 bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-role \
@@ -76,9 +76,9 @@ bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-role \
 
 该模式在同一隔离 Podman 存储中额外拉取固定摘要的 PostgreSQL 和 SeaweedFS。数据库初始 owner 凭据只进入初始化进程，采集角色用 fixture app 身份，独立核验容器使用 PostgreSQL 只读事务和对象只读接口。夹具控制器沿用单容器 SELinux 标签例外。首次拉取需要可用镜像源。收据只记录哈希、计数和阶段，按同一临时目录复查步骤核对清理。
 
-## V4 交付与独立解析
+## 浏览器归档事件交付与独立解析
 
-交付夹具接续同一个隔离采集实例。采集角色、浏览器与合成发布者退出后，Go 发件箱中继将该次 Chromium 归档生成的 V4 和来源健康变更写入同一私网内的 Kafka。读回核对两条消息的字节和消费位点，确认 `data-consumer` 只将 V4 记入 Evidence inbox 和待解析队列。停下消费者后，仅为该合成来源开启独立重放，通过 Evidence 正式命令核对规范化快照与成对原件，再次重放核对幂等。采集和解析的验收分开记账。
+交付夹具接续同一个隔离采集实例。采集角色、浏览器与合成发布者退出后，Go 发件箱中继将该次 Chromium 归档生成的浏览器归档事件和来源健康变更写入同一私网内的 Kafka。读回核对两条消息的字节和消费位点，确认 `data-consumer` 只将浏览器归档事件记入 Evidence inbox 和待解析队列。停下消费者后，仅为该合成来源开启独立重放，通过 Evidence 正式命令核对规范化快照与成对原件，再次重放核对幂等。采集和解析的验收分开记账。
 
 ```sh
 bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-ingest \
@@ -89,9 +89,9 @@ bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-ingest \
 
 ## 实测收据
 
-[同次采集交付收据](receipt-provider-ingest.jsonl)记录公共测试 VPS 上的合成发布者、Chromium、Go 中继和正式 `data-consumer`。Kafka 分区 0 的位点 0 和 1 分别保存 V4 和来源健康变更，实际消费组提交位点 2。关闭解析时保留一条待解析观察和一条 inbox 记录，快照和死信均为零。停止消费后显式重放产生一个绑定同一 V4、原件及投影的规范化快照，第二次重放处理零条。独立复核核对输入摘要和临时目录清理。[C11 收据](../../../../contracts/reviews/c11-dev-operations.yaml)
+[同次采集交付收据](receipt-provider-ingest.jsonl)记录公共测试 VPS 上的合成发布者、Chromium、Go 中继和正式 `data-consumer`。Kafka 分区 0 的位点 0 和 1 分别保存浏览器归档事件和来源健康变更，实际消费组提交位点 2。关闭解析时保留一条待解析观察和一条 inbox 记录，快照和死信均为零。停止消费后显式重放产生一个绑定同一浏览器归档事件、原件及投影的规范化快照，第二次重放处理零条。独立复核核对输入摘要和临时目录清理。[C11 收据](../../../../contracts/reviews/c11-dev-operations.yaml)
 
-[采集角色归档收据](receipt-provider-role.jsonl)记录两个独立浏览器会话、四次 HTTPS GET、一条已结算计划和一条带稳定原站键的观察。64 字节列表、18 字节正文和 185 字节投影分别从 SeaweedFS 回读，列表与正文摘要同独立发布者记录一致。PostgreSQL 登记列表原件 30 天到期，并在观察提交后保留一条待发 V4。采集角色收到 SIGTERM 后退出 0。[C11 收据](../../../../contracts/reviews/c11-dev-operations.yaml)
+[采集角色归档收据](receipt-provider-role.jsonl)记录两个独立浏览器会话、四次 HTTPS GET、一条已结算计划和一条带稳定原站键的观察。64 字节列表、18 字节正文和 185 字节投影分别从 SeaweedFS 回读，列表与正文摘要同独立发布者记录一致。PostgreSQL 登记列表原件 30 天到期，并在观察提交后保留一条待发浏览器归档事件。采集角色收到 SIGTERM 后退出 0。[C11 收据](../../../../contracts/reviews/c11-dev-operations.yaml)
 
 [跨容器控制收据](receipt-provider-ipc.jsonl)记录 Unix 对端与 pidfd 核验、两次 TLS 1.3 GET、18 字节原件和 185 字节投影。第二次会话在正文许可阶段终止真实渲染控制器，监督器观察退出并确认撤销，浏览器进程回收，合成发布者维持健康且正文零到达。公共测试 VPS 的 Linux 会话测试另有 17 个用例，覆盖凭据不符、无效 pidfd、背压、断开、超时和失败恢复。[C11 收据](../../../../contracts/reviews/c11-dev-operations.yaml)
 

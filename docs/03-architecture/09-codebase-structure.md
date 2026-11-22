@@ -127,7 +127,7 @@ contracts/apis/<子系统>/openapi.yaml
 | `uv run --project tools/contracts mqc fixtures --export DIR` | 导出正例，供往返测试 |
 | `uv run --project tools/contracts mqc compat --base origin/main -v` | 与目标分支比较的兼容性检查（合并请求必过） |
 
-**版本与兼容性**：只有写入持久化数据、因而影响重放的版本受约束。每个 Schema 文件带 `x-version`（领域事实以 `schema_version` 记录校验所用的版本）；变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本（已激活策略与事件载荷固定二者）；内核 SQL 变化须登记可审查的迁移文件，CREATE IF NOT EXISTS 不能代替已有表升级。接口（OpenAPI）、事件文档（AsyncAPI）、标识登记与工程配置在开发期不设版本号（规范要求的 `info.version` 固定为 `0.0.0`）：生产方与调用方在同一仓库，破坏性变更在同一提交中改齐调用方，兼容检查只报告变更级别。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。
+**版本与兼容性**：只有写入持久化数据、因而影响重放的版本受约束。每个 Schema 文件带 `x-version`（领域事实以 `schema_version` 记录校验所用的版本）；变更分 breaking / additive / doc 三级：breaking 在 1.0 起须升主版本、0.x 阶段须升次版本，additive 须升次版本；被改动类型的所在文件与引用它的全部顶层 Schema 都须升级。已发布事件不允许不兼容变更，须发布 `.v<n+1>`，也不允许删除。唯一例外是同一变更新增的删除登记 `contracts/reviews/<名称>.yaml`（`kind: accepted_event_removal`）：逐一列出被删事件名，给出理由及无生产者、无留存消息等证据，适用于尚无任何持久化事件需要重放的情形。检查只接受相对基线新增的登记文件，基线中已有登记列出的事件不能再次登记，登记也不能列出仍在契约中声明的事件；标识前缀不得删除或改义；扩展包内容变化须升包版本，策略模板内容变化须升模板版本（已激活策略与事件载荷固定二者）；内核 SQL 变化须登记可审查的迁移文件，CREATE IF NOT EXISTS 不能代替已有表升级。接口（OpenAPI）、事件文档（AsyncAPI）、标识登记与工程配置在开发期不设版本号（规范要求的 `info.version` 固定为 `0.0.0`）：生产方与调用方在同一仓库，破坏性变更在同一提交中改齐调用方，兼容检查只报告变更级别。判定规则的完整清单见 `tools/contracts/src/mqc/compat.py`。
 
 ## 6. 命名约定
 

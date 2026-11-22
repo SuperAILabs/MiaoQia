@@ -13,7 +13,7 @@ from miaoqia.kernel.objectstore import ObjectStore
 
 from .browser_projection import read_projection
 
-BROWSER_COMPLETED = "acquisition.fetch.completed.v4"
+BROWSER_NOTICE_ARCHIVED = "acquisition.browser_notice.archived.v1"
 
 
 def _sha256(value: bytes) -> str:
@@ -37,7 +37,7 @@ def seal_browser_event(fields: dict) -> dict:
 
 @cache
 def _validator():
-    return payloads.validator(BROWSER_COMPLETED, {})
+    return payloads.validator(BROWSER_NOTICE_ARCHIVED, {})
 
 
 def _digest(fields: dict) -> str:

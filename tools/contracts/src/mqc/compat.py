@@ -11,7 +11,9 @@
                             0.x 升次版本；additive → 升次版本；doc 不要求。被改动类型的所在文件，以及引用到它的
                             全部顶层 Schema 都须满足。
   事件（AsyncAPI）           事件写入发件箱与 Kafka 后可重放：已发布事件类型不允许 breaking 变更，也不允许删除；
-                            须发布新主版本 .v<n+1>。
+                            须发布新主版本 .v<n+1>。唯一例外是本次变更新增的删除登记
+                            （contracts/reviews/*.yaml，kind: accepted_event_removal），逐一列出被删事件名并给出
+                            无生产者、无留存消息等证据；基线中已有的登记不能再放行删除。
   标识前缀                  不允许删除或改变含义（分配后永不复用）。
   扩展包                    已激活策略与事件载荷固定 pack_version 与 template_version：包内文件有变化须升
                             pack.version；策略模板内容变化须升模板 version。
@@ -268,11 +270,56 @@ def _inline(node, comps, depth=0, *, repo=None, base_uri="", seen=frozenset()):
             for k, v in node.items() if k not in ("$id", "$schema", "$defs")}
 
 
+REMOVAL_KIND = "accepted_event_removal"
+
+
+def _removal_records(repo: Repo) -> dict[str, dict]:
+    """contracts/reviews 中的事件删除登记，按相对路径索引。"""
+    out = {}
+    for f in sorted((repo.contracts / "reviews").glob("*.yaml")):
+        doc = load_yaml(f)
+        if isinstance(doc, dict) and doc.get("kind") == REMOVAL_KIND:
+            out[f.relative_to(repo.contracts).as_posix()] = doc
+    return out
+
+
+def accepted_removals(base: Repo, head: Repo, present: set[str]) -> tuple[Report, set[str]]:
+    """本次新增的删除登记所放行的事件名。登记须完整，不能列出当前仍声明的事件，也不能沿用基线中已有的登记。"""
+    r = Report()
+    old = _removal_records(base)
+    used = {e for doc in old.values() for e in doc.get("events") or ()}
+    accepted: set[str] = set()
+    for rel, doc in _removal_records(head).items():
+        if rel in old:
+            continue
+        events = doc.get("events")
+        if (not isinstance(events, list) or not events or not all(isinstance(e, str) for e in events)
+                or not isinstance(doc.get("reason"), str) or not doc["reason"].strip()
+                or not isinstance(doc.get("evidence"), list) or not doc["evidence"]):
+            r.error(rel, "删除登记须列出 events、reason 与 evidence")
+            continue
+        for e in events:
+            if e in used:
+                r.error(rel, f"{e} 已由基线中的登记处理，不能再次登记")
+            elif e in present:
+                r.error(rel, f"{e} 仍在事件契约中声明")
+            else:
+                accepted.add(e)
+    return r, accepted
+
+
 def compare_events(base: Repo, head: Repo) -> tuple[Report, list[Change]]:
     r = Report()
     ob, nb = _messages(base), _messages(head)
     changes: list[Change] = []
-    for name in sorted(set(ob) - set(nb)):
+    removed = set(ob) - set(nb)
+    rr, accepted = accepted_removals(base, head, set(nb))
+    r.extend(rr)
+    for name in sorted(removed):
+        if name in accepted:
+            r.note(f"删除事件类型 {name}：已按本次新增的删除登记接受")
+            changes.append(Change("breaking", name, "删除事件类型（已登记）"))
+            continue
         r.error("events", f"删除了已发布的事件类型 {name}：须先并行发布新版本并经过过渡期")
     for name in sorted(set(nb) - set(ob)):
         changes.append(Change("additive", name, "新增事件类型"))

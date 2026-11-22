@@ -4,7 +4,7 @@ from dataclasses import replace
 import pytest
 
 from miaoqia.acquisition import module
-from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, read_browser_pair
+from miaoqia.acquisition.api.browser_pairs import BROWSER_NOTICE_ARCHIVED, read_browser_pair
 from miaoqia.acquisition.api.handlers import BrowserDetailPlan, BrowserSelection, FetchRequest, FetchResponse, Window
 from miaoqia.acquisition.application import dispatch, plans
 from miaoqia.acquisition.application.fetch import Fetcher
@@ -77,7 +77,7 @@ def test_browser_worker_uses_shared_requests_and_archives_pair(env, tmp_path):
     report = dispatch.dispatch_once(fetcher, declared, plans.fingerprints_json(declared),
                                     mode="incremental", now=clock.now())
     assert (report.pages, report.archived, report.failed, report.gaps) == (1, 1, 0, [])
-    (event,) = events(database, BROWSER_COMPLETED)
+    (event,) = events(database, BROWSER_NOTICE_ARCHIVED)
     assert read_browser_pair(store, event["data"])[0] == ORIGINAL
     assert rows(database, "SELECT url FROM acq_fetch_attempts ORDER BY id") == [
         (LIST_URL,), (f"https://src.example/d/{KEY}",), (f"https://src.example/body/{KEY}",),
@@ -99,7 +99,7 @@ def test_browser_worker_refuses_route_outside_plan_and_does_not_publish(env, tmp
     assert rows(database, "SELECT url FROM acq_fetch_attempts ORDER BY id") == [
         (LIST_URL,), (f"https://src.example/d/{KEY}",),
     ]
-    assert not events(database, BROWSER_COMPLETED)
+    assert not events(database, BROWSER_NOTICE_ARCHIVED)
 
 
 def test_unconfigured_browser_cannot_fetch_the_public_list(env):
@@ -107,7 +107,7 @@ def test_unconfigured_browser_cannot_fetch_the_public_list(env):
     http = Script({})
     report = Fetcher(database, store, http, clock=clock).run(ACTIVE, WINDOW, max_pages=1)
     assert report.deferred == "browser_runtime_unavailable"
-    assert not http.sent and not events(database, BROWSER_COMPLETED)
+    assert not http.sent and not events(database, BROWSER_NOTICE_ARCHIVED)
 
 
 def test_browser_rate_limit_is_reported_and_applies_shared_site_cooldown(env, tmp_path):
@@ -121,7 +121,7 @@ def test_browser_rate_limit_is_reported_and_applies_shared_site_cooldown(env, tm
     assert rows(database, """
         SELECT EXTRACT(EPOCH FROM ready_at - sent_at) FROM acq_download_pacing WHERE scope = 'site/src.example'
     """) == [(60,)]
-    assert not events(database, BROWSER_COMPLETED)
+    assert not events(database, BROWSER_NOTICE_ARCHIVED)
 
 
 def test_browser_permit_cannot_wait_past_the_render_deadline(env, tmp_path):
@@ -151,10 +151,10 @@ def test_resumed_browser_window_commits_staged_pair_without_new_navigation(env, 
         fault.setattr(store, "put", unavailable)
         interrupted = fetcher.run(ACTIVE, WINDOW, max_pages=1)
     assert interrupted.deferred == "browser_archive_pending"
-    assert not events(database, BROWSER_COMPLETED)
+    assert not events(database, BROWSER_NOTICE_ARCHIVED)
     resumed = fetcher.run(ACTIVE, WINDOW, max_pages=1, resume_id=interrupted.run_id)
     assert resumed.failed == 0 and resumed.archived == 1 and renderer.calls == 1
-    assert len(events(database, BROWSER_COMPLETED)) == 1
+    assert len(events(database, BROWSER_NOTICE_ARCHIVED)) == 1
 
 
 def test_browser_role_requires_bound_renderer_and_selects_only_browser_sources(env, tmp_path, monkeypatch):

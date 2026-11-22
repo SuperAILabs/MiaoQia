@@ -9,7 +9,7 @@ import pytest
 
 from miaoqia.acquisition.api.handlers import DetailFetch, FetchRequest, FetchResponse, SourceBlocked, Window
 from miaoqia.acquisition.application import source_validation
-from miaoqia.acquisition.application.fetch import COMPLETED, Fetcher, SourceStopped
+from miaoqia.acquisition.application.fetch import NOTICE_ARCHIVED, Fetcher, SourceStopped
 from miaoqia.acquisition.application.sources import CatalogSource
 from miaoqia.acquisition.infrastructure.archive_spool import ArchiveSpool
 
@@ -87,7 +87,7 @@ def test_locator_and_body_share_runtime_budget_and_lease(env, tmp_path):
     assert (report.archived, report.failed, report.gaps) == (1, 0, [])
 
     digest = _digest(ORIGINAL.body)
-    (event,) = events(database, COMPLETED)
+    (event,) = events(database, NOTICE_ARCHIVED)
     assert (event["data"]["source_url"], event["data"]["content_hash"]) == (REF_URL, digest)
     assert store.get(event["subject"]) == ORIGINAL.body
     assert rows(database, "SELECT source_key, content_hash, request_fingerprint FROM acq_raw_artifacts") == [
@@ -157,7 +157,7 @@ def test_rejected_response_never_becomes_an_original(env, phase, changes, reason
     assert [request.url for request in runtime_transport.sent] == expected
     assert report.blocked == (reason if blocked else None)
     assert reason in [gap["reason"] for gap in report.gaps]
-    assert not events(database, COMPLETED)
+    assert not events(database, NOTICE_ARCHIVED)
     assert rows(database, "SELECT count(*) FROM acq_raw_artifacts") == [(0,)]
     if blocked:
         with pytest.raises(SourceStopped):
@@ -185,7 +185,7 @@ def test_both_requests_are_confined_to_the_list_origin(env, phase, foreign):
     report = _runtime(env, runtime_transport, source=source)
     assert [request.url for request in runtime_transport.sent] == expected
     assert report.gaps[0]["reason"] == "target_outside_channel"
-    assert not events(env[0], COMPLETED)
+    assert not events(env[0], NOTICE_ARCHIVED)
 
     validation_transport = _script(locator)
     report = _validator(validation_transport, source=source)
@@ -199,7 +199,7 @@ def test_runtime_and_validation_apply_remaining_deadline_to_resolved_body(env, m
     report = _runtime(env, transport, deadline=env[2].monotonic() + 3)
     assert [request.url for request in transport.sent] == [LIST_URL, LOCATOR.url]
     assert report.truncated and report.gaps[0]["reason"] == "deadline"
-    assert not events(env[0], COMPLETED)
+    assert not events(env[0], NOTICE_ARCHIVED)
 
     monkeypatch.setattr(source_validation, "_RUN_SECONDS", 3)
     transport = _script()
@@ -218,7 +218,7 @@ def test_lease_loss_after_locator_prevents_original_request(env):
     report = _runtime(env, transport, source=replace(LOCATOR_SOURCE, handler=ExpiredLeaseHandler()))
     assert [request.url for request in transport.sent] == [LIST_URL, LOCATOR.url]
     assert report.truncated and report.gaps[0]["reason"] == "lease_lost"
-    assert not events(env[0], COMPLETED)
+    assert not events(env[0], NOTICE_ARCHIVED)
 
 
 @pytest.mark.parametrize("tamper", [False, True], ids=["intact", "changed-query"])
@@ -238,7 +238,7 @@ def test_resume_uses_only_a_bound_original_capture(env, tmp_path, monkeypatch, t
         failed = _runtime(env, transport, spool=spool)
     assert failed.deferred == "archive_object_pending"
     assert [request.url for request in transport.sent] == [LIST_URL, LOCATOR.url, BODY.url]
-    assert not events(database, COMPLETED)
+    assert not events(database, NOTICE_ARCHIVED)
     (locator_key,), (body_key,) = rows(database, """
         SELECT task_key FROM acq_request_tasks WHERE kind = 'body' ORDER BY scope ->> 2 DESC
     """)
@@ -263,7 +263,7 @@ def test_resume_uses_only_a_bound_original_capture(env, tmp_path, monkeypatch, t
     recovered = _runtime(env, transport, spool=spool)
     assert (recovered.run_id, recovered.archived, recovered.deferred) == (failed.run_id, 1, None)
     assert [request.url for request in transport.sent] == expected_requests
-    (event,) = events(database, COMPLETED)
+    (event,) = events(database, NOTICE_ARCHIVED)
     assert store.get(event["subject"]) == expected_original.body
     assert rows(database, "SELECT notice_key FROM acq_source_observations") == [("a",)]
     assert rows(database, "SELECT request_fingerprint FROM acq_raw_artifacts") == [(expected_attempts[-1][0],)]

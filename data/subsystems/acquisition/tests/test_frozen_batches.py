@@ -19,7 +19,7 @@ from miaoqia.acquisition.api.frozen_batches import (
 )
 from miaoqia.acquisition.api.handlers import FetchResponse, Window
 from miaoqia.acquisition.application import sources
-from miaoqia.acquisition.application.fetch import COMPLETED
+from miaoqia.acquisition.application.fetch import NOTICE_ARCHIVED
 from miaoqia.acquisition.application.frozen_batches import FrozenBatches
 from miaoqia.acquisition.infrastructure.privileges import provision_frozen_reader
 from miaoqia.kernel import db, reqctx
@@ -212,7 +212,7 @@ def test_restores_hash_verified_bytes_and_preserves_observations(archived, tmp_p
     database, store = archived
     service = FrozenBatches(database, store, authorize=authorize_fixture)
     batch = service.freeze(REFS)
-    before = events(database, COMPLETED)
+    before = events(database, NOTICE_ARCHIVED)
     key = batch.items[0].content_hash.replace("sha256:", "raw/")
     backup = FilesystemObjectStore(tmp_path / "backup")
     (store.root / key).unlink()
@@ -236,7 +236,7 @@ def test_restores_hash_verified_bytes_and_preserves_observations(archived, tmp_p
     assert service.restore(batch, 0, backup=FilesystemObjectStore(tmp_path / "no-backup")) == "already_present"
     assert (service.read(batch, 0), service.read(batch, 2)) == (A, A)
     assert service.freeze(REFS) == batch
-    assert events(database, COMPLETED) == before
+    assert events(database, NOTICE_ARCHIVED) == before
 
 
 def _collect_hunan(env):

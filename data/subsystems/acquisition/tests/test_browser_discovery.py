@@ -8,7 +8,7 @@ from hashlib import sha256
 import pytest
 from sqlalchemy import text
 
-from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, read_browser_pair
+from miaoqia.acquisition.api.browser_pairs import BROWSER_NOTICE_ARCHIVED, read_browser_pair
 from miaoqia.acquisition.api.handlers import BrowserListPlan, BrowserSelection, FetchRequest, FetchResponse, OffsetPage
 from miaoqia.acquisition.application import discovery
 from miaoqia.acquisition.application.fetch import Fetcher, SourceStopped
@@ -118,7 +118,7 @@ def assert_no_discovery(database, renderer, report):
     assert (report.pages, report.listed, report.archived) == (0, 0, 0)
     assert renderer.calls == 0
     assert rows(database, "SELECT count(*) FROM acq_discovery_pages") == [(0,)]
-    assert not events(database, BROWSER_COMPLETED)
+    assert not events(database, BROWSER_NOTICE_ARCHIVED)
 
 
 @pytest.mark.parametrize("body", [LIST_BYTES, OFFSET_BYTES], ids=["reported", "offset"])
@@ -165,7 +165,7 @@ def test_browser_discovery_binds_list_attempt_and_expires_only_original(env, bro
         "frame_id": "list-frame", "loader_id": "list-loader", "media_type": "application/json",
         "size_bytes": len(body), "selection_hash": f"sha256:{sha256(LIST_HTML.encode()).hexdigest()}",
     }
-    (event,) = events(database, BROWSER_COMPLETED)
+    (event,) = events(database, BROWSER_NOTICE_ARCHIVED)
     assert event["data"]["binding"]["list_attempt_id"] == attempt
     assert event["data"]["binding"]["attempt_id"] == body_attempt[0]
 
@@ -238,7 +238,7 @@ def test_browser_notice_cannot_use_a_different_list_task_binding(env, browser_fe
     report = browser_fetcher(MismatchedReceipt()).run(source(ListingSource()), WINDOW, max_pages=1)
     assert (report.pages, report.listed, report.archived, report.failed) == (1, 1, 0, 1)
     assert report.gaps[0]["reason"] == "browser_observation_conflict"
-    assert not events(database, BROWSER_COMPLETED)
+    assert not events(database, BROWSER_NOTICE_ARCHIVED)
 
 
 @pytest.mark.parametrize("body, html", [
@@ -331,5 +331,5 @@ def test_browser_discovery_resumes_exact_staged_list_after_object_outage(env, br
         ("settled", attempt_id),
     ]
     assert store.get(key) == LIST_BYTES
-    (event,) = events(database, BROWSER_COMPLETED)
+    (event,) = events(database, BROWSER_NOTICE_ARCHIVED)
     assert event["data"]["binding"]["list_attempt_id"] == attempt_id

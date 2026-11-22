@@ -45,52 +45,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v1",
-      "name": "base",
-      "valid": true,
-      "value": {
-        "artifact_ref": "fixture-value",
-        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-        "fetched_at": "2026-10-14T00:00:00Z",
-        "rights_tags": [
-          "fixture-value"
-        ],
-        "source_id": "fixture-value",
-        "source_url": "https://example.org/notice"
-      }
-    },
-    {
-      "event": "acquisition.fetch.completed.v1",
-      "name": "缺少必填字段",
-      "valid": false,
-      "value": {
-        "artifact_ref": "fixture-value",
-        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-        "fetched_at": "2026-10-14T00:00:00Z",
-        "rights_tags": [
-          "fixture-value"
-        ],
-        "source_url": "https://example.org/notice"
-      }
-    },
-    {
-      "event": "acquisition.fetch.completed.v1",
-      "name": "拒绝未声明字段",
-      "valid": false,
-      "value": {
-        "artifact_ref": "fixture-value",
-        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-        "fetched_at": "2026-10-14T00:00:00Z",
-        "rights_tags": [
-          "fixture-value"
-        ],
-        "source_id": "fixture-value",
-        "source_url": "https://example.org/notice",
-        "tenant_secret": "should-not-pass"
-      }
-    },
-    {
-      "event": "acquisition.fetch.completed.v2",
+      "event": "acquisition.notice.archived.v1",
       "name": "base",
       "valid": true,
       "value": {
@@ -107,7 +62,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v2",
+      "event": "acquisition.notice.archived.v1",
       "name": "待补采附件与正文观察并存",
       "valid": true,
       "value": {
@@ -131,7 +86,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v2",
+      "event": "acquisition.notice.archived.v1",
       "name": "标记取得的附件必须有完整原件校验值",
       "valid": false,
       "value": {
@@ -155,7 +110,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v2",
+      "event": "acquisition.notice.archived.v1",
       "name": "缺少来源公告键",
       "valid": false,
       "value": {
@@ -171,7 +126,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v2",
+      "event": "acquisition.notice.archived.v1",
       "name": "观察序号必须为正数",
       "valid": false,
       "value": {
@@ -188,7 +143,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v2",
+      "event": "acquisition.notice.archived.v1",
       "name": "拒绝未声明字段",
       "valid": false,
       "value": {
@@ -206,7 +161,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "base",
       "valid": true,
       "value": {
@@ -233,7 +188,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "同一原件中的另一条公告拥有独立键摘要和日期",
       "valid": true,
       "value": {
@@ -260,7 +215,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝缺少成员选择器",
       "valid": false,
       "value": {
@@ -281,7 +236,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝以数组位置选择成员",
       "valid": false,
       "value": {
@@ -309,7 +264,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝缺少权威组键",
       "valid": false,
       "value": {
@@ -335,7 +290,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝以 URL 作为权威组键",
       "valid": false,
       "value": {
@@ -362,7 +317,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝组键中的 DEL 控制字符",
       "valid": false,
       "value": {
@@ -389,7 +344,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝公告键中的 C0 控制字符",
       "valid": false,
       "value": {
@@ -416,7 +371,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝成员键边缘的 Unicode 空白",
       "valid": false,
       "value": {
@@ -443,7 +398,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝空成员键",
       "valid": false,
       "value": {
@@ -470,7 +425,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝非法选择器类型",
       "valid": false,
       "value": {
@@ -497,7 +452,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝非正选择器版本",
       "valid": false,
       "value": {
@@ -524,7 +479,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝非正观察版本",
       "valid": false,
       "value": {
@@ -551,7 +506,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝签名链接形式的原件引用",
       "valid": false,
       "value": {
@@ -578,7 +533,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝非法完整原件哈希",
       "valid": false,
       "value": {
@@ -605,7 +560,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝非法成员摘要",
       "valid": false,
       "value": {
@@ -632,7 +587,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝缺少选择与摘要规则版本",
       "valid": false,
       "value": {
@@ -658,7 +613,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝将时间戳用作公告发布日期",
       "valid": false,
       "value": {
@@ -685,7 +640,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝不存在的日历日期",
       "valid": false,
       "value": {
@@ -712,7 +667,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝缺少完整原件媒体类型",
       "valid": false,
       "value": {
@@ -738,7 +693,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝超过抓取上限的原件字节数",
       "valid": false,
       "value": {
@@ -765,7 +720,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝旧制品引用",
       "valid": false,
       "value": {
@@ -796,7 +751,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v3",
+      "event": "acquisition.grouped_notice.archived.v1",
       "name": "拒绝将附件作为成员选择分支",
       "valid": false,
       "value": {
@@ -830,7 +785,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "base",
       "valid": true,
       "value": {
@@ -872,7 +827,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "接受无查询的发布者定位和绑定上界",
       "valid": true,
       "value": {
@@ -914,7 +869,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "接受发布者定位中的编码查询值",
       "valid": true,
       "value": {
@@ -956,7 +911,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝缺少惰性投影",
       "valid": false,
       "value": {
@@ -991,7 +946,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝缺少同次绑定",
       "valid": false,
       "value": {
@@ -1020,7 +975,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝缺少绑定摘要",
       "valid": false,
       "value": {
@@ -1061,7 +1016,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝未声明的顶层字段",
       "valid": false,
       "value": {
@@ -1106,7 +1061,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝互换原件和投影角色",
       "valid": false,
       "value": {
@@ -1148,7 +1103,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝以投影键作为原件",
       "valid": false,
       "value": {
@@ -1190,7 +1145,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝以原件键作为投影",
       "valid": false,
       "value": {
@@ -1232,7 +1187,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝压缩正文原件",
       "valid": false,
       "value": {
@@ -1274,7 +1229,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝投影内的额外字段",
       "valid": false,
       "value": {
@@ -1317,7 +1272,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝缺少投影大小",
       "valid": false,
       "value": {
@@ -1358,7 +1313,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝空投影",
       "valid": false,
       "value": {
@@ -1400,7 +1355,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝超限投影",
       "valid": false,
       "value": {
@@ -1442,7 +1397,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝非 JSON 投影",
       "valid": false,
       "value": {
@@ -1484,7 +1439,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝字符串投影版本",
       "valid": false,
       "value": {
@@ -1526,7 +1481,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝非法投影哈希",
       "valid": false,
       "value": {
@@ -1568,7 +1523,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝带用户信息的发布者定位",
       "valid": false,
       "value": {
@@ -1610,7 +1565,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝带片段的发布者定位",
       "valid": false,
       "value": {
@@ -1652,7 +1607,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝非 HTTPS 发布者定位",
       "valid": false,
       "value": {
@@ -1694,7 +1649,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝没有主机的发布者定位",
       "valid": false,
       "value": {
@@ -1736,7 +1691,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝发布者定位中的无效百分号编码",
       "valid": false,
       "value": {
@@ -1778,7 +1733,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝绑定内的额外字段",
       "valid": false,
       "value": {
@@ -1821,7 +1776,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝缺少列表尝试标识",
       "valid": false,
       "value": {
@@ -1862,7 +1817,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝未知绑定版本",
       "valid": false,
       "value": {
@@ -1904,7 +1859,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝零值尝试标识",
       "valid": false,
       "value": {
@@ -1946,7 +1901,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝超出 int64 的运行标识",
       "valid": false,
       "value": {
@@ -1988,7 +1943,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝带摘要前缀的任务键",
       "valid": false,
       "value": {
@@ -2030,7 +1985,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝带查询的实际请求地址",
       "valid": false,
       "value": {
@@ -2072,7 +2027,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝带片段的实际请求地址",
       "valid": false,
       "value": {
@@ -2114,7 +2069,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝带用户信息的实际请求地址",
       "valid": false,
       "value": {
@@ -2156,7 +2111,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝非 HTTPS 实际请求地址",
       "valid": false,
       "value": {
@@ -2198,7 +2153,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝非 ASCII 浏览器标识",
       "valid": false,
       "value": {
@@ -2240,7 +2195,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝空浏览器标识",
       "valid": false,
       "value": {
@@ -2282,7 +2237,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝浏览器标识中的换行",
       "valid": false,
       "value": {
@@ -2324,7 +2279,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝超长浏览器标识",
       "valid": false,
       "value": {
@@ -2366,7 +2321,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝非法请求指纹",
       "valid": false,
       "value": {
@@ -2408,7 +2363,7 @@
       }
     },
     {
-      "event": "acquisition.fetch.completed.v4",
+      "event": "acquisition.browser_notice.archived.v1",
       "name": "拒绝非法绑定摘要",
       "valid": false,
       "value": {
@@ -8294,389 +8249,7 @@
     }
   ],
   "schemas": {
-    "acquisition.fetch.completed.v1": {
-      "additionalProperties": false,
-      "properties": {
-        "artifact_ref": {
-          "description": "原始制品稳定对象键/引用，不是短时签名URL",
-          "minLength": 1,
-          "type": "string",
-          "x-type-name": "EventArtifactRef"
-        },
-        "content_hash": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "type": "string",
-          "x-type-name": "EventSha256"
-        },
-        "fetched_at": {
-          "format": "date-time",
-          "type": "string",
-          "x-type-name": "EventOccurredAt"
-        },
-        "rights_tags": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true,
-          "x-type-name": "EventRightsTags"
-        },
-        "source_id": {
-          "minLength": 1,
-          "type": "string",
-          "x-type-name": "EventSourceId"
-        },
-        "source_url": {
-          "format": "uri",
-          "type": "string"
-        }
-      },
-      "required": [
-        "source_id",
-        "artifact_ref",
-        "rights_tags",
-        "content_hash",
-        "fetched_at",
-        "source_url"
-      ],
-      "type": "object"
-    },
-    "acquisition.fetch.completed.v2": {
-      "additionalProperties": false,
-      "properties": {
-        "artifact_ref": {
-          "description": "原始制品稳定对象键/引用，不是短时签名URL",
-          "minLength": 1,
-          "type": "string",
-          "x-type-name": "EventArtifactRef"
-        },
-        "attachments": {
-          "description": "来源声明的附件及其当前取得状态。正文归档不受待补采附件阻断。",
-          "items": {
-            "additionalProperties": false,
-            "else": {
-              "not": {
-                "anyOf": [
-                  {
-                    "required": [
-                      "artifact_ref"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "content_hash"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "media_type"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "size_bytes"
-                    ]
-                  }
-                ]
-              }
-            },
-            "if": {
-              "properties": {
-                "status": {
-                  "const": "available"
-                }
-              }
-            },
-            "properties": {
-              "artifact_ref": {
-                "description": "原始制品稳定对象键/引用，不是短时签名URL",
-                "minLength": 1,
-                "type": "string",
-                "x-type-name": "EventArtifactRef"
-              },
-              "content_hash": {
-                "pattern": "^sha256:[0-9a-f]{64}$",
-                "type": "string",
-                "x-type-name": "EventSha256"
-              },
-              "media_type": {
-                "maxLength": 128,
-                "minLength": 1,
-                "type": "string"
-              },
-              "name": {
-                "maxLength": 512,
-                "minLength": 1,
-                "type": "string"
-              },
-              "part_key": {
-                "maxLength": 512,
-                "minLength": 1,
-                "type": "string"
-              },
-              "required": {
-                "type": "boolean"
-              },
-              "size_bytes": {
-                "maximum": 20971520,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "status": {
-                "enum": [
-                  "available",
-                  "pending"
-                ]
-              }
-            },
-            "required": [
-              "part_key",
-              "required",
-              "status"
-            ],
-            "then": {
-              "required": [
-                "artifact_ref",
-                "content_hash",
-                "media_type",
-                "size_bytes"
-              ]
-            },
-            "type": "object"
-          },
-          "maxItems": 16,
-          "type": "array"
-        },
-        "content_hash": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "type": "string",
-          "x-type-name": "EventSha256"
-        },
-        "fetched_at": {
-          "format": "date-time",
-          "type": "string",
-          "x-type-name": "EventOccurredAt"
-        },
-        "legacy_artifact": {
-          "additionalProperties": false,
-          "description": "采集方按稳定部件键查得的单一存量地址及原件哈希，供证据方校验历史引用",
-          "properties": {
-            "content_hash": {
-              "pattern": "^sha256:[0-9a-f]{64}$",
-              "type": "string",
-              "x-type-name": "EventSha256"
-            },
-            "source_url": {
-              "format": "uri",
-              "type": "string"
-            }
-          },
-          "required": [
-            "source_url",
-            "content_hash"
-          ],
-          "type": "object"
-        },
-        "notice_key": {
-          "maxLength": 512,
-          "minLength": 1,
-          "type": "string"
-        },
-        "observation_version": {
-          "minimum": 1,
-          "type": "integer"
-        },
-        "rights_tags": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true,
-          "x-type-name": "EventRightsTags"
-        },
-        "source_id": {
-          "minLength": 1,
-          "type": "string",
-          "x-type-name": "EventSourceId"
-        },
-        "source_url": {
-          "format": "uri",
-          "type": "string"
-        }
-      },
-      "required": [
-        "source_id",
-        "notice_key",
-        "observation_version",
-        "artifact_ref",
-        "rights_tags",
-        "content_hash",
-        "fetched_at",
-        "source_url"
-      ],
-      "type": "object"
-    },
-    "acquisition.fetch.completed.v3": {
-      "additionalProperties": false,
-      "properties": {
-        "artifact_ref": {
-          "description": "完整原站响应的私有对象键，十六进制摘要与 content_hash 对应。",
-          "pattern": "^raw/[0-9a-f]{64}$",
-          "type": "string"
-        },
-        "content_hash": {
-          "description": "完整原站响应字节的 SHA-256。",
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "type": "string",
-          "x-type-name": "EventSha256"
-        },
-        "fetched_at": {
-          "format": "date-time",
-          "type": "string",
-          "x-type-name": "EventOccurredAt"
-        },
-        "media_type": {
-          "description": "完整原站响应的媒体类型。",
-          "maxLength": 128,
-          "minLength": 1,
-          "type": "string"
-        },
-        "notice_key": {
-          "description": "来源内稳定的原站标识。",
-          "maxLength": 512,
-          "minLength": 1,
-          "not": {
-            "anyOf": [
-              {
-                "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
-              },
-              {
-                "pattern": "^[    -     　]|[    -     　]$"
-              }
-            ]
-          },
-          "type": "string"
-        },
-        "observation_version": {
-          "minimum": 1,
-          "type": "integer",
-          "x-type-name": "EventVersion"
-        },
-        "published_on": {
-          "description": "选中公告由原站声明的当地日历日期。",
-          "format": "date",
-          "type": "string"
-        },
-        "record_digest": {
-          "description": "按 selector.kind 和 selector.version 对选中公告的日期、标题、类型、正文及声明的语义字段计算的 SHA-256。外层包装、成员排列和其他成员不参与计算。",
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "type": "string",
-          "x-type-name": "EventSha256"
-        },
-        "rights_tags": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true,
-          "x-type-name": "EventRightsTags"
-        },
-        "selector": {
-          "additionalProperties": false,
-          "description": "消费者按类型和版本，在完整原件的权威组内以原站公告键选中唯一一条公告，并核对该键与载荷 notice_key 一致。",
-          "properties": {
-            "group_key": {
-              "description": "来源内稳定的原站标识。",
-              "maxLength": 512,
-              "minLength": 1,
-              "not": {
-                "anyOf": [
-                  {
-                    "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
-                  },
-                  {
-                    "pattern": "^[    -     　]|[    -     　]$"
-                  }
-                ]
-              },
-              "type": "string"
-            },
-            "kind": {
-              "pattern": "^[a-z][a-z0-9_-]{0,95}$",
-              "type": "string"
-            },
-            "notice_key": {
-              "description": "来源内稳定的原站标识。",
-              "maxLength": 512,
-              "minLength": 1,
-              "not": {
-                "anyOf": [
-                  {
-                    "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
-                  },
-                  {
-                    "pattern": "^[    -     　]|[    -     　]$"
-                  }
-                ]
-              },
-              "type": "string"
-            },
-            "version": {
-              "description": "同时确定成员选择规则和成员摘要的规范化规则。",
-              "maximum": 2147483647,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          "required": [
-            "kind",
-            "version",
-            "group_key",
-            "notice_key"
-          ],
-          "type": "object"
-        },
-        "size_bytes": {
-          "description": "完整原站响应的字节数。",
-          "maximum": 20971520,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "source_id": {
-          "minLength": 1,
-          "type": "string",
-          "x-type-name": "EventSourceId"
-        },
-        "source_url": {
-          "description": "原站定位地址。",
-          "format": "uri",
-          "type": "string"
-        }
-      },
-      "required": [
-        "source_id",
-        "notice_key",
-        "observation_version",
-        "artifact_ref",
-        "rights_tags",
-        "content_hash",
-        "fetched_at",
-        "source_url",
-        "selector",
-        "record_digest",
-        "published_on",
-        "media_type",
-        "size_bytes"
-      ],
-      "type": "object"
-    },
-    "acquisition.fetch.completed.v4": {
+    "acquisition.browser_notice.archived.v1": {
       "additionalProperties": false,
       "properties": {
         "artifact_ref": {
@@ -8947,6 +8520,339 @@
         "failed_at",
         "error_code",
         "retryable"
+      ],
+      "type": "object"
+    },
+    "acquisition.grouped_notice.archived.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "完整原站响应的私有对象键，十六进制摘要与 content_hash 对应。",
+          "pattern": "^raw/[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "content_hash": {
+          "description": "完整原站响应字节的 SHA-256。",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "media_type": {
+          "description": "完整原站响应的媒体类型。",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "notice_key": {
+          "description": "来源内稳定的原站标识。",
+          "maxLength": 512,
+          "minLength": 1,
+          "not": {
+            "anyOf": [
+              {
+                "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
+              },
+              {
+                "pattern": "^[    -     　]|[    -     　]$"
+              }
+            ]
+          },
+          "type": "string"
+        },
+        "observation_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "published_on": {
+          "description": "选中公告由原站声明的当地日历日期。",
+          "format": "date",
+          "type": "string"
+        },
+        "record_digest": {
+          "description": "按 selector.kind 和 selector.version 对选中公告的日期、标题、类型、正文及声明的语义字段计算的 SHA-256。外层包装、成员排列和其他成员不参与计算。",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "selector": {
+          "additionalProperties": false,
+          "description": "消费者按类型和版本，在完整原件的权威组内以原站公告键选中唯一一条公告，并核对该键与载荷 notice_key 一致。",
+          "properties": {
+            "group_key": {
+              "description": "来源内稳定的原站标识。",
+              "maxLength": 512,
+              "minLength": 1,
+              "not": {
+                "anyOf": [
+                  {
+                    "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
+                  },
+                  {
+                    "pattern": "^[    -     　]|[    -     　]$"
+                  }
+                ]
+              },
+              "type": "string"
+            },
+            "kind": {
+              "pattern": "^[a-z][a-z0-9_-]{0,95}$",
+              "type": "string"
+            },
+            "notice_key": {
+              "description": "来源内稳定的原站标识。",
+              "maxLength": 512,
+              "minLength": 1,
+              "not": {
+                "anyOf": [
+                  {
+                    "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
+                  },
+                  {
+                    "pattern": "^[    -     　]|[    -     　]$"
+                  }
+                ]
+              },
+              "type": "string"
+            },
+            "version": {
+              "description": "同时确定成员选择规则和成员摘要的规范化规则。",
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "version",
+            "group_key",
+            "notice_key"
+          ],
+          "type": "object"
+        },
+        "size_bytes": {
+          "description": "完整原站响应的字节数。",
+          "maximum": 20971520,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "description": "原站定位地址。",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "notice_key",
+        "observation_version",
+        "artifact_ref",
+        "rights_tags",
+        "content_hash",
+        "fetched_at",
+        "source_url",
+        "selector",
+        "record_digest",
+        "published_on",
+        "media_type",
+        "size_bytes"
+      ],
+      "type": "object"
+    },
+    "acquisition.notice.archived.v1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "原始制品稳定对象键/引用，不是短时签名URL",
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventArtifactRef"
+        },
+        "attachments": {
+          "description": "来源声明的附件及其当前取得状态。正文归档不受待补采附件阻断。",
+          "items": {
+            "additionalProperties": false,
+            "else": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "artifact_ref"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "content_hash"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "media_type"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "size_bytes"
+                    ]
+                  }
+                ]
+              }
+            },
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "available"
+                }
+              }
+            },
+            "properties": {
+              "artifact_ref": {
+                "description": "原始制品稳定对象键/引用，不是短时签名URL",
+                "minLength": 1,
+                "type": "string",
+                "x-type-name": "EventArtifactRef"
+              },
+              "content_hash": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string",
+                "x-type-name": "EventSha256"
+              },
+              "media_type": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "part_key": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "size_bytes": {
+                "maximum": 20971520,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "available",
+                  "pending"
+                ]
+              }
+            },
+            "required": [
+              "part_key",
+              "required",
+              "status"
+            ],
+            "then": {
+              "required": [
+                "artifact_ref",
+                "content_hash",
+                "media_type",
+                "size_bytes"
+              ]
+            },
+            "type": "object"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "content_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "legacy_artifact": {
+          "additionalProperties": false,
+          "description": "采集方按稳定部件键查得的单一存量地址及原件哈希，供证据方校验历史引用",
+          "properties": {
+            "content_hash": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string",
+              "x-type-name": "EventSha256"
+            },
+            "source_url": {
+              "format": "uri",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source_url",
+            "content_hash"
+          ],
+          "type": "object"
+        },
+        "notice_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "observation_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "notice_key",
+        "observation_version",
+        "artifact_ref",
+        "rights_tags",
+        "content_hash",
+        "fetched_at",
+        "source_url"
       ],
       "type": "object"
     },

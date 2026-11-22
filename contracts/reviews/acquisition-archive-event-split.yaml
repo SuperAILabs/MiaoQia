@@ -1,0 +1,20 @@
+kind: accepted_event_removal
+events:
+- acquisition.fetch.completed.v1
+- acquisition.fetch.completed.v2
+- acquisition.fetch.completed.v3
+- acquisition.fetch.completed.v4
+replacements:
+- acquisition.notice.archived.v1
+- acquisition.grouped_notice.archived.v1
+- acquisition.browser_notice.archived.v1
+reason: >-
+  The four types were not successive versions. v2, v3 and v4 described three kinds of notice archive that are
+  produced side by side, and v1 was a legacy type without a producer. They are replaced by three distinct event
+  types before the first data-plane deployment.
+evidence:
+- No producer of any removed type remains; acquisition publishes only the replacement types.
+- The public.acquisition topic on the public test host holds no retained messages.
+- Neither the public test host nor the domestic data-plane host has data-plane databases, so no outbox or pending
+  evidence queue holds a removed type.
+- The data plane has not been deployed for the first time.

@@ -19,7 +19,7 @@ from psycopg.rows import dict_row
 from sqlalchemy import text
 import yaml
 
-from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, read_browser_pair
+from miaoqia.acquisition.api.browser_pairs import BROWSER_NOTICE_ARCHIVED, read_browser_pair
 from miaoqia.acquisition.api.browser_projection import build_projection
 from miaoqia.acquisition.api.handlers import FetchRequest
 from miaoqia.acquisition.application import plans, sources
@@ -265,8 +265,8 @@ def verify_detail(connection, store, plan, listing, day):
     rows = connection.execute("""
         SELECT seq, envelope, envelope::text AS wire, partition_key, published_at FROM kernel_outbox
         WHERE envelope->>'type' = %s AND envelope->'data'->>'source_id' = %s ORDER BY seq
-    """, (BROWSER_COMPLETED, SOURCE)).fetchall()
-    require(len(rows) == 1, "source_v4_outbox_count")
+    """, (BROWSER_NOTICE_ARCHIVED, SOURCE)).fetchall()
+    require(len(rows) == 1, "source_browser_outbox_count")
     outbox = rows[0]
     event = outbox["envelope"]["data"]
     binding = event["binding"]
@@ -276,7 +276,7 @@ def verify_detail(connection, store, plan, listing, day):
             and outbox["partition_key"] == f"{SOURCE}|{KEY}"
             and binding["run_id"] == plan["run_id"] and binding["list_attempt_id"] == listing["list_attempt_id"]
             and binding["request_url"] == DETAIL_DATA
-            and binding["request_fingerprint"] == FetchRequest("GET", DETAIL_DATA).fingerprint(), "v4_event_scope")
+            and binding["request_fingerprint"] == FetchRequest("GET", DETAIL_DATA).fingerprint(), "browser_event_scope")
     observation, = connection.execute("""
         SELECT o.version, o.notice_key, o.attempt_id, o.source_url, o.published_on, o.channel, o.selector,
                r.run_id, r.list_attempt_id, r.task_key, r.payload, a.id AS artifact_id,
@@ -294,7 +294,7 @@ def verify_detail(connection, store, plan, listing, day):
             and observation["payload"] == event
             and all(observation[key] == binding[key] for key in ("attempt_id", "list_attempt_id", "run_id", "task_key"))
             and all(observation[key] == event[key] for key in ("content_hash", "artifact_ref", "size_bytes", "media_type")),
-            "v4_observation_binding")
+            "browser_observation_binding")
     raw, document = read_browser_pair(store, event)
     paragraph = BODY.decode("cp1252").removesuffix("\r\n")
     expected_projection = build_projection(selected_html(paragraph))
@@ -303,7 +303,7 @@ def verify_detail(connection, store, plan, listing, day):
     require(projection["content_hash"] == digest(expected_projection)
             and [block["text"] for block in document["blocks"]] == [paragraph], "projection_s3_bytes")
     return {
-        "outbox_count": len(rows), "outbox_type": BROWSER_COMPLETED, "outbox_seq": outbox["seq"],
+        "outbox_count": len(rows), "outbox_type": BROWSER_NOTICE_ARCHIVED, "outbox_seq": outbox["seq"],
         "outbox_envelope_sha256": digest(outbox["wire"].encode("utf-8"))[7:],
         "observation_version": observation["version"], "detail_attempt_id": binding["attempt_id"],
         "artifact_id": observation["artifact_id"], "original_ref": event["artifact_ref"], "original_bytes": len(raw),

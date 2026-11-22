@@ -10,10 +10,8 @@ from uuid import uuid4
 
 import psycopg
 import pytest
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import text
-from sqlalchemy.exc import DBAPIError, IntegrityError
+from sqlalchemy.exc import DBAPIError
 
 from miaoqia.acquisition import MIGRATIONS
 from miaoqia.acquisition.api.handlers import (
@@ -21,7 +19,7 @@ from miaoqia.acquisition.api.handlers import (
 )
 from miaoqia.acquisition.application import collection_leases
 from miaoqia.acquisition.application.fetch import _instant
-from miaoqia.acquisition.application.grouped_observations import COMPLETED, GroupConflict, submit_group, validate_group
+from miaoqia.acquisition.application.grouped_observations import GROUPED_NOTICE_ARCHIVED, GroupConflict, submit_group, validate_group
 from miaoqia.kernel import db, payloads, reqctx
 
 from test_fetch import DAY, LIST_URL, SOURCE, FakeClock, rows
@@ -188,9 +186,9 @@ def test_shared_original_member_versions_replay_and_closed_outbox(ledger):
     """) == [(1, 1)]
     all_events = rows(database, "SELECT partition_key, envelope FROM kernel_outbox ORDER BY seq")
     for partition, envelope in all_events:
-        assert envelope["type"] == COMPLETED
+        assert envelope["type"] == GROUPED_NOTICE_ARCHIVED
         data = envelope["data"]
-        payloads.validator(COMPLETED, {}).validate(data)
+        payloads.validator(GROUPED_NOTICE_ARCHIVED, {}).validate(data)
         assert data["selector"]["notice_key"] == data["notice_key"] != "old"
         assert partition == f"{SOURCE_ID}|{data['notice_key']}"
         assert envelope["subject"] == data["artifact_ref"] == f"raw/{data['content_hash'][7:]}"
@@ -306,53 +304,3 @@ def test_empty_group_settles_and_selector_version_alone_versions_digest_namespac
     assert _counts(database) == (2, 3, 2, 1, 2, 3)
 
 
-def _migration(owner):
-    cfg = Config()
-    cfg.set_main_option("script_location", MIGRATIONS)
-    cfg.set_main_option("sqlalchemy.url", db._url(owner))
-    return cfg
-
-
-def test_migration_keeps_legacy_observations_and_refuses_history_loss(ledger):
-    database, lease, owner = ledger
-    cfg = _migration(owner)
-    command.downgrade(cfg, "0014")
-    with database.tx() as conn:
-        request = FetchRequest("GET", "https://src.example/d/legacy")
-        _, attempt = _attempt(conn, lease, "body", request, "settled")
-        digest = _hash(b"legacy")
-        artifact = conn.execute(text("""
-            INSERT INTO acq_raw_artifacts (source_id, source_key, content_hash, artifact_ref, media_type, size_bytes,
-                source_url, request_fingerprint, fetched_at)
-            VALUES (:source, 'legacy/body', :hash, :ref, 'text/html', 6, :url, :fingerprint, :now) RETURNING id
-        """), {"source": SOURCE_ID, "hash": digest, "ref": f"raw/{digest[7:]}", "url": request.url,
-               "fingerprint": request.fingerprint(), "now": NOW}).scalar_one()
-        conn.execute(text("""
-            INSERT INTO acq_source_observations (source_id, notice_key, version, artifact_id, attempt_id, source_url, observed_at)
-            VALUES (:source, 'legacy', 1, :artifact, :attempt, :url, :now)
-        """), {"source": SOURCE_ID, "artifact": artifact, "attempt": attempt, "url": request.url, "now": NOW})
-    command.upgrade(cfg, "0015")
-    assert rows(database, "SELECT notice_key, selector, record_digest FROM acq_source_observations") == [
-        ("legacy", None, None),
-    ]
-    with database.tx() as conn:
-        with pytest.raises(IntegrityError, match="acq_source_observations_selector"), conn.begin_nested():
-            conn.execute(text("""
-                INSERT INTO acq_source_observations (source_id, notice_key, version, artifact_id, attempt_id,
-                    source_url, published_on, observed_at, record_digest)
-                SELECT source_id, notice_key, version + 1, artifact_id, attempt_id, source_url, :day, observed_at, :digest
-                FROM acq_source_observations WHERE notice_key = 'legacy'
-            """), {"day": DAY, "digest": digest})
-    command.downgrade(cfg, "0014")
-    command.upgrade(cfg, "head")
-    head = rows(database, "SELECT version_num FROM alembic_version")
-
-    group = _group()
-    staged = _stage(ledger, group, _response(group, [_member("a", "X")]))
-    with pytest.raises(DBAPIError, match="cannot downgrade with grouped acquisition history"):
-        command.downgrade(cfg, "0014")
-    assert _submit(database, staged).archived == 1
-    with pytest.raises(DBAPIError, match="cannot downgrade with grouped acquisition history"):
-        command.downgrade(cfg, "0014")
-    assert rows(database, "SELECT version_num FROM alembic_version") == head
-    assert rows(database, "SELECT notice_key FROM acq_source_observations ORDER BY notice_key") == [("a",), ("legacy",)]

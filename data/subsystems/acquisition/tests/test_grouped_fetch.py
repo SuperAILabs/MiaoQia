@@ -12,7 +12,7 @@ from miaoqia.acquisition.api.frozen_batches import FrozenBatch, FrozenBatchDenie
 from miaoqia.acquisition.api.handlers import (DetailRef, FetchRequest, FetchResponse, GroupedNotice, GroupSelector,
                                             ListPage, NoticeGroup, Window)
 from miaoqia.acquisition.application import grouped_observations
-from miaoqia.acquisition.application.fetch import COMPLETED, Fetcher
+from miaoqia.acquisition.application.fetch import NOTICE_ARCHIVED, Fetcher
 from miaoqia.acquisition.application.frozen_batches import FrozenBatches
 from miaoqia.acquisition.application.sources import Schedule
 from miaoqia.acquisition.infrastructure.archive_spool import ArchiveSpool
@@ -78,7 +78,7 @@ def test_grouped_collection_preserves_full_bytes_and_versions_each_notice(env):
         (2, 0, 2), (0, 2, 2), (1, 1, 2), (1, 1, 2),
     ]
     assert [req.url for req in transport.sent] == [LIST_URL, GROUP_URL] * 4
-    observations = events(database, grouped_observations.COMPLETED)
+    observations = events(database, grouped_observations.GROUPED_NOTICE_ARCHIVED)
     assert [(env["data"]["notice_key"], env["data"]["observation_version"]) for env in observations] == [
         ("a", 1), ("b", 1), ("a", 2), ("a", 3),
     ]
@@ -109,8 +109,8 @@ def test_standalone_capture_cannot_advance_a_grouped_notice(env):
     assert report.archived == 0 and report.failed == 1
     assert "group_observation_conflict" in {gap["reason"] for gap in report.gaps}
     assert rows(database, "SELECT state FROM acq_request_tasks WHERE kind = 'body'") == [("failed",)]
-    assert not events(database, COMPLETED)
-    assert len(events(database, grouped_observations.COMPLETED)) == 2
+    assert not events(database, NOTICE_ARCHIVED)
+    assert len(events(database, grouped_observations.GROUPED_NOTICE_ARCHIVED)) == 2
 
 
 def test_historical_group_limit_records_gap_without_repeating_the_same_front_pages(env):
@@ -158,7 +158,7 @@ def test_grouped_recovery_uses_original_object_when_new_list_omits_group(env, mo
         with pytest.raises(RuntimeError, match="transaction interrupted"):
             collector.run(SOURCE_GROUPS, WINDOW, max_pages=1, refetch=True)
     assert rows(database, "SELECT count(*) FROM acq_group_receipts") == [(0,)]
-    assert not events(database, grouped_observations.COMPLETED)
+    assert not events(database, grouped_observations.GROUPED_NOTICE_ARCHIVED)
     [(run_id,)] = rows(database, "SELECT run_id FROM acq_request_tasks WHERE kind = 'group'")
     expire_lease(database)
 
@@ -184,7 +184,7 @@ def test_grouped_recovery_reuses_spool_when_archive_write_failed(env, tmp_path, 
     with monkeypatch.context() as patch:
         patch.setattr(store, "put", fail_raw)
         first = collector.run(SOURCE_GROUPS, WINDOW, max_pages=1, refetch=True)
-    assert first.deferred == "archive_object_pending" and not events(database, grouped_observations.COMPLETED)
+    assert first.deferred == "archive_object_pending" and not events(database, grouped_observations.GROUPED_NOTICE_ARCHIVED)
     resumed, transport = _run(env, {LIST_URL: [_list()]}, spool=spool)
     second = resumed.run(SOURCE_GROUPS, WINDOW, max_pages=1, refetch=True)
     assert second.run_id == first.run_id and second.archived == 2

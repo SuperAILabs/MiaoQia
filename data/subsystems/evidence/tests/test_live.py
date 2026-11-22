@@ -1,22 +1,21 @@
-"""Live ingest of acquisition.fetch.completed.v1 on a real PostgreSQL, using responses recorded from the pilot sources."""
+"""Live ingest of acquisition.notice.archived.v1 on a real PostgreSQL, using responses recorded from the pilot sources."""
 from __future__ import annotations
 
 import hashlib
 import json
 import os
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError
 
 from miaoqia.evidence import MIGRATIONS, live_ingest
-from miaoqia.evidence.application.live import COMPLETED, LEGACY_COMPLETED
+from miaoqia.evidence.application.live import NOTICE_ARCHIVED
 from miaoqia.evidence.extensions.packs import DocumentAdapter, load_documents
 from miaoqia.evidence.replay import main as replay_main
 from miaoqia.kernel import db, ids, reqctx
@@ -38,21 +37,31 @@ def live(pg_factory, tmp_path):
     database.close()
 
 
-def archived(store, source_id: str, fixture: str, url: str) -> dict:
-    """Archive like acquisition does and return the fetch.completed envelope."""
+def archived(store, source_id: str, fixture: str, url: str, *, notice_key="fixture:1", version=1) -> dict:
+    """Archive like acquisition does and return the notice.archived envelope."""
     raw = (FIXTURES / fixture).read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
     store.put(f"raw/{digest}", raw)
-    data = {"source_id": source_id, "artifact_ref": f"raw/{digest}", "rights_tags": [f"public:{source_id}"],
+    data = {"source_id": source_id, "notice_key": notice_key, "observation_version": version,
+            "artifact_ref": f"raw/{digest}", "rights_tags": [f"public:{source_id}"],
             "content_hash": f"sha256:{digest}", "fetched_at": "2026-11-11T08:00:00Z", "source_url": url}
-    return {"source": "miaoqia/acquisition", "subject": data["artifact_ref"], "type": LEGACY_COMPLETED,
+    return {"source": "miaoqia/acquisition", "subject": data["artifact_ref"], "type": NOTICE_ARCHIVED,
             "data": data, "id": ids.new("evt"), "specversion": "1.0", "time": data["fetched_at"],
             "datacontenttype": "application/json", "miaoqiazone": "public"}
 
 
+def historical(database, ingest, env):
+    """Seed the URL-keyed snapshot of an original archived before stable notice keys, as corpus replay does."""
+    data = env["data"]
+    observed_at = datetime.fromisoformat(data["fetched_at"].replace("Z", "+00:00"))
+    with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
+        artifact = ingest._artifact(data, data["source_url"], observed_at, ingest.adapters.get(data["source_id"]), None)
+        ingest.pipeline.ingest(conn, artifact, archived_ref=data["artifact_ref"])
+
+
 def deliver(database, ingest, env):
     with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
-        ingest.on_completed(conn, env)
+        ingest.on_archived(conn, env)
 
 
 def rows(database, sql):
@@ -85,14 +94,14 @@ CASES = [
 
 
 @pytest.mark.parametrize("source_id, fixture, url, extractor", CASES)
-def test_fetch_completed_becomes_snapshot_and_revision(live, source_id, fixture, url, extractor, monkeypatch):
+def test_notice_archived_becomes_snapshot_and_revision(live, source_id, fixture, url, extractor, monkeypatch):
     database, ingest, store = live
     env = archived(store, source_id, fixture, url)
     deny_original_writes(ingest, monkeypatch)
     deliver(database, ingest, env)
     (snap,) = rows(database, "SELECT source_id, source_key, artifact_ref, rights_tags, media_type FROM evd_snapshots")
     media = "application/json" if fixture.endswith(".json") else "text/html"
-    assert snap == (source_id, url, env["data"]["artifact_ref"], [f"public:{source_id}"], media)
+    assert snap == (source_id, "notice:fixture:1", env["data"]["artifact_ref"], [f"public:{source_id}"], media)
     assert rows(database, "SELECT extractor FROM evd_extraction_revisions") == [(extractor,)]
     # The original is archived unchanged under the same content-addressed key as acquisition's.
     assert store.get(env["data"]["artifact_ref"]) == (FIXTURES / fixture).read_bytes()
@@ -114,11 +123,11 @@ def test_rejects_hash_mismatch_and_foreign_source(live):
 
 
 @pytest.mark.parametrize("proven", [True, False])
-def test_legacy_link_requires_matching_historical_bytes(live, proven):
+def test_historical_url_link_requires_matching_bytes(live, proven):
     database, ingest, store = live
     source, fixture, url, _ = CASES[0]
     legacy = archived(store, source, fixture, url)
-    deliver(database, ingest, legacy)
+    historical(database, ingest, legacy)
     previous = rows(database, "SELECT id, source_key FROM evd_snapshots")[0]
     raw = store.get(legacy["subject"]).replace(b"<", b"<!-- synthetic change --><", 1)
     digest = hashlib.sha256(raw).hexdigest()
@@ -128,9 +137,8 @@ def test_legacy_link_requires_matching_historical_bytes(live, proven):
                 source_url="https://ggzy.ah.gov.cn/jsgc/replacement", content_hash=f"sha256:{digest}",
                 legacy_artifact={"source_url": url, "content_hash": legacy["data"]["content_hash"] if proven
                                  else f"sha256:{'0' * 64}"})
-    current = dict(legacy, type=COMPLETED, subject=key, data=data)
+    current = dict(legacy, subject=key, data=data)
     deliver(database, ingest, current)
-    deliver(database, ingest, legacy)
     (stream,) = rows(database, "SELECT stream_key FROM evd_live_observations")
     assert stream == (url if proven else "notice:guid:1",)
     snapshots = rows(database, "SELECT id, source_key FROM evd_snapshots")
@@ -149,7 +157,7 @@ def test_required_attachment_recovery_appends_snapshot_while_body_remains_availa
     part = {"part_key": "results", "name": "补充材料.pdf", "required": True}
     data = dict(env["data"], notice_key="fixture:1", observation_version=1,
                 attachments=[dict(part, status="pending")])
-    pending = dict(env, type=COMPLETED, data=data)
+    pending = dict(env, data=data)
     deliver(database, ingest, pending)
     assert rows(database, """
         SELECT quality_status, warnings @> '[{"code":"REQUIRED_ATTACHMENT_PENDING"}]'::jsonb
@@ -188,7 +196,7 @@ def observation(env, version, *, ref=None, **details):
     ref = ref or env["subject"]
     data = dict(env["data"], notice_key="fixture:1", observation_version=version,
                 artifact_ref=ref, content_hash=f"sha256:{ref.removeprefix('raw/')}", **details)
-    return dict(env, id=ids.new("evt"), type=COMPLETED, subject=ref, data=data)
+    return dict(env, id=ids.new("evt"), type=NOTICE_ARCHIVED, subject=ref, data=data)
 
 
 def drain(database, ingest, source):
@@ -294,18 +302,18 @@ def test_defer_inbox_is_atomic_and_preserves_envelope(live, monkeypatch):
     dead_letter = Mock()
 
     def fail_after_enqueue(conn, env):
-        ingest.on_completed(conn, env)
+        ingest.on_archived(conn, env)
         raise RuntimeError("fail after enqueue")
 
     consumer = Consumer("evidence.live", "evidence", "unused", ["public.acquisition"],
-                        {COMPLETED: fail_after_enqueue}, database, max_attempts=1)
+                        {NOTICE_ARCHIVED: fail_after_enqueue}, database, max_attempts=1)
     monkeypatch.setattr(consumer, "_dead_letter", dead_letter)
     consumer._handle(message, Mock(), "dlq.evidence")
     assert str(dead_letter.call_args.args[-1]) == "fail after enqueue"
     assert rows(database, "SELECT event_id FROM kernel_inbox") == []
     assert rows(database, "SELECT event_id FROM evd_pending_live_events") == []
 
-    consumer.handlers[COMPLETED] = ingest.on_completed
+    consumer.handlers[NOTICE_ARCHIVED] = ingest.on_archived
     dead_letter.reset_mock()
     consumer._handle(message, Mock(), "dlq.evidence")
     consumer._handle(message, Mock(), "dlq.evidence")
@@ -346,10 +354,11 @@ def replay_store(request, live, monkeypatch):
         client.close()
 
 
-def test_drain_order_legacy_reversion_and_retry(replay_store, monkeypatch):
+def test_drain_order_reversion_and_retry(replay_store, monkeypatch):
     database, ingest, store, overwrite = replay_store
     source, fixture, url, _ = CASES[0]
     legacy = archived(store, source, fixture, url)
+    historical(database, ingest, legacy)
     raw = store.get(legacy["subject"])
     changed = raw.replace("EPC公开招标公告".encode(), "EPC公开招标公告（测试变更）".encode(), 1)
     changed_ref = f"raw/{hashlib.sha256(changed).hexdigest()}"
@@ -360,13 +369,11 @@ def test_drain_order_legacy_reversion_and_retry(replay_store, monkeypatch):
     deny_original_writes(ingest, monkeypatch)
 
     set_live_parse(ingest, source, False)
-    for event in (legacy, first):
-        deliver(database, ingest, event)
+    deliver(database, ingest, first)
     set_live_parse(ingest, source, True)
     for event in (reverted, duplicate):
         deliver(database, ingest, event)
-    assert rows(database, "SELECT id FROM evd_snapshots") == []
-    assert drain(database, ingest, source)
+    assert rows(database, "SELECT count(*) FROM evd_snapshots") == [(1,)]
     pending_sql = "SELECT event_id FROM evd_pending_live_events ORDER BY receipt_seq"
     assert rows(database, pending_sql) == [(event["id"],) for event in (first, reverted, duplicate)]
     for error in (FileNotFoundError, ValueError):
@@ -391,11 +398,11 @@ def test_drain_order_legacy_reversion_and_retry(replay_store, monkeypatch):
 def test_live_and_drain_share_transaction_source_fence(live, contender):
     database, ingest, store = live
     source = CASES[0][0]
-    legacy = archived(store, *CASES[0][:3])
+    queued = archived(store, *CASES[0][:3])
     set_live_parse(ingest, source, False)
-    deliver(database, ingest, legacy)
+    deliver(database, ingest, queued)
     set_live_parse(ingest, source, True)
-    event = observation(legacy, 1)
+    event = observation(queued, 2)
     with reqctx.use(reqctx.service("evidence")), database.tx() as leader:
         assert ingest.drain_one(leader, source)
         with pytest.raises(OperationalError, match="lock timeout"), database.tx() as follower:
@@ -403,34 +410,12 @@ def test_live_and_drain_share_transaction_source_fence(live, contender):
             if contender == "drain":
                 ingest.drain_one(follower, source)
             else:
-                ingest.on_completed(follower, event)
+                ingest.on_archived(follower, event)
         unmanaged = archived(store, *CASES[1][:3])
         unmanaged.pop("id")
         deliver(database, ingest, unmanaged)
     assert not drain(database, ingest, source)
     deliver(database, ingest, event)
-    assert rows(database, "SELECT version FROM evd_live_observations") == [(1,)]
+    assert rows(database, f"SELECT version FROM evd_live_observations WHERE source_id = '{source}'") == [(2,)]
 
 
-def test_pending_migration_refuses_to_discard_events(pg_factory):
-    dsns = pg_factory()
-    db.migrate(dsns["owner"], MIGRATIONS)
-    config = Config()
-    config.set_main_option("script_location", MIGRATIONS)
-    config.set_main_option("sqlalchemy.url", db._url(dsns["owner"]))
-    database = db.Database(dsns["app"])
-    try:
-        with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
-            conn.execute(text("INSERT INTO evd_pending_live_events (event_id, source_id, envelope) "
-                              "VALUES ('fixture', 'fixture', '{}')"))
-        with pytest.raises(ProgrammingError, match="drain pending evidence events before downgrading"):
-            command.downgrade(config, "0005")
-        assert rows(database, "SELECT event_id FROM evd_pending_live_events") == [("fixture",)]
-        with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
-            conn.execute(text("DELETE FROM evd_pending_live_events"))
-        command.downgrade(config, "0005")
-        assert rows(database, "SELECT to_regclass('evd_pending_live_events')") == [(None,)]
-        command.upgrade(config, "0006")
-        assert rows(database, "SELECT count(*) FROM evd_pending_live_events") == [(0,)]
-    finally:
-        database.close()

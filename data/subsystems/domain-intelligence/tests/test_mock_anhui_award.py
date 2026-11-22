@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from miaoqia.acquisition import MIGRATIONS
 from miaoqia.acquisition.api.handlers import FetchResponse, Window
-from miaoqia.acquisition.application.fetch import COMPLETED, Fetcher
+from miaoqia.acquisition.application.fetch import NOTICE_ARCHIVED, Fetcher
 from miaoqia.acquisition.application.sources import load
 from miaoqia.runtime_data import read_routes
 from miaoqia.kernel import db, payloads, reqctx
@@ -93,7 +93,7 @@ def collected(pg_factory, plane):
         assert short.archived == 0 and short.gaps[0]["page"] == 2 and short.gaps[0]["reason"] == "page_limit"
         reports = [collector.run(source, window, max_pages=2, refetch=True) for _ in range(3)]
         assert all(r.pages == 2 and r.archived == 1 and not r.gaps for r in reports)
-        yield database, store, _events(database, COMPLETED)
+        yield database, store, _events(database, NOTICE_ARCHIVED)
     finally:
         database.close()
 
@@ -105,7 +105,7 @@ def test_mock_acquisition_recovers_page_and_http_failure(collected):
     assert [store.get(event["subject"]) for event in events] == [award(WINNER), award(OTHER_WINNER), award(WINNER)]
     assert events[0]["subject"] == events[2]["subject"] != events[1]["subject"]
     for event in events:
-        payloads.validator(COMPLETED, {}).validate(event["data"])
+        payloads.validator(NOTICE_ARCHIVED, {}).validate(event["data"])
     with reqctx.use(reqctx.service("acquisition")), database.tx() as conn:
         assert conn.execute(text("SELECT count(*) FROM acq_raw_artifacts")).scalar_one() == 2
         assert conn.execute(text("SELECT outcome FROM acq_fetch_attempts WHERE status = 503")).scalar_one() == "http_error"
@@ -121,7 +121,7 @@ def test_mock_extraction_and_authorized_read(collected, plane, tls_factory, runn
     with reqctx.use(reqctx.service("evidence")):
         for event in [*events, events[1], events[2]]:
             with evd.tx() as conn:
-                ingest.on_completed(conn, event)
+                ingest.on_archived(conn, event)
     revisions = _events(evd, "evidence.extraction.revised.v1")
     assert len(revisions) == 3
     def deliver(*items):

@@ -14,7 +14,7 @@ from miaoqia.kernel.db import Database
 from miaoqia.kernel.objectstore import ObjectStore
 
 from ..api.browser_pairs import (
-    BROWSER_COMPLETED, describe_projection, read_browser_pair, seal_browser_event, validate_browser_event,
+    BROWSER_NOTICE_ARCHIVED, describe_projection, read_browser_pair, seal_browser_event, validate_browser_event,
 )
 from ..api.browser_projection import build_projection
 from ..api.handlers import BrowserNoticeValidator, BrowserSelection, DetailRef, FetchRequest, FetchResponse, Window
@@ -177,7 +177,7 @@ def submit_browser_pair(conn: Connection, store: ObjectStore, *, lease: Collecti
         _insert_receipt(conn, params, artifact_id, event)
         if changed:
             _append_observation(conn, params, artifact_id, version)
-            writer.append(conn, outbox.Event(type=BROWSER_COMPLETED, subject=pair["artifact_ref"],
+            writer.append(conn, outbox.Event(type=BROWSER_NOTICE_ARCHIVED, subject=pair["artifact_ref"],
                                              partition_key=f"{key['s']}|{key['k']}", data=event))
         Fetcher._advance_check(conn, {**params, "v": version, "legacy": None})
         Fetcher._task_state(conn, binding["task_key"], "settled", binding["attempt_id"])

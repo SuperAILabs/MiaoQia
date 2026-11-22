@@ -9,13 +9,10 @@ import subprocess
 import time
 from urllib.parse import urlsplit
 
-from alembic import command
-from alembic.config import Config
 import psycopg
 from psycopg import sql
 from psycopg.types.json import Jsonb
 import pytest
-from sqlalchemy.exc import DBAPIError
 
 from miaoqia.acquisition import MIGRATIONS
 from miaoqia.acquisition.api import OPERATIONS
@@ -331,60 +328,28 @@ def test_confirmation_waits_for_committed_revocation(registry):
         reader.close()
 
 
-def test_upgrade_preserves_registered_source_and_requires_provisioning(pg_factory):
+def test_reader_requires_explicit_public_source_state_grant(pg_factory):
     dsns = pg_factory()
-    db.migrate(dsns["owner"])
-    config = Config()
-    config.set_main_option("script_location", MIGRATIONS)
-    config.set_main_option("sqlalchemy.url", db._url(dsns["owner"]))
-    command.upgrade(config, "0008")
+    db.migrate(dsns["owner"], MIGRATIONS)
     declare_public(dsns, SYNTHETIC)
     reader = urlsplit(dsns["app"]).username
     with psycopg.connect(dsns["owner"]) as conn:
-        conn.execute(
-            sql.SQL("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM {}").format(
-                sql.Identifier(reader)
-            )
-        )
-        conn.execute(
-            sql.SQL("GRANT USAGE ON SCHEMA acq_rights TO {}").format(
-                sql.Identifier(reader)
-            )
-        )
-        conn.execute(
-            sql.SQL("GRANT SELECT ON ALL TABLES IN SCHEMA acq_rights TO {}").format(
-                sql.Identifier(reader)
-            )
-        )
-        conn.execute(
-            sql.SQL("GRANT SELECT ON public.acq_sources TO {}").format(
-                sql.Identifier(reader)
-            )
-        )
+        conn.execute(sql.SQL("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM {}").format(sql.Identifier(reader)))
+        conn.execute(sql.SQL("GRANT USAGE ON SCHEMA acq_rights TO {}").format(sql.Identifier(reader)))
+        for table in ("versions", "reviewed", "aliases", "current", "state", "audit"):
+            conn.execute(sql.SQL("GRANT SELECT ON {} TO {}").format(
+                sql.Identifier("acq_rights", table), sql.Identifier(reader)))
+        conn.execute(sql.SQL("GRANT SELECT ON public.acq_sources TO {}").format(sql.Identifier(reader)))
     read = Registry(dsns["app"])
     try:
-        with reqctx.use(CTX), pytest.raises(DBAPIError):
-            read.ensure_reader()
-        command.upgrade(config, "0009")
         with reqctx.use(CTX), pytest.raises(PermissionError):
             read.ensure_reader()
         with psycopg.connect(dsns["owner"]) as conn:
-            conn.execute(
-                sql.SQL("GRANT SELECT ON acq_rights.public_source_state TO {}").format(
-                    sql.Identifier(reader)
-                )
-            )
-            assert conn.execute(
-                "SELECT version_num FROM alembic_version"
-            ).fetchone() == ("0009",)
-            assert conn.execute(
-                "SELECT count(*) FROM acq_rights.public_source_state"
-            ).fetchone() == (0,)
+            conn.execute(sql.SQL("GRANT SELECT ON acq_rights.public_source_state TO {}").format(sql.Identifier(reader)))
+            assert conn.execute("SELECT count(*) FROM acq_rights.public_source_state").fetchone() == (0,)
         with reqctx.use(CTX):
             read.ensure_reader()
-        decision = evaluate(
-            Decisions(read), request(f"public:{SYNTHETIC}", source=SYNTHETIC)
-        )
+        decision = evaluate(Decisions(read), request(f"public:{SYNTHETIC}", source=SYNTHETIC))
         assert decision["allowed"] and decision["epoch"] == 0
     finally:
         read.close()

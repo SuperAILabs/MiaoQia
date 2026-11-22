@@ -285,58 +285,6 @@ def test_multi_fact_revision_is_rejected_without_enrichment_writes(plane):
     assert _events(plane[0], "evidence.enrichment.completed.v1") == []
 
 
-def test_pre_enrichment_migration_upgrade_preserves_existing_pair(plane, monkeypatch):
-    from alembic import command
-    from alembic.config import Config
-    from miaoqia.domain_intelligence import MIGRATIONS as DOM
-    from miaoqia.evidence import MIGRATIONS as EVD
-    from miaoqia.kernel import db
-    # Seed immutable evidence before moving the databases to their pre-enrichment schemas.
-    revisions = _revisions(plane)
-    configs = []
-    for migrations, owner, version in ((DOM, plane[4]["owner"], "0002"),
-        (EVD, plane[0].engine.url.render_as_string(hide_password=False).replace("postgresql+psycopg:", "postgresql:").replace("_app:", "_owner:"), "0001")):
-        cfg = Config()
-        cfg.set_main_option("script_location", migrations)
-        cfg.set_main_option("sqlalchemy.url", db._url(owner))
-        command.downgrade(cfg, version)
-        configs.append(cfg)
-    # Freeze the preceding writers: current writers require their matching metadata schema.
-    import hashlib
-    import types
-    frozen = {}
-    for name, digest in (("facts", "d41b59af430a5210021399eeec303d4867eaea68bde0450d10e744901197c126"), ("projects", "bd78a3c2337e06bdb5bdfe8cb621621009a6ed3085cf5b4159bbc3d0b001f4c5")):
-        source = (Path(__file__).parent / "fixtures" / ("0002_"+name+".py")).read_bytes()
-        assert hashlib.sha256(source).hexdigest() == digest
-        module = types.ModuleType("legacy_0002_"+name)
-        module.__package__ = "miaoqia.domain_intelligence.application"
-        exec(compile(source, "legacy_0002_"+name, "exec"), module.__dict__)
-        frozen[name] = module
-    frozen["projects"].write_version = frozen["facts"].write_version
-    with monkeypatch.context() as legacy:
-        legacy.setattr(facts.Materializer, "materialize", frozen["facts"].Materializer.materialize)
-        legacy.setattr(facts, "write_version", frozen["facts"].write_version)
-        legacy.setattr(projects, "_write_project", frozen["projects"]._write_project)
-        for revision in revisions:
-            _materialize(plane, revision)
-    notices, project, events = _facts(plane[1]), _projects(plane), _events(plane[1], "domain.fact.upserted.v1")
-    for cfg in configs:
-        command.upgrade(cfg, "head")
-    assert _revisions(plane) == revisions
-    assert _facts(plane[1]) == notices and _projects(plane) == project
-    assert _events(plane[1], "domain.fact.upserted.v1") == events
-    service = _service(plane)
-    with reqctx.use(CTX):
-        service.register_reference(**REFERENCE, content=TEST_CONTENT, rights_tags=["test:identity-policy"])
-    key, parent = _register(plane, service, notices[0], BUYER)
-    _apply(plane, service, key, parent)
-    with pytest.raises(Exception), reqctx.use(CTX), plane[1].tx() as conn:
-        conn.execute(text("DELETE FROM dom_enrichment_receipts"))
-    for cfg, version in zip(configs, ("0002", "0001")):
-        with pytest.raises(Exception, match="拒绝有损回退"):
-            command.downgrade(cfg, version)
-
-
 def test_missing_result_and_inputs_enforce_global_context_before_matching(plane):
     service = _setup(plane)
     key, parent = _register(plane, service, _facts(plane[1])[0], BUYER)

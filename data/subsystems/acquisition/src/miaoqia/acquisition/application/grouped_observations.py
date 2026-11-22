@@ -17,7 +17,7 @@ from ..infrastructure.transport import MAX_BODY, TransportError, request_origin
 from . import discovery, fetch
 from .collection_leases import CollectionLease
 
-COMPLETED = "acquisition.fetch.completed.v3"
+GROUPED_NOTICE_ARCHIVED = "acquisition.grouped_notice.archived.v1"
 
 
 class GroupConflict(ValueError):
@@ -241,12 +241,12 @@ def _observation_event(params, member, check):
             "selector": member["selector"], "record_digest": member["record_digest"],
             "published_on": member["published_on"], "media_type": params["m"], "size_bytes": params["n"]}
     _payload_validator().validate(data)
-    return outbox.Event(type=COMPLETED, subject=params["a"], partition_key=f"{check['s']}|{check['k']}", data=data)
+    return outbox.Event(type=GROUPED_NOTICE_ARCHIVED, subject=params["a"], partition_key=f"{check['s']}|{check['k']}", data=data)
 
 
 @cache
 def _payload_validator():
-    return payloads.validator(COMPLETED, {})
+    return payloads.validator(GROUPED_NOTICE_ARCHIVED, {})
 
 
 def _result(artifact_id, members, *, replayed):

@@ -5,6 +5,7 @@ import yaml
 
 from mqc.compat import bump_ok, compat, diff
 from mqc.repo import Repo
+from conftest import git
 
 NOTICE = "contracts/schemas/domains/procurement/notice.schema.json"
 PDEFS = "contracts/schemas/domains/procurement/defs.schema.json"
@@ -152,6 +153,48 @@ def test_event_removed_rejected(sandbox):
     d["channels"]["public.domain"]["messages"].pop("recordResolved")
     p.write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
     assert any("credit.record.resolved.v1" in e for e in run(sandbox).errors)
+
+
+REMOVAL = {"kind": "accepted_event_removal", "events": ["credit.record.resolved.v1"],
+           "reason": "Replaced before the first deployment.", "evidence": ["No producer and no retained messages."]}
+
+
+def remove_credit_resolved(root: Path) -> None:
+    p = root / "contracts/events/credit/events.asyncapi.yaml"
+    d = yaml.safe_load(p.read_text(encoding="utf-8"))
+    d["components"]["messages"].pop("recordResolved")
+    d["channels"]["public.domain"]["messages"].pop("recordResolved")
+    p.write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def write_removal(root: Path, name: str, record: dict) -> None:
+    (root / "contracts/reviews" / name).write_text(yaml.safe_dump(record, allow_unicode=True), encoding="utf-8")
+
+
+def test_event_removal_accepted_with_new_record(sandbox):
+    remove_credit_resolved(sandbox)
+    write_removal(sandbox, "credit-removal.yaml", REMOVAL)
+    report = run(sandbox)
+    assert report.errors == []
+    assert any("credit.record.resolved.v1" in n and "删除登记" in n for n in report.notes)
+
+
+def test_event_removal_rejected_without_record(sandbox):
+    remove_credit_resolved(sandbox)
+    write_removal(sandbox, "credit-removal.yaml", {**REMOVAL, "events": ["credit.record.published.v1"]})
+    errs = run(sandbox).errors
+    assert any("删除了已发布的事件类型 credit.record.resolved.v1" in e for e in errs)
+    assert any("credit.record.published.v1 仍在事件契约中声明" in e for e in errs)
+
+
+def test_event_removal_rejects_record_from_base(sandbox):
+    write_removal(sandbox, "credit-removal.yaml", REMOVAL)
+    git(sandbox, "-c", "user.email=t@t", "-c", "user.name=t", "add", "-A")
+    git(sandbox, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "record")
+    remove_credit_resolved(sandbox)
+    assert any("删除了已发布的事件类型 credit.record.resolved.v1" in e for e in run(sandbox).errors)
+    write_removal(sandbox, "credit-removal-again.yaml", REMOVAL)
+    assert any("已由基线中的登记处理" in e for e in run(sandbox).errors)
 
 
 def test_prefix_removed_rejected(sandbox):

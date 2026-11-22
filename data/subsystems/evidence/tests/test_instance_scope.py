@@ -2,7 +2,7 @@
 import pytest
 
 from miaoqia.evidence import module
-from miaoqia.evidence.application.live import BROWSER_COMPLETED, COMPLETED, GROUPED_COMPLETED, LEGACY_COMPLETED
+from miaoqia.evidence.application.live import BROWSER_NOTICE_ARCHIVED, GROUPED_NOTICE_ARCHIVED, NOTICE_ARCHIVED
 from miaoqia.kernel import runtime
 
 
@@ -21,4 +21,4 @@ def test_live_consumer_only_runs_in_data_consumer(role, tmp_path, monkeypatch):
     consumers = module().consumers(env)
     assert [consumer.name for consumer in consumers] == expected
     if role == "data-consumer":
-        assert set(consumers[1].handlers) == {LEGACY_COMPLETED, COMPLETED, GROUPED_COMPLETED, BROWSER_COMPLETED}
+        assert set(consumers[1].handlers) == {NOTICE_ARCHIVED, GROUPED_NOTICE_ARCHIVED, BROWSER_NOTICE_ARCHIVED}

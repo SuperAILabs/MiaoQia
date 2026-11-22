@@ -43,7 +43,7 @@ from .sources import DeclaredSource
 if TYPE_CHECKING:
     from .browser_jobs import BrowserRenderer
 
-COMPLETED = "acquisition.fetch.completed.v2"
+NOTICE_ARCHIVED = "acquisition.notice.archived.v1"
 FAILED = "acquisition.fetch.failed.v1"
 HEALTH_CHANGED = "acquisition.source.health_changed.v1"
 CHINA = timezone(timedelta(hours=8))
@@ -1046,7 +1046,7 @@ class Fetcher:
                 SELECT source_url, content_hash FROM acq_raw_artifacts WHERE id = :id
             """), {"id": check["legacy"]}).mappings().one()
             event["legacy_artifact"] = dict(legacy)
-        writer.append(conn, outbox.Event(type=COMPLETED, subject=body["a"],
+        writer.append(conn, outbox.Event(type=NOTICE_ARCHIVED, subject=body["a"],
                                          partition_key=f"{src.source_id}|{ref.source_key}", data=event))
 
     @staticmethod

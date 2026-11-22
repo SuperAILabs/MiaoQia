@@ -122,7 +122,7 @@ sequenceDiagram
   participant ENT as entity-graph
   participant SRH as search
   ACQ->>OBJ: 写入原始制品（内容哈希）
-  ACQ-->>EVD: 事件 acquisition.fetch.completed
+  ACQ-->>EVD: 事件 acquisition.notice.archived（含分组与浏览器公告）
   EVD->>EVD: 判定是否新快照；文档处理；规范化正文写入对象存储；解析（领域包解析器）
   EVD->>EVD: 内容增强（分类、标签、抽取），结果写入对象存储
   EVD-->>SRH: 事件 evidence.enrichment.completed

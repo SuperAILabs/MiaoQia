@@ -7,7 +7,7 @@ from sqlalchemy import Connection, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import bindparam
 
-from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, read_browser_pair, validate_browser_event
+from miaoqia.acquisition.api.browser_pairs import BROWSER_NOTICE_ARCHIVED, read_browser_pair, validate_browser_event
 from miaoqia.kernel import outbox, payloads, reqctx
 from miaoqia.kernel.objectstore import ObjectStore
 
@@ -16,11 +16,11 @@ from .bindings import advance_live_stream, lock_snapshot_stream
 from .grouped import MAX_ORIGINAL, GroupedObservation, check_ref, verified_bytes
 from .pipeline import Artifact, Attachment, Pipeline, browser_artifact
 
-LEGACY_COMPLETED = "acquisition.fetch.completed.v1"
-COMPLETED = "acquisition.fetch.completed.v2"
-GROUPED_COMPLETED = "acquisition.fetch.completed.v3"
-GROUPED_PAYLOAD = payloads.validator(GROUPED_COMPLETED, {})
-ASSESS_STANDALONE = {kind: payloads.validator(kind, {}) for kind in (LEGACY_COMPLETED, COMPLETED)}
+NOTICE_ARCHIVED = "acquisition.notice.archived.v1"
+GROUPED_NOTICE_ARCHIVED = "acquisition.grouped_notice.archived.v1"
+ARCHIVED_EVENTS = (NOTICE_ARCHIVED, GROUPED_NOTICE_ARCHIVED, BROWSER_NOTICE_ARCHIVED)
+NOTICE_PAYLOAD = payloads.validator(NOTICE_ARCHIVED, {})
+GROUPED_PAYLOAD = payloads.validator(GROUPED_NOTICE_ARCHIVED, {})
 
 
 def pending_events(conn: Connection, source_id: str, limit: int):
@@ -36,7 +36,7 @@ class LiveIngest:
         self.pipeline = pipeline
         self.adapters = adapters
 
-    def on_completed(self, conn: Connection, env: dict) -> None:
+    def on_archived(self, conn: Connection, env: dict) -> None:
         observed_at, adapter, grouped = self._check_envelope(env)
         source_id = env["data"]["source_id"]
         if adapter is not None and adapter.live_parse is not None:
@@ -44,15 +44,15 @@ class LiveIngest:
             if not adapter.live_parse or conn.execute(text("""
                 SELECT 1 FROM evd_pending_live_events WHERE source_id = :source LIMIT 1
             """), {"source": source_id}).first():
-                if env["type"] == BROWSER_COMPLETED:
+                if env["type"] == BROWSER_NOTICE_ARCHIVED:
                     data = env["data"]
-                    stream = self._stream(conn, data, observed_at, legacy=False, grouped=None, browser=True)
+                    stream = self._stream(conn, data, observed_at, grouped=None, browser=True)
                     if stream is None:
                         return
                     lock_snapshot_stream(conn, source_id, stream, browser_url=data["source_url"])
                     prior = conn.execute(text("""
                         SELECT envelope #>> '{data,binding_digest}' FROM evd_pending_live_events
-                        WHERE source_id = :source AND envelope->>'type' = 'acquisition.fetch.completed.v4'
+                        WHERE source_id = :source AND envelope->>'type' = 'acquisition.browser_notice.archived.v1'
                             AND envelope #>> '{data,notice_key}' = :notice
                             AND envelope #>> '{data,observation_version}' = :version
                     """), {"source": source_id, "notice": data["notice_key"],
@@ -99,18 +99,16 @@ class LiveIngest:
                 raise ValueError("pending observation does not match its queue")
             report["event_id"] = env["id"]
             observed_at, adapter, grouped = self._check_envelope(env)
-            if validator := ASSESS_STANDALONE.get(env["type"]):
-                if not validator.is_valid(env["data"]):
-                    raise ValueError("invalid standalone fetch payload")
+            if env["type"] == NOTICE_ARCHIVED and not NOTICE_PAYLOAD.is_valid(env["data"]):
+                raise ValueError("invalid standalone notice payload")
             data = env["data"]
             report.update(content_hash=data["content_hash"], observation_version=data.get("observation_version"))
-            if env["type"] == BROWSER_COMPLETED:
+            if env["type"] == BROWSER_NOTICE_ARCHIVED:
                 art = browser_artifact(self.store, data, observed_at)
             else:
                 # Only parser input uses this key. Historical identity resolution belongs to replay.
-                key = data["source_url"] if env["type"] == LEGACY_COMPLETED else f"notice:{data['notice_key']}"
-                art = self._artifact(data, key, observed_at, adapter, grouped)
-            result = self.pipeline.assess(art, selected=grouped is not None or env["type"] == BROWSER_COMPLETED)
+                art = self._artifact(data, f"notice:{data['notice_key']}", observed_at, adapter, grouped)
+            result = self.pipeline.assess(art, selected=grouped is not None or env["type"] == BROWSER_NOTICE_ARCHIVED)
             return {**report, **result, "status": "assessed"}
         except FileNotFoundError:
             return {**report, "status": "archive_missing"}
@@ -127,11 +125,11 @@ class LiveIngest:
     def _check_envelope(self, env: dict) -> tuple[datetime, DocumentAdapter | None, GroupedObservation | None]:
         data = env["data"]
         kind = env["type"]
-        if kind not in (LEGACY_COMPLETED, COMPLETED, GROUPED_COMPLETED, BROWSER_COMPLETED):
-            raise ValueError("unsupported fetch completion version")
-        if kind == GROUPED_COMPLETED and not GROUPED_PAYLOAD.is_valid(data):
+        if kind not in ARCHIVED_EVENTS:
+            raise ValueError("unsupported notice archive event")
+        if kind == GROUPED_NOTICE_ARCHIVED and not GROUPED_PAYLOAD.is_valid(data):
             raise ValueError("invalid grouped fetch payload")
-        if kind == BROWSER_COMPLETED:
+        if kind == BROWSER_NOTICE_ARCHIVED:
             validate_browser_event(data)
             if type(data["observation_version"]) is not int:
                 raise ValueError("invalid browser observation version")
@@ -140,7 +138,7 @@ class LiveIngest:
         check_ref(data["artifact_ref"], data["content_hash"])
         adapter = self.adapters.get(data["source_id"])
         grouped = None
-        if kind == BROWSER_COMPLETED:
+        if kind == BROWSER_NOTICE_ARCHIVED:
             if (adapter is None or adapter.source_id != data["source_id"]
                     or adapter.browser_projection is not True or type(adapter.live_parse) is not bool
                     or adapter.to_html is not None or adapter.to_selected_html is not None):
@@ -149,7 +147,7 @@ class LiveIngest:
                 raise ValueError("browser original media type does not match the source")
         elif adapter is not None and adapter.browser_projection:
             raise ValueError("source requires a browser observation")
-        elif kind == GROUPED_COMPLETED:
+        elif kind == GROUPED_NOTICE_ARCHIVED:
             grouped = GroupedObservation.from_event(data)
             grouped.check_adapter(adapter)
         elif adapter is not None and adapter.to_html is None:
@@ -159,9 +157,8 @@ class LiveIngest:
     def _ingest(self, conn: Connection, env: dict, adapter: DocumentAdapter | None, observed_at: datetime,
                 grouped: GroupedObservation | None) -> None:
         d = env["data"]
-        browser = env["type"] == BROWSER_COMPLETED
-        source_key = self._stream(conn, d, observed_at, legacy=env["type"] == LEGACY_COMPLETED,
-                                  grouped=grouped, browser=browser)
+        browser = env["type"] == BROWSER_NOTICE_ARCHIVED
+        source_key = self._stream(conn, d, observed_at, grouped=grouped, browser=browser)
         if source_key is None:
             return
         if browser:
@@ -195,7 +192,7 @@ class LiveIngest:
         )
 
     @staticmethod
-    def _stream(conn: Connection, data: dict, observed_at: datetime, *, legacy: bool,
+    def _stream(conn: Connection, data: dict, observed_at: datetime, *,
                 grouped: GroupedObservation | None, browser: bool) -> str | None:
         source, url = data["source_id"], data["source_url"]
         args = {"s": source, "u": url, "t": observed_at, "h": data["content_hash"]}
@@ -203,18 +200,10 @@ class LiveIngest:
         addresses = set() if grouped is not None else {url}
         if witness:
             addresses.add(witness["source_url"])
-        # Serialize against a historical event for this address while deciding whether to adopt its lineage.
+        # Serialize per address while deciding whether to adopt a historical URL-keyed lineage.
         for address in sorted(addresses):
             conn.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
                          {"key": f"evidence/live-url/{source}|{address}"})
-        if legacy:
-            if conn.execute(text("SELECT 1 FROM evd_live_urls WHERE source_id = :s AND source_url = :u"), args).first():
-                return None
-            newer = conn.execute(text("""
-                SELECT 1 FROM evd_snapshots WHERE source_id = :s AND source_key = :u AND observed_at > :t
-            """), args).first()
-            return None if newer else url
-
         notice, version = data["notice_key"], data["observation_version"]
         conn.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
                      {"key": f"evidence/live-notice/{source}|{notice}"})

@@ -98,7 +98,7 @@ uv run --locked --all-packages --group dev pytest -q \
 
 浏览器列表发现快照 SHA-256 为 `a57b20b8d61b1827715943fc92c29b981bb5d1574f3c7376118bb63bbee1e43e`。独立 PostgreSQL 17.6 与 SeaweedFS 4.54 环境的 **122 项**合成测试通过，覆盖列表捕获校验、发现收据、原件到期、归档故障恢复及冻结批次。该轮同时复查了[泸州通知公告](12-public-source-probe.md#泸州通知公告复查)，临时资源随后清理。
 
-同一 VPS 的隔离进程夹具用受监督 Chromium 从合成 TLS 发布者获取列表和正文。采集进程停止后，Go 中继发布 V4 及来源健康变更。正式 `data-consumer` 提交 Kafka 位点 2，Evidence 只有一条待解析观察。停止消费者后，显式重放从同一 S3 归档产生一个规范化快照，重复重放处理零条，死信保持为空。独立检查核对源码摘要和远端临时目录清理。[同次采集交付收据](../../deploy/vps/data-plane/browser/receipt-provider-ingest.jsonl)
+同一 VPS 的隔离进程夹具用受监督 Chromium 从合成 TLS 发布者获取列表和正文。采集进程停止后，Go 中继发布浏览器归档事件及来源健康变更。正式 `data-consumer` 提交 Kafka 位点 2，Evidence 只有一条待解析观察。停止消费者后，显式重放从同一 S3 归档产生一个规范化快照，重复重放处理零条，死信保持为空。独立检查核对源码摘要和远端临时目录清理。[同次采集交付收据](../../deploy/vps/data-plane/browser/receipt-provider-ingest.jsonl)
 
 ### 开发运行恢复演练
 
@@ -110,7 +110,7 @@ uv run --locked --all-packages --group dev pytest -q \
 
 源码候选 SHA-256 为 `a60d6c229fefe9d2ba6f482e5956f05be81e832f79c52aaff47ab32ecde40070`。在公共测试 VPS 上以独立 Podman 存储重建 Linux amd64 镜像，重复构建一致。Python 镜像摘要为 `sha256:b94c30e488ae3a388f8aed88f1ab6352a85c87e081142c6e50efc27fc52e9a95`，Go 镜像摘要为 `sha256:8c897cb8fa46012232c65ba464103cb485d8ef26ad36e1a160521af62283b8f3`。两个镜像均以非 root 账号启动，提供与当前发布快照一致的角色清单。Python 镜像识别 40 个来源。
 
-VPS 的 Compose 提供者渲染 14 个服务，默认启动范围为空，合成角色的原样环境值从文件进入容器后保持一致。用相同候选镜像对隔离 PostgreSQL 17.6 执行三条一次性迁移并重复执行，核对 `acq` `0017`、`evd` `0008`、`dom` `0007`、`ent` `0002`、`sea_public` `2`。验收使用临时私网和合成配置。共享存储、真实访问凭据和常驻角色按 C11 及逐源结果继续验收。[发布包与装配命令](../../deploy/vps/data-plane/README.md)
+VPS 的 Compose 提供者渲染 14 个服务，默认启动范围为空，合成角色的原样环境值从文件进入容器后保持一致。用相同候选镜像对隔离 PostgreSQL 17.6 执行三条一次性迁移并重复执行，核对 `acq`、`evd`、`dom`、`ent` 均位于 Alembic head，`sea_public` 为 `2`。验收使用临时私网和合成配置。共享存储、真实访问凭据和常驻角色按 C11 及逐源结果继续验收。[发布包与装配命令](../../deploy/vps/data-plane/README.md)
 
 两份一次性 SQL 在该 VPS 的隔离 PostgreSQL 17.6 建立五库和默认禁止登录的基础角色。在本机隔离 PostgreSQL 18 另行验证迁移、读取角色和已建库拒绝重新引导。专用账号完成安徽模拟公告的 mTLS 事实和证据读取、公告与分块投影及撤权、模拟组织的读取和投影。反例覆盖跨库连接、发件箱旁路、改写事实和投影账本键。将合成五库导出并恢复到第二个隔离集群，验证授权和选定记录在脱离备份及重启后保持一致。[恢复操作与验收范围](../../deploy/vps/data-plane/recovery.md)
 
