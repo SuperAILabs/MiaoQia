@@ -4,42 +4,67 @@ package consumer
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/santhosh-tekuri/jsonschema/v5"
-	"github.com/superailabs/miaoqia/services/contracts/events"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/superailabs/miaoqia/services/contracts/events"
 	"github.com/superailabs/miaoqia/services/kernel/db"
 	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
+	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
 )
 
 // Handler 处理一条事件；返回错误时事务回滚并重试。
 type Handler func(ctx context.Context, tx pgx.Tx, env *outbox.Envelope) error
 
+type Delivery struct {
+	Topic       string
+	Partition   int32
+	Offset      int64
+	ValueSHA256 [sha256.Size]byte
+}
+
+type DeliveryOutcome string
+
+const (
+	DeliveryHandled      DeliveryOutcome = "handled"
+	DeliverySkipped      DeliveryOutcome = "skipped"
+	DeliveryDeadLettered DeliveryOutcome = "dead_lettered"
+)
+
+// DeliveryObserver runs before Kafka commits a position. Handled deliveries
+// (including inbox duplicates) share the inbox transaction and carry the
+// validated envelope. Other outcomes use a separate transaction and nil
+// envelope. A dead-letter outcome follows successful dead-letter production.
+type DeliveryObserver func(context.Context, pgx.Tx, Delivery, DeliveryOutcome, *outbox.Envelope) error
+
 // Consumer 是一个消费者（一个消费组）。
 type Consumer struct {
-	Name           string // 消费者标识，同时作为消费组与去重键，例如 operations.probe-completion
-	Subsystem      string // 所属子系统
-	DeadLetter     string // 死信主题，默认 dlq.<子系统>
-	Brokers        []string
-	Topics         []string
-	Handlers       map[string]Handler // 按事件类型；未登记的类型直接确认（消费者必须容忍新事件类型）
-	PayloadSchemas map[string]any     // 显式私有事件Schema；已登记类型使用离线生成制品
-	DB             *db.DB
-	MaxAttempts    int           // 默认 5
-	Backoff        time.Duration // 首次重试间隔，默认 200ms，逐次翻倍
-	Log            *slog.Logger
+	Name            string // 消费者标识，同时作为消费组与去重键，例如 operations.probe-completion
+	Subsystem       string // 所属子系统
+	DeadLetter      string // 死信主题，默认 dlq.<子系统>
+	Brokers         []string
+	Topics          []string
+	Handlers        map[string]Handler // 按事件类型；未登记的类型直接确认（消费者必须容忍新事件类型）
+	PayloadSchemas  map[string]any     // 显式私有事件Schema；已登记类型使用离线生成制品
+	ObserveDelivery DeliveryObserver
+	DB              *db.DB
+	MaxAttempts     int           // 默认 5
+	Backoff         time.Duration // 首次重试间隔，默认 200ms，逐次翻倍
+	Log             *slog.Logger
 
 	client     *kgo.Client
 	validators map[string]*jsonschema.Schema
@@ -84,8 +109,13 @@ func (c *Consumer) Run(ctx context.Context) error {
 	if c.DeadLetter == "" {
 		c.DeadLetter = "dlq." + c.Subsystem
 	}
-	cl, err := kgo.NewClient(kgo.SeedBrokers(c.Brokers...), kgo.ConsumerGroup(c.Name), kgo.ConsumeTopics(c.Topics...),
+	transport, err := transportsecurity.KafkaOptions()
+	if err != nil {
+		return err
+	}
+	options := append(transport, kgo.SeedBrokers(c.Brokers...), kgo.ConsumerGroup(c.Name), kgo.ConsumeTopics(c.Topics...),
 		kgo.DisableAutoCommit(), kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()))
+	cl, err := kgo.NewClient(options...)
 	if err != nil {
 		return err
 	}
@@ -132,7 +162,7 @@ func (c *Consumer) handle(ctx context.Context, r *kgo.Record) error {
 	}
 	h, ok := c.Handlers[env.Type]
 	if !ok {
-		return nil
+		return c.observeUnprocessed(ctx, r, DeliverySkipped)
 	}
 	if err := events.Validate(c.validators[env.Type], env.Data); err != nil {
 		return c.deadLetter(ctx, r, err)
@@ -154,9 +184,13 @@ func (c *Consumer) handle(ctx context.Context, r *kgo.Record) error {
 			}
 			if tag.RowsAffected() == 0 {
 				span.SetAttributes(attribute.Bool("miaoqia.duplicate", true))
-				return nil // 已处理过：重复投递
+			} else if err := h(ectx, tx, &env); err != nil {
+				return err
 			}
-			return h(ectx, tx, &env)
+			if c.ObserveDelivery != nil {
+				return c.ObserveDelivery(ectx, tx, recordDelivery(r), DeliveryHandled, &env)
+			}
+			return nil
 		})
 		if last == nil {
 			return nil
@@ -194,6 +228,25 @@ func (c *Consumer) deadLetter(ctx context.Context, r *kgo.Record, cause error) e
 	dl := &kgo.Record{Topic: c.DeadLetter, Key: r.Key, Value: r.Value, Headers: append(r.Headers,
 		kgo.RecordHeader{Key: "dlq_consumer", Value: []byte(c.Name)},
 		kgo.RecordHeader{Key: "dlq_source_topic", Value: []byte(r.Topic)},
+		kgo.RecordHeader{Key: "dlq_source_partition", Value: []byte(strconv.FormatInt(int64(r.Partition), 10))},
+		kgo.RecordHeader{Key: "dlq_source_offset", Value: []byte(strconv.FormatInt(r.Offset, 10))},
 		kgo.RecordHeader{Key: "dlq_error", Value: []byte(cause.Error())})}
-	return c.client.ProduceSync(ctx, dl).FirstErr()
+	if err := c.client.ProduceSync(ctx, dl).FirstErr(); err != nil {
+		return err
+	}
+	return c.observeUnprocessed(ctx, r, DeliveryDeadLettered)
+}
+
+func (c *Consumer) observeUnprocessed(ctx context.Context, r *kgo.Record, outcome DeliveryOutcome) error {
+	if c.ObserveDelivery == nil {
+		return nil
+	}
+	ctx = reqctx.Service(ctx, c.Subsystem)
+	return c.DB.Tx(ctx, func(tx pgx.Tx) error {
+		return c.ObserveDelivery(ctx, tx, recordDelivery(r), outcome, nil)
+	})
+}
+
+func recordDelivery(r *kgo.Record) Delivery {
+	return Delivery{Topic: r.Topic, Partition: r.Partition, Offset: r.Offset, ValueSHA256: sha256.Sum256(r.Value)}
 }

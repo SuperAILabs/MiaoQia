@@ -1,8 +1,8 @@
 // platform 是 platform 部署单元（Go）的入口：同一镜像按进程角色启动，加载部署清单中该角色的子系统
 // （docs/03-architecture/07-deployment-topology.md 第 2.3 节）。
 //
-//	platform -role api|consumer|outbox-relay|scheduler|workflow-worker
-//	platform migrate                         执行本单元全部子系统的数据库迁移
+//	platform -role api|consumer|outbox-relay|scheduler|workflow-worker|public-search-api|public-search-consumer|public-search-workflow-worker
+//	platform [-role <角色>] migrate            执行该角色的数据库迁移，缺省为 api
 //	platform grant <subject> <relation> <object>   写入一条授权关系（初始化与运维）
 //
 // 配置（环境变量）：
@@ -33,6 +33,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -41,16 +42,21 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.yaml.in/yaml/v3"
 
+	"github.com/superailabs/miaoqia/services/contracts/events"
 	"github.com/superailabs/miaoqia/services/kernel/db"
+	"github.com/superailabs/miaoqia/services/kernel/outbox"
 	"github.com/superailabs/miaoqia/services/kernel/relay"
+	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/runtime"
 	"github.com/superailabs/miaoqia/services/kernel/scheduler"
 	"github.com/superailabs/miaoqia/services/kernel/tracing"
@@ -78,6 +84,7 @@ import (
 	pursuitapi "github.com/superailabs/miaoqia/services/subsystems/pursuit/api"
 	pursuitremote "github.com/superailabs/miaoqia/services/subsystems/pursuit/api/remote"
 	"github.com/superailabs/miaoqia/services/subsystems/research"
+	researchapi "github.com/superailabs/miaoqia/services/subsystems/research/api"
 	"github.com/superailabs/miaoqia/services/subsystems/search"
 )
 
@@ -251,6 +258,8 @@ func main() {
 		}
 	case flag.Arg(0) == "grant" && flag.NArg() == 4:
 		err = identity.Grant(ctx, os.Getenv(envKey("identity", "OPENFGA_URL")), flag.Arg(1), flag.Arg(2), flag.Arg(3))
+	case flag.Arg(0) == "search-build":
+		err = publicSearchBuild(ctx, *role, flag.Args()[1:], os.Stdin, os.Stdout)
 	case *role != "":
 		err = run(ctx, log, *role)
 	default:
@@ -277,6 +286,9 @@ func migrate(ctx context.Context, log *slog.Logger, role string) error {
 	spec, scopes, inventory, err := loadRole(role)
 	if err != nil {
 		return err
+	}
+	if scopes["search"] == "public" {
+		return migratePublicSearch(ctx, log)
 	}
 	for _, mk := range modules {
 		m := mk()
@@ -323,9 +335,11 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 	log.Info("进程角色启动", "role", role, "subsystems", names)
 
 	switch role {
-	case "api", "public-search-api":
-		return serveAPI(ctx, log, loaded, envs)
-	case "consumer", "public-search-consumer":
+	case "api", publicSearchAPI:
+		return serveAPI(ctx, log, loaded, envs, role == "api")
+	case "consumer", publicSearchConsumer:
+		consumerContext, cancel := context.WithCancel(ctx)
+		defer cancel()
 		errc := make(chan error, 16)
 		n := 0
 		for i, m := range loaded {
@@ -334,7 +348,7 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 			}
 			for _, c := range m.Consumers(envs[i]) {
 				n++
-				go func() { errc <- c.Run(ctx) }()
+				go func() { errc <- c.Run(consumerContext) }()
 			}
 		}
 		log.Info("事件消费者", "count", n)
@@ -347,6 +361,8 @@ func run(ctx context.Context, log *slog.Logger, role string) error {
 		return nil
 	case "scheduler":
 		return runScheduler(ctx, log, loaded, envs)
+	case publicSearchWorker:
+		return runPublicSearchWorker(ctx, envs[0])
 	default:
 		<-ctx.Done() // workflow-worker 的任务随所属里程碑加入
 		return nil
@@ -368,6 +384,9 @@ func assemble(ctx context.Context, log *slog.Logger, role string, brokers []stri
 	spec, scopes, inventory, err := loadRole(role)
 	if err != nil {
 		return nil, nil, closeAll, err
+	}
+	if scopes["search"] == "public" {
+		return assemblePublicSearch(ctx, log, role, brokers)
 	}
 	want := map[string]bool{}
 	for _, s := range spec.Subsystems {
@@ -428,11 +447,16 @@ func assemble(ctx context.Context, log *slog.Logger, role string, brokers []stri
 	return loaded, envs, closeAll, nil
 }
 
-func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, envs []*runtime.Env) error {
+func apiHandlers(ctx context.Context, loaded []runtime.Module, envs []*runtime.Env, webSession bool) (http.Handler, http.Handler, error) {
 	public, internal := http.NewServeMux(), http.NewServeMux()
 	for i, m := range loaded {
 		if m.Routes != nil {
 			m.Routes(envs[i], public, internal)
+		}
+		if m.Name == researchapi.Name {
+			if err := registerA02Research(public, envs[i]); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 	var resolver identityapi.SessionResolver
@@ -445,16 +469,26 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 	issuer := os.Getenv("MIAOQIA_GATEWAY_ISSUER")
 	pub, err := gateway.Public(ctx, issuer, os.Getenv("MIAOQIA_GATEWAY_AUDIENCE"), public, resolver)
 	if err != nil {
+		return nil, nil, err
+	}
+	if webSession {
+		pub = gateway.WebSession(pub, gateway.WebSessionConfig{
+			Issuer:      issuer,
+			Development: transportsecurity.Development(),
+			DevTokenURL: os.Getenv("MIAOQIA_WEB_DEV_TOKEN_URL"),
+			DevSubject:  os.Getenv("MIAOQIA_WEB_DEV_SUBJECT"),
+			DevTenant:   os.Getenv("MIAOQIA_WEB_DEV_TENANT"),
+			DevCell:     os.Getenv("MIAOQIA_WEB_DEV_CELL"),
+		})
+	}
+	return pub, internal, nil
+}
+
+func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, envs []*runtime.Env, cellAPI bool) error {
+	pub, internal, err := apiHandlers(ctx, loaded, envs, cellAPI)
+	if err != nil {
 		return err
 	}
-	pub = gateway.WebSession(pub, gateway.WebSessionConfig{
-		Issuer:      issuer,
-		Development: transportsecurity.Development(),
-		DevTokenURL: os.Getenv("MIAOQIA_WEB_DEV_TOKEN_URL"),
-		DevSubject:  os.Getenv("MIAOQIA_WEB_DEV_SUBJECT"),
-		DevTenant:   os.Getenv("MIAOQIA_WEB_DEV_TENANT"),
-		DevCell:     os.Getenv("MIAOQIA_WEB_DEV_CELL"),
-	})
 	addr := func(k, def string) string {
 		if v := os.Getenv(k); v != "" {
 			return v
@@ -463,18 +497,21 @@ func serveAPI(ctx context.Context, log *slog.Logger, loaded []runtime.Module, en
 	}
 	servers := []*http.Server{
 		{Addr: addr("MIAOQIA_HTTP_ADDR", ":8090"), Handler: pub, ReadHeaderTimeout: 10 * time.Second},
-		{Addr: addr("MIAOQIA_INTERNAL_ADDR", ":8091"), Handler: internal, ReadHeaderTimeout: 10 * time.Second},
 	}
-	// Internal mTLS is mandatory outside development and used in development whenever configured.
-	if !transportsecurity.Plaintext() {
-		tlsConfig, err := transportsecurity.Config("MIAOQIA_INTERNAL_TLS", true)
-		if err != nil {
-			return err
+	if cellAPI {
+		server := &http.Server{Addr: addr("MIAOQIA_INTERNAL_ADDR", ":8091"), Handler: internal, ReadHeaderTimeout: 10 * time.Second}
+		// Internal mTLS is mandatory outside development and used in development whenever configured.
+		if !transportsecurity.Plaintext() {
+			tlsConfig, err := transportsecurity.Config("MIAOQIA_INTERNAL_TLS", true)
+			if err != nil {
+				return err
+			}
+			if os.Getenv("MIAOQIA_INTERNAL_ALLOWED_PEERS") == "" {
+				return fmt.Errorf("missing internal peer allowlist")
+			}
+			server.TLSConfig = tlsConfig
 		}
-		if os.Getenv("MIAOQIA_INTERNAL_ALLOWED_PEERS") == "" {
-			return fmt.Errorf("missing internal peer allowlist")
-		}
-		servers[1].TLSConfig = tlsConfig
+		servers = append(servers, server)
 	}
 	if !transportsecurity.Development() {
 		servers[0].TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
@@ -517,24 +554,99 @@ func runRelay(ctx context.Context, log *slog.Logger, brokers []string) error {
 	if err := readYAML(filepath.Join(deployDir(), "subsystems.yaml"), &reg); err != nil {
 		return err
 	}
-	tmpl := os.Getenv("MIAOQIA_RELAY_DSN_TEMPLATE")
-	if !strings.Contains(tmpl, "{db}") {
-		return fmt.Errorf("MIAOQIA_RELAY_DSN_TEMPLATE 必须包含 {db}")
+	selection, scoped := os.LookupEnv("MIAOQIA_RELAY_SOURCES")
+	sources, err := relaySources(reg, os.Getenv("MIAOQIA_RELAY_DSN_TEMPLATE"), selection, scoped)
+	if err != nil {
+		return err
 	}
-	var sources []relay.Source
-	for name, s := range reg.Subsystems {
-		if s.Database != "" {
-			sources = append(sources, relay.Source{Name: name, DSN: strings.ReplaceAll(tmpl, "{db}", s.Database)})
-		}
+	if scoped && (len(brokers) == 0 || slices.ContainsFunc(brokers, func(broker string) bool { return strings.TrimSpace(broker) == "" })) {
+		return fmt.Errorf("公共发件箱中继需要有效的 MIAOQIA_KAFKA_BROKERS")
 	}
-	sort.Slice(sources, func(i, j int) bool { return sources[i].Name < sources[j].Name })
-	prod, err := kgo.NewClient(kgo.SeedBrokers(brokers...), kgo.RecordPartitioner(kgo.StickyKeyPartitioner(nil)))
+	transport, err := transportsecurity.KafkaOptions()
+	if err != nil {
+		return err
+	}
+	prod, err := kgo.NewClient(append(transport, kgo.SeedBrokers(brokers...),
+		kgo.RecordPartitioner(kgo.StickyKeyPartitioner(nil)))...)
 	if err != nil {
 		return err
 	}
 	defer prod.Close()
-	log.Info("发件箱中继启动", "databases", len(sources))
+	log.Info("发件箱中继启动", "databases", len(sources), "public_scope", scoped)
 	return (&relay.Relay{Sources: sources, Producer: prod, Log: log}).Run(ctx)
+}
+
+var publicRelayNamespaces = map[string]string{
+	"acquisition":         "acquisition",
+	"evidence":            "evidence",
+	"domain-intelligence": "domain",
+	"entity-graph":        "entity",
+}
+
+func relaySources(reg registry, template, selection string, scoped bool) ([]relay.Source, error) {
+	if !strings.Contains(template, "{db}") {
+		return nil, fmt.Errorf("MIAOQIA_RELAY_DSN_TEMPLATE 必须包含 {db}")
+	}
+	var sources []relay.Source
+	if scoped {
+		seen := map[string]bool{}
+		for index, name := range strings.Split(selection, ",") {
+			name = strings.TrimSpace(name)
+			entry, registered := reg.Subsystems[name]
+			namespace, allowed := publicRelayNamespaces[name]
+			if !registered || !allowed || entry.Database == "" || !slices.Contains(entry.DataScopes, "public") {
+				return nil, fmt.Errorf("MIAOQIA_RELAY_SOURCES 第 %d 项不是已注册的公共事件来源", index+1)
+			}
+			if seen[name] {
+				return nil, fmt.Errorf("MIAOQIA_RELAY_SOURCES 重复选择 %s", name)
+			}
+			for other, otherEntry := range reg.Subsystems {
+				if other != name && otherEntry.Database == entry.Database {
+					return nil, fmt.Errorf("%s 的数据库在子系统索引中重复", name)
+				}
+			}
+			seen[name] = true
+			dsn := strings.ReplaceAll(template, "{db}", entry.Database)
+			config, err := pgx.ParseConfig(dsn)
+			if err != nil || config.Database != entry.Database || config.RuntimeParams["role"] != "" || config.RuntimeParams["options"] != "" {
+				return nil, fmt.Errorf("MIAOQIA_RELAY_DSN_TEMPLATE 未为 %s 解析出有效的专用数据库连接", name)
+			}
+			sources = append(sources, relay.Source{Name: name, DSN: dsn, Validate: publicRelayValidator(name, namespace)})
+		}
+	} else {
+		for name, entry := range reg.Subsystems {
+			if entry.Database != "" {
+				sources = append(sources, relay.Source{Name: name, DSN: strings.ReplaceAll(template, "{db}", entry.Database)})
+			}
+		}
+	}
+	if len(sources) == 0 {
+		return nil, fmt.Errorf("发件箱中继未选到任何数据库")
+	}
+	sort.Slice(sources, func(left, right int) bool { return sources[left].Name < sources[right].Name })
+	return sources, nil
+}
+
+func publicRelayValidator(name, namespace string) func(string, []byte) error {
+	expectedTopic := outbox.Topic(reqctx.ZonePublic, "", namespace)
+	expectedSource := "miaoqia/" + name
+	return func(topic string, raw []byte) error {
+		if topic != expectedTopic {
+			return fmt.Errorf("事件主题超出公共来源范围")
+		}
+		var envelope outbox.Envelope
+		if json.Unmarshal(raw, &envelope) != nil || envelope.CheckTopic(topic) != nil {
+			return fmt.Errorf("事件信封不符合公共主题契约")
+		}
+		if envelope.Source != expectedSource || envelope.Namespace() != namespace {
+			return fmt.Errorf("事件归属与公共来源不符")
+		}
+		schema, err := events.Schema(envelope.Type)
+		if err != nil || events.Validate(schema, envelope.Data) != nil {
+			return fmt.Errorf("事件载荷不符合公共来源契约")
+		}
+		return nil
+	}
 }
 
 // runScheduler 运行已加载子系统声明的周期任务（runtime.Module.Jobs，kernel/scheduler）。任务在所属子系统的数据库上取咨询锁，

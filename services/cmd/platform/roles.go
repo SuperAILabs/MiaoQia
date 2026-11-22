@@ -29,6 +29,10 @@ func loadRole(role string) (runtime.RoleSpec, map[string]string, registry, error
 	if err != nil {
 		return spec, nil, inventory, err
 	}
+	publicRole := isPublicSearchRole(role)
+	if publicRole != (scopes["search"] == "public") || (publicRole && (spec.Cell != "" || len(scopes) != 1)) {
+		return spec, nil, inventory, fmt.Errorf("角色 %q 的公共检索范围无效", role)
+	}
 	available := map[string]bool{}
 	for _, mk := range modules {
 		available[mk().Name] = true

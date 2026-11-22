@@ -1,29 +1,31 @@
-// Package dataread is the Go client for the data-api internal read transport.
-// It contains transport policy only; callers still own the domain mapping and
-// must fail closed when a response is incomplete or unavailable.
+// Package dataread binds the data-api owner contract through the shared call pipeline.
 package dataread
 
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
+	dataapi "github.com/superailabs/miaoqia/services/contracts/apis/data-api"
 	"github.com/superailabs/miaoqia/services/kernel/binding"
 	"github.com/superailabs/miaoqia/services/kernel/reqctx"
 	"github.com/superailabs/miaoqia/services/kernel/transportsecurity"
 )
 
-const maxResponseBytes = 4 << 20
+const (
+	timeout          = 5 * time.Second
+	maxResponseBytes = 65536
+	serverPeer       = "spiffe://miaoqia/service/data-api"
+)
 
-// Error is the stable error returned by data-api.  A 5xx response is also
-// marked transient so binding.Invoke can retry idempotent reads.
+// Error preserves the HTTP failure classification for existing consumers.
 type Error struct {
 	Status int
 	Code   string
@@ -37,154 +39,170 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("data-api: %s: %s", e.Code, e.Detail)
 }
 
-// Basis is the data view used by all read operations.
-type Basis struct {
-	View           string     `json:"view"`
-	RecordedCutoff *time.Time `json:"recorded_cutoff"`
+// Reader exposes the owner DTOs independently of the binding mode.
+type Reader interface {
+	ReadFact(context.Context, dataapi.FactRequest) (*dataapi.FactRead, error)
+	ReadFactHistory(context.Context, dataapi.FactHistoryRequest) (*dataapi.FactHistoryPage, error)
+	ReadFacts(context.Context, dataapi.QueryFactsRequest) (*dataapi.FactPage, error)
+	ReadBidResultUnits(context.Context, dataapi.FactRequest) (*dataapi.BidResultPage, error)
+	ReadEvidence(context.Context, dataapi.EvidenceRequest) (*dataapi.EvidenceRead, error)
 }
 
-// Client performs the five closed data-api operations. Responses are decoded
-// into caller-owned values so each subsystem can enforce its own schema.
 type Client struct {
-	base *url.URL
-	http *http.Client
+	invoker dataapi.Invoker
+	mode    binding.Mode
 }
 
-// New creates an authenticated HTTPS client using the process mTLS settings.
+var _ Reader = (*Client)(nil)
+
+// New requires TLS 1.3, client credentials, CA and hostname verification, and the data-api server identity.
 func New(baseURL string) (*Client, error) {
-	base, err := parseBase(baseURL, false)
+	if err := validateEndpoint(baseURL, false); err != nil {
+		return nil, err
+	}
+	tls, err := transportsecurity.Config("MIAOQIA_INTERNAL_TLS", false)
 	if err != nil {
 		return nil, err
 	}
-	transport, err := transportsecurity.Client()
-	if err != nil {
-		return nil, err
-	}
-	return &Client{base: base, http: &http.Client{
-		Transport:     binding.Transport{Base: transport},
-		CheckRedirect: refuseRedirect,
-	}}, nil
+	tls.VerifyConnection = verifyPeer
+	return newRemote(baseURL, &http.Client{
+		Transport: binding.Transport{Base: &http.Transport{TLSClientConfig: tls}},
+	})
 }
 
-// NewWithHTTPClient is intended for contract tests. Production code should use
-// New so the shared mTLS and context transport is always installed.
+// NewWithHTTPClient binds an explicitly supplied fixture transport.
 func NewWithHTTPClient(baseURL string, client *http.Client) (*Client, error) {
-	base, err := parseBase(baseURL, true)
-	if err != nil {
+	if err := validateEndpoint(baseURL, true); err != nil {
 		return nil, err
 	}
 	if client == nil {
 		return nil, errors.New("data-api HTTP client is required")
 	}
-	return &Client{base: base, http: client}, nil
+	return newRemote(baseURL, client)
 }
 
-func parseBase(raw string, allowHTTP bool) (*url.URL, error) {
+// NewLocal binds an explicitly supplied same-process owner implementation.
+// The invoker must perform the same current-source authorization as the remote owner.
+func NewLocal(owner dataapi.Invoker) (*Client, error) {
+	if owner == nil {
+		return nil, errors.New("data-api local owner is required")
+	}
+	return &Client{invoker: owner, mode: binding.Local}, nil
+}
+
+func newRemote(baseURL string, client *http.Client) (*Client, error) {
+	httpClient := *client
+	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return errors.New("data-api refuses redirects")
+	}
+	endpoint, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	invoker, err := dataapi.NewClient(baseURL, dataapi.WithClient(boundedClient{client: &httpClient, endpoint: endpoint}))
+	if err != nil {
+		return nil, err
+	}
+	return &Client{invoker: invoker, mode: binding.Remote}, nil
+}
+
+func validateEndpoint(raw string, allowHTTP bool) error {
 	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return nil, errors.New("data-api requires an absolute endpoint without credentials or query")
+	if err != nil || u.Hostname() == "" || u.User != nil || u.ForceQuery || u.RawQuery != "" || u.Fragment != "" {
+		return errors.New("data-api requires an absolute endpoint without credentials or query")
 	}
-	if !allowHTTP && !transportsecurity.Development() && u.Scheme != "https" {
-		return nil, errors.New("data-api requires authenticated HTTPS")
+	if u.Scheme != "https" && !(allowHTTP && u.Scheme == "http") {
+		return errors.New("data-api requires authenticated HTTPS")
 	}
-	return u, nil
+	return nil
 }
 
-func refuseRedirect(*http.Request, []*http.Request) error {
-	return errors.New("data-api refuses redirects")
-}
-
-func (c *Client) call(ctx context.Context, operation, path string, request any, response any) error {
-	_, err := binding.Invoke(ctx, binding.Remote, binding.Op{
-		Subsystem: "data-api", Name: operation, Idempotent: true,
-	}, func(ctx context.Context) (struct{}, error) {
-		body, err := json.Marshal(request)
-		if err != nil {
-			return struct{}{}, err
+func verifyPeer(state tls.ConnectionState) error {
+	if len(state.VerifiedChains) > 0 && len(state.PeerCertificates) > 0 {
+		identities := state.PeerCertificates[0].URIs
+		if len(identities) == 1 && identities[0].String() == serverPeer {
+			return nil
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base.ResolveReference(&url.URL{Path: strings.TrimSuffix(c.base.Path, "/") + path}).String(), bytes.NewReader(body))
-		if err != nil {
-			return struct{}{}, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		res, err := c.http.Do(req)
-		if err != nil {
-			return struct{}{}, err
-		}
-		defer res.Body.Close()
-		raw, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes+1))
-		if err != nil {
-			return struct{}{}, err
-		}
-		if len(raw) > maxResponseBytes {
-			return struct{}{}, errors.New("data-api response exceeds limit")
-		}
-		if res.StatusCode < 200 || res.StatusCode >= 300 {
-			return struct{}{}, responseError(res.StatusCode, raw)
-		}
-		if response == nil || len(bytes.TrimSpace(raw)) == 0 {
-			return struct{}{}, nil
-		}
-		decoder := json.NewDecoder(bytes.NewReader(raw))
-		if err := decoder.Decode(response); err != nil {
-			return struct{}{}, fmt.Errorf("data-api response: %w", err)
-		}
-		if err := decoder.Decode(new(any)); err != io.EOF {
-			return struct{}{}, errors.New("data-api response contains multiple JSON values")
-		}
-		return struct{}{}, nil
-	})
-	return err
-}
-
-func responseError(status int, raw []byte) error {
-	var problem struct {
-		Code   string `json:"code"`
-		Detail string `json:"detail"`
 	}
-	_ = json.Unmarshal(raw, &problem)
-	if problem.Code == "" {
-		problem.Code = "unavailable"
+	return errors.New("data-api server identity rejected")
+}
+
+type boundedClient struct {
+	client   *http.Client
+	endpoint *url.URL
+}
+
+func (c boundedClient) Do(req *http.Request) (*http.Response, error) {
+	// Ogen supports per-request server overrides. A binding must only forward
+	// the caller context to its configured owner.
+	if req.URL.Scheme != c.endpoint.Scheme || req.URL.Host != c.endpoint.Host || req.URL.User != nil {
+		return nil, errors.New("data-api endpoint override rejected")
 	}
-	err := &Error{Status: status, Code: problem.Code, Detail: problem.Detail}
-	if status >= 500 {
-		return fmt.Errorf("%w: %w", binding.ErrTransient, err)
+	response, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
 	}
-	return err
+	defer response.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > maxResponseBytes {
+		return nil, errors.New("data-api response exceeds limit")
+	}
+	response.Body = io.NopCloser(bytes.NewReader(raw))
+	return response, nil
 }
 
-func (c *Client) GetFact(ctx context.Context, factID string, basis Basis, version *int, out any) error {
-	return c.call(ctx, "GetFact", "/internal/v1/data/get-fact", map[string]any{
-		"fact_id": factID, "basis": basis, "version": version,
-	}, out)
+func invoke[T any](ctx context.Context, c *Client, op string, call func(context.Context) (T, error)) (T, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	result, err := binding.Invoke(ctx, c.mode, binding.Op{Subsystem: "data-api", Name: op, Timeout: timeout, Idempotent: true},
+		func(attempt context.Context) (T, error) {
+			var zero T
+			if attempt.Err() != nil {
+				return zero, errors.New("data-api deadline expired")
+			}
+			value, err := call(attempt)
+			if attempt.Err() != nil {
+				return zero, errors.New("data-api deadline expired")
+			}
+			return value, translate(err)
+		})
+	if err != nil && ctx.Err() != nil {
+		return result, ctx.Err()
+	}
+	return result, err
 }
 
-func (c *Client) FactHistory(ctx context.Context, factID string, basis Basis, after, limit int, out any) error {
-	return c.call(ctx, "FactHistory", "/internal/v1/data/fact-history", map[string]any{
-		"fact_id": factID, "basis": basis, "after": after, "limit": limit,
-	}, out)
+func translate(err error) error {
+	var p *dataapi.ProblemStatusCode
+	if !errors.As(err, &p) {
+		return err
+	}
+	code := "invalid_request"
+	switch p.StatusCode {
+	case http.StatusUnauthorized:
+		code = "unauthenticated"
+	case http.StatusForbidden:
+		code = "forbidden"
+	case http.StatusNotFound:
+		code = "not_found"
+	}
+	if p.StatusCode >= 500 {
+		code = "unavailable"
+	}
+	if p.StatusCode != p.Response.Status {
+		return fmt.Errorf("%w: data-api problem status mismatch", binding.ErrTransient)
+	}
+	out := &Error{Status: p.StatusCode, Code: p.Response.Code.Or(code), Detail: p.Response.Detail.Or("")}
+	if p.StatusCode >= 500 {
+		return fmt.Errorf("%w: %w", binding.ErrTransient, out)
+	}
+	return out
 }
 
-func (c *Client) QueryFacts(ctx context.Context, domain, objectType string, basis Basis, after string, limit int, out any) error {
-	return c.call(ctx, "QueryFacts", "/internal/v1/data/query-facts", map[string]any{
-		"info_domain": domain, "object_type": objectType, "basis": basis, "after": after, "limit": limit,
-	}, out)
-}
-
-func (c *Client) BidResultUnits(ctx context.Context, factID string, basis Basis, version *int, out any) error {
-	return c.call(ctx, "BidResultUnits", "/internal/v1/data/bid-result-units", map[string]any{
-		"fact_id": factID, "basis": basis, "version": version,
-	}, out)
-}
-
-func (c *Client) ResolveEvidence(ctx context.Context, evidenceRef string, out any) error {
-	return c.call(ctx, "ResolveEvidence", "/internal/v1/data/resolve-evidence", map[string]any{
-		"evidence_ref": evidenceRef,
-	}, out)
-}
-
-// ContextHeader exposes the canonical context encoding for tests and custom
-// transports. Normal callers get it automatically from binding.Transport.
+// ContextHeader exposes the canonical context encoding for tests and custom transports.
 func ContextHeader(ctx context.Context) (string, error) {
 	c, ok := reqctx.From(ctx)
 	if !ok {
@@ -194,4 +212,15 @@ func ContextHeader(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return reqctx.Encode(c), nil
+}
+
+func decodeForConsumer[T any](value T, err error, out any) error {
+	if err != nil || out == nil {
+		return err
+	}
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, out)
 }

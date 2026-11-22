@@ -17,17 +17,20 @@ func TestDatasetLoadsA02UnitsFromDataAPI(t *testing.T) {
 		if err != nil || c.Purpose != "simulation" || c.Tenant != "tnt_01" || c.Principal.ID != "svc:learning" {
 			t.Errorf("simulation read context = %#v err=%v", c, err)
 		}
+		w.Header().Set("Content-Type", "application/json")
+		basis := map[string]any{"view": "current", "recorded_cutoff": nil}
 		switch r.URL.Path {
 		case "/internal/v1/data/query-facts":
-			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{map[string]any{
+			_ = json.NewEncoder(w).Encode(map[string]any{"basis": basis, "next_cursor": nil, "items": []any{map[string]any{
 				"id": "ntc_01", "version": 1, "published_at": map[string]any{"value": "2026-10-01T00:00:00Z"}, "recorded_at": "2026-10-01T00:00:01Z",
-			}}, "next_cursor": ""})
+			}}})
 		case "/internal/v1/data/bid-result-units":
-			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{map[string]any{
-				"fact_type": "tendering.bid_result", "domain": "INF-PROC", "event": "tendering.result.published.v1",
+			_ = json.NewEncoder(w).Encode(map[string]any{"basis": basis, "next_cursor": nil, "items": []any{map[string]any{
+				"key": "tendering.bid_result:ntc_01:bdr_01", "fact_type": "tendering.bid_result", "domain": "INF-PROC", "event": "tendering.result.published.v1",
 				"subject": map[string]any{"id": "ntc_01", "version": 1, "part_id": "bdr_01"},
-				"fields":  map[string]any{"result_type": "awarded"}, "items": map[string]any{}, "evidence": map[string]any{},
-				"display": map[string]any{"title": "示例结果", "amount_cny": 100},
+				"fields":  map[string]any{"result_type": "awarded", "winner": map[string]any{"name_raw": "虚构测试公司"}, "candidates": []any{}},
+				"items":   map[string]any{}, "item_domains": map[string]any{}, "item_refs": []any{}, "evidence": map[string]any{},
+				"display": map[string]any{"title": "示例结果", "winner_name": "虚构测试公司", "lot_key": "1", "amount_cny": 100},
 			}}})
 		default:
 			t.Fatalf("unexpected path: %s", r.URL.Path)

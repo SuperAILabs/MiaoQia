@@ -38,25 +38,7 @@ func TestMigrationRejectsInvalidRoleBeforeDatabase(t *testing.T) {
 	}
 }
 
-func TestPublicSearchMigrationDoesNotMigrateTenantModules(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, "platform"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "platform", "roles.yaml"), []byte("roles:\n  public-search-api:\n    subsystems: [search]\n    data_scopes: {search: public}\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "subsystems.yaml"), []byte("subsystems:\n  search: {unit: platform, data_scopes: [public, tenant]}\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("MIAOQIA_DEPLOY_DIR", root)
-	// 当前search没有数据库；若迁移忽略角色筛选，会尝试连接其他模块并失败。
-	if err := migrate(context.Background(), slog.New(slog.NewTextHandler(io.Discard, nil)), "public-search-api"); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// TestEveryRoleResolvesBindings 按部署清单中的每个角色、在本地与远程绑定的组合下组装并启动子系统（不连接数据库、不服务、不消费），
+// TestEveryRoleResolvesBindings 按部署清单中的每个 Cell 角色、在本地与远程绑定的组合下组装并启动子系统（不连接数据库、不服务、不消费），
 // 断言被加载子系统依赖的绑定全部可解析：只在单进程中登记的跨子系统绑定会让拆分后的角色启动失败。
 func TestEveryRoleResolvesBindings(t *testing.T) {
 	fga := os.Getenv("MIAOQIA_TEST_OPENFGA")
@@ -113,6 +95,9 @@ func TestEveryRoleResolvesBindings(t *testing.T) {
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for role := range mf.Roles {
+		if isPublicSearchRole(role) {
+			continue // 公共角色的独立凭证与装配由 TestPublicSearch 负责。
+		}
 		for _, v := range variants {
 			t.Run(fmt.Sprintf("%s %v", role, v), func(t *testing.T) {
 				for _, k := range keys {
