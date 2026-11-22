@@ -60,7 +60,7 @@ def _quote_self_ref(m: re.Match) -> str:
 def _gen_python(repo: Repo, bundle: Path, out: Path) -> None:
     _run([sys.executable, "-m", "datamodel_code_generator",
           "--input", str(bundle), "--input-file-type", "jsonschema",
-          "--output-model-type", "pydantic_v2.BaseModel", "--target-python-version", "3.12",
+          "--output-model-type", "pydantic_v2.BaseModel", "--target-python-version", "3.14",
           "--use-standard-collections", "--use-union-operator", "--use-double-quotes",
           "--disable-timestamp", "--custom-file-header", f"# {HEADER}", "--output", str(out)], repo.root)
     text = out.read_text(encoding="utf-8")

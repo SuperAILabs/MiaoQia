@@ -45,7 +45,7 @@ jobs:
 
       - name: 实例域与扩展包依赖
         run: |
-          uv run --project tools/contracts --python 3.12 --locked python tools/dev/gen_local.py --check
+          uv run --project tools/contracts --python 3.14 --locked python tools/dev/gen_local.py --check
           uv run --project data --locked --all-packages python tools/dev/check_python_boundaries.py
 
       - name: 迁移随 wheel 分发（脱离源码目录安装后定位）

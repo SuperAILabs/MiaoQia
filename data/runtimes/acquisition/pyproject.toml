@@ -2,7 +2,7 @@
 name = "miaoqia-runtime-acquisition"
 version = "0.1.0"
 description = "acquisition 部署单元入口与进程角色"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = ["miaoqia-kernel", "miaoqia-acquisition"]
 
 [project.scripts]

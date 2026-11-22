@@ -114,9 +114,9 @@ C4b验收时复验证据：13个Schema、76个结构用例、44种事件及82个
 uv run --project data --locked --package miaoqia-sdk mq-corpus check packs/information_domains/procurement/corpus --reviewed --schema domains/procurement/notice.schema.json --export /tmp/miaoqia-lifecycle-fixtures
 uv run --project data --locked --package miaoqia-sdk mq-corpus check packs/information_domains/organizations/corpus --reviewed --schema domains/organization/registration.schema.json --schema domains/organization/change.schema.json --schema domains/organization/abnormal.schema.json --export /tmp/miaoqia-lifecycle-fixtures
 uv run --project data --locked --package miaoqia-sdk --group dev pytest -q data/sdk/tests packs/information_domains/procurement/tests packs/information_domains/organizations/tests
-uv run --project tools/contracts --python 3.12 --locked mqc check
-uv run --project tools/contracts --python 3.12 --locked mqc compat --base HEAD
-uv run --project tools/contracts --python 3.12 --locked mqc generate --check
+uv run --project tools/contracts --python 3.14 --locked mqc check
+uv run --project tools/contracts --python 3.14 --locked mqc compat --base HEAD
+uv run --project tools/contracts --python 3.14 --locked mqc generate --check
 ```
 
 导出的`Notice__reviewed_*.json`继续使用现有Go/Python契约往返测试，TypeScript类型检查使用现有工作区命令。`--reviewed`只验证人工映射的结构、证据和语义，不输出解析准确率；原有`--extractor`模式仍对独立黄金标注计算准确率，空样本/空标注/事实数量不符必须失败。CI运行自动采购、人工采购及人工企业三条路径，契约CI将人工映射正例与结构正例合并用于既有往返测试。mqc事件样例复用Schema补丁执行器，缺少声明必需的事件反例会失败；事件兼容检查展开外部Schema，共享值域收紧不能被引用字符串掩盖。

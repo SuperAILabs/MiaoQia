@@ -2,7 +2,7 @@
 name = "miaoqia-kernel"
 version = "0.1.0"
 description = "数据供应平面的通用基础设施：请求上下文、数据访问与 RLS、发件箱、事件消费、审计、追踪"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "miaoqia-contracts",
     "jsonschema[format-nongpl]==4.26.0",

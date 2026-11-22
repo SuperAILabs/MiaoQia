@@ -58,7 +58,7 @@ jobs:
       MIAOQIA_TEST_PG: postgres://postgres:postgres@127.0.0.1:5432/postgres
       MIAOQIA_KAFKA_BROKERS: localhost:9092
       MIAOQIA_IDENTITY_OPENFGA_URL: http://127.0.0.1:8081
-      UV_PYTHON: "3.12"
+      UV_PYTHON: "3.14"
     steps:
       - uses: actions/checkout@v4
         id: checkout

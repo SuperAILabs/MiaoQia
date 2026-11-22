@@ -50,7 +50,7 @@ def main() -> int:
         subprocess.run(["uv", "build", "--all-packages", "--wheel", "-q", "-o", str(wheels)], cwd=DATA, check=True)
         subprocess.run(["uv", "export", "--locked", "--all-packages", "--no-emit-workspace", "--no-dev",
                         "--no-hashes", "-q", "-o", str(constraints)], cwd=DATA, check=True)
-        subprocess.run(["uv", "venv", "-q", "--python", "3.12", str(venv)], check=True)
+        subprocess.run(["uv", "venv", "-q", "--python", "3.14", str(venv)], check=True)
         python = venv / "bin" / "python"
         # 工作区包按本地 wheel 文件安装，不从索引解析同名包。
         subprocess.run(["uv", "pip", "install", "-q", "--python", str(python), "-c", str(constraints),
