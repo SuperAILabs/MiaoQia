@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/superailabs/miaoqia/services/kernel/db"
 )
 
@@ -140,11 +142,21 @@ func (r *Runner) once(ctx context.Context, j Bound) (Outcome, int, error) {
 		}
 		return Ran, n, nil
 	}
-	conn, err := j.DB.Pool.Acquire(ctx)
+	// The lock lives on a dedicated session outside the subsystem pool. Holding
+	// a pooled connection for the whole round would let lock holders exhaust the
+	// pool (pgxpool defaults to max(4, NumCPU) connections) whenever a subsystem
+	// declares more jobs than that, and every job's own transactions would then
+	// wait until the round timed out.
+	conn, err := pgx.ConnectConfig(ctx, j.DB.Pool.Config().ConnConfig.Copy())
 	if err != nil {
 		return Failed, 0, err
 	}
-	defer conn.Release()
+	defer func() {
+		// Closing the session releases the session-level lock and is not bound by the round timeout.
+		cctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = conn.Close(cctx)
+	}()
 	key := "scheduler/" + j.Name
 	var locked bool
 	if err := conn.QueryRow(ctx, `SELECT pg_try_advisory_lock(hashtextextended($1, 0))`, key).Scan(&locked); err != nil {
@@ -153,14 +165,6 @@ func (r *Runner) once(ctx context.Context, j Bound) (Outcome, int, error) {
 	if !locked {
 		return Skipped, 0, nil
 	}
-	defer func() {
-		// 释放锁不受本轮超时影响；释放失败时销毁连接，会话结束即释放会话级锁
-		uctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if _, err := conn.Exec(uctx, `SELECT pg_advisory_unlock(hashtextextended($1, 0))`, key); err != nil {
-			_ = conn.Conn().Close(uctx)
-		}
-	}()
 	n, err := j.Run(ctx)
 	if err != nil {
 		return Failed, n, err
