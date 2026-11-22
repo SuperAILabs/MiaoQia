@@ -98,7 +98,7 @@ uv run --locked --all-packages --group dev pytest -q \
 
 浏览器列表发现快照 SHA-256 为 `a57b20b8d61b1827715943fc92c29b981bb5d1574f3c7376118bb63bbee1e43e`。独立 PostgreSQL 17.6 与 SeaweedFS 4.54 环境的 **122 项**合成测试通过，覆盖列表捕获校验、发现收据、原件到期、归档故障恢复及冻结批次。该轮同时复查了[泸州通知公告](12-public-source-probe.md#泸州通知公告复查)，临时资源随后清理。
 
-同一 VPS 的隔离进程夹具用受监督 Chromium 从合成 TLS 发布者获取列表和正文。采集进程停止后，Go 中继发布 V4 及来源健康变更。正式 `data-consumer` 提交 Kafka 位点 2，Evidence 只有一条待解析观察。停止消费者后，显式重放从同一 S3 归档产生一个规范化快照，重复重放处理零条，死信保持为空。独立检查核对源码摘要和远端临时目录清理。[同次采集交付收据](../../deploy/vps/data-plane/browser/receipt-provider-ingest.jsonl)
+同一 VPS 的隔离进程夹具用受监督 Chromium 从合成 TLS 发布者获取列表和正文。采集进程停止后，Go 中继发布浏览器归档事件及来源健康变更。正式 `data-consumer` 提交 Kafka 位点 2，Evidence 只有一条待解析观察。停止消费者后，显式重放从同一 S3 归档产生一个规范化快照，重复重放处理零条，死信保持为空。独立检查核对源码摘要和远端临时目录清理。[同次采集交付收据](../../deploy/vps/data-plane/browser/receipt-provider-ingest.jsonl)
 
 ### 开发运行恢复演练
 

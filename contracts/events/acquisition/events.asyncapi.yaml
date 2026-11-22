@@ -12,14 +12,12 @@ channels:
     messages:
       probeEmitted:
         $ref: '#/components/messages/probeEmitted'
-      fetchCompleted:
-        $ref: '#/components/messages/fetchCompleted'
-      fetchCompletedV2:
-        $ref: '#/components/messages/fetchCompletedV2'
-      fetchCompletedV3:
-        $ref: '#/components/messages/fetchCompletedV3'
-      fetchCompletedV4:
-        $ref: '#/components/messages/fetchCompletedV4'
+      noticeArchived:
+        $ref: '#/components/messages/noticeArchived'
+      groupedNoticeArchived:
+        $ref: '#/components/messages/groupedNoticeArchived'
+      browserNoticeArchived:
+        $ref: '#/components/messages/browserNoticeArchived'
       fetchFailed:
         $ref: '#/components/messages/fetchFailed'
       sourceHealthChanged:
@@ -52,37 +50,10 @@ components:
             items:
               type: string
       x-fixtures-required: true
-    fetchCompleted:
-      name: acquisition.fetch.completed.v1
-      summary: 存量制品归档事件，供历史消费
-      payload:
-        type: object
-        additionalProperties: false
-        properties:
-          source_id:
-            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
-          artifact_ref:
-            $ref: ../../schemas/common/event-types.schema.json#/$defs/artifact_ref
-          rights_tags:
-            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
-          content_hash:
-            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
-          fetched_at:
-            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
-          source_url:
-            type: string
-            format: uri
-        required:
-        - source_id
-        - artifact_ref
-        - rights_tags
-        - content_hash
-        - fetched_at
-        - source_url
-      x-fixtures-required: true
-    fetchCompletedV2:
-      name: acquisition.fetch.completed.v2
+    noticeArchived:
+      name: acquisition.notice.archived.v1
       summary: 来源公告的正文和已取得附件的观察已归档
+      description: 正文原件只对应一条公告。共享原件中的公告观察发布 acquisition.grouped_notice.archived.v1，浏览器取得的正文与投影发布 acquisition.browser_notice.archived.v1；三类事件并行存在，不是同一事件的版本。
       payload:
         type: object
         additionalProperties: false
@@ -174,8 +145,8 @@ components:
         - fetched_at
         - source_url
       x-fixtures-required: true
-    fetchCompletedV3:
-      name: acquisition.fetch.completed.v3
+    groupedNoticeArchived:
+      name: acquisition.grouped_notice.archived.v1
       summary: 共享原件中的一条独立公告观察已归档
       description: 每个事件对应一个来源内公告及其观察版本。信封 subject 为完整原件引用，Kafka 分区键为 source_id|notice_key。
       payload:
@@ -258,10 +229,10 @@ components:
             maximum: 20971520
             description: 完整原站响应的字节数。
       x-fixtures-required: true
-    fetchCompletedV4:
-      name: acquisition.fetch.completed.v4
+    browserNoticeArchived:
+      name: acquisition.browser_notice.archived.v1
       summary: 同次浏览器正文原件和惰性投影的公告观察已归档
-      description: 信封 subject 为完整原件引用，Kafka 分区键为 source_id|notice_key。已配置来源尚未发布此版本。
+      description: 信封 subject 为完整原件引用，Kafka 分区键为 source_id|notice_key。已配置来源尚未发布此事件。
       payload:
         type: object
         additionalProperties: false

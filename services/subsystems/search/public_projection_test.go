@@ -72,7 +72,7 @@ func publicProjectionDB(t *testing.T, dsn string) *db.DB {
 	return database
 }
 
-func TestPublicFetchCompletionVersionsAreNoOps(t *testing.T) {
+func TestPublicNoticeArchiveEventsAreNoOps(t *testing.T) {
 	var acquisition *consumer.Consumer
 	for _, c := range PublicConsumers(nil, nil) {
 		if slices.Equal(c.Topics, []string{"public.acquisition"}) {
@@ -87,15 +87,14 @@ func TestPublicFetchCompletionVersionsAreNoOps(t *testing.T) {
 		t.Fatalf("prepare public acquisition consumer: %v", err)
 	}
 	for _, eventType := range []string{
-		"acquisition.fetch.completed.v1",
-		"acquisition.fetch.completed.v2",
-		"acquisition.fetch.completed.v3",
-		"acquisition.fetch.completed.v4",
+		"acquisition.notice.archived.v1",
+		"acquisition.grouped_notice.archived.v1",
+		"acquisition.browser_notice.archived.v1",
 	} {
 		t.Run(eventType, func(t *testing.T) {
 			handler := acquisition.Handlers[eventType]
 			if handler == nil {
-				t.Fatal("missing fetch completion handler")
+				t.Fatal("missing notice archive handler")
 			}
 			event := outbox.Envelope{
 				SpecVersion: "1.0", ID: ids.New("evt"), Source: "miaoqia/acquisition", Type: eventType,
@@ -103,16 +102,16 @@ func TestPublicFetchCompletionVersionsAreNoOps(t *testing.T) {
 			}
 			// Payload schema validation precedes dispatch. A no-op needs no transaction.
 			if err := handler(t.Context(), nil, &event); err != nil {
-				t.Fatalf("fetch completion no-op failed: %v", err)
+				t.Fatalf("notice archive no-op failed: %v", err)
 			}
 			wrongProducer := event
 			wrongProducer.Source = "miaoqia/evidence"
 			if err := handler(t.Context(), nil, &wrongProducer); err == nil {
-				t.Fatal("fetch completion accepted a mismatched producer")
+				t.Fatal("notice archive accepted a mismatched producer")
 			}
 			event.Zone, event.Tenant, event.Cell = reqctx.ZoneTenant, "ta", "cell-01"
 			if err := handler(t.Context(), nil, &event); err == nil {
-				t.Fatal("fetch completion accepted a tenant event")
+				t.Fatal("notice archive accepted a tenant event")
 			}
 		})
 	}

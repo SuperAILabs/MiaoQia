@@ -60,24 +60,24 @@ STAGES = {
     "replay": (*PENDING_STAGES, "consumer_stopped", "explicit_replay", "linked_snapshot", "idempotent_replay"),
 }
 PENDING_COUNTS = {"kafka_partition": 0, "kafka_offset": 0, "health_kafka_offset": 1, "kafka_count": 2,
-                  "evidence_live_committed_offset": 2, "outbox_count": 2, "v4_count": 1,
+                  "evidence_live_committed_offset": 2, "outbox_count": 2, "browser_count": 1,
                   "inbox_count": 1, "pending_count": 1, "normalized_count": 0, "dlq_count": 0}
 REPLAY_COUNTS = {**PENDING_COUNTS, "pending_count": 0, "normalized_count": 1,
                  "replay_processed": 1, "repeat_replay_processed": 0}
 ERROR_STAGES = {
     "arguments", "broker_endpoint", "postgres_configuration", "postgres_endpoint", "postgres_identities",
     "postgres_database_scope", "data_migrate", "relay_grants", "fixture_manifest", "fixture_documents_absent",
-    "fixture_document_scope", "fixture_admission", "kafka_topics", "outbox_v4_scope", "outbox_health_scope",
+    "fixture_document_scope", "fixture_admission", "kafka_topics", "outbox_browser_scope", "outbox_health_scope",
     "published_outbox_count", "published_outbox", "acquisition_observation_count", "acquisition_observation",
     "topic_partitions", "acquisition_watermarks", "dlq_empty", "kafka_record", "kafka_exact_bytes",
     "evidence_live_offset", "evidence_consumer_stopped", "archive_pair_bytes",
     "evidence_live_inbox", "no_inferred_extractions", "exact_pending_event", "no_pending_normalized_output",
-    "replay_command", "replay_processed_count", "pending_drained", "one_snapshot", "snapshot_v4_linkage",
+    "replay_command", "replay_processed_count", "pending_drained", "one_snapshot", "snapshot_browser_linkage",
     "snapshot_outbox", "normalized_document_binding", "normalized_document_bytes", "archive_configuration",
     "stable_replay", "pending_timeout", "backend_or_configuration",
 }
 WAIT_STAGES = ("published_outbox", "kafka_record", "evidence_live_offset", "evidence_live_inbox")
-OUTBOX_TYPE_FIELDS = {"sampled", "v4", "health", "other"}
+OUTBOX_TYPE_FIELDS = {"sampled", "browser", "health", "other"}
 
 
 def read_environment(path):
@@ -168,7 +168,7 @@ def failure_details(record, stage):
     if (stage in ("published_outbox_count", "outbox_health_scope") and isinstance(counts, dict)
             and counts.keys() == OUTBOX_TYPE_FIELDS
             and all(type(value) is int and 0 <= value <= 3 for value in counts.values())
-            and counts["sampled"] == counts["v4"] + counts["health"] + counts["other"]):
+            and counts["sampled"] == counts["browser"] + counts["health"] + counts["other"]):
         details["outbox_types"] = counts
     return details
 

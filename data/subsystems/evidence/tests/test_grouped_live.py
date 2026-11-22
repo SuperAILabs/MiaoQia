@@ -15,7 +15,7 @@ from miaoqia.acquisition.api.handlers import FetchResponse, NoticeGroup
 from miaoqia.evidence import notice_chunks, resolver
 from miaoqia.evidence.api import ProvenanceIntegrityError, Unbound
 from miaoqia.evidence.api.document_proofs import DocumentProofs
-from miaoqia.evidence.application.live import GROUPED_COMPLETED
+from miaoqia.evidence.application.live import GROUPED_NOTICE_ARCHIVED
 from miaoqia.evidence.extensions.packs import DocumentAdapter
 from miaoqia.evidence.replay import assess_pending, replay_pending
 from miaoqia.kernel import ids, reqctx
@@ -87,7 +87,7 @@ def _event(store, handler, version=1, *, target=TARGET, neighbor=NEIGHBOR,
         store.put(ref, raw)
     fetched_at = f"2026-11-20T02:00:{version:02d}Z"
     return {
-        "source": "miaoqia/acquisition", "subject": ref, "type": GROUPED_COMPLETED,
+        "source": "miaoqia/acquisition", "subject": ref, "type": GROUPED_NOTICE_ARCHIVED,
         "id": ids.new("evt"), "specversion": "1.0", "time": fetched_at,
         "datacontenttype": "application/json", "miaoqiazone": "public",
         "data": {
@@ -226,7 +226,7 @@ def test_grouped_stages_without_object_reads_and_retries_replay(replay_store, mo
         read = Mock(side_effect=AssertionError("staging must not read objects"))
         patch.setattr(ingest.store, "get", read)
         consumer = Consumer("evidence.live", "evidence", "unused", ["public.acquisition"],
-                            {GROUPED_COMPLETED: ingest.on_completed}, database, max_attempts=1)
+                            {GROUPED_NOTICE_ARCHIVED: ingest.on_archived}, database, max_attempts=1)
         dead_letter = Mock()
         patch.setattr(consumer, "_dead_letter", dead_letter)
         message = Mock()

@@ -18,7 +18,7 @@ from psycopg.types.json import Jsonb
 
 from miaoqia.acquisition.api.frozen_batches import FrozenBatch, FrozenBatchDenied, ObservationRef
 from miaoqia.acquisition.api.handlers import DetailRef, FetchResponse, Window
-from miaoqia.acquisition.application.fetch import COMPLETED, Fetcher, SourceStopped
+from miaoqia.acquisition.application.fetch import NOTICE_ARCHIVED, Fetcher, SourceStopped
 from miaoqia.acquisition.application.frozen_batches import FrozenBatches
 from miaoqia.acquisition.application.sources import for_validation, load
 from miaoqia.acquisition.infrastructure.archive_spool import ArchiveSpool
@@ -121,7 +121,7 @@ def test_crccep_attachment_origin_is_explicit_and_does_not_receive_publisher_hea
     assert all(dict(request.headers)["X-Fixture-Publisher"] == "body-only" for request in transport.sent[:2])
     if allowed:
         assert transport.sent[-1].headers == ()
-    latest = events(env[0], COMPLETED)[-1]["data"]["attachments"][0]
+    latest = events(env[0], NOTICE_ARCHIVED)[-1]["data"]["attachments"][0]
     assert latest["status"] == ("pending" if issue else "available")
     if issue is None:
         assert env[1].get(latest["artifact_ref"]) == PDF
@@ -158,7 +158,7 @@ def test_m2_downloads_only_the_current_notice_files_and_redacts_its_signed_url(e
     result = collector.run(source, window, max_pages=1)
     assert result.archived == 2 and not result.gaps
     assert [request.url for request in transport.sent] == [listing.url, original.url, attachment_url]
-    latest = events(env[0], COMPLETED)[-1]["data"]
+    latest = events(env[0], NOTICE_ARCHIVED)[-1]["data"]
     attachment, = latest["attachments"]
     assert attachment["part_key"] == "9007199254740993123" and attachment["status"] == "available"
     assert env[1].get(attachment["artifact_ref"]) == PDF
@@ -174,7 +174,7 @@ def test_crccep_freezes_original_before_field_approval_then_replays_same_observa
         FetchResponse(200, "application/pdf", PDF, attachment_url),
     ]})
     assert collector.run(source, window, max_pages=1).archived == 2
-    acquired = events(database, COMPLETED)
+    acquired = events(database, NOTICE_ARCHIVED)
     latest = acquired[-1]["data"]
     ref = ObservationRef(source.source_id, latest["notice_key"], latest["observation_version"])
     part_ref = replace(ref, part_key=latest["attachments"][0]["part_key"])
@@ -192,7 +192,7 @@ def test_crccep_freezes_original_before_field_approval_then_replays_same_observa
     try:
         for event in acquired:
             with reqctx.use(reqctx.service("evidence")), evidence.tx() as conn:
-                ingest.on_completed(conn, event)
+                ingest.on_archived(conn, event)
         assert rows(evidence, "SELECT count(*) FROM evd_snapshots") == [(0,)]
         assert events(evidence, "evidence.extraction.revised.v1") == []
 
@@ -240,15 +240,15 @@ def test_body_and_attachment_versions_feed_existing_evidence(pg_factory, env, tm
     })
 
     def deliver(event):
-        payloads.validator(COMPLETED, {}).validate(event["data"])
+        payloads.validator(NOTICE_ARCHIVED, {}).validate(event["data"])
         with reqctx.use(reqctx.service("evidence")), evidence.tx() as conn:
-            ingest.on_completed(conn, event)
+            ingest.on_archived(conn, event)
 
     window = Window(DAY, DAY)
     try:
         report = collector.run(source, window, max_pages=1)
         assert report.archived == 1 and report.gaps[0]["reason"] == "http_404"
-        (initial,) = events(database, COMPLETED)
+        (initial,) = events(database, NOTICE_ARCHIVED)
         assert initial["data"]["attachments"] == [
             {"part_key": "results", "name": "补充材料.pdf", "required": True, "status": "pending"}]
         assert store.get(initial["subject"]) == publisher_body.body
@@ -263,7 +263,7 @@ def test_body_and_attachment_versions_feed_existing_evidence(pg_factory, env, tm
         # The notice is absent from the current list: the durable pending observation is claimed.
         recovered = collector.run(source, Window(tomorrow, tomorrow), max_pages=1, mode="incremental")
         assert recovered.archived == 1 and recovered.listed == 0
-        _, supplement = events(database, COMPLETED)
+        _, supplement = events(database, NOTICE_ARCHIVED)
         assert supplement["subject"] == initial["subject"]
         available = supplement["data"]["attachments"][0]
         assert available["status"] == "available" and store.get(available["artifact_ref"]) == PDF
@@ -274,7 +274,7 @@ def test_body_and_attachment_versions_feed_existing_evidence(pg_factory, env, tm
         assert corrected.archived == 1 and corrected.gaps[0]["reason"] == "http_404"
         assert collector.run(source, window, max_pages=1).archived == 0
 
-        captured = events(database, COMPLETED)
+        captured = events(database, NOTICE_ARCHIVED)
         assert [e["data"]["observation_version"] for e in captured] == [1, 2, 3, 4]
         assert [e["data"]["notice_key"] for e in captured] == [NOTICE] * 4
         assert [p["status"] for e in captured for p in e["data"]["attachments"]] == [
@@ -310,12 +310,12 @@ def test_attachment_403_keeps_body_and_stops_source_until_review(env, source):
     stopped = collector.run(source, window, max_pages=1)
     assert stopped.archived == 1 and stopped.blocked == "http_403"
     assert stopped.gaps[0]["part_key"] == "results"
-    assert events(database, COMPLETED)[0]["data"]["attachments"][0]["status"] == "pending"
+    assert events(database, NOTICE_ARCHIVED)[0]["data"]["attachments"][0]["status"] == "pending"
     with pytest.raises(SourceStopped):
         collector.run(source, window, max_pages=1)
     assert len(publisher.sent) == 3
     assert collector.run(source, window, max_pages=1, unblock=True).archived == 1
-    assert [e["data"]["attachments"][0]["status"] for e in events(database, COMPLETED)] == ["pending", "available"]
+    assert [e["data"]["attachments"][0]["status"] for e in events(database, NOTICE_ARCHIVED)] == ["pending", "available"]
 
 
 def set_rights(database, source, action, epoch, **extra):
@@ -335,10 +335,10 @@ def test_revocation_prevents_pending_download_even_with_unblock(env, source):
     epoch = set_rights(database, source, "revoke_public", 0)
     report = collector.run(source, window, max_pages=1, unblock=True)
     assert report.blocked == "source_rights_revoked" and len(publisher.sent) == 3
-    assert len(events(database, COMPLETED)) == 1
+    assert len(events(database, NOTICE_ARCHIVED)) == 1
     set_rights(database, source, "restore_public", epoch, evidence_hash="sha256:" + "0" * 64)
     assert collector.run(source, window, max_pages=1).archived == 1
-    assert len(events(database, COMPLETED)) == 2
+    assert len(events(database, NOTICE_ARCHIVED)) == 2
 
 
 def test_revocation_during_download_cannot_promote_pending_attachment(env, source, monkeypatch):
@@ -357,7 +357,7 @@ def test_revocation_during_download_cannot_promote_pending_attachment(env, sourc
     monkeypatch.setattr(publisher, "send", revoke_after_dispatch)
     report = collector.run(source, Window(DAY, DAY), max_pages=1)
     assert report.archived == 1 and report.blocked == "source_rights_revoked"
-    (initial,) = events(database, COMPLETED)
+    (initial,) = events(database, NOTICE_ARCHIVED)
     assert initial["data"]["attachments"][0]["status"] == "pending"
     with pytest.raises(FileNotFoundError):
         store.get("raw/" + sha256(PDF).hexdigest())
@@ -372,7 +372,7 @@ def test_attachment_deadline_retains_verified_body_and_pending_part(env, source)
     assert report.truncated and report.archived == 1
     assert report.gaps[0]["reason"] == "attachment_deadline"
     assert [request.url for request in publisher.sent] == [LIST, BODY]
-    (initial,) = events(database, COMPLETED)
+    (initial,) = events(database, NOTICE_ARCHIVED)
     assert store.get(initial["subject"]) == publisher_body.body
     assert initial["data"]["attachments"][0]["status"] == "pending"
 
@@ -394,7 +394,7 @@ def test_archive_spool_restarts_pending_attachment_for_the_same_body(env, source
             source, Window(DAY, DAY), max_pages=1,
         )
     assert report.deferred == "archive_object_pending" and len(initial.sent) == 3
-    (body_event,) = events(database, COMPLETED)
+    (body_event,) = events(database, NOTICE_ARCHIVED)
     assert body_event["data"]["attachments"][0]["status"] == "pending"
     assert rows(database, "SELECT kind, state FROM acq_request_tasks ORDER BY kind") == [
         ("attachment", "staged"), ("body", "settled"), ("list", "settled"),
@@ -405,7 +405,7 @@ def test_archive_spool_restarts_pending_attachment_for_the_same_body(env, source
         source, Window(DAY, DAY), max_pages=1,
     )
     assert recovered.run_id == report.run_id and recovered.archived == 1 and offline.sent == []
-    _, original = events(database, COMPLETED)
+    _, original = events(database, NOTICE_ARCHIVED)
     assert original["data"]["observation_version"] == 2 and original["subject"] == body_event["subject"]
     attachment = original["data"]["attachments"][0]
     assert attachment["status"] == "available" and store.get(attachment["artifact_ref"]) == PDF
@@ -435,7 +435,7 @@ def test_anhui_rejects_unbound_paths_and_pins_response_targets(env, source):
     assert collector.run(source, window, max_pages=1).gaps[0]["reason"] == "part_redirect_disallowed"
     assert collector.run(source, window, max_pages=1).gaps[0]["reason"] == "part_redirect_disallowed"
     assert [request.url for request in publisher.sent] == [LIST, BODY, FILE, LIST, BODY]
-    assert len(events(database, COMPLETED)) == 1
+    assert len(events(database, NOTICE_ARCHIVED)) == 1
 
 
 def test_available_attachment_failure_preserves_history_and_queues_recovery(env, source):
@@ -447,7 +447,7 @@ def test_available_attachment_failure_preserves_history_and_queues_recovery(env,
     report = collector.run(source, window, max_pages=1, refetch=True)
     assert report.archived == 1 and report.gaps[0]["reason"] == "http_404"
     assert collector.run(source, window, max_pages=1).archived == 1
-    captured = [e["data"]["attachments"][0] for e in events(database, COMPLETED)]
+    captured = [e["data"]["attachments"][0] for e in events(database, NOTICE_ARCHIVED)]
     assert [part["status"] for part in captured] == ["pending", "available", "pending", "available"]
     assert captured[1] == captured[3]
     assert store.get(captured[1]["artifact_ref"]) == PDF

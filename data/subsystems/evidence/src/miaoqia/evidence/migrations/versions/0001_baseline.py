@@ -282,7 +282,7 @@ CREATE TRIGGER evd_browser_observations_no_truncate BEFORE TRUNCATE ON evd_brows
     FOR EACH STATEMENT EXECUTE FUNCTION evd_immutable();
 CREATE UNIQUE INDEX evd_pending_browser_version ON evd_pending_live_events
     (source_id, (envelope #>> '{data,notice_key}'), (envelope #>> '{data,observation_version}'))
-    WHERE envelope->>'type' = 'acquisition.fetch.completed.v4';
+    WHERE envelope->>'type' = 'acquisition.browser_notice.archived.v1';
 """.replace("__MANIFEST_HASH__", manifest_hash))
 
 

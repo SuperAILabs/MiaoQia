@@ -82,7 +82,7 @@ M0探针消费者先验证acquisition载荷，再核对来源、subject和前序
 
 **发布**：`evidence.snapshot.created.v1`、`evidence.extraction.revised.v1`（载荷含快照、修订、领域包标识、质量状态）、`evidence.quality.flagged.v1`、`evidence.artifact.refetch_requested.v1`、`evidence.enrichment.completed.v1`（单个快照的增强完成）、`evidence.enricher.promoted.v1`（增强器新版本生效）。
 
-公共实例消费单公告 `acquisition.fetch.completed.v2`、分组成员 `v3` 以及浏览器配对观察 `v4`，兼容历史 `v1`。证据读取按当前来源权利确认展示等级。租户文档使用租户范围的命令、事件和消费者。[来源权利](source-rights-runtime.md)
+公共实例消费单公告 `acquisition.notice.archived.v1`、分组成员 `acquisition.grouped_notice.archived.v1` 以及浏览器配对观察 `acquisition.browser_notice.archived.v1`。证据读取按当前来源权利确认展示等级。租户文档使用租户范围的命令、事件和消费者。[来源权利](source-rights-runtime.md)
 
 ## 7. 扩展点
 
@@ -135,7 +135,7 @@ SDK语义验证覆盖快照/管线归属、块/表格坐标与quote_hash；人�
 
 中国化学工程招标的详情适配优先使用原件中的公告专用标题节点。招标提取器以规范化首级公告标题定位完整标题，保留正文内括号中可直接定位的公告编号。列表标题只用于独立对照。该来源的自动解析按独立字段评估准入。[逐源验收](../../05-delivery/12-public-source-probe.md#中国化学工程招标复查)
 
-分组响应的支持与 `acquisition.fetch.completed.v3` 一起验收。原件是完整响应，适配器按观察固定的选择器只提取一条公告，重验公告键、日期和成员摘要，再生成该公告的规范化文档、字段证据和检索分块。证据绑定同时保留完整原件哈希和成员验证信息。冻结批次为分组项单立版本，测试服务经授权读取成员投影。完整组原件的校验与恢复由有相应权限的原件所有者执行。既有单公告原件、快照和冻结 v1 清单沿用原契约。
+分组响应的支持与 `acquisition.grouped_notice.archived.v1` 一起验收。原件是完整响应，适配器按观察固定的选择器只提取一条公告，重验公告键、日期和成员摘要，再生成该公告的规范化文档、字段证据和检索分块。证据绑定同时保留完整原件哈希和成员验证信息。冻结批次为分组项单立版本，测试服务经授权读取成员投影。完整组原件的校验与恢复由有相应权限的原件所有者执行。既有单公告原件、快照和冻结 v1 清单沿用原契约。
 
 数据负责人可在公共 evidence 环境对已排队、声明 `live_parse: false` 的来源执行只读预验。命令按入队顺序读取一批固定归档观察，使用正式管线的原件校验、适配器、规范化和字段证据校验。
 

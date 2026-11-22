@@ -84,7 +84,7 @@ EVIDENCE = {
         SELECT envelope #>> '{data,projection,artifact_ref}', envelope #>> '{data,projection,content_hash}',
                (envelope #>> '{data,projection,size_bytes}')::bigint, NULL, NULL
         FROM public.evd_pending_live_events
-        WHERE envelope->>'type' = 'acquisition.fetch.completed.v4'
+        WHERE envelope->>'type' = 'acquisition.browser_notice.archived.v1'
     """,
     **{
         f"evd_{table}": f"SELECT object_ref, content_hash, NULL::bigint, NULL::text, NULL::text FROM public.evd_{table}"

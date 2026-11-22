@@ -7,12 +7,12 @@ from unittest.mock import Mock, call
 import pytest
 from sqlalchemy.exc import DBAPIError
 
-from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, describe_projection, seal_browser_event
+from miaoqia.acquisition.api.browser_pairs import BROWSER_NOTICE_ARCHIVED, describe_projection, seal_browser_event
 from miaoqia.acquisition.api.browser_projection import build_projection
 from miaoqia.evidence import resolver
 from miaoqia.evidence.api import ProvenanceIntegrityError, Unbound
 from miaoqia.evidence.api.document_proofs import DocumentProofs
-from miaoqia.evidence.application.live import COMPLETED, LEGACY_COMPLETED
+from miaoqia.evidence.application.live import NOTICE_ARCHIVED
 from miaoqia.evidence.application.pipeline import Artifact
 from miaoqia.evidence.domain.snapshot import normalized_hash, raw_hash
 from miaoqia.evidence.extensions.packs import DocumentAdapter
@@ -68,7 +68,7 @@ def _event(store, version=1, *, raw=RAW, title=TITLE, source=SOURCE, notice=NOTI
             "request_id": f"request.{version}",
         },
     })
-    return {"source": "miaoqia/acquisition", "subject": ref, "type": BROWSER_COMPLETED,
+    return {"source": "miaoqia/acquisition", "subject": ref, "type": BROWSER_NOTICE_ARCHIVED,
             "data": data, "id": ids.new("evt"), "specversion": "1.0", "time": timestamp,
             "datacontenttype": "application/json", "miaoqiazone": "public"}
 
@@ -114,7 +114,7 @@ def test_browser_owner_proof_binds_both_objects_and_exact_projected_quote(browse
     put = ingest.pipeline.store.put
     monkeypatch.setattr(ingest.pipeline.store, "put", Mock(wraps=put))
     consumer = Consumer("evidence.live", "evidence", "unused", ["public.acquisition"],
-                        {BROWSER_COMPLETED: ingest.on_completed}, database, max_attempts=1, backoff=0)
+                        {BROWSER_NOTICE_ARCHIVED: ingest.on_archived}, database, max_attempts=1, backoff=0)
     monkeypatch.setattr(consumer, "_dead_letter", Mock())
     _consume(consumer, event)
     _consume(consumer, event)
@@ -205,7 +205,7 @@ def test_browser_bad_objects_roll_back_live_and_deferred_inbox(browser, role, ch
     event = _event(store)
     _damage(store, _keys(event["data"])[role], change)
     consumer = Consumer("evidence.live", "evidence", "unused", ["public.acquisition"],
-                        {BROWSER_COMPLETED: ingest.on_completed}, database, max_attempts=1, backoff=0)
+                        {BROWSER_NOTICE_ARCHIVED: ingest.on_archived}, database, max_attempts=1, backoff=0)
     consumer._dead_letter = Mock()
     for admission in (True, False):
         set_live_parse(ingest, SOURCE, admission)
@@ -287,20 +287,18 @@ def test_browser_rejects_unadmitted_types_or_altered_binding_before_io(browser, 
 
 
 @pytest.mark.parametrize("browser_first", [False, True])
-@pytest.mark.parametrize("standalone_kind", ["direct-notice", "direct-url", LEGACY_COMPLETED, COMPLETED])
+@pytest.mark.parametrize("standalone_kind", ["direct-notice", "direct-url", NOTICE_ARCHIVED])
 def test_browser_rejects_standalone_stream_collisions(browser, browser_first, standalone_kind):
     database, ingest, store = browser
     adapter = ingest.adapters.pop(SOURCE)
     event = _event(store, 2 if not browser_first else 1)
-    legacy = archived(store, SOURCE, "anhui_ggzy_detail_tender.html", event["data"]["source_url"])
-    standalone = legacy
-    if standalone_kind == COMPLETED:
-        standalone = dict(legacy, type=COMPLETED, data=dict(legacy["data"], notice_key=NOTICE, observation_version=3))
+    standalone = archived(store, SOURCE, "anhui_ggzy_detail_tender.html", event["data"]["source_url"],
+                          notice_key=NOTICE, version=3)
 
     def send_standalone():
         ingest.adapters.pop(SOURCE, None)
         if standalone_kind.startswith("direct"):
-            key = f"notice:{NOTICE}" if standalone_kind == "direct-notice" else legacy["data"]["source_url"]
+            key = f"notice:{NOTICE}" if standalone_kind == "direct-notice" else standalone["data"]["source_url"]
             with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
                 ingest.pipeline.ingest(conn, Artifact(
                     SOURCE, key, "text/html", b"<p>direct</p>", (f"public:{SOURCE}",), datetime.now(timezone.utc)))

@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 from sqlalchemy import text
 
-from miaoqia.acquisition.api.browser_pairs import BROWSER_COMPLETED, read_browser_pair
+from miaoqia.acquisition.api.browser_pairs import BROWSER_NOTICE_ARCHIVED, read_browser_pair
 from miaoqia.acquisition.api.handlers import BrowserSelection, DetailRef, FetchRequest, FetchResponse
 from miaoqia.acquisition.application.browser_observations import (
     BrowserConflict, archive_browser_pair, prepare_browser_pair, stage_browser_pair, store_browser_pair,
@@ -88,7 +88,7 @@ def test_browser_attempts_bind_pair_keep_history_and_replay(ledger, tmp_path):
     for version, (partition, envelope) in enumerate(events, 1):
         data = envelope["data"]
         assert partition == f"{SOURCE_ID}|{NOTICE_KEY}"
-        assert envelope["type"] == BROWSER_COMPLETED and envelope["subject"] == data["artifact_ref"]
+        assert envelope["type"] == BROWSER_NOTICE_ARCHIVED and envelope["subject"] == data["artifact_ref"]
         assert data["observation_version"] == version
         archived, document = read_browser_pair(store, data)
         assert archived == original

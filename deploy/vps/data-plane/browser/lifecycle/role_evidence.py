@@ -27,7 +27,7 @@ from miaoqia.kernel import runtime
 from miaoqia.kernel.objectstore import open_object_store, versioned
 
 from .role_archive import (
-    ADMIN_DSN, APP_DSN, BODY, BROWSER_COMPLETED, CHANNEL, DETAIL_VIEW, KEY, OWNER_DSN,
+    ADMIN_DSN, APP_DSN, BODY, BROWSER_NOTICE_ARCHIVED, CHANNEL, DETAIL_VIEW, KEY, OWNER_DSN,
     PACKS, SOURCE, STORE, FixtureError, create_role, digest, grant_app_defaults, require, selected_html,
 )
 
@@ -62,9 +62,9 @@ class OutboxShapeError(FixtureError):
     def __init__(self, stage, rows):
         super().__init__(stage)
         types = [row["envelope"].get("type") for row in rows]
-        self.counts = {"sampled": len(types), "v4": types.count(BROWSER_COMPLETED),
+        self.counts = {"sampled": len(types), "browser": types.count(BROWSER_NOTICE_ARCHIVED),
                        "health": types.count(HEALTH_CHANGED)}
-        self.counts["other"] = len(types) - self.counts["v4"] - self.counts["health"]
+        self.counts["other"] = len(types) - self.counts["browser"] - self.counts["health"]
 
 
 def fixture_broker():
@@ -215,7 +215,7 @@ def capture(day):
             FROM kernel_outbox ORDER BY seq LIMIT 3
         """).fetchall()
         observed_types = [row["envelope"].get("type") for row in rows]
-        expected_types = [BROWSER_COMPLETED, HEALTH_CHANGED]
+        expected_types = [BROWSER_NOTICE_ARCHIVED, HEALTH_CHANGED]
         if observed_types != expected_types[:len(observed_types)]:
             raise OutboxShapeError("published_outbox_count", rows)
         if len(rows) != 2 or any(row["published_at"] is None for row in rows):
@@ -223,12 +223,12 @@ def capture(day):
         captured, health = rows
         envelope = captured["envelope"]
         event = envelope["data"]
-        require(captured["event_id"] == envelope["id"] and envelope["type"] == BROWSER_COMPLETED
+        require(captured["event_id"] == envelope["id"] and envelope["type"] == BROWSER_NOTICE_ARCHIVED
                 and captured["topic"] == ACQUISITION_TOPIC and captured["partition_key"] == f"{SOURCE}|{KEY}"
                 and envelope["subject"] == event["artifact_ref"] and event["source_id"] == SOURCE
                 and event["notice_key"] == KEY and event["source_url"] == DETAIL_VIEW
                 and event["published_on"] == day.isoformat() and event["observation_version"] == 1
-                and event["media_type"] == "text/plain", "outbox_v4_scope")
+                and event["media_type"] == "text/plain", "outbox_browser_scope")
         health_event = health["envelope"]
         if (health["event_id"] != health_event["id"] or health["topic"] != ACQUISITION_TOPIC
                 or health["partition_key"] != SOURCE or health_event["subject"] != SOURCE
@@ -297,10 +297,10 @@ def broker_records(broker, rows, *, stopped):
             groups = admin.describe_consumer_groups([LIVE_GROUP], request_timeout=5)
             description = groups[LIVE_GROUP].result(timeout=6)
             require(not description.members and description.state.name == "EMPTY", "evidence_consumer_stopped")
-        v4, health = rows
+        browser_row, health = rows
         return {"kafka_partition": 0, "kafka_offset": 0, "health_kafka_offset": 1, "kafka_count": len(rows),
                 "evidence_live_committed_offset": committed.offset,
-                "envelope_sha256": digest(v4["wire"].encode("utf-8"))[7:],
+                "envelope_sha256": digest(browser_row["wire"].encode("utf-8"))[7:],
                 "health_envelope_sha256": digest(health["wire"].encode("utf-8"))[7:]}
     finally:
         client.close()
@@ -374,7 +374,7 @@ def snapshot(captured, raw, projection):
             and row["raw_sha256"] == digest(raw) == event["content_hash"]
             and row["artifact_ref"] == event["artifact_ref"] and row["media_type"] == event["media_type"]
             and row["rights_tags"] == event["rights_tags"]
-            and row["observed_at"] == datetime.fromisoformat(event["fetched_at"]), "snapshot_v4_linkage")
+            and row["observed_at"] == datetime.fromisoformat(event["fetched_at"]), "snapshot_browser_linkage")
     notice = row["snapshot_event"]
     require(row["topic"] == EVIDENCE_TOPIC and row["partition_key"] == f"{SOURCE}|notice:{KEY}"
             and row["published_at"] is None and notice["type"] == SNAPSHOT_CREATED
@@ -419,7 +419,7 @@ def verify(mode, broker):
     raw, projection = archive_pair(captured)
     event = captured["envelope"]["data"]
     result = {"stages": ["published_outbox", "exact_broker_record", "live_commit", "empty_dlqs", "archive_pair",
-                         "pending_only"], **broker_receipt, "outbox_count": len(rows), "v4_count": 1, "inbox_count": 1,
+                         "pending_only"], **broker_receipt, "outbox_count": len(rows), "browser_count": 1, "inbox_count": 1,
               "pending_count": 1, "normalized_count": 0, "dlq_count": 0,
               "event_id_sha256": digest(captured["event_id"].encode("utf-8"))[7:], "original_sha256": digest(raw)[7:],
               "projection_sha256": event["projection"]["content_hash"][7:]}

@@ -22,28 +22,7 @@ fixtures:
     - op: replace
       path: /probe_id
       value: bad_00000000000000000000000000
-- event: acquisition.fetch.completed.v1
-  base:
-    source_id: fixture-value
-    artifact_ref: fixture-value
-    rights_tags:
-    - fixture-value
-    content_hash: sha256:1111111111111111111111111111111111111111111111111111111111111111
-    fetched_at: '2026-10-14T00:00:00Z'
-    source_url: https://example.org/notice
-  cases:
-  - name: 缺少必填字段
-    valid: false
-    patch:
-    - op: remove
-      path: /source_id
-  - name: 拒绝未声明字段
-    valid: false
-    patch:
-    - op: add
-      path: /tenant_secret
-      value: should-not-pass
-- event: acquisition.fetch.completed.v2
+- event: acquisition.notice.archived.v1
   base:
     source_id: anhui-ggzy-construction
     notice_key: 15a09741-1789-4d86-96e2-b67972e7f5a8:3
@@ -86,7 +65,7 @@ fixtures:
     - op: add
       path: /tenant_secret
       value: should-not-pass
-- event: acquisition.fetch.completed.v3
+- event: acquisition.grouped_notice.archived.v1
   base:
     source_id: hunan-ggzy-construction
     notice_key: notice-a
@@ -202,7 +181,7 @@ fixtures:
     valid: false
     patch:
     - {op: add, path: /attachments, value: [{part_key: notice-a, required: true, status: pending}]}
-- event: acquisition.fetch.completed.v4
+- event: acquisition.browser_notice.archived.v1
   base:
     source_id: fixture-browser
     notice_key: notice-a

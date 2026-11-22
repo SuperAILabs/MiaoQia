@@ -67,8 +67,8 @@ var publicEventStreams = []publicEventStream{
 		"entity.relationship.changed.v1", "entity.project_link.changed.v1",
 	}},
 	{"public.acquisition", "miaoqia/acquisition", []string{"acquisition.source.rights_changed.v1"}, []string{
-		"acquisition.probe.emitted.v1", "acquisition.fetch.completed.v1", "acquisition.fetch.completed.v2",
-		"acquisition.fetch.completed.v3", "acquisition.fetch.completed.v4", "acquisition.fetch.failed.v1",
+		"acquisition.probe.emitted.v1", "acquisition.notice.archived.v1", "acquisition.grouped_notice.archived.v1",
+		"acquisition.browser_notice.archived.v1", "acquisition.fetch.failed.v1",
 		"acquisition.source.health_changed.v1",
 	}},
 }

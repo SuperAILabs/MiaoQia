@@ -19,7 +19,7 @@ from miaoqia.acquisition.api.handlers import (
 )
 from miaoqia.acquisition.application import collection_leases
 from miaoqia.acquisition.application.fetch import _instant
-from miaoqia.acquisition.application.grouped_observations import COMPLETED, GroupConflict, submit_group, validate_group
+from miaoqia.acquisition.application.grouped_observations import GROUPED_NOTICE_ARCHIVED, GroupConflict, submit_group, validate_group
 from miaoqia.kernel import db, payloads, reqctx
 
 from test_fetch import DAY, LIST_URL, SOURCE, FakeClock, rows
@@ -186,9 +186,9 @@ def test_shared_original_member_versions_replay_and_closed_outbox(ledger):
     """) == [(1, 1)]
     all_events = rows(database, "SELECT partition_key, envelope FROM kernel_outbox ORDER BY seq")
     for partition, envelope in all_events:
-        assert envelope["type"] == COMPLETED
+        assert envelope["type"] == GROUPED_NOTICE_ARCHIVED
         data = envelope["data"]
-        payloads.validator(COMPLETED, {}).validate(data)
+        payloads.validator(GROUPED_NOTICE_ARCHIVED, {}).validate(data)
         assert data["selector"]["notice_key"] == data["notice_key"] != "old"
         assert partition == f"{SOURCE_ID}|{data['notice_key']}"
         assert envelope["subject"] == data["artifact_ref"] == f"raw/{data['content_hash'][7:]}"

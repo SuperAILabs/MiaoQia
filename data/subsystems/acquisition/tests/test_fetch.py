@@ -22,7 +22,7 @@ from miaoqia.acquisition import MIGRATIONS
 from miaoqia.acquisition.api.handlers import (AccessContract, DetailFetch, DetailRef, FetchRequest, FetchResponse,
                                               ListPage, ListRequestPlan, OffsetPage, SourceBlocked, Window)
 from miaoqia.acquisition.application import discovery, dispatch, plans, source_validation, sources
-from miaoqia.acquisition.application.fetch import COMPLETED, Fetcher, SourceStopped
+from miaoqia.acquisition.application.fetch import NOTICE_ARCHIVED, Fetcher, SourceStopped
 from miaoqia.acquisition.infrastructure.archive_spool import ArchiveSpool
 from miaoqia.acquisition.infrastructure.download_slots import DownloadSlot, DownloadSlots
 from miaoqia.acquisition.infrastructure.transport import TransportError
@@ -148,7 +148,7 @@ def test_archives_details_and_emits_completed(env):
     report = f.run(SOURCE, Window(DAY, DAY), max_pages=5)
     assert (report.listed, report.archived, report.failed) == (2, 2, 0)
     database, store, clock = env
-    done = events(database, COMPLETED)
+    done = events(database, NOTICE_ARCHIVED)
     assert [e["data"]["source_url"] for e in done] == ["https://src.example/d/a", "https://src.example/d/b"]
     data = done[0]["data"]
     assert data["rights_tags"] == ["public:test-source"] and data["artifact_ref"] == data["content_hash"].replace("sha256:", "raw/")
@@ -180,7 +180,7 @@ def test_verified_detail_date_controls_archive_membership(env):
     assert (report.archived, report.skipped, report.failed) == (1, 1, 1)
     assert rows(env[0], "SELECT notice_key, published_on FROM acq_source_observations") == [("current", DAY)]
     assert rows(env[0], "SELECT count(*) FROM acq_raw_artifacts") == [(1,)]
-    assert len(events(env[0], COMPLETED)) == 1
+    assert len(events(env[0], NOTICE_ARCHIVED)) == 1
 
 
 def test_incremental_run_skips_archived_and_refetch_dedups_identical_content(env):
@@ -192,7 +192,7 @@ def test_incremental_run_skips_archived_and_refetch_dedups_identical_content(env
     assert (second.skipped, second.archived) == (1, 0)
     third = f.run(SOURCE, Window(DAY, DAY), max_pages=1, refetch=True)
     assert (third.unchanged, third.archived) == (1, 0)
-    assert len(events(env[0], COMPLETED)) == 1
+    assert len(events(env[0], NOTICE_ARCHIVED)) == 1
     assert rows(env[0], "SELECT count(*) FROM acq_raw_artifacts") == [(1,)]
 
 
@@ -211,7 +211,7 @@ def test_changes_and_reversions_have_distinct_observations_and_reuse_bytes(env):
     })
     reports = [f.run(SOURCE, Window(DAY, DAY), max_pages=1, refetch=True) for _ in range(4)]
     assert [(r.archived, r.unchanged, r.skipped) for r in reports] == [(1, 0, 1)] * 3 + [(0, 1, 1)]
-    data = [e["data"] for e in events(database, COMPLETED)]
+    data = [e["data"] for e in events(database, NOTICE_ARCHIVED)]
     assert [(v["notice_key"], v["observation_version"], store.get(v["artifact_ref"])) for v in data] == [
         ("a", 1, b"A"), ("a", 2, b"B"), ("a", 3, b"A")]
     assert data[0]["artifact_ref"] == data[2]["artifact_ref"]
@@ -231,7 +231,7 @@ def test_legacy_artifact_witness_uses_the_stable_part_key_even_when_the_url_chan
             VALUES ('test-source', 'a', :hash, :ref, 'text/html', 6, 'https://src.example/old/a', 'old', now())
         """), {"hash": f"sha256:{digest}", "ref": f"raw/{digest}"})
     f.run(SOURCE, Window(DAY, DAY), max_pages=1)
-    (event,) = events(database, COMPLETED)
+    (event,) = events(database, NOTICE_ARCHIVED)
     assert event["data"]["legacy_artifact"] == {"source_url": "https://src.example/old/a", "content_hash": f"sha256:{digest}"}
 
 
@@ -248,7 +248,7 @@ def test_missing_notice_key_archives_without_handing_off_a_fact(env):
     collector, _ = fetcher(env, {LIST_URL: [listing("a")], "https://src.example/d/a": [ok(b"pending")]})
     report = collector.run(source, Window(DAY, DAY), max_pages=1)
     assert report.pending_identity == 1 and report.gaps[0]["reason"] == "identity_pending"
-    assert not events(env[0], COMPLETED)
+    assert not events(env[0], NOTICE_ARCHIVED)
     (key,) = rows(env[0], "SELECT artifact_ref FROM acq_pending_identity JOIN acq_raw_artifacts ON id = artifact_id")[0]
     assert env[1].get(key) == b"pending"
 
@@ -272,7 +272,7 @@ def test_older_generation_cannot_rewind_an_already_committed_notice(env, monkeyp
     collector, _ = fetcher(env, {LIST_URL: [listing("a")], url: [ok(b"older")]})
     report = collector.run(SOURCE, window, max_pages=1, refetch=True)
     assert report.truncated and report.gaps[-1]["reason"] == "lease_lost" and report.archived == 0
-    (event,) = events(database, COMPLETED)
+    (event,) = events(database, NOTICE_ARCHIVED)
     assert store.get(event["subject"]) == b"newer"
     assert rows(database, "SELECT id, generation, report->>'archived' FROM acq_collection_runs") == [
         (report.run_id, 2, "1")]
@@ -302,7 +302,7 @@ def test_capture_expiry_preserves_page_receipt_and_detail(env):
     assert discovery.expire(database, store, deadline=time.monotonic() + 5) == 1
     with pytest.raises(FileNotFoundError):
         store.get(key)
-    assert store.get(events(database, COMPLETED)[0]["subject"]) == b"A"
+    assert store.get(events(database, NOTICE_ARCHIVED)[0]["subject"]) == b"A"
     assert rows(database, "SELECT response_hash, refs, expired_at IS NOT NULL FROM acq_discovery_pages") == [
         (content_hash, refs, True)]
 
@@ -321,9 +321,9 @@ def test_detail_write_failure_leaves_a_gap_then_archives_on_retry(env, monkeypat
         broken.setattr(store, "put", unavailable_for_raw)
         report = collector.run(SOURCE, Window(DAY, DAY), max_pages=1)
         assert report.failed == 1 and report.gaps[0]["reason"] == "archive_write"
-        assert events(database, COMPLETED) == []
+        assert events(database, NOTICE_ARCHIVED) == []
     assert collector.run(SOURCE, Window(DAY, DAY), max_pages=1).archived == 1
-    assert events(database, COMPLETED)[0]["data"]["observation_version"] == 1
+    assert events(database, NOTICE_ARCHIVED)[0]["data"]["observation_version"] == 1
 
 
 def test_throttle_backs_off_then_succeeds(env):
@@ -977,7 +977,7 @@ def test_coverage_gap_keeps_detail_and_enqueues_backfill_day(env):
     assert rows(database, "SELECT report->>'archived', report->'gaps'->0->>'reason'"
                           " FROM acq_collection_runs ORDER BY id") == [
         ("1", "single_page_only"), ("1", "single_page_only")]
-    assert len(events(database, COMPLETED)) == 2
+    assert len(events(database, NOTICE_ARCHIVED)) == 2
 
 
 def test_slots_share_site_and_online_limit_and_reserve_backfill(env):
@@ -1128,7 +1128,7 @@ def test_postgres_commit_failure_replays_window_without_duplicate_observation(en
     append = writer_type.append
 
     def reject_archive(writer, conn, event):
-        if event.type == COMPLETED:
+        if event.type == NOTICE_ARCHIVED:
             conn.execute(text("SELECT 1 / 0"))
         return append(writer, conn, event)
 
@@ -1139,13 +1139,13 @@ def test_postgres_commit_failure_replays_window_without_duplicate_observation(en
     assert store.get("raw/" + hashlib.sha256(b"raw").hexdigest()) == b"raw"
     assert rows(database, "SELECT count(*) FROM acq_source_observations") == [(0,)]
     assert rows(database, "SELECT count(*) FROM acq_raw_artifacts") == [(0,)]
-    assert events(database, COMPLETED) == []
+    assert events(database, NOTICE_ARCHIVED) == []
     expire_lease(database)
     report = collector.run(SOURCE, window, max_pages=1)
     assert report.archived == 1
     assert rows(database, "SELECT id, generation FROM acq_collection_runs") == [(report.run_id, 2)]
     assert rows(database, "SELECT version FROM acq_source_observations") == [(1,)]
-    assert len(events(database, COMPLETED)) == 1
+    assert len(events(database, NOTICE_ARCHIVED)) == 1
 
 
 @pytest.mark.parametrize(("key_prefix", "reason", "attempt_count"), [
@@ -1173,7 +1173,7 @@ def test_archive_spool_restarts_with_original_bytes(env, monkeypatch, tmp_path, 
         )
     assert report.deferred == reason
     assert len(first.sent) == attempt_count
-    assert not events(database, COMPLETED)
+    assert not events(database, NOTICE_ARCHIVED)
     assert rows(database, "SELECT finished_at FROM acq_collection_runs") == [(None,)]
 
     resumed = transport_type({detail: [ok(b"first original")]} if attempt_count == 1 else {})
@@ -1185,7 +1185,7 @@ def test_archive_spool_restarts_with_original_bytes(env, monkeypatch, tmp_path, 
     assert len(resumed.sent) == 2 - attempt_count
     assert rows(database, "SELECT count(*) FROM acq_discovery_pages") == [(1,)]
     assert rows(database, "SELECT count(*) FROM acq_fetch_attempts") == [(2,)]
-    (original,) = events(database, COMPLETED)
+    (original,) = events(database, NOTICE_ARCHIVED)
     assert store.get(original["subject"]) == b"first original"
     assert list(spool_root.glob("[0-9a-f]*")) == []
 
@@ -1437,7 +1437,7 @@ def test_archive_spool_reuses_response_after_database_rollback(env, tmp_path, mo
     append = writer_type.append
 
     def reject(writer, conn, event):
-        if event.type == COMPLETED:
+        if event.type == NOTICE_ARCHIVED:
             conn.execute(text("SELECT 1 / 0"))
         return append(writer, conn, event)
 
@@ -1447,7 +1447,7 @@ def test_archive_spool_reuses_response_after_database_rollback(env, tmp_path, mo
             Fetcher(database, store, initial, clock=clock, spool=ArchiveSpool(spool_root)).run(
                 SOURCE, window, max_pages=1,
             )
-    assert events(database, COMPLETED) == []
+    assert events(database, NOTICE_ARCHIVED) == []
     expire_lease(database)
     offline = Script({})
     report = Fetcher(database, store, offline, clock=clock, spool=ArchiveSpool(spool_root)).run(
@@ -1456,7 +1456,7 @@ def test_archive_spool_reuses_response_after_database_rollback(env, tmp_path, mo
     assert report.archived == 1 and offline.sent == []
     assert rows(database, "SELECT generation FROM acq_collection_runs") == [(2,)]
     assert rows(database, "SELECT count(*) FROM acq_fetch_attempts") == [(2,)]
-    (original,) = events(database, COMPLETED)
+    (original,) = events(database, NOTICE_ARCHIVED)
     assert store.get(original["subject"]) == b"original"
 
 
@@ -1489,13 +1489,13 @@ def test_archive_spool_lost_with_host_retries_without_claiming_old_bytes(env, tm
         previous = Fetcher(database, store, first, clock=clock, spool=ArchiveSpool(tmp_path / "old-host")).run(
             SOURCE, window, max_pages=1,
         )
-    assert previous.deferred == "archive_object_pending" and events(database, COMPLETED) == []
+    assert previous.deferred == "archive_object_pending" and events(database, NOTICE_ARCHIVED) == []
     second = Script({LIST_URL: [listing("a")], "https://src.example/d/a": [ok(b"new download")]})
     recovered = Fetcher(database, store, second, clock=clock, spool=ArchiveSpool(tmp_path / "replacement-host")).run(
         SOURCE, window, max_pages=1,
     )
     assert recovered.run_id == previous.run_id and recovered.archived == 1
-    (original,) = events(database, COMPLETED)
+    (original,) = events(database, NOTICE_ARCHIVED)
     assert store.get(original["subject"]) == b"new download"
     assert rows(database, """
         SELECT t.kind, t.state, count(a.id)
