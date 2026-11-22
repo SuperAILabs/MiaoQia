@@ -1,0 +1,43 @@
+fixtures:
+- schema: AwardResearchRequest
+  base: {org_unit_id: root, notice: {id: ntc_01ARZ3NDEKTSV4RRFFQ69G5FAV, version: 3}}
+  cases:
+  - name: reject-caller-context
+    valid: false
+    instance: {org_unit_id: root, cell: cell-01, notice: {id: ntc_01ARZ3NDEKTSV4RRFFQ69G5FAV, version: 3}}
+  - name: reject-current-selector
+    valid: false
+    instance: {org_unit_id: root, notice: {id: ntc_01ARZ3NDEKTSV4RRFFQ69G5FAV}}
+- schema: AwardResearchReport
+  base: &report
+    template: research.a02-award@1
+    notice: {id: ntc_01ARZ3NDEKTSV4RRFFQ69G5FAV, version: 3}
+    facts:
+    - field: /lots/0/bid_results/0/bidder/name_raw
+      winner_name: 虚构企业
+      citation:
+        evidence_ref: ev_01ARZ3NDEKTSV4RRFFQ69G5FAV
+        snapshot_ref: snp_01ARZ3NDEKTSV4RRFFQ69G5FAV
+        source_id: mock-source
+        source_key: notice-key
+        observed_at: '2026-11-19T00:00:00Z'
+        locator: {block: 2, char_start: 0, char_end: 4}
+        quote: 虚构企业
+    inferences: []
+    unknowns: [{topic: entity_identity, reason: entity_lookup_out_of_scope}]
+    recommendations: []
+    partial: false
+    reads_used: 3
+    model_calls_used: 0
+  cases:
+  - name: no-model-on-route
+    valid: false
+    instance:
+      <<: *report
+      model_calls_used: 1
+- schema: Problem
+  base: {type: 'https://errors.miaoqia.com/a02_research_denied', title: a02_research_denied, status: 403, code: a02_research_denied}
+  cases:
+  - name: invalid-status
+    valid: false
+    instance: {type: 'https://errors.miaoqia.com/a02_research_denied', title: a02_research_denied, status: 200, code: a02_research_denied}

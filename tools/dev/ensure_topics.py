@@ -8,6 +8,8 @@ from pathlib import Path
 from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import AdminClient, NewTopic
 
+from miaoqia.kernel import kafka
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools/dev"))
 from gen_local import topics  # noqa: E402
@@ -15,7 +17,7 @@ from gen_local import topics  # noqa: E402
 
 def main() -> None:
     brokers = os.environ.get("MIAOQIA_KAFKA_BROKERS", "localhost:9092")
-    client = AdminClient({"bootstrap.servers": brokers})
+    client = kafka.open_client(AdminClient, kafka.connection_config(brokers))
     requested = topics()
     futures = client.create_topics([NewTopic(name, 12, 1) for name in requested], request_timeout=30)
     for future in futures.values():

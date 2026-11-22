@@ -1,0 +1,211 @@
+fixtures:
+- schema: Basis
+  base: &current {view: current, recorded_cutoff: null}
+  cases:
+  - name: 当时已知口径
+    valid: true
+    instance: &known {view: known_at, recorded_cutoff: '2026-11-18T00:00:00Z'}
+  - name: 当前口径不能带截止
+    valid: false
+    instance: {view: current, recorded_cutoff: '2026-11-18T00:00:00Z'}
+  - name: 当时已知口径必须带截止
+    valid: false
+    instance: {view: known_at, recorded_cutoff: null}
+  - name: 截止必须带时区
+    valid: false
+    instance: {view: known_at, recorded_cutoff: '2026-11-18T00:00:00'}
+- schema: FactRequest
+  base: {fact_id: ntc_mock, basis: *current, version: null}
+  cases:
+  - name: 固定版本
+    valid: true
+    instance: {fact_id: pp_mock, basis: *known, version: 2}
+  - name: 禁止来源断言
+    valid: false
+    patch: [{op: add, path: /inputs, value: []}]
+  - name: 版本不能省略
+    valid: false
+    patch: [{op: remove, path: /version}]
+  - name: 布尔值不是版本
+    valid: false
+    patch: [{op: replace, path: /version, value: true}]
+- schema: FactHistoryRequest
+  base: {fact_id: ntc_mock, basis: *known, after: 0, limit: 2}
+  cases:
+  - name: 历史游标不能为负
+    valid: false
+    patch: [{op: replace, path: /after, value: -1}]
+- schema: QueryFactsRequest
+  base: {info_domain: INF-PROC, object_type: tendering.notice, basis: *current, after: '', limit: 2}
+  cases:
+  - name: 页大小有上限
+    valid: false
+    patch: [{op: replace, path: /limit, value: 101}]
+  - name: 查询名必需
+    valid: false
+    patch: [{op: replace, path: /info_domain, value: ''}]
+- schema: EvidenceRequest
+  base: {evidence_ref: ev_mock}
+  cases:
+  - name: 仅接收证据标识
+    valid: false
+    instance: {evidence_ref: snp_mock}
+- schema: Fact
+  base: &fact
+    id: ntc_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    schema_version: 1.0.0
+    version: 2
+    info_domain: INF-PROC
+    snapshot_ref: snp_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    revision_ref: exr_01JA8ZXXXXXXXXXXXXXXXXXXX1
+    rights_tags: [public:synthetic-fixture]
+    classification: public
+    observed_at: '2026-11-18T00:00:00Z'
+    recorded_at: '2026-11-18T00:00:00Z'
+    notice_type: tender
+    trading_system: construction_bidding
+    method: open_tender
+    lots: [{lot_key: "1"}]
+    title:
+      value: 虚构测试工程招标
+      prov:
+        evidence_ref: ev_01JA8ZXXXXXXXXXXXXXXXXXXX1
+        method: rule
+        confidence: 1
+        extractor: proc.fixture@1.0.0
+  cases:
+  - name: 所有者事实拒绝未知字段
+    valid: false
+    patch: [{op: add, path: /extra, value: 1}]
+- schema: FactRead
+  base: {basis: *current, fact: *fact}
+  cases:
+  - name: 无可返回事实
+    valid: true
+    instance: null
+  - name: 事实必须是对象
+    valid: false
+    patch: [{op: replace, path: /fact, value: []}]
+- schema: FactHistoryPage
+  base: {basis: *known, items: [{fact: *fact, changed_fields: ['/title']}], next_cursor: '2'}
+  cases:
+  - name: 历史项不接受未知键
+    valid: false
+    patch: [{op: add, path: /items/0/extra, value: true}]
+- schema: FactPage
+  base: {basis: *current, items: [*fact], next_cursor: ntc_mock}
+  cases:
+  - name: 无后续页使用空值
+    valid: false
+    patch: [{op: replace, path: /next_cursor, value: ''}]
+- schema: BidResultPage
+  base:
+    basis: *current
+    next_cursor: null
+    items:
+    - key: tendering.bid_result:ntc_mock:bdr_mock
+      fact_type: tendering.bid_result
+      domain: INF-PROC
+      event: tendering.result.published.v1
+      subject: {id: ntc_mock, version: 2, part_id: bdr_mock}
+      fields: {result_type: awarded, winner: {name_raw: 虚构测试中标方}, candidates: []}
+      items: {}
+      item_domains: {}
+      item_refs: [{name: fact, id: ntc_mock, version: 2, domain: INF-PROC}]
+      evidence: {fact.winner: {confidence: 0.9, method: rule, suspect: false}}
+      display: {title: 虚构测试中标结果, winner_name: 虚构测试中标方, lot_key: '1'}
+  cases:
+  - name: 投影字段闭合
+    valid: false
+    patch: [{op: add, path: /items/0/fields/extra, value: []}]
+- schema: EvidenceRead
+  base:
+    kind: doc
+    evidence:
+      id: ev_mock
+      display_level: excerpt
+      snapshot_ref: snp_mock
+      source_id: synthetic-fixture
+      source_key: mock-notice-1
+      observed_at: '2026-11-18T00:00:00Z'
+      locator: {block: 0, char_start: 0, char_end: 5}
+      snippet: 虚构测试内容
+      context: null
+      derivation: null
+  cases:
+  - name: 无可展示证据
+    valid: true
+    instance: null
+  - name: 摘录不带正文上下文
+    valid: false
+    patch: [{op: replace, path: /evidence/context, value: 虚构测试正文}]
+  - name: 只引证不带定位或片段
+    valid: false
+    patch: [{op: replace, path: /evidence/display_level, value: citation_only}]
+  - name: 证据不携带下载地址
+    valid: false
+    patch: [{op: add, path: /evidence/download_url, value: 'https://example.invalid'}]
+- schema: NoticeChunkRequest
+  base: {fact_id: ntc_00000000000000000000000001, version: 2, ordinal: 0}
+  cases:
+  - name: 项目不能充当公告
+    valid: false
+    patch: [{op: replace, path: /fact_id, value: pp_00000000000000000000000001}]
+  - name: 分块序号有界
+    valid: false
+    patch: [{op: replace, path: /ordinal, value: 12}]
+- schema: NoticeChunkRead
+  base:
+    fact_id: ntc_00000000000000000000000001
+    version: 2
+    ordinal: 0
+    snapshot_ref: snp_00000000000000000000000001
+    locator: {block: 0, char_start: 0, char_end: 4}
+    text: 模拟公告
+    rights_tags: ['public:synthetic-fixture']
+    metadata: {identifiers: [ntc_00000000000000000000000001], title: 模拟公告}
+  cases:
+  - name: 已换版
+    valid: true
+    instance: null
+  - name: 未登记的权利标签不能作为公共发现权
+    valid: false
+    patch: [{op: replace, path: /rights_tags/0, value: restricted}]
+- schema: PublicOrganizationRequest
+  base: {org_id: org_00000000000000000000000001, version: 2}
+  cases:
+  - name: 只读取固定组织版本
+    valid: false
+    patch: [{op: replace, path: /version, value: null}]
+  - name: 登记事实不能充当组织标识
+    valid: false
+    patch: [{op: replace, path: /org_id, value: ogr_00000000000000000000000001}]
+  - name: 调用方不能声明来源权利
+    valid: false
+    patch: [{op: add, path: /rights_tags, value: ['public:synthetic-registry']}]
+- schema: PublicOrganizationRead
+  base:
+    org_id: org_00000000000000000000000001
+    version: 2
+    name: 合成测试登记企业甲
+    uscc: '91000000000000000K'
+    rights_tags: ['public:synthetic-registry']
+  cases:
+  - name: 当前版本不存在或不符合公开读取条件
+    valid: true
+    instance: null
+  - name: 来源标签非空
+    valid: false
+    patch: [{op: replace, path: /rights_tags, value: []}]
+  - name: 关闭混合来源权利
+    valid: false
+    patch: [{op: add, path: /rights_tags/-, value: restricted}]
+  - name: 只返回公开身份字段
+    valid: false
+    patch: [{op: add, path: /snapshot_ref, value: snp_00000000000000000000000001}]
+- schema: Problem
+  base: {title: request rejected, status: 400}
+  cases:
+  - name: 问题详情必须带状态
+    valid: false
+    patch: [{op: remove, path: /status}]

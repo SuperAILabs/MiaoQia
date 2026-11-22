@@ -1,6 +1,6 @@
-"""由子系统索引（docs/03-architecture/subsystems/README.md 第 1 节，唯一登记处）生成部署使用的机器可读清单与本地环境的数据库初始化脚本。
+"""由子系统索引生成机器可读清单、本地和公开数据面 PostgreSQL 引导脚本。
 
-  python3 tools/dev/gen_local.py           生成 deploy/subsystems.yaml 与 deploy/local/postgres/10-subsystems.sql
+  python3 tools/dev/gen_local.py           生成清单和两个引导脚本
   python3 tools/dev/gen_local.py --check   生成物与索引不一致时退出码为 1（CI 使用）
   python3 tools/dev/gen_local.py topics    列出本地需要创建的 Kafka 主题：contracts/events 中声明的通道、
                                            审计主题 platform.audit，以及每个子系统的死信主题 dlq.<子系统>；
@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "docs/03-architecture/subsystems/README.md"
 OUT = ROOT / "deploy/local/postgres/10-subsystems.sql"
+PUBLIC_OUT = ROOT / "deploy/vps/data-plane/public-data.postgres.sql"
 REGISTRY = ROOT / "deploy/subsystems.yaml"
 ROLES = {u: ROOT / f"deploy/{u}/roles.yaml" for u in ("acquisition", "data", "platform")}
 ROW = re.compile(r"^\| ([^|]+?) \| \[`([a-z-]+)`\][^|]*\|[^|]*\| (Go|Python) \| `([a-z]+)`[^|]*\| (?:`([a-z]{3})`|（[^）]+）) \|$")
@@ -47,6 +48,22 @@ def subsystems() -> list[tuple[str, str, str, str | None]]:
     return out
 
 
+def database_bootstrap(db: str, *, restrict_public_schema: bool) -> list[str]:
+    return [
+        f"CREATE DATABASE {db} OWNER {db}_owner;",
+        f"REVOKE ALL ON DATABASE {db} FROM PUBLIC;",
+        f"GRANT CONNECT ON DATABASE {db} TO {db}_app, outbox_relay;",
+        f"\\connect {db}",
+        f"ALTER SCHEMA public OWNER TO {db}_owner;",
+        *(["REVOKE ALL ON SCHEMA public FROM PUBLIC;"] if restrict_public_schema else []),
+        f"GRANT USAGE ON SCHEMA public TO {db}_app;",
+        f"ALTER DEFAULT PRIVILEGES FOR ROLE {db}_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {db}_app;",
+        f"ALTER DEFAULT PRIVILEGES FOR ROLE {db}_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {db}_app;",
+        "\\connect postgres",
+        "",
+    ]
+
+
 def render() -> str:
     out = ["-- 由 tools/dev/gen_local.py 根据子系统索引生成，请勿手改。", "-- 可选 Docker 引导环境：密码与账号名相同；共享开发环境不依赖本文件。", "",
            "CREATE ROLE outbox_relay LOGIN PASSWORD 'outbox_relay';", ""]
@@ -57,16 +74,40 @@ def render() -> str:
             f"-- {name}（{lang}，{unit}）",
             f"CREATE ROLE {db}_owner LOGIN PASSWORD '{db}_owner';",
             f"CREATE ROLE {db}_app LOGIN PASSWORD '{db}_app' NOBYPASSRLS;",
-            f"CREATE DATABASE {db} OWNER {db}_owner;",
-            f"REVOKE ALL ON DATABASE {db} FROM PUBLIC;",
-            f"GRANT CONNECT ON DATABASE {db} TO {db}_app, outbox_relay;",
-            f"\\connect {db}",
-            f"ALTER SCHEMA public OWNER TO {db}_owner;",
-            f"GRANT USAGE ON SCHEMA public TO {db}_app;",
-            f"ALTER DEFAULT PRIVILEGES FOR ROLE {db}_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {db}_app;",
-            f"ALTER DEFAULT PRIVILEGES FOR ROLE {db}_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {db}_app;",
-            "\\connect postgres",
-            "",
+            *database_bootstrap(db, restrict_public_schema=False),
+        ]
+    return "\n".join(out)
+
+
+def render_public() -> str:
+    role_flags = "NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+    out = [
+        "-- 由 tools/dev/gen_local.py 根据子系统索引生成，请勿手改。",
+        "-- 在公开数据面专用的新集群中从 postgres 数据库执行一次，启用 ON_ERROR_STOP。",
+        "-- 由凭据所有者另行建立角色登录凭据。公共检索库使用其独立的引导文件。",
+        "",
+        "\\set ON_ERROR_STOP on",
+        "DO $$",
+        "BEGIN",
+        "    IF current_database() <> 'postgres' OR EXISTS (",
+        "        SELECT 1 FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1')",
+        "    ) THEN",
+        "        RAISE EXCEPTION 'public data bootstrap requires a new dedicated PostgreSQL cluster';",
+        "    END IF;",
+        "END $$;",
+        "",
+        "REVOKE CONNECT ON DATABASE postgres, template1 FROM PUBLIC;",
+        f"CREATE ROLE outbox_relay {role_flags};",
+        "",
+    ]
+    for plane, name, lang, unit, db in rows():
+        if plane != "data_supply" or lang != "Python" or not db:
+            continue
+        out += [
+            f"-- {name}（{lang}，{unit}）",
+            f"CREATE ROLE {db}_owner {role_flags};",
+            f"CREATE ROLE {db}_app {role_flags};",
+            *database_bootstrap(db, restrict_public_schema=True),
         ]
     return "\n".join(out)
 
@@ -137,7 +178,7 @@ def main() -> int:
     if sys.argv[1:2] == ["topics"]:
         print("\n".join(topics()))
         return 0
-    outputs = {OUT: render(), REGISTRY: render_registry()}
+    outputs = {OUT: render(), PUBLIC_OUT: render_public(), REGISTRY: render_registry()}
     if "--check" in sys.argv:
         bad = [p for p, t in outputs.items() if not p.exists() or p.read_text(encoding="utf-8") != t]
         for p in bad:

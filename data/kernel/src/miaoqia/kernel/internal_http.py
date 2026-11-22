@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import re
 import socket
 import ssl
 import threading
@@ -274,12 +275,29 @@ class Server(ThreadingHTTPServer):
     request_queue_size = 32
 
     def __init__(
-        self, address, tls: TLS, delegations, identity, routes, *, timeout=5.0
+        self, address, tls: TLS, delegations, identity, routes, *, timeout=5.0, certificate_services=None
     ):
-        if not delegations or identity is None or not 0 < timeout <= 5:
+        if not 0 < timeout <= 5:
             raise ValueError("internal admission configuration required")
-        # Exact (peer, operation, purpose, principal). No implicit peer-wide delegation.
-        exact = frozenset(delegation(*d) for d in delegations)
+        if certificate_services is None:
+            if not delegations or identity is None:
+                raise ValueError("internal admission configuration required")
+            # Exact (peer, operation, purpose, principal). No implicit peer-wide delegation.
+            exact = frozenset(delegation(*d) for d in delegations)
+            self.certificate_services = None
+            self.peers = {d[0] for d in exact}
+        else:
+            if delegations or identity is not None or not certificate_services:
+                raise ValueError("certificate services require a dedicated listener")
+            operations = {operation for operation, _ in routes.values()}
+            entries = frozenset(certificate_services)
+            for certificate, operation in entries:
+                if (not re.fullmatch(r"spiffe://miaoqia/service/[a-z][a-z0-9-]{0,62}", certificate)
+                        or operation not in operations):
+                    raise ValueError("invalid certificate service delegation")
+            self.certificate_services = entries
+            self.peers = {certificate for certificate, _ in entries}
+            exact = frozenset()
         self.tls, self.delegations, self.identity, self.routes = (
             tls.context(server=True),
             exact,
@@ -312,9 +330,7 @@ class Server(ThreadingHTTPServer):
             # Handshakes share the same bounded worker pool as HTTP. A slow handshake
             # cannot serialize every accept or reach the HTTP parser before peer checks.
             secure = self.tls.wrap_socket(request, server_side=True)
-            secure.verified_peer = peer(
-                secure.getpeercert(), {d[0] for d in self.delegations}
-            )
+            secure.verified_peer = peer(secure.getpeercert(), self.peers)
             # Budget the entire HTTP exchange, including request line and headers.
             secure.request_deadline = time.monotonic() + self.timeout_budget
             timer = threading.Timer(self.timeout_budget, lambda: _interrupt(secure))
@@ -350,18 +366,26 @@ class Handler(BaseHTTPRequestHandler):
             if len(str(self.headers)) > 16384 or self.headers.get("Transfer-Encoding"):
                 raise ValueError("invalid headers")
             headers = self.headers.get_all("Miaoqia-Context", [])
-            if len(headers) != 1:
-                raise ValueError("invalid context")
-            # Context.decode is reused, with strict duplicate/depth checking before DTO validation.
-            h = headers[0]
-            if len(h) > 8192:
-                raise ValueError("context too large")
-            c = reqctx.Context.decode(h)
+            certificate = self.connection.verified_peer
+            grants = self.server.certificate_services
+            if grants is None:
+                if len(headers) != 1 or len(headers[0]) > 8192:
+                    raise ValueError("invalid context")
+                c = reqctx.Context.decode(headers[0])
+            else:
+                if headers:
+                    raise ValueError("certificate service does not accept a caller context")
+                c = reqctx.service(certificate.rsplit("/", 1)[-1])
             route = self.server.routes.get(self.path)
             if route is None:
                 raise Problem(404)
             op, fn = route
-            interactive = admit(c, self.connection.verified_peer, op, self.server.delegations)
+            if grants is None:
+                interactive = admit(c, certificate, op, self.server.delegations)
+            else:
+                if (certificate, op) not in grants:
+                    raise Problem(403)
+                interactive = False
             context = reqctx.use(c)
             context.__enter__()
             if interactive:

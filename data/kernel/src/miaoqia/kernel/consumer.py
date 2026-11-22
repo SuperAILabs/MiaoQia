@@ -13,7 +13,7 @@ from confluent_kafka import KafkaError, Message, Producer
 from opentelemetry import trace
 from sqlalchemy import Connection, text
 
-from . import outbox, reqctx, tracing, payloads
+from . import kafka, outbox, reqctx, tracing, payloads
 from .db import Database
 
 log = logging.getLogger("miaoqia.kernel.consumer")
@@ -53,13 +53,17 @@ class Consumer:
         self._stop = True
 
     def run(self) -> None:
+        connection = kafka.connection_config(self.brokers)
         self._validators = {name: payloads.validator(name, self.payload_schemas) for name in self.handlers}
         dlq = self.dead_letter or f"dlq.{self.subsystem}"
-        kc = KafkaConsumer({"bootstrap.servers": self.brokers, "group.id": self.name, "enable.auto.commit": False,
-                            "auto.offset.reset": "earliest"})
-        prod = Producer({"bootstrap.servers": self.brokers, "enable.idempotence": True})
-        kc.subscribe(self.topics)
+        kc = kafka.open_client(
+            KafkaConsumer,
+            {**connection, "group.id": self.name, "enable.auto.commit": False, "auto.offset.reset": "earliest"},
+        )
+        prod = None
         try:
+            prod = kafka.open_client(Producer, {**connection, "enable.idempotence": True})
+            kc.subscribe(self.topics)
             while not self._stop:
                 msg = kc.poll(0.2)
                 if msg is None:
@@ -72,7 +76,8 @@ class Consumer:
                 kc.commit(message=msg, asynchronous=False)
         finally:
             kc.close()
-            prod.flush(10)
+            if prod is not None:
+                prod.flush(10)
 
     def _handle(self, msg: Message, prod: Producer, dlq: str) -> None:
         try:

@@ -14,6 +14,12 @@ channels:
         $ref: '#/components/messages/probeEmitted'
       fetchCompleted:
         $ref: '#/components/messages/fetchCompleted'
+      fetchCompletedV2:
+        $ref: '#/components/messages/fetchCompletedV2'
+      fetchCompletedV3:
+        $ref: '#/components/messages/fetchCompletedV3'
+      fetchCompletedV4:
+        $ref: '#/components/messages/fetchCompletedV4'
       fetchFailed:
         $ref: '#/components/messages/fetchFailed'
       sourceHealthChanged:
@@ -48,7 +54,7 @@ components:
       x-fixtures-required: true
     fetchCompleted:
       name: acquisition.fetch.completed.v1
-      summary: 制品归档完成
+      summary: 存量制品归档事件，供历史消费
       payload:
         type: object
         additionalProperties: false
@@ -73,6 +79,297 @@ components:
         - content_hash
         - fetched_at
         - source_url
+      x-fixtures-required: true
+    fetchCompletedV2:
+      name: acquisition.fetch.completed.v2
+      summary: 来源公告的正文和已取得附件的观察已归档
+      payload:
+        type: object
+        additionalProperties: false
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          notice_key:
+            type: string
+            minLength: 1
+            maxLength: 512
+          observation_version:
+            type: integer
+            minimum: 1
+          legacy_artifact:
+            description: 采集方按稳定部件键查得的单一存量地址及原件哈希，供证据方校验历史引用
+            type: object
+            additionalProperties: false
+            required: [source_url, content_hash]
+            properties:
+              source_url:
+                type: string
+                format: uri
+              content_hash:
+                $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+          attachments:
+            type: array
+            maxItems: 16
+            description: 来源声明的附件及其当前取得状态。正文归档不受待补采附件阻断。
+            items:
+              type: object
+              additionalProperties: false
+              required: [part_key, required, status]
+              properties:
+                part_key:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                required:
+                  type: boolean
+                status:
+                  enum: [available, pending]
+                artifact_ref:
+                  $ref: ../../schemas/common/event-types.schema.json#/$defs/artifact_ref
+                content_hash:
+                  $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+                media_type:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                size_bytes:
+                  type: integer
+                  minimum: 1
+                  maximum: 20971520
+              if:
+                properties:
+                  status:
+                    const: available
+              then:
+                required: [artifact_ref, content_hash, media_type, size_bytes]
+              else:
+                not:
+                  anyOf:
+                  - required: [artifact_ref]
+                  - required: [content_hash]
+                  - required: [media_type]
+                  - required: [size_bytes]
+          artifact_ref:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/artifact_ref
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          content_hash:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+          fetched_at:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+          source_url:
+            type: string
+            format: uri
+        required:
+        - source_id
+        - notice_key
+        - observation_version
+        - artifact_ref
+        - rights_tags
+        - content_hash
+        - fetched_at
+        - source_url
+      x-fixtures-required: true
+    fetchCompletedV3:
+      name: acquisition.fetch.completed.v3
+      summary: 共享原件中的一条独立公告观察已归档
+      description: 每个事件对应一个来源内公告及其观察版本。信封 subject 为完整原件引用，Kafka 分区键为 source_id|notice_key。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - source_id
+        - notice_key
+        - observation_version
+        - artifact_ref
+        - rights_tags
+        - content_hash
+        - fetched_at
+        - source_url
+        - selector
+        - record_digest
+        - published_on
+        - media_type
+        - size_bytes
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          notice_key: &stable_source_key
+            type: string
+            minLength: 1
+            maxLength: 512
+            not:
+              anyOf:
+              - pattern: '^https?://|[\x00-\x1f\x7f]'
+              - pattern: "^[ \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]|[ \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]$"
+            description: 来源内稳定的原站标识。
+          observation_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          artifact_ref:
+            type: string
+            pattern: &raw_artifact_ref '^raw/[0-9a-f]{64}$'
+            description: 完整原站响应的私有对象键，十六进制摘要与 content_hash 对应。
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          content_hash:
+            description: 完整原站响应字节的 SHA-256。
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+          fetched_at:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+          source_url:
+            type: string
+            format: uri
+            description: 原站定位地址。
+          selector:
+            type: object
+            additionalProperties: false
+            required: [kind, version, group_key, notice_key]
+            description: 消费者按类型和版本，在完整原件的权威组内以原站公告键选中唯一一条公告，并核对该键与载荷 notice_key 一致。
+            properties:
+              kind:
+                type: string
+                pattern: '^[a-z][a-z0-9_-]{0,95}$'
+              version:
+                type: integer
+                minimum: 1
+                maximum: 2147483647
+                description: 同时确定成员选择规则和成员摘要的规范化规则。
+              group_key: *stable_source_key
+              notice_key: *stable_source_key
+          record_digest:
+            description: 按 selector.kind 和 selector.version 对选中公告的日期、标题、类型、正文及声明的语义字段计算的 SHA-256。外层包装、成员排列和其他成员不参与计算。
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+          published_on: &notice_published_on
+            type: string
+            format: date
+            description: 选中公告由原站声明的当地日历日期。
+          media_type: &raw_media_type
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: 完整原站响应的媒体类型。
+          size_bytes: &raw_size_bytes
+            type: integer
+            minimum: 1
+            maximum: 20971520
+            description: 完整原站响应的字节数。
+      x-fixtures-required: true
+    fetchCompletedV4:
+      name: acquisition.fetch.completed.v4
+      summary: 同次浏览器正文原件和惰性投影的公告观察已归档
+      description: 信封 subject 为完整原件引用，Kafka 分区键为 source_id|notice_key。已配置来源尚未发布此版本。
+      payload:
+        type: object
+        additionalProperties: false
+        required:
+        - source_id
+        - notice_key
+        - observation_version
+        - artifact_ref
+        - rights_tags
+        - content_hash
+        - fetched_at
+        - source_url
+        - published_on
+        - media_type
+        - size_bytes
+        - content_encoding
+        - projection
+        - binding
+        - binding_digest
+        properties:
+          source_id:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/source_id
+          notice_key: *stable_source_key
+          observation_version:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/version
+          artifact_ref:
+            type: string
+            pattern: *raw_artifact_ref
+            maxLength: 68
+            description: 完整原站响应的私有对象键。
+          rights_tags:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/rights_tags
+          content_hash: &browser_sha256
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+            maxLength: 71
+          fetched_at:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/occurred_at
+          source_url:
+            type: string
+            format: uri
+            pattern: &browser_https_url >-
+              ^[Hh][Tt][Tt][Pp][Ss]://([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?\.?|\[[0-9A-Fa-f:.]+\])(:[0-9]{1,5})?(/([A-Za-z0-9._~!$&'()*+,;=:@/-]|%[0-9A-Fa-f]{2})*)?(\?([A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*)?$
+            not:
+              pattern: '[\x00-\x20\x7f]'
+            description: 公告的 HTTPS 发布者定位地址。运行时通过来源 SPI 规范化并仅保留发布者声明为公开的查询参数。
+          published_on: *notice_published_on
+          media_type: *raw_media_type
+          size_bytes: *raw_size_bytes
+          content_encoding:
+            type: string
+            const: identity
+          projection:
+            type: object
+            additionalProperties: false
+            required: [artifact_ref, content_hash, size_bytes, media_type, version]
+            properties:
+              artifact_ref:
+                type: string
+                pattern: '^projection/[0-9a-f]{64}$'
+                maxLength: 75
+              content_hash: *browser_sha256
+              size_bytes:
+                type: integer
+                minimum: 1
+                maximum: 1048576
+              media_type:
+                type: string
+                const: application/json
+              version: &browser_version
+                type: integer
+                const: 1
+          binding:
+            type: object
+            additionalProperties: false
+            required: [version, run_id, attempt_id, list_attempt_id, task_key, request_url, request_fingerprint, navigation_id, frame_id, loader_id, request_id]
+            properties:
+              version: *browser_version
+              run_id: &positive_int64
+                type: integer
+                minimum: 1
+                maximum: 9223372036854775807
+              attempt_id: *positive_int64
+              list_attempt_id: *positive_int64
+              task_key:
+                type: string
+                pattern: '^[0-9a-f]{64}$'
+                maxLength: 64
+              request_url:
+                type: string
+                format: uri
+                pattern: *browser_https_url
+                not:
+                  pattern: '[?\x00-\x20\x7f]'
+                description: 实际请求的 HTTPS 来源与路径，省略查询参数、片段及用户信息。
+              request_fingerprint: *browser_sha256
+              navigation_id: &browser_token
+                type: string
+                minLength: 1
+                maxLength: 128
+                not:
+                  pattern: '[^A-Za-z0-9_.:-]'
+              frame_id: *browser_token
+              loader_id: *browser_token
+              request_id: *browser_token
+          binding_digest:
+            $ref: ../../schemas/common/event-types.schema.json#/$defs/sha256
+            maxLength: 71
+            description: 采集方计算的版本化绑定摘要。运行时核对摘要及两份对象描述的一致性。
       x-fixtures-required: true
     fetchFailed:
       name: acquisition.fetch.failed.v1

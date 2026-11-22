@@ -2,9 +2,16 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 from .document import Document
+
+
+def evidence_links(facts: list[dict]) -> Iterator[tuple[str, str]]:
+    """Yield the location and reference ID of each evidence link in the facts."""
+    for path, node in _nodes(facts):
+        if "evidence_ref" in node:
+            yield path, node["evidence_ref"]
 
 
 def validate_extraction(doc: Document, facts: list[dict], evidence: dict[str, dict], *,
@@ -72,8 +79,8 @@ def validate_extraction(doc: Document, facts: list[dict], evidence: dict[str, di
         except (KeyError, IndexError, TypeError, ValueError, AssertionError):
             errors.append(f"evidence/{key}: 证据归属、定位或哈希不符")
 
-    for path, node in _nodes(facts):
-        if "evidence_ref" in node and node["evidence_ref"] not in valid_refs:
+    for path, ref in evidence_links(facts):
+        if ref not in valid_refs:
             errors.append(f"{path}: 证据引用不存在或无效")
     if not errors and semantic_validator is not None:
         result = semantic_validator(doc, facts, evidence)

@@ -90,6 +90,2366 @@
       }
     },
     {
+      "event": "acquisition.fetch.completed.v2",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "artifact_ref": "raw/0000000000000000000000000000000000000000000000000000000000000000",
+        "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "fetched_at": "2026-11-11T08:00:00Z",
+        "notice_key": "15a09741-1789-4d86-96e2-b67972e7f5a8:3",
+        "observation_version": 1,
+        "rights_tags": [
+          "public:anhui-ggzy-construction"
+        ],
+        "source_id": "anhui-ggzy-construction",
+        "source_url": "https://ggzy.ah.gov.cn/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=3"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v2",
+      "name": "待补采附件与正文观察并存",
+      "valid": true,
+      "value": {
+        "artifact_ref": "raw/0000000000000000000000000000000000000000000000000000000000000000",
+        "attachments": [
+          {
+            "part_key": "award-detail",
+            "required": true,
+            "status": "pending"
+          }
+        ],
+        "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "fetched_at": "2026-11-11T08:00:00Z",
+        "notice_key": "15a09741-1789-4d86-96e2-b67972e7f5a8:3",
+        "observation_version": 1,
+        "rights_tags": [
+          "public:anhui-ggzy-construction"
+        ],
+        "source_id": "anhui-ggzy-construction",
+        "source_url": "https://ggzy.ah.gov.cn/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=3"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v2",
+      "name": "标记取得的附件必须有完整原件校验值",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/0000000000000000000000000000000000000000000000000000000000000000",
+        "attachments": [
+          {
+            "part_key": "award-detail",
+            "required": true,
+            "status": "available"
+          }
+        ],
+        "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "fetched_at": "2026-11-11T08:00:00Z",
+        "notice_key": "15a09741-1789-4d86-96e2-b67972e7f5a8:3",
+        "observation_version": 1,
+        "rights_tags": [
+          "public:anhui-ggzy-construction"
+        ],
+        "source_id": "anhui-ggzy-construction",
+        "source_url": "https://ggzy.ah.gov.cn/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=3"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v2",
+      "name": "缺少来源公告键",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/0000000000000000000000000000000000000000000000000000000000000000",
+        "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "fetched_at": "2026-11-11T08:00:00Z",
+        "observation_version": 1,
+        "rights_tags": [
+          "public:anhui-ggzy-construction"
+        ],
+        "source_id": "anhui-ggzy-construction",
+        "source_url": "https://ggzy.ah.gov.cn/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=3"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v2",
+      "name": "观察序号必须为正数",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/0000000000000000000000000000000000000000000000000000000000000000",
+        "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "fetched_at": "2026-11-11T08:00:00Z",
+        "notice_key": "15a09741-1789-4d86-96e2-b67972e7f5a8:3",
+        "observation_version": 0,
+        "rights_tags": [
+          "public:anhui-ggzy-construction"
+        ],
+        "source_id": "anhui-ggzy-construction",
+        "source_url": "https://ggzy.ah.gov.cn/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=3"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v2",
+      "name": "拒绝未声明字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/0000000000000000000000000000000000000000000000000000000000000000",
+        "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "fetched_at": "2026-11-11T08:00:00Z",
+        "notice_key": "15a09741-1789-4d86-96e2-b67972e7f5a8:3",
+        "observation_version": 1,
+        "rights_tags": [
+          "public:anhui-ggzy-construction"
+        ],
+        "source_id": "anhui-ggzy-construction",
+        "source_url": "https://ggzy.ah.gov.cn/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=3",
+        "tenant_secret": "should-not-pass"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "同一原件中的另一条公告拥有独立键摘要和日期",
+      "valid": true,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-b",
+        "observation_version": 1,
+        "published_on": "2026-11-19",
+        "record_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-b",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝缺少成员选择器",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝以数组位置选择成员",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "index": 0,
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝缺少权威组键",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝以 URL 作为权威组键",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "https://example.org/group",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝组键中的 DEL 控制字符",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝公告键中的 C0 控制字符",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice\t-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝成员键边缘的 Unicode 空白",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a ",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝空成员键",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝非法选择器类型",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "JSON pointer",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝非正选择器版本",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 0
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝非正观察版本",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 0,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝签名链接形式的原件引用",
+      "valid": false,
+      "value": {
+        "artifact_ref": "https://example.org/raw?signature=fixture",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝非法完整原件哈希",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1234",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝非法成员摘要",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:1234",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝缺少选择与摘要规则版本",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a"
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝将时间戳用作公告发布日期",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18T00:00:00+08:00",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝不存在的日历日期",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-02-30",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝缺少完整原件媒体类型",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝超过抓取上限的原件字节数",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 20971521,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝旧制品引用",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "legacy_artifact": {
+          "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "source_url": "https://example.org/notice"
+        },
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v3",
+      "name": "拒绝将附件作为成员选择分支",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "attachments": [
+          {
+            "part_key": "notice-a",
+            "required": true,
+            "status": "pending"
+          }
+        ],
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "application/json",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-18",
+        "record_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rights_tags": [
+          "public:hunan-ggzy-construction"
+        ],
+        "selector": {
+          "group_key": "section-a",
+          "kind": "hunan-section-notice",
+          "notice_key": "notice-a",
+          "version": 1
+        },
+        "size_bytes": 2048,
+        "source_id": "hunan-ggzy-construction",
+        "source_url": "https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "base",
+      "valid": true,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "接受无查询的发布者定位和绑定上界",
+      "valid": true,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 9223372036854775807,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 1048576,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 20971520,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice/notice-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "接受发布者定位中的编码查询值",
+      "valid": true,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice%3Aa&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝缺少惰性投影",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝缺少同次绑定",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝缺少绑定摘要",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝未声明的顶层字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "headers": {
+          "cookie": "fixture"
+        },
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝互换原件和投影角色",
+      "valid": false,
+      "value": {
+        "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝以投影键作为原件",
+      "valid": false,
+      "value": {
+        "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝以原件键作为投影",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝压缩正文原件",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "gzip",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝投影内的额外字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "body": "fixture",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝缺少投影大小",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝空投影",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 0,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝超限投影",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 1048577,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝非 JSON 投影",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "text/html",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝字符串投影版本",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": "1"
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝非法投影哈希",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝带用户信息的发布者定位",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://user:password@example.org/notice?id=notice-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝带片段的发布者定位",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a#section"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝非 HTTPS 发布者定位",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "http://example.org/notice?id=notice-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝没有主机的发布者定位",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https:///notice?id=notice-a"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝发布者定位中的无效百分号编码",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice%ZZa"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝绑定内的额外字段",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "cookie": "fixture",
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝缺少列表尝试标识",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝未知绑定版本",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 2
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝零值尝试标识",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 0,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝超出 int64 的运行标识",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 9223372036854775808,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝带摘要前缀的任务键",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝带查询的实际请求地址",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice?id=notice-a",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝带片段的实际请求地址",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice#section",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝带用户信息的实际请求地址",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://user@example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝非 HTTPS 实际请求地址",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "http://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝非 ASCII 浏览器标识",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "frame-测试",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝空浏览器标识",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝浏览器标识中的换行",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "request-1\n",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝超长浏览器标识",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝非法请求指纹",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
+      "event": "acquisition.fetch.completed.v4",
+      "name": "拒绝非法绑定摘要",
+      "valid": false,
+      "value": {
+        "artifact_ref": "raw/1111111111111111111111111111111111111111111111111111111111111111",
+        "binding": {
+          "attempt_id": 3,
+          "frame_id": "fixture_frame:1",
+          "list_attempt_id": 2,
+          "loader_id": "fixture.loader-1",
+          "navigation_id": "fixture-nav.1",
+          "request_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "request_id": "fixture:request_1",
+          "request_url": "https://example.org/api/notice",
+          "run_id": 1,
+          "task_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": 1
+        },
+        "binding_digest": "sha256:cccc",
+        "content_encoding": "identity",
+        "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "fetched_at": "2026-11-20T02:00:00Z",
+        "media_type": "text/plain",
+        "notice_key": "notice-a",
+        "observation_version": 1,
+        "projection": {
+          "artifact_ref": "projection/2222222222222222222222222222222222222222222222222222222222222222",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "media_type": "application/json",
+          "size_bytes": 512,
+          "version": 1
+        },
+        "published_on": "2026-11-19",
+        "rights_tags": [
+          "public:fixture-browser"
+        ],
+        "size_bytes": 2048,
+        "source_id": "fixture-browser",
+        "source_url": "https://example.org/notice?id=notice-a&planId=plan-a&channel=public"
+      }
+    },
+    {
       "event": "acquisition.fetch.failed.v1",
       "name": "base",
       "valid": true,
@@ -5980,6 +8340,579 @@
         "content_hash",
         "fetched_at",
         "source_url"
+      ],
+      "type": "object"
+    },
+    "acquisition.fetch.completed.v2": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "原始制品稳定对象键/引用，不是短时签名URL",
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventArtifactRef"
+        },
+        "attachments": {
+          "description": "来源声明的附件及其当前取得状态。正文归档不受待补采附件阻断。",
+          "items": {
+            "additionalProperties": false,
+            "else": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "artifact_ref"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "content_hash"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "media_type"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "size_bytes"
+                    ]
+                  }
+                ]
+              }
+            },
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "available"
+                }
+              }
+            },
+            "properties": {
+              "artifact_ref": {
+                "description": "原始制品稳定对象键/引用，不是短时签名URL",
+                "minLength": 1,
+                "type": "string",
+                "x-type-name": "EventArtifactRef"
+              },
+              "content_hash": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string",
+                "x-type-name": "EventSha256"
+              },
+              "media_type": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "part_key": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "size_bytes": {
+                "maximum": 20971520,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "available",
+                  "pending"
+                ]
+              }
+            },
+            "required": [
+              "part_key",
+              "required",
+              "status"
+            ],
+            "then": {
+              "required": [
+                "artifact_ref",
+                "content_hash",
+                "media_type",
+                "size_bytes"
+              ]
+            },
+            "type": "object"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "content_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "legacy_artifact": {
+          "additionalProperties": false,
+          "description": "采集方按稳定部件键查得的单一存量地址及原件哈希，供证据方校验历史引用",
+          "properties": {
+            "content_hash": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string",
+              "x-type-name": "EventSha256"
+            },
+            "source_url": {
+              "format": "uri",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source_url",
+            "content_hash"
+          ],
+          "type": "object"
+        },
+        "notice_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "observation_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "notice_key",
+        "observation_version",
+        "artifact_ref",
+        "rights_tags",
+        "content_hash",
+        "fetched_at",
+        "source_url"
+      ],
+      "type": "object"
+    },
+    "acquisition.fetch.completed.v3": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "完整原站响应的私有对象键，十六进制摘要与 content_hash 对应。",
+          "pattern": "^raw/[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "content_hash": {
+          "description": "完整原站响应字节的 SHA-256。",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "media_type": {
+          "description": "完整原站响应的媒体类型。",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "notice_key": {
+          "description": "来源内稳定的原站标识。",
+          "maxLength": 512,
+          "minLength": 1,
+          "not": {
+            "anyOf": [
+              {
+                "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
+              },
+              {
+                "pattern": "^[    -     　]|[    -     　]$"
+              }
+            ]
+          },
+          "type": "string"
+        },
+        "observation_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "published_on": {
+          "description": "选中公告由原站声明的当地日历日期。",
+          "format": "date",
+          "type": "string"
+        },
+        "record_digest": {
+          "description": "按 selector.kind 和 selector.version 对选中公告的日期、标题、类型、正文及声明的语义字段计算的 SHA-256。外层包装、成员排列和其他成员不参与计算。",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "selector": {
+          "additionalProperties": false,
+          "description": "消费者按类型和版本，在完整原件的权威组内以原站公告键选中唯一一条公告，并核对该键与载荷 notice_key 一致。",
+          "properties": {
+            "group_key": {
+              "description": "来源内稳定的原站标识。",
+              "maxLength": 512,
+              "minLength": 1,
+              "not": {
+                "anyOf": [
+                  {
+                    "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
+                  },
+                  {
+                    "pattern": "^[    -     　]|[    -     　]$"
+                  }
+                ]
+              },
+              "type": "string"
+            },
+            "kind": {
+              "pattern": "^[a-z][a-z0-9_-]{0,95}$",
+              "type": "string"
+            },
+            "notice_key": {
+              "description": "来源内稳定的原站标识。",
+              "maxLength": 512,
+              "minLength": 1,
+              "not": {
+                "anyOf": [
+                  {
+                    "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
+                  },
+                  {
+                    "pattern": "^[    -     　]|[    -     　]$"
+                  }
+                ]
+              },
+              "type": "string"
+            },
+            "version": {
+              "description": "同时确定成员选择规则和成员摘要的规范化规则。",
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "version",
+            "group_key",
+            "notice_key"
+          ],
+          "type": "object"
+        },
+        "size_bytes": {
+          "description": "完整原站响应的字节数。",
+          "maximum": 20971520,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "description": "原站定位地址。",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "notice_key",
+        "observation_version",
+        "artifact_ref",
+        "rights_tags",
+        "content_hash",
+        "fetched_at",
+        "source_url",
+        "selector",
+        "record_digest",
+        "published_on",
+        "media_type",
+        "size_bytes"
+      ],
+      "type": "object"
+    },
+    "acquisition.fetch.completed.v4": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "description": "完整原站响应的私有对象键。",
+          "maxLength": 68,
+          "pattern": "^raw/[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "binding": {
+          "additionalProperties": false,
+          "properties": {
+            "attempt_id": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "frame_id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "not": {
+                "pattern": "[^A-Za-z0-9_.:-]"
+              },
+              "type": "string"
+            },
+            "list_attempt_id": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "loader_id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "not": {
+                "pattern": "[^A-Za-z0-9_.:-]"
+              },
+              "type": "string"
+            },
+            "navigation_id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "not": {
+                "pattern": "[^A-Za-z0-9_.:-]"
+              },
+              "type": "string"
+            },
+            "request_fingerprint": {
+              "maxLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string",
+              "x-type-name": "EventSha256"
+            },
+            "request_id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "not": {
+                "pattern": "[^A-Za-z0-9_.:-]"
+              },
+              "type": "string"
+            },
+            "request_url": {
+              "description": "实际请求的 HTTPS 来源与路径，省略查询参数、片段及用户信息。",
+              "format": "uri",
+              "not": {
+                "pattern": "[?\\x00-\\x20\\x7f]"
+              },
+              "pattern": "^[Hh][Tt][Tt][Pp][Ss]://([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?\\.?|\\[[0-9A-Fa-f:.]+\\])(:[0-9]{1,5})?(/([A-Za-z0-9._~!$&'()*+,;=:@/-]|%[0-9A-Fa-f]{2})*)?(\\?([A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*)?$",
+              "type": "string"
+            },
+            "run_id": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "task_key": {
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "version": {
+              "const": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "run_id",
+            "attempt_id",
+            "list_attempt_id",
+            "task_key",
+            "request_url",
+            "request_fingerprint",
+            "navigation_id",
+            "frame_id",
+            "loader_id",
+            "request_id"
+          ],
+          "type": "object"
+        },
+        "binding_digest": {
+          "description": "采集方计算的版本化绑定摘要。运行时核对摘要及两份对象描述的一致性。",
+          "maxLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "content_encoding": {
+          "const": "identity",
+          "type": "string"
+        },
+        "content_hash": {
+          "maxLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string",
+          "x-type-name": "EventSha256"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "type": "string",
+          "x-type-name": "EventOccurredAt"
+        },
+        "media_type": {
+          "description": "完整原站响应的媒体类型。",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "notice_key": {
+          "description": "来源内稳定的原站标识。",
+          "maxLength": 512,
+          "minLength": 1,
+          "not": {
+            "anyOf": [
+              {
+                "pattern": "^https?://|[\\x00-\\x1f\\x7f]"
+              },
+              {
+                "pattern": "^[    -     　]|[    -     　]$"
+              }
+            ]
+          },
+          "type": "string"
+        },
+        "observation_version": {
+          "minimum": 1,
+          "type": "integer",
+          "x-type-name": "EventVersion"
+        },
+        "projection": {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_ref": {
+              "maxLength": 75,
+              "pattern": "^projection/[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "content_hash": {
+              "maxLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string",
+              "x-type-name": "EventSha256"
+            },
+            "media_type": {
+              "const": "application/json",
+              "type": "string"
+            },
+            "size_bytes": {
+              "maximum": 1048576,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "version": {
+              "const": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "artifact_ref",
+            "content_hash",
+            "size_bytes",
+            "media_type",
+            "version"
+          ],
+          "type": "object"
+        },
+        "published_on": {
+          "description": "选中公告由原站声明的当地日历日期。",
+          "format": "date",
+          "type": "string"
+        },
+        "rights_tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-type-name": "EventRightsTags"
+        },
+        "size_bytes": {
+          "description": "完整原站响应的字节数。",
+          "maximum": 20971520,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-type-name": "EventSourceId"
+        },
+        "source_url": {
+          "description": "公告的 HTTPS 发布者定位地址。运行时通过来源 SPI 规范化并仅保留发布者声明为公开的查询参数。",
+          "format": "uri",
+          "not": {
+            "pattern": "[\\x00-\\x20\\x7f]"
+          },
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]://([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?\\.?|\\[[0-9A-Fa-f:.]+\\])(:[0-9]{1,5})?(/([A-Za-z0-9._~!$&'()*+,;=:@/-]|%[0-9A-Fa-f]{2})*)?(\\?([A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "notice_key",
+        "observation_version",
+        "artifact_ref",
+        "rights_tags",
+        "content_hash",
+        "fetched_at",
+        "source_url",
+        "published_on",
+        "media_type",
+        "size_bytes",
+        "content_encoding",
+        "projection",
+        "binding",
+        "binding_digest"
       ],
       "type": "object"
     },

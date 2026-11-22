@@ -43,6 +43,357 @@ fixtures:
     - op: add
       path: /tenant_secret
       value: should-not-pass
+- event: acquisition.fetch.completed.v2
+  base:
+    source_id: anhui-ggzy-construction
+    notice_key: 15a09741-1789-4d86-96e2-b67972e7f5a8:3
+    observation_version: 1
+    artifact_ref: raw/0000000000000000000000000000000000000000000000000000000000000000
+    rights_tags:
+    - public:anhui-ggzy-construction
+    content_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    fetched_at: '2026-11-11T08:00:00Z'
+    source_url: https://ggzy.ah.gov.cn/jsgc/newDetail?guid=15a09741-1789-4d86-96e2-b67972e7f5a8&tenderProjectType=1&bulletinNature=3
+  cases:
+  - name: 待补采附件与正文观察并存
+    valid: true
+    patch:
+    - op: add
+      path: /attachments
+      value:
+      - {part_key: award-detail, required: true, status: pending}
+  - name: 标记取得的附件必须有完整原件校验值
+    valid: false
+    patch:
+    - op: add
+      path: /attachments
+      value:
+      - {part_key: award-detail, required: true, status: available}
+  - name: 缺少来源公告键
+    valid: false
+    patch:
+    - op: remove
+      path: /notice_key
+  - name: 观察序号必须为正数
+    valid: false
+    patch:
+    - op: replace
+      path: /observation_version
+      value: 0
+  - name: 拒绝未声明字段
+    valid: false
+    patch:
+    - op: add
+      path: /tenant_secret
+      value: should-not-pass
+- event: acquisition.fetch.completed.v3
+  base:
+    source_id: hunan-ggzy-construction
+    notice_key: notice-a
+    observation_version: 1
+    artifact_ref: raw/1111111111111111111111111111111111111111111111111111111111111111
+    rights_tags:
+    - public:hunan-ggzy-construction
+    content_hash: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    fetched_at: '2026-11-20T02:00:00Z'
+    source_url: https://example.org/tradeApi/constructionNotice/getBySectionId?sectionId=section-a
+    selector:
+      kind: hunan-section-notice
+      version: 1
+      group_key: section-a
+      notice_key: notice-a
+    record_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    published_on: '2026-11-18'
+    media_type: application/json
+    size_bytes: 2048
+  cases:
+  - name: 同一原件中的另一条公告拥有独立键摘要和日期
+    valid: true
+    patch:
+    - {op: replace, path: /notice_key, value: notice-b}
+    - {op: replace, path: /selector/notice_key, value: notice-b}
+    - {op: replace, path: /record_digest, value: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'}
+    - {op: replace, path: /published_on, value: '2026-11-19'}
+  - name: 拒绝缺少成员选择器
+    valid: false
+    patch:
+    - {op: remove, path: /selector}
+  - name: 拒绝以数组位置选择成员
+    valid: false
+    patch:
+    - {op: add, path: /selector/index, value: 0}
+  - name: 拒绝缺少权威组键
+    valid: false
+    patch:
+    - {op: remove, path: /selector/group_key}
+  - name: 拒绝以 URL 作为权威组键
+    valid: false
+    patch:
+    - {op: replace, path: /selector/group_key, value: 'https://example.org/group'}
+  - name: 拒绝组键中的 DEL 控制字符
+    valid: false
+    patch:
+    - {op: replace, path: /selector/group_key, value: "section\x7f-a"}
+  - name: 拒绝公告键中的 C0 控制字符
+    valid: false
+    patch:
+    - {op: replace, path: /notice_key, value: "notice\t-a"}
+  - name: 拒绝成员键边缘的 Unicode 空白
+    valid: false
+    patch:
+    - {op: replace, path: /selector/notice_key, value: "notice-a\u00a0"}
+  - name: 拒绝空成员键
+    valid: false
+    patch:
+    - {op: replace, path: /selector/notice_key, value: ''}
+  - name: 拒绝非法选择器类型
+    valid: false
+    patch:
+    - {op: replace, path: /selector/kind, value: 'JSON pointer'}
+  - name: 拒绝非正选择器版本
+    valid: false
+    patch:
+    - {op: replace, path: /selector/version, value: 0}
+  - name: 拒绝非正观察版本
+    valid: false
+    patch:
+    - {op: replace, path: /observation_version, value: 0}
+  - name: 拒绝签名链接形式的原件引用
+    valid: false
+    patch:
+    - {op: replace, path: /artifact_ref, value: 'https://example.org/raw?signature=fixture'}
+  - name: 拒绝非法完整原件哈希
+    valid: false
+    patch:
+    - {op: replace, path: /content_hash, value: 'sha256:1234'}
+  - name: 拒绝非法成员摘要
+    valid: false
+    patch:
+    - {op: replace, path: /record_digest, value: 'sha256:1234'}
+  - name: 拒绝缺少选择与摘要规则版本
+    valid: false
+    patch:
+    - {op: remove, path: /selector/version}
+  - name: 拒绝将时间戳用作公告发布日期
+    valid: false
+    patch:
+    - {op: replace, path: /published_on, value: '2026-11-18T00:00:00+08:00'}
+  - name: 拒绝不存在的日历日期
+    valid: false
+    patch:
+    - {op: replace, path: /published_on, value: '2026-02-30'}
+  - name: 拒绝缺少完整原件媒体类型
+    valid: false
+    patch:
+    - {op: remove, path: /media_type}
+  - name: 拒绝超过抓取上限的原件字节数
+    valid: false
+    patch:
+    - {op: replace, path: /size_bytes, value: 20971521}
+  - name: 拒绝旧制品引用
+    valid: false
+    patch:
+    - op: add
+      path: /legacy_artifact
+      value:
+        source_url: https://example.org/notice
+        content_hash: sha256:1111111111111111111111111111111111111111111111111111111111111111
+  - name: 拒绝将附件作为成员选择分支
+    valid: false
+    patch:
+    - {op: add, path: /attachments, value: [{part_key: notice-a, required: true, status: pending}]}
+- event: acquisition.fetch.completed.v4
+  base:
+    source_id: fixture-browser
+    notice_key: notice-a
+    observation_version: 1
+    artifact_ref: raw/1111111111111111111111111111111111111111111111111111111111111111
+    rights_tags: ['public:fixture-browser']
+    content_hash: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    fetched_at: '2026-11-20T02:00:00Z'
+    source_url: https://example.org/notice?id=notice-a&planId=plan-a&channel=public
+    published_on: '2026-11-19'
+    media_type: text/plain
+    size_bytes: 2048
+    content_encoding: identity
+    projection:
+      artifact_ref: projection/2222222222222222222222222222222222222222222222222222222222222222
+      content_hash: sha256:2222222222222222222222222222222222222222222222222222222222222222
+      size_bytes: 512
+      media_type: application/json
+      version: 1
+    binding:
+      version: 1
+      run_id: 1
+      attempt_id: 3
+      list_attempt_id: 2
+      task_key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      request_url: https://example.org/api/notice
+      request_fingerprint: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      navigation_id: fixture-nav.1
+      frame_id: fixture_frame:1
+      loader_id: fixture.loader-1
+      request_id: fixture:request_1
+    binding_digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  cases:
+  - name: 接受无查询的发布者定位和绑定上界
+    valid: true
+    patch:
+    - {op: replace, path: /source_url, value: 'https://example.org/notice/notice-a'}
+    - {op: replace, path: /binding/run_id, value: 9223372036854775807}
+    - {op: replace, path: /size_bytes, value: 20971520}
+    - {op: replace, path: /projection/size_bytes, value: 1048576}
+  - name: 接受发布者定位中的编码查询值
+    valid: true
+    patch:
+    - {op: replace, path: /source_url, value: 'https://example.org/notice?id=notice%3Aa&channel=public'}
+  - name: 拒绝缺少惰性投影
+    valid: false
+    patch:
+    - {op: remove, path: /projection}
+  - name: 拒绝缺少同次绑定
+    valid: false
+    patch:
+    - {op: remove, path: /binding}
+  - name: 拒绝缺少绑定摘要
+    valid: false
+    patch:
+    - {op: remove, path: /binding_digest}
+  - name: 拒绝未声明的顶层字段
+    valid: false
+    patch:
+    - {op: add, path: /headers, value: {cookie: fixture}}
+  - name: 拒绝互换原件和投影角色
+    valid: false
+    patch:
+    - {op: replace, path: /artifact_ref, value: 'projection/2222222222222222222222222222222222222222222222222222222222222222'}
+    - {op: replace, path: /projection/artifact_ref, value: 'raw/1111111111111111111111111111111111111111111111111111111111111111'}
+  - name: 拒绝以投影键作为原件
+    valid: false
+    patch:
+    - {op: replace, path: /artifact_ref, value: 'projection/2222222222222222222222222222222222222222222222222222222222222222'}
+  - name: 拒绝以原件键作为投影
+    valid: false
+    patch:
+    - {op: replace, path: /projection/artifact_ref, value: 'raw/1111111111111111111111111111111111111111111111111111111111111111'}
+  - name: 拒绝压缩正文原件
+    valid: false
+    patch:
+    - {op: replace, path: /content_encoding, value: gzip}
+  - name: 拒绝投影内的额外字段
+    valid: false
+    patch:
+    - {op: add, path: /projection/body, value: fixture}
+  - name: 拒绝缺少投影大小
+    valid: false
+    patch:
+    - {op: remove, path: /projection/size_bytes}
+  - name: 拒绝空投影
+    valid: false
+    patch:
+    - {op: replace, path: /projection/size_bytes, value: 0}
+  - name: 拒绝超限投影
+    valid: false
+    patch:
+    - {op: replace, path: /projection/size_bytes, value: 1048577}
+  - name: 拒绝非 JSON 投影
+    valid: false
+    patch:
+    - {op: replace, path: /projection/media_type, value: text/html}
+  - name: 拒绝字符串投影版本
+    valid: false
+    patch:
+    - {op: replace, path: /projection/version, value: '1'}
+  - name: 拒绝非法投影哈希
+    valid: false
+    patch:
+    - {op: replace, path: /projection/content_hash, value: 'sha256:2222'}
+  - name: 拒绝带用户信息的发布者定位
+    valid: false
+    patch:
+    - {op: replace, path: /source_url, value: 'https://user:password@example.org/notice?id=notice-a'}
+  - name: 拒绝带片段的发布者定位
+    valid: false
+    patch:
+    - {op: replace, path: /source_url, value: 'https://example.org/notice?id=notice-a#section'}
+  - name: 拒绝非 HTTPS 发布者定位
+    valid: false
+    patch:
+    - {op: replace, path: /source_url, value: 'http://example.org/notice?id=notice-a'}
+  - name: 拒绝没有主机的发布者定位
+    valid: false
+    patch:
+    - {op: replace, path: /source_url, value: 'https:///notice?id=notice-a'}
+  - name: 拒绝发布者定位中的无效百分号编码
+    valid: false
+    patch:
+    - {op: replace, path: /source_url, value: 'https://example.org/notice?id=notice%ZZa'}
+  - name: 拒绝绑定内的额外字段
+    valid: false
+    patch:
+    - {op: add, path: /binding/cookie, value: fixture}
+  - name: 拒绝缺少列表尝试标识
+    valid: false
+    patch:
+    - {op: remove, path: /binding/list_attempt_id}
+  - name: 拒绝未知绑定版本
+    valid: false
+    patch:
+    - {op: replace, path: /binding/version, value: 2}
+  - name: 拒绝零值尝试标识
+    valid: false
+    patch:
+    - {op: replace, path: /binding/attempt_id, value: 0}
+  - name: 拒绝超出 int64 的运行标识
+    valid: false
+    patch:
+    - {op: replace, path: /binding/run_id, value: 9223372036854775808}
+  - name: 拒绝带摘要前缀的任务键
+    valid: false
+    patch:
+    - {op: replace, path: /binding/task_key, value: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+  - name: 拒绝带查询的实际请求地址
+    valid: false
+    patch:
+    - {op: replace, path: /binding/request_url, value: 'https://example.org/api/notice?id=notice-a'}
+  - name: 拒绝带片段的实际请求地址
+    valid: false
+    patch:
+    - {op: replace, path: /binding/request_url, value: 'https://example.org/api/notice#section'}
+  - name: 拒绝带用户信息的实际请求地址
+    valid: false
+    patch:
+    - {op: replace, path: /binding/request_url, value: 'https://user@example.org/api/notice'}
+  - name: 拒绝非 HTTPS 实际请求地址
+    valid: false
+    patch:
+    - {op: replace, path: /binding/request_url, value: 'http://example.org/api/notice'}
+  - name: 拒绝非 ASCII 浏览器标识
+    valid: false
+    patch:
+    - {op: replace, path: /binding/frame_id, value: 'frame-测试'}
+  - name: 拒绝空浏览器标识
+    valid: false
+    patch:
+    - {op: replace, path: /binding/navigation_id, value: ''}
+  - name: 拒绝浏览器标识中的换行
+    valid: false
+    patch:
+    - {op: replace, path: /binding/request_id, value: "request-1\n"}
+  - name: 拒绝超长浏览器标识
+    valid: false
+    patch:
+    - op: replace
+      path: /binding/loader_id
+      value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: 拒绝非法请求指纹
+    valid: false
+    patch:
+    - {op: replace, path: /binding/request_fingerprint, value: 'sha256:bbbb'}
+  - name: 拒绝非法绑定摘要
+    valid: false
+    patch:
+    - {op: replace, path: /binding_digest, value: 'sha256:cccc'}
 - event: acquisition.fetch.failed.v1
   base:
     source_id: fixture-value

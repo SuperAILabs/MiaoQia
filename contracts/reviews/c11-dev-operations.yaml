@@ -1,0 +1,446 @@
+schema_version: 1
+control: C11
+stage: development_continuous_operation
+status: partial
+gate_closed: false
+related_gate: M1-P7
+acceptance_reference: docs/03-architecture/07-deployment-topology.md#12-运行恢复与升级验收立项清单-c11
+operator_runbook: deploy/vps/data-plane/recovery.md
+drill:
+  started_at_utc: "2026-11-20T03:39:06Z"
+  finished_at_utc: "2026-11-20T03:42:04Z"
+  host:
+    designation: overseas_shared_test_host
+    designation_basis: Host identity, network registration and facility checks are kept in the local operator record.
+    mainland_placement_verified: false
+    source_and_restore_destination_on_same_physical_vps: true
+    new_vps_restore_evidence: pending
+    persistent_installation_modified: false
+    scope: Disposable resources on the existing shared test VPS outside mainland China.
+  isolation:
+    container_engine: Podman 5.8.2 rootless
+    architecture: linux/amd64
+    dedicated_container_storage: true
+    internal_test_network: true
+    host_published_ports: 0
+    synthetic_input_only: true
+    shared_environment_credentials_used_by_services: false
+    real_notifications_sent: false
+    cleanup: passed
+    cleanup_scope: Isolated containers, network, volumes, checkpoint, dependency environment, and image store.
+versions:
+  source:
+    git_base: 7ac59a18504bb0aedf068328de078489f243f8b9
+    type: allowlisted_dirty_worktree_snapshot
+    file_count: 464
+    archive_sha256: 2c280122ef601ee6a2356c48c84b0e90111453cdb1ee91dc2b3e7338b1ede8ee
+    file_manifest_sha256: f615077d4329610b812d8700da8f0acd3cc5fc6a0680f26d1fc66a87d4d655b1
+    uv_lock_sha256: bc28516b5545af2d38f4121a3c66496bc6120a1f33788ee2024b4823e3b17152
+    acquisition_alembic_head: "0017"
+  python: 3.12.12
+  uv: 0.9.30
+  images:
+    postgres_baseline:
+      ref: docker.io/library/postgres:17.6
+      source_digest: sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+      platform_manifest_digest: sha256:b86568d3e0fe1dfaeff52714f9da36f206a30e4c49131b82bf96982d78627409
+      config_digest: sha256:50903ccdcab597707a1f61c7ae016a06b0b548da53a6f7ad716d56b072bedba0
+    postgres_candidate:
+      ref: docker.io/library/postgres:17.7
+      source_digest: sha256:030da09481c3876b71a7e49738a932e1c18c398201a1e4ccfdbff1e5a541215b
+      platform_manifest_digest: sha256:030da09481c3876b71a7e49738a932e1c18c398201a1e4ccfdbff1e5a541215b
+      config_digest: sha256:6c2f8e0ad2949b4e100456f138b1184fe58cb2010cd7a9721008abb87f501458
+    s3:
+      ref: docker.io/chrislusf/seaweedfs:4.54
+      source_digest: sha256:4b42c212543a0acd4c0e675215ecdcaf62a186ef98def76c7e12701871222d15
+      platform_manifest_digest: sha256:e7d4b80af9bd49b2630a60ac6fbb7ffb620ac6a2c501f689c22a71b9f89f0203
+      config_digest: sha256:d2dd0e2e16a2c0749be2a38eb3bda5620b9b740da3abbc877090b66c2fd9f0e4
+    kafka:
+      ref: docker.io/apache/kafka:4.1.0
+      source_digest: sha256:bff074a5d0051dbc0bbbcd25b045bb1fe84833ec0d3c7c965d1797dd289ec88f
+      platform_manifest_digest: sha256:bce21a1a56707320ce239d743143bf4359ba45da27d31a5236f2169001eec751
+      config_digest: sha256:a183a690a3a69ad7fadf3881bdb9ac7f926790d1249352c0ca4150718dfb295f
+    python_runner:
+      ref: ghcr.io/astral-sh/uv:python3.12-bookworm
+      source_digest: sha256:85d4cb1afa769a7338e095b927bee941cf5ec92266c7424b3f6c0f2748567248
+      platform_manifest_digest: sha256:9aa60c50016c0485636ab9a830246a6ef3399aa4a8bab3d17ef4a2358fba2ca7
+      config_digest: sha256:ad1dae1e1b3cd770b34a868304c2eb72c6e8c44f807417454ef92e1fb808cf7d
+checks:
+  postgres_restore:
+    status: passed
+    target: fresh_cluster_and_volume_same_vps
+    backup_sha256: 1ee7a61fe6235190e890541a16e5a48179b5558643b2187f20ac4675ef2a5e52
+    source_and_target_fingerprint_sha256: 36ba4c0f15502828842e37efc5c8bd6b678a5e71d27844775ba6b6c776e88755
+    method: Verified full custom-format dump after removing the source cluster and volume. Restored in one transaction to an empty database. Compared sorted fixture INSERT and sequence lines.
+    scope: One synthetic acquisition database. Cluster-wide roles and PITR were outside this drill.
+    five_database_local_precheck:
+      status: passed
+      target: Separate disposable PostgreSQL 18 clusters on the developer workstation.
+      databases: [acq, evd, dom, ent, sea_public]
+      method: Exported custom-format dumps and reviewed role definitions without passwords, rejected altered backup bytes, restored the five empty databases with ownership and ACLs, and compared selected rows and privileges after detaching the dumps and restarting the restore cluster.
+      log: /private/tmp/mq-pg-public.Pfawqr/final.log
+      scope: Synthetic database-only precheck. No off-host media, object estate, production credentials or independent VPS evidence.
+  original_object_restore:
+    status: passed
+    target: fresh_seaweedfs_instance_and_volume_same_vps
+    observations: 3
+    completion_events: 3
+    unique_originals: 2
+    objects:
+      - sha256: 258e948cc31be1f73ef9358bd07165692d000e81db575d3a304953d7fb72a2dc
+        bytes: 19
+      - sha256: 526938af892ad938886c860a7d07f92678816e9340093563b266ed7d5dd3bb09
+        bytes: 19
+    method: Exported independent copies of the original bytes and manifests from source S3. Removed the source service and volume. Restored original bytes using FrozenBatches, confirmed the repeat returned already_present, recreated target S3 on its own volume, and verified application and S3 reads without the backup bytes mounted.
+    authorization: Synthetic fixture authorizer.
+    scope: One stable fixture notice key through A/B/A, with three observation versions and two content-addressed originals. Discovery objects, attachments, and a full estate backup were outside this drill.
+    independent_s3_profile_local:
+      target: Two disposable SeaweedFS services on different ports and data directories on one developer workstation, with PostgreSQL 18 and synthetic original bytes.
+      result: The frozen CLI restored individual and grouped originals using the backup endpoint's read-only profile and the primary endpoint's conditional-write identity.
+      access_controls: The backup accepted reads by its reader, rejected its PUT and DELETE with HTTP 403, and rejected the primary credential with HTTP 403.
+      compatibility: The two CLI restore cases also passed using the existing single-endpoint configuration and separate buckets.
+      suite: 39 passed
+      receipt: /private/tmp/mq-readonly-backup.493ks4ae/test.log
+      same_endpoint_receipt: /private/tmp/mq-frozen-same-endpoint-regression.log
+      scope: Local credential separation and object recovery. Persistent mainland storage and restoration on another host require field verification.
+    database_reference_reconciliation:
+      status: passed
+      verifier: deploy/vps/data-plane/verify_archive.py
+      local_target: Separate disposable PostgreSQL 18 clusters and distinct buckets in a disposable SeaweedFS instance.
+      local_method: Built actual browser acquisitions and independently ingested the archive pair. Verified live discovery and excluded expired rows. Reconciled all 16 reference categories across original storage, detached files, and the restored databases after restart.
+      local_negative_controls: [missing_projection, substituted_snapshot_id, exact_byte_drift_with_same_semantic_hash, corrupt_attachment, missing_group_original]
+      local_receipt_sha256: 9db34dd0062f00dab4c04fc9423e2a7692b1a7c9f8567c8a3cae5db5264d66fb
+      local_log: /private/tmp/mq-archive-recovery.P34wH5OX/proof.log
+      vps_target: Isolated candidate Python image and PostgreSQL 17.6 on the shared test VPS.
+      vps_candidate_snapshot_sha256: 0d34a06937c0ddf2c1b7d810823be57d141c914787d0a788afc20a0589178fef
+      vps_method: Matched the installed verifier checksum. Through read-only principals, verified synthetic raw and normalized objects, identical receipts for the two service selections, missing-object veto and no sensitive receipt fields. Verified cleanup independently.
+      vps_log: /private/tmp/mq-archive-release.17MSdBYl/archive.smoke.log
+      scope: Synthetic data and distinct scopes in disposable environments. Provider history, off-host recovery and the resident archive estate remain unverified.
+    bundle_manifest_local_precheck:
+      status: passed
+      verifier: deploy/vps/data-plane/backup_manifest.py
+      receipt: /private/tmp/mq-manifest-recheck.4qI1K4/manifest-receipt.json
+      receipt_sha256: f116e1ce314d45bf13165c9890f59580aa2721fd268ce8dd7c83dec1cefb30cf
+      fixture_tests: tests/e2e/test_backup_manifest.py
+      method: Bound five actual custom dumps checked by pg_restore, reviewed role output, metadata, exported SeaweedFS objects, a synthetic historical version, and identical receipts covering 16 reference categories. Verified the detached local copy with the independently supplied digest and rejected 11 missing, altered, unexpected, or unsafe entries and receipts.
+      scope: Disposable local PostgreSQL and SeaweedFS, synthetic metadata and version bytes. Off-host transport, approved provider history, and separate restoration VPS require field acceptance.
+      designated_vps_linux_smoke:
+        status: passed
+        scope: Private temporary directory with 12 synthetic files and the locally generated synthetic archive receipt.
+        method: Ran create and verify on the shared test VPS. Rejected a linked bundle root with a trailing slash and a FIFO, then verified removal of temporary files.
+        receipt: /private/tmp/mq-manifest-recheck.4qI1K4/linux-smoke.jsonl
+        receipt_sha256: c4f40bc79a75d41c916c4cbcbf5eb9bb6c4547e9914ccb11045302f1665a1199
+  failed_task_replay:
+    status: passed
+    fixtures:
+      - data/subsystems/acquisition/tests/test_fetch.py::test_killed_worker_leaves_durable_run_and_restart_recovers_original_window
+      - data/subsystems/acquisition/tests/test_fetch.py::test_postgres_commit_failure_replays_window_without_duplicate_observation
+    method: PostgreSQL-backed failed-task resumption after process kill and commit failure, with scripted publisher responses.
+  acquisition_coverage_reader:
+    status: passed
+    scope: Disposable local PostgreSQL and separately a candidate image and PostgreSQL 17.6 on the shared test VPS. Synthetic publisher data only.
+    role: mq_acq_coverage_ro
+    local_method: Applied the release grants and collected synthetic Anhui and grouped notice fixtures using the acquisition runtime. The operator CLI verified their listing and required-original states, and emitted explicit unknown rows for missing dates in a declared interval. The views and stdout omitted synthetic data outside the JSON allowlist. Rejected direct JSONB reads, writes, role switches, outbox, artifact and request URL columns, cross-database connections, owner DSN, wrong database, and extra role membership.
+    local_receipt: /private/tmp/mq-coverage-final-local.VTvpeP/receipt.json
+    local_receipt_sha256: 0f7d9b66847144ecca97c821d0e687448ff08ece5961cf1669e3dd1b699d076d
+    vps_snapshot_sha256: 62c0237216339dc2a54d98ca6bca01354de64f94306f9c057fce001f7e1598e1
+    vps_image_digest: sha256:c3257649ce248dd677363620cfab820bd4b162127782895d8ef042f5da4e7074
+    vps_method: Ran the installed CLI under the scoped reader. Found all 40 catalog IDs, preserved a synthetic blocked state, and checked explicit unknown dates. Missing DSN, owner DSN and nine SQL boundary negatives failed as expected. Independently verified isolated storage removal.
+    vps_receipt: /private/tmp/mq-coverage-final-vps.Uy2FgS/coverage.smoke.log
+    vps_receipt_sha256: f04208c9af84716c38eb8eb5eccb4a40afba4450330eb36e6e9c52440de0fda9
+    backfill_regression: 752 acquisition and procurement tests passed against disposable PostgreSQL and SeaweedFS. Undated rows and stale grouped members retain backfill gaps. The collector retries unverified manifests and the report exposes missing dates.
+    day_settlement:
+      scope: Synthetic publisher responses, disposable PostgreSQL 17.6 on the shared test VPS, five regression cases.
+      fixtures:
+        - data/subsystems/acquisition/tests/test_coverage.py::test_backfill_keeps_undated_gap_until_same_original_is_linked_to_the_day
+        - data/subsystems/acquisition/tests/test_coverage.py::test_day_settlement_requires_persisted_list_receipt
+        - data/subsystems/acquisition/tests/test_coverage.py::test_backfill_retry_rechecks_unverified_attachment_manifest
+        - data/subsystems/acquisition/tests/test_coverage.py::test_stale_group_members_do_not_settle_required_originals
+      method: Rechecked unchanged original bytes after the publisher supplied and corrected a date. Preserved the old observation and reused the original. Both manual and backfill settlement retained a gap for a missing discovery receipt and closed it after a verified retry.
+      receipt: /private/tmp/mq-day-final.qkmoeyKh/run.OLYGyhCN/vps.log
+      receipt_sha256: b912f8653950fb236a400f714c518643132560bf89f0b1f8f779626a6e6ef9c8
+      cleanup: Independent SSH readback confirmed removal of the temporary containers, network and directory.
+    pending: Resident database credential and actual per-source 30-day coverage.
+  list_original_retention:
+    status: partial
+    scope: Application expiry and version-specific verification exercised on disposable SeaweedFS 4.54 locally and on the shared test VPS. Resident-provider lifecycle timing remains unverified.
+    verifier: deploy/vps/data-plane/verify_list_retention.py
+    fixtures:
+      - data/subsystems/acquisition/tests/test_fetch.py
+      - data/kernel/tests/test_objectstore.py
+      - tests/e2e/test_list_retention.py
+    method: Verified filesystem removal with a retained discovery receipt, as well as S3 prefix scoping. Ordinary removal on a versioned bucket created a delete marker and left older bytes readable by their pinned IDs. The read-only verifier rejected retained versions and markers. After explicit fixture cleanup it required current and pinned reads to be missing and checked two long-lived controls. The fixture also checked the neighboring key.
+    local_receipt: /private/tmp/mq-retention-cli.3zpuD1/receipt.json
+    local_receipt_sha256: 09546d02da5f6cba77203a5e47c9cb5871f8196b8b213e6b8c9dde1abb9d9aa4
+    independent_reviewer_receipt: /private/tmp/mq-seaweed-retention.iOmJXJ3O/receipt.json
+    independent_reviewer_receipt_sha256: 3a31278097b118fa83db1c04c24e0d59d357706ced481a0c949430c365ee1b84
+    vps_snapshot_sha256: 9a0be76241839449b09fde39dc367ccab231521de776a28b157f47df84de5298
+    vps_image_digest: sha256:03185fb42f443e66887fa618e01e26a7af9633a22b4132b75e5922cab09bdb19
+    vps_receipt: /private/tmp/mq-retention-vps.elUxkm/retention.smoke.log
+    vps_receipt_sha256: fdb7e5011c20a6afdefcc37dee4b42d497bc3ccb4e6fdb54d3aeadb63a7f0d39
+    vps_cleanup: S3 container, network and candidate storage removed with independent SSH readback.
+    lifecycle_configuration_readback:
+      scope: Disposable loopback SeaweedFS 4.54 versioned bucket with synthetic configuration.
+      observed: Exact readback of discovery-prefix rules for current expiration at day 30, noncurrent version expiration after one day, and expired delete marker cleanup. Bucket and server removed after configuration verification.
+      receipt: /private/tmp/mq-provider-lifecycle.0Xiru4K6/receipt.json
+      receipt_sha256: 0bb7cb1b39c39dd8b62df08ffdc208f2662563d18ea98030b296edb832fe259d
+      unverified: Execution and timing of the lifecycle rules. The fixture rules establish configuration round-trip support for this provider version.
+    pending: On the approved target provider, use a disposable prefix with the resident bucket policy. Compare checksums before expiry and use paginated version listing and version-specific reads after the retention period and configured processing interval. Check that the discovery prefix has no retained bytes or delete markers and that long-lived originals remain readable.
+  outbox_and_consumer:
+    status: passed
+    scope: Isolated development fixtures with PostgreSQL, Kafka and S3. One browser observation and one populated partition.
+    vps_dead_letter_fixture: data/kernel/tests/test_kernel.py::test_outbox_consumer_dedupe_and_dead_letter
+    relay_recovery: The Go relay was stopped after broker acknowledgment and before PostgreSQL could acknowledge the outbox update. Its replacement emitted the same event at offsets 0 and 1 with matching event IDs, headers and bytes.
+    consumer_rewind: The real evidence.live group committed 1, then 2. The isolated group was stopped, its broker offset reset to 0 and read back, then the restarted consumer committed 2.
+    unchanged_after_replay: One inbox identity, one observation and snapshot, one extraction revision, three evidence references and three S3 objects. The replay produced zero dead-letter records.
+    replay_snapshot_sha256: 5272825b38bc5424d266da7e2eb3fc53bc8a36c5c444bd9096294251382e9151
+    parent_recheck:
+      runtime: PostgreSQL 18.7, Kafka 4.1.0 and SeaweedFS 4.54 on a disposable loopback stack
+      log: /private/tmp/mq-c11-relay.kRBKcorq/current/run.HqhhHlvs/drill.log
+      durable_state_sha256: 91e78b6a8b905658be382cab3c79ebc3a4384691efd99b7496e0b3ba21470e21
+      cleanup: passed
+    rerun: bash /private/tmp/mq-c11-relay.kRBKcorq/current/run.sh
+  infrastructure_upgrade_rollback:
+    status: passed
+    upgraded: PostgreSQL 17.6 to 17.7 using the restored clone volume
+    rollback: Stopped the upgraded instance and restored the pre-upgrade verified dump to a fresh PostgreSQL 17.6 cluster and volume.
+    rollback_result: Fixture row fingerprint matched the checkpoint, and a write made only on 17.7 was absent.
+    scope: Single isolated synthetic database and same-major upgrade. The rollback intentionally discards post-checkpoint writes.
+  application_deployment_unit_upgrade_rollback:
+    status: passed
+    scope: One actual acq-browser process role on the shared test VPS with isolated PostgreSQL, SeaweedFS and synthetic TLS publisher responses. The two builds were isolated acceptance candidates.
+    role_manifest_sha256: d5051005939dd9e3b36976983d13fb7ef889adc8c506930717b23344c560c776
+    baseline_archive_sha256: 297bce679d3a09a69e3bd88a0977d83588eaeb2d76d9ab1a9d71ef51d4c72c88
+    candidate_archive_sha256: 89eb47537a1d7d92756b3552ec9f951392e331055f523b8527d5ea308a9f119a
+    method: Started the baseline on 0016, ran the candidate on migrated 0017, then restored the baseline and its adapter while retaining the 0017 database. All three processes stopped cleanly. Each stage settled one plan and added one observation and one distinct V4 completion event.
+    retained_on_rollback: All previously committed database records and exact S3 object bytes, including the candidate's browser list binding. The original artifacts in the three observations were A, B and A.
+    log: /private/tmp/mq-acq-unit.7mQx2V4k/run.Wc8jAVPp/drill.log
+    cleanup: passed
+    schema_history_guard:
+      decision: Keep the compatible 0017 database in an application rollback. Physical recovery to 0016 uses a verified pre-upgrade backup.
+      verification: The current migration rejects downgrade when a committed browser list receipt exists. Empty rollback and upgrade still pass.
+      test: data/subsystems/acquisition/tests/test_browser_observations.py::test_migration_refuses_to_drop_browser_discovery_history
+  chromium_egress:
+    status: partial
+    scope: Disposable rootless Podman, Chromium and a synthetic TLS publisher on the shared test VPS.
+    runbook: deploy/vps/data-plane/browser/README.md
+    builder_receipt: deploy/vps/data-plane/browser/receipt.jsonl
+    parent_receipt: /private/tmp/mq-browser-parent-final.Yh5iWFt0/receipt.jsonl
+    parent_receipt_sha256: 42c6ca1ebd7ccab4a0502b5d5e3b2411e06eababd023034266efb3c7e931f480
+    passed: Kernel pin and unrelated network denial, one same-navigation TLS original and projection, both certificate negatives, and fixture cleanup.
+    failed: One unapproved popup and one unapproved WebSocket request reached the pinned origin. Neither produced an archived pair.
+    unverified: All-target outbound request enforcement, live DNS change handling, external controller failure teardown and publisher admission.
+    context_guard_recheck:
+      status: passed
+      scope: Eighteen named synthetic Chromium contexts. All-target assurance and real-source admission remain unverified.
+      builder_receipt: deploy/vps/data-plane/browser/receipt-context-exact-popup.jsonl
+      parent_receipt: /private/tmp/mq-context-parent.I0WgB1zv/receipt.jsonl
+      parent_receipt_sha256: 30146e2fa6691d7079ab508c9d55c51dc958d3f435e06809a2e3b10415d1a0a7
+      observed: Context routing blocked an exact permitted address from a popup and closed WebSocket before connection. Both had zero unauthorized arrivals. The legitimate TLS byte pair and cleanup passed.
+    shipped_runtime_guard:
+      status: passed
+      scope: Twenty synthetic cases executed through the Acquisition runtime renderer using actual Chromium on the development VPS.
+      receipt: deploy/vps/data-plane/browser/receipt-runtime-context.jsonl
+      receipt_sha256: 653735197c039e7367a71d61095e8f9f58aafad593e877fce8b8f2cb35e9c8d8
+      observed: Exact allowed navigation and body URLs from popup targets, plus WebSocket, did not reach the fixture. A preexisting provider routing veto remained effective. The legitimate two-request TLS capture and cleanup passed.
+      local_focused_tests: 167 passed
+      unverified: All-target browser traffic, production deployment provider and publisher admission.
+    external_controller_lifecycle:
+      status: passed
+      scope: Isolated synthetic TCP client and peer on the shared test VPS. The supervisor owned the Linux controller child. The drill did not control a production Chromium provider.
+      runbook: deploy/vps/data-plane/browser/lifecycle/README.md
+      builder_receipt: deploy/vps/data-plane/browser/lifecycle/receipt-verified.jsonl
+      parent_receipt: /private/tmp/mq-lifecycle-parent.aVYpNAgc/receipt.jsonl
+      parent_receipt_sha256: a5ba2674549f8a90f48361124a8523a471e492123ff48bfad92ade029d544d95
+      observed: A separate process sent SIGKILL while the supervisor was already watching the owned child. The supervisor observed exit and revoked the pinned TCP capability in 155 ms. The previously connected socket and a new connection were blocked while the fixture containers were alive. Kernel lease expiry also blocked a new connection without explicit revoke.
+      cleanup: Verified client removal, namespace unlink, network and storage cleanup, and independent SSH readback of this run.
+      unverified: Production controller and Chromium task wiring, supervisor death cleanup with a still-running browser, and real publisher traffic.
+    chromium_controller_composition:
+      status: passed
+      scope: Actual Acquisition Chromium renderer, synthetic TLS publisher, and independently signaled fixture-owned controller on the shared test VPS.
+      command: bash deploy/vps/data-plane/browser/verify-confinement.sh --lifecycle --ssh "$MQ_FIXTURE_SSH_HELPER"
+      builder_receipt: deploy/vps/data-plane/browser/receipt-chromium-lifecycle.jsonl
+      builder_receipt_sha256: ad8157ca8a9654eb5f86f0c14f178dd5d5072f42af61cf78400acfb37c857c7f
+      parent_receipt: /private/tmp/mq-composed-parent.3axq1ljy/composition.jsonl
+      parent_receipt_sha256: d6e6989131681a718389cb691ed854c4b0e018db210472c7ff936da123caf114
+      observed: Two permitted TLS GETs matched the publisher peer, original bytes, and DOM projection. The supervisor revoked the lease 162 ms after observing controller exit. The signal send to observation upper bound was 664 microseconds. With the same Chromium process and capture context alive, the established socket sent packets that were dropped, a fresh connection attempt was dropped, and the independently healthy publisher logged zero additional browser accepts or requests.
+      cleanup: Independently matched all staged input hashes and verified removal of both temporary directories after container, namespace, network, and storage cleanup.
+      unverified: Exact controller exit timestamp, all-target traffic, live DNS changes, production provider wiring, and publisher admission.
+    local_chromium_stdio:
+      status: passed
+      scope: Playwright 1.60.0, separate run-driver and Chromium processes, private Unix socket, and loopback synthetic HTTP publisher on the developer workstation.
+      fixture: deploy/vps/data-plane/browser/test_provider_ipc.py
+      fixture_sha256: 6ffa8ffabd77dfad3af001d99617a9f4c5fda24e98496d0036ef9e5d2645d996
+      observed: Seven tests passed in each of three fresh runs. Verified route veto, CDP and permit ordering, original byte and DOM pairing, WebSocket rejection, a mid-capture IPC disconnect with zero body arrivals, and teardown on setup error or truncated frames.
+      receipt: /private/tmp/mq-resident-phase.WzQIUEgz/ipc-final-local.log
+      receipt_sha256: 047d7c0f35ba8bc9cb14baa431ea1e6f683beae67674ac5f10c8fd78e3310470
+      designated_vps_linux_smoke:
+        status: passed
+        scope: The exact fixture and cached-in-image Chromium in a disposable Linux Playwright image on the shared test VPS. The container had no network beyond loopback.
+        result: Seven tests passed with the locked Playwright version and fixture seccomp policy.
+        receipt: /private/tmp/mq-resident-phase.WzQIUEgz/linux-ipc.final.log
+        receipt_sha256: 32469d28b6f0c32ba883f2a96a5e1f1269d3f52454f727d59c4eecc650623f96
+        cleanup: Verified both staged fixture directories absent via a separate connection.
+      unverified: Linux supervisor peer identity and lease wiring, all-target egress, persistent acq-browser role, and real publisher admission.
+    authenticated_provider_fixture:
+      status: passed
+      scope: Synthetic publisher, separate rootless controller and Chromium containers, isolated store and pinned IPv4 TCP 443 on the shared test VPS.
+      command: bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-ipc --ssh "$MQ_FIXTURE_SSH_HELPER"
+      receipt: deploy/vps/data-plane/browser/receipt-provider-ipc.jsonl
+      receipt_sha256: ea95e5967852021a189f168d5742d8ce6bd30b01baad134befc562b34854a039
+      repeat_receipt: /private/tmp/mq-composition-ipc.QSaZqHQE/ipc-confirmed.jsonl
+      repeat_receipt_sha256: 02fc8d3da35befd94054535fe9f6ee425dd103c524300ee00b77c4273eca2098
+      observed: Authenticated the controller's effective IPC peer and kernel process identity before granting the lease. The actual renderer verified two TLS 1.3 GETs, distinct request IDs, a shared navigation and 18-byte raw and 185-byte projection hashes. A SIGKILL at the pending body permit produced zero body arrivals, a revoked lease and no remaining Chromium processes. The publisher passed a separate TLS health request.
+      linux_session_tests:
+        result: 17 passed on the shared test VPS with real Unix sockets and pidfds and synthetic leases and pipes.
+        receipt: /private/tmp/mq-composition-ipc.QSaZqHQE/linux-unit-reviewed.log
+        receipt_sha256: 47ef7499ef0524df1de0f6e0057fb699ea966c1e12b4f26bb2ee3c1832d828c4
+      selinux_scope:
+        observed: For an independent synthetic Unix client with matching UID and file mode, default Podman labeling yielded EACCES and disabling labeling for that disposable controller succeeded. The composed test uses that fixture-only controller setting and existing Chromium confinement.
+        receipt: /private/tmp/mq-composition-ipc.QSaZqHQE/selinux-ab-final.log
+        receipt_sha256: 98993f64a16484289bedb4a4b6affa161088e085f123ffbe8506ade938407727
+      cleanup: Matched input digests for both runs and independently verified removal of staged and runtime directories on the shared test VPS.
+      unverified: SELinux-enforced permanent controller binding, supervisor crash recovery, full browser egress, live DNS, and per-publisher admission. Role-level capture and storage use the separate authenticated_role_archive fixture.
+    authenticated_role_archive:
+      status: passed
+      scope: Actual mq-acquisition acq-browser process, synthetic TLS publisher and temporary PostgreSQL 17.6 and SeaweedFS 4.54 on the shared test VPS.
+      command: bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-role --ssh "$MQ_FIXTURE_SSH_HELPER"
+      receipt: deploy/vps/data-plane/browser/receipt-provider-role.jsonl
+      receipt_sha256: 3cc42fcafe6462671bf422b2455a035f159d96cb8447930c01ca5eec3f27e2e6
+      repeat_receipt: /private/tmp/mq-browser-role-ipc.CJblGEfP/role-repeat.jsonl
+      repeat_receipt_sha256: 00cff5ddc66233eee9885930cf96ecad4e6ce2091224b7842f6c4cc89276eede
+      observed: One materialized plan settled successfully after distinct supervised Chromium list and detail sessions. Independent publisher logs showed four permitted HTTPS GETs. A separate read-only verification checked a 64-byte list, 18-byte original, 185-byte projection, one stable-key observation, and exactly one pending acquisition.fetch.completed.v4 for the same plan. The persisted row specified a 30-day list lifetime. The role exited zero on SIGTERM.
+      isolation: Disposable internal nets, no host ports, distinct PostgreSQL owner and app identities, and no database or storage connection settings in the Chromium container. The synthetic role uses the same controller-only SELinux label exception as the IPC fixture.
+      ipc_regression_receipt: /private/tmp/mq-browser-role-ipc.CJblGEfP/ipc-final.jsonl
+      ipc_regression_receipt_sha256: c8489c0dab1dd3197c95cc126fb1593716318acbfe206138700705c7269ec7f5
+      cleanup: Verified matching source digests and removed both isolated stores. Independently checked all role and IPC fixture directories were absent on the shared test VPS.
+      unverified: Provider deletion after 30 days, persistent bindings and credentials, live sources and all-target browser egress. The separate same_capture_v4_ingest fixture covers Kafka delivery and replay of its own newly captured event.
+    same_capture_v4_ingest:
+      status: passed
+      scope: Actual Chromium and acq-browser, Go platform outbox-relay and mq-data data-consumer on the shared test VPS, with disposable PostgreSQL 17.6, SeaweedFS 4.54, Kafka 4.1.0 and a synthetic TLS publisher.
+      command: bash deploy/vps/data-plane/browser/verify-confinement.sh --provider-ingest --ssh "$MQ_FIXTURE_SSH_HELPER"
+      receipt: deploy/vps/data-plane/browser/receipt-provider-ingest.jsonl
+      receipt_sha256: 64989109aa7a9e0c76442a4015867020108b546048c4e431489a67cdbc4869b2
+      staged_context_sha256: 728e7a9c6b9f039c6531afec7c1762f7df072aacdc9d644724d9e0e4dcbba33d
+      platform_binary_sha256: 256cf5400fd5c744129de2b5c83bc7865d2cfb3e9478cd5ba0528c6227301bd5
+      capture: Two Chromium sessions settled one plan, read back the list, original and projection from S3 and fingerprinted the V4 outbox envelope before publication. Capture processes stopped before transport began.
+      delivery: V4 and source health change matched PostgreSQL outbox bytes, keys and CloudEvents headers at acquisition partition 0 offsets 0 and 1. The actual evidence.live group committed offset 2. There was one Evidence inbox and pending observation, zero normalized snapshots and zero DLQ records.
+      replay: The consumer and relay exited zero on SIGTERM. With the group empty, enabling parsing for the synthetic source and invoking mq-evidence-replay once produced one normalized snapshot linked to the same V4 and two archived objects. A second replay processed zero. The normalized object was read back from S3 and the snapshot, inbox and outbox stayed identical.
+      isolation: Private networks and no host ports. The fixture Kafka listener used plaintext. Database logins were dedicated to the disposable roles. SELinux labeling was disabled for the isolated archive and ingest role containers. Chromium retained its separate confinement.
+      corrections: The fixture verifies the expected health change as a second transport record. Broker readiness uses a private Kafka metadata probe and pending verification waits for a cold group coordinator within a bounded deadline.
+      cleanup: All 15 staged input digests matched current files or the independent Go build. The script confirmed zero containers and networks and removed its network namespace and temporary store. A separate SSH check confirmed all 14 input and work directories from the integration attempts and acquisition-only regression were absent.
+      unverified: Semantic extraction for live publishers, frozen delivery from this capture, resident broker authentication, permanent Chromium binding, provider expiry and sustained source coverage.
+  public_search_index_roles:
+    status: passed
+    scope: Disposable OpenSearch 3.9.0 and synthetic certificates on the shared test VPS. Persistent endpoint, real certificates, owner authority and source relevance require independent acceptance.
+    image_digest: sha256:84871c53f4d8ec5ecc9019d234951ef0c37ca60ced365c9db2ba96e4662daef2
+    provisioning_tool: deploy/platform/provision_public_opensearch.py
+    provisioning_tool_sha256: 7a784eda8ddfe52d84187468883678efc03c9c9e9b69acee1487901576857a71
+    method: Repeated explicit mappings for reader, writer and publisher. Verified cold and active alias read, projection and tombstone, PIT query, publish and rollback. Used a built Go client with real reader mTLS and a synthetic authority for pass and deny.
+    negatives: No client certificate, unmapped certificate, unrelated and adjacent index access, writer alias control and creation, reader write, bulk out-of-scope index and delete items, and runtime role management.
+    limit: OpenSearch authorizes publisher aliases by physical index, so the provisioned namespace has a dedicated cluster. Publisher credentials are held by the one-shot operator.
+    receipt_sha256: 9dd0bd4f90810725356c9e908c6af26a27815d6a45a7da653418e55362a38f84
+    receipt: /private/tmp/mq-opensearch-acl.Lm9nMUpV/matrix-final.log
+    cleanup: passed
+  resident_release_phases_and_boot:
+    status: partial
+    runbook: deploy/vps/data-plane/README.md
+    unit: deploy/vps/data-plane/miaoqia-data-plane-restart.service
+    fixture:
+      status: passed
+      scope: Docker Compose 5.3.1 config rendering and Podman 5.8.2 boot selection in an isolated rootless store on the shared test VPS. Only synthetic configuration and containers were used.
+      method: Rendered eight phase selections with only the selected role environment files, checked no default services and a missing selected file veto, and verified the systemd unit syntax. Executed its exact filters twice against the isolated store.
+      observed: Kept the active unless-stopped role and started a stopped eligible always-policy control. Excluded the never-started and deliberately stopped unless-stopped roles, the migration and coverage tasks, and an eligible container with another project label.
+      receipt: /private/tmp/mq-resident-phase.WzQIUEgz/receipt.pass.log
+      receipt_sha256: 7145a21ba4f653255cc1008f474f8bf74775175e30c967c52ca67fd65c858
+      cleanup: Verified all three temporary fixture directories absent via a separate connection.
+    compose_start:
+      status: passed
+      scope: Actual Docker Compose start against a private Podman API socket and isolated rootless store. Only the search-ingest role was selected, with a synthetic process command.
+      observed: The Compose-created role had the project label selected by the unit and the expected unless-stopped policy. The unit filters preserved an intentional stop.
+      receipt: /private/tmp/mq-resident-phase.WzQIUEgz/receipt.compose.log
+      receipt_sha256: b0c5ca64e8c509a868b276ff42f9496c3d99918a95507d148d0a6a438e4f4b70
+      cleanup: Verified removal of the dedicated container, network, API socket and store.
+    current_release:
+      status: passed
+      scope: Final Compose and systemd files on the shared test VPS. Tested only synthetic roles in isolated stores.
+      observed: Rendered ten service selections, including independent search worker slots and both slots together. Verified the unit's revised systemd syntax. Podman start returned failure when a fixture mount was absent and succeeded after its restoration.
+      receipt: /private/tmp/mq-resident-phase.WzQIUEgz/receipt.v2.log
+      receipt_sha256: 4eec0617b96d117ad33122d263d059fcc4f8bc19be7bb9946447facc1b25c840
+      worker_compose_smoke:
+        observed: Started the two worker services sequentially with different synthetic generations. Process identities stayed distinct, both matched the boot selector, and stopping one did not restart or replace it. A synthetic release path containing whitespace, a semicolon and a dollar sign was passed intact.
+        receipt: /private/tmp/mq-resident-phase.WzQIUEgz/receipt.workers.log
+        receipt_sha256: 3d3d67d9c5770402da27c47ef85097263c4b4c166e3f15dd145e328c6585fe80
+      cleanup: Verified both isolated fixture directories absent via a separate connection.
+      unverified: Actual systemd retry timing and host reboot, and two deployed search workers advancing journal positions through a real alias cutover.
+    resident_reboot:
+      status: pending
+      reason: Resident configuration, user unit activation and service readiness after a host reboot require field verification with the deployed endpoints and roles.
+      activation_check: Use a dedicated rootless release account and verify every container carrying the reserved project label against the release inventory before enabling the user unit.
+  alerts:
+    status: partial
+    thresholds_and_triggers: [source_interruption, queue_backlog, error_rate, dead_letter, outbox_backlog, disk_watermark]
+    probe: tools/dev/c11_alert_probe.py
+    verified_policy: null
+    synthetic_trigger_evidence:
+      fixture: tests/e2e/test_c11_alert_probe.py::test_c11_isolated_faults_and_recovery
+      scope: Real isolated PostgreSQL 18.7, Kafka 4.1.0 and a disposable macOS filesystem volume with synthetic inputs and test thresholds.
+      result: All six scoped faults triggered and cleared. Invalid and missing samples were reported as unavailable, and output excluded credential and source-body markers.
+      parent_log: /private/tmp/mq-rendered-list.jU9oFz/last-1.log
+    delivery_evidence: null
+  on_call_and_incident_response:
+    status: pending
+    accountable_roles: [platform_engineering_lead, data_lead_for_source_alerts]
+    named_on_call_operators: null
+    roster_location: null
+    escalation_route_and_runbook: null
+external_prerequisites:
+  - id: independent_vps_and_backup_target
+    owner_role: platform_engineering_lead
+    required: Authorize a separate restore VPS in the allowed residency region and an off-host backup destination. Verify PostgreSQL and original-object export, integrity, and recovery on that VPS.
+  - id: operations_ownership_and_alert_delivery
+    owner_roles: [platform_engineering_lead, data_lead_for_source_alerts]
+    required: Register named operators, ownership, escalation route and incident runbook. Configure dedicated read-only identities and deployment thresholds, then exercise the authorized alert route and operator response.
+  - id: persistent_mainland_rollout
+    owner_roles: [platform_engineering_lead, data_lead]
+    required: Supply durable storage, backup and index configuration and scoped credentials on the designated permanent VPS, plus per-source publication, retention and access admission for continuous collection.
+    latest_readback:
+      date: "2026-11-21"
+      scope: Inspected host systemd services, root-managed Podman containers, the operator release environment path and containers with the documented Compose project label on the shared test VPS.
+      shared_test_host_region: outside mainland China
+      native_services_seen: [postgresql-18]
+      miaoqia_public_services_seen: [postgres, kafka, keycloak, openfga, otel-collector]
+      data_plane_resident_jobs_started: false
+      documented_release_env_present: false
+      running_release_labeled_containers: 0
+  - id: related_m0_clean_host_reconstruction
+    owner_role: platform_engineering_lead
+    required: Record the separate M0-01 candidate clean-host reconstruction. The public stack uses a controlled environment file, approved Keycloak realm export, and Nginx origin TLS material.
+    reference: docs/05-delivery/10-vps-public-services.md
+  - id: production_acceptance
+    owner_role: platform_engineering_lead
+    required: Rehearse migration, rollback, failure and degraded operation in production-equivalent staging. Measure production RPO and RTO, index rebuild, and alert-to-response with active on-call coverage before cutover and by M4.
+evidence:
+  retention: Local private scratch reproduction bundle and logs. Remote test state and backup bytes were removed.
+  root: /private/tmp/mq-c11-evidence.Pi68OFUf
+  exact_source_archive: source.tar.gz
+  source_file_manifest: source-files.sha256
+  effective_command_and_configuration: [run.sh, prepare.sh, setup.sh, drill.sh, objects.py, cleanup.sh, connect.sh]
+  checksums: sha256sums.txt
+  host_cleanup_readback: cleanup-readback.log
+  repository_contract_check: mqc-check.log
+  invocation_scope: Use only the operator-authorized development VPS SSH target.
+  rerun: bash /private/tmp/mq-c11-evidence.Pi68OFUf/run.sh
+  final_run:
+    directory: run.jL6CD1a6
+    logs: [prepare.log, setup.log, drill.log, cleanup.log]
+    acquisition_fixture_result: 5 passed in 14.09s
+    kafka_fixture_result: 1 passed in 7.89s
+  initial_attempt:
+    drill_log: drill.log
+    image_and_dependency_logs: [prepare.log, setup.log]
+    s3_diagnostics: s3-initial.log
+    cleanup_log: initial-cleanup.log
+    acquisition_fixture_result: 3 passed, 2 failed
+    cause: SeaweedFS volume.max was set to 2. Server diagnostics showed volume allocation exhaustion on a second test bucket. The rerun uses 32 fixture volume slots with 64 MiB per volume.
+    remaining_results: The independent fresh PostgreSQL and S3 restore and PostgreSQL upgrade and rollback checks passed in the initial run.

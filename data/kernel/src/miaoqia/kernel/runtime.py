@@ -42,6 +42,14 @@ class Env:
         return os.environ.get(env_key(self.subsystem, key), "")
 
 
+@dataclass(frozen=True)
+class Worker:
+    """A long-lived process task that returns after its stop event is set."""
+
+    name: str
+    run: Callable[[threading.Event], None]
+
+
 @dataclass
 class Module:
     name: str
@@ -51,6 +59,7 @@ class Module:
     # Periodic jobs (kernel.scheduler); run only in roles whose roles.yaml entry sets jobs: true.
     jobs: Callable[[Env], list[scheduler.Job]] | None = None
     extra: dict = field(default_factory=dict)
+    workers: Callable[[Env], list[Worker]] | None = None
 
 
 def _deploy_dir() -> Path:
@@ -86,33 +95,48 @@ def run(unit: str, role: str, modules: list[Module]) -> None:
     brokers = os.environ.get("MIAOQIA_KAFKA_BROKERS", "")
     consumers: list[Consumer] = []
     jobs: list[scheduler.Job] = []
+    workers: list[Worker] = []
+    run_consumers = spec.get("consumers") is not False
     run_jobs = spec.get("jobs") is True
-    for m in modules:
-        if m.name not in want:
+    run_workers = spec.get("workers") is True
+    for module in modules:
+        if module.name not in want:
             continue
-        d = db.Database(os.environ[env_key(m.name, "DB_DSN")]) if m.database and (m.consumers or (run_jobs and m.jobs)) else None
-        env = Env(role=role, brokers=brokers, db=d, subsystem=m.name, data_scope=scopes[m.name], cell=spec.get("cell", ""))
-        if m.consumers:
-            consumers += m.consumers(env)
-        if run_jobs and m.jobs:
-            jobs += m.jobs(env)
+        consumer_factory = module.consumers if run_consumers else None
+        job_factory = module.jobs if run_jobs else None
+        worker_factory = module.workers if run_workers else None
+        if not (consumer_factory or job_factory or worker_factory):
+            continue
+        database = db.Database(os.environ[env_key(module.name, "DB_DSN")]) if module.database else None
+        env = Env(role=role, brokers=brokers, db=database, subsystem=module.name, data_scope=scopes[module.name],
+                  cell=spec.get("cell", ""))
+        if consumer_factory:
+            consumers.extend(consumer_factory(env))
+        if job_factory:
+            jobs.extend(job_factory(env))
+        if worker_factory:
+            workers.extend(worker_factory(env))
     runner = scheduler.Runner(jobs) if jobs else None
-    log.info("进程角色启动 unit=%s role=%s subsystems=%s consumers=%d jobs=%d", unit, role, sorted(want), len(consumers), len(jobs))
+    log.info("进程角色启动 unit=%s role=%s subsystems=%s consumers=%d jobs=%d workers=%d",
+             unit, role, sorted(want), len(consumers), len(jobs), len(workers))
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
-    failures: queue.SimpleQueue[tuple[str, Exception]] = queue.SimpleQueue()
+    failures: queue.SimpleQueue[tuple[str, str, Exception]] = queue.SimpleQueue()
 
-    def consume(c: Consumer) -> None:
+    def supervise(label: str, name: str, task: Callable, *args) -> None:
         try:
-            c.run()
+            task(*args)
             if not stop.is_set():
-                raise RuntimeError("消费者意外退出")
-        except Exception as e:  # noqa: BLE001 — 将线程失败交给主线程，结束进程以便外部重启
-            failures.put((c.name, e))
+                raise RuntimeError(f"{label}意外退出")
+        except Exception as error:
+            failures.put((label, name, error))
             stop.set()
 
-    threads = [threading.Thread(target=consume, args=(c,), name=c.name, daemon=True) for c in consumers]
+    threads = [threading.Thread(target=supervise, args=("消费者", consumer.name, consumer.run),
+                                name=consumer.name, daemon=True) for consumer in consumers]
+    threads.extend(threading.Thread(target=supervise, args=("工作线程", worker.name, worker.run, stop),
+                                    name=worker.name, daemon=True) for worker in workers)
     if runner is not None:
         threads.append(threading.Thread(target=runner.run, args=(stop,), name="scheduler", daemon=True))
     try:
@@ -128,8 +152,8 @@ def run(unit: str, role: str, modules: list[Module]) -> None:
                 t.join(10)
         tracing.shutdown()
     if not failures.empty():
-        name, error = failures.get_nowait()
-        raise RuntimeError(f"消费者 {name} 失败") from error
+        label, name, error = failures.get_nowait()
+        raise RuntimeError(f"{label} {name} 失败") from error
 
 
 def main(unit: str, modules: list[Module]) -> None:
