@@ -216,7 +216,7 @@ flowchart LR
 
 采集和证据的 `MIAOQIA_ACQUISITION_OBJECT_STORE_DIR`、`MIAOQIA_EVIDENCE_OBJECT_STORE_DIR` 接受本地目录路径或 `s3://bucket/prefix`。S3 兼容端点通过 `AWS_ENDPOINT_URL_S3` 配置；区域和凭证走 SDK 配置。两端在 `raw/` 和 `projection/` 使用同一桶和前缀。采集持有原件、惰性投影与列表的读取和条件创建权限，删除权限只给 `discovery/`。证据读取原件与成对的惰性投影，并能条件创建其规范化和派生对象。版本桶按列表留存要求清理非当前版本和删除标记，用只读工具核验按版本读取、标记枚举和长期原件对照。候选提供商需验证 `If-None-Match: *` 条件创建、并发写入、到期删除及 PostgreSQL 引用恢复。[版本留存验收](../../deploy/vps/data-plane/README.md#版本留存验收)
 
-采集恢复使用 `MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_DIR` 指定独立的本地持久卷。目录必须归进程用户所有，权限为 0700，且位于相应数据的驻留区域。`MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_MAX_BYTES` 默认 512 MiB，`MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_TTL_SECONDS` 默认 86400。请求发出前按最大响应量预留配额，同一暂存卷的在途下载与完整暂存共同计入上限。进程重启后可恢复已完整写入且绑定尝试的响应。遗留的未完成下载在暂存清理时回收。换机没有原暂存时沿轮次补采，覆盖报告保留未完成状态。对临时开发环境可省略暂存目录，使用补采恢复。
+采集恢复使用 `MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_DIR` 指定独立的本地持久卷。目录必须归进程用户所有，权限为 0700，不能是符号链接，且位于相应数据的驻留区域。`MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_MAX_BYTES` 默认 512 MiB，`MIAOQIA_ACQUISITION_ARCHIVE_SPOOL_TTL_SECONDS` 默认 86400。请求发出前按最大响应量预留配额，同一暂存卷的在途下载与完整暂存共同计入上限。进程重启后可恢复已完整写入且绑定尝试的响应。遗留的未完成下载在暂存清理时回收。换机没有原暂存时沿轮次补采，覆盖报告保留未完成状态。对临时开发环境可省略暂存目录，使用补采恢复。
 
 真实公开数据的权威存储放在境内节点。境内开发 VPS 承担常驻公开数据部署，实际来源连通性、存储和恢复按该主机验证。公开数据链路事件和对应遥测可以进入该主机上的 Kafka 与 Collector，租户数据留在其获准环境。开发环境的公开数据主题保留期不超过 7 天，超过保留期的事件由发件箱与权威数据重新生成。生产配置按第 11 节执行。
 
