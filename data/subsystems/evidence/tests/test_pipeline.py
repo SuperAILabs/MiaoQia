@@ -11,14 +11,15 @@ import psycopg
 import pytest
 from sqlalchemy import text
 
-from miaoqia.evidence import MIGRATIONS
-from miaoqia.evidence.application.pipeline import Pipeline, TenantScopeRejected
+from miaoqia.evidence import MIGRATIONS, resolver
+from miaoqia.evidence.application.pipeline import Artifact, Pipeline, TenantScopeRejected
 from miaoqia.evidence.extensions import packs
 from miaoqia.kernel.objectstore import FilesystemObjectStore, ObjectConflict
 from miaoqia.evidence.infrastructure.store import SqlExtractions
 from miaoqia.evidence.replay import corpus_artifact, replay
 from miaoqia.kernel import db, payloads, reqctx
 from miaoqia.sdk import ExtractionResult
+from miaoqia.sdk.validation import evidence_links
 
 REPO = Path(__file__).resolve().parents[4]
 CORPUS = REPO / "packs/information_domains/procurement/corpus"
@@ -57,25 +58,72 @@ def test_replay_creates_snapshot_revision_evidence_and_valid_events(evd):
     reader = SqlExtractions(dsns["app"])
     revision = reader.revision(result.revisions[0])
     reader.close()
-    assert revision.pack_id == "INF-PROC" and revision.extractor == "proc.result-notice@0.2.0"
+    assert revision.pack_id == "INF-PROC" and revision.extractor == "proc.result-notice@0.2.1"
     assert revision.source_key.startswith("https://www.ccgp.gov.cn/")
     # 每个字段的证据引用都已登记，并指向本快照
-    refs = set()
-
-    def walk(node):
-        if isinstance(node, dict):
-            if "evidence_ref" in node:
-                refs.add(node["evidence_ref"])
-            for v in node.values():
-                walk(v)
-        elif isinstance(node, list):
-            for v in node:
-                walk(v)
-
-    walk(list(revision.facts))
+    refs = {ref for _, ref in evidence_links(list(revision.facts))}
     with reqctx.use(reqctx.service("test")), database.tx() as conn:
         stored = {r[0]: r[1] for r in conn.execute(text("SELECT id, snapshot_id FROM evd_evidence_refs"))}
     assert refs and refs <= set(stored) and set(stored.values()) == {result.snapshot_ref}
+
+
+@pytest.mark.parametrize("title,body,expected_stage", [
+    pytest.param("合成设备采购更正公告", "<h2>采购公告</h2>", None, id="correction-quotes-tender"),
+    pytest.param(
+        "合成设备采购中标结果公告", "<h2>采购公告</h2><h2>合成配套设备采购的结果公告</h2>",
+        "award", id="award-quotes-tender",
+    ),
+    pytest.param(
+        "合成设备采购中标结果公告", "<p>合同履行期限：三十天</p><p>附件：中标候选人公示</p>",
+        "award", id="award-with-contract-term",
+    ),
+    pytest.param(
+        "招标公告", "<p>合成设备采购项目</p><p>历史附件：中标候选人公示</p>",
+        "tender", id="tender-marker-with-candidate-reference",
+    ),
+    pytest.param(
+        "采购公告", "<p>合成设备采购项目</p><p>历史附件：中标结果公告</p>",
+        "tender", id="procurement-marker-with-award-reference",
+    ),
+])
+def test_procurement_pipeline_routes_by_main_title(evd, title, body, expected_stage):
+    database, pipeline, dsns = evd
+    html = f"<h1>{title}</h1>{body}<p>采购人：合成采购单位</p><p>供应商名称：合成供应商</p>"
+    artifact = Artifact(
+        source_id="synthetic-procurement", source_key="fixture:main-title-routing",
+        media_type="text/html", raw=html.encode("utf-8"), rights_tags=("synthetic-test-only",),
+        observed_at=datetime(2026, 10, 26, tzinfo=timezone.utc),
+    )
+    with reqctx.use(reqctx.service("evidence")), database.tx() as conn:
+        result = pipeline.ingest(conn, artifact)
+
+    assert result.snapshot_created
+    if expected_stage is None:
+        assert result.revisions == ()
+        return
+
+    revision_ref, = result.revisions
+    reader = SqlExtractions(dsns["app"])
+    try:
+        revision = reader.revision(revision_ref)
+    finally:
+        reader.close()
+    expected_extractor = "proc.tender-notice@0.5.3" if expected_stage == "tender" else "proc.result-notice@0.2.1"
+    assert revision.extractor == expected_extractor
+    assert revision.quality_status != "suspect"
+    fact, = revision.facts
+    assert fact["notice_type"] == expected_stage
+    if expected_stage != "tender":
+        bid_result, = (bid for lot in fact["lots"] for bid in lot["bid_results"])
+        assert bid_result["stage"] == expected_stage
+    expected_title, title_block = ("合成设备采购项目", 1) if expected_stage == "tender" else (title, 0)
+    title_field = fact["title"]
+    assert title_field["value"] == expected_title
+    evidence = resolver(database, pipeline.store, display=lambda tags, purpose: "excerpt")
+    with reqctx.use(dataclasses.replace(reqctx.service("test"), purpose="interactive")):
+        citation = evidence.resolve(title_field["prov"]["evidence_ref"])
+    assert citation.snapshot_ref == result.snapshot_ref
+    assert citation.snippet == expected_title and citation.locator["block"] == title_block
 
 
 def test_replaying_the_same_document_is_idempotent(evd):
@@ -190,12 +238,16 @@ def test_load_document_keeps_bounded_read_for_current_object_store():
 def test_failed_semantic_validation_is_recorded_as_suspect(evd):
     """领域语义校验不通过的解析结果记为 suspect（进入复核），下游不物化。"""
     database, pipeline, _ = evd
-    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.0")]
+    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.1")]
 
     def reject(document, facts, evidence):
         return ["人为注入的语义错误"]
 
     pipeline.extractors = [dataclasses.replace(real, semantic_validator=reject)]
+    assessment = pipeline.assess(corpus_artifact(CORPUS / "official-award-20261014"), selected=False)
+    assert assessment["field_evidence"] == "no_valid_evidence"
+    (assessed_revision,) = assessment["revisions"]
+    assert assessed_revision["quality_status"] == "suspect" and assessed_revision["fact_evidence_count"] == 0
     (result,) = replay(database, pipeline, [CORPUS / "official-award-20261014"])
     events = _outbox(database)
     assert events[-1]["data"]["quality_status"] == "suspect"
@@ -207,7 +259,7 @@ def test_failed_semantic_validation_is_recorded_as_suspect(evd):
 def test_extractor_fields_without_matching_quote_are_suspect(evd):
     """解析器伪造的证据（定位处原文与取值不一致）被证据完整性校验拦下。"""
     database, pipeline, _ = evd
-    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.0")]
+    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.1")]
 
     class Forger:
         id, version, fact_types = "proc.forger", "0.0.1", ("tendering.notice",)
@@ -398,7 +450,6 @@ def test_four_explicit_registry_fixtures_have_real_pipeline_proofs(evd):
 
 
 def test_registry_replay_uses_shared_source_validation_and_default_evidence_denial(evd, tmp_path):
-    from miaoqia.evidence import resolver
     from miaoqia_pack_organizations.fixtures import MANIFEST
     import yaml
     database, pipeline, _ = evd

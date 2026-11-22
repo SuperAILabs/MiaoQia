@@ -36,10 +36,27 @@ def provision(owner_dsn, reader, operator):
             )
         c.execute(
             sql.SQL(
-                "GRANT EXECUTE ON FUNCTION acq_rights.command(jsonb,text,text) TO {}"
+                "GRANT EXECUTE ON FUNCTION acq_rights.command(jsonb,text,text), "
+                "acq_rights.public_source_command(jsonb,text,text,text) TO {}"
             ).format(sql.Identifier(operator))
         )
         # The reader resolves public sources against the source registry (read-only).
+        c.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(sql.Identifier(reader)))
         c.execute(
             sql.SQL("GRANT SELECT ON public.acq_sources TO {}").format(sql.Identifier(reader))
         )
+
+
+def provision_frozen_reader(owner_dsn, reader):
+    with psycopg.connect(owner_dsn) as c:
+        independent_roles(c, (reader,))
+        if c.execute("SELECT has_schema_privilege(%s, 'acq_rights', 'USAGE')", (reader,)).fetchone()[0]:
+            raise ValueError("catalog reader must be separate from rights roles")
+        role = sql.Identifier(reader)
+        c.execute(sql.SQL("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM {}").format(role))
+        c.execute(sql.SQL("REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM {}").format(role))
+        c.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(role))
+        c.execute(sql.SQL("""
+            GRANT SELECT ON public.acq_source_observations, public.acq_observation_attachments,
+                public.acq_raw_artifacts, public.acq_browser_receipts TO {}
+        """).format(role))

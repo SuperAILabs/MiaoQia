@@ -30,7 +30,8 @@ def plane(pg_factory, tmp_path):
     evd, dom = pg_factory(), pg_factory()
     db.migrate(evd["owner"], EVD_MIGRATIONS)
     db.migrate(dom["owner"], DOM_MIGRATIONS)
-    evd_db, dom_db = db.Database(evd["app"]), db.Database(dom["app"])
+    evd_db = db.Database(evd["app"], pool_timeout=1)
+    dom_db = db.Database(dom["app"], pool_timeout=1)
     pipeline = Pipeline(FilesystemObjectStore(tmp_path / "objects"), packs.load(REPO / "packs"))
     reader = evidence.extractions(evd["app"])
     yield evd_db, dom_db, pipeline, Materializer(reader), dom
@@ -225,7 +226,7 @@ def test_fact_marked_suspect_by_the_extractor_is_not_materialized(plane):
     """证据与契约都合法、但解析器主动标为 suspect 的事实：修订为 suspect，不物化（评审 P2 回归）；warning 照常物化。"""
     from miaoqia.sdk import ExtractionResult
     evd_db, dom_db, pipeline, materializer, _ = plane
-    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.0")]
+    real = pipeline.extractors[[p.ref for p in pipeline.extractors].index("proc.result-notice@0.2.1")]
 
     def marking(status):
         class Marking:

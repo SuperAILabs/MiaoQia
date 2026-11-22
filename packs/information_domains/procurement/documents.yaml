@@ -1,6 +1,134 @@
-# 文档适配器：原件不是 HTML 的实际来源，如何取出公告正文 HTML（evidence 实际采集入库）。
-# 未登记的来源原件即公告 HTML。
+# 文档适配器从网页或接口原件定位公告正文 HTML。未登记的来源原件按公告 HTML 处理。
+# live_parse: false 保留采集观察供独立解析验收，获准后设为 true 并回放。
 documents:
   - source_id: anhui-government-procurement-spa
     media_type: application/json
     adapter: miaoqia_pack_procurement.documents:anhui_ccgp_html
+  - source_id: cncecyc-ywgg1gc
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.html_boards:chemical_engineering_html
+  - source_id: crecgec-home
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.html_boards:railway_materials_html
+  - source_id: scbid-zbxx
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.html_boards:sichuan_bidding_html
+  - source_id: ygcgfwpt-transaction
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.html_boards:shangrao_procurement_html
+  - source_id: ccgp-central-public-tenders
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.ccgp_html:central_tender_html
+  - source_id: hubei-government-procurement-homepage
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.ccgp_html:hubei_tender_html
+  - source_id: hubei-ggzy-construction
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:hubei_works_html
+  - source_id: shaanxi-ggzy-construction
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:shaanxi_works_html
+  - source_id: jiangxi-ggzy-announcements
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:jiangxi_works_html
+  - source_id: shaanxi-government-procurement
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:shaanxi_procurement_html
+  - source_id: hunan-ggzy-construction
+    live_parse: false
+    media_type: application/json
+    selection_adapter: miaoqia_pack_procurement.sources.regional_works:hunan_works_selected_html
+  - source_id: hunan-government-procurement
+    live_parse: false
+    media_type: application/json
+    adapter: miaoqia_pack_procurement.documents:anhui_ccgp_html
+  - source_id: hefei-ggzy-engineer
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:hefei_works_html
+  - source_id: henan-ggzy-homepage-direct
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:henan_works_html
+  - source_id: shanxi-prec
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:shanxi_works_html
+  - source_id: xinjiang-ggzy-construction
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:xinjiang_works_html
+  - source_id: sichuan-ggzy-construction
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:sichuan_works_html
+  - source_id: henan-government-procurement-home
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.procurement_homepages:henan_procurement_html
+  - source_id: tibet-ggzy-construction
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.regional_works:tibet_works_html
+  - source_id: tibet-government-procurement-home
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.procurement_homepages:tibet_procurement_html
+  - source_id: xinjiang-government-procurement-home
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.procurement_homepages:xinjiang_procurement_html
+  - source_id: bfjsjt-tender
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.trade_html:beifang_tender_html
+  - source_id: chongqing-ggzy-trade-014
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.trade_html:chongqing_trade_html
+  - source_id: cotenders-news
+    live_parse: false
+    media_type: application/json
+    adapter: miaoqia_pack_procurement.sources.trade_api:cotenders_html
+  - source_id: crccep-bidding-mat
+    live_parse: false
+    media_type: application/json
+    adapter: miaoqia_pack_procurement.sources.trade_api:crccep_html
+  - source_id: js-218-206-153-6-trade
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.trade_html:ewb_construction_html
+  - source_id: jsjyztb-web-list
+    live_parse: false
+    media_type: application/json
+    adapter: miaoqia_pack_procurement.sources.trade_api:rudong_html
+  - source_id: luzhou-ggzy-tzgg
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.trade_api:luzhou_html
+  - source_id: m2-bid-list
+    live_parse: false
+    media_type: application/json
+    adapter: miaoqia_pack_procurement.sources.trade_api:m2_html
+  - source_id: suzhou-ggzy-trade
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.trade_html:ewb_construction_html
+  - source_id: xuzhou-ggzy
+    live_parse: false
+    media_type: text/html
+    adapter: miaoqia_pack_procurement.sources.trade_html:ewb_construction_html
+  - source_id: ymzec-trade-info
+    live_parse: false
+    media_type: application/json
+    adapter: miaoqia_pack_procurement.sources.trade_api:ymzec_html

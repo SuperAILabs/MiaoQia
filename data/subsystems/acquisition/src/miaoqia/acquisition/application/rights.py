@@ -1,8 +1,8 @@
 """No reusable positive permits: confirmation binds every input and caller and rechecks time/current rights.
 
-Public sources need no per-source or per-tenant grant: an input tagged exactly public:<source_id> for a source
-in the registry is readable in full by every admitted tenant and purpose, never redistributable. Frozen-corpus
-inputs still need their registered, active policy; mixed inputs take the intersection as before.
+A current public-source revocation denies every tag combination from that source. Otherwise, admitted
+tenants and purposes can read exact public:<source_id> inputs from registered sources in full, without
+redistribution. Frozen-corpus inputs require their active policy, and mixed inputs take the intersection.
 """
 
 from __future__ import annotations
@@ -53,12 +53,17 @@ class Decisions:
         original = {"operation": operation, "inputs": [s.dto() for s in sources]}
         with self.registry.snapshot() as snap:
             display, redistribute, allowed = "full_text", True, True
-            selected = [(source, snap.versions(source)) for source in sources]
+            revocations = snap.public_revocations(source.source_id for source in sources)
+            selected = []
+            for source in sources:
+                if revocations.get(source.source_id):
+                    allowed = False
+                elif source.source_id in revocations and source.tags == (f"public:{source.source_id}",):
+                    redistribute = False
+                else:
+                    selected.append((source, snap.versions(source)))
             now = snap.current_time()
             for source, versions in selected:
-                if snap.public_source(source):
-                    redistribute = False
-                    continue
                 if versions is None:
                     allowed = False
                     continue

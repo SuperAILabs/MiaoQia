@@ -10,7 +10,7 @@ from miaoqia import domain_intelligence, evidence
 from miaoqia.domain_intelligence.api import Basis
 from miaoqia.domain_intelligence.application.enrichments import apply, prepare
 from miaoqia.evidence.application.enrichments import REFERENCE, TEST_CONTENT
-from miaoqia.kernel.objectstore import FilesystemObjectStore
+from miaoqia.kernel.objectstore import open_object_store
 from miaoqia.kernel import db, reqctx
 from miaoqia.kernel.runtime import env_key
 
@@ -35,7 +35,7 @@ def assemble(database, evd_database, root, *, packs, enable_test_recipe=False, e
     if enable_building_topic:
         recipes.append(evidence.load_recipe(Path(packs) / "industries/building-materials",
             "miaoqia_pack_building_materials.topic:build_recipe", packs))
-    service = evidence.enrichments(evd_database, FilesystemObjectStore(root), facts=fixed,
+    service = evidence.enrichments(evd_database, open_object_store(root), facts=fixed,
                                    display=test_display, enable_test_recipe=enable_test_recipe, recipes=recipes, fact_requirements=queries.requirements)
     return service, recipes
 

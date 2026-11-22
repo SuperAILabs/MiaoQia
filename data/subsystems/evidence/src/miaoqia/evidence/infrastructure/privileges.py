@@ -31,5 +31,5 @@ def provision(owner_dsn, reader, binder):
             conn.execute(sql.SQL("ALTER DEFAULT PRIVILEGES REVOKE ALL ON SEQUENCES FROM {}").format(ident))
             conn.execute(sql.SQL("ALTER DEFAULT PRIVILEGES REVOKE ALL ON SCHEMAS FROM {}").format(ident))
             conn.execute(sql.SQL("GRANT USAGE ON SCHEMA public,evd_provenance TO {}").format(ident))
-        conn.execute(sql.SQL("GRANT SELECT ON evd_snapshots,evd_extraction_revisions,evd_evidence_refs,evd_reference_data,evd_derivations,evd_enrichments,evd_requirement_sets,evd_provenance.manifest,evd_provenance.bindings TO {}").format(sql.Identifier(reader)))
+        conn.execute(sql.SQL("GRANT SELECT ON evd_snapshots,evd_grouped_observations,evd_browser_observations,evd_extraction_revisions,evd_evidence_refs,evd_reference_data,evd_derivations,evd_enrichments,evd_requirement_sets,evd_provenance.manifest,evd_provenance.bindings TO {}").format(sql.Identifier(reader)))
         conn.execute(sql.SQL("GRANT EXECUTE ON FUNCTION evd_provenance.bind_reference(text,text,text,text) TO {}").format(sql.Identifier(binder)))

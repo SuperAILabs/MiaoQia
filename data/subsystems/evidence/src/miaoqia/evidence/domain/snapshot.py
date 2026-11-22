@@ -4,6 +4,8 @@ from __future__ import annotations
 import hashlib
 import json
 
+OBJECT_READ_MAX = 4 * 1024 * 1024
+
 
 def normalized_hash(document: dict) -> str:
     body = {k: v for k, v in document.items() if k != "snapshot_ref"}

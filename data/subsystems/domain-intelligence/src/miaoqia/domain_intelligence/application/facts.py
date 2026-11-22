@@ -64,6 +64,8 @@ class Materializer:
         object_type, prefix, model, schema_version = OBJECT_TYPES[revision.pack_id]
         conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
                      {"k": f"{revision.pack_id}|{revision.source_id}|{revision.source_key}"})
+        if revision.snapshot_seq and not self._accept_snapshot(conn, revision):
+            return []
         # 多事实修订先按稳定顺序锁住全部身份；避免来源A/B以相反顺序竞争两个项目。
         if revision.pack_id == "INF-PROC":
             from .projects import lock_identities
@@ -92,6 +94,32 @@ class Materializer:
                     aggregate_notice(conn, revision, full)
                 published.append(full)
         return published
+
+    def _accept_snapshot(self, conn: Connection, revision) -> bool:
+        key = {"d": revision.pack_id, "s": revision.source_id, "k": revision.source_key}
+        current = conn.execute(text("""
+            SELECT snapshot_seq FROM dom_snapshot_progress
+            WHERE info_domain = :d AND source_id = :s AND source_key = :k
+        """), key).scalar_one_or_none()
+        if current is None:
+            # Initialize a pre-migration stream from its published facts through evidence's read port.
+            refs = conn.execute(text("""
+                SELECT DISTINCT v.content->>'revision_ref' FROM dom_facts f
+                JOIN dom_fact_versions v ON v.fact_id = f.id AND v.version = f.current_version
+                WHERE f.info_domain = :d AND f.source_id = :s AND f.source_key = :k
+            """), key).scalars()
+            current = 0
+            for ref in refs:
+                prior = self.extractions.revision(ref)
+                if prior is None:
+                    raise LookupError(f"当前事实的解析修订不存在：{ref}")
+                current = max(current, prior.snapshot_seq)
+        conn.execute(text("""
+            INSERT INTO dom_snapshot_progress (info_domain, source_id, source_key, snapshot_seq)
+            VALUES (:d, :s, :k, :seq)
+            ON CONFLICT (info_domain, source_id, source_key) DO UPDATE SET snapshot_seq = EXCLUDED.snapshot_seq
+        """), {**key, "seq": max(current, revision.snapshot_seq)})
+        return revision.snapshot_seq >= current
 
 
 def write_version(conn, revision, fact, *, fact_id, version, prev, object_type, model, schema_version,

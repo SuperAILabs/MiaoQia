@@ -12,6 +12,8 @@ from miaoqia.kernel import db
 def registry(pg_factory):
     dsns = pg_factory()
     db.migrate(dsns["owner"], MIGRATIONS)
+    with psycopg.connect(dsns["owner"]) as c:
+        c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
     reader = urlsplit(dsns["app"]).username
     operator = reader + "_op"
     with psycopg.connect(os.environ["MIAOQIA_TEST_PG"], autocommit=True) as c:

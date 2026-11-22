@@ -10,10 +10,12 @@ import re
 from miaoqia.sdk import Document, ExtractionContext, ExtractionResult
 from miaoqia.sdk.document import Span
 
-TITLE_MARK = re.compile(r"^(招标公告|采购公告|招标采购公告|公开招标公告)$")
-# 项目全称即标题：以招标/采购方式公告结尾，可带“（第2次）”或“[2026]”这类后缀；不含结果、更正、意向等公告。
-FULL_TITLE = re.compile(r"\S{4,}(招标公告|采购公告|磋商公告|谈判公告|询价公告|邀请书)\s*([(（]第\S{1,3}次[)）]|\[\d{4}\])?$")
-NOT_TENDER = re.compile(r"(更正|变更|澄清|终止|废标|流标|结果|中标|成交|候选人|意向|合同)")
+from .notice_title import FULL_TENDER_TITLE, NOT_TENDER, TENDER_MARK, primary_title
+
+NOTICE_CODE_LABELS = ["招标编号", "项目编号", "采购编号"]
+BRACKETED_CODE = re.compile(
+    rf"[（(]\s*(?:{'|'.join(NOTICE_CODE_LABELS)})\s*[：:]\s*([A-Za-z0-9][A-Za-z0-9_./-]*)\s*[）)]"
+)
 SECTION = re.compile(r"^\d+[.．、](?!\d)\s*\S")                # 一级章节“5.招标文件的获取”，不含“5.1”
 METHODS = [("邀请招标", "invited_tender"), ("公开招标", "open_tender"), ("竞争性谈判", "negotiation"),
            ("竞争性磋商", "consultation"), ("询价", "inquiry"), ("单一来源", "single_source")]
@@ -27,15 +29,18 @@ DATE_ONLY = re.compile(r"^\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日$")
 
 class TenderNoticeExtractor:
     id = "proc.tender-notice"
-    version = "0.4.0"
+    version = "0.5.3"
     fact_types = ("tendering.notice",)
 
     def applies(self, doc: Document, source: dict) -> bool:
-        return any(TITLE_MARK.match(b.get("text", "")) for b in doc.blocks[:5]) or self._full_title(doc) is not None
+        if primary := primary_title(doc):
+            return primary.kind in ("tender", "tender_marker")
+        return (any(TENDER_MARK.match(b.get("text", "")) for b in doc.blocks[:5])
+                or self._full_title(doc) is not None)
 
     @staticmethod
     def _full_title(doc: Document):
-        return next((b for b in doc.blocks[:5] if FULL_TITLE.match(b.get("text", ""))
+        return next((b for b in doc.blocks[:5] if FULL_TENDER_TITLE.match(b.get("text", ""))
                      and not NOT_TENDER.search(b.get("text", ""))), None)
 
     def extract(self, doc: Document, ctx: ExtractionContext) -> ExtractionResult:
@@ -44,21 +49,26 @@ class TenderNoticeExtractor:
         title = self._title(doc)
         if title:
             fact["title"] = ctx.text(title)
-        for key, labels in (("notice_code", ["招标编号", "项目编号", "采购编号"]),):
-            if (s := doc.find_labeled(labels)):
-                fact[key] = ctx.text(s)
+        if (code := self._notice_code(doc)) is not None:
+            fact["notice_code"] = ctx.text(code)
         if (method := self._method(doc, title)) is not None:
             fact["method"] = method
         if (s := doc.find_labeled(["项目编号"])):
             fact["project_code"] = ctx.text(s)
-        for key, labels in (("buyer", ["招标人", "采购人", "采购人名称"]),
-                            ("agency", ["招标组织单位", "招标代理机构", "采购代理机构", "代理机构"])):
-            if (s := doc.find_labeled(labels)):
+        for key, labels, summary_label in (
+            ("buyer", ["招标人", "采购人", "采购人名称"], "采购单位"),
+            ("agency", ["招标组织单位", "招标代理机构", "采购代理机构", "代理机构"], "代理机构名称"),
+        ):
+            if (s := doc.find_labeled(labels) or doc.find_labeled([summary_label])):
                 fact[key] = ctx.org(s)
         if (s := self._owner(doc)):
             fact["project_owner"] = ctx.org(s, confidence=0.9)
-        if (s := self._signature_date(doc)) and (t := ctx.instant(s)):
-            fact["published_at"] = t
+        publication = doc.find_labeled(["公告时间"])
+        published = ctx.instant(publication) if publication else None
+        if published is None and (signature := self._signature_date(doc)):
+            published = ctx.instant(signature)
+        if published is not None:
+            fact["published_at"] = published
         fact["lots"] = self._lots(doc, ctx, res)
         contacts = self._contacts(doc, ctx)
         if contacts:
@@ -70,6 +80,15 @@ class TenderNoticeExtractor:
 
     # ---------- 字段 ----------
     @staticmethod
+    def _notice_code(doc: Document) -> Span | None:
+        if (code := doc.find_labeled(NOTICE_CODE_LABELS)) is not None:
+            return code
+        for unit in doc.units():
+            if match := BRACKETED_CODE.search(unit.text):
+                return unit.span(*match.span(1))
+        return None
+
+    @staticmethod
     def _method(doc: Document, title: Span | None) -> str | None:
         """方式标签的取值只含一种方式时采用；页面把全部选项列在一起（勾选标记丢失）时改看标题，仍不唯一则不填。"""
         def unique(text: str) -> str | None:
@@ -80,8 +99,13 @@ class TenderNoticeExtractor:
         return unique(title.text) if title is not None else None
 
     def _title(self, doc: Document) -> Span | None:
-        """标题标记（“招标公告”）之后、第一行“标签：”之前的居中标题行，可能跨多块；没有标记时取以公告类型结尾的项目全称。"""
-        mark = next((b["index"] for b in doc.blocks[:5] if TITLE_MARK.match(b.get("text", ""))), None)
+        """优先使用完整公告标题。独立类型标记之后的居中标题行可跨多块。"""
+        primary = primary_title(doc)
+        if primary is not None and primary.kind != "tender_marker":
+            return primary.span if primary.kind == "tender" else None
+        mark = primary.span.block if primary is not None else next(
+            (b["index"] for b in doc.blocks[:5] if TENDER_MARK.match(b.get("text", ""))), None,
+        )
         if mark is None:
             title = self._full_title(doc)
             return doc.block_span(title["index"]) if title else None
@@ -141,14 +165,19 @@ class TenderNoticeExtractor:
                         "text": ctx.text(doc.block_span(b["index"]), confidence=0.9)})
         return out
 
+    @staticmethod
+    def _consortium_allowed(doc: Document) -> bool | None:
+        answers = set()
+        for unit in doc.units():
+            text = re.sub(r"\s+", "", unit.text).rstrip("。；;.")
+            if match := re.fullmatch(r"(?:本项目)?是否接受联合体(?:投标|响应)?[：:](是|否|接受|不接受)", text):
+                answers.add(match[1] in {"是", "接受"})
+            elif match := re.search(r"(?:^|[。；;、.．：:])(?:本项目|本次招标|本次采购)?(不接受|接受)联合体(?:投标|响应)?$", text):
+                answers.add(match[1] == "接受")
+        return answers.pop() if len(answers) == 1 else None
+
     def _lots(self, doc: Document, ctx: ExtractionContext, res: ExtractionResult) -> list[dict]:
-        consortium = None
-        for u in doc.units():
-            if "不接受联合体" in u.text:
-                consortium = False
-                break
-            if re.search(r"(?<!不)接受联合体", u.text):
-                consortium = True
+        consortium = self._consortium_allowed(doc)
         lots: dict[str, dict] = {}
         for b in doc.blocks:
             if b["kind"] != "table":

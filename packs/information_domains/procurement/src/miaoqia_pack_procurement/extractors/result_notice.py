@@ -18,8 +18,10 @@ from decimal import Decimal, InvalidOperation
 from miaoqia.sdk import Document, ExtractionContext, ExtractionResult
 from miaoqia.sdk.document import Span, TextUnit
 
-RESULT_TITLE = re.compile(r"(中标|成交|入围)[^\n]{0,12}(结果)?(公告|公示)|候选人公示|采购的结果公告")
-CANDIDATE = re.compile(r"候选人公示")
+from .notice_title import CANDIDATE, RESULT_MARK, RESULT_SUFFIX, primary_title
+
+RESULT_TITLE = re.compile(rf"(?:{RESULT_MARK})[^\n]{{0,12}}{RESULT_SUFFIX}|{CANDIDATE.pattern}|采购的结果公告")
+RESULT_KINDS = ("award", "candidate", "framework")
 NOT_RESULT = re.compile(r"更正|澄清|变更|补充|终止|废标|流标|失败|验收|合同")   # 结果的更正与其他阶段由各自解析器处理
 CODE = re.compile(r"(?:项目编号|招标编号|采购编号)[：:]\s*([A-Za-z0-9][A-Za-z0-9_\-/]*)")
 CN_NUM = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
@@ -47,7 +49,7 @@ def _lot_key(raw: str) -> str:
 
 class ResultNoticeExtractor:
     id = "proc.result-notice"
-    version = "0.2.0"
+    version = "0.2.1"
     fact_types = ("tendering.notice",)
     gold_notice_types = ("award", "candidate")
     # 与人工映射对照评测的关键字段（mq-corpus check --gold reviewed）；* 匹配数组下标。
@@ -62,16 +64,25 @@ class ResultNoticeExtractor:
     )
 
     def applies(self, doc: Document, source: dict) -> bool:
+        if primary := primary_title(doc):
+            return primary.kind in RESULT_KINDS
         head = _head(doc)
         return bool(RESULT_TITLE.search(head)) and not NOT_RESULT.search(head)
 
     def extract(self, doc: Document, ctx: ExtractionContext) -> ExtractionResult:
         res = ExtractionResult()
-        head = _head(doc)
-        candidate = bool(CANDIDATE.search(head))
-        framework = "入围" in head and not candidate
+        primary = primary_title(doc)
+        if primary is not None:
+            candidate = primary.kind == "candidate"
+            framework = primary.kind == "framework"
+            title = primary.span if primary.kind in RESULT_KINDS else None
+        else:
+            head = _head(doc)
+            candidate = bool(CANDIDATE.search(head))
+            framework = "入围" in head and not candidate
+            title = self._title(doc)
         fact: dict = {"notice_type": "candidate" if candidate else "award"}
-        if (title := self._title(doc)) is not None:
+        if title is not None:
             fact["title"] = ctx.text(title)
         if (code := self._first(doc, CODE)) is not None:
             fact["project_code"] = ctx.text(code)

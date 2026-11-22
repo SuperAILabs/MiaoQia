@@ -19,12 +19,17 @@ CATEGORIES = tuple(f"ZcyAnnouncement{n}" for n in (1, 2, 3, 4, 5))
 PARENT_ID = "541080"
 
 
-def _data(response: FetchResponse) -> dict:
+def portal_data(response: FetchResponse) -> dict:
     body = json_body(response)
-    data = (body.get("result") or {}).get("data")
+    result = body.get("result")
+    data = result.get("data") if isinstance(result, dict) else None
     if body.get("success") is not True or not isinstance(data, dict):
         raise ValueError("unsuccessful portal response")
     return data
+
+
+def portal_detail_url(origin: str, article: str, parent: str) -> str:
+    return f"{origin}/portal/detail?{urlencode({'articleId': article, 'parentId': parent})}"
 
 
 class AnhuiGovernmentProcurement:
@@ -37,25 +42,21 @@ class AnhuiGovernmentProcurement:
                                       {"categoryCode": channel, "pageNo": page, "pageSize": PAGE_SIZE})
 
     def parse_list(self, channel: str, response: FetchResponse) -> ListPage:
-        data = _data(response)
+        data = portal_data(response)
         items = data.get("data") or []
         refs = []
         for item in items:
             article = item.get("articleId")
             if not isinstance(article, str) or not article or not isinstance(item.get("publishDate"), int):
                 raise ValueError("list item lacks articleId or publishDate")
-            refs.append(DetailRef(source_key=article, source_url=self._detail_url(article),
+            refs.append(DetailRef(source_key=article, source_url=portal_detail_url(BASE, article, PARENT_ID),
                                   published=china_date(item["publishDate"]), title=item.get("title") or ""))
-        return ListPage(tuple(refs), len(items) == PAGE_SIZE)
+        return ListPage(tuple(refs), len(items) == PAGE_SIZE, ordered_by_publication=True)
 
     def detail_fetches(self, channel: str, ref: DetailRef) -> tuple[DetailFetch, ...]:
         return (DetailFetch(ref.source_key, FetchRequest("GET", ref.source_url)),)
 
     def check_detail(self, response: FetchResponse) -> None:
-        content = _data(response).get("content")
+        content = portal_data(response).get("content")
         if not isinstance(content, str) or not content.strip():
             raise ValueError("detail has no content")
-
-    @staticmethod
-    def _detail_url(article: str) -> str:
-        return f"{BASE}/portal/detail?{urlencode({'articleId': article, 'parentId': PARENT_ID})}"

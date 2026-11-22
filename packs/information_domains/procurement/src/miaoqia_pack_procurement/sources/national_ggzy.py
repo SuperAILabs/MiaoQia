@@ -6,12 +6,14 @@
 """
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 from miaoqia.acquisition.api.handlers import (DetailFetch, DetailRef, FetchRequest, FetchResponse, ListPage,
-                                              SourceBlocked, Window)
+                                              OffsetPage, SourceBlocked, Window)
 
 from . import html_text, json_body
+from .ccgp_http import checked_html, visible_text
 
 BASE = "https://www.ggzy.gov.cn"
 LIST_URL = f"{BASE}/information/pubTradingInfo/getTradList"
@@ -19,6 +21,9 @@ SOURCE_CENTRAL_SOE = "2"
 CLASSIFY_CONSTRUCTION = "01"
 DETAIL_PREFIX = "/information/deal/html/a/"
 CAPTCHA, REFINE = 829, 804
+RESULT_CAP = 1000
+DETAIL_METADATA_ONLY = "national_detail_metadata_only"
+log = logging.getLogger(__name__)
 
 
 class NationalPublicResources:
@@ -43,20 +48,37 @@ class NationalPublicResources:
         data = body.get("data")
         if code != 200 or not isinstance(data, dict):
             raise ValueError(f"unexpected list response code {code!r}")
+        records = data.get("records")
+        page, pages = data.get("current"), data.get("pages")
+        if not isinstance(records, list) or type(page) is not int or type(pages) is not int:
+            raise ValueError("invalid national pagination metadata")
+        offset = OffsetPage(data.get("total"), data.get("size"), len(records))
+        if pages != (offset.total_records + offset.page_size - 1) // offset.page_size:
+            raise ValueError("national page count disagrees with the total")
+        continuation = offset.has_more(page)
         refs = []
-        for record in data.get("records") or []:
+        for record in records:
+            if not isinstance(record, dict) or not isinstance(record.get("publishTime"), str):
+                raise ValueError("invalid national list record")
             path, rid = record.get("url"), record.get("id")
-            if not isinstance(path, str) or not path.startswith(DETAIL_PREFIX) or not rid:
-                raise ValueError("record lacks id or detail path")
-            refs.append(DetailRef(source_key=rid, source_url=BASE + path,
+            if not isinstance(path, str) or not path.startswith(DETAIL_PREFIX):
+                raise ValueError("record lacks detail path")
+            source_key = rid if isinstance(rid, str) and rid.strip() else None
+            refs.append(DetailRef(source_key=source_key, source_url=BASE + path,
                                   published=date.fromisoformat(record["publishTime"]), title=record.get("title") or ""))
-        return ListPage(tuple(refs), int(data.get("current") or 0) < int(data.get("pages") or 0))
+        gap = "publisher_result_cap" if offset.total_records >= RESULT_CAP else None
+        return ListPage(tuple(refs), continuation, coverage_gap=gap, reported_page=page, offset=offset)
 
     def detail_fetches(self, channel: str, ref: DetailRef) -> tuple[DetailFetch, ...]:
         body = ref.source_url.replace(DETAIL_PREFIX, "/information/deal/html/b/", 1)
-        return (DetailFetch(ref.source_key, FetchRequest("GET", body)),)
+        return (DetailFetch(ref.source_key or "body", FetchRequest("GET", body)),)
 
     def check_detail(self, response: FetchResponse) -> None:
-        text = html_text(response)
-        if "detail_content" not in text and "发布时间" not in text:
-            raise ValueError("detail body missing")
+        root = checked_html(html_text(response))
+        content = root.xpath("//*[@id='mycontent']//*[contains(concat(' ', normalize-space(@class), ' '), ' detail_content ')]")
+        if len(content) == 1 and visible_text(content[0]):
+            return
+        if root.xpath("//*[@id='mycontent']//table[.//tr[th and td]]"):
+            log.warning("source=%s reason=%s", self.source_id, DETAIL_METADATA_ONLY)
+            raise ValueError(DETAIL_METADATA_ONLY)
+        raise ValueError("detail body missing")
