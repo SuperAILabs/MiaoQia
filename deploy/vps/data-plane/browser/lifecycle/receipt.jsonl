@@ -1,0 +1,3 @@
+{"image_digest": "sha256:abf13b369f8829eb45e29df38d6c5221f7e7521649cb5d2de7989c82bdb574ad", "image_id": "61d4bdcb63596f3530ad7a3594217c79a237128025c0a9da2fdb5b256b1c8dc1", "input_sha256": {"probe.py": "9e50ccf61d87f4f32a656b10547d223101eee06774627794f26ca46b531daf13", "supervisor.py": "3755c8a85c005fce819565173ec9c4a98574198048525144cd8e4876d4419f84", "verify-lifecycle.sh": "5ab59a143398569ef4d1265289f7f1fbaeed4715d77891b0e55811223e07df33", "verify.py": "877fd1dfea081747817774a38be34bfadecdc563206222bd4ac6984de14db00f"}, "kind": "build", "lease_seconds": 20, "podman": "5.8.2\n"}
+{"error": "CalledProcessError", "kind": "incomplete", "stage": "policy_install"}
+{"error": "CalledProcessError", "kind": "incomplete", "stage": "ownership_or_cleanup"}

@@ -102,6 +102,8 @@
 
 ### 3.4 发布与消费规则
 
+**连接配置。** Kafka 中继、消费者、公共检索位点采样和开发主题装配使用 `MIAOQIA_KAFKA_BROKERS`。设置 `MIAOQIA_KAFKA_TLS_CA` 后，客户端以该 CA 验证 broker 证书及广播地址对应的主机名。启用 SCRAM 时，同一进程提供 `MIAOQIA_KAFKA_SASL_USERNAME`、`MIAOQIA_KAFKA_SASL_PASSWORD`、`MIAOQIA_KAFKA_SASL_MECHANISM`，机制为 `SCRAM-SHA-256` 或 `SCRAM-SHA-512`。SCRAM 配置缺项或缺少 TLS CA 时启动失败。仅在部署明确为隔离私有网络或本地夹具时使用未设置这些变量的明文连接。角色的 Kafka 权限由部署方按使用的主题、消费组和操作授予。
+
 - **发布**：业务写入与发件箱记录同一事务提交，由中继发布到 Kafka；不允许在事务外直接发送（发件箱与消费去重表定义见 `contracts/storage/kernel.sql`）；
 - **消费**：消费者必须幂等（以事件 `id` 去重或以业务版本号判断）；
 - **顺序**：只保证同一分区键内有序；消费者不得假设跨对象顺序；

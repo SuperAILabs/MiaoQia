@@ -45,8 +45,8 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 - L2 与 L3 互不依赖，可以并行；L4 依赖[阶段基线第4节](06-stage-baseline.md#4-m2-前置条件与能力交接)的外部事实，L5 依赖 L4；
 - 每一级的负向用例都在该级环境中重新执行，不沿用 L0 的结论（第6节）；
 - L1 的可重复入口：`tools/dev/run-a02-l1-gate.sh --local-openfga`（服务端门禁）与 `tools/dev/run-a02-process-replay.sh`（进程级门禁）。后者启动 `platform`、`mq-data` 与 `mq-acquisition`（acq-admin）进程，完成建材中标公告 → signal → object → evidence → briefing 回放。data-api 以 mTLS 接入，经 acq-admin 检查来源权利，detection 以 monitoring、learning 以 simulation 按租户读取；负向用例覆盖跨租户、visitor、无来源权利、权利撤销和 data-api 不可用，gateway 证据面板按 D-11 验证失败关闭。结果写入 `deploy/local/.data/a02-process-replay/`。回放会重建 `public.domain`、重置消费组并清理回放租户的数据，运行前须用 `MIAOQIA_TEST_PG`、`MIAOQIA_KAFKA_BROKERS` 和 `MIAOQIA_IDENTITY_OPENFGA_URL` 选定独占的测试实例；
-- [开发 E2E 工作流](../../.github/workflows/e2e.yml) 的 `a02-replay` 作业在独立 runner 上用临时 PostgreSQL、Kafka、OpenFGA 和对象目录执行进程回放。`a02-replay` 制品记录实际检出 SHA、PR 源提交（如适用）、运行 ID、重试次数、依赖启动和回放状态，附已有的结构化回放结果；失败诊断见作业日志。PR 回放针对 GitHub 检出的合并候选，`main` 回放针对该次推送提交；
-- L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用；对象存储在回放与单机部署使用文件系统实现（不可覆盖、按内容寻址），S3 实现随开发 VPS（R-03）；
+- [开发 E2E 工作流](../../.github/workflows/e2e.yml) 的 `a02-replay` 作业在独立 runner 上用临时 PostgreSQL、Kafka、OpenFGA 和对象目录执行进程回放。回放等待 evidence 主题分区具备可读水位后再定位隔离消费组。`a02-replay` 制品记录实际检出 SHA、PR 源提交（如适用）、运行 ID、重试次数、依赖启动和回放状态，附已有的结构化回放结果。PR 回放针对 GitHub 检出的合并候选，`main` 回放针对该次推送提交；
+- L1 的口径：评测样本即解析器的开发样本，准确率不代表来源泛化能力；回放材料带 `corpus:<样本>` 权利标签，不构成来源启用。固定 mock 贯通与实网持续供数的存储边界见[数据供应平面端到端设计](../03-architecture/15-data-plane-pilot.md#5-实施与验收顺序)；
 - L1 建材配对语料为衢州市阳光交易服务平台的 `official-building-tender-20261026` 与 `official-building-award-20261026`：同一项目 `XCXCG-2025-008`，采购人为江山市水务有限公司；原始响应、正文、人工事实及证据已保存，哈希登记于 `lifecycle-manifest.json`。中标定价 `76.5000%` 保留为 `conditions.contract_pricing`，不记金额，不据此推算成交总价。此配对形成同一 `pp_`，保留成员固定版本与字段证据；没有跨公告标包依据，故 `lots=[]`，不推断 `prj_` 或 `part_of`（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)）。
 
 ## 4. 缺口清单
@@ -57,8 +57,8 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 | 编号 | 缺口 | 来源 | 环节 | 最早级别 | 外部前置 |
 |---|---|---|---|---|---|
-| D-01 | 来源声明、增量采集周期任务、抓取、归档、来源健康与 evidence 入库已实现（[acquisition 第12节](../03-architecture/subsystems/acquisition.md#12-当前实现边界)），尚未在部署环境持续运行；回填工作流未实现 | [阶段基线 M1](06-stage-baseline.md#3-m1-前置条件与能力交接) | ② | L4 | M1-P1、M1-P2、M1-P7 |
-| D-02 | evidence 的远程查询与生产来源权利策略、PDF/OCR 管线、内容增强与重放未实现（公共文档管线与文档证据本地读取见 [evidence 实现状况](../03-architecture/subsystems/evidence.md#12-实现状况)） | [阶段基线 M1-P6](06-stage-baseline.md#3-m1-前置条件与能力交接) | ②③ | L1 | — |
+| D-01 | 来源声明、增量复查、初始回填、列表留存和正文观察已落地（[acquisition 第12节](../03-architecture/subsystems/acquisition.md#12-当前实现边界)）；固定安徽 mock 验证采集和证据读取。逐源实网覆盖、持续运行与跨窗口补采工作流待验收。 | [阶段基线 M1](06-stage-baseline.md#3-m1-前置条件与能力交接) | ② | L4 | M1-P1、M1-P2、M1-P7 |
+| D-02 | 通用 PDF/OCR、内容增强的运行编排及生产来源权利策略待验收。公共文档证据经 mTLS data-api 读取，语料及待解析观察已有独立回放入口。[证据实现状况](../03-architecture/subsystems/evidence.md#12-实现状况) | [阶段基线 M1-P6](06-stage-baseline.md#3-m1-前置条件与能力交接) | ②③ | L1 | — |
 | D-03 | INF-PROC 更正公告解析器未实现；招标与结果公告解析器 `proc.tender-notice`、`proc.result-notice` 以人工映射为黄金标注评测 | `packs/information_domains/procurement/src/` | ② | L1 | — |
 | D-04 | 标包 `lot_`、其他来源与完整生命周期的项目聚合未实现；冻结来源的 `pp_` 聚合与复核官方 pair 的公告主题品类只是局部实现（[domain-intelligence 实现状况](../03-architecture/subsystems/domain-intelligence.md#12-实现状况)） | [detection 第8节](../03-architecture/subsystems/detection.md#8-伸缩与可靠性) | ② | L1 | — |
 | D-05 | 信息领域服务状态与覆盖接口（`GetCoverage`）未实现，规则到信息领域的生产对应缺失（B-PERMIT 不能显示“数据未接入”） | PRD 第3段用例7、第4段用例24–27；[customer-context](../03-architecture/subsystems/customer-context.md) | ①②③ | L1 | — |
@@ -66,8 +66,8 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D-08 | INF-ORG 企业主数据未接入；X-SELF 需要“关联本企业” | PRD 第2段用例1、7–9；第3段用例7 | ①② | L1 用夹具，L4 用企业公开信息 | M1-P3 |
 | D-09 | learning 仿真数据集的完整多领域历史、覆盖与来源权利未接入（A02 结果视图已按草案所属租户以 simulation 用途读取） | [learning 第5节](../03-architecture/subsystems/learning.md#5-接口)；PRD 第7段用例11、24 | ① | L1 | — |
 | D-10 | 完整 `GetCoverage` 与按租户覆盖状态未接入（learning 适配器对配置的 `INF-PROC` 返回 live） | 同上 | ①③ | L1 | 随 D-05 |
-| D-11 | gateway 只接入采购项目 `pp_` 的概要、标包与公告时间线（`internal/dataplane`）；`prj_` / `org_` 与上级项目（entity-graph 读取未进 data-api，随 D-12）、证据面板（data-api 的证据载荷不含所属对象与来源名称、标题、链接）、历史与统计分区、字段状态（随 D-10、D-13）未关闭；未配置 data-api 时失败关闭 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
-| D-12 | entity-graph 组织解析、`part_of` 归属边、合并与撤销未实现；detection 归属边端口 `NotWired` | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第4段用例19–22、37–38 | ③ | L1（组织解析与 `part_of`）；品牌随 M2-P13 | — |
+| D-11 | gateway 接入采购项目 `pp_` 的概要、标包与公告时间线（`internal/dataplane`）。`GetPublicOrganization` 服务于搜索复核，`prj_`、`org_` 的通用对象详情与上级项目待交付。证据面板还需所属对象和来源名称、标题、链接，历史与统计分区及字段状态按 D-10、D-13 交付。缺少依赖时失败关闭。 | [gateway 第10节](../03-architecture/subsystems/gateway.md#10-对象页与证据面板-bff)；[契约覆盖第9节](../03-architecture/13-contract-readiness.md#9-随功能追加的契约) | ③ | L1 | — |
+| D-12 | entity-graph 已接入固定登记事实、证据与当前权利，合成登记已验证。真实登记供给、采购自动关联、`part_of` 归属边、合并与撤销待交付。detection 归属边端口 `NotWired`。 | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第4段用例19–22、37–38 | ③ | L1（组织解析与 `part_of`）；品牌随 M2-P13 | — |
 | D-13 | 字段状态、更正/撤回时间轴、来源中断、空态原因由数据平面提供 | PRD 第4段用例8–10、15–18、24–27 | ③ | L2 | 随 D-02～D-05 |
 | D-14 | 重新求值与撤回关闭的生产者、`signal.updated`、A02 更正公告重新求值 | [detection 第5节](../03-architecture/subsystems/detection.md#5-接口)；PRD 第3段已确认事项11 | ② | L2 | — |
 | D-15 | 首次激活回填的执行、标记与去重 | PRD 第7段用例18；detection | ② | L2 | — |
@@ -150,7 +150,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 1. **L1 回放贯通**：已通过（第3节的可重复入口，Kafka 使用 VPS 公共组件，OpenFGA 使用本机内存服务）；
 2. **L2 界面贯通**：只完成已开工的页面与已登记的 W 缺口，不扩展新页面；R-03 与 C-03 的生产 Web 登录部分是独立门禁；
 3. **L3 真实渠道**：与 L2 并行，前提是 U-01 测试企业与 C10 真实调用授权到位；交付 C-01、C-02，以及 W-04 中浏览器免登会话与卡片落地在真实渠道下的验收（按 Web 专项设计 WD2）；
-4. **L4 真实数据**：当前主线。在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7，以真实数据替代 L1 的回放语料与企业夹具，关闭 D 缺口；不以全国覆盖为前提；
+4. **L4 真实数据**：首批采集范围按[阶段基线](06-stage-baseline.md#11-当前主线)逐源验收，A02 使用相应已通过验收的来源和企业公开信息关闭 M1-P1/P2/P3/P7 及相关 D 缺口。记录受阻来源与实际覆盖，不以全国覆盖为前提；
 5. **L5 客户走查**：L4 通过且 M2-P8、M2-P9 关闭后，由试点客户按各段 PRD 走查，关闭各段的“功能验收”。
 
 ## 6. 维护规则
@@ -162,7 +162,7 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 
 ## 7. 已确认事项
 
-以下事项由项目负责人确认：D1、D3、D5–D7 随 [PR #33](https://github.com/SuperAILabs/MiaoQia/pull/33) 评审按推荐做法采纳；D2、D4 为 2026-11-06 的主线决议。真实调用、凭证与来源启用仍按各自门禁另行验收，本节不代替这些授权。
+以下事项由项目负责人确认。D1、D3、D5、D7 随 [PR #33](https://github.com/SuperAILabs/MiaoQia/pull/33) 评审按推荐做法采纳，D2、D4 为主线决议，D6 来源范围按阶段基线。真实调用、凭证与来源启用按各自门禁验收。
 
 | # | 已确认事项 |
 |---|---|
@@ -171,5 +171,5 @@ A02 的最短可用链路分四个环节。每个环节列出“真实贯通”�
 | D3 | L1 使用仓库内冻结的官方公告语料与标明为夹具的企业主数据；订阅反查先用按目标区域与品类过滤的最小实现；仿真接入真实数据集前先关闭 D-17 |
 | D4 | L2 Web 只完成四个环节已开工的最小页面集、H5 落地页与已登记的 W 缺口，不扩展新页面 |
 | D5 | L3 只在测试企业微信企业中验收，L3 与 L2 并行；测试企业与 C10 真实调用、凭证授权由项目负责人提供（U-01） |
-| D6 | L4 先在一个试点区域的少量 P0 来源上关闭 M1-P1/P2/P7；D1c/D2、试点客户候选、C3/C7a 作为 L4/L5 阻断项跟踪 |
+| D6 | 首批采集范围、来源受阻处理和 A02 数据消费按[阶段基线](06-stage-baseline.md#11-当前主线)；D1c/D2、试点客户候选、C3/C7a 按对应 L4/L5 门禁跟踪 |
 | D7 | 按第6节维护缺口编号与负向验证 |
