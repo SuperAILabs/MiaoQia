@@ -2,7 +2,7 @@
 
 > 状态：已验收 · 负责人：平台工程负责人
 
-公共测试栈位于境外的公共测试 VPS。现场盘点确认宿主机运行 PostgreSQL 18，`miaoqia-public` 项目另有 PostgreSQL、Kafka、Keycloak、OpenFGA 和 OpenTelemetry Collector。公共栈的 PostgreSQL 含 `miaoqia_keycloak`、`miaoqia_fga` 及管理库。采购数据面的历史组件验证使用临时实例。常驻公开原件、采集库、公共索引及真实事件流的部署目标为境内开发 VPS，需使用对应的 SSH 入口。[部署拓扑第 6 节](../03-architecture/07-deployment-topology.md#6-环境)
+公共测试栈位于境外的公共测试 VPS，主机地址与访问方式只保存在本地 `config/local/vps.env`。现场盘点确认宿主机运行 PostgreSQL 18，`miaoqia-public` 项目另有 PostgreSQL、Kafka、Keycloak、OpenFGA 和 OpenTelemetry Collector。公共栈的 PostgreSQL 含 `miaoqia_keycloak`、`miaoqia_fga` 及管理库。采购数据面的历史组件验证使用临时实例。常驻公开原件、采集库、公共索引及真实事件流的部署目标为境内开发 VPS，需使用对应的 SSH 入口。[部署拓扑第 6 节](../03-architecture/07-deployment-topology.md#6-环境)
 
 ## 1. 访问地址
 
@@ -31,6 +31,8 @@ VPS 现有 PostgreSQL 服务中创建了两个独立数据库和账号：
 本机运行 VPS E2E 时，MiaoQia 数据库地址由 `MIAOQIA_TEST_PG`/`MIAOQIA_E2E_PG` 决定；`tools/dev/run-m0-vps.sh` 显式选择 `config/local/m0-vps.env`，公共组件地址和密钥由该文件提供，显式 shell 变量可覆盖文件配置。普通开发验收不会自动读取该文件。
 
 OpenFGA token 和 Keycloak 测试用户密码属于部署密钥，不写入仓库；从 VPS `/opt/miaoqia-public/.env` 的受控密钥存储中注入本机进程。不要把这些值放入 shell 历史、CI 日志或文档。
+
+VPS 地址、SSH 用户和私钥路径只放在本机未跟踪的 `config/local/vps.env`（按 [`vps.env.example`](../../config/local/vps.env.example) 填写），VPS 辅助脚本经 `tools/dev/vps-env.sh` 读取，shell 变量优先。
 
 配置一次后直接运行：
 

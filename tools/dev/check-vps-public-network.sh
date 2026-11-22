@@ -3,9 +3,9 @@
 # This check prints topology and health only; it never reads the deployment .env.
 set -euo pipefail
 
-key_path=${MIAOQIA_VPS_SSH_KEY:-$HOME/.SSH/id_rsa}
-ssh_user=${MIAOQIA_VPS_SSH_USER:-almalinux}
-ssh_host=${MIAOQIA_VPS_HOST:-15.204.173.155}
+root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+# shellcheck source=vps-env.sh
+. "$root_dir/tools/dev/vps-env.sh"
 
 ssh -o BatchMode=yes -o ConnectTimeout=10 -i "$key_path" "$ssh_user@$ssh_host" 'bash -s' <<'REMOTE'
 set -euo pipefail
